@@ -5,9 +5,13 @@ Qube is a fully local, privacy-first AI assistant built with a complete multimod
 ## ✨ Key Features
 
 * **🧠 Local LLM Routing:** Interfaces directly with local LLM providers (like LM Studio) for private, fast text generation. Features intelligent NLP triggers and UI dashboard toggles for RAG routing.
+
 * **🎙️ Lightning-Fast STT:** Powered by `faster-whisper`, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
+
 * **🗣️ High-Fidelity TTS:** Uses the cutting-edge **Kokoro** engine for ultra-realistic Text-to-Speech. Features a smart **Auto-Downloader** that seamlessly fetches the required model weights on the first boot to keep the repository lightweight. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like GPU (or a solid APU) acceleration.
+
 * **📚 Advanced RAG Engine:** Built on **LanceDB** for blazing-fast vector storage and **PyMuPDF** for aggressive text extraction from complex PDFs, eBooks, and text files. 
+
 * **🎛️ Responsive GUI:** A clean, multithreaded PyQt6 interface featuring a real-time VU meter, dynamic settings, and custom wake-word support (for the moment Hey Jarvis, but more and custom options will come soon).
 
 ---
