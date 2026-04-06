@@ -1,7 +1,10 @@
 import sys
 import os
 
+from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont
+from qt_material import apply_stylesheet
 
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
 from workers.ingestion_worker import IngestionWorker  # noqa: F401 – kept for parity
@@ -123,7 +126,21 @@ class Qube:
 
 
 if __name__ == "__main__":
+    # PyQt6 high DPI handling
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
+
     app = QApplication(sys.argv)
+    
+    # Force a clean, modern font globally
+    app_font = QFont("Segoe UI", 10) 
+    app_font.setStyleHint(QFont.StyleHint.SansSerif)
+    app.setFont(app_font)
+
+    # NEW: Apply the Material Design dark theme
+    apply_stylesheet(app, theme='dark_blue.xml')
+
     qube = Qube()
     qube.show()
     sys.exit(app.exec())
