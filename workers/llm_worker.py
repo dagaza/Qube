@@ -5,7 +5,10 @@ import time
 import re
 import logging
 
-# FIX 1: Give this worker its proper identity!
+# Import our tools
+from mcp.rag_tool import rag_search
+from mcp.internet_tool import search_internet
+
 logger = logging.getLogger("Qube.LLM")
 
 class LLMWorker(QThread):
@@ -15,41 +18,47 @@ class LLMWorker(QThread):
     ttft_latency = pyqtSignal(float) 
     context_retrieved = pyqtSignal(bool) 
 
-    def __init__(self, embedder, store):
+    def __init__(self, embedder, store, db_manager):
         super().__init__()
         self.prompt = ""
+        self.session_id = None 
         self.api_url = "http://localhost:1234/v1/chat/completions"
         self.embedder = embedder
         self.store = store
+        self.db = db_manager
         
-        # RAG Routing State
-        self.dashboard_rag_enabled = False
-        self.auto_fallback_enabled = False
-        self.nlp_trigger_enabled = False
-        self.nlp_keywords = ["check my notes", "in my documents", "what did the file say"]
+        # --- NEW: Dynamic Generation Parameters ---
+        self.temperature = 0.7
+        self.context_window = 4096
+        
+        # --- NEW: MCP Tool States ---
+        self.mcp_rag_enabled = True
+        self.mcp_internet_enabled = False
 
-    def set_provider(self, port):
-        self.api_url = f"http://localhost:{port}/v1/chat/completions"
-        self.status_update.emit(f"Switched LLM Provider (Port: {port})")
+    # --- SETTERS FOR THE UI BLUEPRINT ---
+    def set_temperature(self, val: float):
+        self.temperature = val
+        logger.debug(f"Temperature updated to {val}")
 
-    def generate_response(self, text):
+    def set_context_window(self, val: int):
+        self.context_window = val
+        logger.debug(f"Context Window updated to {val}")
+
+    def set_mcp_rag(self, enabled: bool):
+        self.mcp_rag_enabled = enabled
+        
+    def set_mcp_internet(self, enabled: bool):
+        self.mcp_internet_enabled = enabled
+
+    def reload_model(self):
+        """Placeholder for LM Studio / Ollama model reload endpoints."""
+        logger.info("Model reload triggered by UI. (Requires specific provider endpoint)")
+        self.status_update.emit("Model Context Updated")
+
+    def generate_response(self, text: str, session_id: str):
         self.prompt = text
+        self.session_id = session_id
         self.start()
-
-    def set_dashboard_rag(self, enabled: bool):
-        self.dashboard_rag_enabled = enabled
-        logger.debug(f"Dashboard Force-RAG toggled to: {enabled}")
-
-    def set_auto_fallback(self, enabled: bool):
-        self.auto_fallback_enabled = enabled
-        logger.debug(f"Auto-Fallback RAG toggled to: {enabled}")
-
-    def set_nlp_trigger(self, enabled: bool):
-        self.nlp_trigger_enabled = enabled
-        logger.debug(f"NLP Trigger RAG toggled to: {enabled}")
-
-    def set_nlp_keywords(self, keywords_str: str):
-        self.nlp_keywords = [k.strip().lower() for k in keywords_str.split(",") if k.strip()]
 
     def clean_text_for_tts(self, text):
         text = re.sub(r'[*_]{1,3}', '', text)
@@ -59,124 +68,179 @@ class LLMWorker(QThread):
         text = re.sub(r'`([^`]+)`', r'\1', text)
         return text.strip()
 
+    def _get_available_tools(self) -> list:
+        """Constructs the OpenAI-compatible tools schema based on UI toggles."""
+        tools = []
+        if self.mcp_rag_enabled:
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": "search_local_documents",
+                    "description": "Searches the user's private knowledge base/library for specific information.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The search query to find in the documents."}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            })
+        if self.mcp_internet_enabled:
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": "search_internet",
+                    "description": "Searches the live internet for up-to-date information, news, or facts.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The search engine query."}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            })
+        return tools
+
     def run(self):
         self.status_update.emit("Thinking...")
-        logger.info(f"Received User Prompt: '{self.prompt}'")
         
-        # --- THE ROUTING CASCADE ---
-        attempt_rag_search = False
-        
-        if self.dashboard_rag_enabled:
-            logger.info("RAG triggered by Dashboard Override.")
-            attempt_rag_search = True
-        elif self.nlp_trigger_enabled:
-            prompt_lower = self.prompt.lower()
-            if any(kw in prompt_lower for kw in self.nlp_keywords):
-                logger.info("RAG triggered by NLP Keyword match.")
-                attempt_rag_search = True
-        elif self.auto_fallback_enabled:
-            logger.info("RAG triggered by Auto-Fallback (Always Search).")
-            attempt_rag_search = True
+        if self.session_id:
+            self.db.add_message(self.session_id, "user", self.prompt)
 
-        context = ""
+        # 1. Build Initial History
+        history = self.db.get_session_history(self.session_id) if self.session_id else []
+        system_prompt = "You are Qube, a helpful AI assistant."
+        messages = [{"role": "system", "content": system_prompt}] + history
         
-        # FIX 2: Native RAG Search (No external black-box dependency)
-        if attempt_rag_search:
-            logger.info("Executing database vector search...")
+        # We use a loop because if the LLM calls a tool, we need to feed the result back to it
+        max_tool_iterations = 3 
+        current_iteration = 0
+        final_assistant_response = ""
+
+        while current_iteration < max_tool_iterations:
+            current_iteration += 1
+            
+            payload = {
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": self.context_window,
+                "stream": True
+            }
+            
+            # Inject tools if enabled
+            active_tools = self._get_available_tools()
+            if active_tools:
+                payload["tools"] = active_tools
+
+            headers = {"Content-Type": "application/json"}
+            current_sentence = ""
+            first_token_received = False
+            start_time = time.time()
+            
+            # Buffers for intercepting streaming tool calls
+            is_tool_call = False
+            tool_name = ""
+            tool_args_str = ""
+            tool_call_id = "call_123" # Fallback ID
+
             try:
-                # Turn prompt into vector
-                query_vector = self.embedder.embed([self.prompt])[0]
-                
-                # Search database for top 5 chunks
-                results = self.store.search(query_vector, top_k=5)
-                
-                if results:
-                    # Format nicely for the LLM
-                    context_chunks = []
-                    for r in results:
-                        context_chunks.append(f"--- Source: {r['source']} ---\n{r['text']}")
-                    
-                    context = "\n\n".join(context_chunks)
-                    logger.info(f"RAG Success: Extracted {len(results)} chunks from database.")
-                else:
-                    logger.warning("Database searched, but 0 chunks were returned.")
-            except Exception as e:
-                logger.error(f"RAG Database Search Crashed: {e}", exc_info=True)
-        
-        # FIX 3: Construct the final payload and log the evidence
-        if context:
-            system_prompt = (
-                "You are HAL. The following context has been retrieved from the user's "
-                "personal document library. Answer using this context. "
-                "If the answer is not present in the context, say you do not know.\n\n"
-                f"CONTEXT:\n{context}"
-            )
-            self.context_retrieved.emit(True)
-            logger.debug(f"System Prompt injected with {len(context)} characters of context.")
-        else:
-            system_prompt = "You are a helpful, concise AI assistant."
-            self.context_retrieved.emit(False)
-            logger.debug("System Prompt: Standard AI (No Context Injected).")
-
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": self.prompt}
-            ],
-            "temperature": 0.7,
-            "stream": True
-        }
-
-        punctuation_marks = ['.', '!', '?']
-        current_sentence = ""
-        first_token_received = False 
-        start_time = time.time()     
-
-        try:
-            logger.debug(f"Transmitting POST request to {self.api_url}")
-            response = requests.post(self.api_url, headers=headers, json=payload, stream=True)
-            for line in response.iter_lines():
-                if line:
-                    decoded_line = line.decode('utf-8')
-                    if decoded_line.startswith("data: "):
-                        data_str = decoded_line[6:]
-                        if data_str.strip() == "[DONE]":
-                            break
+                response = requests.post(self.api_url, headers=headers, json=payload, stream=True)
+                for line in response.iter_lines():
+                    if not line: continue
+                    decoded = line.decode('utf-8')
+                    if decoded.startswith("data: "):
+                        data_str = decoded[6:]
+                        if data_str.strip() == "[DONE]": break
                         
                         try:
                             packet = json.loads(data_str)
                             delta = packet['choices'][0].get('delta', {})
-                            new_text = delta.get('content', "")
                             
-                            if new_text:
+                            # INTERCEPT TOOL CALLS
+                            if 'tool_calls' in delta:
+                                is_tool_call = True
+                                tc = delta['tool_calls'][0]
+                                if 'id' in tc: tool_call_id = tc['id']
+                                if 'function' in tc:
+                                    if 'name' in tc['function']: tool_name = tc['function']['name']
+                                    if 'arguments' in tc['function']: tool_args_str += tc['function']['arguments']
+                                continue
+
+                            # NORMAL TEXT STREAMING
+                            new_text = delta.get('content', "")
+                            if new_text and not is_tool_call:
                                 if not first_token_received:
-                                    latency = (time.time() - start_time) * 1000
-                                    self.ttft_latency.emit(latency)
-                                    logger.info(f"Time to First Token: {int(latency)}ms")
+                                    self.ttft_latency.emit((time.time() - start_time) * 1000)
                                     first_token_received = True
 
                                 current_sentence += new_text
+                                final_assistant_response += new_text
                                 self.token_streamed.emit(new_text) 
                                 
+                                punctuation_marks = ['.', '!', '?']
                                 if any(p in new_text for p in punctuation_marks):
-                                    clean_sentence = self.clean_text_for_tts(current_sentence.strip())
-                                    if clean_sentence:
-                                        self.sentence_ready.emit(clean_sentence)
+                                    clean = self.clean_text_for_tts(current_sentence.strip())
+                                    if clean: self.sentence_ready.emit(clean)
                                     current_sentence = ""
                                     
                         except json.JSONDecodeError:
                             pass
-            
-            if current_sentence.strip():
-                clean_sentence = self.clean_text_for_tts(current_sentence.strip())
-                if clean_sentence:
-                    self.sentence_ready.emit(clean_sentence)
-            
-            logger.info("LLM Generation Complete.")
-                
-        except Exception as e:
-            self.status_update.emit(f"LLM Error: {e}")
-            logger.error(f"HTTP Request to LLM Provider failed: {e}")
+
+                # Flush remaining text
+                if current_sentence.strip() and not is_tool_call:
+                    clean = self.clean_text_for_tts(current_sentence.strip())
+                    if clean: self.sentence_ready.emit(clean)
+
+                # --- TOOL EXECUTION LOGIC ---
+                if is_tool_call:
+                    self.status_update.emit(f"Using tool: {tool_name}...")
+                    try:
+                        args = json.loads(tool_args_str)
+                        query = args.get("query", "")
+                        
+                        # 1. Append the AI's intent to call the tool to history
+                        messages.append({
+                            "role": "assistant", 
+                            "content": None, 
+                            "tool_calls": [{"id": tool_call_id, "type": "function", "function": {"name": tool_name, "arguments": tool_args_str}}]
+                        })
+
+                        # 2. Execute the requested tool
+                        tool_result = ""
+                        if tool_name == "search_local_documents":
+                            tool_result = rag_search(query, self.embedder, self.store)
+                            self.context_retrieved.emit(bool(tool_result))
+                        elif tool_name == "search_internet":
+                            tool_result = search_internet(query)
+
+                        if not tool_result:
+                            tool_result = "No results found."
+
+                        # 3. Append the tool's result to history
+                        messages.append({
+                            "tool_call_id": tool_call_id,
+                            "role": "tool",
+                            "name": tool_name,
+                            "content": tool_result
+                        })
+                        
+                        logger.info(f"Tool '{tool_name}' executed. Looping back to LLM for final answer.")
+                        continue # Loop back up and POST to the LLM again!
+                    except Exception as e:
+                        logger.error(f"Failed to execute tool {tool_name}: {e}")
+                        break # Break loop on failure
+                else:
+                    # Normal generation completed, break the iteration loop
+                    break 
+                    
+            except Exception as e:
+                logger.error(f"LLM Network Error: {e}")
+                break
+
+        # Save final text to SQLite
+        if self.session_id and final_assistant_response.strip():
+            self.db.add_message(self.session_id, "assistant", final_assistant_response.strip())
             
         self.status_update.emit("Idle")

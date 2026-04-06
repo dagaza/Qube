@@ -110,8 +110,17 @@ class TTSWorker(QThread):
         self.active_voice_name = "Default"
         self.current_device_index = None 
         
+        # --- NEW: Voice Bypass Flag ---
+        self.is_muted = False
+        
         if initial_model:
             self.load_voice(initial_model)
+
+    # --- NEW: Mute Toggle Method ---
+    def set_mute(self, muted: bool):
+        self.is_muted = muted
+        state = "Muted" if muted else "Active"
+        self.status_update.emit(f"TTS Voice is now {state}")
 
     def set_device(self, index):
         self.current_device_index = index
@@ -166,6 +175,11 @@ class TTSWorker(QThread):
     def run(self):
         while not self.sentence_queue.empty():
             text = self.sentence_queue.get()
+            
+            # --- NEW: Bypass Logic ---
+            if self.is_muted:
+                self.sentence_queue.task_done()
+                continue
             
             if not self.active_adapter or not self.stream:
                 self.sentence_queue.task_done()

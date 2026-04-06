@@ -17,20 +17,11 @@ CHUNK = 1280
 class AudioListenerWorker(QThread):
     status_update = pyqtSignal(str)
     audio_captured = pyqtSignal(bytes)
+    # --- NEW: Signal to populate the UI dropdown ---
+    wakewords_ready = pyqtSignal(list)
 
     def __init__(self):
         super().__init__()
-        
-        wakeword_dir = os.path.join("models", "wakeword")
-        custom_models = glob.glob(os.path.join(wakeword_dir, "*.tflite"))
-        
-        if custom_models:
-            self.oww_model = Model(wakeword_models=custom_models)
-            self.status_update.emit(f"Loaded {len(custom_models)} custom wake words.")
-        else:
-            self.oww_model = Model() 
-            self.status_update.emit("Using default wake words.")
-        
         self.mutex = QMutex()
         self.input_device_index = None  
         self.running = True
@@ -39,10 +30,43 @@ class AudioListenerWorker(QThread):
         self.current_rate = 16000 
         self.current_volume = 0
         
-        # UI Adjustable UX parameters
         self.silence_timeout = 2.0  
-        # We now use a pure 0-100 percentage scale. 2% is a great default.
         self.speech_threshold = 2
+        
+        # --- NEW: Dynamic Model Discovery ---
+        self.available_wakewords = self._discover_wakewords()
+        # Default to the first available (usually 'alexa' or 'hey_jarvis')
+        self.active_wakeword_name = self.available_wakewords[0] if self.available_wakewords else "alexa"
+        self.oww_model = Model(wakeword_models=[self.active_wakeword_name])
+
+    def _discover_wakewords(self) -> list:
+        """Scans for default and custom wakewords."""
+        defaults = ["alexa", "hey_mycroft", "hey_jarvis", "timer", "weather"]
+        wakeword_dir = os.path.join("models", "wakeword")
+        os.makedirs(wakeword_dir, exist_ok=True)
+        
+        custom_models = glob.glob(os.path.join(wakeword_dir, "*.tflite"))
+        return defaults + custom_models
+
+    def emit_available_wakewords(self):
+        """Called by the UI after boot to populate the ComboBox."""
+        self.wakewords_ready.emit(self.available_wakewords)
+
+    # --- NEW: Hot-Swap Wakeword Logic ---
+    def set_wakeword(self, target_model: str):
+        """Safely reloads the ONNX runtime with the newly selected model."""
+        self.mutex.lock()
+        try:
+            self.status_update.emit(f"Loading Wakeword: {os.path.basename(target_model)}...")
+            self.oww_model = Model(wakeword_models=[target_model])
+            self.active_wakeword_name = target_model
+            logger.info(f"Successfully hot-swapped wakeword to: {target_model}")
+            self.status_update.emit("Idle")
+        except Exception as e:
+            logger.error(f"Failed to load wakeword {target_model}: {e}")
+            self.status_update.emit("Error loading Wakeword")
+        finally:
+            self.mutex.unlock()
 
     def set_silence_timeout(self, seconds: float):
         self.silence_timeout = seconds
@@ -63,7 +87,6 @@ class AudioListenerWorker(QThread):
             self.mutex.unlock()  
 
     def _record_until_silence(self):
-        """The Sliding-Window Recording Logic (with real-time 48kHz resampling)"""
         self.status_update.emit("🎙️ RECORDING...")
         logger.info("Wake word detected. Opening recording buffer...")
         recording = []
@@ -78,24 +101,19 @@ class AudioListenerWorker(QThread):
             data = self.stream.read(read_chunk, exception_on_overflow=False)
             audio_data = np.frombuffer(data, dtype=np.int16)
             
-            # --- REAL-TIME TIME-WARP FIX ---
             if self.current_rate == 48000:
                 audio_data = audio_data[::3]
                 
             recording.append(audio_data.tobytes())
             
-            # 1. Calculate raw peak volume
             try:
                 peak = np.max(np.abs(audio_data))
-                # 2. Convert to a pure 0-100 percentage
                 current_vol_pct = min(100, int((peak / 32767.0) * 100))
             except ValueError:
                 current_vol_pct = 0
                 
-            # Update the UI VU Meter
             self.current_volume = current_vol_pct
 
-            # Tripwire logic: Compare the percentage against your slider!
             if current_vol_pct >= self.speech_threshold:
                 silence_start_time = time.time()
                 has_spoken = True
@@ -109,7 +127,6 @@ class AudioListenerWorker(QThread):
             if has_spoken and elapsed_silence > self.silence_timeout:
                 self.status_update.emit("Transcribing...")
                 logger.info(f"Silence timeout reached ({self.silence_timeout}s). Closing buffer.")
-                
                 audio_bytes = b''.join(recording)
                 self.audio_captured.emit(audio_bytes)
                 return
@@ -146,30 +163,29 @@ class AudioListenerWorker(QThread):
             finally:
                 self.mutex.unlock()
 
-            # Process audio for Wake Word detection
             audio_data = np.frombuffer(data, dtype=np.int16)
             if self.current_rate == 48000:
                 audio_data = audio_data[::3] 
                 
             try:
-                # Apply the exact same accurate percentage math while idle
                 peak = np.max(np.abs(audio_data))
                 self.current_volume = min(100, int((peak / 32767.0) * 100))
             except ValueError:
                 self.current_volume = 0
             
-            self.oww_model.predict(audio_data)
-
-            for wakeword_name in self.oww_model.prediction_buffer.keys():
-                if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
-                    score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
-                    if score > 0.5:
-                        if (time.time() - last_trigger_time) > 2.0:
-                            self.mutex.lock()
-                            try:
+            # --- NEW: Mutex protection for hot-swapping during inference ---
+            self.mutex.lock()
+            try:
+                self.oww_model.predict(audio_data)
+                
+                for wakeword_name in self.oww_model.prediction_buffer.keys():
+                    if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
+                        score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
+                        if score > 0.5:
+                            if (time.time() - last_trigger_time) > 2.0:
                                 self._record_until_silence()
-                            finally:
-                                self.mutex.unlock()
                                 last_trigger_time = time.time()
                                 self.status_update.emit("Processing...")
-                            break
+                                break
+            finally:
+                self.mutex.unlock()
