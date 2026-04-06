@@ -1,0 +1,40 @@
+# --- Python & Environment ---
+venv/
+app_env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# --- Qube Architecture: Models ---
+models/**/*
+!models/**/.gitkeep
+
+# --- Qube Architecture: Data ---
+# Ignore all LanceDB / Vector storage files
+data/**/*
+# But do not ignore the .gitkeep files (if you use them to keep folders alive)
+!data/**/.gitkeep
+!models/**/.gitkeep
+
+# --- Global Binary/Data Safety Net ---
+*.onnx
+*.bin
+*.tflite
+*.pb
+*.weights
+*.db
+*.sqlite3
+
+# --- Configuration & Logs ---
+*.log
+# Keep project-level JSON configs, ignore deep model/metadata JSONs
+models/**/*.json
+
+# --- IDE, OS & Tools ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+tools/test_outputs/

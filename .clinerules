@@ -1,0 +1,77 @@
+## 1. Project Identity & Prime Directives
+* **Mission:** Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant. It operates entirely offline with real-time conversational streaming capabilities.
+* **Strict Memory Constraint:** The entire system MUST operate under a strict 20GB RAM budget to prevent OS disk swapping, which would destroy audio latency.
+* **Tech Stack:** Python 3.12 (Linux/Windows), PyQt6, pyqtgraph, psutil, PyAudio, OpenWakeWord, Faster-Whisper, Ollama/LM Studio, Piper/Kokoro TTS, LanceDB, and ONNX Runtime.
+
+## 2. Architectural Philosophy: The Producer-Consumer Pipeline
+* **UI Thread Isolation:** The Main UI Thread (PyQt6) must **never** be blocked. It is responsible solely for rendering, event handling, and high-speed telemetry polling (via `QTimer`).
+* **Asynchronous Inference:** All heavy computational tasks (Wake Word detection, STT processing, LLM streaming, TTS generation, and Document Ingestion) must run in dedicated `QThread` instances.
+* **Thread Communication:** Threads must strictly communicate via PyQt signals (`pyqtSignal`), thread-safe queues (`queue.Queue`), and mutex locks (`QMutex`). Do not share raw state directly between the UI and background workers.
+
+## 3. Directory Structure & Domain Boundaries
+The project strictly enforces a modular, domain-driven directory structure to prevent "God Objects." 
+
+```text
+Qube/
+├── main.py                 # Minimal entry point. Initializes global objects and boots the app.
+├── assets/                 # NEW: Static UI and Brand Assets (Immutable)
+│   ├── icons/              # App icons, window logos, UI element SVGs.
+│   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
+│   └── styles/             # (Optional) Extracted .qss stylesheet files.
+├── ui/                     # Presentation Layer (Dumb Components)
+│   ├── main_window.py      # The main Qube dashboard and layout.
+│   ├── settings_dialog.py  # Hardware routing, RAG controls, and configuration.
+│   └── components.py       # Custom widgets (VU Meter, PyQtGraph canvases).
+├── core/                   # System, Hardware, and Network Utilities
+│   ├── hardware.py         # psutil polling, GPUMonitor wrapper.
+│   ├── network.py          # Port scanning (Ollama/LM Studio detection).
+│   └── audio_utils.py      # PyAudio device discovery and index mapping.
+├── workers/                # Background Event Loops (QThreads)
+│   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
+│   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
+│   ├── llm_worker.py       # Streams LLM tokens, handles RAG routing cascade.
+│   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
+│   └── ingestion_worker.py # Parses, chunks, and embeds documents in the background.
+├── rag/                    # Retrieval-Augmented Generation Engine
+│   ├── embedder.py         # ONNX `all-MiniLM-L6-v2` instance (Memory footprint ~50MB).
+│   ├── store.py            # LanceDB interface (Disk-native, zero-copy vector storage).
+│   ├── chunker.py          # Semantic text splitting (1500 chars / 150 overlap).
+│   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
+├── mcp/                    # Model Context Protocol Interfaces
+│   └── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
+├── models/                 # Local AI Weights (Organized by function)
+│   ├── stt/                # Faster-Whisper weights.
+│   ├── tts/                # Piper/Kokoro voices and configs.
+│   ├── embeddings/         # RAG embedding models (ONNX).
+│   └── wakeword/           # OpenWakeWord detection models.
+├── data/                   # LanceDB vector storage directory.
+├── tools/            # NEW: (Includes export_model.py)
+```
+
+## 4. Development Rules & Anti-Patterns
+
+### 4.1 UI Anti-Patterns
+
+- **No Logic in the UI:** Do not place `socket`, `pyaudio`, or network logic inside `ui/` classes. The UI must request this data from the `core/` utilities.
+    
+- **No Blocking Workloads:** Never parse documents, load ML models, or wait for HTTP requests inside a UI class method. Fire a signal to a `worker` instead.
+    
+- **No Direct Worker Instantiation in Dialogs:** Global objects (like the RAG `EmbeddingModel` and `DocumentStore`) must be instantiated exactly once in `main.py` and passed down by reference to the workers that need them.
+    
+
+### 4.2 RAG Constraints
+
+- **Disk-Native Priority:** Do not use in-memory vector stores (like FAISS) that load the entire index into RAM. LanceDB is the mandated storage engine.
+    
+- **Embedding Model Consistency:** Do not unload the LLM to generate embeddings. Keep the `all-MiniLM-L6-v2` ONNX session perpetually warm in memory.
+    
+- **UI-Safe Ingestion:** Document parsing must always utilize `IngestionWorker` to ensure the UI remains responsive and progress bars update fluidly.
+    
+
+### 4.3 Routing & Telemetry
+
+- **LLM Provider Agnosticism:** The system supports both Ollama (11434) and LM Studio (1234). The `network.py` utility auto-discovers these on boot. All LLM requests must use OpenAI-compatible streaming endpoints.
+    
+- **The RAG Cascade:** RAG context is injected at the prompt level inside `llm_worker.py`. The worker must respect the user's hierarchy of intent: Manual Override > NLP Keyword Trigger > Auto-Fallback.
+    
+- **Latency Waterfall Tracking:** `STTWorker`, `LLMWorker` (TTFT), and `TTSWorker` must manually track their stopwatch times and emit latency metrics back to the UI upon task completion.
