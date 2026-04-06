@@ -19,9 +19,12 @@ Qube/
 │   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
 │   └── styles/             # (Optional) Extracted .qss stylesheet files.
 ├── ui/                     # Presentation Layer (Dumb Components)
-│   ├── main_window.py      # The main Qube dashboard and layout.
-│   ├── settings_dialog.py  # Hardware routing, RAG controls, and configuration.
-│   └── components.py       # Custom widgets (VU Meter, PyQtGraph canvases).
+│   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
+│   └── views/              # isolated widget files for each major screen
+│       ├── __init__.py    
+│       ├── conversations_view.py
+│       ├── library_view.py
+│       └── settings_view.py
 ├── core/                   # System, Hardware, and Network Utilities
 │   ├── hardware.py         # psutil polling, GPUMonitor wrapper.
 │   ├── network.py          # Port scanning (Ollama/LM Studio detection).

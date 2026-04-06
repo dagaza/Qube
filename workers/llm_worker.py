@@ -36,6 +36,11 @@ class LLMWorker(QThread):
         self.mcp_internet_enabled = False
 
     # --- SETTERS FOR THE UI BLUEPRINT ---
+    def set_provider(self, port: int):
+        self.api_url = f"http://localhost:{port}/v1/chat/completions"
+        self.status_update.emit(f"Switched LLM Provider (Port: {port})")
+        logger.info(f"LLM Provider API URL updated to: {self.api_url}")
+
     def set_temperature(self, val: float):
         self.temperature = val
         logger.debug(f"Temperature updated to {val}")

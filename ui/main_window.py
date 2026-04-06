@@ -1,123 +1,56 @@
 import psutil
-import pyqtgraph as pg
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QComboBox, QProgressBar, QPushButton, QTextEdit, QApplication,
-    QLabel, QFrame, QFileDialog, QCheckBox, QSizeGrip, QMenu, QSystemTrayIcon, QSizePolicy,
+    QPushButton, QApplication, QLabel, QFrame, 
+    QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy
 )
-from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QPoint, QSize, QTimer
-from PyQt6.QtGui import QAction, QIcon, QPixmap, QFont
-
+from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtGui import QAction
 import qtawesome as qta
-from .settings_dialog import SettingsDialog
-from core.network import is_port_open
-from core.audio_utils import get_input_devices, get_output_devices
+from .views.conversations_view import ConversationsView
+from .views.settings_view import SettingsView
 import logging
+
 logger = logging.getLogger("Qube.UI")
 
 class MainWindow(QMainWindow):
     """
-    Pure UI layer for Qube.
-
-    All business/worker logic lives in main.py (Qube).
-    This class is responsible for:
-      - Building every widget
-      - Exposing named widget references so Qube can wire signals
-      - Owning the two UI-side timers (telemetry poll, VU-meter animation)
+    MASTER GLOBAL SHELL
+    Responsible for the frameless lifecycle, global navigation, and routing.
+    All distinct screens are hosted within the QStackedWidget (Main Stage).
     """
 
     def __init__(self, workers: dict, gpu_monitor):
-        """
-        Parameters
-        ----------
-        workers : dict
-            Keys: 'audio', 'stt', 'llm', 'tts'
-        gpu_monitor : GPUMonitor
-            Abstraction layer for GPU telemetry.
-        """
         super().__init__()
-        self.setWindowTitle("Qube - Control Center")
-        self.resize(1100, 700)
+        self.setWindowTitle("Qube - Workspace")
+        self.resize(1200, 800) 
 
-        # 1. THE "FRAMELESS" SECRET SAUCE
-        # This removes the OS title bar but keeps the window on top
+        self.workers = workers
+
+        # 1. Frameless Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        # State for manual window dragging
         self._old_pos = None
 
-        # Store references we need for timer callbacks
-        self._audio_worker = workers["audio"]
-        self._tts_worker   = workers["tts"]
-        self._llm_worker   = workers["llm"]
+        # 2. Worker References
+        self._audio_worker = workers.get("audio")
+        self._tts_worker   = workers.get("tts")
+        self._llm_worker   = workers.get("llm")
         self._gpu_monitor  = gpu_monitor
 
-        # VU-meter smooth-decay state
-        self.current_ui_volume: int = 0
-
-        # Tracks whether the agent is mid-stream so we can prefix once
-        self.is_agent_typing: bool = False
+        # Global State
+        self._is_dark_theme = True
 
         self._setup_ui()
-        self._start_timers()
         self._setup_tray()
+        self._start_timers()
 
     # ------------------------------------------------------------------ #
-    #  Private – Layout construction                                       #
+    #  UI CONSTRUCTION                                                   #
     # ------------------------------------------------------------------ #
 
-    def _setup_tray(self) -> None:
-        """Initializes the system tray icon and its context menu."""
-        self.tray_icon = QSystemTrayIcon(self)
-        
-        # FIX: Use the QIcon object directly. 
-        # qta.icon() returns a QIcon, which is what setIcon wants.
-        icon = qta.icon('fa5s.cube', color='#89b4fa')
-        self.tray_icon.setIcon(icon)
-
-        # Create the menu
-        tray_menu = QMenu()
-        tray_menu.setStyleSheet("background-color: #1e1e2e; color: #cdd6f4;")
-
-        show_action = QAction("Open Control Center", self)
-        show_action.triggered.connect(self.showNormal)
-        
-        settings_action = QAction("Quick Settings", self)
-        settings_action.triggered.connect(self.settings_btn.click)
-
-        quit_action = QAction("Exit Qube", self)
-        quit_action.triggered.connect(self._fully_exit)
-
-        tray_menu.addAction(show_action)
-        tray_menu.addAction(settings_action)
-        tray_menu.addSeparator()
-        tray_menu.addAction(quit_action)
-
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.show()
-
-        # If the user clicks the tray icon directly, show the window
-        self.tray_icon.activated.connect(self._on_tray_icon_activated)
-    
-    def _on_tray_icon_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            if self.isVisible():
-                self.hide()
-            else:
-                self.showNormal()
-                self.activateWindow()
-
-    def _fully_exit(self):
-        """Ensures background workers stop before the app quits."""
-        logger.info("Deep shutdown initiated from Tray.")
-        self.tray_icon.hide()
-        # Call your app's actual quit logic
-        QApplication.quit()
-    
     def _setup_ui(self) -> None:
-        # Main background container (since the window itself is translucent)
+        # Base container matching the Catppuccin dark theme
         self.main_container = QFrame()
         self.main_container.setObjectName("MainContainer")
         self.main_container.setStyleSheet("""
@@ -129,50 +62,79 @@ class MainWindow(QMainWindow):
         """)
         self.setCentralWidget(self.main_container)
         
-        layout = QVBoxLayout(self.main_container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        root_layout = QVBoxLayout(self.main_container)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        # 2. THE CUSTOM TITLE BAR
-        self.title_bar = self._build_title_bar()
-        layout.addWidget(self.title_bar)
+        # Build the Multi-Pane Layout
+        self.top_bar = self._build_top_bar()
+        root_layout.addWidget(self.top_bar)
 
-        # 3. CONTENT AREA
-        content_layout = QHBoxLayout()
-        content_layout.setContentsMargins(20, 10, 20, 20)
-        content_layout.setSpacing(20)
+        workspace_layout = QHBoxLayout()
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(0)
+
+        self.nav_sidebar = self._build_nav_sidebar()
+        workspace_layout.addWidget(self.nav_sidebar)
+
+        # MAIN STAGE: The QStackedWidget Router
+        self.main_stage = QStackedWidget()
+        self.main_stage.setStyleSheet("background-color: transparent;")
         
-        content_layout.addLayout(self._build_left_pane(), stretch=1)
-        content_layout.addLayout(self._build_right_pane(), stretch=3)
-        
-        layout.addLayout(content_layout)
+        # --- NEW: Injecting the actual Conversations View ---
+        # Note: We assume 'db_manager' was either passed to MainWindow or is in your workers dict. 
+        # If it's in your workers dict, use: workers.get("db")
+        self.view_conversations = ConversationsView(self.workers, self.workers.get("db"))
 
-        # 4. RESIZE GRIP (Bottom Right)
-        # Without a frame, we need a way to resize the window
+        # --- PLACEHOLDER VIEWS ---
+        # We will replace these with actual imported View classes next.
+        self.view_library = QLabel("<h2 style='color:#cdd6f4; text-align:center;'>Library View (Pending)</h2>")
+        self.view_telemetry = QLabel("<h2 style='color:#cdd6f4; text-align:center;'>Telemetry View (Pending)</h2>")
+        
+
+        self.view_settings = SettingsView(self.workers, self.workers.get("db"))
+        
+        self.main_stage.addWidget(self.view_conversations) # Index 0
+        self.main_stage.addWidget(self.view_library)       # Index 1
+        self.main_stage.addWidget(self.view_telemetry)     # Index 2
+        self.main_stage.addWidget(self.view_settings)      # Index 3
+
+        workspace_layout.addWidget(self.main_stage, stretch=1)
+        root_layout.addLayout(workspace_layout)
+
+        # Resize Grip
         self.grip = QSizeGrip(self)
-        layout.addWidget(self.grip, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        root_layout.addWidget(self.grip, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
 
-    def _build_title_bar(self) -> QFrame:
+    def _build_top_bar(self) -> QFrame:
+        """Global Top Bar: Houses global AI status, RAG indicator, and window controls."""
         bar = QFrame()
-        bar.setFixedHeight(40)
-        bar.setStyleSheet("background-color: rgba(30, 30, 46, 0.8); border-top-left-radius: 12px; border-top-right-radius: 12px;")
+        bar.setFixedHeight(45)
+        bar.setStyleSheet("background-color: rgba(17, 17, 27, 0.9); border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom: 1px solid #313244;")
         
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(15, 0, 10, 0)
+        layout.setContentsMargins(15, 0, 15, 0)
 
-        # Icon and Title
-        title_icon = QLabel()
-        title_icon.setPixmap(qta.icon('fa5s.cube', color='#89b4fa').pixmap(QSize(16, 16)))
-        title_label = QLabel("QUBE ASSISTANT")
-        title_label.setStyleSheet("font-weight: bold; color: #bac2de; letter-spacing: 1px; font-size: 11px;")
-        
-        layout.addWidget(title_icon)
-        layout.addWidget(title_label)
-        layout.addStretch()
+        # Left Spacer to balance the layout
+        layout.addStretch(1)
 
+        # Center: Global Worker Status Bubble
+        self.status_bubble = QLabel(" IDLE")
+        self.status_bubble.setFixedSize(200, 26)
+        self.status_bubble.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_bubble.setStyleSheet("""
+            background-color: #313244; color: #a6e3a1; font-weight: bold; 
+            border-radius: 13px; font-size: 11px; letter-spacing: 1px;
+        """)
+        layout.addWidget(self.status_bubble)
+
+        # Right Spacing
+        layout.addStretch(1)
+
+        # Right: RAG Indicator
         self.rag_status_dot = QLabel("● RAG")
-        self.rag_status_dot.setStyleSheet("color: #6c7086; font-weight: bold; font-size: 10px; margin-left: 10px;")
-        layout.insertWidget(2, self.rag_status_dot) # Insert it after the title
+        self.rag_status_dot.setStyleSheet("color: #6c7086; font-weight: bold; font-size: 11px; margin-right: 15px;")
+        layout.addWidget(self.rag_status_dot)
 
         # Window Controls
         btn_style = "QPushButton { border: none; padding: 5px; border-radius: 4px; } QPushButton:hover { background-color: #45475a; }"
@@ -192,12 +154,130 @@ class MainWindow(QMainWindow):
         
         return bar
 
-    # --- DRAG LOGIC (Manual implementation for Frameless) ---
+    def _build_nav_sidebar(self) -> QFrame:
+        """Global Left Navigation: Switches views and shows mini-telemetry."""
+        sidebar = QFrame()
+        sidebar.setFixedWidth(70)
+        sidebar.setStyleSheet("background-color: rgba(24, 24, 37, 0.9); border-bottom-left-radius: 12px; border-right: 1px solid #313244;")
+        
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(0, 20, 0, 20)
+        layout.setSpacing(25)
+
+        # Reusable Nav Button Style
+        nav_style = """
+            QPushButton { border: none; background: transparent; border-radius: 8px; padding: 10px; }
+            QPushButton:hover { background-color: #313244; }
+            QPushButton:checked { background-color: #45475a; }
+        """
+
+        # Top Icons
+        self.nav_chat = QPushButton()
+        self.nav_chat.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa'))
+        self.nav_chat.setIconSize(QSize(24, 24))
+        self.nav_chat.setCheckable(True)
+        self.nav_chat.setChecked(True) # Default active
+        self.nav_chat.setStyleSheet(nav_style)
+        self.nav_chat.clicked.connect(lambda: self._route_view(0, self.nav_chat))
+        layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.nav_library = QPushButton()
+        self.nav_library.setIcon(qta.icon('fa5s.book', color='#cdd6f4'))
+        self.nav_library.setIconSize(QSize(24, 24))
+        self.nav_library.setCheckable(True)
+        self.nav_library.setStyleSheet(nav_style)
+        self.nav_library.clicked.connect(lambda: self._route_view(1, self.nav_library))
+        layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.nav_telemetry = QPushButton()
+        self.nav_telemetry.setIcon(qta.icon('fa5s.tachometer-alt', color='#cdd6f4'))
+        self.nav_telemetry.setIconSize(QSize(24, 24))
+        self.nav_telemetry.setCheckable(True)
+        self.nav_telemetry.setStyleSheet(nav_style)
+        self.nav_telemetry.clicked.connect(lambda: self._route_view(2, self.nav_telemetry))
+        layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        layout.addStretch()
+
+        # Bottom Controls
+        self.nav_theme = QPushButton()
+        self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
+        self.nav_theme.setIconSize(QSize(20, 20))
+        self.nav_theme.setStyleSheet(nav_style)
+        layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.nav_settings = QPushButton()
+        self.nav_settings.setIcon(qta.icon('fa5s.cog', color='#cdd6f4'))
+        self.nav_settings.setIconSize(QSize(20, 20))
+        self.nav_settings.setCheckable(True)
+        self.nav_settings.setStyleSheet(nav_style)
+        self.nav_settings.clicked.connect(lambda: self._route_view(3, self.nav_settings))
+        layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        # Mini Telemetry Block
+        self.mini_telemetry = QLabel("CPU: --\nRAM: --\nGPU: --")
+        self.mini_telemetry.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.mini_telemetry.setStyleSheet("color: #6c7086; font-size: 9px; font-weight: bold; font-family: monospace;")
+        layout.addWidget(self.mini_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        # Track navigation buttons to manage visual 'active' state
+        self.nav_buttons = [self.nav_chat, self.nav_library, self.nav_telemetry, self.nav_settings]
+        
+        return sidebar
+
+    def _route_view(self, index: int, active_button: QPushButton):
+        """Switches the QStackedWidget and manages button highlights."""
+        self.main_stage.setCurrentIndex(index)
+        for btn in self.nav_buttons:
+            if btn != active_button:
+                btn.setChecked(False)
+            
+            # Reset icon colors to default, then highlight the active one
+            if btn == self.nav_chat: btn.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+            elif btn == self.nav_library: btn.setIcon(qta.icon('fa5s.book', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+            elif btn == self.nav_telemetry: btn.setIcon(qta.icon('fa5s.tachometer-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+            elif btn == self.nav_settings: btn.setIcon(qta.icon('fa5s.cog', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+
+    # ------------------------------------------------------------------ #
+    #  TIMERS & TRAY                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _setup_tray(self) -> None:
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(qta.icon('fa5s.cube', color='#89b4fa'))
+        tray_menu = QMenu()
+        tray_menu.setStyleSheet("background-color: #1e1e2e; color: #cdd6f4;")
+        
+        show_action = QAction("Open Workspace", self)
+        show_action.triggered.connect(self.showNormal)
+        quit_action = QAction("Exit Qube", self)
+        quit_action.triggered.connect(QApplication.quit)
+
+        tray_menu.addAction(show_action)
+        tray_menu.addSeparator()
+        tray_menu.addAction(quit_action)
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.show()
+
+    def _start_timers(self) -> None:
+        # Repurposed telemetry timer for the new Mini-Telemetry block
+        self.telemetry_timer = QTimer()
+        self.telemetry_timer.timeout.connect(self._update_mini_telemetry)
+        self.telemetry_timer.start(1000) # Once per second is fine for mini text
+
+    def _update_mini_telemetry(self):
+        ram = int(psutil.virtual_memory().percent)
+        cpu = int(psutil.cpu_percent())
+        gpu = int(self._gpu_monitor.get_load()) if self._gpu_monitor else 0
+        self.mini_telemetry.setText(f"CPU: {cpu}%\nRAM: {ram}%\nGPU: {gpu}%")
+
+    # ------------------------------------------------------------------ #
+    #  FRAMELESS DRAG & DROP EVENT ROUTING                               #
+    # ------------------------------------------------------------------ #
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            # Only allow dragging from the title bar area
-            if self.title_bar.underMouse():
-                self._old_pos = event.globalPosition().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton and self.top_bar.underMouse():
+            self._old_pos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
         if self._old_pos is not None:
@@ -209,413 +289,51 @@ class MainWindow(QMainWindow):
         self._old_pos = None
 
     def mouseDoubleClickEvent(self, event):
-        """Toggles maximize/restore when the title bar is double-clicked."""
-        if event.button() == Qt.MouseButton.LeftButton:
-            # Check if the click happened inside the title bar widget
-            if self.title_bar.underMouse():
-                if self.isMaximized():
-                    self.showNormal()
-                    # Optional: Re-apply border radius for non-maximized mode
-                    self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
-                else:
-                    self.showMaximized()
-                    # Optional: Remove border radius when maximized to fit screen edges
-                    self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
-
-    def _build_left_pane(self) -> QVBoxLayout:
-        left_pane = QVBoxLayout()
-        left_pane.setContentsMargins(15, 15, 15, 15)  # Add breathing room
-        left_pane.setSpacing(15)                      # Space out the widgets
-
-        # -- Status bar --------------------------------------------------
-        status_container = QFrame()
-        status_container.setMinimumHeight(60)
-        
-        status_layout = QVBoxLayout(status_container)
-        self.status_label = QLabel("SYSTEM: Initializing...")
-        status_layout.addWidget(self.status_label)
-        left_pane.addWidget(status_container)
-
-        # -- RAG indicator -----------------------------------------------
-        self.rag_indicator = QLabel("● RAG Inactive")
-        self.rag_indicator.setStyleSheet(
-            "color: grey; font-weight: bold; padding-left: 5px;"
-        )
-        left_pane.addWidget(self.rag_indicator)
-
-        # -- RAG manual override toggle ----------------------------------
-        self.manual_rag_toggle = QCheckBox("🧠 Force Document Search")
-        self.manual_rag_toggle.setStyleSheet(
-            "color: #cdd6f4; font-weight: bold; padding: 5px;"
-        )
-        self.manual_rag_toggle.toggled.connect(self._llm_worker.set_dashboard_rag)
-        left_pane.addWidget(self.manual_rag_toggle)
-
-        # -- Mic selector (populated but not added to pane directly) -----
-        self.mic_selector = QComboBox()
-        self._populate_mic_devices()
-        self.mic_selector.currentIndexChanged.connect(self._on_mic_changed)
-
-        # -- Audio output selector ---------------------------------------
-        self.device_selector = QComboBox()
-        self._populate_audio_devices()
-        self.device_selector.currentIndexChanged.connect(self._on_audio_device_changed)
-
-        # -- TTS voice selector ------------------------------------------
-        self.voice_selector = QComboBox()
-        self.voice_selector.setStyleSheet("background-color: #313244; padding: 5px;")
-        self.voice_selector.currentIndexChanged.connect(self._on_tts_voice_changed)
-
-        # -- Load Model button
-        self.load_model_btn = QPushButton(" Load Model")
-        self.load_model_btn.setIcon(qta.icon('fa5s.file-upload', color='#cdd6f4'))
-
-        # -- LLM provider selector (auto-discovery) ----------------------
-        self.provider_selector = QComboBox()
-        self.provider_selector.setStyleSheet(
-            "background-color: #313244; padding: 5px; font-weight: bold;"
-        )
-        self._setup_provider_selector()
-
-       # -- Settings button with a sharp FontAwesome icon
-        self.settings_btn = QPushButton(" Settings")
-        self.settings_btn.setIcon(qta.icon('fa5s.cog', color='#cdd6f4'))
-        self.settings_btn.setIconSize(QtCore.QSize(18, 18))
-        
-        left_pane.addWidget(self.settings_btn)
-
-        # -- VU meter ----------------------------------------------------
-        self.vu_meter = QProgressBar()
-        self.vu_meter.setTextVisible(False)
-        self.vu_meter.setRange(0, 100)
-        self.vu_meter.setFixedHeight(8)
-        self.vu_meter.setStyleSheet("""
-            QProgressBar { background-color: #181825; border-radius: 4px; }
-            QProgressBar::chunk { background-color: #a6e3a1; border-radius: 3px; }
-        """)
-        left_pane.addWidget(self.vu_meter)
-
-        # -- Interrupt button with a solid warning icon
-        self.interrupt_btn = QPushButton(" INTERRUPT")
-        self.interrupt_btn.setIcon(qta.icon('fa5s.stop-circle', color='#11111b'))
-        self.interrupt_btn.setIconSize(QtCore.QSize(18, 18))
-
-        # -- Hardware telemetry graph (MODERNIZED with SCALE) --
-        self.telemetry_plot = pg.PlotWidget()
-        self.telemetry_plot.setBackground(None) # Transparent to inherit the theme
-        self.telemetry_plot.setYRange(0, 100, padding=0.05)
-        
-        # Configure Left Axis for minimalist scale
-        left_axis = self.telemetry_plot.getAxis('left')
-        left_axis.setPen('#45475a')       # Dark, subtle line color
-        left_axis.setTextPen('#6c7086')   # Subdued gray for the labels
-        left_axis.setWidth(35)            # Keeps the layout stable when values change
-        
-        # Custom Ticks: Only show 0, 50, and 100% to provide scale without clutter
-        tick_values = [(0, '0'), (50, '50'), (100, '100%')]
-        left_axis.setTicks([tick_values])
-
-        # Legend styling
-        self.telemetry_plot.addLegend(offset=(10, 10), labelTextColor='#6c7086')
-        
-        # Hide the bottom axis and disable interactions to keep it a static dashboard
-        self.telemetry_plot.hideAxis('bottom')
-        self.telemetry_plot.showGrid(x=False, y=True, alpha=0.05) # Very faint grid lines
-        self.telemetry_plot.setMouseEnabled(x=False, y=False)
-        self.telemetry_plot.setMenuEnabled(False)
-
-        # RAM Curve with soft blue fill
-        self.ram_curve = self.telemetry_plot.plot(
-            pen=pg.mkPen('#89b4fa', width=2),
-            fillLevel=0, 
-            brush=(137, 180, 250, 30), # Lowered opacity (30) for better layering
-            name="RAM %"
-        )
-        self.ram_data = [0] * 60
-
-        # CPU Curve with soft green fill
-        self.cpu_curve = self.telemetry_plot.plot(
-            pen=pg.mkPen('#a6e3a1', width=2), 
-            fillLevel=0, 
-            brush=(166, 227, 161, 30),
-            name="CPU %"
-        )
-        self.cpu_data = [0] * 60
-
-        # GPU Curve with soft peach fill
-        self.gpu_curve = self.telemetry_plot.plot(
-            pen=pg.mkPen('#fab387', width=2), 
-            fillLevel=0, 
-            brush=(250, 179, 135, 30),
-            name="GPU %"
-        )
-        self.gpu_data = [0] * 60
-
-        left_pane.addWidget(self.telemetry_plot)
-
-        return left_pane
-
-    def _build_right_pane(self) -> QVBoxLayout:
-        right_pane = QVBoxLayout()
-        right_pane.setSpacing(10)
-        right_pane.setContentsMargins(0, 0, 0, 0)
-
-        # 1. THE TRANSCRIPT BOX (The "Greedy" Widget)
-        self.transcript_box = QTextEdit()
-        self.transcript_box.setReadOnly(True)
-        # This is the magic line: It tells the box to expand as much as possible
-        self.transcript_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        
-        self.transcript_box.setStyleSheet("""
-            QTextEdit {
-                background-color: #11111b; 
-                border: 1px solid #313244;
-                border-radius: 10px;
-                padding: 15px;
-                color: #cdd6f4;
-                font-size: 14px;
-            }
-        """)
-        right_pane.addWidget(self.transcript_box)
-
-        # 2. THE LATENCY WATERFALL (The "Footer")
-        # We wrap these in a small layout or frame to keep them at the bottom
-        latency_container = QVBoxLayout()
-        latency_container.setSpacing(2)
-        
-        self.ww_latency_lbl = QLabel("WakeWord: 0ms")
-        self.stt_latency_lbl = QLabel("STT Processing: 0ms")
-        self.ttft_latency_lbl = QLabel("Time-to-First-Token: 0ms")
-        self.tts_latency_lbl = QLabel("TTS Gen: 0ms")
-
-        # Style them globally to be subtle and small
-        latency_style = "color: #6c7086; font-size: 11px; font-family: 'Consolas', monospace;"
-        for lbl in [self.ww_latency_lbl, self.stt_latency_lbl, self.ttft_latency_lbl, self.tts_latency_lbl]:
-            lbl.setStyleSheet(latency_style)
-            latency_container.addWidget(lbl)
-
-        right_pane.addLayout(latency_container)
-
-        return right_pane
-
-    # ------------------------------------------------------------------ #
-    #  Private – Widget initialisation helpers                            #
-    # ------------------------------------------------------------------ #
-
-    def _setup_provider_selector(self) -> None:
-        self.provider_selector.addItem("Ollama (Port 11434)", 11434)
-        self.provider_selector.addItem("LM Studio (Port 1234)", 1234)
-
-        # FIX 1: Connect the signal BEFORE setting the index. 
-        # This ensures that when we auto-select an item below, the llm_worker is actually notified.
-        self.provider_selector.currentIndexChanged.connect(self._on_provider_changed)
-
-        ollama_active   = is_port_open(11434)
-        lmstudio_active = is_port_open(1234)
-
-        # FIX 2: Do not disable (gray out) the items. If the port scanner misses 
-        # LM Studio because it's slow to boot, we still want to let the user manually select it!
-        if lmstudio_active:
-            self.provider_selector.setCurrentIndex(1)
-        elif ollama_active:
-            self.provider_selector.setCurrentIndex(0)
-        else:
-            self.update_status("WARNING: No LLM detected. Start Ollama or LM Studio.")
-            # Default to LM Studio (index 1) without locking the UI
-            self.provider_selector.setCurrentIndex(1)
-
-    def _populate_mic_devices(self) -> None:
-        self.mic_map: dict[int, int] = {}
-        for dropdown_idx, (real_idx, name) in enumerate(get_input_devices()):
-            self.mic_selector.addItem(name)
-            self.mic_map[dropdown_idx] = real_idx
-
-    def _populate_audio_devices(self) -> None:
-        self.device_map: dict[int, int] = {}
-        for dropdown_idx, (real_idx, name) in enumerate(get_output_devices()):
-            self.device_selector.addItem(name)
-            self.device_map[dropdown_idx] = real_idx
-
-    # ------------------------------------------------------------------ #
-    #  Private – Timer setup                                              #
-    # ------------------------------------------------------------------ #
-
-    def _start_timers(self) -> None:
-        self.telemetry_timer = QTimer()
-        self.telemetry_timer.timeout.connect(self._update_telemetry)
-        self.telemetry_timer.start(500)
-
-        self.animation_timer = QTimer()
-        self.animation_timer.timeout.connect(self._update_vu_meter)
-        self.animation_timer.start(33)  # ~30 fps
-
-    # ------------------------------------------------------------------ #
-    #  Private – Slot / callback implementations                          #
-    # ------------------------------------------------------------------ #
-
-    def _on_mic_changed(self, dropdown_index: int) -> None:
-        real_device_index = self.mic_map.get(dropdown_index)
-        if real_device_index is not None:
-            self._audio_worker.set_input_device(real_device_index)
-
-    def _on_audio_device_changed(self, dropdown_index: int) -> None:
-        real_device_index = self.device_map.get(dropdown_index)
-        if real_device_index is not None:
-            device_name = self.device_selector.currentText()
-            self.update_status(f"Switching to {device_name}...")
-            self._tts_worker.set_device(real_device_index)
-
-    def _on_provider_changed(self, index: int) -> None:
-        selected_port = self.provider_selector.itemData(index)
-        if selected_port:
-            self._llm_worker.set_provider(selected_port)
-
-    def _on_tts_voice_changed(self, index: int) -> None:
-        if index >= 0:
-            voice_name = self.voice_selector.itemText(index)
-            self._tts_worker.set_voice(voice_name)
-
-    def _browse_for_model(self) -> None:
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Piper TTS Model", "", "ONNX Models (*.onnx)"
-        )
-        if file_path:
-            self._tts_worker.load_voice(file_path)
-
-    def _open_settings(self) -> None:
-        self.settings_dialog.exec()
-
-    def _interrupt_pipeline(self) -> None:
-        logger.warning("USER INITIATED INTERRUPT. Halting workers and clearing queues.")
-        self.update_status("INTERRUPTED. Clearing queues...")
-        while not self._tts_worker.sentence_queue.empty():
-            try:
-                self._tts_worker.sentence_queue.get_nowait()
-            except Exception:
-                break
-        self.transcript_box.append(
-            '\n<i style="color:#f38ba8;">[SYSTEM: Interaction Halted]</i>'
-        )
-
-    def _update_telemetry(self) -> None:
-        ram_percent = psutil.virtual_memory().percent
-        self.ram_data.pop(0)
-        self.ram_data.append(ram_percent)
-        self.ram_curve.setData(self.ram_data)
-
-        cpu_percent = psutil.cpu_percent()
-        self.cpu_data.pop(0)
-        self.cpu_data.append(cpu_percent)
-        self.cpu_curve.setData(self.cpu_data)
-
-        gpu_percent = self._gpu_monitor.get_load()
-        self.gpu_data.pop(0)
-        self.gpu_data.append(gpu_percent)
-        self.gpu_curve.setData(self.gpu_data)
-
-    def _update_vu_meter(self) -> None:
-        target_volume = self._audio_worker.current_volume
-        if target_volume > self.current_ui_volume:
-            self.current_ui_volume = target_volume
-        else:
-            self.current_ui_volume -= 5
-        self.current_ui_volume = max(0, self.current_ui_volume)
-        self.vu_meter.setValue(int(self.current_ui_volume))
-
-    # ------------------------------------------------------------------ #
-    #  Public – called by Qube (signal handlers wired externally)         #
-    # ------------------------------------------------------------------ #
-
-    def update_status(self, message: str) -> None:
-        self.status_label.setText(f" {message.upper()}")
-        
-        # Dynamic Icons based on status using qtawesome
-        if "RECORDING" in message:
-            icon = qta.icon('fa5s.microphone', color='#f38ba8', animation=qta.Pulse(self.status_label))
-            self.status_label.setStyleSheet("color: #f38ba8; font-weight: bold;")
-        elif "Thinking" in message:
-            icon = qta.icon('fa5s.brain', color='#f9e2af', animation=qta.Spin(self.status_label))
-            self.status_label.setStyleSheet("color: #f9e2af; font-weight: bold;")
-        else:
-            icon = qta.icon('fa5s.check-circle', color='#a6e3a1')
-            self.status_label.setStyleSheet("color: #a6e3a1; font-weight: bold;")
-            
-        # You can't directly set an icon on a QLabel, so we'll use a clever trick:
-        # If you want the icon next to the text, we'll need to wrap it in a QHBoxLayout 
-        # or use a QPushButton styled to look like a label.
-
-    def log_user_message(self, text: str) -> None:
-        """Renders user input as a distinct, slightly highlighted block."""
-        # We use a simple HTML table for a 'pseudo-bubble' look
-        user_html = f"""
-            <div style="margin-bottom: 20px;">
-                <table width="100%" cellpadding="8" cellspacing="0">
-                    <tr>
-                        <td bgcolor="#313244" style="border-radius: 10px; color: #a6e3a1; font-family: 'Segoe UI';">
-                            <span style="font-size: 10px; color: #9399b2; font-weight: bold;">USER</span><br/>
-                            <span style="color: #cdd6f4; font-size: 14px;">{text}</span>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        """
-        self.transcript_box.append(user_html)
-        self.is_agent_typing = False
-        self._scroll_to_bottom()
-
-    def log_agent_token(self, token: str) -> None:
-        """Streams agent tokens into a clean typography block."""
-        if not self.is_agent_typing:
-            agent_header = f"""
-                <div style="margin-top: 10px;">
-                    <span style="font-size: 10px; color: #cba6f7; font-weight: bold;">QUBE</span><br/>
-                </div>
-            """
-            self.transcript_box.append(agent_header)
-            self.is_agent_typing = True
-        
-        cursor = self.transcript_box.textCursor()
-        cursor.movePosition(cursor.MoveOperation.End)
-        cursor.insertText(token)
-        self.transcript_box.setTextCursor(cursor)
-        self._scroll_to_bottom()
-
-    def _scroll_to_bottom(self):
-        bar = self.transcript_box.verticalScrollBar()
-        bar.setValue(bar.maximum())
-
-    def update_stt_latency(self, ms: float) -> None:
-        self.ww_latency_lbl.setText(f"STT Processing: {ms:.0f} ms")
-
-    def update_ttft_latency(self, ms: float) -> None:
-        self.ttft_latency_lbl.setText(f"Time-to-First-Token: {ms:.0f} ms")
-
-    def update_tts_latency(self, ms: float) -> None:
-        self.tts_latency_lbl.setText(f"TTS Gen: {ms:.0f} ms")
-
-    def update_voice_dropdown(self, model_name: str, voices: list) -> None:
-        self.voice_selector.blockSignals(True)
-        self.voice_selector.clear()
-        self.voice_selector.addItems(voices)
-        self.voice_selector.blockSignals(False)
-        if voices:
-            self._tts_worker.set_voice(voices[0])
-            self.update_status(f"Loaded {model_name} with {len(voices)} voices.")
-
-    def update_rag_indicator(self, active: bool) -> None:
-        if active:
-            self.rag_status_dot.setStyleSheet("color: #a6e3a1; font-weight: bold; font-size: 10px; margin-left: 10px;")
-        else:
-            self.rag_status_dot.setStyleSheet("color: #6c7086; font-weight: bold; font-size: 10px; margin-left: 10px;")
-
-    # ------------------------------------------------------------------ #
-    #  Qt lifecycle                                                        #
-    # ------------------------------------------------------------------ #
+        if event.button() == Qt.MouseButton.LeftButton and self.top_bar.underMouse():
+            if self.isMaximized():
+                self.showNormal()
+                self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
+            else:
+                self.showMaximized()
+                self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
 
     def closeEvent(self, event):
-        """Intercept the OS-level close and redirect to tray."""
         if self.tray_icon.isVisible():
             self.hide()
-            event.ignore()  # Keep the app running in background
+            event.ignore() 
         else:
             event.accept()
+
+    # ------------------------------------------------------------------ #
+    #  PUBLIC STUBS (Keeps main.py running during transition)            #
+    # ------------------------------------------------------------------ #
+    # These methods receive signals from workers. Once we build the 
+    # ConversationsView, we will forward these calls directly to it.
+
+    def update_status(self, message: str) -> None:
+        self.status_bubble.setText(f" {message.upper()}")
+        if "RECORDING" in message:
+            self.status_bubble.setStyleSheet("background-color: #313244; color: #f38ba8; font-weight: bold; border-radius: 13px; font-size: 11px;")
+        elif "Thinking" in message:
+            self.status_bubble.setStyleSheet("background-color: #313244; color: #f9e2af; font-weight: bold; border-radius: 13px; font-size: 11px;")
+        else:
+            self.status_bubble.setStyleSheet("background-color: #313244; color: #a6e3a1; font-weight: bold; border-radius: 13px; font-size: 11px;")
+
+    def update_rag_indicator(self, active: bool) -> None:
+        color = "#a6e3a1" if active else "#6c7086"
+        self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px; margin-right: 15px;")
+
+    def log_user_message(self, text: str) -> None:
+        pass # Will be forwarded to ConversationsView
+
+    def log_agent_token(self, token: str) -> None:
+        pass # Will be forwarded to ConversationsView
+
+    def update_stt_latency(self, ms: float) -> None:
+        pass # Will be forwarded to ConversationsView
+
+    def update_ttft_latency(self, ms: float) -> None:
+        pass # Will be forwarded to ConversationsView
+
+    def update_tts_latency(self, ms: float) -> None:
+        pass # Will be forwarded to ConversationsView

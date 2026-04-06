@@ -4,6 +4,7 @@ import numpy as np
 import time
 import glob
 import os
+import openwakeword
 from openwakeword.model import Model
 import logging
 
@@ -33,37 +34,65 @@ class AudioListenerWorker(QThread):
         self.silence_timeout = 2.0  
         self.speech_threshold = 2
         
-        # --- NEW: Dynamic Model Discovery ---
+        # --- FIX: Dynamic Model Discovery using exact file paths ---
         self.available_wakewords = self._discover_wakewords()
-        # Default to the first available (usually 'alexa' or 'hey_jarvis')
-        self.active_wakeword_name = self.available_wakewords[0] if self.available_wakewords else "alexa"
-        self.oww_model = Model(wakeword_models=[self.active_wakeword_name])
+        
+        # Default to the first available (usually 'Alexa')
+        if self.available_wakewords:
+            self.active_wakeword_name = list(self.available_wakewords.keys())[0]
+            active_path = self.available_wakewords[self.active_wakeword_name]
+            self.oww_model = Model(wakeword_model_paths=[active_path])
+        else:
+            logger.error("CRITICAL: No wakeword models found anywhere!")
 
-    def _discover_wakewords(self) -> list:
-        """Scans for default and custom wakewords."""
-        defaults = ["alexa", "hey_mycroft", "hey_jarvis", "timer", "weather"]
+    def _discover_wakewords(self) -> dict:
+        """Scans for default and custom wakewords, returning a clean UI Name -> File Path mapping."""
+        wakeword_map = {}
+        
+        # 1. Ask openwakeword where its default models live on the hard drive
+        try:
+            pretrained_paths = openwakeword.get_pretrained_model_paths()
+            for path in pretrained_paths:
+                # Clean up "alexa_v0.1.tflite" into "Alexa" for the UI dropdown
+                clean_name = os.path.basename(path).split('_v')[0].replace('.tflite', '').replace('.onnx', '').capitalize()
+                wakeword_map[clean_name] = path
+        except Exception as e:
+            logger.warning(f"Could not load pre-trained wakewords: {e}")
+
+        # 2. Append any custom models from your local models/wakeword folder
         wakeword_dir = os.path.join("models", "wakeword")
         os.makedirs(wakeword_dir, exist_ok=True)
+        custom_paths = glob.glob(os.path.join(wakeword_dir, "*.tflite")) + glob.glob(os.path.join(wakeword_dir, "*.onnx"))
         
-        custom_models = glob.glob(os.path.join(wakeword_dir, "*.tflite"))
-        return defaults + custom_models
+        for path in custom_paths:
+            clean_name = os.path.basename(path).replace('.tflite', '').replace('.onnx', '')
+            wakeword_map[f"Custom: {clean_name}"] = path
+            
+        return wakeword_map
 
     def emit_available_wakewords(self):
-        """Called by the UI after boot to populate the ComboBox."""
-        self.wakewords_ready.emit(self.available_wakewords)
+        """Emits just the clean names (keys) to populate the UI ComboBox."""
+        self.wakewords_ready.emit(list(self.available_wakewords.keys()))
 
-    # --- NEW: Hot-Swap Wakeword Logic ---
-    def set_wakeword(self, target_model: str):
-        """Safely reloads the ONNX runtime with the newly selected model."""
+    def set_wakeword(self, ui_name: str):
+        """Receives the clean UI name, grabs the real file path, and hot-swaps the model."""
         self.mutex.lock()
         try:
-            self.status_update.emit(f"Loading Wakeword: {os.path.basename(target_model)}...")
-            self.oww_model = Model(wakeword_models=[target_model])
-            self.active_wakeword_name = target_model
-            logger.info(f"Successfully hot-swapped wakeword to: {target_model}")
+            target_path = self.available_wakewords.get(ui_name)
+            if not target_path:
+                logger.error(f"Wakeword '{ui_name}' not found in the mapping dictionary.")
+                return
+                
+            self.status_update.emit(f"Loading Wakeword: {ui_name}...")
+            
+            # Feed the exact, absolute path to the ONNX runtime
+            self.oww_model = Model(wakeword_model_paths=[target_path])
+            self.active_wakeword_name = ui_name
+            
+            logger.info(f"Successfully hot-swapped wakeword to: {ui_name}")
             self.status_update.emit("Idle")
         except Exception as e:
-            logger.error(f"Failed to load wakeword {target_model}: {e}")
+            logger.error(f"Failed to load wakeword {ui_name}: {e}")
             self.status_update.emit("Error loading Wakeword")
         finally:
             self.mutex.unlock()

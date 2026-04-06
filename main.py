@@ -12,7 +12,7 @@ from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
-from ui.settings_dialog import SettingsDialog
+from core.database import DatabaseManager
 
 import logging
 
@@ -32,11 +32,12 @@ class Qube:
         # -- 1. Shared services ------------------------------------------
         self.embedder = EmbeddingModel()
         self.store    = DocumentStore()
-
+        
         # -- 2. Background workers ---------------------------------------
+        self.db_manager = DatabaseManager()
         self.audio_worker = AudioListenerWorker()
         self.stt_worker   = STTWorker()
-        self.llm_worker   = LLMWorker(self.embedder, self.store)
+        self.llm_worker   = LLMWorker(self.embedder, self.store, self.db_manager)
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
 
@@ -45,25 +46,12 @@ class Qube:
             "stt":   self.stt_worker,
             "llm":   self.llm_worker,
             "tts":   self.tts_worker,
+            "db": self.db_manager
         }
 
         # -- 3. UI -------------------------------------------------------
         # Create the main window
         self.window = MainWindow(workers=workers, gpu_monitor=self.gpu_monitor)
-
-        # FIX: Instantiate the SettingsDialog here in the Orchestrator.
-        # We pass self.window as the parent (for UI centering) 
-        # and self.llm_worker as the specific dependency.
-        self.settings_dialog = SettingsDialog(
-            self.window, 
-            self.llm_worker, 
-            self.embedder, 
-            self.store,
-            self.audio_worker  # <-- Inject the audio worker here
-        )
-        
-        # Manually wire the window's button to open this specific dialog
-        self.window.settings_btn.clicked.connect(self.settings_dialog.exec)
 
         # -- 4. Wire signals ---------------------------------------------
         self._connect_signals()
