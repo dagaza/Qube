@@ -167,3 +167,29 @@ class DatabaseManager:
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
             conn.commit()
+
+    def rename_session(self, session_id: str, new_title: str) -> bool:
+        """Updates the title of a specific conversation session."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", 
+                    (new_title, session_id)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to rename session {session_id}: {e}")
+            return False
+
+    def delete_session(self, session_id: str) -> bool:
+        """Permanently removes a session. Messages are deleted automatically via CASCADE."""
+        try:
+            with self._get_connection() as conn:
+                # Due to FOREIGN KEY ... ON DELETE CASCADE, messages are wiped automatically
+                conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete session {session_id}: {e}")
+            return False

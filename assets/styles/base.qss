@@ -378,22 +378,30 @@ QLabel#AgentMessage {
     line-height: 1.5;
     background-color: transparent;
 }
-#HistoryRowWidget {
-    background: transparent;
+/* --- 5. HISTORY LIST (DARK MODE FIX) --- */
+#HistoryList {
+    background-color: transparent;
+    border: none;
+}
+
+/* We target the QLabel explicitly inside the HistoryRowWidget */
+#HistoryRowWidget QLabel#HistoryRowTitle {
+    color: #cdd6f4 !important; /* Force Catppuccin Text */
+    background-color: transparent !important;
+    font-weight: 500;
+}
+
+/* Ensure visibility when the row is selected */
+#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle {
+    color: #11111b !important; /* Dark text on light-blue selection */
 }
 
 #HistoryOptionsBtn {
     background: transparent;
     border: none;
-    border-radius: 4px;
 }
 
 #HistoryOptionsBtn:hover {
-    background: rgba(100, 116, 139, 0.2); /* Subtle hover effect */
-}
-
-/* Ensure the button arrow indicator is hidden since we use a custom icon */
-#HistoryOptionsBtn::menu-indicator {
-    image: none;
-    width: 0px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }

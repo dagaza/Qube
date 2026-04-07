@@ -1,13 +1,138 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, 
-    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
+    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QDialog
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 import qtawesome as qta
 import logging
 
 logger = logging.getLogger("Qube.UI.Conversations")
 
+class PrestigeDialog(QDialog):
+    def __init__(self, parent, title, message, is_dark=True, is_input=False, default_text=""):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        # --- NEW: ENLARGED DIMENSIONS ---
+        self.setMinimumWidth(450) # Increased from default
+        
+        self.result_text = None
+        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
+        accent = "#f38ba8" if "Delete" in title else "#89b4fa"
+        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10) # Outer shadow/glow area
+        
+        self.container = QFrame()
+        self.container.setObjectName("DialogContainer")
+        self.container.setStyleSheet(f"""
+            QFrame#DialogContainer {{ 
+                background: {bg}; 
+                border: 2px solid {accent}; 
+                border-radius: 20px; 
+            }}
+            QLabel {{ color: {fg}; border: none; background: transparent; }}
+        """)
+        
+        # Increased internal spacing and margins
+        c_layout = QVBoxLayout(self.container)
+        c_layout.setContentsMargins(30, 30, 30, 25) 
+        c_layout.setSpacing(20) 
+        
+        # Header/Title
+        t_lbl = QLabel(title.upper())
+        t_lbl.setStyleSheet(f"color: {accent}; font-weight: bold; font-size: 12px; letter-spacing: 2px;")
+        
+        # Message (Increased font size)
+        m_lbl = QLabel(message)
+        m_lbl.setWordWrap(True)
+        m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
+        
+        c_layout.addWidget(t_lbl)
+        c_layout.addWidget(m_lbl)
+        
+        # Input Field (Enlarged and Spaced)
+        self.field = None
+        if is_input:
+            self.field = QLineEdit(default_text)
+            self.field.setMinimumHeight(45) # Taller input field
+            self.field.setStyleSheet(f"""
+                QLineEdit {{ 
+                    background: {'#313244' if is_dark else '#f8fafc'}; 
+                    color: {fg}; 
+                    border-radius: 10px; 
+                    padding: 10px 15px; 
+                    border: 1px solid {accent};
+                    font-size: 14px;
+                }}
+            """)
+            c_layout.addWidget(self.field)
+            self.field.setFocus()
+
+       # --- ENHANCED BUTTON STYLING ---
+        btns = QHBoxLayout()
+        btns.setSpacing(15)
+        
+        cancel_btn = QPushButton("CANCEL")
+        con_b = QPushButton("CONFIRM")
+        
+        # Increased vertical padding (15px) and added min-height (45px)
+        btn_style = f"""
+            QPushButton {{ 
+                padding: 15px 15px; 
+                min-height: 30px;
+                border-radius: 12px; 
+                font-weight: bold; 
+                font-size: 12px;
+                letter-spacing: 1px;
+            }}
+        """
+        
+        cancel_btn.setStyleSheet(btn_style + f"""
+            QPushButton {{ 
+                color: {fg}; 
+                border: 1px solid {border}; 
+                background: transparent; 
+            }}
+            QPushButton:hover {{
+                background: rgba(255, 255, 255, 0.05);
+            }}
+        """)
+        
+        con_b.setStyleSheet(btn_style + f"""
+            QPushButton {{ 
+                background: {accent}; 
+                color: #11111b; 
+                border: none; 
+            }}
+            QPushButton:hover {{
+                background: {accent}; /* You could add a slightly brighter hex here if desired */
+                opacity: 0.9;
+            }}
+        """)
+        
+        cancel_btn.clicked.connect(self.reject)
+        con_b.clicked.connect(self.accept)
+        
+        btns.addStretch()
+        btns.addWidget(cancel_btn)
+        btns.addWidget(con_b)
+        c_layout.addLayout(btns)
+        
+        layout.addWidget(self.container)
+
+    def exec(self):
+        """Returns the input text if Accepted and is_input=True, otherwise True/None."""
+        if super().exec():
+            return self.field.text().strip() if self.field else True
+        return None
+
+    def accept_action(self):
+        if self.input_field:
+            self.result_text = self.input_field.text()
+        self.accept()
 class ConversationsView(QWidget):
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -279,96 +404,120 @@ class ConversationsView(QWidget):
         from PyQt6.QtCore import Qt, QSize
         import qtawesome as qta
         
+        # 1. Determine theme state
+        is_dark = True
+        main_win = self.window()
+        if main_win and hasattr(main_win, '_is_dark_theme'):
+            is_dark = main_win._is_dark_theme
+        
+        # Define high-contrast colors for the text and icons
+        text_color = "#cdd6f4" if is_dark else "#1e293b"
+        icon_color = "#cdd6f4" if is_dark else "#1e293b"
+        
         sessions = self.db.get_recent_sessions(limit=20)
         for session in sessions:
-            # 1. Create the invisible list item to hold the data
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, session["id"])
             
-            # 2. Create the custom row widget
             row_widget = QWidget()
             row_widget.setObjectName("HistoryRowWidget")
+            row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            
             row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(10, 5, 5, 5)
+            row_layout.setContentsMargins(15, 0, 10, 0)
             row_layout.setSpacing(10)
             
-            # 3. The Chat Title
+            # 2. The Title - FIXED: Forcing the color here to bypass CSS inheritance bugs
             title_lbl = QLabel(session["title"])
-            title_lbl.setStyleSheet("background: transparent; border: none; color: inherit;")
+            title_lbl.setObjectName("HistoryRowTitle")
+            title_lbl.setStyleSheet(f"color: {text_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
             
-            # 4. The 3-Dot Options Button
+            # 3. The 3-Dot Button - FIXED: Hiding the chevron (menu-indicator)
             opts_btn = QPushButton()
-            opts_btn.setIcon(qta.icon('fa5s.ellipsis-v', color='#6c7086'))
-            opts_btn.setIconSize(QSize(14, 14))
-            opts_btn.setFixedSize(24, 24)
             opts_btn.setObjectName("HistoryOptionsBtn")
-            # Stop the button click from selecting the row underneath it
+            opts_btn.setFixedSize(28, 28)
+            opts_btn.setIcon(qta.icon('fa5s.ellipsis-v', color=icon_color))
+            opts_btn.setIconSize(QSize(16, 16))
             opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus) 
             
-            # 5. Build the Dropdown Menu
+            # This specific line kills the chevron/arrow
+            opts_btn.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }")
+            
+            # 4. The Menu
             menu = QMenu(opts_btn)
-            
-            # Determine theme for the menu palette (using our trusty prestige logic)
-            is_dark = True
-            main_win = self.window()
-            if main_win and hasattr(main_win, '_is_dark_theme'):
-                is_dark = main_win._is_dark_theme
-            elif hasattr(self, '_is_dark_theme'):
-                is_dark = self._is_dark_theme
-            
-            # Apply your theme fix to the menu if you brought that helper into this file
             if hasattr(self, '_apply_menu_theme'):
                  self._apply_menu_theme(menu, is_dark)
-            else:
-                 # Fallback basic styling if the helper isn't in this file
-                 menu.setStyleSheet("QMenu { border-radius: 4px; padding: 4px; }")
+
+            rename_action = menu.addAction(qta.icon('fa5s.edit', color='#89b4fa'), "Rename Chat")
+            rename_action.triggered.connect(lambda _, s_id=session["id"], old_t=session["title"]: self._trigger_rename_chat(s_id, old_t))
+            
+            menu.addSeparator()
 
             delete_action = menu.addAction(qta.icon('fa5s.trash-alt', color='#ef4444'), "Delete Chat")
-            
-            # Use a lambda with a default argument to "freeze" the session ID for this specific row
-            delete_action.triggered.connect(lambda checked, s_id=session["id"]: self._trigger_delete_chat(s_id))
+            delete_action.triggered.connect(lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id))
             
             opts_btn.setMenu(menu)
             
-            # Assemble the row
             row_layout.addWidget(title_lbl)
             row_layout.addStretch()
             row_layout.addWidget(opts_btn)
             
-            # 6. Crucial: Tell the QListWidgetItem exactly how big this custom widget is
-            item.setSizeHint(row_widget.sizeHint())
-            
+            item.setSizeHint(QSize(0, 45))
             self.history_list.addItem(item)
             self.history_list.setItemWidget(item, row_widget)
 
     def _trigger_delete_chat(self, session_id):
-        """Spawns a confirmation dialog and deletes the chat if confirmed."""
-        from PyQt6.QtWidgets import QMessageBox
+        """Modern confirmation with full original safety logic."""
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
         
-        # 1. The Safety Net
-        reply = QMessageBox.question(
+        # 1. Use the Prestige UI instead of QMessageBox
+        dlg = PrestigeDialog(
             self, 
-            'Delete Conversation',
-            "Are you sure you want to permanently delete this chat? This cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            "Delete Conversation", 
+            "Are you sure you want to permanently delete this chat? This cannot be undone.", 
+            is_dark
         )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            # 2. Delete from Database
+        
+        if dlg.exec():
+            # 2. Keep your original Database Guardrail
             if hasattr(self.db, 'delete_session'):
                 self.db.delete_session(session_id)
             else:
-                logger.error("WARNING: Your db_manager does not have a 'delete_session' method!")
+                logger.error(f"CRITICAL: DB Manager missing 'delete_session' method. Cannot remove {session_id}.")
                 return
 
-            # 3. Handle the UI State
+            # 3. Keep your original UI State Management
             if getattr(self, 'active_session_id', None) == session_id:
-                # If they deleted the chat they are currently staring at, nuke the screen
+                # If they deleted the active chat, reset the view
                 self._start_new_chat()
             else:
-                # Otherwise, just quietly refresh the sidebar
+                # Otherwise, just update the sidebar
                 self._refresh_history_list()
+
+    def _trigger_rename_chat(self, session_id, old_title):
+        """Modern input with full original validation logic."""
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
+        
+        # 1. Use Prestige UI instead of QInputDialog
+        dlg = PrestigeDialog(
+            self, 
+            "Rename Conversation", 
+            "Enter a new title for this chat:", 
+            is_dark, 
+            is_input=True, 
+            default_text=old_title
+        )
+        
+        # 2. Keep your 'ok' and 'strip' validation
+        if dlg.exec() and dlg.result_text and dlg.result_text.strip():
+            new_title = dlg.result_text.strip()
+            
+            # 3. Keep your original Database Guardrail
+            if hasattr(self.db, 'rename_session'):
+                self.db.rename_session(session_id, new_title)
+                self._refresh_history_list()
+            else:
+                logger.error("CRITICAL: DB Manager missing 'rename_session' method.")
 
     def _start_new_chat(self):
         self.active_session_id = self.db.create_session("New Conversation")
@@ -408,3 +557,52 @@ class ConversationsView(QWidget):
             elif msg["role"] == "assistant":
                 self.log_agent_token(msg["content"])
                 self._is_agent_typing = False
+
+    def _apply_menu_theme(self, menu, is_dark: bool):
+        """Standardizes the menu appearance to match the Prestige theme."""
+        from PyQt6.QtGui import QPalette, QColor
+        palette = QPalette()
+        if is_dark:
+            bg, fg, sel_bg, sel_fg = "#1e1e2e", "#cdd6f4", "#313244", "#cdd6f4"
+            border, hover = "rgba(255, 255, 255, 0.1)", "#313244"
+        else:
+            bg, fg, sel_bg, sel_fg = "#ffffff", "#1e293b", "#f1f5f9", "#0f172a"
+            border, hover = "#cbd5e1", "#f1f5f9"
+
+        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
+            palette.setColor(role, QColor(bg))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(fg))
+        palette.setColor(QPalette.ColorRole.Text, QColor(fg))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(sel_bg))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(sel_fg))
+
+        menu.setPalette(palette)
+        menu.setStyleSheet(f"""
+            QMenu {{ 
+                background-color: {bg}; 
+                color: {fg}; 
+                border: 1px solid {border}; 
+                border-radius: 12px; 
+                padding: 5px; 
+            }}
+            QMenu::item {{ 
+                background-color: transparent; 
+                padding: 8px 25px; 
+                border-radius: 8px; 
+            }}
+            QMenu::item:selected {{ 
+                background-color: {hover}; 
+                color: {sel_fg}; 
+            }}
+        """)
+
+    def refresh_menu_themes(self, is_dark: bool):
+        """Updates all existing kebab menus in the history list."""
+        for i in range(self.history_list.count()):
+            item = self.history_list.item(i)
+            widget = self.history_list.itemWidget(item)
+            if widget:
+                # Find the button and its menu
+                btn = widget.findChild(QPushButton, "HistoryOptionsBtn")
+                if btn and btn.menu():
+                    self._apply_menu_theme(btn.menu(), is_dark)

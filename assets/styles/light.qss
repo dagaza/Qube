@@ -331,22 +331,31 @@ QLabel#AgentMessage {
     line-height: 1.5;
     background-color: transparent;
 }
-#HistoryRowWidget {
-    background: transparent;
+/* --- 5. HISTORY LIST (LIGHT MODE FIX) --- */
+#HistoryList {
+    background-color: transparent;
+    border: none;
+}
+#HistoryList::item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+#HistoryRowWidget QLabel#HistoryRowTitle {
+    color: #1e293b !important; /* Force Deep Slate */
+    background-color: transparent !important;
+    font-weight: 500;
 }
 
+#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle {
+    color: #0f172a !important; /* High contrast on selection */
+}
+
+/* Fix for the invisible kebab in light mode */
 #HistoryOptionsBtn {
     background: transparent;
     border: none;
-    border-radius: 4px;
 }
 
 #HistoryOptionsBtn:hover {
-    background: rgba(100, 116, 139, 0.2); /* Subtle hover effect */
-}
-
-/* Ensure the button arrow indicator is hidden since we use a custom icon */
-#HistoryOptionsBtn::menu-indicator {
-    image: none;
-    width: 0px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
 }

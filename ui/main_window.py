@@ -538,6 +538,11 @@ class MainWindow(QMainWindow):
             toolbar_menu = self.global_voice_selector.menu()
             if toolbar_menu:
                 self._apply_menu_theme(toolbar_menu, self._is_dark_theme)
+        # 3. Update the Conversations Kebab Menus
+        if hasattr(self, 'view_conversations'):
+            self.view_conversations.refresh_menu_themes(self._is_dark_theme)
+        if hasattr(self, 'view_conversations'):
+            self.view_conversations._refresh_history_list() # Force icon re-color
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
