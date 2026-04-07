@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, 
     QPushButton, QListWidget, QTextEdit, QFileDialog, QMessageBox, QSizePolicy,
-    QProgressBar
+    QProgressBar, QLineEdit
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
 import qtawesome as qta
@@ -42,54 +42,55 @@ class LibraryView(QWidget):
     def _build_list_pane(self) -> QFrame:
         frame = QFrame()
         frame.setFixedWidth(280)
-        frame.setStyleSheet("background-color: #181825; border-right: 1px solid #313244;")
+        frame.setObjectName("LibrarySidebar") 
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 20, 15, 20)
         layout.setSpacing(15)
 
-        # Header
+        # --- HEADER AREA (Unified with Conversations View) ---
+        header_layout = QHBoxLayout()
         title = QLabel("KNOWLEDGE BASE")
-        title.setStyleSheet("color: #a6adc8; font-weight: bold; letter-spacing: 1px; font-size: 11px; border: none;")
-        layout.addWidget(title)
+        title.setProperty("class", "SidebarTitle")
+        
+        self.add_btn = QPushButton()
+        self.add_btn.setIcon(qta.icon('fa5s.plus')) # Use the identical icon
+        self.add_btn.setProperty("class", "IconButton") # Apply the transparent rounded rect style
+        self.add_btn.setToolTip("Ingest New Document")
+        self.add_btn.clicked.connect(self._browse_for_document) 
+        
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        header_layout.addWidget(self.add_btn)
+        
+        layout.addLayout(header_layout)
+
+        # The Search Bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search documents...")
+        self.search_bar.setObjectName("LibrarySearchBar")
+        self.search_bar.textChanged.connect(self._filter_list)
+        layout.addWidget(self.search_bar)
 
         # Document List
         self.doc_list = QListWidget()
-        self.doc_list.setStyleSheet("""
-            QListWidget { background: transparent; border: none; color: #bac2de; outline: none; }
-            QListWidget::item { padding: 12px; border-radius: 5px; margin-bottom: 2px; }
-            QListWidget::item:hover { background-color: #313244; }
-            QListWidget::item:selected { background-color: #45475a; color: #cdd6f4; font-weight: bold; }
-        """)
+        self.doc_list.setObjectName("LibraryDocList")
         self.doc_list.itemClicked.connect(self._on_document_selected)
         layout.addWidget(self.doc_list)
 
-        # Add Document Button
-        self.add_btn = QPushButton(" Ingest New Document")
-        self.add_btn.setIcon(qta.icon('fa5s.cloud-upload-alt', color='#a6e3a1'))
-        self.add_btn.setStyleSheet("""
-            QPushButton { background-color: #313244; color: #a6e3a1; font-weight: bold; border-radius: 5px; padding: 10px; border: none; }
-            QPushButton:hover { background-color: #45475a; }
-        """)
-        # We will wire this later to your IngestionWorker
-        self.add_btn.clicked.connect(self._browse_for_document) 
-        layout.addWidget(self.add_btn)
-
+        # Progress Bar
         self.ingest_progress = QProgressBar()
+        self.ingest_progress.setObjectName("IngestProgressBar")
         self.ingest_progress.setRange(0, 100)
         self.ingest_progress.setFixedHeight(6)
         self.ingest_progress.setTextVisible(False)
-        self.ingest_progress.setStyleSheet("""
-            QProgressBar { background-color: #181825; border-radius: 3px; }
-            QProgressBar::chunk { background-color: #a6e3a1; border-radius: 3px; }
-        """)
-        self.ingest_progress.hide() # Hide it until we are actually ingesting
+        self.ingest_progress.hide() 
         layout.addWidget(self.ingest_progress)
 
         return frame
-
+    
     def _build_preview_stage(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet("background-color: #1e1e2e; border: none;")
+        frame.setObjectName("LibraryPreviewStage")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
@@ -97,18 +98,15 @@ class LibraryView(QWidget):
         # Header Area for Preview
         header_layout = QHBoxLayout()
         self.doc_title = QLabel("No Document Selected")
-        self.doc_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #cdd6f4;")
+        self.doc_title.setObjectName("PreviewDocTitle")
         
         self.doc_stats = QLabel("")
-        self.doc_stats.setStyleSheet("color: #6c7086; font-size: 12px;")
+        self.doc_stats.setProperty("class", "PreviewStatsText")
         
         self.delete_btn = QPushButton(" Delete File")
-        self.delete_btn.setIcon(qta.icon('fa5s.trash-alt', color='#f38ba8'))
-        self.delete_btn.setStyleSheet("""
-            QPushButton { background-color: #313244; color: #f38ba8; border-radius: 5px; padding: 8px 15px; font-weight: bold; }
-            QPushButton:hover { background-color: #45475a; }
-        """)
-        self.delete_btn.hide() # Hidden until a file is selected
+        self.delete_btn.setIcon(qta.icon('fa5s.trash-alt'))
+        self.delete_btn.setProperty("class", "DangerButton")
+        self.delete_btn.hide() 
         self.delete_btn.clicked.connect(self._delete_active_document)
 
         title_vbox = QVBoxLayout()
@@ -122,12 +120,12 @@ class LibraryView(QWidget):
 
         # Reconstructed Text Area
         self.text_preview = QTextEdit()
+        self.text_preview.setObjectName("DocumentPreviewArea")
         self.text_preview.setReadOnly(True)
         self.text_preview.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.text_preview.setStyleSheet("""
-            QTextEdit { background-color: #11111b; border: 1px solid #313244; border-radius: 10px; padding: 20px; color: #bac2de; font-size: 13px; line-height: 1.6; }
-        """)
-        self.text_preview.setHtml("<h3 style='color:#6c7086; text-align:center; margin-top:50px;'>Select a document from the left to view its contents.</h3>")
+        
+        # We use a placeholder that will inherit the theme's text color
+        self.text_preview.setPlaceholderText("Select a document from the left to view its contents.")
         layout.addWidget(self.text_preview)
 
         return frame
@@ -147,6 +145,18 @@ class LibraryView(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, doc) # Store full metadata dict
             self.doc_list.addItem(item)
 
+    def _filter_list(self, text: str):
+        """Hides/Shows list items based on the search bar text."""
+        search_term = text.lower()
+        for i in range(self.doc_list.count()):
+            item = self.doc_list.item(i)
+            # Retrieve the filename from the stored metadata
+            doc_data = item.data(Qt.ItemDataRole.UserRole)
+            if doc_data and search_term in doc_data['filename'].lower():
+                item.setHidden(False)
+            else:
+                item.setHidden(True)
+
     def _on_document_selected(self, item):
         doc_data = item.data(Qt.ItemDataRole.UserRole)
         self.active_filename = doc_data['filename']
@@ -155,7 +165,7 @@ class LibraryView(QWidget):
         self.doc_stats.setText(f"Size: {doc_data['file_size_kb']} KB | Chunks Indexed: {doc_data['chunk_count']}")
         self.delete_btn.show()
 
-        self.text_preview.setHtml("<h3 style='color:#89b4fa; text-align:center; margin-top:50px;'>Reconstructing document from vector space...</h3>")
+        self.text_preview.setHtml("<center><h3>Reconstructing document from vector space...</h3></center>")
         
         # Pull chunks from LanceDB and stitch them together
         if self.store:
@@ -189,7 +199,7 @@ class LibraryView(QWidget):
             self.doc_title.setText("No Document Selected")
             self.doc_stats.setText("")
             self.delete_btn.hide()
-            self.text_preview.setHtml("<h3 style='color:#6c7086; text-align:center; margin-top:50px;'>Document deleted.</h3>")
+            self.text_preview.setHtml("<center><h3>Document deleted.</h3></center>")
             
             self.refresh_library_list()
 

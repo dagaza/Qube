@@ -1,7 +1,7 @@
 import psutil
 from collections import deque
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, 
 )
 from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
@@ -29,7 +29,7 @@ class TelemetryView(QWidget):
 
         # Header
         title = QLabel("ADVANCED TELEMETRY")
-        title.setStyleSheet("color: #cdd6f4; font-size: 24px; font-weight: bold; letter-spacing: 2px;")
+        title.setObjectName("ViewTitle")
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Main Dashboard Layout (2 Columns)
@@ -49,22 +49,20 @@ class TelemetryView(QWidget):
 
     def _build_hardware_card(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet("background-color: #181825; border-radius: 12px; border: 1px solid #313244;")
+        frame.setObjectName("HardwareCard")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(20, 20, 20, 20)
         
-        # Top Label and Legend Row
         header_layout = QHBoxLayout()
         header = QLabel("System Load Timeline (%)")
-        header.setStyleSheet("color: #89b4fa; font-size: 16px; font-weight: bold; border: none;")
+        header.setProperty("class", "SectionHeaderLabel")
         
-        # Dynamic numerical readouts above the graph
         self.live_cpu_lbl = QLabel("CPU: 0%")
-        self.live_cpu_lbl.setStyleSheet("color: #a6e3a1; font-weight: bold; font-family: monospace; border: none;")
         self.live_ram_lbl = QLabel("RAM: 0%")
-        self.live_ram_lbl.setStyleSheet("color: #89b4fa; font-weight: bold; font-family: monospace; border: none;")
         self.live_gpu_lbl = QLabel("GPU: 0%")
-        self.live_gpu_lbl.setStyleSheet("color: #cba6f7; font-weight: bold; font-family: monospace; border: none;")
+
+        for lbl in [self.live_cpu_lbl, self.live_ram_lbl, self.live_gpu_lbl]:
+            lbl.setProperty("class", "LiveMetricText")
 
         header_layout.addWidget(header)
         header_layout.addStretch()
@@ -74,57 +72,53 @@ class TelemetryView(QWidget):
         
         layout.addLayout(header_layout)
 
-        # --- CONFIGURE PYQTGRAPH ---
-        # Set global graphing options for a sleek look
         pg.setConfigOptions(antialias=True)
-        
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground('#181825') # Match your card background perfectly
+        
+        # CRITICAL: Let the CSS background shine through the graph canvas
+        self.plot_widget.setBackground('transparent') 
         self.plot_widget.setYRange(0, 100)
         self.plot_widget.showGrid(x=False, y=True, alpha=0.2)
         
-        # Hide the X axis for a cleaner "sparkline" look, style the Y axis
         self.plot_widget.getAxis('bottom').setStyle(showValues=False)
-        self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#6c7086', width=1))
-        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color='#6c7086'))
+        # In a perfect world we would dynamically theme the axis, but grey is safe for both modes
+        self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#94a3b8', width=1))
+        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color='#94a3b8'))
         
-        # Create the three data lines with specific colors and thicknesses
-        # CPU: Green, RAM: Blue, GPU: Mauve/Purple
-        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#a6e3a1', width=2))
-        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#89b4fa', width=2))
-        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#cba6f7', width=2))
+        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#10b981', width=2)) # Emerald green
+        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#3b82f6', width=2)) # Blue
+        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#8b5cf6', width=2)) # Purple
         
         layout.addWidget(self.plot_widget)
         return frame
 
     def _build_latency_card(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet("background-color: #181825; border-radius: 12px; border: 1px solid #313244;")
+        frame.setObjectName("LatencyCard")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(25, 25, 25, 25)
         layout.setSpacing(25)
 
         header = QLabel("Pipeline Latency")
-        header.setStyleSheet("color: #f9e2af; font-size: 16px; font-weight: bold; border: none;")
+        header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        # Helper to build metric readouts
         def make_metric(title, description):
             row = QHBoxLayout()
             vbox = QVBoxLayout()
             vbox.setSpacing(2)
             
             title_lbl = QLabel(title)
-            title_lbl.setStyleSheet("color: #bac2de; font-weight: bold; font-size: 14px; border: none;")
+            title_lbl.setProperty("class", "MetricTitle")
             desc_lbl = QLabel(description)
-            desc_lbl.setStyleSheet("color: #6c7086; font-size: 11px; border: none;")
+            desc_lbl.setProperty("class", "MetricSubtext")
             
             vbox.addWidget(title_lbl)
             vbox.addWidget(desc_lbl)
             
             val_lbl = QLabel("-- ms")
             val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            val_lbl.setStyleSheet("color: #cdd6f4; font-size: 20px; font-weight: bold; font-family: monospace; border: none;")
+            val_lbl.setProperty("class", "MetricValueLarge")
             
             row.addLayout(vbox)
             row.addStretch()

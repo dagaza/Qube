@@ -1,0 +1,399 @@
+/* =========================================================
+   QUBE CUSTOM PRESTIGE THEME (v1.0 - Core Components)
+   Palette:
+   - Base Background: #1e1e2e
+   - Pane Backgrounds: rgba(0, 0, 0, 0.15)
+   - Accent/Active: rgba(255, 255, 255, 0.1)
+   - Text Primary: #cdd6f4
+   - Text Muted: rgba(205, 214, 244, 0.5)
+   ========================================================= */
+/* --- GLOBAL TOOLTIP --- */
+QToolTip {
+    background-color: #1e1e2e; /* Deep Base */
+    color: #cdd6f4;
+    border: 1px solid #89b4fa; /* Accent blue border */
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+/* --- 1. GLOBAL SHELL --- */
+#MainContainer {
+    background-color: #1e1e2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+#TopBar {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+#NavSidebar, #HistorySidebar, #LibrarySidebar, #ToolsPane {
+    background-color: rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+/* Fix bottom left corner rounding for frameless window */
+#NavSidebar {
+    border-bottom-left-radius: 12px;
+}
+/* --- NAV SIDEBAR (DARK) --- */
+.NavButton {
+    border: none; 
+    background: transparent; 
+    border-radius: 8px; 
+    padding: 10px;
+}
+
+.NavButton:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle light hover */
+}
+
+.NavButton:checked {
+    background-color: rgba(255, 255, 255, 0.1); /* Slightly deeper active state */
+}
+
+/* --- 2. TYPOGRAPHY --- */
+* {
+    color: #cdd6f4; /* Global text color */
+}
+
+#ViewTitle {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.SidebarTitle, .ToolsPaneHeader, .SectionHeaderLabel {
+    font-weight: 700; 
+    font-size: 10px; 
+    letter-spacing: 1.5px; 
+    color: rgba(205, 214, 244, 0.5); /* Muted text */
+    text-transform: uppercase;
+}
+
+/* --- 3. INPUTS (QLineEdit, QTextEdit) --- */
+QLineEdit, QTextEdit {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
+    selection-background-color: rgba(255, 255, 255, 0.15);
+}
+
+QLineEdit:focus, QTextEdit:focus {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* --- 4. BUTTONS (QPushButton) --- */
+QPushButton {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+QPushButton:pressed {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Transparent utility buttons (window controls, nav icons) */
+.WindowControlButton, .IconButton, .NavButton {
+    background-color: transparent;
+    border: none;
+}
+.WindowControlButton:hover, .IconButton:hover, .NavButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.NavButton:checked {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* --- 5. LISTS (QListWidget) --- */
+QListWidget {
+    background: transparent;
+    border: none;
+    outline: none; /* Removes dotted focus ring */
+}
+
+QListWidget::item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+QListWidget::item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+QListWidget::item:selected {
+    background-color: rgba(255, 255, 255, 0.1);
+    font-weight: bold;
+}
+/* --- 7. DROPDOWNS (QComboBox) - UNIFIED DARK --- */
+QComboBox {
+    combobox-popup: 1; 
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #cdd6f4;
+}
+
+/* THE POPUP CONTAINER */
+QComboBox QFrame {
+    background-color: #1e1e2e !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px;
+}
+
+/* THE LIST VIEW */
+QComboBox QListView, QComboBox QAbstractItemView {
+    background-color: #1e1e2e !important;
+    color: #cdd6f4 !important;
+    border: none;
+    outline: none;
+    selection-background-color: rgba(255, 255, 255, 0.1);
+    selection-color: #ffffff;
+}
+
+QComboBox QListView::item, QComboBox QAbstractItemView::item {
+    min-height: 32px;
+    padding: 4px 12px;
+    color: #cdd6f4;
+}
+
+QComboBox QListView::item:selected, QComboBox QAbstractItemView::item:selected {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+/* --- 8. SPINNERS (QSpinBox & QDoubleSpinBox) --- */
+QSpinBox, QDoubleSpinBox {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+
+QSpinBox:hover, QDoubleSpinBox:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Hide the ugly default up/down buttons for a minimalist input look.
+   Users can still type numbers directly or use the scroll wheel 
+   (though we disabled the scroll wheel to prevent accidental changes). */
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    width: 0px; 
+    border: none;
+    background: transparent;
+}
+
+/* --- SETTINGS FORM LABELS --- */
+#SettingsFormContainer QLabel {
+    color: #bac2de; /* Muted Catppuccin text */
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* --- 8. TELEMETRY CARDS --- */
+#HardwareCard, #LatencyCard {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.LiveMetricText {
+    font-family: 'Consolas', monospace;
+    font-weight: bold;
+    font-size: 11px;
+    margin-left: 10px;
+    color: rgba(205, 214, 244, 0.8);
+}
+
+.MetricTitle { font-weight: bold; font-size: 14px; color: #cdd6f4; }
+.MetricSubtext { font-size: 11px; color: rgba(205, 214, 244, 0.5); }
+
+.MetricValueLarge {
+    font-size: 20px;
+    font-weight: bold;
+    font-family: 'Consolas', monospace;
+    color: #cdd6f4;
+}
+
+/* --- STATUS BUBBLE (DARK) --- */
+#StatusBubble {
+    font-weight: bold; 
+    border-radius: 13px; 
+    font-size: 10px; 
+    letter-spacing: 1.5px;
+    padding: 4px 12px;
+    border: none;
+}
+
+#StatusBubble[state="recording"] { 
+    color: #f87171; /* Pastel Red */
+    background-color: rgba(248, 113, 113, 0.15); 
+}
+
+#StatusBubble[state="thinking"] { 
+    color: #fbbf24; /* Pastel Amber */
+    background-color: rgba(251, 191, 36, 0.15); 
+}
+
+#StatusBubble[state="idle"] { 
+    color: #34d399; /* Pastel Green */
+    background-color: rgba(52, 211, 153, 0.15); 
+}
+
+/* --- 9. LIBRARY SPECIFIC --- */
+#LibrarySearchBar {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+}
+#LibrarySearchBar:focus {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* --- 10. PRESTIGE MENUS (Dropdown Replacement) --- */
+#SettingsMenuButton {
+    text-align: left;
+    padding: 8px 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+QMenu#PrestigeMenu {
+    background-color: #1e1e2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 5px;
+}
+
+QMenu#PrestigeMenu::item {
+    padding: 8px 25px;
+    border-radius: 4px;
+    color: #cdd6f4;
+}
+
+QMenu#PrestigeMenu::item:selected {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+/* --- 7. SCROLLBARS (MODERN DARK) --- */
+
+/* Vertical Scrollbar */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 10px;
+    margin: 0px; 
+}
+QScrollBar::handle:vertical {
+    background-color: #45475a; /* Catppuccin Surface 1 */
+    border-radius: 5px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #585b70; /* Catppuccin Surface 2 */
+}
+
+/* Horizontal Scrollbar */
+QScrollBar:horizontal {
+    border: none;
+    background: transparent;
+    height: 10px;
+    margin: 0px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #45475a;
+    border-radius: 5px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #585b70;
+}
+
+/* KILL THE WINDOWS 95 ARROWS */
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+    height: 0px;
+}
+
+/* KILL THE CHUNKY TRACK BACKGROUND */
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: transparent;
+}
+
+/* Fix the tiny corner square where two scrollbars meet */
+QAbstractScrollArea::corner {
+    background: transparent;
+}
+/* --- CHAT BUBBLES --- */
+#ChatTranscriptContainer {
+    background-color: transparent;
+}
+
+/* Explicitly target the QFrame to guarantee background painting */
+#UserBubble {
+    background-color: #89b4fa; /* Catppuccin Blue */
+    border-radius: 18px; 
+}
+
+#UserBubble QLabel {
+    color: #11111b; 
+    background-color: transparent;
+}
+
+/* Explicitly target the Agent text to guarantee it stays bright */
+QLabel#AgentHeader {
+    color: #cba6f7;
+    font-weight: bold;
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-top: 15px;
+}
+
+QLabel#AgentMessage {
+    color: #cdd6f4;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: transparent;
+}
+#HistoryRowWidget {
+    background: transparent;
+}
+
+#HistoryOptionsBtn {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+}
+
+#HistoryOptionsBtn:hover {
+    background: rgba(100, 116, 139, 0.2); /* Subtle hover effect */
+}
+
+/* Ensure the button arrow indicator is hidden since we use a custom icon */
+#HistoryOptionsBtn::menu-indicator {
+    image: none;
+    width: 0px;
+}

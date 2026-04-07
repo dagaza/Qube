@@ -4,7 +4,6 @@ import os
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
-from qt_material import apply_stylesheet
 
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
 from workers.ingestion_worker import IngestionWorker 
@@ -180,21 +179,31 @@ class Qube:
 
 
 if __name__ == "__main__":
-    # PyQt6 high DPI handling
+    # 1. PyQt6 high DPI handling
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
     app = QApplication(sys.argv)
     
-    # Force a clean, modern font globally
+    # 2. Force a clean, modern font globally
     app_font = QFont("Segoe UI", 10) 
     app_font.setStyleHint(QFont.StyleHint.SansSerif)
     app.setFont(app_font)
 
-    # NEW: Apply the Material Design dark theme
-    apply_stylesheet(app, theme='dark_blue.xml')
+    # 4. NEW: Load the Global Structural Stylesheet
+    # This interprets the ObjectNames and Classes we just added to the views.
+    style_path = os.path.join("assets", "styles", "base.qss")
+    if os.path.exists(style_path):
+        with open(style_path, "r") as f:
+            custom_style = f.read()
+            # We append our structure to the qt_material base styles
+            app.setStyleSheet(app.styleSheet() + custom_style)
+        logger.info(f"Custom structural stylesheet loaded from {style_path}")
+    else:
+        logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
 
+    # 5. Boot the Qube Assistant
     qube = Qube()
     qube.show()
     sys.exit(app.exec())
