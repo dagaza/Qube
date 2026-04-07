@@ -60,10 +60,7 @@ class SettingsView(QWidget):
         hw_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         
         self.mic_selector = QComboBox()
-        self.mic_selector.currentIndexChanged.connect(self._on_mic_changed)
-        
         self.device_selector = QComboBox()
-        self.device_selector.currentIndexChanged.connect(self._on_audio_device_changed)
         
         self.timeout_spinner = QDoubleSpinBox()
         self.timeout_spinner.setRange(0.5, 5.0)
@@ -100,14 +97,13 @@ class SettingsView(QWidget):
         self.wakeword_selector = QComboBox()
         if self.audio_worker:
             self.wakeword_selector.addItems(list(self.audio_worker.available_wakewords.keys()))
-            self.wakeword_selector.currentTextChanged.connect(self.audio_worker.set_wakeword)
+            # (Signal removed to prevent ghost clicks on boot)
 
         self.provider_selector = QComboBox()
-        self.provider_selector.currentIndexChanged.connect(self._on_provider_changed)
+        # (Signal removed to prevent ghost clicks on boot)
         
         self.voice_selector = QComboBox()
-        if self.tts_worker:
-            self.voice_selector.currentIndexChanged.connect(lambda idx: self.tts_worker.set_voice(self.voice_selector.currentText()))
+        # (Signal removed to prevent ghost clicks on boot)
 
         ai_form.addRow("🔔 Active Wakeword", self.wakeword_selector)
         ai_form.addRow("🤖 AI Provider", self.provider_selector)
@@ -163,6 +159,16 @@ class SettingsView(QWidget):
         elif is_port_open(11434):
             self.provider_selector.setCurrentIndex(0)
 
+        # --- WIRE SIGNALS HERE AT THE END ---
+        # This prevents the UI from sabotaging the background threads during boot!
+        self.mic_selector.currentIndexChanged.connect(self._on_mic_changed)
+        self.device_selector.currentIndexChanged.connect(self._on_audio_device_changed)
+        self.provider_selector.currentIndexChanged.connect(self._on_provider_changed)
+        if self.audio_worker:
+            self.wakeword_selector.currentTextChanged.connect(self.audio_worker.set_wakeword)
+        if self.tts_worker:
+            self.voice_selector.currentIndexChanged.connect(lambda idx: self.tts_worker.set_voice(self.voice_selector.currentText()))
+
     def _on_mic_changed(self, dropdown_index: int):
         real_device_index = self.mic_map.get(dropdown_index)
         if real_device_index is not None and self.audio_worker:
@@ -177,3 +183,14 @@ class SettingsView(QWidget):
         selected_port = self.provider_selector.itemData(index)
         if selected_port and self.llm_worker:
             self.llm_worker.set_provider(selected_port)
+
+    def update_voice_dropdown(self, model_name: str, voices: list) -> None:
+        """Receives the loaded voices from the TTS worker and updates the UI."""
+        self.voice_selector.blockSignals(True)
+        self.voice_selector.clear()
+        self.voice_selector.addItems(voices)
+        self.voice_selector.blockSignals(False)
+        
+        if voices and self.tts_worker:
+            self.tts_worker.set_voice(voices[0])
+            logger.info(f"Loaded {model_name} with {len(voices)} voices.")

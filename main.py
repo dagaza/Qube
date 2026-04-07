@@ -7,7 +7,7 @@ from PyQt6.QtGui import QFont
 from qt_material import apply_stylesheet
 
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
-from workers.ingestion_worker import IngestionWorker  # noqa: F401 – kept for parity
+from workers.ingestion_worker import IngestionWorker 
 from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
@@ -46,7 +46,8 @@ class Qube:
             "stt":   self.stt_worker,
             "llm":   self.llm_worker,
             "tts":   self.tts_worker,
-            "db": self.db_manager
+            "db": self.db_manager,
+            "store": self.store
         }
 
         # -- 3. UI -------------------------------------------------------
@@ -56,10 +57,14 @@ class Qube:
         # -- 4. Wire signals ---------------------------------------------
         self._connect_signals()
 
+        self._sync_databases()
+
         # -- 5. Start continuous processes --------------------------------
+        
+        # Start the worker with OS default (None) hardware routing (PipeWire)
         self.audio_worker.start()
 
-        # FIX 2: Now that the UI is listening, tell the worker to load the model!
+        # Load the TTS Kokoro Model
         import os
         tts_path = os.path.join("models", "tts", "kokoro-v1.0.onnx")
         self.tts_worker.load_voice(tts_path)
@@ -67,43 +72,104 @@ class Qube:
     #  Signal wiring                                                       #
     # ------------------------------------------------------------------ #
 
-    def _connect_signals(self) -> None:
-        """
-        The 'Traffic Cop' that routes signals between workers and the UI.
-        Nothing outside this method should call connect() – all cross-layer
-        wiring lives here so it is trivial to audit and change.
-        """
-        w = self.window  # shorthand
-
-        # Audio → STT
-        self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
-
-        # STT → UI & LLM
-        self.stt_worker.transcription_ready.connect(w.log_user_message)
-        self.stt_worker.transcription_ready.connect(self.llm_worker.generate_response)
-
-        # LLM → UI (streaming tokens)
-        self.llm_worker.token_streamed.connect(w.log_agent_token)
-
-        # LLM → TTS (completed sentences)
-        self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
-
-        # Status updates from all workers → UI status bar
+    def _connect_signals(self):
+        w = self.window
+        
+        # 1. Global Shell Routing (Top Bar Status & RAG Dot)
         self.audio_worker.status_update.connect(w.update_status)
         self.stt_worker.status_update.connect(w.update_status)
         self.llm_worker.status_update.connect(w.update_status)
         self.tts_worker.status_update.connect(w.update_status)
-
-        # Latency waterfall
-        self.stt_worker.stt_latency.connect(w.update_stt_latency)
-        self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
-        self.tts_worker.tts_latency.connect(w.update_tts_latency)
-
-        # TTS model loaded → voice dropdown
-        self.tts_worker.model_loaded.connect(w.update_voice_dropdown)
-
-        # RAG context usage → indicator
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
+
+        # 2. Settings View Routing
+        self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
+
+        # 3. Conversations View Routing (Transcript)
+        self.llm_worker.token_streamed.connect(w.view_conversations.log_agent_token)
+        
+        # 4. Background Data Pipeline (Audio -> STT -> LLM -> TTS)
+        self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
+        self.stt_worker.transcription_ready.connect(self._handle_voice_prompt)
+        self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
+
+        # 5. Library View Routing
+        w.view_library.ingest_requested.connect(self._start_ingestion)
+
+        # 6. Telemetry View Routing
+        if hasattr(self.stt_worker, 'stt_latency'):
+            self.stt_worker.stt_latency.connect(w.update_stt_latency)
+            
+        if hasattr(self.llm_worker, 'ttft_latency'):
+            self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
+            
+        if hasattr(self.tts_worker, 'tts_latency'):
+            self.tts_worker.tts_latency.connect(w.update_tts_latency)
+
+    def _handle_voice_prompt(self, text: str):
+        """Safely bridges STT voice input to the LLM and the UI."""
+        # 1. Grab the session ID from the UI, or create a fallback
+        session_id = getattr(self.window.view_conversations, 'active_session_id', None)
+        if not session_id:
+            session_id = self.db_manager.create_session("Voice Chat")
+            self.window.view_conversations.active_session_id = session_id
+            self.window.view_conversations._refresh_history_list()
+
+        # 2. Show what you just said in the UI (so you know the STT heard you correctly!)
+        self.window.view_conversations.log_user_message(text)
+
+        # 3. Send it to the LLM
+        self.llm_worker.generate_response(text, session_id)
+    
+    def _sync_databases(self):
+        """
+        Self-healing mechanism: Scans LanceDB for embeddings and ensures 
+        they are registered in the SQLite UI library.
+        """
+        logger.info("Running pre-flight database synchronization...")
+        
+        # Get what actually exists in the vector store
+        lancedb_sources = self.store.get_all_indexed_sources()
+        
+        # Get what the UI thinks exists
+        sqlite_docs = [doc['filename'] for doc in self.db_manager.get_library_documents()]
+        
+        # Calculate what is missing from the UI
+        missing_from_ui = set(lancedb_sources) - set(sqlite_docs)
+        
+        if missing_from_ui:
+            logger.warning(f"Found {len(missing_from_ui)} ghost files in LanceDB. Healing UI registry...")
+            for source in missing_from_ui:
+                # Add a dummy record to SQLite so the UI can see it and delete it if needed
+                self.db_manager.add_document_metadata(source, file_size_kb=0, chunk_count=0)
+                
+            logger.info("Database synchronization complete.")
+
+    def _start_ingestion(self, file_paths: list):
+        """Spawns a background thread to safely embed documents without freezing the UI."""
+        self.window.update_status("Ingesting Documents...")
+        
+        # Instantiate the worker with the required dependencies
+        self.ingestion_worker = IngestionWorker(
+            file_paths, 
+            self.embedder, 
+            self.store, 
+            self.db_manager
+        )
+        
+        # Wire the worker's progress signals back to the Library UI
+        self.ingestion_worker.progress_update.connect(self.window.view_library.update_ingestion_progress)
+        self.ingestion_worker.file_done.connect(self.window.update_status)
+        self.ingestion_worker.ingestion_complete.connect(self.window.view_library.complete_ingestion)
+        
+        # Route backend errors directly to the UI popup
+        self.ingestion_worker.error_occurred.connect(self.window.view_library.show_error)
+        
+        # Keep the terminal log as a backup
+        self.ingestion_worker.error_occurred.connect(lambda err: logger.error(f"Ingestion Error: {err}"))
+        
+        # Fire it up!
+        self.ingestion_worker.start()
 
     # ------------------------------------------------------------------ #
     #  Public                                                              #

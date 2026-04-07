@@ -2,13 +2,16 @@ import psutil
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QApplication, QLabel, QFrame, 
-    QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy
+    QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
+    QDoubleSpinBox, QSpinBox, QCheckBox
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QAction
 import qtawesome as qta
 from .views.conversations_view import ConversationsView
 from .views.settings_view import SettingsView
+from .views.library_view import LibraryView
+from .views.telemetry_view import TelemetryView
 import logging
 
 logger = logging.getLogger("Qube.UI")
@@ -82,14 +85,13 @@ class MainWindow(QMainWindow):
         self.main_stage.setStyleSheet("background-color: transparent;")
         
         # --- NEW: Injecting the actual Conversations View ---
-        # Note: We assume 'db_manager' was either passed to MainWindow or is in your workers dict. 
-        # If it's in your workers dict, use: workers.get("db")
         self.view_conversations = ConversationsView(self.workers, self.workers.get("db"))
 
-        # --- PLACEHOLDER VIEWS ---
-        # We will replace these with actual imported View classes next.
-        self.view_library = QLabel("<h2 style='color:#cdd6f4; text-align:center;'>Library View (Pending)</h2>")
-        self.view_telemetry = QLabel("<h2 style='color:#cdd6f4; text-align:center;'>Telemetry View (Pending)</h2>")
+        self.view_library = LibraryView(self.workers, self.workers.get("db"))
+        self.main_stage.addWidget(self.view_library) # Make sure this matches the index (1) you set in `_route_view`
+
+        # Pass the workers and the gpu_monitor to the Telemetry View
+        self.view_telemetry = TelemetryView(self.workers, self._gpu_monitor)
         
 
         self.view_settings = SettingsView(self.workers, self.workers.get("db"))
@@ -100,6 +102,10 @@ class MainWindow(QMainWindow):
         self.main_stage.addWidget(self.view_settings)      # Index 3
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
+        # --- NEW: GLOBAL RIGHT TOOLBAR ---
+        self.global_tools = self._build_tools_pane()
+        workspace_layout.addWidget(self.global_tools)
+
         root_layout.addLayout(workspace_layout)
 
         # Resize Grip
@@ -224,6 +230,144 @@ class MainWindow(QMainWindow):
         self.nav_buttons = [self.nav_chat, self.nav_library, self.nav_telemetry, self.nav_settings]
         
         return sidebar
+    
+    def _build_tools_pane(self) -> QFrame:
+        """Global Right Sidebar: Houses LLM generation settings, MCP toggles, and RAG options."""
+        from PyQt6.QtWidgets import QComboBox # Ensure this is imported if not already at the top
+
+        frame = QFrame()
+        frame.setFixedWidth(260)
+        frame.setStyleSheet("background-color: #181825; border-left: 1px solid #313244;")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(25)
+
+        header_style = "color: #a6adc8; font-weight: bold; font-size: 10px; letter-spacing: 1px; border: none;"
+        control_style = "color: #cdd6f4; border: none;"
+        dropdown_style = "background-color: #313244; color: #cdd6f4; border-radius: 4px; padding: 4px; border: 1px solid #45475a;"
+
+        # --- 1. AUDIO INPUT ---
+        mic_layout = QVBoxLayout()
+        mic_layout.setSpacing(5)
+        m_title = QLabel("AUDIO INPUT")
+        m_title.setStyleSheet(header_style)
+        self.voice_input_cb = QCheckBox(" Enable Voice Input")
+        self.voice_input_cb.setChecked(True)
+        self.voice_input_cb.setStyleSheet(control_style)
+        mic_layout.addWidget(m_title)
+        mic_layout.addWidget(self.voice_input_cb)
+        layout.addLayout(mic_layout)
+
+        # --- 2. AUDIO OUTPUT & TTS ---
+        voice_layout = QVBoxLayout()
+        voice_layout.setSpacing(5)
+        v_title = QLabel("AUDIO OUTPUT")
+        v_title.setStyleSheet(header_style)
+        
+        self.voice_bypass_cb = QCheckBox(" Enable TTS Voice")
+        self.voice_bypass_cb.setChecked(True)
+        self.voice_bypass_cb.setStyleSheet(control_style)
+        
+        self.global_voice_selector = QComboBox()
+        self.global_voice_selector.setStyleSheet(dropdown_style)
+        self.global_voice_selector.setToolTip("Change the active TTS Voice")
+        
+        voice_layout.addWidget(v_title)
+        voice_layout.addWidget(self.voice_bypass_cb)
+        voice_layout.addWidget(self.global_voice_selector)
+        layout.addLayout(voice_layout)
+
+        # --- 3. GENERATION PARAMETERS ---
+        param_layout = QVBoxLayout()
+        param_layout.setSpacing(10)
+        p_title = QLabel("GENERATION PARAMETERS")
+        p_title.setStyleSheet(header_style)
+        param_layout.addWidget(p_title)
+
+        temp_row = QHBoxLayout()
+        temp_row.addWidget(QLabel("Temperature:", styleSheet=control_style))
+        self.temp_spin = QDoubleSpinBox()
+        self.temp_spin.setRange(0.0, 2.0)
+        self.temp_spin.setSingleStep(0.1)
+        self.temp_spin.setValue(0.7)
+        self.temp_spin.setStyleSheet("background-color: #313244; color: #cdd6f4; border-radius: 3px; padding: 3px;")
+        self.temp_spin.wheelEvent = lambda event: event.ignore() # Disable scroll wheel
+        temp_row.addWidget(self.temp_spin)
+        param_layout.addLayout(temp_row)
+
+        ctx_row = QHBoxLayout()
+        ctx_row.addWidget(QLabel("Context Limit:", styleSheet=control_style))
+        self.ctx_spin = QSpinBox()
+        self.ctx_spin.setRange(1024, 128000)
+        self.ctx_spin.setSingleStep(1024)
+        self.ctx_spin.setValue(4096)
+        self.ctx_spin.setStyleSheet("background-color: #313244; color: #cdd6f4; border-radius: 3px; padding: 3px;")
+        self.ctx_spin.wheelEvent = lambda event: event.ignore() # Disable scroll wheel
+        ctx_row.addWidget(self.ctx_spin)
+        param_layout.addLayout(ctx_row)
+        layout.addLayout(param_layout)
+
+        # --- 4. EXPERIMENTAL RAG ---
+        rag_layout = QVBoxLayout()
+        rag_layout.setSpacing(8)
+        r_title = QLabel("EXPERIMENTAL RAG")
+        r_title.setStyleSheet(header_style)
+        rag_layout.addWidget(r_title)
+
+        self.rag_hybrid_cb = QCheckBox(" Hybrid Search (Alpha)")
+        self.rag_hybrid_cb.setStyleSheet(control_style)
+        self.rag_strict_cb = QCheckBox(" Strict Document Context")
+        self.rag_strict_cb.setStyleSheet(control_style)
+        
+        rag_layout.addWidget(self.rag_hybrid_cb)
+        rag_layout.addWidget(self.rag_strict_cb)
+        layout.addLayout(rag_layout)
+
+        # --- 5. MCP TOOLS ---
+        tools_layout = QVBoxLayout()
+        tools_layout.setSpacing(8)
+        t_title = QLabel("MCP TOOLS (AGENTIC)")
+        t_title.setStyleSheet(header_style)
+        tools_layout.addWidget(t_title)
+
+        self.tool_rag_cb = QCheckBox(" Local Knowledge Base")
+        self.tool_rag_cb.setChecked(True)
+        self.tool_rag_cb.setStyleSheet(control_style)
+        
+        self.tool_internet_cb = QCheckBox(" Internet Search")
+        self.tool_internet_cb.setChecked(False)
+        self.tool_internet_cb.setStyleSheet(control_style)
+
+        tools_layout.addWidget(self.tool_rag_cb)
+        tools_layout.addWidget(self.tool_internet_cb)
+        layout.addLayout(tools_layout)
+
+        layout.addStretch()
+
+        # --------------------------------------------------------- #
+        #  WIRING TO WORKERS                                        #
+        # --------------------------------------------------------- #
+        
+        # Audio Input Pause Wiring
+        if self._audio_worker:
+            self.voice_input_cb.toggled.connect(lambda checked: self._audio_worker.set_paused(not checked))
+            
+        # --- FIX 1: Add this TTS Bypass Wiring ---
+        if self._tts_worker:
+            self.voice_bypass_cb.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
+            
+            # (Your existing global_voice_selector wiring should be right below this)
+            self.global_voice_selector.currentIndexChanged.connect(
+                lambda idx: self._tts_worker.set_voice(self.global_voice_selector.currentText())
+            )
+
+        if self._llm_worker:
+            self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
+            self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
+            self.tool_rag_cb.toggled.connect(self._llm_worker.set_mcp_rag)
+            self.tool_internet_cb.toggled.connect(self._llm_worker.set_mcp_internet)
+
+        return frame
 
     def _route_view(self, index: int, active_button: QPushButton):
         """Switches the QStackedWidget and manages button highlights."""
@@ -330,10 +474,17 @@ class MainWindow(QMainWindow):
         pass # Will be forwarded to ConversationsView
 
     def update_stt_latency(self, ms: float) -> None:
-        pass # Will be forwarded to ConversationsView
+        self.view_telemetry.update_stt_latency(ms)
 
     def update_ttft_latency(self, ms: float) -> None:
-        pass # Will be forwarded to ConversationsView
+        self.view_telemetry.update_ttft_latency(ms)
 
     def update_tts_latency(self, ms: float) -> None:
-        pass # Will be forwarded to ConversationsView
+        self.view_telemetry.update_tts_latency(ms)
+
+    def update_global_voice_dropdown(self, model_name: str, voices: list) -> None:
+        """Receives loaded voices from the TTS worker and populates the global toolbar."""
+        self.global_voice_selector.blockSignals(True)
+        self.global_voice_selector.clear()
+        self.global_voice_selector.addItems(voices)
+        self.global_voice_selector.blockSignals(False)

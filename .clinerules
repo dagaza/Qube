@@ -2,11 +2,13 @@
 * **Mission:** Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant. It operates entirely offline with real-time conversational streaming capabilities.
 * **Strict Memory Constraint:** The entire system MUST operate under a strict 20GB RAM budget to prevent OS disk swapping, which would destroy audio latency.
 * **Tech Stack:** Python 3.12 (Linux/Windows), PyQt6, pyqtgraph, psutil, PyAudio, OpenWakeWord, Faster-Whisper, Ollama/LM Studio, Piper/Kokoro TTS, LanceDB, and ONNX Runtime.
+* **Visual Identity:** The UI utilizes `qt_material` (dark_blue.xml theme) for a unified, modern, frameless aesthetic.
 
 ## 2. Architectural Philosophy: The Producer-Consumer Pipeline
 * **UI Thread Isolation:** The Main UI Thread (PyQt6) must **never** be blocked. It is responsible solely for rendering, event handling, and high-speed telemetry polling (via `QTimer`).
 * **Asynchronous Inference:** All heavy computational tasks (Wake Word detection, STT processing, LLM streaming, TTS generation, and Document Ingestion) must run in dedicated `QThread` instances.
 * **Thread Communication:** Threads must strictly communicate via PyQt signals (`pyqtSignal`), thread-safe queues (`queue.Queue`), and mutex locks (`QMutex`). Do not share raw state directly between the UI and background workers.
+* **Safe State Teardown:** All UI-to-Worker state changes (e.g., pausing the mic, swapping devices, swapping wakewords) must be passed as boolean flags or variables (e.g., `self.is_paused`, `self.pending_device_index`). The worker's internal event loop will pick up the flag and safely execute the hardware teardown/startup within its own isolated C++ memory space.
 
 ## 3. Directory Structure & Domain Boundaries
 The project strictly enforces a modular, domain-driven directory structure to prevent "God Objects." 
@@ -24,7 +26,8 @@ Qube/
 │       ├── __init__.py    
 │       ├── conversations_view.py
 │       ├── library_view.py
-│       └── settings_view.py
+│       ├── settings_view.py
+│       └── telemetry_view.py
 ├── core/                   # System, Hardware, and Network Utilities
 │   ├── hardware.py         # psutil polling, GPUMonitor wrapper.
 │   ├── network.py          # Port scanning (Ollama/LM Studio detection).
@@ -54,6 +57,10 @@ Qube/
 ## 4. Development Rules & Anti-Patterns
 
 ### 4.1 UI Anti-Patterns
+
+- **No Direct Hardware Teardown:** The UI must never call `.close()`, `.stop_stream()`, or initialize models like `Model()`. Ripping streams out of memory from the UI thread causes Segmentation Faults.
+    
+- **Preventing "Ghost Clicks" on Boot:** When populating PyQt dropdowns (`QComboBox`) in views like `settings_view.py`, ensure `currentIndexChanged` or `currentTextChanged` signals are either blocked (`blockSignals(True)`) or wired _after_ population to prevent triggering background workers during UI initialization.
 
 - **No Logic in the UI:** Do not place `socket`, `pyaudio`, or network logic inside `ui/` classes. The UI must request this data from the `core/` utilities.
     

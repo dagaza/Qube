@@ -3,6 +3,7 @@ import lancedb
 import pyarrow as pa
 import numpy as np
 from pathlib import Path
+from datetime import timedelta
 import logging
 
 logger = logging.getLogger("Qube.RAG.Store")
@@ -27,6 +28,23 @@ class DocumentStore:
         else:
             self.table = self.db.create_table(TABLE_NAME, schema=SCHEMA)
 
+    def get_all_indexed_sources(self) -> list[str]:
+        """Queries the LanceDB table for all unique document filenames."""
+        try:
+            # Use native .to_list() instead of .to_pandas() to avoid heavy dependencies
+            results = self.table.search().select(["source"]).limit(100000).to_list()
+            
+            # Extract unique sources using a Python set comprehension
+            unique_sources = {item['source'] for item in results if 'source' in item}
+            return list(unique_sources)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("Qube.RAG")
+            logger.warning(f"Failed to query LanceDB for unique sources: {e}")
+            
+        return []
+
     def add_chunks(self, chunks: list[dict]):
         self.table.add(chunks)
 
@@ -42,13 +60,39 @@ class DocumentStore:
 
     # --- NEW CAPABILITIES FOR LIBRARY UI ---
 
-    def delete_document(self, source: str):
-        """Erases all vector chunks associated with a specific file."""
+    def delete_document(self, source_name: str):
+        """Permanently removes vectors and aggressively reclaims disk space for individual files."""
+        import logging
+        from datetime import timedelta
+        logger = logging.getLogger("Qube.RAG")
+        
         try:
-            self.table.delete(f"source = '{source}'")
-            logger.info(f"Successfully purged all vectors for: {source}")
+            # 1. Logically delete the rows associated with the specific file
+            self.table.delete(f'source = "{source_name}"')
+            logger.info(f"Logical delete complete for '{source_name}'.")
+            
+            # 2. Aggressively delete ONLY the unreferenced *.lance fragments
+            try:
+                # Modern LanceDB optimize API
+                if hasattr(self.table, 'optimize'):
+                    self.table.optimize(cleanup_older_than=timedelta(seconds=0))
+                    logger.info(f"HARD DELETE: Pruned specific *.lance fragment for '{source_name}'.")
+                
+                # Legacy fallback
+                else:
+                    if hasattr(self.table, 'compact_files'):
+                        self.table.compact_files()
+                    if hasattr(self.table, 'cleanup_old_versions'):
+                        self.table.cleanup_old_versions(older_than=timedelta(seconds=0))
+                    logger.info(f"HARD DELETE: Executed garbage collection for '{source_name}'.")
+                    
+            except Exception as cleanup_err:
+                logger.warning(f"Rows deleted, but physical disk cleanup was bypassed: {cleanup_err}")
+
+            # Notice: The "drop_table" nuclear option has been removed!
+
         except Exception as e:
-            logger.error(f"Failed to delete {source} from LanceDB: {e}")
+            logger.error(f"Failed to delete vectors for '{source_name}' from LanceDB: {e}")
 
     def reconstruct_document(self, source: str) -> str:
         """Grabs all chunks for a file and stitches them back together for reading."""

@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, 
-    QLineEdit, QPushButton, QListWidget, QTextEdit, 
-    QDoubleSpinBox, QSpinBox, QCheckBox, QSizePolicy
+    QLineEdit, QPushButton, QListWidget, QTextEdit, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QSize
 import qtawesome as qta
@@ -19,6 +18,7 @@ class ConversationsView(QWidget):
         self.tts = workers.get("tts")
         
         self._setup_ui()
+        self._start_new_chat() # <--- ADD THIS: Ensures a valid DB session exists on boot!
 
     def _setup_ui(self):
         # Main Layout: 3 Columns (History | Chat Stage | Tools)
@@ -33,10 +33,6 @@ class ConversationsView(QWidget):
         # --- COLUMN 2: Main Chat Stage ---
         self.chat_stage = self._build_chat_stage()
         layout.addWidget(self.chat_stage, stretch=1) # Expands to fill available space
-
-        # --- COLUMN 3: Context & Tools Sidebar ---
-        self.tools_pane = self._build_tools_pane()
-        layout.addWidget(self.tools_pane)
 
     # --------------------------------------------------------- #
     #  PANEL BUILDERS                                           #
@@ -81,6 +77,11 @@ class ConversationsView(QWidget):
             QListWidget::item:selected { background-color: #45475a; color: #cdd6f4; font-weight: bold; }
         """)
         layout.addWidget(self.history_list)
+
+        # --- NEW: Wire the History UI ---
+        self.new_chat_btn.clicked.connect(self._start_new_chat)
+        self.history_list.itemClicked.connect(self._load_selected_chat)
+
         return frame
 
     def _build_chat_stage(self) -> QFrame:
@@ -136,87 +137,131 @@ class ConversationsView(QWidget):
         latency_layout.addStretch()
         layout.addLayout(latency_layout)
 
-        return frame
-
-    def _build_tools_pane(self) -> QFrame:
-        frame = QFrame()
-        frame.setFixedWidth(260)
-        frame.setStyleSheet("background-color: #181825; border-left: 1px solid #313244;")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(25)
-
-        # Reusable section header style
-        header_style = "color: #a6adc8; font-weight: bold; font-size: 10px; letter-spacing: 1px; border: none;"
-        control_style = "color: #cdd6f4; border: none;"
-
-        # --- Voice Toggle ---
-        voice_layout = QVBoxLayout()
-        voice_layout.setSpacing(5)
-        v_title = QLabel("AUDIO OUTPUT")
-        v_title.setStyleSheet(header_style)
-        self.voice_bypass_cb = QCheckBox(" Enable TTS Voice")
-        self.voice_bypass_cb.setChecked(True)
-        self.voice_bypass_cb.setStyleSheet(control_style)
-        voice_layout.addWidget(v_title)
-        voice_layout.addWidget(self.voice_bypass_cb)
-        layout.addLayout(voice_layout)
-
-        # --- Generation Parameters ---
-        param_layout = QVBoxLayout()
-        param_layout.setSpacing(10)
-        p_title = QLabel("GENERATION PARAMETERS")
-        p_title.setStyleSheet(header_style)
-        param_layout.addWidget(p_title)
-
-        # Temperature
-        temp_row = QHBoxLayout()
-        temp_row.addWidget(QLabel("Temperature:", styleSheet=control_style))
-        self.temp_spin = QDoubleSpinBox()
-        self.temp_spin.setRange(0.0, 2.0)
-        self.temp_spin.setSingleStep(0.1)
-        self.temp_spin.setValue(0.7)
-        self.temp_spin.setStyleSheet("background-color: #313244; color: #cdd6f4; border-radius: 3px; padding: 3px;")
-        temp_row.addWidget(self.temp_spin)
-        param_layout.addLayout(temp_row)
-
-        # Context Window
-        ctx_row = QHBoxLayout()
-        ctx_row.addWidget(QLabel("Context Limit:", styleSheet=control_style))
-        self.ctx_spin = QSpinBox()
-        self.ctx_spin.setRange(1024, 128000)
-        self.ctx_spin.setSingleStep(1024)
-        self.ctx_spin.setValue(4096)
-        self.ctx_spin.setStyleSheet("background-color: #313244; color: #cdd6f4; border-radius: 3px; padding: 3px;")
-        ctx_row.addWidget(self.ctx_spin)
-        param_layout.addLayout(ctx_row)
-
-        self.update_ctx_btn = QPushButton(" Apply Context Update")
-        self.update_ctx_btn.setStyleSheet("""
-            QPushButton { background-color: #45475a; color: #cdd6f4; border-radius: 5px; padding: 6px; }
-            QPushButton:hover { background-color: #585b70; }
-        """)
-        param_layout.addWidget(self.update_ctx_btn)
-        layout.addLayout(param_layout)
-
-        # --- MCP Tools ---
-        tools_layout = QVBoxLayout()
-        tools_layout.setSpacing(8)
-        t_title = QLabel("MCP TOOLS (AGENTIC)")
-        t_title.setStyleSheet(header_style)
-        tools_layout.addWidget(t_title)
-
-        self.tool_rag_cb = QCheckBox(" Local Knowledge Base")
-        self.tool_rag_cb.setChecked(True)
-        self.tool_rag_cb.setStyleSheet(control_style)
+        # Wire the text input to our internal handler
+        self.send_btn.clicked.connect(self._handle_text_submit)
+        self.text_input.returnPressed.connect(self._handle_text_submit)
         
-        self.tool_internet_cb = QCheckBox(" Internet Search")
-        self.tool_internet_cb.setChecked(False)
-        self.tool_internet_cb.setStyleSheet(control_style)
-
-        tools_layout.addWidget(self.tool_rag_cb)
-        tools_layout.addWidget(self.tool_internet_cb)
-        layout.addLayout(tools_layout)
-
-        layout.addStretch()
         return frame
+    
+    # --- UI UPDATE RECEIVERS ---
+    def log_user_message(self, text: str) -> None:
+        """Renders user input as a distinct bubble."""
+        # Clear the 'empty state' placeholder if it's there
+        if "Select a conversation" in self.transcript_box.toHtml():
+            self.transcript_box.clear()
+
+        user_html = f"""
+            <div style="margin-bottom: 20px;">
+                <table width="100%" cellpadding="8" cellspacing="0">
+                    <tr>
+                        <td bgcolor="#313244" style="border-radius: 10px; color: #a6e3a1; font-family: 'Segoe UI';">
+                            <span style="font-size: 10px; color: #9399b2; font-weight: bold;">USER</span><br/>
+                            <span style="color: #cdd6f4; font-size: 14px;">{text}</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        """
+        self.transcript_box.append(user_html)
+        self._is_agent_typing = False
+        self.transcript_box.verticalScrollBar().setValue(self.transcript_box.verticalScrollBar().maximum())
+
+    def log_agent_token(self, token: str) -> None:
+        """Streams agent tokens into a clean typography block."""
+        if not getattr(self, '_is_agent_typing', False):
+            agent_header = f"""
+                <div style="margin-top: 10px;">
+                    <span style="font-size: 10px; color: #cba6f7; font-weight: bold;">QUBE</span><br/>
+                </div>
+            """
+            self.transcript_box.append(agent_header)
+            self._is_agent_typing = True
+        
+        cursor = self.transcript_box.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        cursor.insertText(token)
+        self.transcript_box.setTextCursor(cursor)
+        self.transcript_box.verticalScrollBar().setValue(self.transcript_box.verticalScrollBar().maximum())
+
+    def _handle_text_submit(self):
+        """Captures text input and sends it to the LLM."""
+        text = self.text_input.text().strip()
+        if not text:
+            return
+
+        # 1. Clear the input box immediately
+        self.text_input.clear()
+        
+        # 2. Visually log the user's message to the UI
+        self.log_user_message(text)
+
+        # 3. Ensure we have an active session ID for the Database
+        if not hasattr(self, 'active_session_id'):
+            recent_sessions = self.db.get_recent_sessions(limit=1)
+            if recent_sessions:
+                self.active_session_id = recent_sessions[0]['id']
+            else:
+                self.active_session_id = self.db.create_session("Text Conversation")
+
+        # 4. Trigger the LLM Worker
+        if self.llm:
+            self.llm.generate_response(text, self.active_session_id)
+
+    def update_stt_latency(self, ms: float) -> None:
+        self.stt_latency_lbl.setText(f"STT: {ms:.0f} ms")
+
+    def update_ttft_latency(self, ms: float) -> None:
+        self.ttft_latency_lbl.setText(f"TTFT: {ms:.0f} ms")
+
+    def update_tts_latency(self, ms: float) -> None:
+        self.tts_latency_lbl.setText(f"TTS: {ms:.0f} ms")
+
+    # --------------------------------------------------------- #
+    #  HISTORY MANAGEMENT                                       #
+    # --------------------------------------------------------- #
+
+    def _refresh_history_list(self):
+        """Pulls recent sessions from SQLite and populates the sidebar."""
+        self.history_list.clear()
+        from PyQt6.QtWidgets import QListWidgetItem
+        from PyQt6.QtCore import Qt
+        
+        sessions = self.db.get_recent_sessions(limit=20)
+        for session in sessions:
+            # Create the list item using the DB title
+            item = QListWidgetItem(session["title"])
+            # Secretly store the UUID inside the item so we know what to load when clicked
+            item.setData(Qt.ItemDataRole.UserRole, session["id"])
+            self.history_list.addItem(item)
+
+    def _start_new_chat(self):
+        """Creates a fresh session and clears the UI."""
+        self.active_session_id = self.db.create_session("New Conversation")
+        
+        self.transcript_box.clear()
+        self.transcript_box.setHtml("<h3 style='color:#6c7086; text-align:center; margin-top:50px;'>New chat started. Type or speak a message!</h3>")
+        self._is_agent_typing = False
+        
+        self._refresh_history_list()
+
+    def _load_selected_chat(self, item):
+        """Loads a historical conversation from the database into the UI."""
+        from PyQt6.QtCore import Qt
+        session_id = item.data(Qt.ItemDataRole.UserRole)
+        self.active_session_id = session_id
+        
+        self.transcript_box.clear()
+        self._is_agent_typing = False
+
+        history = self.db.get_session_history(session_id)
+        if not history:
+            self.transcript_box.setHtml("<h3 style='color:#6c7086; text-align:center; margin-top:50px;'>Empty conversation.</h3>")
+            return
+
+        # Re-draw the entire conversation
+        for msg in history:
+            if msg["role"] == "user":
+                self.log_user_message(msg["content"])
+            elif msg["role"] == "assistant":
+                self.log_agent_token(msg["content"])
+                self._is_agent_typing = False # Reset so the next message gets a new header

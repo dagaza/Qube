@@ -161,3 +161,9 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = conn.execute("SELECT * FROM documents ORDER BY ingested_at DESC")
             return [dict(row) for row in cursor.fetchall()]
+        
+    def delete_document_metadata(self, filename: str):
+        """Removes a document from the UI registry."""
+        with self._get_connection() as conn:
+            conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
+            conn.commit()

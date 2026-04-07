@@ -26,6 +26,7 @@ class AudioListenerWorker(QThread):
         self.mutex = QMutex()
         self.input_device_index = None  
         self.running = True
+        self.is_paused = False
         self.stream = None
         self.audio = pyaudio.PyAudio()
         self.current_rate = 16000 
@@ -37,13 +38,27 @@ class AudioListenerWorker(QThread):
         # --- FIX: Dynamic Model Discovery using exact file paths ---
         self.available_wakewords = self._discover_wakewords()
         
+        # --- NEW: Thread-safe loading flags ---
+        self.pending_wakeword = None
+        self.pending_device_index = None
+        self.oww_model = None
+        
         # Default to the first available (usually 'Alexa')
         if self.available_wakewords:
             self.active_wakeword_name = list(self.available_wakewords.keys())[0]
-            active_path = self.available_wakewords[self.active_wakeword_name]
-            self.oww_model = Model(wakeword_model_paths=[active_path])
+            # Tell the run loop to load this path immediately when it starts
+            self.pending_wakeword = self.available_wakewords[self.active_wakeword_name]
         else:
+            self.active_wakeword_name = None
             logger.error("CRITICAL: No wakeword models found anywhere!")
+
+    def set_paused(self, paused: bool):
+        """Thread-safe request to pause the audio stream."""
+        self.is_paused = paused
+        if paused:
+            self.status_update.emit("Voice Input Deactivated")
+        else:
+            self.status_update.emit("Boot: Reconnecting Mic...")
 
     def _discover_wakewords(self) -> dict:
         """Scans for default and custom wakewords, returning a clean UI Name -> File Path mapping."""
@@ -75,7 +90,7 @@ class AudioListenerWorker(QThread):
         self.wakewords_ready.emit(list(self.available_wakewords.keys()))
 
     def set_wakeword(self, ui_name: str):
-        """Receives the clean UI name, grabs the real file path, and hot-swaps the model."""
+        """Receives the clean UI name and flags the background thread to hot-swap."""
         self.mutex.lock()
         try:
             target_path = self.available_wakewords.get(ui_name)
@@ -83,17 +98,12 @@ class AudioListenerWorker(QThread):
                 logger.error(f"Wakeword '{ui_name}' not found in the mapping dictionary.")
                 return
                 
-            self.status_update.emit(f"Loading Wakeword: {ui_name}...")
-            
-            # Feed the exact, absolute path to the ONNX runtime
-            self.oww_model = Model(wakeword_model_paths=[target_path])
             self.active_wakeword_name = ui_name
+            self.pending_wakeword = target_path  # The background thread will pick this up!
+            logger.info(f"Wakeword swap requested: {ui_name}")
             
-            logger.info(f"Successfully hot-swapped wakeword to: {ui_name}")
-            self.status_update.emit("Idle")
         except Exception as e:
-            logger.error(f"Failed to load wakeword {ui_name}: {e}")
-            self.status_update.emit("Error loading Wakeword")
+            logger.error(f"Failed to request wakeword {ui_name}: {e}")
         finally:
             self.mutex.unlock()
 
@@ -104,16 +114,9 @@ class AudioListenerWorker(QThread):
         self.speech_threshold = threshold
 
     def set_input_device(self, index):
-        self.mutex.lock()  
-        try:
-            self.input_device_index = index
-            self.status_update.emit(f"Switching to device {index}...")
-            if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
-                self.stream = None
-        finally:
-            self.mutex.unlock()  
+        """Thread-safe request to swap the audio device."""
+        self.pending_device_index = index
+        self.status_update.emit(f"Swapping to device {index}...")
 
     def _record_until_silence(self):
         self.status_update.emit("🎙️ RECORDING...")
@@ -160,38 +163,150 @@ class AudioListenerWorker(QThread):
                 self.audio_captured.emit(audio_bytes)
                 return
 
+    def _open_mic_with_warmup(self):
+        """
+        Opens the microphone stream and pre-warms the OWW model's feature buffer.
+
+        The OWW LSTM needs ~76 frames of audio before its rolling mel-spectrogram
+        window is full and produces non-zero scores. Previously the ALSA warmup flush
+        discarded those chunks unused, so the model was effectively deaf for the first
+        ~1 second after every (re)open. Feeding the flush chunks through predict()
+        solves this for both cold boot and hot-swaps.
+
+        Returns True on success, False on total failure.
+        """
+        # Try 16kHz first, fall back to 48kHz
+        configs = [
+            (16000, CHUNK),
+            (48000, CHUNK * 3),
+        ]
+
+        for rate, chunk_size in configs:
+            try:
+                self.current_rate = rate
+                self.stream = self.audio.open(
+                    format=FORMAT, channels=1, rate=rate,
+                    input=True, frames_per_buffer=chunk_size,
+                    input_device_index=self.input_device_index
+                )
+                logger.info(f"Mic opened at {rate}Hz on device {self.input_device_index}")
+                self.status_update.emit("Idle")
+
+                # Flush ALSA startup corruption AND pre-warm the OWW feature buffer
+                try:
+                    for _ in range(15):
+                        flush_data = self.stream.read(chunk_size, exception_on_overflow=False)
+                        if self.oww_model:
+                            flush_audio = np.frombuffer(flush_data, dtype=np.int16)
+                            if rate == 48000:
+                                flush_audio = flush_audio[::3]
+                            self.oww_model.predict(flush_audio)
+                except Exception:
+                    pass
+                logger.info("Hardware buffer flush complete. OWW model pre-warmed.")
+                return True
+
+            except Exception as e:
+                logger.warning(f"Mic open failed at {rate}Hz: {e}")
+                if self.stream:
+                    try:
+                        self.stream.stop_stream()
+                        self.stream.close()
+                    except Exception:
+                        pass
+                    self.stream = None
+
+        self.status_update.emit("Mic Error: ALSA Lock")
+        return False
+
     def run(self):
-        self.status_update.emit("BOOT: Loading Wake Word...")
         last_trigger_time = 0.0
+        time.sleep(2.5)
 
         while self.running:
-            self.mutex.lock()
-            try:
-                if self.stream is None:
-                    try:
-                        self.current_rate = 16000
-                        self.stream = self.audio.open(format=FORMAT, channels=1, rate=16000,
-                                                    input=True, frames_per_buffer=CHUNK,
-                                                    input_device_index=self.input_device_index)
-                        self.status_update.emit("Listening (16kHz)...")
-                    except:
-                        try:
-                            self.current_rate = 48000
-                            self.stream = self.audio.open(format=FORMAT, channels=1, rate=48000,
-                                                        input=True, frames_per_buffer=CHUNK * 3,
-                                                        input_device_index=self.input_device_index)
-                            self.status_update.emit("Listening (48kHz HW Fallback)...")
-                        except Exception as e:
-                            self.status_update.emit(f"Mic Error: {e}")
-                            self.mutex.unlock()
-                            time.sleep(2)
-                            continue
+            # --- 0. Thread-Safe Teardown (For Pauses & Device Swaps) ---
+            needs_reboot = False
+            
+            if getattr(self, 'pending_device_index', None) is not None:
+                self.input_device_index = self.pending_device_index
+                self.pending_device_index = None
+                needs_reboot = True
+                logger.info(f"Target input device updated to {self.input_device_index}")
+                
+            if getattr(self, 'is_paused', False) and self.stream is not None:
+                needs_reboot = True
 
+            if needs_reboot and self.stream:
+                try:
+                    self.stream.stop_stream()
+                    self.stream.close()
+                except Exception:
+                    pass
+                self.stream = None
+                logger.info("Hardware audio stream safely released by background thread.")
+
+            # --- 1. Check for Pause State ---
+            if getattr(self, 'is_paused', False):
+                time.sleep(0.5)
+                continue
+
+            # --- 2. Safely Load the ONNX Model ---
+            if self.pending_wakeword:
+                self.status_update.emit("Loading Wakeword...")
+
+                # Close the mic stream before reloading the model.
+                # This is essential for hot-swaps: the new model must open a fresh
+                # stream so the warmup flush pre-warms *its* feature buffer from
+                # scratch. If the stream stays open, the new model inherits a stale
+                # rolling buffer from the previous model and scores stay at 0.0.
+                # On cold boot self.stream is already None, so this is a safe no-op.
+                if self.stream is not None:
+                    try:
+                        self.stream.stop_stream()
+                        self.stream.close()
+                    except Exception:
+                        pass
+                    self.stream = None
+                    logger.info("Audio stream closed for clean wakeword hot-swap.")
+
+                try:
+                    logger.info(f"Loading ONNX Model: {os.path.basename(self.pending_wakeword)}")
+                    self.oww_model = Model(wakeword_model_paths=[self.pending_wakeword])
+                    logger.info("ONNX Model initialized successfully.")
+                except Exception as e:
+                    logger.error("CRITICAL: Failed to load wakeword model!", exc_info=True)
+
+                self.pending_wakeword = None
+                self.status_update.emit("Idle")
+                continue
+
+            if self.oww_model is None:
+                time.sleep(0.5)
+                continue
+
+            # --- 3. Open the Microphone & Read Audio ---
+            if self.stream is None:
+                if not self._open_mic_with_warmup():
+                    time.sleep(2)
+                    continue
+
+            # Read the live, clean audio buffer
+            try:
                 read_chunk = CHUNK if self.current_rate == 16000 else CHUNK * 3
                 data = self.stream.read(read_chunk, exception_on_overflow=False)
-            finally:
-                self.mutex.unlock()
+            except Exception as read_err:
+                logger.error(f"Failed to read audio stream (Zombie Stream detected): {read_err}")
+                if self.stream:
+                    try:
+                        self.stream.stop_stream()
+                        self.stream.close()
+                    except Exception:
+                        pass
+                    self.stream = None
+                time.sleep(1)
+                continue
 
+            # --- 4. Process Audio ---
             audio_data = np.frombuffer(data, dtype=np.int16)
             if self.current_rate == 48000:
                 audio_data = audio_data[::3] 
@@ -199,11 +314,16 @@ class AudioListenerWorker(QThread):
             try:
                 peak = np.max(np.abs(audio_data))
                 self.current_volume = min(100, int((peak / 32767.0) * 100))
+                
+                # Volume Logger (Prints every 5 seconds if audio is actively flowing)
+                if self.current_volume > 0 and (time.time() - getattr(self, '_last_log_time', 0) > 5.0):
+                    logger.debug(f"Audio Buffer Active. Peak Volume: {self.current_volume}%")
+                    self._last_log_time = time.time()
+                    
             except ValueError:
                 self.current_volume = 0
             
-            # --- NEW: Mutex protection for hot-swapping during inference ---
-            self.mutex.lock()
+            # --- 5. Hardened Inference Engine ---
             try:
                 self.oww_model.predict(audio_data)
                 
@@ -211,10 +331,11 @@ class AudioListenerWorker(QThread):
                     if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
                         score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
                         if score > 0.5:
+                            logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
                             if (time.time() - last_trigger_time) > 2.0:
                                 self._record_until_silence()
                                 last_trigger_time = time.time()
                                 self.status_update.emit("Processing...")
                                 break
-            finally:
-                self.mutex.unlock()
+            except Exception as e:
+                logger.error("CRITICAL: Inference engine crashed during predict()!", exc_info=True)
