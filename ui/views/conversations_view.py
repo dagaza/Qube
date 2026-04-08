@@ -280,6 +280,11 @@ class ConversationsView(QWidget):
         self.history_list.itemClicked.connect(self._load_selected_chat)
         self.history_list.itemSelectionChanged.connect(self._update_row_colors)
 
+        # 🔑 NEW: Wire up the scrollbar for infinite scrolling
+        self.history_offset = 0
+        self.is_loading_history = False
+        self.history_list.verticalScrollBar().valueChanged.connect(self._on_history_scroll)
+
         return frame
 
     def _build_chat_stage(self) -> QFrame:
@@ -473,21 +478,39 @@ class ConversationsView(QWidget):
         self.tts_latency_lbl.setText(f"TTS: {ms:.0f} ms")
 
     def _refresh_history_list(self):
-        """Pulls recent sessions from SQLite and populates the sidebar with custom widgets."""
+        """Clears the list, resets the offset, and pulls the first batch."""
         self.history_list.clear()
+        self.history_offset = 0
+        self.is_loading_history = False
 
-        # --- THE FIX: SILENT GARBAGE COLLECTION ---
-        # Before we count or draw the sessions, wipe out any abandoned empty ones!
+        # Silent garbage collection for empty sessions
         current_active = getattr(self, 'active_session_id', None)
         if hasattr(self.db, 'cleanup_empty_sessions'):
             self.db.cleanup_empty_sessions(current_active)
 
+        # Update the Title Count
         count = self.db.get_session_count()
         display_count = "999+" if count > 999 else str(count)
-        
-        # Only update the text if the UI has finished building the label
         if hasattr(self, 'list_title'):
             self.list_title.setText(f"CONVERSATIONS ({display_count})")
+            
+        # Load the initial batch!
+        self._load_history_batch()
+
+    def _on_history_scroll(self, value):
+        """Triggered every time the user scrolls."""
+        bar = self.history_list.verticalScrollBar()
+        # If the scrollbar hits the absolute maximum, load the next batch!
+        if value == bar.maximum():
+            self._load_history_batch()
+
+    def _load_history_batch(self):
+        """Fetches the next chunk of history and appends it to the list."""
+        if getattr(self, 'is_loading_history', False):
+            return # Prevent spamming the database if already loading
+            
+        self.is_loading_history = True
+
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import Qt, QSize
         import qtawesome as qta
@@ -498,12 +521,23 @@ class ConversationsView(QWidget):
         if main_win and hasattr(main_win, '_is_dark_theme'):
             is_dark = main_win._is_dark_theme
         
-        # Define high-contrast colors for the text and icons
         text_color = "#cdd6f4" if is_dark else "#1e293b"
-        # --- THE FIX: Use muted Catppuccin grays for the kebab icon ---
         icon_color = "#6c7086" if is_dark else "#64748b"
         
-        sessions = self.db.get_recent_sessions(limit=20)
+        # 🔑 THE FIX: Pass both the limit AND the current offset to the DB
+        # Note: If your DB doesn't support 'offset' yet, we'll need to update it!
+        try:
+            sessions = self.db.get_recent_sessions(limit=20, offset=self.history_offset)
+        except TypeError:
+            # Fallback just in case you haven't updated the DB manager yet
+            sessions = self.db.get_recent_sessions(limit=20)
+            if self.history_offset > 0:
+                sessions = [] # Prevent infinite looping of the same 20 items
+
+        if not sessions:
+            self.is_loading_history = False
+            return
+
         for session in sessions:
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, session["id"])
@@ -516,35 +550,28 @@ class ConversationsView(QWidget):
             row_layout.setContentsMargins(15, 0, 10, 0)
             row_layout.setSpacing(10)
             
-            # 2. The Title - FIXED: Forcing the color here to bypass CSS inheritance bugs
             title_lbl = QLabel(session["title"])
             title_lbl.setObjectName("HistoryRowTitle")
             title_lbl.setStyleSheet(f"color: {text_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
             
-            # 3. The 3-Dot Button - FIXED: Hiding the chevron (menu-indicator)
             opts_btn = QPushButton()
             opts_btn.setObjectName("HistoryOptionsBtn")
             opts_btn.setFixedSize(28, 28)
             opts_btn.setIcon(qta.icon('fa5s.ellipsis-v', color=icon_color))
             opts_btn.setIconSize(QSize(16, 16))
             opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus) 
-            
-            # This specific line kills the chevron/arrow
             opts_btn.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }")
             
-            # 4. The Menu
             menu = QMenu(opts_btn)
             if hasattr(self, '_apply_menu_theme'):
                  self._apply_menu_theme(menu, is_dark)
 
             rename_action = menu.addAction(qta.icon('fa5s.edit', color='#89b4fa'), "Rename Chat")
             rename_action.triggered.connect(lambda _, s_id=session["id"], old_t=session["title"]: self._trigger_rename_chat(s_id, old_t))
-            
             menu.addSeparator()
 
             delete_action = menu.addAction(qta.icon('fa5s.trash-alt', color='#ef4444'), "Delete Chat")
             delete_action.triggered.connect(lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id))
-            
             opts_btn.setMenu(menu)
             
             row_layout.addWidget(title_lbl)
@@ -554,6 +581,10 @@ class ConversationsView(QWidget):
             item.setSizeHint(QSize(0, 45))
             self.history_list.addItem(item)
             self.history_list.setItemWidget(item, row_widget)
+
+        # 🔑 Increment the offset so the next scroll fetches the NEXT 20
+        self.history_offset += 20
+        self.is_loading_history = False
 
     def _update_row_colors(self):
         """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""

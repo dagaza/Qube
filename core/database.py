@@ -175,12 +175,12 @@ class DatabaseManager:
             """, (safe_query,))
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_recent_sessions(self, limit: int = 20) -> list[dict]:
-        """Fetches the list of conversations for the UI Sidebar."""
+    def get_recent_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
+        """Fetches a specific batch of conversations for the UI Sidebar infinite scroll."""
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC LIMIT ?",
-                (limit,)
+                "SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
             )
             return [dict(row) for row in cursor.fetchall()]
         
@@ -194,10 +194,13 @@ class DatabaseManager:
             )
             conn.commit()
 
-    def get_library_documents(self) -> list[dict]:
-        """Fetches the registry for the Library Sidebar."""
+    def get_library_documents(self, limit: int = 20, offset: int = 0) -> list[dict]:
+        """Fetches a specific batch of the registry for the Library UI infinite scroll."""
         with self._get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM documents ORDER BY ingested_at DESC")
+            cursor = conn.execute(
+                "SELECT * FROM documents ORDER BY ingested_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
             return [dict(row) for row in cursor.fetchall()]
         
     def delete_document_metadata(self, filename: str):

@@ -17,6 +17,7 @@ The project strictly enforces a modular, domain-driven directory structure to pr
 Qube/
 ├── main.py                 # Minimal entry point. Initializes global objects and boots the app.
 ├── assets/                 # NEW: Static UI and Brand Assets (Immutable)
+│   ├── fonts /
 │   ├── icons/              # App icons, window logos, UI element SVGs.
 │   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
 │   └── styles/             # (Optional) Extracted .qss stylesheet files.
@@ -44,14 +45,15 @@ Qube/
 │   ├── chunker.py          # Semantic text splitting (1500 chars / 150 overlap).
 │   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
 ├── mcp/                    # Model Context Protocol Interfaces
-│   └── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
+│   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
+│   └── internet_tool.py    # TO DO!
 ├── models/                 # Local AI Weights (Organized by function)
 │   ├── stt/                # Faster-Whisper weights.
 │   ├── tts/                # Piper/Kokoro voices and configs.
 │   ├── embeddings/         # RAG embedding models (ONNX).
 │   └── wakeword/           # OpenWakeWord detection models.
 ├── data/                   # LanceDB vector storage directory.
-├── tools/            # NEW: (Includes export_model.py)
+├── tools/                  # NEW: (Includes export_model.py)
 ```
 
 ## 4. Development Rules & Anti-Patterns

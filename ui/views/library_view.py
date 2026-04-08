@@ -89,6 +89,12 @@ class LibraryView(QWidget):
         self.doc_list.setObjectName("LibraryDocList")
         self.doc_list.itemClicked.connect(self._on_document_selected)
         self.doc_list.itemSelectionChanged.connect(self._update_row_colors)
+        
+        # 🔑 NEW: Wire up the scrollbar for infinite scrolling
+        self.library_offset = 0
+        self.is_loading_library = False
+        self.doc_list.verticalScrollBar().valueChanged.connect(self._on_library_scroll)
+
         layout.addWidget(self.doc_list)
 
         return frame
@@ -177,15 +183,37 @@ class LibraryView(QWidget):
         """)
 
     def refresh_library_list(self):
-        """Pulls the registry from SQLite and populates the sidebar with custom widgets."""
+        """Clears the list, resets the offset, and pulls the first batch."""
         self.doc_list.clear()
+        self.library_offset = 0
+        self.is_loading_library = False
+
         count = self.db.get_document_count()
         display_count = "999+" if count > 999 else str(count)
         
         if hasattr(self, 'list_title'):
             self.list_title.setText(f"KNOWLEDGE BASE ({display_count})")
-        self.list_title.setText(f"KNOWLEDGE BASE ({display_count})")
+            
+        # Load the initial batch!
+        self._load_library_batch()
+
+    def _on_library_scroll(self, value):
+        """Triggered every time the user scrolls."""
+        bar = self.doc_list.verticalScrollBar()
+        # If the scrollbar hits the absolute maximum, load the next batch
+        if value == bar.maximum():
+            self._load_library_batch()
+
+    def _load_library_batch(self):
+        """Fetches the next chunk of documents and appends it to the list."""
+        if getattr(self, 'is_loading_library', False):
+            return 
+            
+        self.is_loading_library = True
+
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu, QApplication
+        from PyQt6.QtCore import Qt, QSize
+        import qtawesome as qta
         
         # Robust theme detection
         is_dark = True
@@ -195,9 +223,21 @@ class LibraryView(QWidget):
             is_dark = False
 
         t_color = "#cdd6f4" if is_dark else "#1e293b"
-        icon_color = "#6c7086" if is_dark else "#64748b" # Optional: A slightly dimmer color for the icon so it isn't so harsh
+        icon_color = "#6c7086" if is_dark else "#64748b" 
         
-        docs = self.db.get_library_documents()
+        # 🔑 THE FIX: Pass both limit and offset to the DB
+        try:
+            docs = self.db.get_library_documents(limit=20, offset=self.library_offset)
+        except TypeError:
+            # Fallback if DB isn't updated yet
+            docs = self.db.get_library_documents()
+            if self.library_offset > 0:
+                docs = [] 
+
+        if not docs:
+            self.is_loading_library = False
+            return
+
         for doc in docs:
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, doc)
@@ -221,13 +261,14 @@ class LibraryView(QWidget):
             btn.setObjectName("HistoryOptionsBtn")
             btn.setFixedSize(28, 28)
             btn.setIcon(qta.icon('fa5s.ellipsis-v', color=icon_color))
-            btn.setIconSize(QSize(16, 16)) # Ensure the icon size matches exactly
+            btn.setIconSize(QSize(16, 16)) 
             btn.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }")
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             
             # 3. The Menu
             menu = QMenu(btn)
-            self._apply_menu_theme(menu, is_dark)
+            if hasattr(self, '_apply_menu_theme'):
+                self._apply_menu_theme(menu, is_dark)
             
             rename_action = menu.addAction(qta.icon('fa5s.edit', color='#89b4fa'), "Rename Document")
             rename_action.triggered.connect(lambda _, fname=doc['filename']: self._trigger_rename_document(fname))
@@ -246,6 +287,10 @@ class LibraryView(QWidget):
             item.setSizeHint(QSize(0, 45))
             self.doc_list.addItem(item)
             self.doc_list.setItemWidget(item, row)
+
+        # 🔑 Increment the offset for the next scroll
+        self.library_offset += 20
+        self.is_loading_library = False
 
     def _update_row_colors(self):
         """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""
