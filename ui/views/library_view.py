@@ -40,6 +40,9 @@ class LibraryView(QWidget):
         self.preview_stage = self._build_preview_stage()
         layout.addWidget(self.preview_stage, stretch=1)
 
+        # Forces the button to load with the default Dark Mode purple on startup
+        self.refresh_button_themes(is_dark=True)
+
     def _build_list_pane(self) -> QFrame:
         frame = QFrame()
         frame.setFixedWidth(280)
@@ -397,3 +400,19 @@ class LibraryView(QWidget):
                 "Ingestion Complete", 
                 "Process finished, but 0 chunks were added. This usually means the file was already in the database, or it is a scanned PDF with no readable text."
             )
+    def refresh_button_themes(self, is_dark: bool):
+        """Dynamically updates the color of the Add Document button."""
+        import qtawesome as qta
+        
+        # Icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
+        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        
+        # Subtle hover background
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        
+        if hasattr(self, 'add_btn'):
+            self.add_btn.setIcon(qta.icon('fa5s.plus', color=icon_color))
+            self.add_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)

@@ -2,12 +2,83 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
     QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QDialog
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 import qtawesome as qta
 import logging
 
 logger = logging.getLogger("Qube.UI.Conversations")
 
+class ChatLabel(QLabel):
+    """A QLabel that remembers its unwrapped width to force native layout expansion."""
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.setWordWrap(True)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        self.setMinimumWidth(0) # CRITICAL: Allows Qt to shrink the label gracefully
+        
+        self._cached_text = ""
+        self._cached_ideal_width = 0
+
+    def sizeHint(self):
+        from PyQt6.QtGui import QTextDocument
+        from PyQt6.QtCore import QSize, Qt
+        
+        hint = super().sizeHint()
+        current_text = self.text()
+        
+        # Calculate the pure, unwrapped width of the text so the layout knows we WANT to expand
+        if current_text != self._cached_text:
+            doc = QTextDocument()
+            if self.textFormat() == Qt.TextFormat.MarkdownText:
+                doc.setMarkdown(current_text)
+            else:
+                doc.setPlainText(current_text)
+                
+            doc.setDefaultFont(self.font())
+            self._cached_ideal_width = int(doc.idealWidth()) + 15 # 15px buffer for safety
+            self._cached_text = current_text
+        
+        # Tell the layout to give us the unwrapped width (capped eventually by maximumWidth)
+        return QSize(max(self._cached_ideal_width, hint.width()), hint.height())
+
+    def heightForWidth(self, w: int) -> int:
+        return super().heightForWidth(w)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.updateGeometry()
+class MessageWrapper(QWidget):
+    """An autonomous layout row that takes full width and safely manages bubble expansion."""
+    def __init__(self, bubble: QWidget, is_user: bool, parent=None):
+        super().__init__(parent)
+        self.bubble = bubble
+        self.is_user = is_user  # 🔑 Save this state to use during resizing
+        
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        if self.is_user:
+            # User: Pushed to the right by the stretch
+            layout.addStretch(1)
+            layout.addWidget(bubble, 0)
+        else:
+            # 🔑 Agent: Give the bubble all the stretch so it fills the screen
+            layout.addWidget(bubble, 1)
+            # We removed the layout.addStretch(1) that was trapping it on the left!
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, self._update_width)
+
+    def _update_width(self):
+        # 🔑 User gets capped at 80% of the screen. Agent gets the full 100%.
+        ratio = 0.8 if self.is_user else 1.0
+        safe_max = max(int(self.width() * ratio), 100)
+        
+        self.bubble.setMaximumWidth(safe_max)
 class PrestigeDialog(QDialog):
     def __init__(self, parent, title, message, is_dark=True, is_input=False, default_text=""):
         super().__init__(parent)
@@ -156,13 +227,17 @@ class ConversationsView(QWidget):
         self.chat_stage = self._build_chat_stage()
         layout.addWidget(self.chat_stage, stretch=1) 
 
+        # --- ADD THIS LINE AT THE BOTTOM ---
+        # Forces the buttons to load with the default Dark Mode purple on startup
+        self.refresh_button_themes(is_dark=True)
+
     # --------------------------------------------------------- #
     #  PANEL BUILDERS                                           #
     # --------------------------------------------------------- #
 
     def _build_history_pane(self) -> QFrame:
         frame = QFrame()
-        frame.setFixedWidth(250)
+        frame.setFixedWidth(280)
         frame.setObjectName("HistorySidebar")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 20, 15, 20)
@@ -213,14 +288,18 @@ class ConversationsView(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.installEventFilter(self)
 
+        #Container widget
         self.transcript_container = QWidget()
         self.transcript_container.setObjectName("ChatTranscriptContainer")
+        
+        # 🔑 FIX 5: Ensure scroll area truly allows horizontal expansion
+        self.transcript_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.transcript_layout = QVBoxLayout(self.transcript_container)
-        self.transcript_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.transcript_layout.setContentsMargins(20, 20, 20, 20)
-        self.transcript_layout.setSpacing(20)
-
+        self.transcript_layout.setSpacing(25)
+        self.transcript_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_area.setWidget(self.transcript_container)
         layout.addWidget(self.scroll_area)
 
@@ -266,99 +345,83 @@ class ConversationsView(QWidget):
     # --------------------------------------------------------- #
 
     def log_user_message(self, text: str) -> None:
-        """Creates a standalone right-aligned bubble with guaranteed background rendering.
-
-        Root cause: Qt's global QSS cascade does not reliably reach widgets that are
-        created dynamically and inserted into a nested QScrollArea after boot. The OS
-        native theme engine intercepts the paint event before our #UserBubble rule can
-        apply. Fix: set the style inline via setStyleSheet(), which writes directly into
-        the widget's C++ memory and cannot be overridden by the cascade or the OS theme.
-        WA_StyledBackground is still required — it tells Qt that this QWidget (which is
-        normally fully transparent) *does* own a painted background.
-        """
         self._clear_placeholders()
 
-        # Row widget: transparent wrapper that right-aligns the bubble
-        row_widget = QWidget()
-        row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.addStretch()
+        bubble = QFrame()
+        # 🔑 FIX 2: Allow bubble to expand horizontally, minimum vertically
+        bubble.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        bubble.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        bubble.setStyleSheet("background-color: #89b4fa; border-radius: 18px;")
 
-        # Bubble container: inline style bypasses the broken global cascade
-        bubble_container = QWidget()
-        bubble_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        bubble_container.setStyleSheet(
-            "background-color: #89b4fa;"   # Catppuccin Blue
-            "border-radius: 18px;"
-        )
-        bubble_container.setMaximumWidth(int(self.scroll_area.width() * 0.75))
-
-        bubble_layout = QVBoxLayout(bubble_container)
+        bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setContentsMargins(16, 12, 16, 12)
 
-        bubble_text = QLabel(text)
-        bubble_text.setWordWrap(True)
-        bubble_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        # Colour lives here too — child QLabel inherits the bubble's inline scope,
-        # so the global "#UserBubble QLabel" rule is also unreachable.
-        bubble_text.setStyleSheet(
-            "background-color: transparent;"
-            "border: none;"
-            "font-size: 14px;"
-            "color: #11111b;"
-        )
+        lbl = ChatLabel(text)
+        lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lbl.setStyleSheet("background: transparent; border: none; font-size: 14px; color: #11111b;")
+        
+        bubble_layout.addWidget(lbl)
 
-        bubble_layout.addWidget(bubble_text)
-        row_layout.addWidget(bubble_container)
-        self.transcript_layout.addWidget(row_widget)
+        wrapper = MessageWrapper(bubble, is_user=True)
+        self.transcript_layout.addWidget(wrapper)
+        
+        # Initial width enforcement
+        wrapper._update_width()
 
         self._is_agent_typing = False
         self._scroll_to_bottom()
 
     def log_agent_token(self, token: str) -> None:
-        """Streams agent tokens natively using Qt's Markdown renderer."""
         self._clear_placeholders()
+
+        is_dark = True
+        if self.window() and hasattr(self.window(), '_is_dark_theme'):
+            is_dark = self.window()._is_dark_theme
+            
+        text_color = "#cdd6f4" if is_dark else "#1e293b"
+        header_color = "#cba6f7" if is_dark else "#8839ef" 
 
         if not getattr(self, '_is_agent_typing', False):
             header = QLabel("QUBE")
-            # Agent header has no background, so the global QSS colour rule is
-            # enough — but we inline it too for consistency and safety.
-            header.setStyleSheet(
-                "color: #cba6f7;"
-                "font-weight: bold;"
-                "font-size: 11px;"
-                "letter-spacing: 1px;"
-                "margin-top: 15px;"
-                "background-color: transparent;"
-            )
+            header.setStyleSheet(f"color: {header_color}; font-weight: bold; font-size: 11px; margin-top: 15px; background: transparent;")
             self.transcript_layout.addWidget(header)
 
-            self.current_agent_msg = QLabel()
-            self.current_agent_msg.setWordWrap(True)
+            self.agent_msg_container = QFrame()
+            # 🔑 FIX 2: Allow agent bubble to expand horizontally
+            self.agent_msg_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+            
+            container_layout = QVBoxLayout(self.agent_msg_container)
+            container_layout.setContentsMargins(0, 0, 0, 20)
+
+            self.current_agent_msg = ChatLabel()
             self.current_agent_msg.setTextFormat(Qt.TextFormat.MarkdownText)
             self.current_agent_msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
             self.current_agent_msg.setOpenExternalLinks(True)
-            self.current_agent_msg.setStyleSheet(
-                "color: #cdd6f4;"
-                "font-size: 14px;"
-                "line-height: 1.5;"
-                "background-color: transparent;"
-            )
+            
+            from PyQt6.QtGui import QPalette, QColor
+            palette = self.current_agent_msg.palette()
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(text_color))
+            palette.setColor(QPalette.ColorRole.Text, QColor(text_color))
+            self.current_agent_msg.setPalette(palette)
+            self.current_agent_msg.setStyleSheet("font-size: 14px; background: transparent; border: none;")
 
-            self.transcript_layout.addWidget(self.current_agent_msg)
+            container_layout.addWidget(self.current_agent_msg)
+
+            wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
+            self.transcript_layout.addWidget(wrapper)
+            
+            wrapper._update_width()
 
             self._agent_text_buffer = ""
             self._is_agent_typing = True
 
         self._agent_text_buffer += token
         self.current_agent_msg.setText(self._agent_text_buffer)
+        
+        # 🔑 MARKDOWN FIX: Force geometry update immediately after setting new Markdown text
+        self.current_agent_msg.updateGeometry()
+        
         self._scroll_to_bottom()
-
-    def _scroll_to_bottom(self):
-        """Forces the scroll area to the bottom, delaying slightly to let the layout math catch up."""
-        QTimer.singleShot(10, lambda: self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum()
-        ))
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -405,6 +468,13 @@ class ConversationsView(QWidget):
     def _refresh_history_list(self):
         """Pulls recent sessions from SQLite and populates the sidebar with custom widgets."""
         self.history_list.clear()
+
+        # --- THE FIX: SILENT GARBAGE COLLECTION ---
+        # Before we count or draw the sessions, wipe out any abandoned empty ones!
+        current_active = getattr(self, 'active_session_id', None)
+        if hasattr(self.db, 'cleanup_empty_sessions'):
+            self.db.cleanup_empty_sessions(current_active)
+
         count = self.db.get_session_count()
         display_count = "999+" if count > 999 else str(count)
         
@@ -423,7 +493,8 @@ class ConversationsView(QWidget):
         
         # Define high-contrast colors for the text and icons
         text_color = "#cdd6f4" if is_dark else "#1e293b"
-        icon_color = "#cdd6f4" if is_dark else "#1e293b"
+        # --- THE FIX: Use muted Catppuccin grays for the kebab icon ---
+        icon_color = "#6c7086" if is_dark else "#64748b"
         
         sessions = self.db.get_recent_sessions(limit=20)
         for session in sessions:
@@ -650,3 +721,58 @@ class ConversationsView(QWidget):
                 btn = widget.findChild(QPushButton, "HistoryOptionsBtn")
                 if btn and btn.menu():
                     self._apply_menu_theme(btn.menu(), is_dark)
+
+    def refresh_button_themes(self, is_dark: bool):
+        """Dynamically updates the colors of the New Chat and Send buttons."""
+        import qtawesome as qta
+        
+        # Icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
+        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        
+        # Subtle hover background: faint white wash for Dark, faint black wash for Light
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        
+        # 1. Update New Chat Button (+)
+        if hasattr(self, 'new_chat_btn'):
+            self.new_chat_btn.setIcon(qta.icon('fa5s.plus', color=icon_color))
+            self.new_chat_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+            
+        # 2. Update Send Button (Paper Plane)
+        if hasattr(self, 'send_btn'):
+            self.send_btn.setIcon(qta.icon('fa5s.paper-plane', color=icon_color))
+            self.send_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+    
+    def eventFilter(self, obj, event):
+        """Native resize handling without fighting Qt's geometry engine."""
+        from PyQt6.QtCore import QEvent, QTimer
+        
+        if obj == self.scroll_area and event.type() == QEvent.Type.Resize:
+            if hasattr(self, 'transcript_layout'):
+                max_w = int(self.scroll_area.viewport().width() * 0.8)
+                
+                # Because we removed wrappers, the items ARE the bubbles!
+                for i in range(self.transcript_layout.count()):
+                    widget = self.transcript_layout.itemAt(i).widget()
+                    if widget and widget.objectName() in ["UserBubble", "AgentBubble"]:
+                        widget.setMaximumWidth(max_w)
+            
+            # Defer scroll to bottom so Qt's native layout math finishes
+            QTimer.singleShot(0, self._scroll_to_bottom)
+            
+        return super().eventFilter(obj, event)
+
+    def _scroll_to_bottom(self):
+        """Native deferred scrolling ensuring layout pass completion."""
+        def _execute_scroll():
+            bar = self.scroll_area.verticalScrollBar()
+            bar.setValue(bar.maximum())
+            
+        from PyQt6.QtCore import QTimer
+        # Wait for geometry calculation, THEN wait for layout application
+        QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))

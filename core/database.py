@@ -85,6 +85,28 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
+    def cleanup_empty_sessions(self, active_session_id: str = None):
+        """Deletes any session that has 0 messages, protecting the currently active one."""
+        try:
+            with self._get_connection() as conn:
+                if active_session_id:
+                    # Delete empty sessions, but spare the one the user is currently looking at
+                    conn.execute("""
+                        DELETE FROM sessions 
+                        WHERE id NOT IN (SELECT DISTINCT session_id FROM messages)
+                        AND id != ?
+                    """, (active_session_id,))
+                else:
+                    # Nuclear option: delete all empty sessions
+                    conn.execute("""
+                        DELETE FROM sessions 
+                        WHERE id NOT IN (SELECT DISTINCT session_id FROM messages)
+                    """)
+                conn.commit()
+        except Exception as e:
+            import logging
+            logging.getLogger("Qube.Database").error(f"Failed to cleanup empty sessions: {e}")
+
     def get_session_count(self) -> int:
         """Returns the total number of conversation sessions."""
         try:

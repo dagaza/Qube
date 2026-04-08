@@ -544,9 +544,11 @@ class MainWindow(QMainWindow):
             self.view_conversations.refresh_menu_themes(self._is_dark_theme)
         if hasattr(self, 'view_conversations'):
             self.view_conversations._refresh_history_list() # Force icon re-color
+            self.view_conversations.refresh_button_themes(self._is_dark_theme)
         # 4. Update the Library Kebab Menus and Icons
         if hasattr(self, 'view_library'):
             self.view_library.refresh_library_list()
+            self.view_library.refresh_button_themes(self._is_dark_theme)
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
