@@ -136,6 +136,8 @@ class DocumentStore:
 
     def reconstruct_document(self, source: str) -> str:
         """Grabs all chunks for a file and stitches them back together for reading."""
+        import re # 🔑 Imported for text cleaning
+        
         try:
             # We fetch up to 10,000 chunks for the specific file
             results = self.table.search([0.0] * VECTOR_DIM).limit(10000).where(f"source = '{source}'").to_list()
@@ -145,9 +147,19 @@ class DocumentStore:
             # Sort by chunk_id so the text reads in the correct original order
             results.sort(key=lambda x: x["chunk_id"])
             
-            # Stitch it back together
+            # 1. Stitch it back together
             reconstructed_text = "\n\n".join([r["text"] for r in results])
+            
+            # 2. 🔑 THE FIX: PDF Hard Line Break Cleaner
+            # This regex finds single newlines that are NOT surrounded by other newlines 
+            # and replaces them with a space, while leaving \n\n (paragraphs) intact.
+            reconstructed_text = re.sub(r'(?<!\n)\n(?!\n)', ' ', reconstructed_text)
+            
+            # 3. Clean up any double spaces created by the merge
+            reconstructed_text = re.sub(r' +', ' ', reconstructed_text)
+            
             return reconstructed_text
+            
         except Exception as e:
             logger.error(f"Failed to reconstruct {source}: {e}")
             return f"Error loading document: {str(e)}"
