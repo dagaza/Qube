@@ -96,6 +96,9 @@ class PrestigeDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10) # Outer shadow/glow area
         
+        # 🔑 FIX 1: Force the dialog to snap exactly to the height of its children
+        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
+
         self.container = QFrame()
         self.container.setObjectName("DialogContainer")
         self.container.setStyleSheet(f"""
@@ -119,6 +122,10 @@ class PrestigeDialog(QDialog):
         # Message (Increased font size)
         m_lbl = QLabel(message)
         m_lbl.setWordWrap(True)
+        # 🔑 FIX 2: Allow the label to dictate its minimum required height to the layout
+        from PyQt6.QtWidgets import QSizePolicy
+        m_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        m_lbl.setMinimumWidth(0) # Standard safety check for word-wrapped labels
         m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
         
         c_layout.addWidget(t_lbl)
