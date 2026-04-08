@@ -163,7 +163,7 @@ class DatabaseManager:
             return [dict(row) for row in cursor.fetchall()]
         
     def delete_document_metadata(self, filename: str):
-        """Removes a document from the UI registry."""
+        """Removes a document from Library."""
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
             conn.commit()
