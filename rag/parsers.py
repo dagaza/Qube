@@ -6,11 +6,13 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 import markdown
 import fitz  # This is PyMuPDF!
+import re    # 🔑 Added regex for text cleaning
 
 def parse_pdf(path: Path) -> list[str]:
     """
     Upgraded PDF parser using PyMuPDF. 
     Significantly better at handling complex layouts, tables, and weird fonts.
+    Now includes source-level NLP cleaning to prevent hard-line breaks AND Tofu characters!
     """
     texts = []
     try:
@@ -20,6 +22,19 @@ def parse_pdf(path: Path) -> list[str]:
                 # Extract text aggressively
                 text = page.get_text().strip()
                 if text:
+                    # 1. Clean the hard line breaks (Our previous fix)
+                    text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+                    
+                    # --- THE FIX: TOFU SCRUBBER ---
+                    # 2. Strip Unicode Replacement Character (\ufffd) and Private Use Area (\ue000-\uf8ff)
+                    text = re.sub(r'[\ufffd\ue000-\uf8ff]', '', text)
+                    
+                    # 3. Strip rogue unprintable ASCII control characters (keeps newlines/tabs)
+                    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+                    
+                    # 4. Clean up any double spaces created by the merges/deletions
+                    text = re.sub(r' +', ' ', text)
+                    
                     texts.append(text)
     except Exception as e:
         import logging
