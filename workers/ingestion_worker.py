@@ -1,7 +1,7 @@
+# workers/ingestion_worker.py
 from PyQt6.QtCore import QThread, pyqtSignal
 from pathlib import Path
 from rag.parsers import parse_file
-from rag.chunker import chunk_text
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 import logging
@@ -14,13 +14,53 @@ class IngestionWorker(QThread):
     ingestion_complete = pyqtSignal(int)    
     error_occurred = pyqtSignal(str)        
 
-    # FIX 1: Inject the DatabaseManager
     def __init__(self, file_paths: list[Path], embedder: EmbeddingModel, store: DocumentStore, db_manager):
         super().__init__()
         self.file_paths = file_paths
         self.embedder = embedder
         self.store = store
         self.db = db_manager
+
+    # 🔑 THE FIX: The new Semantic Chunker to protect llama.cpp
+    def semantic_chunk_text(self, text: str, max_chars: int = 1500, overlap: int = 200) -> list[str]:
+        """
+        Slices massive documents into bite-sized, overlapping paragraphs 
+        that the C++ engine can process at lightning speed safely.
+        """
+        chunks = []
+        start = 0
+        text_length = len(text)
+
+        while start < text_length:
+            end = start + max_chars
+            
+            if end >= text_length:
+                chunks.append(text[start:].strip())
+                break
+            
+            # Prefer paragraph breaks, then line breaks, then sentence breaks
+            last_double_newline = text.rfind('\n\n', start, end)
+            last_newline = text.rfind('\n', start, end)
+            last_period = text.rfind('. ', start, end)
+            
+            if last_double_newline > start + (max_chars // 2):
+                end = last_double_newline + 2
+            elif last_newline > start + (max_chars // 2):
+                end = last_newline + 1
+            elif last_period > start + (max_chars // 2):
+                end = last_period + 2
+            else:
+                last_space = text.rfind(' ', start, end)
+                if last_space > start:
+                    end = last_space + 1
+                
+            chunk_text = text[start:end].strip()
+            if chunk_text:
+                chunks.append(chunk_text)
+                
+            start = end - overlap
+            
+        return chunks
 
     def run(self):
         total_chunks = 0
@@ -45,8 +85,10 @@ class IngestionWorker(QThread):
 
                 raw_sections = parse_file(path)
                 chunks = []
+                
+                # 🔑 THE FIX: Route the raw text through our safe chunker
                 for section in raw_sections:
-                    chunks.extend(chunk_text(section))
+                    chunks.extend(self.semantic_chunk_text(section))
 
                 if not chunks:
                     self.error_occurred.emit(f"No readable text found in {source}.")
@@ -77,7 +119,7 @@ class IngestionWorker(QThread):
                 # Write vectors to LanceDB
                 self.store.add_chunks(records)
                 
-                # FIX 2: Write metadata to SQLite for the UI Library Tab
+                # Write metadata to SQLite for the UI Library Tab
                 self.db.add_document_metadata(source, file_size_kb, len(chunks))
                 
                 total_chunks += len(records)

@@ -1,16 +1,18 @@
-# rag/store.py
+# --- rag/store.py ---
 import lancedb
 import pyarrow as pa
 import numpy as np
 from pathlib import Path
-from datetime import timedelta
 import logging
+import os
 
 logger = logging.getLogger("Qube.RAG.Store")
 
-DB_PATH = Path("data/lancedb")
+# 🔑 Use an absolute path to stop the "Relative Path" guessing game
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "data" / "lancedb"
 TABLE_NAME = "documents"
-VECTOR_DIM = 384  # all-MiniLM-L6-v2 output dimension
+VECTOR_DIM = 768 
 
 SCHEMA = pa.schema([
     pa.field("vector", pa.list_(pa.float32(), VECTOR_DIM)),
@@ -21,12 +23,29 @@ SCHEMA = pa.schema([
 
 class DocumentStore:
     def __init__(self):
+        # 1. Print the exact path for debugging
+        print(f"\n🔍 VECTOR STORE DIAGNOSTIC")
+        print(f"📍 Database Absolute Path: {DB_PATH}")
+        
         DB_PATH.mkdir(parents=True, exist_ok=True)
         self.db = lancedb.connect(str(DB_PATH))
+        
         if TABLE_NAME in self.db.table_names():
             self.table = self.db.open_table(TABLE_NAME)
+            
+            # 2. Inspect the existing schema
+            existing_dim = self.table.schema.field("vector").type.list_size
+            print(f"📏 Table '{TABLE_NAME}' found. Dimension: {existing_dim}")
+            
+            # 3. SELF-HEAL: If it's the wrong dimension, nuke it!
+            if existing_dim != VECTOR_DIM:
+                print(f"⚠️ SCHEMA MISMATCH! Found {existing_dim}, need {VECTOR_DIM}. Wiping table...")
+                self.db.drop_table(TABLE_NAME)
+                self.table = self.db.create_table(TABLE_NAME, schema=SCHEMA)
+                print("✨ New 768-dimension table created.")
         else:
             self.table = self.db.create_table(TABLE_NAME, schema=SCHEMA)
+            print(f"✨ Created fresh '{TABLE_NAME}' table with {VECTOR_DIM} dimensions.")
 
     def get_all_indexed_sources(self) -> list[str]:
         """Queries the LanceDB table for all unique document filenames."""

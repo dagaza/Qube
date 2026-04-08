@@ -16,7 +16,8 @@ class LLMWorker(QThread):
     token_streamed = pyqtSignal(str)   
     status_update = pyqtSignal(str)
     ttft_latency = pyqtSignal(float) 
-    context_retrieved = pyqtSignal(bool) 
+    context_retrieved = pyqtSignal(bool)
+    response_finished = pyqtSignal(str, str) 
 
     def __init__(self, embedder, store, db_manager):
         super().__init__()
@@ -61,9 +62,14 @@ class LLMWorker(QThread):
         self.status_update.emit("Model Context Updated")
 
     def generate_response(self, text: str, session_id: str):
+        """Sets the parameters and starts the thread work."""
+        # Prestige Tip: Check if already running to prevent double-starts
+        if self.isRunning():
+            return
+
         self.prompt = text
         self.session_id = session_id
-        self.start()
+        self.start() # This automatically triggers the run() method below
 
     def clean_text_for_tts(self, text):
         text = re.sub(r'[*_]{1,3}', '', text)
@@ -246,6 +252,11 @@ class LLMWorker(QThread):
 
         # Save final text to SQLite
         if self.session_id and final_assistant_response.strip():
+            # 1. Save to DB first so history is ready for the TitleWorker
             self.db.add_message(self.session_id, "assistant", final_assistant_response.strip())
+            
+            # 🔑 2. THE PRESTIGE EMIT: Tell the app we are done talking
+            # This triggers the TitleWorker in the background
+            self.response_finished.emit(self.session_id, final_assistant_response.strip())
             
         self.status_update.emit("Idle")

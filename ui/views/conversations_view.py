@@ -232,6 +232,10 @@ class ConversationsView(QWidget):
         layout.addWidget(self.history_pane)
 
         self.chat_stage = self._build_chat_stage()
+
+        # 🔑 THE FIX: Lock the horizontal boundaries of the chat stage
+        self.chat_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
         layout.addWidget(self.chat_stage, stretch=1) 
 
         # --- ADD THIS LINE AT THE BOTTOM ---

@@ -85,7 +85,8 @@ class Qube:
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
 
         # 3. Conversations View Routing (Transcript)
-        self.llm_worker.token_streamed.connect(w.view_conversations.log_agent_token)
+        # 🔑 UPDATED NAME HERE
+        self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
         
         # 4. Background Data Pipeline (Audio -> STT -> LLM -> TTS)
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
@@ -93,7 +94,8 @@ class Qube:
         self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
 
         # 5. Library View Routing
-        w.view_library.ingest_requested.connect(self._start_ingestion)
+        # 🔑 UPDATED NAME HERE
+        w.library_view.ingest_requested.connect(self._start_ingestion)
 
         # 6. Telemetry View Routing
         if hasattr(self.stt_worker, 'stt_latency'):
@@ -108,14 +110,15 @@ class Qube:
     def _handle_voice_prompt(self, text: str):
         """Safely bridges STT voice input to the LLM and the UI."""
         # 1. Grab the session ID from the UI, or create a fallback
-        session_id = getattr(self.window.view_conversations, 'active_session_id', None)
+        # 🔑 UPDATED NAMES HERE
+        session_id = getattr(self.window.conversations_view, 'active_session_id', None)
         if not session_id:
             session_id = self.db_manager.create_session("Voice Chat")
-            self.window.view_conversations.active_session_id = session_id
-            self.window.view_conversations._refresh_history_list()
+            self.window.conversations_view.active_session_id = session_id
+            self.window.conversations_view._refresh_history_list()
 
         # 2. Show what you just said in the UI (so you know the STT heard you correctly!)
-        self.window.view_conversations.log_user_message(text)
+        self.window.conversations_view.log_user_message(text)
 
         # 3. Send it to the LLM
         self.llm_worker.generate_response(text, session_id)
@@ -157,12 +160,13 @@ class Qube:
         )
         
         # Wire the worker's progress signals back to the Library UI
-        self.ingestion_worker.progress_update.connect(self.window.view_library.update_ingestion_progress)
+        # 🔑 UPDATED NAMES HERE
+        self.ingestion_worker.progress_update.connect(self.window.library_view.update_ingestion_progress)
         self.ingestion_worker.file_done.connect(self.window.update_status)
-        self.ingestion_worker.ingestion_complete.connect(self.window.view_library.complete_ingestion)
+        self.ingestion_worker.ingestion_complete.connect(self.window.library_view.complete_ingestion)
         
         # Route backend errors directly to the UI popup
-        self.ingestion_worker.error_occurred.connect(self.window.view_library.show_error)
+        self.ingestion_worker.error_occurred.connect(self.window.library_view.show_error)
         
         # Keep the terminal log as a backup
         self.ingestion_worker.error_occurred.connect(lambda err: logger.error(f"Ingestion Error: {err}"))

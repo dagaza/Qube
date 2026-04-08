@@ -38,6 +38,10 @@ class LibraryView(QWidget):
 
         # --- COLUMN 2: Document Preview Stage ---
         self.preview_stage = self._build_preview_stage()
+
+        # 🔑 THE FIX: Force the layout to ignore the internal text's size demands
+        self.preview_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
         layout.addWidget(self.preview_stage, stretch=1)
 
         # Forces the button to load with the default Dark Mode purple on startup

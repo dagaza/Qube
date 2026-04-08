@@ -26,6 +26,8 @@ data/**/*
 *.weights
 *.db
 *.sqlite3
+*.pt
+*.gguf
 
 # --- Configuration & Logs ---
 *.log

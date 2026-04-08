@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800) 
 
         self.workers = workers
+        self.db = workers.get("db") # Ensure your DB manager is in the workers dict
 
         # 1. Frameless Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
@@ -89,6 +90,11 @@ class MainWindow(QMainWindow):
         self._tts_worker   = workers.get("tts")
         self._llm_worker   = workers.get("llm")
         self._gpu_monitor  = gpu_monitor
+        
+        # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
+        # We import it here or at the top of the file
+        from workers.title_worker import TitleWorker
+        self._title_worker = TitleWorker(self.db)
 
         # Global State
         self._is_dark_theme = True
@@ -96,6 +102,36 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_tray()
         self._start_timers()
+
+        # 🔑 4. Wire the AI Titling Logic
+        # We wait until the UI is setup so we can access conversations_view
+        self._setup_titling_connections()
+
+    def _setup_titling_connections(self):
+        """Wires the background AI to the Chat UI."""
+        
+        # 1. When the main LLM finishes a message, check if we need a title
+        if self._llm_worker:
+            self._llm_worker.response_finished.connect(self._check_for_titling)
+
+        # 2. When the TitleWorker finishes its job, tell the sidebar to refresh
+        # This keeps the UI responsive by handling the ~300ms inference in the background
+        if hasattr(self, '_title_worker'):
+            self._title_worker.title_generated.connect(
+                lambda s_id, title: self.conversations_view._refresh_history_list()
+            )
+
+    def _check_for_titling(self, session_id, full_response):
+        """Internal logic to only title 'New Conversations'."""
+        # Check history length: 1 User + 1 Assistant = 2 total messages
+        history = self.db.get_session_history(session_id)
+        
+        if len(history) == 2:
+            # Get the first message (the user's prompt) to use for the title
+            user_prompt = history[0]['content']
+            
+            # Fire and forget: TitleWorker handles the rest in the background
+            self._title_worker.run_titling(user_prompt, session_id)
 
     # ------------------------------------------------------------------ #
     #  UI CONSTRUCTION                                                   #
@@ -126,25 +162,25 @@ class MainWindow(QMainWindow):
         self.main_stage = QStackedWidget()
         self.main_stage.setStyleSheet("background-color: transparent;")
         
-        # --- NEW: Injecting the actual Conversations View ---
-        self.view_conversations = ConversationsView(self.workers, self.workers.get("db"))
-
-        self.view_library = LibraryView(self.workers, self.workers.get("db"))
-        self.main_stage.addWidget(self.view_library) # Make sure this matches the index (1) you set in `_route_view`
-
-        # Pass the workers and the gpu_monitor to the Telemetry View
-        self.view_telemetry = TelemetryView(self.workers, self._gpu_monitor)
+        # 🔑 THE FIX: Renaming to match our Titling and Hardware logic
+        self.conversations_view = ConversationsView(self.workers, self.workers.get("db"))
+        self.library_view = LibraryView(self.workers, self.workers.get("db"))
+        self.telemetry_view = TelemetryView(self.workers, self._gpu_monitor)
+        self.settings_view = SettingsView(self.workers, self.workers.get("db"))
         
+        # 🔑 THE FIX: Prevent UI Stretching (Policy Ignored)
+        from PyQt6.QtWidgets import QSizePolicy
+        self.main_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
-        self.view_settings = SettingsView(self.workers, self.workers.get("db"))
-        
-        self.main_stage.addWidget(self.view_conversations) # Index 0
-        self.main_stage.addWidget(self.view_library)       # Index 1
-        self.main_stage.addWidget(self.view_telemetry)     # Index 2
-        self.main_stage.addWidget(self.view_settings)      # Index 3
+        # Add them to the Stack in the correct order
+        self.main_stage.addWidget(self.conversations_view) # Index 0
+        self.main_stage.addWidget(self.library_view)       # Index 1
+        self.main_stage.addWidget(self.telemetry_view)     # Index 2
+        self.main_stage.addWidget(self.settings_view)      # Index 3
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
-        # --- NEW: GLOBAL RIGHT TOOLBAR ---
+        
+        # GLOBAL RIGHT TOOLBAR
         self.global_tools = self._build_tools_pane()
         workspace_layout.addWidget(self.global_tools)
 
@@ -154,18 +190,18 @@ class MainWindow(QMainWindow):
         self.grip = QSizeGrip(self.main_container) 
         self.grip.setFixedSize(16, 16)
 
-        # --- 🔑 THE SYNC WIRING ---
+        # --- THE SYNC WIRING (Updated for new names) ---
         
         # 1. Handle Visibility Toggle
-        self.view_settings.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
+        self.settings_view.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
 
         # 2. Sync Settings -> Toolbar
-        self.view_settings.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
-        self.view_settings.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
+        self.settings_view.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
+        self.settings_view.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
 
         # 3. Sync Toolbar -> Settings
-        self.toolbar_timeout_spin.valueChanged.connect(self.view_settings.timeout_spinner.setValue)
-        self.toolbar_threshold_spin.valueChanged.connect(self.view_settings.threshold_spinner.setValue)
+        self.toolbar_timeout_spin.valueChanged.connect(self.settings_view.timeout_spinner.setValue)
+        self.toolbar_threshold_spin.valueChanged.connect(self.settings_view.threshold_spinner.setValue)
 
         # 4. Initialize Toolbar values from the worker
         if self._audio_worker:
@@ -175,7 +211,6 @@ class MainWindow(QMainWindow):
             # Wire Toolbar directly to worker methods
             self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
             self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
-
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
         super().resizeEvent(event)
@@ -213,7 +248,7 @@ class MainWindow(QMainWindow):
         else:
             self.app_logo.setText("🧊") 
             self.app_logo.setStyleSheet("font-size: 18px;")
-            
+
         # Mic Icon & VU Meter
         mic_icon = QLabel()
         mic_icon.setPixmap(qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14)))
@@ -372,11 +407,36 @@ class MainWindow(QMainWindow):
         self.nav_settings = create_nav_btn('fa5s.cog', 3, size=20)
         layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        # Mini Telemetry Block
-        self.mini_telemetry = QLabel("CPU: --\nRAM: --\nGPU: --")
-        self.mini_telemetry.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.mini_telemetry.setProperty("class", "MiniTelemetryText")
-        layout.addWidget(self.mini_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # --- 🔑 THE PRESTIGE MINI-TELEMETRY BLOCK ---
+        tele_container = QWidget()
+        tele_layout = QVBoxLayout(tele_container)
+        tele_layout.setContentsMargins(0, 0, 0, 0)
+        tele_layout.setSpacing(4) # Tight, elegant spacing
+
+        # Create individual labels for specific coloring
+        self.side_cpu_lbl = QLabel("CPU --")
+        self.side_ram_lbl = QLabel("RAM --")
+        self.side_gpu_lbl = QLabel("GPU --")
+
+        # Style mapping: Hex colors match TelemetryView exactly
+        metrics = [
+            (self.side_cpu_lbl, "#10b981"), # Emerald
+            (self.side_ram_lbl, "#3b82f6"), # Blue
+            (self.side_gpu_lbl, "#8b5cf6")  # Purple
+        ]
+
+        for lbl, color in metrics:
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            # 🔑 Stylized: Bold, Inter font (global), and specific legend colors
+            lbl.setStyleSheet(f"""
+                color: {color}; 
+                font-weight: bold; 
+                font-size: 10px; 
+                letter-spacing: 0.5px;
+            """)
+            tele_layout.addWidget(lbl)
+
+        layout.addWidget(tele_container, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.nav_buttons = [self.nav_chat, self.nav_library, self.nav_telemetry, self.nav_settings]
         
@@ -580,6 +640,7 @@ class MainWindow(QMainWindow):
         if self._tts_worker:
             self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
         if self._llm_worker:
+            self._llm_worker.response_finished.connect(self._check_for_titling)
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
 
@@ -858,10 +919,27 @@ class MainWindow(QMainWindow):
         self.telemetry_timer.start(1000) # Once per second is fine for mini text
 
     def _update_mini_telemetry(self):
+        """Refreshes the sidebar metrics and syncs the main dashboard."""
+        # 1. Gather fresh stats
         ram = int(psutil.virtual_memory().percent)
         cpu = int(psutil.cpu_percent())
+        # Note: Using self._gpu_monitor to match your existing logic
         gpu = int(self._gpu_monitor.get_load()) if self._gpu_monitor else 0
-        self.mini_telemetry.setText(f"CPU: {cpu}%\nRAM: {ram}%\nGPU: {gpu}%")
+
+        # 2. Update the three individual sidebar labels
+        # We use hasattr as a safety check in case this fires during a theme change/rebuild
+        if hasattr(self, 'side_cpu_lbl'):
+            self.side_cpu_lbl.setText(f"CPU {cpu}%")
+            self.side_ram_lbl.setText(f"RAM {ram}%")
+            self.side_gpu_lbl.setText(f"GPU {gpu}%")
+            
+        # 3. Keep the Advanced Telemetry screen in sync
+        # This prevents the sidebar and the main graph from ever showing different numbers
+        if hasattr(self, 'telemetry_view'):
+            # These match the object names in your telemetry_view.py
+            self.telemetry_view.live_cpu_lbl.setText(f"CPU: {cpu}%")
+            self.telemetry_view.live_ram_lbl.setText(f"RAM: {ram}%")
+            self.telemetry_view.live_gpu_lbl.setText(f"GPU: {gpu}%")
 
     # ------------------------------------------------------------------ #
     #  FRAMELESS DRAG & DROP EVENT ROUTING                               #
