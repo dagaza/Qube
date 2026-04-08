@@ -162,7 +162,7 @@ class SettingsView(QWidget):
                 background-color: {check_bg};
             }}
             QCheckBox::indicator:checked {{
-                background-color: #cba6f7; /* Qube Purple */
+                background-color: #8b5cf6; /* Qube Purple */
                 image: url(assets/icons/check_mark.png); /* Add an icon if you have one, or just a fill */
             }}
         """
@@ -319,7 +319,7 @@ class SettingsView(QWidget):
                 self._apply_menu_theme(m, is_dark)
 
         # 2. Update the Section Header Icons to Qube Purple (#cba6f7)
-        icon_color = "#cba6f7" if is_dark else "#4c4f69" # Purple in Dark, Muted Slate in Light
+        icon_color = "#8b5cf6" if is_dark else "#4c4f69" # Purple in Dark, Muted Slate in Light
         
         if hasattr(self, 'audio_icon_label'):
             name = self.audio_icon_label.property("icon_name")
@@ -353,7 +353,7 @@ class SettingsView(QWidget):
         
         # Initial render logic
         is_dark = getattr(self.window(), '_is_dark_theme', True)
-        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        icon_color = "#8b5cf6" if is_dark else "#1e293b"
         icon_label.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(QSize(18, 18)))
         
         icon_label.setProperty("class", "SectionHeaderIcon")

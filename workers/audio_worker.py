@@ -21,6 +21,9 @@ class AudioListenerWorker(QThread):
     # --- NEW: Signal to populate the UI dropdown ---
     wakewords_ready = pyqtSignal(list)
 
+    # 🔑 NEW: Signal to broadcast live audio levels (0.0 to 1.0)
+    volume_update = pyqtSignal(float)
+
     def __init__(self):
         super().__init__()
         self.mutex = QMutex()
@@ -140,16 +143,21 @@ class AudioListenerWorker(QThread):
             
             try:
                 peak = np.max(np.abs(audio_data))
-                current_vol_pct = min(100, int((peak / 32767.0) * 100))
+                
+                # 🔑 THE FIX: Calculate and emit during active recording
+                normalized_level = min(1.0, peak / 32767.0)
+                self.volume_update.emit(float(normalized_level))
+                
+                current_vol_pct = int(normalized_level * 100)
             except ValueError:
                 current_vol_pct = 0
+                self.volume_update.emit(0.0)
                 
             self.current_volume = current_vol_pct
 
             if current_vol_pct >= self.speech_threshold:
                 silence_start_time = time.time()
                 has_spoken = True
-
             elapsed_silence = time.time() - silence_start_time
             
             if not has_spoken and elapsed_silence > INITIAL_TIMEOUT:
@@ -313,15 +321,22 @@ class AudioListenerWorker(QThread):
                 
             try:
                 peak = np.max(np.abs(audio_data))
-                self.current_volume = min(100, int((peak / 32767.0) * 100))
                 
-                # Volume Logger (Prints every 5 seconds if audio is actively flowing)
+                # 🔑 THE FIX: Calculate the 0.0 to 1.0 float and emit it
+                normalized_level = min(1.0, peak / 32767.0)
+                self.volume_update.emit(float(normalized_level))
+                
+                # Keep your existing integer logic for the logger
+                self.current_volume = int(normalized_level * 100)
+                
+                # Volume Logger
                 if self.current_volume > 0 and (time.time() - getattr(self, '_last_log_time', 0) > 5.0):
                     logger.debug(f"Audio Buffer Active. Peak Volume: {self.current_volume}%")
                     self._last_log_time = time.time()
                     
             except ValueError:
                 self.current_volume = 0
+                self.volume_update.emit(0.0)
             
             # --- 5. Hardened Inference Engine ---
             try:

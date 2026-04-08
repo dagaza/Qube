@@ -434,7 +434,7 @@ class LibraryView(QWidget):
         import qtawesome as qta
         
         # Icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
-        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        icon_color = "#8b5cf6" if is_dark else "#1e293b"
         
         # Subtle hover background
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"

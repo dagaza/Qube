@@ -3,7 +3,7 @@ import os
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontDatabase, QIcon
 
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
 from workers.ingestion_worker import IngestionWorker 
@@ -179,19 +179,47 @@ class Qube:
 
 
 if __name__ == "__main__":
+    # Optional: The Windows Taskbar App ID fix we discussed
+    if sys.platform == 'win32':
+        myappid = 'dagaza.qube.app.1.0'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     # 1. PyQt6 high DPI handling
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("assets/qube_logo_256.png"))
+    # 2. 🔑 THE PRESTIGE FONT LOADER
+    font_files = [
+        "assets/fonts/Inter-Regular.ttf",
+        "assets/fonts/Inter-Italic.ttf",
+        "assets/fonts/Inter-Medium.ttf",
+        "assets/fonts/Inter-MediumItalic.ttf",
+        "assets/fonts/Inter-SemiBold.ttf",
+        "assets/fonts/Inter-SemiBoldItalic.ttf",
+        "assets/fonts/Inter-Bold.ttf",
+        "assets/fonts/Inter-BoldItalic.ttf"
+    ]
     
-    # 2. Force a clean, modern font globally
-    app_font = QFont("Segoe UI", 10) 
-    app_font.setStyleHint(QFont.StyleHint.SansSerif)
-    app.setFont(app_font)
+    font_family = None
+    for font_file in font_files:
+        font_id = QFontDatabase.addApplicationFont(font_file)
+        if font_id != -1 and font_family is None:
+            font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
 
-    # 4. NEW: Load the Global Structural Stylesheet
+    # Apply the Inter font globally if successfully loaded
+    if font_family:
+        app.setFont(QFont(font_family, 10))
+    else:
+        # 🔑 THE FIX: Fallback to Segoe UI ONLY if Inter fails to load
+        logger.warning("Custom Inter font failed to load. Falling back to Segoe UI.")
+        app_font = QFont("Segoe UI", 10) 
+        app_font.setStyleHint(QFont.StyleHint.SansSerif)
+        app.setFont(app_font)
+
+    # 3. Load the Global Structural Stylesheet
     # This interprets the ObjectNames and Classes we just added to the views.
     style_path = os.path.join("assets", "styles", "base.qss")
     if os.path.exists(style_path):
@@ -203,7 +231,7 @@ if __name__ == "__main__":
     else:
         logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
 
-    # 5. Boot the Qube Assistant
+    # 4. Boot the Qube Assistant
     qube = Qube()
     qube.show()
     sys.exit(app.exec())

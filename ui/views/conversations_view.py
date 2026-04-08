@@ -386,7 +386,7 @@ class ConversationsView(QWidget):
             is_dark = self.window()._is_dark_theme
             
         text_color = "#cdd6f4" if is_dark else "#1e293b"
-        header_color = "#cba6f7" if is_dark else "#8839ef" 
+        header_color = "#8b5cf6" if is_dark else "#8839ef" 
 
         if not getattr(self, '_is_agent_typing', False):
             header = QLabel("QUBE")
@@ -734,7 +734,7 @@ class ConversationsView(QWidget):
         import qtawesome as qta
         
         # Icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
-        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        icon_color = "#8b5cf6" if is_dark else "#1e293b"
         
         # Subtle hover background: faint white wash for Dark, faint black wash for Light
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"

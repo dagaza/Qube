@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import (
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation
-from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient
+from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
+from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon
 import qtawesome as qta
 from .views.conversations_view import ConversationsView
 from .views.settings_view import SettingsView
@@ -16,6 +16,43 @@ from ui.components.toggle import PrestigeToggle
 import logging
 
 logger = logging.getLogger("Qube.UI")
+
+class VUMeter(QWidget):
+    """A sleek, custom-painted VU meter with a Green-Yellow-Red gradient."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(100, 6) # Thin, modern horizontal bar
+        self._level = 0.0 # Range: 0.0 to 1.0
+
+    def set_level(self, level: float):
+        """Updates the visual level and triggers a repaint."""
+        # Clamp the value between 0.0 and 1.0 for safety
+        self._level = max(0.0, min(1.0, float(level)))
+        self.update() 
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # 1. Draw the dark background track
+        painter.setBrush(QColor("#313244"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(self.rect(), 3, 3)
+
+        if self._level > 0:
+            # 2. Calculate how far the bar should fill
+            active_width = int(self.width() * self._level)
+            active_rect = QRect(0, 0, active_width, self.height())
+
+            # 3. Create the Green -> Yellow -> Red gradient
+            gradient = QLinearGradient(0, 0, self.width(), 0)
+            gradient.setColorAt(0.0, QColor("#a6e3a1")) # Green (Normal)
+            gradient.setColorAt(0.7, QColor("#f9e2af")) # Yellow (Loud)
+            gradient.setColorAt(1.0, QColor("#f38ba8")) # Red (Clipping)
+
+            # 4. Paint the active level
+            painter.setBrush(gradient)
+            painter.drawRoundedRect(active_rect, 3, 3)
 
 class NoScrollSpinBox(QSpinBox):
     def wheelEvent(self, event):
@@ -34,7 +71,10 @@ class MainWindow(QMainWindow):
 
     def __init__(self, workers: dict, gpu_monitor):
         super().__init__()
+        # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
+        self.setWindowIcon(QIcon("assets/qube_logo_256.png"))
         self.setWindowTitle("Qube - Workspace")
+        self.setMinimumSize(1280, 720)
         self.resize(1200, 800) 
 
         self.workers = workers
@@ -156,38 +196,74 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(15, 0, 15, 0)
 
+        # --- 1. FAR LEFT: LOGO & VU METER ---
+        left_container = QWidget()
+        left_container.setFixedWidth(180) # Fits Logo + Padding + Mic + VU
+        left_layout = QHBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(12) # 12px padding between elements
+
+        # --- Logo Setup ---
+        self.app_logo = QLabel()
+        from PyQt6.QtGui import QPixmap 
+
+        logo_img = QPixmap("assets/qube_logo_256.png") 
+        if not logo_img.isNull():
+            self.app_logo.setPixmap(logo_img.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        else:
+            self.app_logo.setText("🧊") 
+            self.app_logo.setStyleSheet("font-size: 18px;")
+            
+        # Mic Icon & VU Meter
+        mic_icon = QLabel()
+        mic_icon.setPixmap(qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14)))
+        self.vu_meter = VUMeter()
+        
+        left_layout.addWidget(self.app_logo)
+        left_layout.addWidget(mic_icon)
+        left_layout.addWidget(self.vu_meter)
+        left_layout.addStretch() 
+        
+        layout.addWidget(left_container)
+
         layout.addStretch(1)
 
-        # --- 🔑 THE PRESTIGE CENTERING TRICK ---
+        # --- 2. DEAD CENTER: STATUS & RAG INDICATOR ---
         center_container = QWidget()
         center_layout = QHBoxLayout(center_container)
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.setSpacing(10)
 
-        # 1. Left counterbalance (Invisible)
+        # Left counterbalance to keep the bubble perfectly centered
         dummy_spacer = QWidget()
         dummy_spacer.setFixedWidth(60) 
         center_layout.addWidget(dummy_spacer)
 
-        # 2. Dead-Center Status Bubble
+        # Status Bubble
         self.status_bubble = QLabel(" IDLE")
         self.status_bubble.setFixedSize(200, 26)
         self.status_bubble.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_bubble.setObjectName("StatusBubble")
         center_layout.addWidget(self.status_bubble)
 
-        # 3. RAG Indicator (Moved inward)
+        # 🔑 The missing RAG Indicator!
         self.rag_status_dot = QLabel("● RAG")
-        self.rag_status_dot.setFixedWidth(60) # Matches dummy spacer
+        self.rag_status_dot.setFixedWidth(60) 
         self.rag_status_dot.setObjectName("RagStatusDot")
-        # Initialize as "Off" (Deep Slate/Black)
         self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
         center_layout.addWidget(self.rag_status_dot)
 
         layout.addWidget(center_container)
+
         layout.addStretch(1)
 
-        # --- WINDOW CONTROLS ---
+        # --- 3. FAR RIGHT: WINDOW CONTROLS ---
+        win_controls = QWidget()
+        win_controls.setFixedWidth(180) # 🔑 Matches left_container to keep the center balanced
+        win_layout = QHBoxLayout(win_controls)
+        win_layout.setContentsMargins(0, 0, 0, 0)
+        win_layout.setSpacing(8)
+        
         min_btn = QPushButton()
         min_btn.setIcon(qta.icon('fa5s.minus'))
         min_btn.setProperty("class", "WindowControlButton")
@@ -203,11 +279,22 @@ class MainWindow(QMainWindow):
         close_btn.setProperty("class", "WindowControlButton")
         close_btn.clicked.connect(self.hide)
 
-        layout.addWidget(min_btn)
-        layout.addWidget(self.max_btn)
-        layout.addWidget(close_btn)
+        win_layout.addStretch()
+        win_layout.addWidget(min_btn)
+        win_layout.addWidget(self.max_btn)
+        win_layout.addWidget(close_btn)
+
+        layout.addWidget(win_controls)
         
         return bar
+    
+    def update_mic_level(self, level: float) -> None:
+        """
+        Updates the top bar VU meter. 
+        Expects a normalized float between 0.0 (silence) and 1.0 (clipping).
+        """
+        if hasattr(self, 'vu_meter'):
+            self.vu_meter.set_level(level)
     
     def set_rag_state(self, state: str) -> None:
         """Manages the Traffic Light colors of the RAG indicator."""
@@ -487,6 +574,9 @@ class MainWindow(QMainWindow):
         # --------------------------------------------------------- #
         if self._audio_worker:
             self.voice_input_toggle.toggled.connect(lambda checked: self._audio_worker.set_paused(not checked))
+            # 🔑 Catch the volume signal and route it to the VU meter
+            self._audio_worker.volume_update.connect(self.update_mic_level)
+
         if self._tts_worker:
             self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
         if self._llm_worker:

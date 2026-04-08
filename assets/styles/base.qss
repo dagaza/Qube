@@ -7,6 +7,24 @@
    - Text Primary: #cdd6f4
    - Text Muted: rgba(205, 214, 244, 0.5)
    ========================================================= */
+/* --- GLOBAL FONT ENFORCEMENT --- */
+* {
+    font-family: "Inter";
+}
+
+/* Ensure headers inherently use the bolder weights we loaded */
+.ToolsPaneHeader, 
+.SettingsHeader {
+    font-weight: 600; /* Maps to Inter-SemiBold */
+}
+
+/* Ensure standard text uses the regular/medium weights */
+.ToolsPaneControl,
+.ToolsPaneInput,
+QLabel,
+QPushButton {
+    font-weight: 400; /* Maps to Inter-Regular */
+}
 /* --- GLOBAL TOOLTIP --- */
 QToolTip {
     background-color: #1e1e2e; /* Deep Base */
@@ -365,7 +383,7 @@ QAbstractScrollArea::corner {
 
 /* Explicitly target the Agent text to guarantee it stays bright */
 QLabel#AgentHeader {
-    color: #cba6f7;
+    color: #8b5cf6;
     font-weight: bold;
     font-size: 11px;
     letter-spacing: 1px;
