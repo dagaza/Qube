@@ -56,10 +56,13 @@ class TelemetryView(QWidget):
         header_layout = QHBoxLayout()
         header = QLabel("System Load Timeline (%)")
         header.setProperty("class", "SectionHeaderLabel")
+
+        # CPU: Emerald (#10b981) | RAM: Blue (#3b82f6) | GPU: Purple (#8b5cf6)
         
-        self.live_cpu_lbl = QLabel("CPU: 0%")
-        self.live_ram_lbl = QLabel("RAM: 0%")
-        self.live_gpu_lbl = QLabel("GPU: 0%")
+        cpu_item, self.live_cpu_lbl = self._create_legend_item("CPU: 0%", "#10b981")
+        ram_item, self.live_ram_lbl = self._create_legend_item("RAM: 0%", "#3b82f6")
+        gpu_item, self.live_gpu_lbl = self._create_legend_item("GPU: 0%", "#8b5cf6")
+        
 
         for lbl in [self.live_cpu_lbl, self.live_ram_lbl, self.live_gpu_lbl]:
             lbl.setProperty("class", "LiveMetricText")
@@ -85,9 +88,10 @@ class TelemetryView(QWidget):
         self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#94a3b8', width=1))
         self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color='#94a3b8'))
         
-        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#10b981', width=2)) # Emerald green
-        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#3b82f6', width=2)) # Blue
-        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#8b5cf6', width=2)) # Purple
+        # Ensure these hex codes match the legend items exactly
+        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#10b981', width=2))
+        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#3b82f6', width=2))
+        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#8b5cf6', width=2))
         
         layout.addWidget(self.plot_widget)
         return frame
@@ -135,7 +139,37 @@ class TelemetryView(QWidget):
         layout.addStretch()
 
         return frame
+    
+    def _create_legend_item(self, initial_text, color):
+        """Creates a sleek legend item with a color indicator and a BOLD label."""
+        from PyQt6.QtWidgets import QWidget
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
 
+        # The Indicator: A sleek vertical pill
+        pill = QFrame()
+        pill.setFixedSize(4, 14)
+        pill.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
+        
+        # The Label
+        lbl = QLabel(initial_text)
+        lbl.setProperty("class", "LiveMetricText")
+        
+        # 🔑 THE FIX: 'font-weight: bold;' makes the text thicker.
+        # I also added 'font-size: 13px;' to ensure the bolding doesn't make it look cramped.
+        lbl.setStyleSheet(f"""
+            color: {color}; 
+            font-weight: bold; 
+            font-size: 13px;
+            opacity: 1.0;
+        """)
+        
+        layout.addWidget(pill)
+        layout.addWidget(lbl)
+        
+        return container, lbl
     # --------------------------------------------------------- #
     #  UPDATER LOGIC                                            #
     # --------------------------------------------------------- #

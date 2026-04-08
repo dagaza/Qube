@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox
 )
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation
 from PyQt6.QtGui import QAction
 import qtawesome as qta
 from .views.conversations_view import ConversationsView
@@ -105,6 +105,28 @@ class MainWindow(QMainWindow):
         # Resize Grip
         self.grip = QSizeGrip(self)
         root_layout.addWidget(self.grip, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+
+        # --- 🔑 THE SYNC WIRING ---
+        
+        # 1. Handle Visibility Toggle
+        self.view_settings.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
+
+        # 2. Sync Settings -> Toolbar
+        self.view_settings.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
+        self.view_settings.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
+
+        # 3. Sync Toolbar -> Settings
+        self.toolbar_timeout_spin.valueChanged.connect(self.view_settings.timeout_spinner.setValue)
+        self.toolbar_threshold_spin.valueChanged.connect(self.view_settings.threshold_spinner.setValue)
+
+        # 4. Initialize Toolbar values from the worker
+        if self._audio_worker:
+            self.toolbar_timeout_spin.setValue(self._audio_worker.silence_timeout)
+            self.toolbar_threshold_spin.setValue(int(self._audio_worker.speech_threshold))
+            
+            # Wire Toolbar directly to worker methods
+            self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
+            self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
 
     def _build_top_bar(self) -> QFrame:
         bar = QFrame()
@@ -207,7 +229,6 @@ class MainWindow(QMainWindow):
         frame.setFixedWidth(260)
         frame.setObjectName("ToolsPane")
         
-        # We call this 'main_layout' to avoid any shadowing!
         main_layout = QVBoxLayout(frame)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(25)
@@ -215,12 +236,13 @@ class MainWindow(QMainWindow):
         # --- 1. AUDIO INPUT ---
         mic_layout = QVBoxLayout()
         mic_layout.setSpacing(10)
-        
+
+        # A. The Title
         m_title = QLabel("AUDIO INPUT")
         m_title.setProperty("class", "ToolsPaneHeader")
         mic_layout.addWidget(m_title)
         
-        # Create a horizontal row for the toggle
+        # B. The Main Toggle Row
         mic_row = QHBoxLayout()
         self.voice_input_toggle = PrestigeToggle()
         self.voice_input_toggle.setChecked(True)
@@ -231,7 +253,50 @@ class MainWindow(QMainWindow):
         mic_row.addWidget(mic_lbl)
         mic_row.addStretch()
         mic_layout.addLayout(mic_row)
+
+        # C. 🔑 THE FIX: 1:1 Mirrored Extra Audio Controls
+        self.audio_extra_controls = QWidget()
+        extra_layout = QVBoxLayout(self.audio_extra_controls)
+        # Indent slightly but give it enough room for the full labels
+        extra_layout.setContentsMargins(10, 5, 0, 5) 
+        extra_layout.setSpacing(12)
         
+        # Helper to create mirrored rows
+        def create_mirrored_row(label_text, spinner):
+            row = QHBoxLayout()
+            lbl = QLabel(label_text)
+            lbl.setProperty("class", "ToolsPaneControl")
+            # Set a minimum width so the spinners align perfectly vertically
+            lbl.setMinimumWidth(100) 
+            
+            spinner.setFixedWidth(90)
+            spinner.setProperty("class", "ToolsPaneInput")
+            
+            row.addWidget(lbl)
+            row.addStretch()
+            row.addWidget(spinner)
+            return row
+
+        # Silence Cutoff - Mirroring Settings logic
+        self.toolbar_timeout_spin = QDoubleSpinBox()
+        self.toolbar_timeout_spin.setRange(0.5, 5.0)
+        self.toolbar_timeout_spin.setSingleStep(0.1)
+        self.toolbar_timeout_spin.setSuffix(" sec")
+
+        # Mic Sensitivity - Mirroring Settings logic
+        self.toolbar_threshold_spin = QSpinBox()
+        self.toolbar_threshold_spin.setRange(1, 100)
+        self.toolbar_threshold_spin.setSuffix("%")
+
+        # Add the 1:1 rows to the layout
+        extra_layout.addLayout(create_mirrored_row("Silence Cutoff", self.toolbar_timeout_spin))
+        extra_layout.addLayout(create_mirrored_row("Mic Sensitivity", self.toolbar_threshold_spin))
+
+        # IMPORTANT: Add the widget to the layout and hide it
+        mic_layout.addWidget(self.audio_extra_controls)
+        self.audio_extra_controls.hide() 
+
+        # Add the whole section to the main layout
         main_layout.addLayout(mic_layout)
 
        # --- 2. AUDIO OUTPUT & TTS ---

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QStyledItemDelegate, QListView, QMenu
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from pathlib import Path
 import logging
 
@@ -14,6 +14,7 @@ from core.network import is_port_open
 logger = logging.getLogger("Qube.UI.Settings")
 
 class SettingsView(QWidget):
+    audio_pin_toggle = pyqtSignal(bool)
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -55,24 +56,24 @@ class SettingsView(QWidget):
         
         hw_widget = QWidget()
         hw_widget.setObjectName("SettingsFormContainer")
+        
+        # 1. Initialize the form
         hw_form = QFormLayout(hw_widget)
         hw_form.setSpacing(15)
         hw_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         
-        # We use Buttons instead of ComboBoxes
+        # 2. Hardware Selectors
         self.mic_selector = QPushButton("Select Input Device...")
         self.device_selector = QPushButton("Select Output Device...")
         
-        # Styling the buttons to look like prestige dropdowns
         for btn in [self.mic_selector, self.device_selector]:
             btn.setObjectName("SettingsMenuButton")
             btn.setMaximumWidth(350)
-            # This puts the chevron on the right side
             btn.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
             btn.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
-            # Initialize with an empty menu
             btn.setMenu(QMenu(btn))
 
+        # 3. Hardware Spinners
         self.timeout_spinner = QDoubleSpinBox()
         self.timeout_spinner.setFixedWidth(90)
         self.timeout_spinner.setRange(0.5, 5.0)
@@ -90,10 +91,17 @@ class SettingsView(QWidget):
         if self.audio_worker:
             self.threshold_spinner.valueChanged.connect(self.audio_worker.set_speech_threshold)
 
+        # 4. Add Rows to Form (Standard Hardware first)
         hw_form.addRow("Audio Input", self.mic_selector)
         hw_form.addRow("Audio Output", self.device_selector)
         hw_form.addRow("Silence Cutoff", self.timeout_spinner)
         hw_form.addRow("Mic Sensitivity", self.threshold_spinner)
+
+        # 5. THE FIX: Create and add the Pin Checkbox at the BOTTOM
+        self.pin_audio_cb = QCheckBox("Pin Audio Controls to Toolbar")
+        # We rely on _apply_spinbox_style for visibility/colors now
+        self.pin_audio_cb.toggled.connect(self.audio_pin_toggle.emit)
+        hw_form.addRow("", self.pin_audio_cb)
 
         content_layout.addWidget(hw_widget)
         content_layout.addWidget(self._build_divider())
@@ -124,7 +132,43 @@ class SettingsView(QWidget):
         content_layout.addWidget(ai_widget)
         content_layout.addStretch()
         scroll.setWidget(scroll_content)
+        # Ensure initial styling is applied
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
+        self._apply_spinbox_style(is_dark)
         main_layout.addWidget(scroll)
+
+    def _apply_spinbox_style(self, is_dark: bool):
+        """Forces borders to be visible on inputs AND checkboxes."""
+        border_color = "rgba(255, 255, 255, 0.15)" if is_dark else "#cbd5e1"
+        bg_color = "#313244" if is_dark else "#ffffff"
+        text_color = "#cdd6f4" if is_dark else "#1e293b"
+        check_bg = "#45475a" if is_dark else "#f1f5f9"
+
+        style = f"""
+            QDoubleSpinBox, QSpinBox {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 8px;
+                padding: 5px 10px;
+            }}
+            /* 🔑 FIX 1.1: Make the checkbox indicator visible */
+            QCheckBox {{ color: {text_color}; font-size: 13px; }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                background-color: {check_bg};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: #cba6f7; /* Qube Purple */
+                image: url(assets/icons/check_mark.png); /* Add an icon if you have one, or just a fill */
+            }}
+        """
+        self.timeout_spinner.setStyleSheet(style)
+        self.threshold_spinner.setStyleSheet(style)
+        self.pin_audio_cb.setStyleSheet(style)
 
     # --- THE PRESTIGE MENU LOGIC ---
     def _build_prestige_menu(self, button, items, callback):
@@ -263,22 +307,30 @@ class SettingsView(QWidget):
         """)
 
     def refresh_menu_themes(self, is_dark: bool):
-        """
-        Call this from your main window's _toggle_theme method after
-        the app stylesheet has been swapped.  Re-applies palettes to every
-        live menu that is already attached to a button.
-        """
+        """Standardizes icons and borders when the theme is toggled."""
+        # 1. Update the Dropdown Menus (Existing Logic)
         buttons = [
-            self.mic_selector,
-            self.device_selector,
-            self.wakeword_selector,
-            self.provider_selector,
-            self.voice_selector,
+            self.mic_selector, self.device_selector,
+            self.wakeword_selector, self.provider_selector, self.voice_selector,
         ]
         for btn in buttons:
             m = btn.menu()
             if m:
                 self._apply_menu_theme(m, is_dark)
+
+        # 2. Update the Section Header Icons to Qube Purple (#cba6f7)
+        icon_color = "#cba6f7" if is_dark else "#4c4f69" # Purple in Dark, Muted Slate in Light
+        
+        if hasattr(self, 'audio_icon_label'):
+            name = self.audio_icon_label.property("icon_name")
+            self.audio_icon_label.setPixmap(qta.icon(name, color=icon_color).pixmap(QSize(18, 18)))
+            
+        if hasattr(self, 'ai_icon_label'):
+            name = self.ai_icon_label.property("icon_name")
+            self.ai_icon_label.setPixmap(qta.icon(name, color=icon_color).pixmap(QSize(18, 18)))
+
+        # 3. Update the SpinBox Borders
+        self._apply_spinbox_style(is_dark)
 
 
     def _handle_selection(self, button, label, data, callback):
@@ -296,9 +348,19 @@ class SettingsView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         
         icon_label = QLabel()
-        # We remove the hardcoded color here so it can be styled via CSS or default to text color
-        icon_label.setPixmap(qta.icon(icon_name).pixmap(QSize(18, 18)))
+        # Save the icon name so we can re-render it during theme swaps
+        icon_label.setProperty("icon_name", icon_name)
+        
+        # Initial render logic
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
+        icon_color = "#cba6f7" if is_dark else "#1e293b"
+        icon_label.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(QSize(18, 18)))
+        
         icon_label.setProperty("class", "SectionHeaderIcon")
+        
+        # Tag these so we can find them in refresh_menu_themes
+        if "AUDIO" in title_text: self.audio_icon_label = icon_label
+        else: self.ai_icon_label = icon_label
         
         text_label = QLabel(title_text)
         text_label.setProperty("class", "SectionHeaderLabel")
