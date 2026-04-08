@@ -96,6 +96,10 @@ class LibraryView(QWidget):
     def _build_preview_stage(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("LibraryPreviewStage")
+
+        # 🔑 FIX 1: Strip any global card styling from the main frame
+        frame.setStyleSheet("background: transparent; border: none;")
+
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
@@ -105,8 +109,18 @@ class LibraryView(QWidget):
         self.doc_title = QLabel("No Document Selected")
         self.doc_title.setObjectName("PreviewDocTitle")
         
+        # 🔑 FIX 1: Stop the title from forcing the window wider on long filenames
+        self.doc_title.setWordWrap(True)
+        self.doc_title.setMinimumWidth(0)
+        self.doc_title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        
         self.doc_stats = QLabel("")
         self.doc_stats.setObjectName("PreviewStatsText")
+        
+        # 🔑 FIX 2: Stop the stats from stretching the window
+        self.doc_stats.setWordWrap(True)
+        self.doc_stats.setMinimumWidth(0)
+        self.doc_stats.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         title_vbox = QVBoxLayout()
         title_vbox.addWidget(self.doc_title)
@@ -120,9 +134,24 @@ class LibraryView(QWidget):
         self.text_preview = QTextEdit()
         self.text_preview.setObjectName("DocumentPreviewArea")
         self.text_preview.setReadOnly(True)
+        
+        # --- THE FIX: Aggressive Wrapping & Shrink Allowance ---
+        from PyQt6.QtGui import QTextOption
+        
+        # 1. Allow the widget to shrink freely when the user resizes the app
+        self.text_preview.setMinimumWidth(0) 
         self.text_preview.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
-        # We use a placeholder that will inherit the theme's text color
+        # 2. Force wrapping strictly at the widget's edge
+        self.text_preview.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        
+        # 3. CRITICAL: Break long unbreakable strings (like PDF hashes or long titles) 
+        # instead of stretching the parent window.
+        self.text_preview.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        
+        # 4. Strip the default PyQt sunken card box for that clean look we discussed
+        self.text_preview.setStyleSheet("background: transparent; border: none;")
+
         self.text_preview.setPlaceholderText("Select a document from the left to view its contents.")
         layout.addWidget(self.text_preview)
 
