@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient
 import qtawesome as qta
 from .views.conversations_view import ConversationsView
 from .views.settings_view import SettingsView
@@ -158,22 +158,45 @@ class MainWindow(QMainWindow):
 
         layout.addStretch(1)
 
+        # --- 🔑 THE PRESTIGE CENTERING TRICK ---
+        center_container = QWidget()
+        center_layout = QHBoxLayout(center_container)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(10)
+
+        # 1. Left counterbalance (Invisible)
+        dummy_spacer = QWidget()
+        dummy_spacer.setFixedWidth(60) 
+        center_layout.addWidget(dummy_spacer)
+
+        # 2. Dead-Center Status Bubble
         self.status_bubble = QLabel(" IDLE")
         self.status_bubble.setFixedSize(200, 26)
         self.status_bubble.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_bubble.setObjectName("StatusBubble")
-        layout.addWidget(self.status_bubble)
+        center_layout.addWidget(self.status_bubble)
 
+        # 3. RAG Indicator (Moved inward)
+        self.rag_status_dot = QLabel("● RAG")
+        self.rag_status_dot.setFixedWidth(60) # Matches dummy spacer
+        self.rag_status_dot.setObjectName("RagStatusDot")
+        # Initialize as "Off" (Deep Slate/Black)
+        self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
+        center_layout.addWidget(self.rag_status_dot)
+
+        layout.addWidget(center_container)
         layout.addStretch(1)
 
-        self.rag_status_dot = QLabel("● RAG")
-        self.rag_status_dot.setObjectName("RagStatusDot")
-        layout.addWidget(self.rag_status_dot)
-
+        # --- WINDOW CONTROLS ---
         min_btn = QPushButton()
         min_btn.setIcon(qta.icon('fa5s.minus'))
         min_btn.setProperty("class", "WindowControlButton")
         min_btn.clicked.connect(self.showMinimized)
+
+        self.max_btn = QPushButton()
+        self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
+        self.max_btn.setProperty("class", "WindowControlButton")
+        self.max_btn.clicked.connect(self._toggle_maximize)
 
         close_btn = QPushButton()
         close_btn.setIcon(qta.icon('fa5s.times'))
@@ -181,9 +204,38 @@ class MainWindow(QMainWindow):
         close_btn.clicked.connect(self.hide)
 
         layout.addWidget(min_btn)
+        layout.addWidget(self.max_btn)
         layout.addWidget(close_btn)
         
         return bar
+    
+    def set_rag_state(self, state: str) -> None:
+        """Manages the Traffic Light colors of the RAG indicator."""
+        if state == 'off':
+            color = "#45475a" # Dark Slate / Black
+        elif state == 'standby':
+            color = "#89b4fa" # Qube Blue (User activated it)
+        elif state == 'active':
+            color = "#a6e3a1" # Green (App is fetching data)
+        else:
+            return
+
+        self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px;")
+    
+    def _toggle_maximize(self):
+        """Toggles between maximized and normal window states."""
+        if self.isMaximized():
+            self.showNormal()
+            # Update to 'Maximize' icon
+            self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
+            # Restore rounded corners
+            self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
+        else:
+            self.showMaximized()
+            # Update to 'Restore' icon
+            self.max_btn.setIcon(qta.icon('fa5s.compress-arrows-alt'))
+            # Flatten corners for full-screen look
+            self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
 
     def _build_nav_sidebar(self) -> QFrame:
         """Global Left Navigation: Switches views and shows mini-telemetry."""
@@ -440,7 +492,17 @@ class MainWindow(QMainWindow):
         if self._llm_worker:
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
-            self.tool_rag_toggle.toggled.connect(self._llm_worker.set_mcp_rag)
+
+            # 🔑 THE NEW RAG WIRING
+            def on_rag_toggled(checked):
+                self.set_rag_state('standby' if checked else 'off')
+                self._llm_worker.set_mcp_rag(checked)
+                
+            self.tool_rag_toggle.toggled.connect(on_rag_toggled)
+            
+            # Force initial state check on boot
+            self.set_rag_state('standby' if self.tool_rag_toggle.isChecked() else 'off')
+
             self.tool_internet_toggle.toggled.connect(self._llm_worker.set_mcp_internet)
 
         main_layout.addStretch()
@@ -729,13 +791,9 @@ class MainWindow(QMainWindow):
         self._old_pos = None
 
     def mouseDoubleClickEvent(self, event):
+        """Trigger maximize toggle when the top bar is double-clicked."""
         if event.button() == Qt.MouseButton.LeftButton and self.top_bar.underMouse():
-            if self.isMaximized():
-                self.showNormal()
-                self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
-            else:
-                self.showMaximized()
-                self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
+            self._toggle_maximize()
 
     def closeEvent(self, event):
         if self.tray_icon.isVisible():
@@ -771,8 +829,10 @@ class MainWindow(QMainWindow):
         self.status_bubble.style().polish(self.status_bubble)
 
     def update_rag_indicator(self, active: bool) -> None:
-        color = "#a6e3a1" if active else "#6c7086"
-        self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px; margin-right: 15px;")
+        """Called by the LLM Worker when actively retrieving documents."""
+        # Only switch to green if the toggle is actually turned on
+        if self.tool_rag_toggle.isChecked():
+            self.set_rag_state('active' if active else 'standby')
 
     def log_user_message(self, text: str) -> None:
         pass # Will be forwarded to ConversationsView
