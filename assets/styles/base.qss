@@ -378,30 +378,63 @@ QLabel#AgentMessage {
     line-height: 1.5;
     background-color: transparent;
 }
-/* --- 5. HISTORY LIST (DARK MODE FIX) --- */
-#HistoryList {
+/* --- UNIFIED LIST STYLING (DARK) --- */
+#HistoryList, #LibraryDocList {
     background-color: transparent;
     border: none;
 }
 
-/* We target the QLabel explicitly inside the HistoryRowWidget */
-#HistoryRowWidget QLabel#HistoryRowTitle {
+#HistoryList::item:hover, #LibraryDocList::item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#HistoryList::item:selected, #LibraryDocList::item:selected {
+    background-color: #89b4fa; /* Blue selection bar */
+    border-radius: 6px;
+}
+
+#HistoryRowWidget QLabel#HistoryRowTitle, #LibraryRowWidget QLabel#LibraryRowTitle {
     color: #cdd6f4 !important; /* Force Catppuccin Text */
     background-color: transparent !important;
     font-weight: 500;
 }
 
-/* Ensure visibility when the row is selected */
-#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle {
-    color: #11111b !important; /* Dark text on light-blue selection */
+/* Ensure text flips to dark when the blue selection bar is active */
+#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle, 
+#LibraryDocList::item:selected #LibraryRowWidget QLabel#LibraryRowTitle {
+    color: #11111b !important;
 }
 
-#HistoryOptionsBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn {
     background: transparent;
     border: none;
 }
 
-#HistoryOptionsBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
+}
+/* --- LIBRARY PREVIEW HEADER --- */
+#PreviewDocTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #cdd6f4; /* High contrast text */
+    letter-spacing: 1px;
+}
+
+#PreviewStatsText {
+    font-size: 13px;
+    color: #a6adc8; /* Subtle metadata color */
+    font-weight: 500;
+}
+
+/* --- INGEST PROGRESS BAR --- */
+#IngestProgressBar {
+    background-color: #313244;
+    border: none;
+    border-radius: 2px;
+}
+#IngestProgressBar::chunk {
+    background-color: #89b4fa; /* Accent blue loading bar */
+    border-radius: 2px;
 }

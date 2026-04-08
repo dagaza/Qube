@@ -331,31 +331,64 @@ QLabel#AgentMessage {
     line-height: 1.5;
     background-color: transparent;
 }
-/* --- 5. HISTORY LIST (LIGHT MODE FIX) --- */
-#HistoryList {
+/* --- UNIFIED LIST STYLING (LIGHT) --- */
+#HistoryList, #LibraryDocList {
     background-color: transparent;
     border: none;
 }
-#HistoryList::item:hover {
+
+#HistoryList::item:hover, #LibraryDocList::item:hover {
     background-color: rgba(0, 0, 0, 0.03);
 }
-#HistoryRowWidget QLabel#HistoryRowTitle {
+
+#HistoryList::item:selected, #LibraryDocList::item:selected {
+    background-color: #0f172a; /* Dark selection bar */
+    border-radius: 6px;
+}
+
+#HistoryRowWidget QLabel#HistoryRowTitle, #LibraryRowWidget QLabel#LibraryRowTitle {
     color: #1e293b !important; /* Force Deep Slate */
     background-color: transparent !important;
     font-weight: 500;
 }
 
-#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle {
-    color: #0f172a !important; /* High contrast on selection */
+/* Ensure text flips to white when the dark selection bar is active */
+#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle, 
+#LibraryDocList::item:selected #LibraryRowWidget QLabel#LibraryRowTitle {
+    color: #ffffff !important;
 }
 
-/* Fix for the invisible kebab in light mode */
-#HistoryOptionsBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn {
     background: transparent;
     border: none;
 }
 
-#HistoryOptionsBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
+}
+
+/* --- LIBRARY PREVIEW HEADER --- */
+#PreviewDocTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1e293b; /* Deep slate */
+    letter-spacing: 1px;
+}
+
+#PreviewStatsText {
+    font-size: 13px;
+    color: #64748b; /* Lighter slate metadata */
+    font-weight: 500;
+}
+
+/* --- INGEST PROGRESS BAR --- */
+#IngestProgressBar {
+    background-color: #e2e8f0;
+    border: none;
+    border-radius: 2px;
+}
+#IngestProgressBar::chunk {
+    background-color: #3b82f6; /* Bright blue loading bar */
+    border-radius: 2px;
 }

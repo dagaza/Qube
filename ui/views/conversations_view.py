@@ -169,14 +169,18 @@ class ConversationsView(QWidget):
         layout.setSpacing(15)
 
         header_layout = QHBoxLayout()
-        title = QLabel("CONVERSATIONS")
-        title.setProperty("class", "SidebarTitle")
+        
+        # --- THE FIX: Change 'title' to 'self.list_title' ---
+        self.list_title = QLabel("CONVERSATIONS")
+        self.list_title.setProperty("class", "SidebarTitle")
         
         self.new_chat_btn = QPushButton()
         self.new_chat_btn.setIcon(qta.icon('fa5s.plus'))
         self.new_chat_btn.setProperty("class", "IconButton")
         
-        header_layout.addWidget(title)
+        # --- THE FIX: Make sure you add 'self.list_title' to the layout here ---
+        header_layout.addWidget(self.list_title)
+        
         header_layout.addStretch()
         header_layout.addWidget(self.new_chat_btn)
         layout.addLayout(header_layout)
@@ -192,6 +196,7 @@ class ConversationsView(QWidget):
 
         self.new_chat_btn.clicked.connect(self._start_new_chat)
         self.history_list.itemClicked.connect(self._load_selected_chat)
+        self.history_list.itemSelectionChanged.connect(self._update_row_colors)
 
         return frame
 
@@ -400,6 +405,12 @@ class ConversationsView(QWidget):
     def _refresh_history_list(self):
         """Pulls recent sessions from SQLite and populates the sidebar with custom widgets."""
         self.history_list.clear()
+        count = self.db.get_session_count()
+        display_count = "999+" if count > 999 else str(count)
+        
+        # Only update the text if the UI has finished building the label
+        if hasattr(self, 'list_title'):
+            self.list_title.setText(f"CONVERSATIONS ({display_count})")
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import Qt, QSize
         import qtawesome as qta
@@ -465,6 +476,37 @@ class ConversationsView(QWidget):
             item.setSizeHint(QSize(0, 45))
             self.history_list.addItem(item)
             self.history_list.setItemWidget(item, row_widget)
+
+    def _update_row_colors(self):
+        """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""
+        from PyQt6.QtWidgets import QLabel
+        from PyQt6.QtWidgets import QApplication
+        
+        # 1. Detect Theme
+        is_dark = True
+        if self.window() and hasattr(self.window(), '_is_dark_theme'):
+            is_dark = self.window()._is_dark_theme
+        elif "light.qss" in QApplication.instance().styleSheet().lower():
+            is_dark = False
+            
+        # 2. Define our exact Palette
+        normal_color = "#cdd6f4" if is_dark else "#1e293b"
+        selected_color = "#11111b" if is_dark else "#ffffff"
+
+        # 3. Target whichever list is in this specific file
+        target_list = getattr(self, 'doc_list', getattr(self, 'history_list', None))
+        if not target_list: 
+            return
+
+        # 4. Loop through and forcefully apply the correct color
+        for i in range(target_list.count()):
+            item = target_list.item(i)
+            widget = target_list.itemWidget(item)
+            if widget:
+                lbl = widget.findChild(QLabel) # Automatically grabs your title label
+                if lbl:
+                    color = selected_color if item.isSelected() else normal_color
+                    lbl.setStyleSheet(f"color: {color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
 
     def _trigger_delete_chat(self, session_id):
         """Modern confirmation with full original safety logic."""
@@ -561,6 +603,8 @@ class ConversationsView(QWidget):
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
         from PyQt6.QtGui import QPalette, QColor
+        # THIS IS THE MAGIC LINE TO KILL THE GHOST SQUARE
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         palette = QPalette()
         if is_dark:
             bg, fg, sel_bg, sel_fg = "#1e1e2e", "#cdd6f4", "#313244", "#cdd6f4"

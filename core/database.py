@@ -85,6 +85,22 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
+    def get_session_count(self) -> int:
+        """Returns the total number of conversation sessions."""
+        try:
+            with self._get_connection() as conn:
+                return conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        except Exception:
+            return 0
+
+    def get_document_count(self) -> int:
+        """Returns the total number of ingested documents."""
+        try:
+            with self._get_connection() as conn:
+                return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        except Exception:
+            return 0
+
     def create_session(self, title: str = "New Chat") -> str:
         """Creates a new chat session and returns its UUID."""
         session_id = str(uuid.uuid4())
@@ -167,6 +183,20 @@ class DatabaseManager:
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
             conn.commit()
+
+    def rename_document_metadata(self, old_filename: str, new_filename: str) -> bool:
+        """Updates the filename of a specific document in the Library registry."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE documents SET filename = ? WHERE filename = ?", 
+                    (new_filename, old_filename)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to rename document metadata {old_filename}: {e}")
+            return False
 
     def rename_session(self, session_id: str, new_title: str) -> bool:
         """Updates the title of a specific conversation session."""

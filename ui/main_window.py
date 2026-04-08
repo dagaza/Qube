@@ -358,7 +358,8 @@ class MainWindow(QMainWindow):
 
         menu = QMenu(button)
         menu.setObjectName("PrestigeMenu")
-        
+        # The Magic Line:
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         # Apply the theme palette
         is_dark = self._is_dark_theme if hasattr(self, '_is_dark_theme') else getattr(self.window(), '_is_dark_theme', True)
         self._apply_menu_theme(menu, is_dark)
@@ -543,6 +544,9 @@ class MainWindow(QMainWindow):
             self.view_conversations.refresh_menu_themes(self._is_dark_theme)
         if hasattr(self, 'view_conversations'):
             self.view_conversations._refresh_history_list() # Force icon re-color
+        # 4. Update the Library Kebab Menus and Icons
+        if hasattr(self, 'view_library'):
+            self.view_library.refresh_library_list()
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #

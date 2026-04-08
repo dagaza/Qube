@@ -134,7 +134,8 @@ class SettingsView(QWidget):
 
         menu = QMenu(button)
         menu.setObjectName("PrestigeMenu")
-        
+        # The Magic Line:
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         # Apply the theme palette
         is_dark = self._is_dark_theme if hasattr(self, '_is_dark_theme') else getattr(self.window(), '_is_dark_theme', True)
         self._apply_menu_theme(menu, is_dark)

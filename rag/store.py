@@ -94,6 +94,46 @@ class DocumentStore:
         except Exception as e:
             logger.error(f"Failed to delete vectors for '{source_name}' from LanceDB: {e}")
 
+    def rename_document(self, old_source: str, new_source: str) -> bool:
+        """Updates the source filename for all chunks belonging to a document."""
+        import logging
+        logger = logging.getLogger("Qube.RAG")
+        
+        try:
+            # 1. Attempt the modern LanceDB direct update
+            self.table.update(where=f"source = '{old_source}'", values={"source": new_source})
+            logger.info(f"Successfully renamed vectors from '{old_source}' to '{new_source}'.")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Native update failed or not supported, attempting manual rewrite: {e}")
+            
+            # 2. Bulletproof Fallback: Read -> Modify -> Insert -> Delete
+            try:
+                # Fetch all old records (using a dummy vector and high limit)
+                records = self.table.search([0.0] * VECTOR_DIM).limit(100000).where(f"source = '{old_source}'").to_list()
+                
+                if not records:
+                    logger.warning(f"No vectors found for '{old_source}' during rename.")
+                    return False
+                
+                # Update source in memory and strip out LanceDB search artifacts
+                for r in records:
+                    r["source"] = new_source
+                    r.pop("_distance", None) # Remove search distance if it was attached
+                    
+                # Add the cloned, renamed records
+                self.table.add(records)
+                
+                # Delete the old records
+                self.table.delete(f"source = '{old_source}'")
+                logger.info(f"Fallback rename complete for '{new_source}'.")
+                return True
+                
+            except Exception as fallback_err:
+                logger.error(f"CRITICAL: Complete failure to rename document in Vector Store: {fallback_err}")
+                return False
+
     def reconstruct_document(self, source: str) -> str:
         """Grabs all chunks for a file and stitches them back together for reading."""
         try:
