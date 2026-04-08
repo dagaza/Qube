@@ -17,6 +17,14 @@ import logging
 
 logger = logging.getLogger("Qube.UI")
 
+class NoScrollSpinBox(QSpinBox):
+    def wheelEvent(self, event):
+        event.ignore() # Blocks the scroll from changing the value
+
+class NoScrollDoubleSpinBox(QDoubleSpinBox):
+    def wheelEvent(self, event):
+        event.ignore()
+
 class MainWindow(QMainWindow):
     """
     MASTER GLOBAL SHELL
@@ -103,8 +111,8 @@ class MainWindow(QMainWindow):
         root_layout.addLayout(workspace_layout)
 
         # Resize Grip
-        self.grip = QSizeGrip(self)
-        root_layout.addWidget(self.grip, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        self.grip = QSizeGrip(self.main_container) 
+        self.grip.setFixedSize(16, 16)
 
         # --- 🔑 THE SYNC WIRING ---
         
@@ -127,6 +135,18 @@ class MainWindow(QMainWindow):
             # Wire Toolbar directly to worker methods
             self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
             self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
+
+    def resizeEvent(self, event):
+        """Ensures the floating resize grip stays in the bottom-right corner."""
+        super().resizeEvent(event)
+        if hasattr(self, 'grip'):
+            # Position it at the absolute bottom-right of the container
+            self.grip.move(
+                self.main_container.width() - self.grip.width(),
+                self.main_container.height() - self.grip.height()
+            )
+            # Ensure it stays on top of the sidebars
+            self.grip.raise_()
 
     def _build_top_bar(self) -> QFrame:
         bar = QFrame()
@@ -224,85 +244,100 @@ class MainWindow(QMainWindow):
         return sidebar
     
     def _build_tools_pane(self) -> QFrame:
-        """Global Right Sidebar: Houses LLM generation settings, MCP toggles, and RAG options."""
-        frame = QFrame()
-        frame.setFixedWidth(260)
-        frame.setObjectName("ToolsPane")
+        """Global Right Sidebar: Restored 'Card' look with animated content."""
+        # 1. THE MAIN BAR (The container with the background/border)
+        self.tools_frame = QFrame()
+        self.tools_frame.setObjectName("ToolsPane") 
+        self.tools_frame.setFixedWidth(300) 
+        self.tools_frame.setMinimumWidth(40) 
+        self.tools_frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
-        main_layout = QVBoxLayout(frame)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        outer_layout = QHBoxLayout(self.tools_frame)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        # 2. THE HANDLE LANE (Persistent Button)
+        handle_container = QWidget()
+        handle_container.setFixedWidth(40)
+        handle_layout = QVBoxLayout(handle_container)
+        handle_layout.setContentsMargins(5, 20, 5, 0)
+        
+        self.toggle_tools_btn = QPushButton()
+        self.toggle_tools_btn.setFixedSize(30, 30)
+        self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
+        self.toggle_tools_btn.setStyleSheet("background: transparent; border: none;")
+        self.toggle_tools_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_tools_btn.clicked.connect(self._toggle_tools_pane)
+        
+        handle_layout.addWidget(self.toggle_tools_btn)
+        handle_layout.addStretch()
+        outer_layout.addWidget(handle_container)
+
+        # 3. THE CONTENT AREA (The part that slides)
+        # 🔑 Standardized Name: self.tools_content
+        self.tools_content = QWidget()
+        self.tools_content.setFixedWidth(260)
+        self.tools_content.setMinimumWidth(0)
+        
+        # 🔑 FIX: Named this 'main_layout' so your section code works
+        main_layout = QVBoxLayout(self.tools_content)
+        main_layout.setContentsMargins(10, 20, 20, 20)
         main_layout.setSpacing(25)
 
         # --- 1. AUDIO INPUT ---
         mic_layout = QVBoxLayout()
         mic_layout.setSpacing(10)
-
-        # A. The Title
         m_title = QLabel("AUDIO INPUT")
         m_title.setProperty("class", "ToolsPaneHeader")
         mic_layout.addWidget(m_title)
         
-        # B. The Main Toggle Row
         mic_row = QHBoxLayout()
         self.voice_input_toggle = PrestigeToggle()
         self.voice_input_toggle.setChecked(True)
         mic_lbl = QLabel("Enable Voice Input")
         mic_lbl.setProperty("class", "ToolsPaneControl")
-        
         mic_row.addWidget(self.voice_input_toggle)
         mic_row.addWidget(mic_lbl)
         mic_row.addStretch()
         mic_layout.addLayout(mic_row)
 
-        # C. 🔑 THE FIX: 1:1 Mirrored Extra Audio Controls
         self.audio_extra_controls = QWidget()
         extra_layout = QVBoxLayout(self.audio_extra_controls)
-        # Indent slightly but give it enough room for the full labels
         extra_layout.setContentsMargins(10, 5, 0, 5) 
         extra_layout.setSpacing(12)
         
-        # Helper to create mirrored rows
         def create_mirrored_row(label_text, spinner):
             row = QHBoxLayout()
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
-            # Set a minimum width so the spinners align perfectly vertically
             lbl.setMinimumWidth(100) 
-            
             spinner.setFixedWidth(90)
             spinner.setProperty("class", "ToolsPaneInput")
-            
             row.addWidget(lbl)
             row.addStretch()
             row.addWidget(spinner)
             return row
 
-        # Silence Cutoff - Mirroring Settings logic
-        self.toolbar_timeout_spin = QDoubleSpinBox()
+        # Use the NoScroll versions we defined at the top
+        self.toolbar_timeout_spin = NoScrollDoubleSpinBox()
         self.toolbar_timeout_spin.setRange(0.5, 5.0)
         self.toolbar_timeout_spin.setSingleStep(0.1)
         self.toolbar_timeout_spin.setSuffix(" sec")
 
-        # Mic Sensitivity - Mirroring Settings logic
-        self.toolbar_threshold_spin = QSpinBox()
+        self.toolbar_threshold_spin = NoScrollSpinBox()
         self.toolbar_threshold_spin.setRange(1, 100)
         self.toolbar_threshold_spin.setSuffix("%")
 
-        # Add the 1:1 rows to the layout
         extra_layout.addLayout(create_mirrored_row("Silence Cutoff", self.toolbar_timeout_spin))
         extra_layout.addLayout(create_mirrored_row("Mic Sensitivity", self.toolbar_threshold_spin))
 
-        # IMPORTANT: Add the widget to the layout and hide it
         mic_layout.addWidget(self.audio_extra_controls)
         self.audio_extra_controls.hide() 
-
-        # Add the whole section to the main layout
         main_layout.addLayout(mic_layout)
 
        # --- 2. AUDIO OUTPUT & TTS ---
         voice_layout = QVBoxLayout()
         voice_layout.setSpacing(10)
-        
         v_title = QLabel("AUDIO OUTPUT & VOICE")
         v_title.setProperty("class", "ToolsPaneHeader")
         voice_layout.addWidget(v_title)
@@ -312,25 +347,22 @@ class MainWindow(QMainWindow):
         self.voice_bypass_toggle.setChecked(True)
         tts_label = QLabel("Enable TTS Voice")
         tts_label.setProperty("class", "ToolsPaneControl")
-        
         tts_row.addWidget(self.voice_bypass_toggle)
         tts_row.addWidget(tts_label)
         tts_row.addStretch()
         voice_layout.addLayout(tts_row)
         
         self.global_voice_selector = QPushButton("Select Voice...")
-        self.global_voice_selector.setObjectName("SettingsMenuButton") # Uses your new CSS!
+        self.global_voice_selector.setObjectName("SettingsMenuButton")
         self.global_voice_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.global_voice_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
         self.global_voice_selector.setMenu(QMenu(self.global_voice_selector))
         voice_layout.addWidget(self.global_voice_selector)
-        
         main_layout.addLayout(voice_layout)
 
         # --- 3. GENERATION PARAMETERS ---
         param_layout = QVBoxLayout()
         param_layout.setSpacing(10)
-        
         p_title = QLabel("GENERATION PARAMETERS")
         p_title.setProperty("class", "ToolsPaneHeader")
         param_layout.addWidget(p_title)
@@ -339,7 +371,7 @@ class MainWindow(QMainWindow):
         temp_label = QLabel("Temperature:")
         temp_label.setProperty("class", "ToolsPaneControl")
         temp_row.addWidget(temp_label)
-        self.temp_spin = QDoubleSpinBox()
+        self.temp_spin = NoScrollDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
         self.temp_spin.setValue(0.7)
         self.temp_spin.setProperty("class", "ToolsPaneInput")
@@ -350,13 +382,12 @@ class MainWindow(QMainWindow):
         ctx_label = QLabel("Context Limit:")
         ctx_label.setProperty("class", "ToolsPaneControl")
         ctx_row.addWidget(ctx_label)
-        self.ctx_spin = QSpinBox()
+        self.ctx_spin = NoScrollSpinBox()
         self.ctx_spin.setRange(1024, 128000)
         self.ctx_spin.setValue(4096)
         self.ctx_spin.setProperty("class", "ToolsPaneInput")
         ctx_row.addWidget(self.ctx_spin)
         param_layout.addLayout(ctx_row)
-        
         main_layout.addLayout(param_layout)
 
         # --- 4. EXPERIMENTAL RAG ---
@@ -397,23 +428,56 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(tools_layout)
 
         main_layout.addStretch()
+        outer_layout.addWidget(self.tools_content)
 
         # --------------------------------------------------------- #
         #  WIRING TO WORKERS                                        #
         # --------------------------------------------------------- #
         if self._audio_worker:
             self.voice_input_toggle.toggled.connect(lambda checked: self._audio_worker.set_paused(not checked))
-            
         if self._tts_worker:
             self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
-
         if self._llm_worker:
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
             self.tool_rag_toggle.toggled.connect(self._llm_worker.set_mcp_rag)
             self.tool_internet_toggle.toggled.connect(self._llm_worker.set_mcp_internet)
 
-        return frame
+        main_layout.addStretch()
+        
+        # 🔑 FIX: This now matches the definition above
+        outer_layout.addWidget(self.tools_content)
+
+        return self.tools_frame
+    
+    def _toggle_tools_pane(self):
+        """Animates the collapse of the content while keeping the handle visible."""
+        # Check if we are currently collapsed (width is small)
+        is_collapsed = self.tools_content.maximumWidth() == 0
+        
+        # 1. Animate the Content Area
+        self.content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth")
+        self.content_anim.setDuration(350)
+        self.content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+
+        # 2. Animate the Outer Frame (The 'Bar' background)
+        self.frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth")
+        self.frame_anim.setDuration(350)
+        self.frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+
+        if is_collapsed:
+            # Expand to full size
+            self.content_anim.setEndValue(260)
+            self.frame_anim.setEndValue(300)
+            self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
+        else:
+            # Collapse to just the button handle
+            self.content_anim.setEndValue(0)
+            self.frame_anim.setEndValue(40)
+            self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-left', color='#89b4fa'))
+
+        self.content_anim.start()
+        self.frame_anim.start()
 
     # --- PRESTIGE MENU LOGIC ---
     def _build_prestige_menu(self, button, items, callback):
