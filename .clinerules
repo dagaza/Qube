@@ -1,7 +1,7 @@
 ## 1. Project Identity & Prime Directives
 * **Mission:** Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant. It operates entirely offline with real-time conversational streaming capabilities.
 * **Strict Memory Constraint:** The entire system MUST operate under a strict 20GB RAM budget to prevent OS disk swapping, which would destroy audio latency.
-* **Tech Stack:** Python 3.12 (Linux/Windows), PyQt6, pyqtgraph, psutil, PyAudio, OpenWakeWord, Faster-Whisper, Ollama/LM Studio, Piper/Kokoro TTS, LanceDB, and ONNX Runtime.
+* **Tech Stack:** Python 3.12 (Linux/Windows), PyQt6, pyqtgraph, psutil, PyAudio, OpenWakeWord, Faster-Whisper, Ollama/LM Studio, Piper/Kokoro TTS, LanceDB, ONNX Runtime, and llama-cpp-python (Vulkan).
 * **Visual Identity:** The UI utilizes `qt_material` (dark_blue.xml theme) for a unified, modern, frameless aesthetic.
 
 ## 2. Architectural Philosophy: The Producer-Consumer Pipeline
@@ -16,16 +16,17 @@ The project strictly enforces a modular, domain-driven directory structure to pr
 ```text
 Qube/
 ├── main.py                 # Minimal entry point. Initializes global objects and boots the app.
-├── assets/                 # NEW: Static UI and Brand Assets (Immutable)
-│   ├── fonts /
+├── assets/                 # Static UI and Brand Assets (Immutable)
+│   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App icons, window logos, UI element SVGs.
 │   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
-│   └── styles/             # (Optional) Extracted .qss stylesheet files.
+│   └── styles/             # Extracted .qss stylesheet files ((base.qss, light.qss).
 ├── ui/                     # Presentation Layer (Dumb Components)
 │   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
+│   ├── components/         # Reusable custom UI components (PrestigeToggle, Custom Sliders).
 │   └── views/              # isolated widget files for each major screen
 │       ├── __init__.py    
-│       ├── conversations_view.py
+│       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages
 │       ├── library_view.py
 │       ├── settings_view.py
 │       └── telemetry_view.py
@@ -40,20 +41,20 @@ Qube/
 │   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
 │   └── ingestion_worker.py # Parses, chunks, and embeds documents in the background.
 ├── rag/                    # Retrieval-Augmented Generation Engine
-│   ├── embedder.py         # ONNX `all-MiniLM-L6-v2` instance (Memory footprint ~50MB).
+│   ├── embedder.py         # llama-cpp-python Vulkan engine with Nomic v1.5 GGUF.
 │   ├── store.py            # LanceDB interface (Disk-native, zero-copy vector storage).
 │   ├── chunker.py          # Semantic text splitting (1500 chars / 150 overlap).
 │   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
 ├── mcp/                    # Model Context Protocol Interfaces
 │   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
-│   └── internet_tool.py    # TO DO!
+│   └── internet_tool.py    # Web search functionality
 ├── models/                 # Local AI Weights (Organized by function)
 │   ├── stt/                # Faster-Whisper weights.
 │   ├── tts/                # Piper/Kokoro voices and configs.
 │   ├── embeddings/         # RAG embedding models (ONNX).
 │   └── wakeword/           # OpenWakeWord detection models.
 ├── data/                   # LanceDB vector storage directory.
-├── tools/                  # NEW: (Includes export_model.py)
+├── tools/                  # Build & deployment scripts.
 ```
 
 ## 4. Development Rules & Anti-Patterns
@@ -64,6 +65,10 @@ Qube/
     
 - **Preventing "Ghost Clicks" on Boot:** When populating PyQt dropdowns (`QComboBox`) in views like `settings_view.py`, ensure `currentIndexChanged` or `currentTextChanged` signals are either blocked (`blockSignals(True)`) or wired _after_ population to prevent triggering background workers during UI initialization.
 
+- **The `setItemWidget` Trap:** Do not hardcode hex colors when using `setItemWidget` in `QListWidget`. Always use a dynamic `_update_row_colors()` method that reads the current `_is_dark_theme` state and applies white text on selected items to survive global theme switches.
+
+- **No Native OS Dialogs:** Never use `QMessageBox`, `QInputDialog`, or `QFileDialog` directly for warnings/confirmations. Always use the unified `PrestigeDialog` class to maintain the dark/light frameless aesthetic and prevent overlapping "Ghost Dialogs."
+
 - **No Logic in the UI:** Do not place `socket`, `pyaudio`, or network logic inside `ui/` classes. The UI must request this data from the `core/` utilities.
     
 - **No Blocking Workloads:** Never parse documents, load ML models, or wait for HTTP requests inside a UI class method. Fire a signal to a `worker` instead.
@@ -71,19 +76,25 @@ Qube/
 - **No Direct Worker Instantiation in Dialogs:** Global objects (like the RAG `EmbeddingModel` and `DocumentStore`) must be instantiated exactly once in `main.py` and passed down by reference to the workers that need them.
     
 
-### 4.2 RAG Constraints
+### 4.2 RAG Constraints & Embedder Stability
+- **Disk-Native Priority:** LanceDB is the mandated storage engine. Do not use FAISS or entirely in-memory stores.
 
-- **Disk-Native Priority:** Do not use in-memory vector stores (like FAISS) that load the entire index into RAM. LanceDB is the mandated storage engine.
-    
-- **Embedding Model Consistency:** Do not unload the LLM to generate embeddings. Keep the `all-MiniLM-L6-v2` ONNX session perpetually warm in memory.
-    
-- **UI-Safe Ingestion:** Document parsing must always utilize `IngestionWorker` to ensure the UI remains responsive and progress bars update fluidly.
-    
+- **Vulkan + CPU Fallback Architecture:** The `EmbeddingModel` MUST probe hardware on boot. Attempt `n_gpu_layers=-1` (Vulkan) first for GPU acceleration. If it fails due to missing drivers, automatically fall back to `n_gpu_layers=0` (CPU mode).
 
-### 4.3 Routing & Telemetry
+- **Sequential Embedding (Bug Bypass):** Due to known batching bugs in `llama.cpp` for lists of strings, `embedder.py` must process chunks sequentially. Hard-cap text string lengths (e.g., `[:25000]`) before passing to the engine to prevent `llama_decode returned -1` crashes.
 
-- **LLM Provider Agnosticism:** The system supports both Ollama (11434) and LM Studio (1234). The `network.py` utility auto-discovers these on boot. All LLM requests must use OpenAI-compatible streaming endpoints.
-    
-- **The RAG Cascade:** RAG context is injected at the prompt level inside `llm_worker.py`. The worker must respect the user's hierarchy of intent: Manual Override > NLP Keyword Trigger > Auto-Fallback.
-    
+- **Pure Python Semantic Chunking:** Documents must be sliced using paragraph/sentence overlap logic (max ~1500 chars) before embedding. Never pass massive, multi-page raw strings to the C++ engine.
+
+- **Strict Database Schema & Absolute Paths:** `rag/store.py` must enforce the correct vector dimension (e.g., `768` for Nomic). It must use absolute `Path(__file__).resolve()` routing to prevent "Ghost Database" relative-path bugs. Include auto-healing logic to `drop_table` if a dimension mismatch is detected.
+
+### 4.3 Routing, Prompting, & Audio
+- **LLM Provider Agnosticism:** The system supports Ollama/LM Studio via standard OpenAI-compatible streaming endpoints.
+
+- **Strict Citation Prompting:** When the RAG tool is triggered, the system prompt must explicitly command the LLM to use bracketed inline citations (e.g., `[1]`, `[2]`) mapped to the `SOURCE` blocks.
+
+- **TTS Citation Stripping:** The `TTSWorker` (or text-cleaning step) MUST strip bracketed citations (using regex like `\[\d+\]`) from the audio queue before synthesis so the assistant does not speak the citation numbers aloud, while leaving them visible in the UI chat log.
+
 - **Latency Waterfall Tracking:** `STTWorker`, `LLMWorker` (TTFT), and `TTSWorker` must manually track their stopwatch times and emit latency metrics back to the UI upon task completion.
+
+### 4.4 Packaging & Deployment
+- **PyInstaller C++ Dependencies:** When building an `.exe` or executable, PyInstaller must be run with `--collect-all llama_cpp`, `--collect-all lancedb`, and `--collect-all pyarrow` to ensure the hidden C++ binary DLLs/Shared Objects are successfully bundled into the deployment package.
