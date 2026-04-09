@@ -211,6 +211,7 @@ class MainWindow(QMainWindow):
             # Wire Toolbar directly to worker methods
             self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
             self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
+    
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
         super().resizeEvent(event)
@@ -1018,13 +1019,16 @@ class MainWindow(QMainWindow):
         pass # Will be forwarded to ConversationsView
 
     def update_stt_latency(self, ms: float) -> None:
-        self.view_telemetry.update_stt_latency(ms)
+        if hasattr(self, 'telemetry_view'):
+            self.telemetry_view.update_stt_latency(ms)
 
     def update_ttft_latency(self, ms: float) -> None:
-        self.view_telemetry.update_ttft_latency(ms)
+        if hasattr(self, 'telemetry_view'):
+            self.telemetry_view.update_ttft_latency(ms)
 
     def update_tts_latency(self, ms: float) -> None:
-        self.view_telemetry.update_tts_latency(ms)
+        if hasattr(self, 'telemetry_view'):
+            self.telemetry_view.update_tts_latency(ms)
 
     def update_global_voice_dropdown(self, model_name: str, voices: list) -> None:
         """Receives loaded voices from the TTS worker and populates the global toolbar."""

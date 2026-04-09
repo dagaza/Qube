@@ -87,6 +87,8 @@ class Qube:
         # 3. Conversations View Routing (Transcript)
         # 🔑 UPDATED NAME HERE
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
+        # 🔑 THE NEW WIRE: Send the sources directly to the UI
+        self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         
         # 4. Background Data Pipeline (Audio -> STT -> LLM -> TTS)
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
-    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QDialog
+    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QDialog, QTextEdit
 )
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 import qtawesome as qta
@@ -211,6 +211,68 @@ class PrestigeDialog(QDialog):
         if self.input_field:
             self.result_text = self.input_field.text()
         self.accept()
+
+class SourcePreviewer(QDialog):
+    """A sleek, frameless overlay to display raw RAG document text."""
+    def __init__(self, filename, content, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setMinimumSize(650, 500)
+        
+        # 1. The Solid Background Frame (The "Russian Doll" fix)
+        self.bg_frame = QFrame(self)
+        self.bg_frame.setStyleSheet("""
+            QFrame {
+                background-color: #1e1e2e;
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            QLabel { color: #89b4fa; font-weight: bold; font-size: 14px; border: none; }
+            QTextEdit { 
+                background-color: #11111b; 
+                color: #cdd6f4; 
+                border-radius: 8px; 
+                padding: 15px; 
+                font-size: 14px;
+                line-height: 1.6;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            QPushButton {
+                background-color: #313244;
+                color: #cdd6f4;
+                border-radius: 6px;
+                padding: 8px 20px;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton:hover { background-color: #45475a; }
+        """)
+        
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.addWidget(self.bg_frame)
+
+        # 2. Inner Layout
+        layout = QVBoxLayout(self.bg_frame)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        title_lbl = QLabel(f"📄 Source: {filename}")
+        layout.addWidget(title_lbl)
+        
+        self.viewer = QTextEdit()
+        self.viewer.setReadOnly(True)
+        self.viewer.setPlainText(content)
+        layout.addWidget(self.viewer)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        close_btn = QPushButton("Close Preview")
+        close_btn.clicked.connect(self.close)
+        btn_layout.addWidget(close_btn)
+        
+        layout.addLayout(btn_layout)
 class ConversationsView(QWidget):
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -318,6 +380,17 @@ class ConversationsView(QWidget):
         self.transcript_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_area.setWidget(self.transcript_container)
         layout.addWidget(self.scroll_area)
+
+        # 1.5 The Source Chips Container (Hidden by default)
+        self.source_chips_container = QFrame()
+        self.source_chips_container.setObjectName("SourceChipsContainer")
+        self.source_chips_layout = QHBoxLayout(self.source_chips_container)
+        self.source_chips_layout.setContentsMargins(10, 0, 10, 0)
+        self.source_chips_layout.setSpacing(10)
+        self.source_chips_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        self.source_chips_container.hide() # Hide until we find sources
+        layout.addWidget(self.source_chips_container)
 
         # 2. Input Bar Area
         input_container = QFrame()
@@ -451,6 +524,10 @@ class ConversationsView(QWidget):
             child = self.transcript_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+                
+        # 🔑 THE FIX: Banish the ghost chips!
+        if hasattr(self, 'source_chips_container'):
+            self.source_chips_container.hide()
 
     # --------------------------------------------------------- #
     #  INTERACTION & LOGIC                                      #
@@ -815,3 +892,48 @@ class ConversationsView(QWidget):
         from PyQt6.QtCore import QTimer
         # Wait for geometry calculation, THEN wait for layout application
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))
+
+    def on_sources_found(self, sources):
+        """Builds the clickable UI chips when the LLM retrieves RAG context."""
+        # 1. Clear previous source chips
+        while self.source_chips_layout.count():
+            child = self.source_chips_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+                
+        if not sources:
+            self.source_chips_container.hide()
+            return
+            
+        # 2. Build the new chips
+        for src in sources:
+            btn = QPushButton(f"[{src['id']}] {src['filename']}")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            
+            # Catppuccin styling for the chips
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: rgba(137, 180, 250, 0.1);
+                    color: #89b4fa;
+                    border: 1px solid rgba(137, 180, 250, 0.3);
+                    border-radius: 12px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: rgba(137, 180, 250, 0.2);
+                    border: 1px solid #89b4fa;
+                }
+            """)
+            
+            # Capture the dictionary securely in the lambda
+            btn.clicked.connect(lambda checked, s=src: self.open_source_preview(s))
+            self.source_chips_layout.addWidget(btn)
+            
+        self.source_chips_container.show()
+
+    def open_source_preview(self, source_dict):
+        """Spawns the frameless SourcePreviewer dialog."""
+        viewer = SourcePreviewer(source_dict['filename'], source_dict['content'], self)
+        viewer.show() # .show() is non-blocking, so they can keep chatting!

@@ -18,7 +18,8 @@ class LLMWorker(QThread):
     ttft_latency = pyqtSignal(float) 
     context_retrieved = pyqtSignal(bool)
     response_finished = pyqtSignal(str, str) 
-
+    sources_found = pyqtSignal(list) # Will emit the list of dicts
+    
     def __init__(self, embedder, store, db_manager):
         super().__init__()
         self.prompt = ""
@@ -120,9 +121,14 @@ class LLMWorker(QThread):
         if self.session_id:
             self.db.add_message(self.session_id, "user", self.prompt)
 
-        # 1. Build Initial History
+        # 1. THE PRESTIGE FIX: Build Initial History with Strict Citation Rules
         history = self.db.get_session_history(self.session_id) if self.session_id else []
-        system_prompt = "You are Qube, a helpful AI assistant."
+        system_prompt = (
+            "You are Qube, an advanced AI research assistant. "
+            "When you use the 'search_local_documents' tool, you will receive information labeled as 'SOURCE 1', 'SOURCE 2', etc. "
+            "If you use information from these sources to answer the user, you MUST include inline citations at the end of the relevant sentences using brackets, like this: [1] or [2]. "
+            "Never invent or hallucinate sources. If you do not know the answer based on the sources, say so."
+        )
         messages = [{"role": "system", "content": system_prompt}] + history
         
         # We use a loop because if the LLM calls a tool, we need to feed the result back to it
@@ -156,7 +162,7 @@ class LLMWorker(QThread):
             tool_args_str = ""
             tool_call_id = "call_123" # Fallback ID
 
-            try:
+            try: # <--- THE OUTER TRY BLOCK
                 response = requests.post(self.api_url, headers=headers, json=payload, stream=True)
                 for line in response.iter_lines():
                     if not line: continue
@@ -183,7 +189,8 @@ class LLMWorker(QThread):
                             new_text = delta.get('content', "")
                             if new_text and not is_tool_call:
                                 if not first_token_received:
-                                    self.ttft_latency.emit((time.time() - start_time) * 1000)
+                                    if hasattr(self, 'ttft_latency'):
+                                        self.ttft_latency.emit((time.time() - start_time) * 1000)
                                     first_token_received = True
 
                                 current_sentence += new_text
@@ -219,26 +226,46 @@ class LLMWorker(QThread):
                         })
 
                         # 2. Execute the requested tool
-                        tool_result = ""
+                        llm_text_payload = "" 
+
                         if tool_name == "search_local_documents":
-                            tool_result = rag_search(query, self.embedder, self.store)
-                            self.context_retrieved.emit(bool(tool_result))
+                            # It returns our new dictionary
+                            result_data = rag_search(query, self.embedder, self.store)
+                            
+                            # A. Extract the text for the LLM
+                            llm_text_payload = result_data["llm_context"]
+                            
+                            # B. Emit the metadata to the UI for the source chips
+                            self.sources_found.emit(result_data["sources"])
+                            
+                            # C. Tell the top bar if we found anything
+                            self.context_retrieved.emit(bool(llm_text_payload))
+                            
                         elif tool_name == "search_internet":
-                            tool_result = search_internet(query)
+                            # Assuming this still returns a standard string
+                            llm_text_payload = search_internet(query)
 
-                        if not tool_result:
-                            tool_result = "No results found."
+                        # Fallback if the database/internet is empty
+                        if not llm_text_payload:
+                            llm_text_payload = "No results found."
 
-                        # 3. Append the tool's result to history
+                        # 3. Append the clean text payload to the LLM's history
                         messages.append({
                             "tool_call_id": tool_call_id,
                             "role": "tool",
                             "name": tool_name,
-                            "content": tool_result
+                            "content": llm_text_payload
+                        })
+                        
+                        # 🔑 THE NUDGE FIX: Force the local model to answer
+                        messages.append({
+                            "role": "system",
+                            "content": "Tool executed successfully. Please provide the final answer to the user based ONLY on the tool output above. Do not call the tool again."
                         })
                         
                         logger.info(f"Tool '{tool_name}' executed. Looping back to LLM for final answer.")
                         continue # Loop back up and POST to the LLM again!
+                        
                     except Exception as e:
                         logger.error(f"Failed to execute tool {tool_name}: {e}")
                         break # Break loop on failure
@@ -246,17 +273,16 @@ class LLMWorker(QThread):
                     # Normal generation completed, break the iteration loop
                     break 
                     
-            except Exception as e:
+            except Exception as e: # <--- THE MISSING EXCEPT BLOCK RESTORED
                 logger.error(f"LLM Network Error: {e}")
                 break
-
+                
         # Save final text to SQLite
         if self.session_id and final_assistant_response.strip():
             # 1. Save to DB first so history is ready for the TitleWorker
             self.db.add_message(self.session_id, "assistant", final_assistant_response.strip())
             
-            # 🔑 2. THE PRESTIGE EMIT: Tell the app we are done talking
-            # This triggers the TitleWorker in the background
+            # 2. THE PRESTIGE EMIT: Tell the app we are done talking
             self.response_finished.emit(self.session_id, final_assistant_response.strip())
             
         self.status_update.emit("Idle")

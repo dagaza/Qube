@@ -23,7 +23,7 @@ Qube/
 │   └── styles/             # Extracted .qss stylesheet files ((base.qss, light.qss).
 ├── ui/                     # Presentation Layer (Dumb Components)
 │   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
-│   ├── components/         # Reusable custom UI components (PrestigeToggle, Custom Sliders).
+│   ├── components/         # Reusable custom UI components (PrestigeToggle, Custom Sliders, Source Viewer).
 │   └── views/              # isolated widget files for each major screen
 │       ├── __init__.py    
 │       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages

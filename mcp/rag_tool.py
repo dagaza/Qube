@@ -6,11 +6,14 @@ import logging
 logger = logging.getLogger("Qube.RAGTool")
 
 # 🔑 NOMIC TUNING: Nomic vectors behave slightly differently than MiniLM.
-# You may need to adjust this up or down based on your LanceDB metric (L2 vs Cosine).
 # 0.35 is a good starting point for Cosine similarity.
-SIMILARITY_THRESHOLD = 0.35  
+SIMILARITY_THRESHOLD = 350.0  
 
-def rag_search(query: str, embedder: EmbeddingModel, store: DocumentStore, top_k: int = 5) -> str:
+def rag_search(query: str, embedder: EmbeddingModel, store: DocumentStore, top_k: int = 5) -> dict:
+    """
+    Executes a RAG search and returns a dictionary containing both the formatted 
+    context for the LLM prompt and the structured metadata for the UI source chips.
+    """
     logger.info(f"Executing RAG Search for: '{query}'")
     
     try:
@@ -20,39 +23,51 @@ def rag_search(query: str, embedder: EmbeddingModel, store: DocumentStore, top_k
         # 2. Search the vector database
         results = store.search(query_vector, top_k=top_k)
 
+        # 🔑 UPDATE: Return the expected dictionary structure if empty
         if not results:
             logger.warning("RAG Search returned zero initial results.")
-            return ""
+            return {"llm_context": "", "sources": []}
 
-        # 3. Filter out bad matches based on distance
+        # 3. Filter out bad matches based on L2 distance
         filtered = []
         for r in results:
-            # Safely grab the distance, defaulting to 1.0 (a bad match) if missing
             distance = r.get("_distance", 1.0)
-            
-            # If distance is less than our threshold curve, it's a good match!
-            if distance < (1.0 - SIMILARITY_THRESHOLD):
-                filtered.append(r)
-            
-            # Optional: Log the distances while you are testing so you know how to tune the threshold
             logger.debug(f"Document: {r.get('source', 'Unknown')} | Distance: {distance:.4f}")
+            
+            # 🔑 THE FIX: Reject anything with a distance higher than 350
+            if distance < SIMILARITY_THRESHOLD:
+                filtered.append(r)
 
         if not filtered:
             logger.info("Results found, but none passed the similarity threshold.")
-            return ""
+            return {"llm_context": "", "sources": []}
 
-        # 4. Construct the final context block for the LLM
+        # 4. 🔑 THE PRESTIGE ARCHITECTURE: Construct dual payloads
         context_blocks = []
-        for r in filtered:
-            # We wrap it in clear markers so the LLM knows exactly where the info came from
+        source_metadata = []
+
+        # We use enumerate (1-indexed) to generate the [1], [2] citations
+        for i, r in enumerate(filtered, start=1):
             source_name = r.get('source', 'Unknown Document')
             text_chunk = r.get('text', '').strip()
             
-            context_blocks.append(f"--- START SOURCE: {source_name} ---\n{text_chunk}\n--- END SOURCE ---")
+            # Payload A: For the LLM to read and cite (e.g., --- SOURCE 1 ---)
+            context_blocks.append(f"--- SOURCE {i}: {source_name} ---\n{text_chunk}")
+            
+            # Payload B: For the UI to generate clickable chips
+            source_metadata.append({
+                "id": i,
+                "filename": source_name,
+                "content": text_chunk
+            })
 
         logger.info(f"Successfully retrieved {len(filtered)} relevant context blocks.")
-        return "\n\n".join(context_blocks)
+        
+        return {
+            "llm_context": "\n\n".join(context_blocks),
+            "sources": source_metadata
+        }
         
     except Exception as e:
         logger.error(f"Failed to execute RAG search: {e}")
-        return ""
+        return {"llm_context": "", "sources": []}
