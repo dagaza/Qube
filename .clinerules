@@ -1,5 +1,6 @@
 ## 1. Project Identity & Prime Directives
 * **Mission:** Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant. It operates entirely offline with real-time conversational streaming capabilities.
+* **Conversational Fluidity:** The system must support "Barge-In" (user interruption) where the AI stops speaking and generating text the millisecond the wakeword is detected.
 * **Strict Memory Constraint:** The entire system MUST operate under a strict 20GB RAM budget to prevent OS disk swapping, which would destroy audio latency.
 * **Tech Stack:** Python 3.12 (Linux/Windows), PyQt6, pyqtgraph, psutil, PyAudio, OpenWakeWord, Faster-Whisper, Ollama/LM Studio, Piper/Kokoro TTS, LanceDB, ONNX Runtime, and llama-cpp-python (Vulkan).
 * **Visual Identity:** The UI utilizes `qt_material` (dark_blue.xml theme) for a unified, modern, frameless aesthetic.
@@ -9,6 +10,7 @@
 * **Asynchronous Inference:** All heavy computational tasks (Wake Word detection, STT processing, LLM streaming, TTS generation, and Document Ingestion) must run in dedicated `QThread` instances.
 * **Thread Communication:** Threads must strictly communicate via PyQt signals (`pyqtSignal`), thread-safe queues (`queue.Queue`), and mutex locks (`QMutex`). Do not share raw state directly between the UI and background workers.
 * **Safe State Teardown:** All UI-to-Worker state changes (e.g., pausing the mic, swapping devices, swapping wakewords) must be passed as boolean flags or variables (e.g., `self.is_paused`, `self.pending_device_index`). The worker's internal event loop will pick up the flag and safely execute the hardware teardown/startup within its own isolated C++ memory space.
+* **Thread-Safe Interruption:** To prevent Segmentation Faults, the UI must never call .close() on audio streams. Interruption flags (self._interrupt_tts, self._cancel_requested) must be used to break worker loops, allowing the background thread to safely manage its own hardware cleanup.
 
 ## 3. Directory Structure & Domain Boundaries
 The project strictly enforces a modular, domain-driven directory structure to prevent "God Objects." 
@@ -74,6 +76,10 @@ Qube/
 - **No Blocking Workloads:** Never parse documents, load ML models, or wait for HTTP requests inside a UI class method. Fire a signal to a `worker` instead.
     
 - **No Direct Worker Instantiation in Dialogs:** Global objects (like the RAG `EmbeddingModel` and `DocumentStore`) must be instantiated exactly once in `main.py` and passed down by reference to the workers that need them.
+
+- **Status Priority Gate:** The MainWindow.update_status method must implement a priority system. "RECORDING" and "THINKING" states must take precedence over "IDLE" signals to prevent rapid-fire background threads from clobbering the active UI state.
+
+- **Context-Aware Placeholders:** Text input placeholders must dynamically reflect the system state (e.g., "Listening...", "Qube is thinking...", or "Reading documents...") based on active RAG and Audio Worker flags.
     
 
 ### 4.2 RAG Constraints & Embedder Stability
@@ -82,6 +88,14 @@ Qube/
 - **Vulkan + CPU Fallback Architecture:** The `EmbeddingModel` MUST probe hardware on boot. Attempt `n_gpu_layers=-1` (Vulkan) first for GPU acceleration. If it fails due to missing drivers, automatically fall back to `n_gpu_layers=0` (CPU mode).
 
 - **Sequential Embedding (Bug Bypass):** Due to known batching bugs in `llama.cpp` for lists of strings, `embedder.py` must process chunks sequentially. Hard-cap text string lengths (e.g., `[:25000]`) before passing to the engine to prevent `llama_decode returned -1` crashes.
+
+- **Conversational Memory (The Amnesia Fix):** To persist context across turns, retrieved RAG data must be injected into the SQLite message history as a system role block labeled --- RAG MEMORY ---
+
+- **Dynamic System Prompts:** The system prompt must be built dynamically. RAG-specific instructions (citations, strict document scope) should only be injected if the RAG engine is actually enabled for that specific turn to prevent "System Prompt Tunnel Vision."
+
+- **TTS Micro-Chunking:** To ensure instant voice cut-off during barge-in, the TTSWorker must slice audio chunks into microscopic segments (approx. 4096 bytes / 85ms) and check for the _interrupt_tts flag between every segment to prevent thread-blocking during stream.write().
+
+- **The Temporal Gate:** Every voice recording session must implement a ~0.75s "Deaf Window" immediately following a wakeword trigger to allow hardware speaker buffers to clear and prevent the AI from transcribing its own echo.
 
 - **Pure Python Semantic Chunking:** Documents must be sliced using paragraph/sentence overlap logic (max ~1500 chars) before embedding. Never pass massive, multi-page raw strings to the C++ engine.
 

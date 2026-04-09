@@ -4,23 +4,28 @@ Qube is a fully local, privacy-first AI assistant built with a complete multimod
 
 ## ✨ Key Features
 
-* **🧠 Local LLM Routing:** Interfaces directly with local LLM providers (like LM Studio) for private, fast text generation. Features intelligent NLP triggers and UI dashboard toggles for RAG routing.
+* **🧠 Conversational Memory & Dynamic RAG:** Qube doesn't just answer; it remembers. Using a custom SQLite "RAG Memory" injection, the assistant maintains context across multiple turns, preventing the "Amnesia Bug" common in basic RAG implementations.
+
+* **⚡ Real-Time Interruption (Barge-In):** Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
+
+* **🤖 Local LLM Routing:** Interfaces directly with local LLM providers (like LM Studio) for private, fast text generation. Features intelligent NLP triggers and UI dashboard toggles for RAG routing.
 
 * **🎙️ Lightning-Fast STT:** Powered by `faster-whisper`, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
 
-* **🗣️ High-Fidelity TTS:** Uses the cutting-edge **Kokoro** engine for ultra-realistic Text-to-Speech. Features a smart **Auto-Downloader** that seamlessly fetches the required model weights on the first boot to keep the repository lightweight. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like GPU (or a solid APU) acceleration.
+* **🗣️ High-Fidelity TTS:** Uses the cutting-edge **Kokoro** engine for ultra-realistic Text-to-Speech, with over 30 voices included. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like a dedicated GPU (or a solid APU) acceleration.
 
 * **📚 Advanced RAG Engine:** Built on **LanceDB** for blazing-fast vector storage and **PyMuPDF** for aggressive text extraction from complex PDFs, eBooks, and text files. 
 
-* **🎛️ Responsive GUI:** A clean, multithreaded PyQt6 interface featuring a real-time VU meter, dynamic settings, and custom wake-word support (for the moment Hey Jarvis, but more and custom options will come soon).
+* **🎛️ Responsive GUI:** A clean, multithreaded PyQt6 interface featuring a real-time VU meter, dynamic settings, and custom wake-word support (currently over 4 different wake-words available).
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-* Python 3.10 or higher
+* Python 3.12 or higher (Linux/Windows)
 * [LM Studio](https://lmstudio.ai/) or [Ollama] (https://ollama.com/download) (or a compatible local LLM server running on `localhost:1234`)
+* **Hardware:** Minimum 16GB RAM (20GB recommended to avoid disk swapping).
 * A microphone and speakers
 
 ### 1. Installation
@@ -71,41 +76,39 @@ _Note: On the very first run, Qube will automatically connect to Hugging Face an
 
 ### Voice Interaction
 
-1. Start your local LLM server (e.g., LM Studio).
+1. Start your local LLM server (e.g., LM Studio or Ollama).
     
-2. Say the wake word (Default: _"Hey Jarvis"_) (more & custom options coming soon - train your own custom wake word in the app).
+2. Say the wake word (Default: _"Hey Alexa"_) (training your own custom wake word in the app is coming soon).
     
-3. Speak your prompt. Qube uses a smart sliding-window VAD (Voice Activity Detection) threshold—it listens as long as you speak and processes your request after 2 seconds of silence. You can change this setting at any time from the Settings screen.
+3. Speak your prompt. Qube uses a smart sliding-window VAD (Voice Activity Detection) threshold—it listens as long as you speak and processes your request after 2 seconds of silence. You can change this cut-off time setting at any time from the Settings screen.
     
 
 ### RAG (Document Retrieval)
 
 Want Qube to answer questions based on a specific book or PDF?
 
-1. Open the **Settings Dialog** in the UI.
+1. Open the **Library View** and ingest your documents (PDF, EPUB, TXT, or MD). Qube will parse and embed them into the local LanceDB store.
     
-2. Click **Add Document** and select your PDF, EPUB, TXT, or MD file. Qube will parse, chunk, and embed the text into the local LanceDB vector database.
+2. Use the **RAG Toggle** in the tools pane or use trigger phrases like _"According to my files..."_ which **you can define yourself** in the settings area! Yes, you heard that right, Qube has NLP-triggered RAG functionality inside! 
     
-3. Check the **"🧠 Force Document Search"** box (or use trigger phrases like _"Check my notes"_ when speaking).
+3. Ask your question. Qube will retrieve the most relevant chunks and inject them into the LLM's context window, which also showing you the sources and citations
     
-4. Ask your question. Qube will retrieve the most relevant chunks and inject them into the LLM's context window.
-    
-
+4. **Conversational Turn:** Because Qube saves context to its internal "RAG Memory," you can ask follow-up questions about your documents without re-triggering a search.
 ---
 
 ## 🏗️ Architecture Stack
 
-- **UI Framework:** PyQt6
+- **UI Framework:** PyQt6 (Frameless, Thread-Isolated)
     
-- **Vector Database:** LanceDB
+- **Vector Database:** LanceDB (Disk-native, zero-copy)
     
-- **Embeddings:** Sentence-Transformers / ONNX
+- **Embeddings:** Nomic v1.5 GGUF via llama-cpp-python (Vulkan/CPU).
     
 - **Wake Word:** OpenWakeWord
     
 - **STT:** Faster-Whisper
     
-- **TTS:** Kokoro-ONNX / Piper
+- **TTS:** Kokoro-ONNX with Micro-Chunking
 
 ## 💖 Support the Project
 
@@ -119,6 +122,7 @@ Qube stands on the shoulders of giants. A massive thank you to the brilliant dev
 
 * **[Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M):** For the breathtakingly realistic TTS engine (by Hexgrad).
 * **[Faster-Whisper](https://github.com/SYSTRAN/faster-whisper):** For blazing-fast speech recognition (by SYSTRAN).
+* **[Nomic AI](https://www.nomic.ai/)**: For the high-performance **Nomic Embed v1.5** model powering our hardware-accelerated RAG pipeline.
 * **[LanceDB](https://lancedb.com/):** For the incredibly efficient, serverless vector database.
 * **[PyMuPDF](https://pymupdf.readthedocs.io/):** For the industrial-strength document parsing.
 * **[OpenWakeWord](https://github.com/dscripka/openWakeWord):** For lightweight, customizable wake word detection.
