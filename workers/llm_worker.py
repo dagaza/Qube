@@ -28,6 +28,7 @@ class LLMWorker(QThread):
         self.embedder = embedder
         self.store = store
         self.db = db_manager
+        self.mcp_auto_enabled = True # Default to ON
         
         # --- NEW: Dynamic Generation Parameters ---
         self.temperature = 0.7
@@ -35,6 +36,7 @@ class LLMWorker(QThread):
         
         # --- NEW: MCP Tool States ---
         self.mcp_rag_enabled = True
+        self.mcp_strict_enabled = False # Default to Balanced Mode
         self.mcp_internet_enabled = False
     
     def cancel_generation(self):
@@ -58,6 +60,14 @@ class LLMWorker(QThread):
 
     def set_mcp_rag(self, enabled: bool):
         self.mcp_rag_enabled = enabled
+
+    def set_mcp_strict(self, enabled: bool):
+        self.mcp_strict_enabled = enabled
+        logger.debug(f"Strict Isolation Mode set to: {enabled}")
+
+    def set_mcp_auto(self, enabled: bool):
+        self.mcp_auto_enabled = enabled
+        logger.debug(f"NLP Auto-Activator set to: {enabled}")
         
     def set_mcp_internet(self, enabled: bool):
         self.mcp_internet_enabled = enabled
@@ -90,34 +100,33 @@ class LLMWorker(QThread):
     # --------------------------------------------------------- #
 
     def _should_trigger_rag(self) -> bool:
-        """Determines if the RAG tool should be attached based on UI toggles and NLP keywords."""
-        # 1. Manual Override: If the user explicitly turned RAG off in the side panel, abort.
-        if not self.mcp_rag_enabled:
-            return False
+        """
+        Determines if the RAG tool should be attached.
+        Paradigm: 'Toggle is Truth' with 'Auto-Activator' fallback.
+        """
+        # 1. 🔑 THE TRUTH: If the user turned the RAG toggle ON, bypass the NLP check entirely.
+        if getattr(self, 'mcp_rag_enabled', False):
+            logger.debug("NLP ROUTER: RAG Master Toggle is ON. Vector search activated by default.")
+            return True
             
-        clean_prompt = self.prompt.lower().strip()
-        triggers = [] # 🔑 SAFE INITIALIZATION: Guarantee the variable exists
-        
-        # 2. Safely attempt to fetch from the database
-        try:
-            triggers = self.db.get_rag_triggers()
-        except Exception as e:
-            logger.error(f"NLP ROUTER ERROR: Failed to fetch triggers from DB: {e}")
+        # 2. 🔑 AUTO-ACTIVATOR: If the toggle is OFF, scan for "magic words"
+        if getattr(self, 'mcp_auto_enabled', True):
+            clean_prompt = self.prompt.lower().strip()
+            triggers = [] 
             
-        # 3. If the database is empty or failed, we can't trigger RAG
-        if not triggers:
-            logger.debug("NLP ROUTER: No triggers found in database.")
-            return False
-            
-        # 4. NLP Keyword Scanner
-        for trigger in triggers:
-            if trigger in clean_prompt:
-                # 🔑 X-RAY LOGGER 1: See exactly which word activated the search
-                logger.debug(f"NLP ROUTER: Prompt '{clean_prompt}' matched trigger '{trigger}'.")
-                return True
+            try:
+                triggers = self.db.get_rag_triggers()
+            except Exception as e:
+                logger.error(f"NLP ROUTER ERROR: Failed to fetch triggers from DB: {e}")
                 
-        # 5. Auto-Fallback
-        logger.debug("NLP ROUTER: No RAG triggers detected in prompt. Bypassing vector search for faster response.")
+            if triggers:
+                for trigger in triggers:
+                    if trigger in clean_prompt:
+                        logger.info(f"NLP ROUTER: Auto-Activator triggered by phrase '{trigger}'. Forcing RAG ON.")
+                        return True
+                    
+        # 3. Default: Off and no magic words spoken.
+        logger.debug("NLP ROUTER: RAG is OFF and no triggers detected. Bypassing search.")
         return False
 
     def _get_available_tools(self) -> list:
@@ -168,20 +177,27 @@ class LLMWorker(QThread):
         # 1. THE PRESTIGE FIX: Build Initial History with Dynamic System Prompt
         history = self.db.get_session_history(self.session_id) if self.session_id else []
         
-        # Start with a clean, general knowledge persona
+        # 1. Start with a clean, general knowledge persona
         base_system_prompt = (
             "You are Qube, an advanced, highly capable AI research assistant. "
             "You are helpful, concise, and have broad general knowledge."
         )
         
-        # 🔑 DYNAMIC INJECTION: Only add the strict document rules if RAG is actually active!
+        # 2. 🔑 UNIVERSAL RAG RULES: Always cite, but allow general knowledge
         if self._should_trigger_rag():
             base_system_prompt += (
                 " When you use the 'search_local_documents' tool, you will receive information "
                 "labeled as 'SOURCE 1', 'SOURCE 2', etc. "
-                "If you use information from these sources to answer the user, you MUST include inline citations at the end of the relevant sentences using brackets, like this: [1] or [2]. "
-                "Never invent or hallucinate sources. If you do not know the answer based on the sources, say so."
+                "If you use information from these sources, you MUST include inline citations at the end of the relevant sentences using brackets, like this: [1] or [2]. "
             )
+            
+            # 3. 🔑 STRICT ISOLATION MODE: The "Lawyer" constraint
+            if getattr(self, 'mcp_strict_enabled', False):
+                base_system_prompt += (
+                    " You are operating in STRICT ISOLATION MODE. You must NEVER use your general knowledge. "
+                    "If the provided documents do not contain the exact answer, you must refuse to answer and state: "
+                    "'I cannot answer that based on the provided documents.'"
+                )
             
         messages = [{"role": "system", "content": base_system_prompt}] + history
         

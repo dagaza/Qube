@@ -17,13 +17,13 @@ def rag_search(query: str, embedder: EmbeddingModel, store: DocumentStore, top_k
     logger.info(f"Executing RAG Search for: '{query}'")
     
     try:
-        # 1. Use the Nomic-specific query prefix
+        # 1. Use the Nomic-specific query prefix to get the Semantic Vector
         query_vector = embedder.embed_query(query)
         
-        # 2. Search the vector database
-        results = store.search(query_vector, top_k=top_k)
+        # 2. 🔑 THE HYBRID TRIGGER: Pass BOTH the meaning (vector) and the keywords (query)
+        results = store.search(query_vector=query_vector, query_text=query, top_k=top_k)
 
-        # 🔑 UPDATE: Return the expected dictionary structure if empty
+        # 泊 UPDATE: Return the expected dictionary structure if empty
         if not results:
             logger.warning("RAG Search returned zero initial results.")
             return {"llm_context": "", "sources": []}

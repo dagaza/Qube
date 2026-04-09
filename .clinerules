@@ -22,7 +22,8 @@ Qube/
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App icons, window logos, UI element SVGs.
 │   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
-│   └── styles/             # Extracted .qss stylesheet files ((base.qss, light.qss).
+│   ├── styles/             # Extracted .qss stylesheet files ((base.qss, light.qss).
+│   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
 │   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
 │   ├── components/         # Reusable custom UI components (PrestigeToggle, Custom Sliders, Source Viewer).

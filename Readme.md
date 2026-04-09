@@ -1,6 +1,10 @@
 # Qube: Local Hardware-Accelerated AI Assistant
 
-Qube is a fully local, privacy-first AI assistant built with a complete multimodal pipeline. It integrates state-of-the-art voice processing, hardware-accelerated inference, and a powerful Retrieval-Augmented Generation (RAG) engine to let you talk directly to your personal documents without sending a single byte of data to the cloud.
+| **Dark Theme** | **Light Theme** |
+| :---: | :---: |
+| ![Dark Theme](assets/screenshots/qube_dark_mode.png) | ![Light Theme](assets/screenshots/qube_light_mode.png) |
+
+Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant built with a complete multimodal pipeline. It operates entirely offline with real-time conversational streaming capabilities. By integrating state-of-the-art voice processing and a powerful Retrieval-Augmented Generation (RAG) engine, Qube allows you to interact directly with your personal documents without any data leaving your hardware.
 
 ## ✨ Key Features
 

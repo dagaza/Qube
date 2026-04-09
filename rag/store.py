@@ -66,8 +66,27 @@ class DocumentStore:
 
     def add_chunks(self, chunks: list[dict]):
         self.table.add(chunks)
+        
+        # 🔑 BUILD THE HYBRID INDEX: Generate the keyword map for Tantivy
+        try:
+            self.table.create_fts_index("text", replace=True)
+            logger.info("FTS keyword index built successfully.")
+        except Exception as e:
+            logger.warning(f"Could not build FTS index (ensure 'tantivy' is installed): {e}")
 
-    def search(self, query_vector: np.ndarray, top_k: int = 5) -> list[dict]:
+    def search(self, query_vector: np.ndarray, query_text: str = None, top_k: int = 5) -> list[dict]:
+        if query_text:
+            try:
+                # 🔑 TRUE HYBRID SEARCH: Blend Nomic vectors with Exact Keyword matches
+                return self.table.search(query_text, query_type="hybrid") \
+                                 .vector(query_vector) \
+                                 .limit(top_k) \
+                                 .select(["text", "source", "chunk_id"]) \
+                                 .to_list()
+            except Exception as e:
+                logger.warning(f"Hybrid search failed, falling back to pure vector: {e}")
+                
+        # 🐢 Fallback to pure vector search if text isn't provided or FTS fails
         return self.table.search(query_vector).limit(top_k).select(["text", "source", "chunk_id"]).to_list()
 
     def source_exists(self, source: str) -> bool:

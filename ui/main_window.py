@@ -211,7 +211,11 @@ class MainWindow(QMainWindow):
             # Wire Toolbar directly to worker methods
             self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
             self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
-    
+
+        # 5. 🔑 Sync Auto-Activator Toggles
+        self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
+        self.rag_auto_toggle.toggled.connect(self.settings_view.auto_activator_cb.setChecked)
+
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
         super().resizeEvent(event)
@@ -590,46 +594,69 @@ class MainWindow(QMainWindow):
         param_layout.addLayout(ctx_row)
         main_layout.addLayout(param_layout)
 
-        # --- 4. EXPERIMENTAL RAG ---
+        # --- 4. RAG ENGINE (Consolidated) ---
         rag_layout = QVBoxLayout()
         rag_layout.setSpacing(12)
-        r_title = QLabel("EXPERIMENTAL RAG")
+        r_title = QLabel("RAG ENGINE")
         r_title.setProperty("class", "ToolsPaneHeader")
         rag_layout.addWidget(r_title)
 
-        def create_toggle_row(label_text, checked=False):
+        # 🔑 THE REFINED TOOLTIP-AWARE ROW BUILDER
+        def create_toggle_row(label_text, tooltip_text, checked=False):
             row = QHBoxLayout()
+            
             toggle = PrestigeToggle()
             toggle.setChecked(checked)
+            # Tooltip removed from the switch
+            
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
+            # Tooltip removed from the text
+            
             row.addWidget(toggle)
             row.addWidget(lbl)
+            
+            # The visual indicator icon (The ONLY thing with a tooltip now)
+            info_icon = QLabel()
+            info_icon.setPixmap(qta.icon('fa5s.info-circle', color='#64748b').pixmap(QSize(12, 12)))
+            info_icon.setToolTip(tooltip_text) 
+            info_icon.setCursor(Qt.CursorShape.WhatsThisCursor) 
+            row.addWidget(info_icon)
+            
             row.addStretch()
             return row, toggle
 
-        hybrid_row, self.rag_hybrid_toggle = create_toggle_row("Hybrid Search (Alpha)")
-        strict_row, self.rag_strict_toggle = create_toggle_row("Strict Document Context")
-        rag_layout.addLayout(hybrid_row)
+        # 🔑 THE NEW, PUNCHIER DESCRIPTIONS
+        desc_kb = "Master Switch: Grants Qube permission to read and cite your local library."
+        
+        # Highlighting the "Magic" and pointing them to Settings
+        desc_auto = "Smart Override: Say a custom trigger to magically wake the Knowledge Base for a single turn, even if the master switch is OFF. (You can add custom 'magic words' in Settings)."
+        
+        desc_strict = "Lawyer Mode: Forces Qube to ONLY use your files. It will refuse to guess or use its general knowledge if the answer isn't in the documents."
+        
+        local_row, self.tool_rag_toggle = create_toggle_row("Local Knowledge Base", desc_kb, checked=True)
+        auto_row, self.rag_auto_toggle = create_toggle_row("NLP Auto-Activator", desc_auto, checked=True) 
+        strict_row, self.rag_strict_toggle = create_toggle_row("Strict Isolation Mode", desc_strict)
+        
+        rag_layout.addLayout(local_row)
+        rag_layout.addLayout(auto_row) 
         rag_layout.addLayout(strict_row)
         main_layout.addLayout(rag_layout)
 
         # --- 5. MCP TOOLS ---
         tools_layout = QVBoxLayout()
         tools_layout.setSpacing(12)
-        t_title = QLabel("MCP TOOLS (AGENTIC)")
+        t_title = QLabel("MCP TOOLS")
         t_title.setProperty("class", "ToolsPaneHeader")
         tools_layout.addWidget(t_title)
 
-        local_row, self.tool_rag_toggle = create_toggle_row("Local Knowledge Base", checked=True)
-        web_row, self.tool_internet_toggle = create_toggle_row("Internet Search")
-        tools_layout.addLayout(local_row)
+        # 🔑 FIX: Define the tooltip text and pass it as the second argument
+        desc_web = "Internet Agent: Allows Qube to search the live web (via DuckDuckGo) for real-time information."
+        web_row, self.tool_internet_toggle = create_toggle_row("Internet Search", desc_web)
+        
         tools_layout.addLayout(web_row)
         main_layout.addLayout(tools_layout)
-
-        main_layout.addStretch()
         outer_layout.addWidget(self.tools_content)
-
         # --------------------------------------------------------- #
         #  WIRING TO WORKERS                                        #
         # --------------------------------------------------------- #
@@ -654,6 +681,11 @@ class MainWindow(QMainWindow):
             
             # Force initial state check on boot
             self.set_rag_state('standby' if self.tool_rag_toggle.isChecked() else 'off')
+
+            # 🔑 THE NEW STRICT WIRE
+            self.rag_strict_toggle.toggled.connect(self._llm_worker.set_mcp_strict)
+            # 🔑 THE NEW AUTO-ACTIVATOR WIRE
+            self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
 
             self.tool_internet_toggle.toggled.connect(self._llm_worker.set_mcp_internet)
 

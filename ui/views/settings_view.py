@@ -12,9 +12,9 @@ from core.audio_utils import get_input_devices, get_output_devices
 from core.network import is_port_open
 
 logger = logging.getLogger("Qube.UI.Settings")
-
 class SettingsView(QWidget):
     audio_pin_toggle = pyqtSignal(bool)
+    auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -169,6 +169,7 @@ class SettingsView(QWidget):
         self.timeout_spinner.setStyleSheet(style)
         self.threshold_spinner.setStyleSheet(style)
         self.pin_audio_cb.setStyleSheet(style)
+        self.auto_activator_cb.setStyleSheet(style)
         
         # 🔑 Style the NLP Trigger input & list
         if hasattr(self, 'trigger_input'):
@@ -210,6 +211,12 @@ class SettingsView(QWidget):
         instruction = QLabel("Add custom phrases that will trigger a semantic search of your Knowledge Base:")
         instruction.setStyleSheet("color: #64748b; font-size: 12px; font-style: italic;")
         layout.addWidget(instruction)
+
+        # 🔑 NEW: Master Checkbox
+        self.auto_activator_cb = QCheckBox("Enable NLP Auto-Activator")
+        self.auto_activator_cb.setChecked(True)
+        self.auto_activator_cb.toggled.connect(self.auto_activator_toggle.emit)
+        layout.addWidget(self.auto_activator_cb)
         
         # Input Row
         input_row = QHBoxLayout()

@@ -125,3 +125,4 @@ transformers
 torch
 sentencepiece
 llama-cpp-python
+tantivy
