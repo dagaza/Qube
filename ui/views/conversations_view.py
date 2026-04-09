@@ -939,13 +939,28 @@ class ConversationsView(QWidget):
         viewer.show() # .show() is non-blocking, so they can keep chatting!
 
     def set_input_enabled(self, enabled: bool):
-        """Locks the text input bar while the AI is generating to prevent race conditions."""
+        """Locks the text input bar with context-aware placeholder text."""
         if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
             self.text_input.setEnabled(enabled)
             self.send_btn.setEnabled(enabled)
             
             if enabled:
+                # 🔑 RESET: Ensure we always go back to the default prompt
                 self.text_input.setPlaceholderText("Type a message to Qube...")
                 self.text_input.setFocus()
             else:
-                self.text_input.setPlaceholderText("Qube is reading the documents... please wait.")
+                # 🔑 DYNAMIC CHECK: Look at the worker's current settings
+                llm = self.workers.get("llm")
+                is_rag_active = getattr(llm, 'mcp_rag_enabled', False)
+                
+                # Check if we are currently in an interruption/recording state
+                # by looking at the Audio Worker if possible
+                audio = self.workers.get("audio")
+                is_recording = getattr(audio, 'is_recording', False) # Adjust if your flag has a different name
+
+                if is_recording:
+                    self.text_input.setPlaceholderText("Listening to your command...")
+                elif is_rag_active:
+                    self.text_input.setPlaceholderText("Qube is reading the documents... please wait.")
+                else:
+                    self.text_input.setPlaceholderText("Qube is thinking...")
