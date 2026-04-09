@@ -24,6 +24,8 @@ class AudioListenerWorker(QThread):
     # 🔑 NEW: Signal to broadcast live audio levels (0.0 to 1.0)
     volume_update = pyqtSignal(float)
 
+    wakeword_detected = pyqtSignal() # 🔑 THE NEW SIGNAL
+
     def __init__(self):
         super().__init__()
         self.mutex = QMutex()
@@ -34,6 +36,7 @@ class AudioListenerWorker(QThread):
         self.audio = pyaudio.PyAudio()
         self.current_rate = 16000 
         self.current_volume = 0
+        self.ignore_mic_until = 0.0 # 🔑 NEW: Hardware mute timer
         
         self.silence_timeout = 2.0  
         self.speech_threshold = 2
@@ -122,8 +125,25 @@ class AudioListenerWorker(QThread):
         self.status_update.emit(f"Swapping to device {index}...")
 
     def _record_until_silence(self):
+        # 🔑 THE FIX: Imports must go at the absolute top of the scope!
+        import time
+        import numpy as np
+        
         self.status_update.emit("🎙️ RECORDING...")
         logger.info("Wake word detected. Opening recording buffer...")
+
+        # 🔑 THE TEMPORAL GATE SETUP
+        # This ignores the first X seconds of audio to let speakers go silent.
+        gate_start_time = time.time()
+        DELAY_BUFFER = 0.65  # Adjust to 1.0 if you still hear "phantom" syllables
+        
+        # 🔑 THE ECHO FLUSH: Instantly throw away the mic's hardware buffer!
+        try:
+            if getattr(self, 'stream', None) and self.stream.get_read_available() > 0:
+                self.stream.read(self.stream.get_read_available(), exception_on_overflow=False)
+        except Exception as e:
+            logger.debug(f"Safely ignored PyAudio buffer flush error: {e}")
+
         recording = []
         
         INITIAL_TIMEOUT = 5.0    
@@ -134,6 +154,13 @@ class AudioListenerWorker(QThread):
 
         while self.running:
             data = self.stream.read(read_chunk, exception_on_overflow=False)
+
+            # 🔑 THE TEMPORAL GATE: Skip everything for the first 0.8 seconds
+            if time.time() - gate_start_time < DELAY_BUFFER:
+                # Reset the silence timer so the 5s timeout starts AFTER the gate opens
+                silence_start_time = time.time() 
+                continue
+
             audio_data = np.frombuffer(data, dtype=np.int16)
             
             if self.current_rate == 48000:
@@ -144,7 +171,7 @@ class AudioListenerWorker(QThread):
             try:
                 peak = np.max(np.abs(audio_data))
                 
-                # 🔑 THE FIX: Calculate and emit during active recording
+                # Calculate and emit during active recording
                 normalized_level = min(1.0, peak / 32767.0)
                 self.volume_update.emit(float(normalized_level))
                 
@@ -158,8 +185,10 @@ class AudioListenerWorker(QThread):
             if current_vol_pct >= self.speech_threshold:
                 silence_start_time = time.time()
                 has_spoken = True
+                
             elapsed_silence = time.time() - silence_start_time
             
+            # If nothing is heard after the gate opens for 5 seconds, go idle
             if not has_spoken and elapsed_silence > INITIAL_TIMEOUT:
                 self.status_update.emit("Idle")
                 return 
@@ -346,11 +375,16 @@ class AudioListenerWorker(QThread):
                     if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
                         score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
                         if score > 0.5:
-                            logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
+                            # 🔑 THE DEBOUNCE FIX: Put the trigger inside the 2-second cooldown!
                             if (time.time() - last_trigger_time) > 2.0:
+                                logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
+                                
+                                # 1. NOW it only tells main.py once!
+                                self.wakeword_detected.emit()
+                                
+                                # 2. Drop into recording
                                 self._record_until_silence()
                                 last_trigger_time = time.time()
-                                self.status_update.emit("Processing...")
                                 break
             except Exception as e:
                 logger.error("CRITICAL: Inference engine crashed during predict()!", exc_info=True)

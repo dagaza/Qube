@@ -36,6 +36,11 @@ class LLMWorker(QThread):
         # --- NEW: MCP Tool States ---
         self.mcp_rag_enabled = True
         self.mcp_internet_enabled = False
+    
+    def cancel_generation(self):
+        """Triggered by main.py to sever the LLM stream."""
+        logger.info("LLM Worker: Cancel requested by user interruption.")
+        self._cancel_requested = True
 
     # --- SETTERS FOR THE UI BLUEPRINT ---
     def set_provider(self, port: int):
@@ -80,10 +85,47 @@ class LLMWorker(QThread):
         text = re.sub(r'`([^`]+)`', r'\1', text)
         return text.strip()
 
+    # --------------------------------------------------------- #
+    #  🔑 NEW: NLP RAG ROUTER                                  #
+    # --------------------------------------------------------- #
+
+    def _should_trigger_rag(self) -> bool:
+        """Determines if the RAG tool should be attached based on UI toggles and NLP keywords."""
+        # 1. Manual Override: If the user explicitly turned RAG off in the side panel, abort.
+        if not self.mcp_rag_enabled:
+            return False
+            
+        clean_prompt = self.prompt.lower().strip()
+        triggers = [] # 🔑 SAFE INITIALIZATION: Guarantee the variable exists
+        
+        # 2. Safely attempt to fetch from the database
+        try:
+            triggers = self.db.get_rag_triggers()
+        except Exception as e:
+            logger.error(f"NLP ROUTER ERROR: Failed to fetch triggers from DB: {e}")
+            
+        # 3. If the database is empty or failed, we can't trigger RAG
+        if not triggers:
+            logger.debug("NLP ROUTER: No triggers found in database.")
+            return False
+            
+        # 4. NLP Keyword Scanner
+        for trigger in triggers:
+            if trigger in clean_prompt:
+                # 🔑 X-RAY LOGGER 1: See exactly which word activated the search
+                logger.debug(f"NLP ROUTER: Prompt '{clean_prompt}' matched trigger '{trigger}'.")
+                return True
+                
+        # 5. Auto-Fallback
+        logger.debug("NLP ROUTER: No RAG triggers detected in prompt. Bypassing vector search for faster response.")
+        return False
+
     def _get_available_tools(self) -> list:
-        """Constructs the OpenAI-compatible tools schema based on UI toggles."""
+        """Constructs the OpenAI-compatible tools schema based on UI toggles and NLP."""
         tools = []
-        if self.mcp_rag_enabled:
+        
+        # 🔑 THE FIX: Use our new NLP router instead of the static boolean
+        if self._should_trigger_rag():
             tools.append({
                 "type": "function",
                 "function": {
@@ -98,6 +140,7 @@ class LLMWorker(QThread):
                     }
                 }
             })
+            
         if self.mcp_internet_enabled:
             tools.append({
                 "type": "function",
@@ -113,6 +156,7 @@ class LLMWorker(QThread):
                     }
                 }
             })
+            
         return tools
 
     def run(self):
@@ -121,20 +165,36 @@ class LLMWorker(QThread):
         if self.session_id:
             self.db.add_message(self.session_id, "user", self.prompt)
 
-        # 1. THE PRESTIGE FIX: Build Initial History with Strict Citation Rules
+        # 1. THE PRESTIGE FIX: Build Initial History with Dynamic System Prompt
         history = self.db.get_session_history(self.session_id) if self.session_id else []
-        system_prompt = (
-            "You are Qube, an advanced AI research assistant. "
-            "When you use the 'search_local_documents' tool, you will receive information labeled as 'SOURCE 1', 'SOURCE 2', etc. "
-            "If you use information from these sources to answer the user, you MUST include inline citations at the end of the relevant sentences using brackets, like this: [1] or [2]. "
-            "Never invent or hallucinate sources. If you do not know the answer based on the sources, say so."
+        
+        # Start with a clean, general knowledge persona
+        base_system_prompt = (
+            "You are Qube, an advanced, highly capable AI research assistant. "
+            "You are helpful, concise, and have broad general knowledge."
         )
-        messages = [{"role": "system", "content": system_prompt}] + history
+        
+        # 🔑 DYNAMIC INJECTION: Only add the strict document rules if RAG is actually active!
+        if self._should_trigger_rag():
+            base_system_prompt += (
+                " When you use the 'search_local_documents' tool, you will receive information "
+                "labeled as 'SOURCE 1', 'SOURCE 2', etc. "
+                "If you use information from these sources to answer the user, you MUST include inline citations at the end of the relevant sentences using brackets, like this: [1] or [2]. "
+                "Never invent or hallucinate sources. If you do not know the answer based on the sources, say so."
+            )
+            
+        messages = [{"role": "system", "content": base_system_prompt}] + history
         
         # We use a loop because if the LLM calls a tool, we need to feed the result back to it
         max_tool_iterations = 3 
         current_iteration = 0
         final_assistant_response = ""
+
+        # 🔑 NEW: The memory buffer to cure the Amnesia Bug
+        accumulated_context = ""
+
+        # 🔑 THE RESET: Ensure we are ready to generate
+        self._cancel_requested = False
 
         while current_iteration < max_tool_iterations:
             current_iteration += 1
@@ -162,9 +222,19 @@ class LLMWorker(QThread):
             tool_args_str = ""
             tool_call_id = "call_123" # Fallback ID
 
+            # 🔑 X-RAY LOGGER 2: Print the exact conversational array
+            logger.debug(f"--- LLM PAYLOAD (Iteration {current_iteration}) ---")
+            logger.debug(json.dumps(payload["messages"], indent=2))
+            logger.debug("-----------------------------------")
+
             try: # <--- THE OUTER TRY BLOCK
                 response = requests.post(self.api_url, headers=headers, json=payload, stream=True)
                 for line in response.iter_lines():
+                    # 🔑 THE KILL-SWITCH: Break the stream immediately if interrupted
+                    if getattr(self, '_cancel_requested', False):
+                        logger.info("LLM stream severed by user interruption.")
+                        break 
+                        
                     if not line: continue
                     decoded = line.decode('utf-8')
                     if decoded.startswith("data: "):
@@ -208,8 +278,13 @@ class LLMWorker(QThread):
 
                 # Flush remaining text
                 if current_sentence.strip() and not is_tool_call:
-                    clean = self.clean_text_for_tts(current_sentence.strip())
-                    if clean: self.sentence_ready.emit(clean)
+                    # 🔑 THE PHANTOM FIX: Do NOT send the half-sentence to the speakers if the user interrupted!
+                    if not getattr(self, '_cancel_requested', False):
+                        clean = self.clean_text_for_tts(current_sentence.strip())
+                        if clean: 
+                            self.sentence_ready.emit(clean)
+                    else:
+                        logger.debug("Discarded phantom half-sentence from TTS due to interruption.")
 
                 # --- TOOL EXECUTION LOGIC ---
                 if is_tool_call:
@@ -229,8 +304,16 @@ class LLMWorker(QThread):
                         llm_text_payload = "" 
 
                         if tool_name == "search_local_documents":
-                            # It returns our new dictionary
                             result_data = rag_search(query, self.embedder, self.store)
+                            llm_text_payload = result_data["llm_context"]
+
+                            # 🔑 NEW: Save the text to our memory buffer
+                            if llm_text_payload:
+                                accumulated_context += llm_text_payload + "\n\n"
+                            
+                            # 🔑 X-RAY LOGGER 3: See exactly what the DB returned
+                            logger.debug(f"RAG TOOL OUTPUT LENGTH: {len(llm_text_payload)} characters.")
+                            logger.debug(f"RAG SOURCES FOUND: {len(result_data['sources'])}")
                             
                             # A. Extract the text for the LLM
                             llm_text_payload = result_data["llm_context"]
@@ -257,10 +340,10 @@ class LLMWorker(QThread):
                             "content": llm_text_payload
                         })
                         
-                        # 🔑 THE NUDGE FIX: Force the local model to answer
+                        # 🔑 THE OPTIMIZED NUDGE: Use the "user" role!
                         messages.append({
-                            "role": "system",
-                            "content": "Tool executed successfully. Please provide the final answer to the user based ONLY on the tool output above. Do not call the tool again."
+                            "role": "user",
+                            "content": "I have executed the search tool. Based ONLY on the tool results provided above, please answer my original question. If the results say 'No results found', please inform me of that. Do not attempt to call the tool again."
                         })
                         
                         logger.info(f"Tool '{tool_name}' executed. Looping back to LLM for final answer.")
@@ -279,6 +362,15 @@ class LLMWorker(QThread):
                 
         # Save final text to SQLite
         if self.session_id and final_assistant_response.strip():
+            
+            # 🔑 THE AMNESIA FIX: Save the document text as a system memory so it survives to the next turn!
+            if accumulated_context.strip():
+                self.db.add_message(
+                    self.session_id, 
+                    "system", 
+                    f"--- RAG MEMORY ---\nThe following context was retrieved from the knowledge base during this turn:\n{accumulated_context}"
+                )
+                
             # 1. Save to DB first so history is ready for the TitleWorker
             self.db.add_message(self.session_id, "assistant", final_assistant_response.strip())
             

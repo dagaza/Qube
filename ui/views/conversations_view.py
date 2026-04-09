@@ -937,3 +937,15 @@ class ConversationsView(QWidget):
         """Spawns the frameless SourcePreviewer dialog."""
         viewer = SourcePreviewer(source_dict['filename'], source_dict['content'], self)
         viewer.show() # .show() is non-blocking, so they can keep chatting!
+
+    def set_input_enabled(self, enabled: bool):
+        """Locks the text input bar while the AI is generating to prevent race conditions."""
+        if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
+            self.text_input.setEnabled(enabled)
+            self.send_btn.setEnabled(enabled)
+            
+            if enabled:
+                self.text_input.setPlaceholderText("Type a message to Qube...")
+                self.text_input.setFocus()
+            else:
+                self.text_input.setPlaceholderText("Qube is reading the documents... please wait.")

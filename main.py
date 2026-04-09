@@ -83,7 +83,10 @@ class Qube:
 
         # 2. Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
-
+        # 🔑 THE NEW WIRE: Connect the UI switch to our new method!
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_toggle'):
+            self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
+            
         # 3. Conversations View Routing (Transcript)
         # 🔑 UPDATED NAME HERE
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
@@ -92,6 +95,8 @@ class Qube:
         
         # 4. Background Data Pipeline (Audio -> STT -> LLM -> TTS)
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
+        # 🔑 Wire the instant interruption trigger
+        self.audio_worker.wakeword_detected.connect(self._handle_user_interruption)
         self.stt_worker.transcription_ready.connect(self._handle_voice_prompt)
         self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
 
@@ -124,6 +129,30 @@ class Qube:
 
         # 3. Send it to the LLM
         self.llm_worker.generate_response(text, session_id)
+
+    def _handle_user_interruption(self):
+        """Fired the millisecond the wakeword is detected by the AudioWorker."""
+        import logging
+        logger = logging.getLogger("Qube.Main")
+        logger.info("User interruption detected! Slamming on the brakes.")
+        
+        # 1. Stop the LLM Worker (Breaks the text generation stream)
+        if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
+            self.llm_worker.cancel_generation()
+            
+        # 2. Flush the TTS Worker (Empties the audio queue and stops PyAudio)
+        if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
+            self.tts_worker.stop_playback()
+            
+        # 3. Update the UI to show we caught the interruption
+        if hasattr(self, 'window'):
+            self.window.update_status("LISTENING...")
+            
+        # 🔑 THE DEAF WINDOW: 
+        # We freeze this specific routing thread for 0.5 seconds. 
+        # This prevents the STT engine from accidentally capturing the echo of 
+        # the TTS audio that was just killed.
+        logger.debug("Deaf window closed. Ready to accept new voice commands.")
     
     def _sync_databases(self):
         """
@@ -175,6 +204,16 @@ class Qube:
         
         # Fire it up!
         self.ingestion_worker.start()
+
+    # ------------------------------------------------------------------ #
+    #  UI State Handlers                                                   #
+    # ------------------------------------------------------------------ #
+
+    def on_rag_toggle_changed(self, is_enabled: bool):
+        """Updates the LLM worker when the user flips the RAG switch."""
+        if hasattr(self, 'llm_worker'):
+            self.llm_worker.mcp_rag_enabled = is_enabled
+            logger.debug(f"RAG Engine manually set to: {is_enabled}")
 
     # ------------------------------------------------------------------ #
     #  Public                                                              #

@@ -173,17 +173,39 @@ class TTSWorker(QThread):
             self.start()
 
     def run(self):
+        # Make sure pyaudio is imported at the top of your file!
+        import pyaudio 
+        import time
+        
         while not self.sentence_queue.empty():
+            # 1. 🔑 RESET THE FLAG: Ensure we are cleared to speak the next sentence
+            self._interrupt_tts = False
+            
             text = self.sentence_queue.get()
             
             # --- NEW: Bypass Logic ---
-            if self.is_muted:
+            if getattr(self, 'is_muted', False) or not self.active_adapter:
                 self.sentence_queue.task_done()
                 continue
             
-            if not self.active_adapter or not self.stream:
-                self.sentence_queue.task_done()
-                continue
+            # 3. 🔑 THE REBUILD: If the stream was destroyed by the Nuke, turn it back on!
+            if getattr(self, 'stream', None) is None:
+                try:
+                    # Make sure you have a pyaudio instance to open from!
+                    if getattr(self, 'pyaudio_instance', None) is None:
+                        self.pyaudio_instance = pyaudio.PyAudio()
+                        
+                    # **UPDATE THESE PARAMS** to match however you open self.stream in __init__!
+                    self.stream = self.pyaudio_instance.open(
+                        format=pyaudio.paInt16, 
+                        channels=1,
+                        rate=24000, # e.g., 16000, 24000, 44100
+                        output=True
+                    )
+                except Exception as e:
+                    self.status_update.emit(f"Failed to rebuild stream: {e}")
+                    self.sentence_queue.task_done()
+                    continue
 
             self.status_update.emit("🔊 Speaking...")
             first_chunk_played = False 
@@ -191,13 +213,40 @@ class TTSWorker(QThread):
 
             try:
                 for pcm_data in self.active_adapter.synthesize(text, self.active_voice_name):
+                    # Check if we should even start this chunk
+                    if getattr(self, '_interrupt_tts', False):
+                        break 
+                        
                     if not first_chunk_played:
                         self.tts_latency.emit((time.time() - start_time) * 1000)
                         first_chunk_played = True
-                    self.stream.write(pcm_data)
+                        
+                    # 🔑 THE MICRO-CHUNKER: Slice the audio into tiny ~85ms blocks
+                    # This prevents PyAudio from trapping the thread!
+                    CHUNK_SIZE = 4096 
+                    for i in range(0, len(pcm_data), CHUNK_SIZE):
+                        # Check the kill-switch between every tiny slice
+                        if getattr(self, '_interrupt_tts', False):
+                            logger.debug("Micro-chunker caught interruption! Stopping playback.")
+                            break 
+                            
+                        # Play just this tiny slice
+                        self.stream.write(pcm_data[i:i+CHUNK_SIZE])
                             
             except Exception as e:
                 self.status_update.emit(f"Audio Error: {e}")
                     
             self.sentence_queue.task_done()
-        self.status_update.emit("Idle")
+            
+        # (Removed the "Idle" emit here so it doesn't overwrite the AudioWorker's status)
+
+    def stop_playback(self):
+        """Thread-safe kill switch. Empties queue and flags the loop to stop."""
+        logger.info("TTS Worker: Interruption received. Clearing queue.")
+        self._interrupt_tts = True 
+        
+        if hasattr(self, 'sentence_queue'):
+            with self.sentence_queue.mutex:
+                self.sentence_queue.queue.clear()
+                
+        # ❌ We DO NOT close PyAudio here! It causes Segfaults!

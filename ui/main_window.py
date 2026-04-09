@@ -987,24 +987,37 @@ class MainWindow(QMainWindow):
     # ConversationsView, we will forward these calls directly to it.
 
     def update_status(self, message: str) -> None:
-        """Updates the top bar status bubble with dynamic CSS states."""
+        """Updates the top bar with a priority-based logic to prevent signal clobbering."""
         msg_upper = message.upper().strip()
-        self.status_bubble.setText(f" {msg_upper}")
         
-        # 1. Assign the state based on keywords
-        if "RECORDING" in msg_upper or "LISTENING" in msg_upper:
-            state = "recording"
-        elif "THINKING" in msg_upper or "GENERATING" in msg_upper:
-            state = "thinking"
+        # 1. Determine the incoming state
+        if any(k in msg_upper for k in ["RECORDING", "LISTENING"]):
+            new_state = "recording"
+        elif any(k in msg_upper for k in ["THINKING", "GENERATING", "SPEAKING", "TRANSCRIBING"]):
+            new_state = "thinking"
         else:
-            state = "idle"
-            
-        # 2. Set the property
-        self.status_bubble.setProperty("state", state)
+            new_state = "idle"
+
+        # 2. 🔑 THE PRIORITY GATE
+        # Get the current state from the UI property
+        current_state = self.status_bubble.property("state") or "idle"
+
+        # If the worker is trying to set "Idle", but we are currently Recording or Thinking, 
+        # IGNORE the idle signal. We only go back to idle when explicitly allowed.
+        if new_state == "idle" and current_state in ["recording", "thinking"]:
+            return
+
+        # 3. Update the UI
+        self.status_bubble.setText(f" {msg_upper}")
+        self.status_bubble.setProperty("state", new_state)
         
-        # 3. FORCE REPAINT (The 'Unpolish/Polish' trick)
+        # Force Style Refresh
         self.status_bubble.style().unpolish(self.status_bubble)
         self.status_bubble.style().polish(self.status_bubble)
+        
+        # Lock/Unlock input based on the new state
+        if hasattr(self, 'conversations_view'):
+            self.conversations_view.set_input_enabled(new_state == "idle")
 
     def update_rag_indicator(self, active: bool) -> None:
         """Called by the LLM Worker when actively retrieving documents."""

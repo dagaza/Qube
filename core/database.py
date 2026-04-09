@@ -13,11 +13,8 @@ class DatabaseManager:
 
     def _get_connection(self):
         """Returns a configured SQLite connection."""
-        # check_same_thread=False allows our worker threads to safely query the DB
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row # Returns dict-like rows instead of tuples
-        
-        # Enforce foreign key constraints (SQLite has them off by default)
+        conn.row_factory = sqlite3.Row 
         conn.execute("PRAGMA foreign_keys = ON;")
         return conn
 
@@ -49,13 +46,13 @@ class DatabaseManager:
                     )
                 """)
 
-                # 3. FTS5 Virtual Table for blazing fast text search
+                # 3. FTS5 Virtual Table
                 cursor.execute("""
                     CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts 
                     USING fts5(content, content='messages', content_rowid='rowid')
                 """)
 
-                # 4. Triggers to keep FTS table synced with the messages table
+                # 4. Triggers to keep FTS table synced
                 cursor.executescript("""
                     CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
                         INSERT INTO messages_fts(rowid, content) VALUES (new.rowid, new.content);
@@ -79,36 +76,58 @@ class DatabaseManager:
                         ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
+
+                # 🔑 6. THE NEW RAG TRIGGERS TABLE
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS rag_triggers (
+                        id TEXT PRIMARY KEY,
+                        phrase TEXT UNIQUE NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                # 🔑 7. SEED DEFAULT TRIGGERS (If table is empty)
+                cursor.execute("SELECT COUNT(*) FROM rag_triggers")
+                if cursor.fetchone()[0] == 0:
+                    default_triggers = [
+                        "search my files",
+                        "in my documents",
+                        "according to my knowledge base",
+                        "based on my files",
+                        "check my library"
+                    ]
+                    for trigger in default_triggers:
+                        cursor.execute(
+                            "INSERT INTO rag_triggers (id, phrase) VALUES (?, ?)",
+                            (str(uuid.uuid4()), trigger)
+                        )
+                    logger.info("Seeded default RAG triggers into database.")
                 
                 conn.commit()
                 logger.info("Database initialized successfully.")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
+    # ... [Keep your existing methods: cleanup_empty_sessions, get_session_count, etc.] ...
     def cleanup_empty_sessions(self, active_session_id: str = None):
-        """Deletes any session that has 0 messages, protecting the currently active one."""
         try:
             with self._get_connection() as conn:
                 if active_session_id:
-                    # Delete empty sessions, but spare the one the user is currently looking at
                     conn.execute("""
                         DELETE FROM sessions 
                         WHERE id NOT IN (SELECT DISTINCT session_id FROM messages)
                         AND id != ?
                     """, (active_session_id,))
                 else:
-                    # Nuclear option: delete all empty sessions
                     conn.execute("""
                         DELETE FROM sessions 
                         WHERE id NOT IN (SELECT DISTINCT session_id FROM messages)
                     """)
                 conn.commit()
         except Exception as e:
-            import logging
-            logging.getLogger("Qube.Database").error(f"Failed to cleanup empty sessions: {e}")
+            logger.error(f"Failed to cleanup empty sessions: {e}")
 
     def get_session_count(self) -> int:
-        """Returns the total number of conversation sessions."""
         try:
             with self._get_connection() as conn:
                 return conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
@@ -116,7 +135,6 @@ class DatabaseManager:
             return 0
 
     def get_document_count(self) -> int:
-        """Returns the total number of ingested documents."""
         try:
             with self._get_connection() as conn:
                 return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
@@ -124,7 +142,6 @@ class DatabaseManager:
             return 0
 
     def create_session(self, title: str = "New Chat") -> str:
-        """Creates a new chat session and returns its UUID."""
         session_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             conn.execute(
@@ -135,7 +152,6 @@ class DatabaseManager:
         return session_id
 
     def add_message(self, session_id: str, role: str, content: str):
-        """Appends a message to a session and updates the session's timestamp."""
         msg_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -150,7 +166,6 @@ class DatabaseManager:
             conn.commit()
 
     def get_session_history(self, session_id: str) -> list[dict]:
-        """Retrieves all messages for a specific session, formatted for the LLM."""
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
@@ -159,10 +174,7 @@ class DatabaseManager:
             return [{"role": row["role"], "content": row["content"]} for row in cursor.fetchall()]
 
     def search_history(self, query: str) -> list[dict]:
-        """Performs a full-text search across all messages."""
         with self._get_connection() as conn:
-            # We use the FTS MATCH operator. 
-            # We append a wildcard '*' so partial words match (e.g., 'mark' matches 'marketing')
             safe_query = f"{query}*" 
             cursor = conn.execute("""
                 SELECT m.session_id, s.title, m.role, snippet(messages_fts, -1, '<b>', '</b>', '...', 10) as highlight
@@ -176,7 +188,6 @@ class DatabaseManager:
             return [dict(row) for row in cursor.fetchall()]
 
     def get_recent_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
-        """Fetches a specific batch of conversations for the UI Sidebar infinite scroll."""
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC LIMIT ? OFFSET ?",
@@ -185,7 +196,6 @@ class DatabaseManager:
             return [dict(row) for row in cursor.fetchall()]
         
     def add_document_metadata(self, filename: str, file_size_kb: float, chunk_count: int):
-        """Logs an ingested file so the Library UI can list it instantly."""
         doc_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             conn.execute(
@@ -195,7 +205,6 @@ class DatabaseManager:
             conn.commit()
 
     def get_library_documents(self, limit: int = 20, offset: int = 0) -> list[dict]:
-        """Fetches a specific batch of the registry for the Library UI infinite scroll."""
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM documents ORDER BY ingested_at DESC LIMIT ? OFFSET ?",
@@ -204,13 +213,11 @@ class DatabaseManager:
             return [dict(row) for row in cursor.fetchall()]
         
     def delete_document_metadata(self, filename: str):
-        """Removes a document from Library."""
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
             conn.commit()
 
     def rename_document_metadata(self, old_filename: str, new_filename: str) -> bool:
-        """Updates the filename of a specific document in the Library registry."""
         try:
             with self._get_connection() as conn:
                 conn.execute(
@@ -224,7 +231,6 @@ class DatabaseManager:
             return False
 
     def rename_session(self, session_id: str, new_title: str) -> bool:
-        """Updates the title of a specific conversation session."""
         try:
             with self._get_connection() as conn:
                 conn.execute(
@@ -238,13 +244,54 @@ class DatabaseManager:
             return False
 
     def delete_session(self, session_id: str) -> bool:
-        """Permanently removes a session. Messages are deleted automatically via CASCADE."""
         try:
             with self._get_connection() as conn:
-                # Due to FOREIGN KEY ... ON DELETE CASCADE, messages are wiped automatically
                 conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
                 conn.commit()
                 return True
         except Exception as e:
             logger.error(f"Failed to delete session {session_id}: {e}")
+            return False
+
+    # --------------------------------------------------------- #
+    #  🔑 NEW RAG TRIGGER METHODS                              #
+    # --------------------------------------------------------- #
+
+    def get_rag_triggers(self) -> list[str]:
+        """Retrieves all custom RAG trigger phrases."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute("SELECT phrase FROM rag_triggers ORDER BY created_at ASC")
+                return [row["phrase"] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Failed to get RAG triggers: {e}")
+            return []
+
+    def add_rag_trigger(self, phrase: str) -> bool:
+        """Adds a new trigger phrase if it doesn't already exist."""
+        try:
+            clean_phrase = phrase.strip().lower()
+            if not clean_phrase:
+                return False
+                
+            with self._get_connection() as conn:
+                conn.execute(
+                    "INSERT OR IGNORE INTO rag_triggers (id, phrase) VALUES (?, ?)",
+                    (str(uuid.uuid4()), clean_phrase)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to add RAG trigger '{phrase}': {e}")
+            return False
+
+    def remove_rag_trigger(self, phrase: str) -> bool:
+        """Removes a trigger phrase."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM rag_triggers WHERE phrase = ?", (phrase.strip().lower(),))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to remove RAG trigger '{phrase}': {e}")
             return False

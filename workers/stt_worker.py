@@ -37,4 +37,3 @@ class STTWorker(QThread):
         self.stt_latency.emit(latency)
 
         self.transcription_ready.emit(full_text.strip())
-        self.status_update.emit("Idle")
