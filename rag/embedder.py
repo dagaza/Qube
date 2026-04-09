@@ -7,27 +7,39 @@ import multiprocessing
 class EmbeddingModel:
     def __init__(self):
         model_path = os.path.join("models", "nomic-embed-text-v1.5.Q4_K_M.gguf")
-        
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Missing embedding model: {model_path}")
-
-        print("Booting Nomic Engine (Hardware Auto-Detect)...")
-        
         physical_cores = max(1, multiprocessing.cpu_count() // 2)
-        
-        # 🔑 THE PRESTIGE SETUP:
-        # n_gpu_layers=-1 tells it to push 100% of the model to the GPU.
-        # If the user has a GPU (and the Vulkan library), it will fly.
-        # If they don't, llama.cpp will gracefully fall back to the CPU automatically.
-        self.model = Llama(
-            model_path=model_path,
-            embedding=True,  
-            n_gpu_layers=-1, 
-            n_ctx=8192,      
-            n_batch=8192,    
-            n_threads=physical_cores, 
-            verbose=False    
-        )
+
+        print("🔍 Probing user hardware...")
+
+        try:
+            # 🏎️ THE FAST PATH: Try Vulkan GPU first
+            self.model = Llama(
+                model_path=model_path,
+                embedding=True,
+                n_gpu_layers=-1, # Try to push to GPU
+                n_ctx=8192,
+                n_batch=8192,
+                n_threads=physical_cores,
+                verbose=False
+            )
+            # Send a dummy vector to force the engine to initialize the GPU memory
+            self.model.create_embedding("hardware_test")
+            print("🚀 GPU acceleration engaged successfully!")
+
+        except Exception as e:
+            # 🐢 THE SAFE PATH: No GPU or bad drivers? Fall back to CPU instantly.
+            print(f"⚠️ GPU init failed (Likely missing drivers). Falling back to CPU. Error: {e}")
+            
+            self.model = Llama(
+                model_path=model_path,
+                embedding=True,
+                n_gpu_layers=0, # 🔑 Force CPU only
+                n_ctx=8192,
+                n_batch=8192,
+                n_threads=physical_cores,
+                verbose=False
+            )
+            print("💻 Running on CPU mode.")
 
     def embed(self, texts: list[str]) -> np.ndarray:
         """Rock-solid sequential embedding to bypass llama.cpp batching bugs."""

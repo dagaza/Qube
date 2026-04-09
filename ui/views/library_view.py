@@ -22,6 +22,9 @@ class LibraryView(QWidget):
         # We need the vector store for reconstruction and deep deletion
         # (Assuming 'store' was added to the workers dictionary in main.py)
         self.store = workers.get("store") 
+
+        # 🔑 THE FIX: Declare the flag here so it exists on boot!
+        self._had_ingestion_error = False
         
         self.active_filename = None
         self._setup_ui()
@@ -299,18 +302,15 @@ class LibraryView(QWidget):
     def _update_row_colors(self):
         """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""
         from PyQt6.QtWidgets import QLabel
-        from PyQt6.QtWidgets import QApplication
         
-        # 1. Detect Theme
-        is_dark = True
-        if self.window() and hasattr(self.window(), '_is_dark_theme'):
-            is_dark = self.window()._is_dark_theme
-        elif "light.qss" in QApplication.instance().styleSheet().lower():
-            is_dark = False
+        # 1. Safely Detect Theme
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
             
-        # 2. Define our exact Palette
+        # 2. 🔑 THE FIX: The Colors!
+        # Unselected: Light gray in Dark Mode, Slate in Light Mode
         normal_color = "#cdd6f4" if is_dark else "#1e293b"
-        selected_color = "#11111b" if is_dark else "#ffffff"
+        # Selected: The background bubble is solid, so text should ALWAYS be White
+        selected_color = "#ffffff" 
 
         # 3. Target whichever list is in this specific file
         target_list = getattr(self, 'doc_list', getattr(self, 'history_list', None))
@@ -322,7 +322,7 @@ class LibraryView(QWidget):
             item = target_list.item(i)
             widget = target_list.itemWidget(item)
             if widget:
-                lbl = widget.findChild(QLabel) # Automatically grabs your title label
+                lbl = widget.findChild(QLabel) 
                 if lbl:
                     color = selected_color if item.isSelected() else normal_color
                     lbl.setStyleSheet(f"color: {color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
@@ -424,24 +424,21 @@ class LibraryView(QWidget):
                    f"{', '.join(existing_files[:5])}" + ("..." if len(existing_files) > 5 else "") +
                    "\n\nDo you want to overwrite them?")
             
-            reply = QMessageBox.question(
-                self, 'Overwrite Files?', msg,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
+            # 🔑 Use PrestigeDialog for the Yes/No check
+            is_dark = getattr(self.window(), '_is_dark_theme', True)
+            dialog = PrestigeDialog(self, "Overwrite Files?", msg, is_dark)
 
-            if reply == QMessageBox.StandardButton.Yes:
-                # Purge the old files from both LanceDB and SQLite before continuing
+            # .exec() returns truthy if they clicked the primary confirmation button
+            if dialog.exec():
                 logger.info("User chose to overwrite existing files. Purging old data...")
                 for name in existing_files:
                     if self.store: self.store.delete_document(name)
                     self.db.delete_document_metadata(name)
             else:
-                # If they say No, filter the existing files out of the ingestion list
                 paths = [p for p in paths if p.name not in existing_files]
                 if not paths:
                     logger.info("Ingestion cancelled; all selected files were duplicates and user declined overwrite.")
-                    return # Exit early if nothing is left to ingest
+                    return
 
         # 3. Proceed with the standard ingestion UI updates
         self.ingest_progress.setValue(0)
@@ -450,6 +447,8 @@ class LibraryView(QWidget):
         # REMOVED: self.add_btn.setText(...)
         
         logger.info(f"Emitting {len(paths)} files to main pipeline for ingestion.")
+        # 🔑 Reset the flag right before starting a new job
+        self._had_ingestion_error = False
         self.ingest_requested.emit(paths)
 
     # --- UI Receivers for Worker Progress ---
@@ -458,26 +457,33 @@ class LibraryView(QWidget):
 
     def show_error(self, error_msg: str):
         """Displays ingestion errors to the user and resets the UI."""
-        QMessageBox.warning(self, "Ingestion Warning", error_msg)
+        self._had_ingestion_error = True 
+        
         self.ingest_progress.hide()
         self.ingest_progress.setValue(0)
         self.add_btn.setEnabled(True)
-        # REMOVED: self.add_btn.setText(...)
+
+        # 🔑 Use the superior PrestigeDialog
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
+        dialog = PrestigeDialog(self, "Ingestion Failed", str(error_msg), is_dark)
+        dialog.exec()
 
     def complete_ingestion(self, total_chunks: int):
         self.ingest_progress.hide()
         self.ingest_progress.setValue(0)
         self.add_btn.setEnabled(True)
-        # REMOVED: self.add_btn.setText(...)
+        
+        if self._had_ingestion_error:
+            return 
+            
         self.refresh_library_list()
         
-        # Explicitly tell the user if the document was a blank/scanned PDF
         if total_chunks == 0:
-            QMessageBox.information(
-                self, 
-                "Ingestion Complete", 
-                "Process finished, but 0 chunks were added. This usually means the file was already in the database, or it is a scanned PDF with no readable text."
-            )
+            is_dark = getattr(self.window(), '_is_dark_theme', True)
+            msg = "Process finished, but 0 chunks were added. This usually means the file was already in the database, or it is a scanned PDF with no readable text."
+            dialog = PrestigeDialog(self, "No Data Added", msg, is_dark)
+            dialog.exec()
+
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the color of the Add Document button."""
         import qtawesome as qta

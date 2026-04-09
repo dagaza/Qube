@@ -593,18 +593,15 @@ class ConversationsView(QWidget):
     def _update_row_colors(self):
         """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""
         from PyQt6.QtWidgets import QLabel
-        from PyQt6.QtWidgets import QApplication
         
-        # 1. Detect Theme
-        is_dark = True
-        if self.window() and hasattr(self.window(), '_is_dark_theme'):
-            is_dark = self.window()._is_dark_theme
-        elif "light.qss" in QApplication.instance().styleSheet().lower():
-            is_dark = False
+        # 1. Safely Detect Theme
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
             
-        # 2. Define our exact Palette
+        # 2. 🔑 THE FIX: The Colors!
+        # Unselected: Light gray in Dark Mode, Slate in Light Mode
         normal_color = "#cdd6f4" if is_dark else "#1e293b"
-        selected_color = "#11111b" if is_dark else "#ffffff"
+        # Selected: The background bubble is solid, so text should ALWAYS be White
+        selected_color = "#ffffff" 
 
         # 3. Target whichever list is in this specific file
         target_list = getattr(self, 'doc_list', getattr(self, 'history_list', None))
@@ -616,7 +613,7 @@ class ConversationsView(QWidget):
             item = target_list.item(i)
             widget = target_list.itemWidget(item)
             if widget:
-                lbl = widget.findChild(QLabel) # Automatically grabs your title label
+                lbl = widget.findChild(QLabel) 
                 if lbl:
                     color = selected_color if item.isSelected() else normal_color
                     lbl.setStyleSheet(f"color: {color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")

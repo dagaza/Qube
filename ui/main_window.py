@@ -871,26 +871,35 @@ class MainWindow(QMainWindow):
             self._is_dark_theme = True
             logger.info("Theme switched to Dark Mode.")
 
-        # --- RE-THEME ATTACHED MENUS ---
-        # 1. Update the Settings Page menus (Fixed to use 'view_settings'!)
-        if hasattr(self, 'view_settings'):
-            self.view_settings.refresh_menu_themes(self._is_dark_theme)
+        # --- RE-THEME ATTACHED MENUS & LISTS ---
+        
+        # 1. Update the Settings Page menus
+        if hasattr(self, 'settings_view') and hasattr(self.settings_view, 'refresh_menu_themes'):
+            self.settings_view.refresh_menu_themes(self._is_dark_theme)
             
         # 2. Update the Toolbar Voice Menu
         if hasattr(self, 'global_voice_selector'):
             toolbar_menu = self.global_voice_selector.menu()
             if toolbar_menu:
                 self._apply_menu_theme(toolbar_menu, self._is_dark_theme)
-        # 3. Update the Conversations Kebab Menus
-        if hasattr(self, 'view_conversations'):
-            self.view_conversations.refresh_menu_themes(self._is_dark_theme)
-        if hasattr(self, 'view_conversations'):
-            self.view_conversations._refresh_history_list() # Force icon re-color
-            self.view_conversations.refresh_button_themes(self._is_dark_theme)
-        # 4. Update the Library Kebab Menus and Icons
-        if hasattr(self, 'view_library'):
-            self.view_library.refresh_library_list()
-            self.view_library.refresh_button_themes(self._is_dark_theme)
+
+        # 3. 🔑 THE FIX: Update Conversations View
+        if hasattr(self, 'conversations_view'):
+            if hasattr(self.conversations_view, 'refresh_menu_themes'):
+                self.conversations_view.refresh_menu_themes(self._is_dark_theme)
+            if hasattr(self.conversations_view, 'refresh_button_themes'):
+                self.conversations_view.refresh_button_themes(self._is_dark_theme)
+            if hasattr(self.conversations_view, '_update_row_colors'):
+                self.conversations_view._update_row_colors() # Force text repaint instantly!
+
+        # 4. 🔑 THE FIX: Update Library View
+        if hasattr(self, 'library_view'):
+            if hasattr(self.library_view, 'refresh_menu_themes'):
+                self.library_view.refresh_menu_themes(self._is_dark_theme)
+            if hasattr(self.library_view, 'refresh_button_themes'):
+                self.library_view.refresh_button_themes(self._is_dark_theme)
+            if hasattr(self.library_view, '_update_row_colors'):
+                self.library_view._update_row_colors() # Force text repaint instantly!
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
