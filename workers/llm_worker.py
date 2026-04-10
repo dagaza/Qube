@@ -8,6 +8,7 @@ import logging
 # Import our tools
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
+from workers.intent_router import Intent, IntentRegistry, IntentRouter, EmbeddingCache, build_centroid
 
 logger = logging.getLogger("Qube.LLM")
 
@@ -28,16 +29,53 @@ class LLMWorker(QThread):
         self.embedder = embedder
         self.store = store
         self.db = db_manager
-        self.mcp_auto_enabled = True # Default to ON
         
-        # --- NEW: Dynamic Generation Parameters ---
+        # --- NEW: Single-Pass Embedding Cache ---
+        self.embedding_cache = EmbeddingCache(self.embedder)
+        
+        # --- NEW: Cache DB Triggers on Boot to prevent latency ---
+        try:
+            self.cached_custom_triggers = [t.lower() for t in self.db.get_rag_triggers()]
+        except Exception as e:
+            logger.error(f"Failed to cache custom RAG triggers: {e}")
+            self.cached_custom_triggers = []
+
+        # --- NEW: Initialize the Semantic Router ---
+        logger.info("Building intent centroids...")
+        rag_examples = [
+            "search my notes", "find my documents", "scan local files",
+            "what did I write about", "retrieve my research", "check my vault",
+            "look in my library", "read the document"
+        ]
+        chat_examples = [
+            "what is the meaning of life", "explain quantum physics",
+            "write a poem", "how does gravity work", "hello", "who are you"
+        ]
+        
+        rag_centroid = build_centroid(self.embedder, rag_examples)
+        chat_centroid = build_centroid(self.embedder, chat_examples)
+        
+        registry = IntentRegistry()
+        registry.register(Intent(name="RAG", centroid=rag_centroid, threshold=0.65, margin=0.05))
+        registry.register(Intent(name="CHAT", centroid=chat_centroid, threshold=0.50, margin=0.02))
+        
+        self.intent_router = IntentRouter(registry)
+
+        # UI Toggles
+        self.mcp_auto_enabled = True 
         self.temperature = 0.7
         self.context_window = 4096
-        
-        # --- NEW: MCP Tool States ---
         self.mcp_rag_enabled = True
-        self.mcp_strict_enabled = False # Default to Balanced Mode
+        self.mcp_strict_enabled = False 
         self.mcp_internet_enabled = False
+
+    def refresh_custom_triggers(self):
+        """Called by the UI when the user edits custom triggers in Settings."""
+        try:
+            self.cached_custom_triggers = [t.lower() for t in self.db.get_rag_triggers()]
+            logger.info("In-memory custom triggers refreshed.")
+        except Exception as e:
+            logger.error(f"Failed to refresh custom triggers: {e}")
     
     def cancel_generation(self):
         """Triggered by main.py to sever the LLM stream."""
@@ -100,33 +138,32 @@ class LLMWorker(QThread):
     # --------------------------------------------------------- #
 
     def _should_trigger_rag(self) -> bool:
-        """
-        Determines if the RAG tool should be attached.
-        Paradigm: 'Toggle is Truth' with 'Auto-Activator' fallback.
-        """
-        # 1. 🔑 THE TRUTH: If the user turned the RAG toggle ON, bypass the NLP check entirely.
+        """Determines if the RAG tool should be attached using Semantic Intent Routing."""
+        # 1. THE TRUTH: Manual Toggle Overrides Everything
         if getattr(self, 'mcp_rag_enabled', False):
             logger.debug("NLP ROUTER: RAG Master Toggle is ON. Vector search activated by default.")
             return True
             
-        # 2. 🔑 AUTO-ACTIVATOR: If the toggle is OFF, scan for "magic words"
+        # 2. THE INTELLIGENCE: Auto-Activator Fallback
         if getattr(self, 'mcp_auto_enabled', True):
             clean_prompt = self.prompt.lower().strip()
-            triggers = [] 
             
-            try:
-                triggers = self.db.get_rag_triggers()
-            except Exception as e:
-                logger.error(f"NLP ROUTER ERROR: Failed to fetch triggers from DB: {e}")
+            # Step 2A: Check In-Memory DB Triggers (Zero Latency)
+            if any(trigger in clean_prompt for trigger in self.cached_custom_triggers):
+                logger.info("NLP ROUTER: Cached custom trigger matched. Forcing RAG ON.")
+                return True
                 
-            if triggers:
-                for trigger in triggers:
-                    if trigger in clean_prompt:
-                        logger.info(f"NLP ROUTER: Auto-Activator triggered by phrase '{trigger}'. Forcing RAG ON.")
-                        return True
+            # Step 2B: Semantic Intent Routing (Vector Math)
+            try:
+                # Calculate embedding once. If the LLM needs it later, it pulls from cache.
+                user_vec = self.embedding_cache.get_embedding(self.prompt)
+                intent_name, confidence = self.intent_router.route(user_vec)
+                
+                if intent_name == "RAG":
+                    return True
+            except Exception as e:
+                logger.error(f"Semantic Routing failed, falling back to CHAT: {e}")
                     
-        # 3. Default: Off and no magic words spoken.
-        logger.debug("NLP ROUTER: RAG is OFF and no triggers detected. Bypassing search.")
         return False
 
     def _get_available_tools(self) -> list:
@@ -320,24 +357,22 @@ class LLMWorker(QThread):
                         llm_text_payload = "" 
 
                         if tool_name == "search_local_documents":
-                            result_data = rag_search(query, self.embedder, self.store)
+                            # Use the single-pass cache to embed the LLM's query
+                            query_vector = self.embedding_cache.get_embedding(query)
+                            
+                            result_data = rag_search(query, query_vector, self.store)
                             llm_text_payload = result_data["llm_context"]
 
-                            # 🔑 NEW: Save the text to our memory buffer
                             if llm_text_payload:
                                 accumulated_context += llm_text_payload + "\n\n"
                             
-                            # 🔑 X-RAY LOGGER 3: See exactly what the DB returned
                             logger.debug(f"RAG TOOL OUTPUT LENGTH: {len(llm_text_payload)} characters.")
                             logger.debug(f"RAG SOURCES FOUND: {len(result_data['sources'])}")
                             
-                            # A. Extract the text for the LLM
-                            llm_text_payload = result_data["llm_context"]
-                            
-                            # B. Emit the metadata to the UI for the source chips
+                            # Emit the metadata to the UI for the source chips
                             self.sources_found.emit(result_data["sources"])
                             
-                            # C. Tell the top bar if we found anything
+                            # Tell the top bar if we found anything
                             self.context_retrieved.emit(bool(llm_text_payload))
                             
                         elif tool_name == "search_internet":
