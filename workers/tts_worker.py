@@ -101,6 +101,7 @@ class TTSWorker(QThread):
     model_loaded = pyqtSignal(str, list) 
     tts_latency = pyqtSignal(float) 
     playback_started = pyqtSignal(str)
+    playback_finished = pyqtSignal()
 
     def __init__(self, initial_model=""):
         super().__init__()
@@ -246,6 +247,8 @@ class TTSWorker(QThread):
                 self.status_update.emit(f"Audio Error: {e}")
                     
             self.sentence_queue.task_done()
+        
+        self.playback_finished.emit()
             
         # (Removed the "Idle" emit here so it doesn't overwrite the AudioWorker's status)
 

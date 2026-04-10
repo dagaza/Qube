@@ -103,6 +103,12 @@ Qube/
 
 - **Strict Database Schema & Absolute Paths:** `rag/store.py` must enforce the correct vector dimension (e.g., `768` for Nomic). It must use absolute `Path(__file__).resolve()` routing to prevent "Ghost Database" relative-path bugs. Include auto-healing logic to `drop_table` if a dimension mismatch is detected.
 
+- **Worker Telemetry Contract:**
+  - Workers emitting router decisions (LLMWorker, Cognitive Router) must provide telemetry signals with consistent keys.
+  - Workers must never block the UI to push telemetry.
+  - Telemetry dictionaries must be defensive; missing fields default to 0 or empty string.
+  - UI consumers (TelemetryView) must gracefully handle missing or delayed updates.
+
 ### 4.3 Routing, Prompting, & Audio
 - **LLM Provider Agnosticism:** The system supports Ollama/LM Studio via standard OpenAI-compatible streaming endpoints.
 
@@ -228,6 +234,42 @@ Memory system supports 3 logical behaviors:
 - If confidence is low OR margin is small:
   → MUST default to CHAT (safety fallback)
 
+#### **5.5.1 Cognitive Router Update**
+
+- Cognitive Router Introduction:  
+  - A new router layer, "Cognitive Router," has been added to improve multi-strategy prompt handling.  
+  - Legacy router remains active for backwards compatibility and fallback.  
+  - The Cognitive Router evaluates inputs with multiple scoring dimensions (CHAT, RAG, MEMORY, TOOL) and outputs a routing summary for telemetry purposes.  
+  - Must emit routing decisions asynchronously via PyQt signals; UI must only consume these signals.
+
+#### **5.5.2 Router Telemetry Rules**
+
+- Router Telemetry:  
+  - All routing decisions, per-worker latency, and tuner states must be exposed to the UI via signals.  
+  - Telemetry includes:  
+    - route_distribution (counts per path)  
+    - total_requests  
+    - avg_latency_ms  
+    - hybrid_sensitivity, memory_sensitivity, rag_sensitivity  
+  - Signals must be emitted on every decision cycle to keep the dashboard current.  
+  - UI must not poll workers directly; always use signals to maintain thread safety.
+
+#### **5.5.3 Router Dashboard Rules**
+
+- Router Dashboard (Telemetry View):  
+  - Displays both legacy and cognitive router metrics.  
+  - Sections:  
+    1. System Health (CPU, RAM, GPU)  
+    2. Pipeline Latency (STT, TTFT, TTS)  
+    3. Cognitive Router Telemetry:  
+       - Total requests routed  
+       - Distribution per routing path (CHAT, RAG, MEMORY, TOOL)  
+       - Sensitivity tuning metrics  
+  - Must only update via connected PyQt signals.  
+  - UI elements showing "..." indicate missing telemetry signals.  
+  - Labels must dynamically update on signal emission; no polling.  
+  - All new fields must match telemetry dictionary keys exactly to prevent UI failure
+
 ---
 
 ### 5.6 Execution Model (ANTI-AGENTIC COMPLEXITY RULE)
@@ -339,6 +381,8 @@ The system prioritizes:
 3. deterministic routing (no unpredictable agent behavior)
 4. memory integrity (no schema corruption)
 5. latency consistency (no hidden blocking calls)
+
+
 
 ---
 

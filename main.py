@@ -93,6 +93,7 @@ class Qube:
         self.llm_worker.status_update.connect(w.update_status)
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
+        self.tts_worker.playback_finished.connect(self._handle_tts_finished)
 
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
@@ -121,6 +122,9 @@ class Qube:
             self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
         if hasattr(self.tts_worker, 'tts_latency'):
             self.tts_worker.tts_latency.connect(w.update_tts_latency)
+        if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
+            if hasattr(w.telemetry_view, 'update_router_telemetry'):
+                self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
 
     def _handle_voice_prompt(self, text: str):
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
@@ -145,6 +149,15 @@ class Qube:
             
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
     
+    def _handle_tts_finished(self):
+        """Safely resets the UI state based on the current microphone status."""
+        if hasattr(self, 'window'):
+            # If the user paused the mic while Qube was talking, keep it showing as deactivated
+            if getattr(self.audio_worker, 'is_paused', False):
+                self.window.update_status("Voice Input Deactivated")
+            else:
+                self.window.update_status("Idle")
+
     def _sync_databases(self):
         """
         Self-healing mechanism: Scans LanceDB for embeddings and ensures 
