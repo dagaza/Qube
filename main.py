@@ -12,6 +12,7 @@ from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
+from workers.enrichment_worker import EnrichmentWorker
 
 import logging
 
@@ -31,14 +32,30 @@ class Qube:
         # -- 1. Shared services ------------------------------------------
         self.embedder = EmbeddingModel()
         self.store    = DocumentStore()
+        self.db_manager = DatabaseManager()
         
         # -- 2. Background workers ---------------------------------------
-        self.db_manager = DatabaseManager()
         self.audio_worker = AudioListenerWorker()
         self.stt_worker   = STTWorker()
         self.llm_worker   = LLMWorker(self.embedder, self.store, self.db_manager)
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
+
+        # --- 3. Instantiate the Async Brain (Memory v3) -----------------
+        # 🔑 FIX: Corrected variable names to match self.store and self.db_manager
+        self.enrichment_worker = EnrichmentWorker(
+            llm=self.llm_worker,
+            embedder=self.embedder,
+            store=self.store,
+            db=self.db_manager
+        )
+        
+        # --- 4. THE GOLDEN WIRE (Signal -> Slot) ------------------------
+        # 🔑 FIX: Connect to tts_worker (The Mouth) so it fires during the Audio Window
+        self.tts_worker.playback_started.connect(self.enrichment_worker.enqueue)
+        
+        # Start the memory worker thread
+        self.enrichment_worker.start()
 
         workers = {
             "audio": self.audio_worker,
@@ -49,24 +66,20 @@ class Qube:
             "store": self.store
         }
 
-        # -- 3. UI -------------------------------------------------------
-        # Create the main window
+        # -- 5. UI -------------------------------------------------------
         self.window = MainWindow(workers=workers, gpu_monitor=self.gpu_monitor)
 
-        # -- 4. Wire signals ---------------------------------------------
+        # -- 6. Wire signals ---------------------------------------------
         self._connect_signals()
-
         self._sync_databases()
 
-        # -- 5. Start continuous processes --------------------------------
-        
-        # Start the worker with OS default (None) hardware routing (PipeWire)
+        # -- 7. Start continuous processes --------------------------------
         self.audio_worker.start()
 
         # Load the TTS Kokoro Model
-        import os
         tts_path = os.path.join("models", "tts", "kokoro-v1.0.onnx")
         self.tts_worker.load_voice(tts_path)
+
     # ------------------------------------------------------------------ #
     #  Signal wiring                                                       #
     # ------------------------------------------------------------------ #
@@ -74,84 +87,62 @@ class Qube:
     def _connect_signals(self):
         w = self.window
         
-        # 1. Global Shell Routing (Top Bar Status & RAG Dot)
+        # Global Shell Routing
         self.audio_worker.status_update.connect(w.update_status)
         self.stt_worker.status_update.connect(w.update_status)
         self.llm_worker.status_update.connect(w.update_status)
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
 
-        # 2. Settings View Routing
+        # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
-        # 🔑 THE NEW WIRE: Connect the UI switch to our new method!
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_toggle'):
             self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
             
-        # 3. Conversations View Routing (Transcript)
-        # 🔑 UPDATED NAME HERE
+        # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
-        # 🔑 THE NEW WIRE: Send the sources directly to the UI
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         
-        # 4. Background Data Pipeline (Audio -> STT -> LLM -> TTS)
+        # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
-        # 🔑 Wire the instant interruption trigger
         self.audio_worker.wakeword_detected.connect(self._handle_user_interruption)
         self.stt_worker.transcription_ready.connect(self._handle_voice_prompt)
+        
+        # 🔑 UI BRIDGE: Ensure the session_id is passed from the LLM to the TTS
         self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
 
-        # 5. Library View Routing
-        # 🔑 UPDATED NAME HERE
+        # Library View Routing
         w.library_view.ingest_requested.connect(self._start_ingestion)
 
-        # 6. Telemetry View Routing
+        # Telemetry View Routing
         if hasattr(self.stt_worker, 'stt_latency'):
             self.stt_worker.stt_latency.connect(w.update_stt_latency)
-            
         if hasattr(self.llm_worker, 'ttft_latency'):
             self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
-            
         if hasattr(self.tts_worker, 'tts_latency'):
             self.tts_worker.tts_latency.connect(w.update_tts_latency)
 
     def _handle_voice_prompt(self, text: str):
-        """Safely bridges STT voice input to the LLM and the UI."""
-        # 1. Grab the session ID from the UI, or create a fallback
-        # 🔑 UPDATED NAMES HERE
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
         if not session_id:
             session_id = self.db_manager.create_session("Voice Chat")
             self.window.conversations_view.active_session_id = session_id
             self.window.conversations_view._refresh_history_list()
 
-        # 2. Show what you just said in the UI (so you know the STT heard you correctly!)
         self.window.conversations_view.log_user_message(text)
-
-        # 3. Send it to the LLM
         self.llm_worker.generate_response(text, session_id)
 
     def _handle_user_interruption(self):
-        """Fired the millisecond the wakeword is detected by the AudioWorker."""
-        import logging
         logger = logging.getLogger("Qube.Main")
         logger.info("User interruption detected! Slamming on the brakes.")
         
-        # 1. Stop the LLM Worker (Breaks the text generation stream)
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
-            
-        # 2. Flush the TTS Worker (Empties the audio queue and stops PyAudio)
         if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
             self.tts_worker.stop_playback()
-            
-        # 3. Update the UI to show we caught the interruption
         if hasattr(self, 'window'):
             self.window.update_status("LISTENING...")
             
-        # 🔑 THE DEAF WINDOW: 
-        # We freeze this specific routing thread for 0.5 seconds. 
-        # This prevents the STT engine from accidentally capturing the echo of 
-        # the TTS audio that was just killed.
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
     
     def _sync_databases(self):

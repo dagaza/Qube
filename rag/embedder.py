@@ -48,14 +48,21 @@ class EmbeddingModel:
         embeddings = []
         
         for text in texts:
+            # 1. Hard-cap the text length just below the absolute limit to guarantee zero crashes
             safe_text = text[:25000] 
             formatted_text = f"search_document: {safe_text}"
             
             try:
+                # 2. Process one by one safely
                 response = self.model.create_embedding(formatted_text)
-                embeddings.append(response["data"][0]["embedding"])
+                
+                # 🔑 THE FIX: Extract, convert, and normalize the vector
+                vec = np.array(response["data"][0]["embedding"], dtype=np.float32)
+                embeddings.append(self._normalize(vec))
+                
             except Exception as e:
-                logger.error(f"CRITICAL: Chunk failed. Inserting blank vector. Error: {e}")
+                # Keep your existing logger/print statement here
+                print(f"CRITICAL: Chunk failed. Inserting blank vector. Error: {e}")
                 embeddings.append([0.0] * 768)
                 
         return np.array(embeddings, dtype=np.float32)
@@ -68,4 +75,9 @@ class EmbeddingModel:
         """Use this specifically in your LLM search tool!"""
         formatted_query = f"search_query: {query}"
         response = self.model.create_embedding(formatted_query)
-        return np.array(response["data"][0]["embedding"], dtype=np.float32)
+        vec = np.array(response["data"][0]["embedding"], dtype=np.float32)
+        return self._normalize(vec) # 🔑 THE FIX
+    
+    def _normalize(self, vec: np.ndarray) -> np.ndarray:
+        norm = np.linalg.norm(vec)
+        return vec / norm if norm > 0 else vec

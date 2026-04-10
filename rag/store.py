@@ -77,9 +77,10 @@ class DocumentStore:
     def search(self, query_vector: np.ndarray, query_text: str = None, top_k: int = 5) -> list[dict]:
         if query_text:
             try:
-                # 🔑 TRUE HYBRID SEARCH: Blend Nomic vectors with Exact Keyword matches
-                return self.table.search(query_text, query_type="hybrid") \
+                # 🔑 TRUE HYBRID SEARCH: Explicit chaining to fix LanceDB syntax conflict
+                return self.table.search(query_type="hybrid") \
                                  .vector(query_vector) \
+                                 .text(query_text) \
                                  .limit(top_k) \
                                  .select(["text", "source", "chunk_id"]) \
                                  .to_list()

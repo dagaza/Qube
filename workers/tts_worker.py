@@ -100,6 +100,7 @@ class TTSWorker(QThread):
     status_update = pyqtSignal(str)
     model_loaded = pyqtSignal(str, list) 
     tts_latency = pyqtSignal(float) 
+    playback_started = pyqtSignal(str)
 
     def __init__(self, initial_model=""):
         super().__init__()
@@ -167,23 +168,34 @@ class TTSWorker(QThread):
         except Exception as e:
             self.status_update.emit(f"Failed to load model: {e}")
 
-    def add_to_queue(self, text):
-        self.sentence_queue.put(text)
+    def add_to_queue(self, text, session_id="default"):
+        """Modified to accept a session_id for the Memory Brain."""
+        # 🔑 Store as a tuple so the session_id travels with the text
+        self.sentence_queue.put((text, session_id))
         if not self.isRunning():
             self.start()
 
     def run(self):
-        # Make sure pyaudio is imported at the top of your file!
         import pyaudio 
         import time
         
         while not self.sentence_queue.empty():
-            # 1. 🔑 RESET THE FLAG: Ensure we are cleared to speak the next sentence
             self._interrupt_tts = False
+
+            # 1. Pop the item off the queue ONCE
+            item = self.sentence_queue.get()
             
-            text = self.sentence_queue.get()
+            # 2. Unpack it safely
+            if isinstance(item, tuple):
+                text, session_id = item
+            else:
+                text, session_id = item, "default"
             
-            # --- NEW: Bypass Logic ---
+            # (Deleted the duplicate get() call here!)
+
+            logger.info(f"[TTS] Preparing to speak: '{text[:40]}...'")
+            
+            # --- Bypass Logic ---
             if getattr(self, 'is_muted', False) or not self.active_adapter:
                 self.sentence_queue.task_done()
                 continue
@@ -213,24 +225,21 @@ class TTSWorker(QThread):
 
             try:
                 for pcm_data in self.active_adapter.synthesize(text, self.active_voice_name):
-                    # Check if we should even start this chunk
                     if getattr(self, '_interrupt_tts', False):
                         break 
                         
                     if not first_chunk_played:
+                        # 🔑 THE TRIGGER: Fire exactly when the first audio chunk plays
                         self.tts_latency.emit((time.time() - start_time) * 1000)
+                        self.playback_started.emit(session_id) 
                         first_chunk_played = True
                         
-                    # 🔑 THE MICRO-CHUNKER: Slice the audio into tiny ~85ms blocks
-                    # This prevents PyAudio from trapping the thread!
+                    # --- Keep your Micro-Chunker exactly as is for Barge-in ---
                     CHUNK_SIZE = 4096 
                     for i in range(0, len(pcm_data), CHUNK_SIZE):
-                        # Check the kill-switch between every tiny slice
                         if getattr(self, '_interrupt_tts', False):
                             logger.debug("Micro-chunker caught interruption! Stopping playback.")
                             break 
-                            
-                        # Play just this tiny slice
                         self.stream.write(pcm_data[i:i+CHUNK_SIZE])
                             
             except Exception as e:
