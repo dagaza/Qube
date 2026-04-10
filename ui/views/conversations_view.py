@@ -537,6 +537,8 @@ class ConversationsView(QWidget):
         text = self.text_input.text().strip()
         if not text: return
         self.text_input.clear()
+        self.set_input_enabled(False)
+
         self.log_user_message(text)
 
         if not hasattr(self, 'active_session_id'):
@@ -939,28 +941,23 @@ class ConversationsView(QWidget):
         viewer.show() # .show() is non-blocking, so they can keep chatting!
 
     def set_input_enabled(self, enabled: bool):
-        """Locks the text input bar with context-aware placeholder text."""
+        """Locks the text input bar and resets its placeholder."""
         if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
             self.text_input.setEnabled(enabled)
             self.send_btn.setEnabled(enabled)
             
             if enabled:
-                # 🔑 RESET: Ensure we always go back to the default prompt
+                # 🔑 RESET: Back to normal
                 self.text_input.setPlaceholderText("Type a message to Qube...")
                 self.text_input.setFocus()
             else:
-                # 🔑 DYNAMIC CHECK: Look at the worker's current settings
-                llm = self.workers.get("llm")
-                is_rag_active = getattr(llm, 'mcp_rag_enabled', False)
-                
-                # Check if we are currently in an interruption/recording state
-                # by looking at the Audio Worker if possible
-                audio = self.workers.get("audio")
-                is_recording = getattr(audio, 'is_recording', False) # Adjust if your flag has a different name
+                # 🔑 DEFAULT LOCK: We will update this dynamically in a millisecond
+                self.text_input.setPlaceholderText("Qube is thinking...")
 
-                if is_recording:
-                    self.text_input.setPlaceholderText("Listening to your command...")
-                elif is_rag_active:
-                    self.text_input.setPlaceholderText("Qube is reading the documents... please wait.")
-                else:
-                    self.text_input.setPlaceholderText("Qube is thinking...")
+    # 🔑 NEW: A dynamic receiver to update the text box live
+    def update_action_placeholder(self, status: str):
+        """Dynamically updates the text box placeholder based on worker status."""
+        if not self.text_input.isEnabled() and status != "Idle":
+            # Just clean up the string to sound natural (add an ellipsis if missing)
+            display_text = status if "..." in status else f"{status}..."
+            self.text_input.setPlaceholderText(display_text)

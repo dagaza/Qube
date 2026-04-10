@@ -62,6 +62,7 @@ class LLMWorker(QThread):
         self.USE_COGNITIVE_ROUTER = True
         self.USE_ADAPTIVE_ROUTER = True
         self.USE_TELEMETRY = True
+        self.USE_COGNITIVE_ROUTER_INTERNET = True # For hybrid internet mode
 
         # toggles
         self.mcp_auto_enabled = True
@@ -157,11 +158,19 @@ class LLMWorker(QThread):
                 execution_route = "RAG"
                 decision["rag_query"] = self.prompt
 
-        # internet override
-        if self.mcp_internet_enabled:
-            web_triggers = ["search the internet", "who won", "current news", "weather"]
-            if any(t in clean_prompt for t in web_triggers):
-                execution_route = "WEB"
+        # ------------------------------------------------------------
+        # INTERNET TRIGGER (manual + cognitive)
+        # ------------------------------------------------------------
+        # Manual trigger: user text contains known web commands
+        web_triggers = ["search the internet", "who won", "current news", "weather"]
+        manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
+
+        # Automatic trigger: cognitive router decides internet is needed
+        auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
+
+        # Final execution decision for WEB
+        if manual_web or auto_web:
+            execution_route = "WEB"
 
         # ============================================================
         # ROUTING START TIME (telemetry)
@@ -205,12 +214,34 @@ class LLMWorker(QThread):
             tool_context = rag_result.get("llm_context", "")
             all_ui_sources.extend(rag_result.get("sources", []))
 
-        # ---- WEB ----
-        elif execution_route == "WEB" and self.mcp_internet_enabled:
-            tool_context = search_internet(self.prompt)
+        # ---- WEB + HYBRID ----
+        if execution_route in ["WEB", "INTERNET", "HYBRID"] and self.mcp_internet_enabled:
+            from mcp.internet_tool import search_internet
+            self.status_update.emit("🌐 Searching the Web...")
+            
+            web_results = search_internet(self.prompt)
+            
+            if web_results:
+                # 🔑 THE FIX: If DuckDuckGo returns a list, join it into a single text block
+                if isinstance(web_results, list):
+                    # Cleanly join the snippets with double newlines
+                    web_results = "\n\n".join([str(item) for item in web_results])
+                else:
+                    # Just in case it's already a string or something else
+                    web_results = str(web_results)
 
-        if all_ui_sources:
-            self.sources_found.emit(all_ui_sources)
+                # Trim results to avoid blowing out context window
+                web_context = web_results[:self.RAG_BUDGET]
+                
+                # Merge with RAG context if we are in HYBRID mode
+                if tool_context:
+                    tool_context = f"{tool_context}\n\nWEB SEARCH RESULTS:\n{web_context}"
+                else:
+                    tool_context = web_context
+                    
+                logger.info(f"[LLM Worker] Web search integrated ({len(web_context)} chars)")
+            else:
+                logger.warning("[LLM Worker] Web search returned no results.")
 
         # ============================================================
         # TELEMETRY + SELF TUNING
@@ -270,23 +301,19 @@ class LLMWorker(QThread):
 
         if execution_route in ["RAG", "HYBRID"]:
             system_prompt += " Use provided documents with citations [1], [2]."
+            
+        # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
+        elif execution_route in ["WEB", "INTERNET"]:
+            system_prompt = (
+                "You are Qube. You have just been provided with real-time, live web search results. "
+                "You MUST use the TOOLS context provided below to answer the user's query. "
+                "Do not state that you are offline or cannot browse the internet. "
+                "CRITICAL: Respond directly to the user in a natural, conversational tone. "
+                "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
+                "Output ONLY your final answer."
+            )
 
         messages = [{"role": "system", "content": system_prompt}] + history
-
-        if messages and messages[-1]["role"] == "user":
-            original = messages[-1]["content"]
-
-            parts = []
-
-            if memory_context:
-                parts.append(f"MEMORY:\n{memory_context}")
-
-            if tool_context:
-                parts.append(f"TOOLS:\n{tool_context}")
-
-            parts.append(f"USER:\n{original}")
-
-            messages[-1]["content"] = "\n\n---\n\n".join(parts)
 
         # ============================================================
         # 4. LLM STREAMING

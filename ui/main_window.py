@@ -653,6 +653,11 @@ class MainWindow(QMainWindow):
         # 🔑 FIX: Define the tooltip text and pass it as the second argument
         desc_web = "Internet Agent: Allows Qube to search the live web (via DuckDuckGo) for real-time information."
         web_row, self.tool_internet_toggle = create_toggle_row("Internet Search", desc_web)
+
+        # 🔑 NEW: Cognitive/Hybrid Internet Mode
+        desc_hybrid = "Hybrid Mode: Let Qube automatically decide when to search the internet based on context and cognitive routing."
+        hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row("Hybrid Internet Mode", desc_hybrid, checked=False)
+        tools_layout.addLayout(hybrid_row)
         
         tools_layout.addLayout(web_row)
         main_layout.addLayout(tools_layout)
@@ -687,7 +692,15 @@ class MainWindow(QMainWindow):
             # 🔑 THE NEW AUTO-ACTIVATOR WIRE
             self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
 
+            # Manual Internet Toggle (already present)
             self.tool_internet_toggle.toggled.connect(self._llm_worker.set_mcp_internet)
+
+            # 🔑 NEW: Hybrid toggle
+            def on_hybrid_toggled(checked: bool):
+                # Keep the manual toggle independent
+                self._llm_worker.USE_COGNITIVE_ROUTER_INTERNET = checked
+
+            self.tool_internet_hybrid_toggle.toggled.connect(on_hybrid_toggled)
 
         main_layout.addStretch()
         

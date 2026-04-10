@@ -13,6 +13,7 @@ from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
 from workers.enrichment_worker import EnrichmentWorker
+from workers.internet_worker import InternetWorker
 
 import logging
 
@@ -40,6 +41,8 @@ class Qube:
         self.llm_worker   = LLMWorker(self.embedder, self.store, self.db_manager)
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
+
+        self.active_internet_worker = None
 
         # --- 3. Instantiate the Async Brain (Memory v3) -----------------
         # 🔑 FIX: Corrected variable names to match self.store and self.db_manager
@@ -103,6 +106,9 @@ class Qube:
         # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
+        # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
+        self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
+        self.llm_worker.response_finished.connect(lambda s, t: w.conversations_view.set_input_enabled(True))
         
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
@@ -133,6 +139,9 @@ class Qube:
             self.window.conversations_view.active_session_id = session_id
             self.window.conversations_view._refresh_history_list()
 
+        # 🔑 FIX: Lock the UI while processing a voice command
+        self.window.conversations_view.set_input_enabled(False)
+
         self.window.conversations_view.log_user_message(text)
         self.llm_worker.generate_response(text, session_id)
 
@@ -144,8 +153,11 @@ class Qube:
             self.llm_worker.cancel_generation()
         if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
             self.tts_worker.stop_playback()
+            
         if hasattr(self, 'window'):
             self.window.update_status("LISTENING...")
+            # 🔑 FIX: Instantly unlock the UI if the user interrupts
+            self.window.conversations_view.set_input_enabled(True) 
             
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
     
@@ -157,6 +169,35 @@ class Qube:
                 self.window.update_status("Voice Input Deactivated")
             else:
                 self.window.update_status("Idle")
+
+    def _handle_internet_search(self, query: str):
+        """Spawns the async internet worker and connects it to the UI."""
+        # Update UI status to show we are searching
+        self.window.update_status("Searching the Web...")
+        
+        # Kill the old one if it's somehow still running
+        if self.active_internet_worker and self.active_internet_worker.isRunning():
+            self.active_internet_worker.stop()
+            self.active_internet_worker.wait()
+        
+        # Instantiate the worker
+        self.active_internet_worker = InternetWorker(query)
+        
+        # 1. Connect Result: Send the text to the chat window
+        self.active_internet_worker.search_result.connect(
+            lambda res: self.window.conversations_view.log_agent_token(f"\n\n**Web Search Results:**\n{res}")
+        )
+        
+        # 2. Connect Error: Show a warning if the search fails
+        self.active_internet_worker.search_error.connect(
+            lambda err: logger.error(f"Web Search Failed: {err}")
+        )
+        
+        # 3. Clean up: Reset status when finished
+        self.active_internet_worker.finished.connect(lambda: self.window.update_status("Idle"))
+        
+        # Start the thread
+        self.active_internet_worker.start()
 
     def _sync_databases(self):
         """

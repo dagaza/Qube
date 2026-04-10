@@ -264,15 +264,16 @@ class TelemetryView(QWidget):
         self.rag_label.setText(f"RAG Usage: {rag_count}/{total} ({rag_count/total:.1%})")
 
         self.tuner_label.setText(
-            f"Hybrid:{tuner_state['hybrid_sensitivity']:.2f} | "
-            f"Memory:{tuner_state['memory_sensitivity']:.2f} | "
-            f"RAG:{tuner_state['rag_sensitivity']:.2f}"
+            f"Hybrid:{tuner_state.get('hybrid_sensitivity', 1.0):.2f} | "
+            f"Memory:{tuner_state.get('memory_sensitivity', 1.0):.2f} | "
+            f"RAG:{tuner_state.get('rag_sensitivity', 1.0):.2f}"
         )
 
         hybrid_ratio = routes.get("HYBRID", 0)/total
         if hybrid_ratio > 0.6:
             health = "⚠️ Over-reliance on HYBRID"
-        elif tuner_state["memory_sensitivity"] < 0.6:
+        # 🔑 FIX: Changed brackets [] to parentheses () and added the 1.0 fallback
+        elif tuner_state.get("memory_sensitivity", 1.0) < 0.6:
             health = "⚠️ Memory recall degraded"
         elif summary.get("avg_latency_ms", 0) > 1200:
             health = "⚠️ High latency"
