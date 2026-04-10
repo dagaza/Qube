@@ -356,10 +356,23 @@ class LLMWorker(QThread):
                             "content": llm_text_payload
                         })
                         
-                        # 🔑 THE OPTIMIZED NUDGE: Use the "user" role!
+                        # 🔑 THE DYNAMIC NUDGE: Respect the Strict Mode Toggle!
+                        if getattr(self, 'mcp_strict_enabled', False):
+                            nudge_text = (
+                                "I have executed the search tool. Based ONLY on the tool results provided above, "
+                                "please answer my original question. If the results say 'No results found', "
+                                "please inform me of that. Do not attempt to call the tool again."
+                            )
+                        else:
+                            nudge_text = (
+                                "I have executed the search tool. If the results say 'No results found', or if they "
+                                "do not fully answer the prompt, please answer my original question using your "
+                                "general knowledge. Do not attempt to call the tool again."
+                            )
+
                         messages.append({
                             "role": "user",
-                            "content": "I have executed the search tool. Based ONLY on the tool results provided above, please answer my original question. If the results say 'No results found', please inform me of that. Do not attempt to call the tool again."
+                            "content": nudge_text
                         })
                         
                         logger.info(f"Tool '{tool_name}' executed. Looping back to LLM for final answer.")
