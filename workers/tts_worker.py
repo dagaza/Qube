@@ -1,252 +1,184 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 import queue
 import pyaudio
-import numpy as np
 import os
-import requests
 import time
 import logging
+
+from workers.tts_providers.kokoro_provider import KokoroProvider
+from workers.tts_providers.f5_provider import F5Provider
+from workers.tts_providers.voxtral_provider import VoxtralProvider
+from workers.tts_providers.openai_provider import OpenAIProvider
+
 logger = logging.getLogger("Qube.Audio")
-
-def ensure_model_exists(model_path: str):
-    """Downloads the Kokoro model and voices if they don't exist."""
-    base_dir = os.path.dirname(model_path)
-    os.makedirs(base_dir, exist_ok=True)
-    
-    onnx_path = os.path.join(base_dir, "kokoro-v1.0.onnx")
-    bin_path = os.path.join(base_dir, "voices-v1.0.bin")
-    
-    files_to_check = {
-        onnx_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
-        bin_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin"
-    }
-    
-    for file_path, url in files_to_check.items():
-        if not os.path.exists(file_path):
-            print(f"[SYSTEM] Downloading missing required file: {os.path.basename(file_path)}...")
-            response = requests.get(url, stream=True)
-            with open(file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            print(f"[SYSTEM] Download complete: {os.path.basename(file_path)}")
-
-class PiperAdapter:
-    def __init__(self, model_path):
-        from piper.voice import PiperVoice
-        self.voice = PiperVoice.load(model_path, use_cuda=False)
-        self.sample_rate = self.voice.config.sample_rate
-        self.available_voices = ["Default"]
-
-    def synthesize(self, text, voice_name):
-        for chunk in self.voice.synthesize(text):
-            pcm_data = getattr(chunk, 'audio_int16_bytes', getattr(chunk, 'pcm', None))
-            if pcm_data:
-                yield pcm_data
-
-class KokoroAdapter:
-    def __init__(self, model_path):
-        from kokoro_onnx import Kokoro
-        import os
-        import numpy as np
-
-        base_dir = os.path.dirname(model_path)
-        voices_path = os.path.join(base_dir, "voices-v1.0.bin")
-        
-        # --- 3. Call the downloader right here! ---
-        # This guarantees the files exist before Kokoro tries to read them.
-        ensure_model_exists(model_path)
-        
-        if not os.path.exists(voices_path):
-            raise FileNotFoundError(f"Kokoro voices file not found at {voices_path}")
-        
-        self.engine = Kokoro(model_path, voices_path)
-        self.sample_rate = 24000
-        
-        voices_data = np.load(voices_path, allow_pickle=False)
-        self.available_voices = voices_data.files
-
-    def synthesize(self, text, voice_name):
-        import asyncio
-        import threading
-        import queue
-        
-        audio_queue = queue.Queue()
-
-        async def fetch_stream():
-            try:
-                # Kokoro-ONNX supports streaming chunks
-                stream = self.engine.create_stream(text, voice=voice_name, speed=1.0, lang="en-us")
-                async for samples, _ in stream:
-                    pcm_data = (samples * 32767).astype(np.int16).tobytes()
-                    audio_queue.put(pcm_data)
-            except Exception as e:
-                audio_queue.put(e)
-            finally:
-                audio_queue.put(None) 
-
-        def run_async():
-            asyncio.run(fetch_stream())
-
-        threading.Thread(target=run_async, daemon=True).start()
-
-        while True:
-            chunk = audio_queue.get()
-            if chunk is None: break
-            if isinstance(chunk, Exception): raise chunk
-            yield chunk
 
 
 class TTSWorker(QThread):
     status_update = pyqtSignal(str)
-    model_loaded = pyqtSignal(str, list) 
-    tts_latency = pyqtSignal(float) 
+    model_loaded = pyqtSignal(str, list, bool)
+    tts_latency = pyqtSignal(float)
+
+    class VoiceContext:
+        def __init__(self):
+            self.audio_path = None
+            self.text = ""
+            self.name = "default"
 
     def __init__(self, initial_model=""):
         super().__init__()
+
         self.sentence_queue = queue.Queue()
         self.audio = pyaudio.PyAudio()
         self.stream = None
-        self.active_adapter = None 
-        self.active_voice_name = "Default"
-        self.current_device_index = None 
-        
-        # --- NEW: Voice Bypass Flag ---
+
+        self.active_provider = None
+        self.current_model_path = None
+        self.current_device_index = None
         self.is_muted = False
-        
+
+        self.voice = self.VoiceContext()
+
         if initial_model:
             self.load_voice(initial_model)
 
-    # --- NEW: Mute Toggle Method ---
-    def set_mute(self, muted: bool):
-        self.is_muted = muted
-        state = "Muted" if muted else "Active"
-        self.status_update.emit(f"TTS Voice is now {state}")
+    # --------------------------------------------------
+    # SAFE VOICE SET
+    # --------------------------------------------------
+    def set_voice(self, voice_path: str):
+        logger.info(f"[VOICE] Set voice: {voice_path}")
 
-    def set_device(self, index):
-        self.current_device_index = index
-        if self.active_adapter:
-            self.load_voice(self.model_path) 
-            
-    def set_voice(self, voice_name):
-        self.active_voice_name = voice_name
-        self.status_update.emit(f"Voice set to: {voice_name}")
+        self.voice.audio_path = voice_path
+        self.voice.name = os.path.basename(voice_path)
 
-    def load_voice(self, model_path):
-        self.model_path = model_path
-        filename = os.path.basename(model_path).lower()
-        
+        if not self.active_provider:
+            return
+
         try:
-            if "kokoro" in filename:
-                self.active_adapter = KokoroAdapter(model_path)
-            elif "piper" in filename or os.path.exists(model_path + ".json"):
-                self.active_adapter = PiperAdapter(model_path)
+            # ONLY pass what provider supports
+            if hasattr(self.active_provider, "set_voice"):
+                self.active_provider.set_voice(voice_path)
+        except Exception as e:
+            logger.error(f"Voice set failed: {e}")
+
+    # --------------------------------------------------
+    # LOAD MODEL
+    # --------------------------------------------------
+    def load_voice(self, model_path_or_url):
+        self.current_model_path = model_path_or_url
+        target_id = str(model_path_or_url).lower()
+
+        try:
+            if self.active_provider:
+                try:
+                    self.active_provider.unload_model()
+                except:
+                    pass
+
+            if target_id.startswith("http"):
+                self.active_provider = OpenAIProvider()
+
+            elif "kokoro" in target_id:
+                self.active_provider = KokoroProvider()
+
+            elif "f5" in target_id:
+                self.active_provider = F5Provider()
+
+            elif "voxtral" in target_id:
+                self.active_provider = VoxtralProvider()
+
             else:
-                self.status_update.emit("Error: Unsupported Model Architecture.")
+                self.status_update.emit("Unsupported TTS model")
                 return
 
-            self.active_voice_name = self.active_adapter.available_voices[0]
-            
+            if not self.active_provider.load_model(model_path_or_url):
+                self.status_update.emit("Failed to load TTS model")
+                return
+
             if self.stream:
                 try:
                     self.stream.stop_stream()
                     self.stream.close()
-                except: pass
+                except:
+                    pass
 
             self.stream = self.audio.open(
                 format=pyaudio.paInt16,
                 channels=1,
-                rate=self.active_adapter.sample_rate,
+                rate=self.active_provider.sample_rate,
                 output=True,
                 output_device_index=self.current_device_index,
                 frames_per_buffer=1024
             )
-            
-            self.model_loaded.emit(os.path.basename(model_path), self.active_adapter.available_voices)
-            self.status_update.emit(f"TTS Engine Ready ({self.active_adapter.sample_rate}Hz)")
-            
-        except Exception as e:
-            self.status_update.emit(f"Failed to load model: {e}")
 
+            # restore voice safely
+            if self.voice.audio_path:
+                self.set_voice(self.voice.audio_path)
+
+            voices = getattr(self.active_provider, "available_voices", [])
+            supports = getattr(self.active_provider, "supports_voice_selection", False)
+
+            model_name = os.path.basename(model_path_or_url)
+
+            self.model_loaded.emit(model_name, voices, supports)
+            self.status_update.emit(f"TTS Ready ({self.active_provider.sample_rate}Hz)")
+
+        except Exception as e:
+            logger.error(f"Load error: {e}", exc_info=True)
+            self.status_update.emit(f"Load error: {str(e)[:40]}")
+
+    # --------------------------------------------------
+    # QUEUE
+    # --------------------------------------------------
     def add_to_queue(self, text):
         self.sentence_queue.put(text)
         if not self.isRunning():
             self.start()
 
+    # --------------------------------------------------
+    # RUN LOOP
+    # --------------------------------------------------
     def run(self):
-        # Make sure pyaudio is imported at the top of your file!
-        import pyaudio 
-        import time
-        
         while not self.sentence_queue.empty():
-            # 1. 🔑 RESET THE FLAG: Ensure we are cleared to speak the next sentence
             self._interrupt_tts = False
-            
             text = self.sentence_queue.get()
-            
-            # --- NEW: Bypass Logic ---
-            if getattr(self, 'is_muted', False) or not self.active_adapter:
+
+            if self.is_muted or not self.active_provider:
                 self.sentence_queue.task_done()
                 continue
-            
-            # 3. 🔑 THE REBUILD: If the stream was destroyed by the Nuke, turn it back on!
-            if getattr(self, 'stream', None) is None:
-                try:
-                    # Make sure you have a pyaudio instance to open from!
-                    if getattr(self, 'pyaudio_instance', None) is None:
-                        self.pyaudio_instance = pyaudio.PyAudio()
-                        
-                    # **UPDATE THESE PARAMS** to match however you open self.stream in __init__!
-                    self.stream = self.pyaudio_instance.open(
-                        format=pyaudio.paInt16, 
-                        channels=1,
-                        rate=24000, # e.g., 16000, 24000, 44100
-                        output=True
-                    )
-                except Exception as e:
-                    self.status_update.emit(f"Failed to rebuild stream: {e}")
-                    self.sentence_queue.task_done()
-                    continue
 
             self.status_update.emit("🔊 Speaking...")
-            first_chunk_played = False 
-            start_time = time.time()   
+
+            start_time = time.time()
+            first_chunk = False
 
             try:
-                for pcm_data in self.active_adapter.synthesize(text, self.active_voice_name):
-                    # Check if we should even start this chunk
-                    if getattr(self, '_interrupt_tts', False):
-                        break 
-                        
-                    if not first_chunk_played:
+                cancel = lambda: getattr(self, "_interrupt_tts", False)
+
+                stream = self.active_provider.generate_audio_stream(
+                    text,
+                    cancel
+                )
+
+                for pcm in stream:
+                    if cancel():
+                        break
+
+                    if not first_chunk:
                         self.tts_latency.emit((time.time() - start_time) * 1000)
-                        first_chunk_played = True
-                        
-                    # 🔑 THE MICRO-CHUNKER: Slice the audio into tiny ~85ms blocks
-                    # This prevents PyAudio from trapping the thread!
-                    CHUNK_SIZE = 4096 
-                    for i in range(0, len(pcm_data), CHUNK_SIZE):
-                        # Check the kill-switch between every tiny slice
-                        if getattr(self, '_interrupt_tts', False):
-                            logger.debug("Micro-chunker caught interruption! Stopping playback.")
-                            break 
-                            
-                        # Play just this tiny slice
-                        self.stream.write(pcm_data[i:i+CHUNK_SIZE])
-                            
+                        first_chunk = True
+
+                    for i in range(0, len(pcm), 4096):
+                        if cancel():
+                            break
+                        self.stream.write(pcm[i:i+4096])
+
             except Exception as e:
+                logger.error(f"TTS runtime error: {e}", exc_info=True)
                 self.status_update.emit(f"Audio Error: {e}")
-                    
+
             self.sentence_queue.task_done()
-            
-        # (Removed the "Idle" emit here so it doesn't overwrite the AudioWorker's status)
 
     def stop_playback(self):
-        """Thread-safe kill switch. Empties queue and flags the loop to stop."""
-        logger.info("TTS Worker: Interruption received. Clearing queue.")
-        self._interrupt_tts = True 
-        
-        if hasattr(self, 'sentence_queue'):
-            with self.sentence_queue.mutex:
-                self.sentence_queue.queue.clear()
-                
-        # ❌ We DO NOT close PyAudio here! It causes Segfaults!
+        self._interrupt_tts = True
+        with self.sentence_queue.mutex:
+            self.sentence_queue.queue.clear()

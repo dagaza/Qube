@@ -1,6 +1,12 @@
 import sys
 import os
 
+if sys.platform == "linux":
+    # 🔑 Force ROCm to see the 780M APU as a compute device
+    os.environ["HSA_OVERRIDE_GFX_VERSION"] = "11.0.0"
+    # Prevents some AMD drivers from hanging on shader compilation
+    os.environ["PYTORCH_ROCM_ARCH"] = "gfx1103"
+
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
@@ -12,6 +18,7 @@ from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
+from workers.download_worker import DownloadWorker
 
 import logging
 
@@ -39,6 +46,7 @@ class Qube:
         self.llm_worker   = LLMWorker(self.embedder, self.store, self.db_manager)
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
+        self.download_worker = DownloadWorker()
 
         workers = {
             "audio": self.audio_worker,
@@ -46,7 +54,8 @@ class Qube:
             "llm":   self.llm_worker,
             "tts":   self.tts_worker,
             "db": self.db_manager,
-            "store": self.store
+            "store": self.store,
+            "downloader": self.download_worker
         }
 
         # -- 3. UI -------------------------------------------------------

@@ -1,6 +1,7 @@
+import os
 import qtawesome as qta
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton, QFileDialog,
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem
 )
@@ -20,12 +21,211 @@ class SettingsView(QWidget):
         self.workers = workers
         self.db = db_manager
         
+        # Reference our workers
+        self.downloader = workers.get("downloader")
         self.audio_worker = workers.get("audio")
         self.tts_worker = workers.get("tts")
         self.llm_worker = workers.get("llm")
 
+        # Track UI elements for models
+        self.model_cards = {}
+
         self._setup_ui()
+        self._wire_downloader()
         self._populate_hardware_selectors()
+    
+    def _wire_downloader(self):
+        """Connects the background download thread to the UI progress bars."""
+        if self.downloader:
+            self.downloader.progress_update.connect(self._update_download_ui)
+            self.downloader.download_complete.connect(self._on_download_finished)
+
+    def _build_tts_hub(self) -> QWidget:
+        """The 'App Store' style grid for TTS models."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(15)
+
+        # 1. 🔑 MODEL METADATA (The 'Store' catalog)
+        models = [
+            {
+                "id": "kokoro",
+                "name": "Kokoro (Featherweight)",
+                "desc": "Ultra-fast, tiny footprint. Perfect for standard interactions.",
+                "size": "80 MB",
+                "path": "models/tts/kokoro/kokoro-v1.0.onnx"
+            },
+            {
+                "id": "f5",
+                "name": "F5-TTS (Middleweight)",
+                "desc": "Premium zero-shot voice cloning. Great balance of quality and speed.",
+                "size": "1.2 GB",
+                "path": "models/tts/f5/model.safetensors"
+            },
+            {
+                "id": "voxtral",
+                "name": "Voxtral (Heavyweight)",
+                "desc": "State-of-the-Art emotional intelligence. March 2026 flagship model.",
+                "size": "3.5 GB",
+                "path": "models/tts/voxtral/model.safetensors"
+            }
+        ]
+
+        for m in models:
+            card = self._create_model_card(m)
+            self.model_cards[m["id"]] = card
+            layout.addWidget(card)
+            
+        # 2. 🔑 THE HACKER API BOX
+        api_container = QWidget()
+        api_layout = QHBoxLayout(api_container)
+        self.custom_api_input = QLineEdit()
+        self.custom_api_input.setPlaceholderText("Custom OpenAI TTS URL (e.g. http://localhost:5050/v1)")
+        api_btn = QPushButton("Connect")
+        api_btn.setObjectName("SettingsMenuButton")
+        api_btn.clicked.connect(lambda: self.tts_worker.load_voice(self.custom_api_input.text()))
+        
+        api_layout.addWidget(self.custom_api_input)
+        api_layout.addWidget(api_btn)
+        layout.addWidget(api_container)
+
+        return container
+
+    # --------------------------------------------------
+    # MODEL CARD
+    # --------------------------------------------------
+    def _create_model_card(self, m_data: dict) -> QFrame:
+        card = QFrame()
+        card.setObjectName("ModelCard")
+
+        layout = QVBoxLayout(card)
+
+        header = QHBoxLayout()
+        name_lbl = QLabel(m_data["name"])
+        header.addWidget(name_lbl)
+
+        header.addStretch()
+
+        size_lbl = QLabel(m_data["size"])
+        header.addWidget(size_lbl)
+
+        layout.addLayout(header)
+
+        actions = QHBoxLayout()
+
+        dl_btn = QPushButton("Download")
+        dl_btn.clicked.connect(lambda _=None, m_id=m_data["id"]: self._trigger_download(m_id))
+
+        act_btn = QPushButton("Activate")
+        act_btn.clicked.connect(
+            lambda _=None, path=m_data["path"]: self.tts_worker.load_voice(path)
+            if self.tts_worker else None
+        )
+
+        actions.addWidget(dl_btn)
+        actions.addWidget(act_btn)
+
+        # FIX 1 & 2: Correct operator evaluation and visibility decoupling
+        if m_data["id"] in ["f5", "voxtral"]:
+            m_id = m_data["id"]
+
+            clone_btn = QPushButton("🎤")
+            clone_btn.setToolTip("Upload voice sample")
+            
+            # Using default args in lambda to prevent late-binding loop issues
+            clone_btn.clicked.connect(
+                lambda _=None, model_id=m_id: self._pick_clone_voice(model_id)
+            )
+
+            # Always show the clone button for applicable models during debugging
+            clone_btn.setVisible(True)
+
+            actions.addWidget(clone_btn)
+            card.clone_btn = clone_btn
+
+        layout.addLayout(actions)
+
+        card.dl_btn = dl_btn
+        card.act_btn = act_btn
+
+        return card
+    
+    # --------------------------------------------------
+    # CLONING FIX
+    # --------------------------------------------------
+    def _pick_clone_voice(self, m_id):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select 3-second Voice Sample",
+            "",
+            "Audio Files (*.wav *.mp3)"
+        )
+
+        if not file_path:
+            return
+
+        logger.info(f"Cloning voice for {m_id} from {file_path}")
+
+        # FIX 3 & 4: Ensure the correct provider is active BEFORE cloning
+        if self.tts_worker:
+            target_path = "models/tts/f5/model.safetensors"
+            target_provider = "F5Provider"
+
+            # Dynamically handle Voxtral if that was the button clicked
+            if m_id == "voxtral":
+                target_path = "models/tts/voxtral/model.safetensors"
+                target_provider = "VoxtralProvider"
+
+            active_prov = getattr(self.tts_worker, "active_provider", None)
+            
+            # If no provider is active, or the wrong one is active, load the right one
+            if not active_prov or active_prov.__class__.__name__ != target_provider:
+                logger.info(f"Activating {target_provider} to handle cloning request...")
+                self.tts_worker.load_voice(target_path)
+
+            self.tts_worker.set_voice(file_path)
+
+    def _update_download_ui(self, progress: int, status: str):
+        # We need to know which model is downloading. 
+        # For this prototype, we'll check the active download model from the worker.
+        m_id = self.downloader.model_id
+        if m_id in self.model_cards:
+            card = self.model_cards[m_id]
+            card.progress_bar.show()
+            card.progress_bar.setValue(progress)
+            card.dl_btn.setEnabled(False)
+            card.dl_btn.setText("Downloading...")
+
+    def _on_download_finished(self, m_id: str, success: bool):
+        if m_id in self.model_cards:
+            card = self.model_cards[m_id]
+            card.progress_bar.hide()
+            if success:
+                card.dl_btn.hide()
+                card.act_btn.show()
+            else:
+                card.dl_btn.setEnabled(True)
+                card.dl_btn.setText("Retry Download")
+
+    def _trigger_download(self, m_id: str):
+        # 🔑 CORRECTED 'RESOLVE' URLs (No more /blob/ links!)
+        urls = {
+            "f5": {
+                "models/tts/f5/model.safetensors": "https://huggingface.co/SWivid/F5-TTS/resolve/main/F5TTS_v1_Base/model_1250000.safetensors"
+            },
+            "voxtral": {
+                "models/tts/voxtral/model.safetensors": "https://huggingface.co/mistralai/Voxtral-TTS/resolve/main/model.safetensors"
+            }
+        }
+        if m_id in urls:
+            self.downloader.start_download(m_id, urls[m_id])
+
+    def _pick_clone_voice(self, m_id):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select 3-second Voice Sample", "", "Audio Files (*.wav *.mp3)")
+        if file_path:
+            # Tell the worker to use this file as the reference tensor
+            self.tts_worker.set_voice(file_path)
+            logger.info(f"Cloning voice for {m_id} from {file_path}")
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
@@ -125,6 +325,11 @@ class SettingsView(QWidget):
 
         content_layout.addWidget(ai_widget)
         content_layout.addWidget(self._build_divider())
+        content_layout.addWidget(self._build_section_header("fa5s.headphones", "TTS ENGINE HUB"))
+        
+        # This calls the method I gave you in the last turn and adds it to the screen!
+        self.tts_hub_widget = self._build_tts_hub()
+        content_layout.addWidget(self.tts_hub_widget)
         
         # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
         content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))

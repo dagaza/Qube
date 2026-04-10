@@ -122,7 +122,7 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.3
 transformers
-torch
 sentencepiece
 llama-cpp-python
 tantivy
+f5-tts

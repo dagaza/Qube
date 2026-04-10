@@ -1075,17 +1075,28 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'telemetry_view'):
             self.telemetry_view.update_tts_latency(ms)
 
-    def update_global_voice_dropdown(self, model_name: str, voices: list) -> None:
-        """Receives loaded voices from the TTS worker and populates the global toolbar."""
-        if not voices:
-            return
-
-        self._build_prestige_menu(
-            self.global_voice_selector,
-            [(v, v) for v in voices],
-            lambda v: self._tts_worker.set_voice(v) if self._tts_worker else None
-        )
+    def update_global_voice_dropdown(self, model_name: str, voices: list, supports_dropdown: bool = True) -> None:
+        """Receives loaded voices from the TTS worker and adjusts the UI based on model capabilities."""
         
-        self.global_voice_selector.setText(voices[0])
-        if self._tts_worker:
-            self._tts_worker.set_voice(voices[0])
+        if supports_dropdown and voices:
+            # --- STANDARD MODEL (Kokoro / Voxtral) ---
+            # It has a voice list, so we build the dropdown menu
+            self._build_prestige_menu(
+                self.global_voice_selector,
+                [(v, v) for v in voices],
+                lambda v: self._tts_worker.set_voice(v) if self._tts_worker else None
+            )
+            
+            self.global_voice_selector.setText(voices[0])
+            self.global_voice_selector.setEnabled(True)
+            
+            # Safely push the default voice down to the backend
+            if self._tts_worker:
+                self._tts_worker.set_voice(voices[0])
+                
+        else:
+            # --- CLONING MODEL (F5-TTS) ---
+            # It uses uploaded audio, so we lock the UI dropdown to prevent confusion
+            self.global_voice_selector.setMenu(None) # Remove the old menu
+            self.global_voice_selector.setText("Voice Cloning Mode")
+            self.global_voice_selector.setEnabled(False) # Greys it out elegantly
