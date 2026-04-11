@@ -7,6 +7,56 @@ import logging
 
 logger = logging.getLogger("Qube.RAG.Embedder")
 
+# Hard cap on characters passed to llama.cpp embedding (token count must stay ≤ n_ctx / n_ubatch).
+# Dense code / CJK can inflate tokens; keep this conservative to avoid GGML_ASSERT on n_ubatch.
+MAX_EMBED_CHARS = 4000
+
+_LLAMA_CTX = 8192
+
+
+def _llama_embed_kwargs() -> dict:
+    """Shared context/batch sizing so n_ubatch >= max single-sequence tokens (llama.cpp requirement)."""
+    return {
+        "n_ctx": _LLAMA_CTX,
+        "n_batch": _LLAMA_CTX,
+        "n_ubatch": _LLAMA_CTX,
+    }
+
+
+def _truncate_for_embed(text: str) -> str:
+    if len(text) <= MAX_EMBED_CHARS:
+        return text
+    logger.warning(
+        "Embedding input truncated from %d to %d chars (MAX_EMBED_CHARS)",
+        len(text),
+        MAX_EMBED_CHARS,
+    )
+    return text[:MAX_EMBED_CHARS]
+
+
+def _init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -> Llama:
+    """Construct Llama for embeddings; retries without n_ubatch if the binding is too old."""
+    base = dict(
+        model_path=model_path,
+        embedding=True,
+        **_llama_embed_kwargs(),
+        n_threads=physical_cores,
+        verbose=False,
+        n_gpu_layers=n_gpu_layers,
+    )
+    try:
+        return Llama(**base)
+    except TypeError as e:
+        err = str(e).lower()
+        if "n_ubatch" in err or "unexpected keyword" in err:
+            base.pop("n_ubatch", None)
+            logger.warning(
+                "Llama() has no n_ubatch; retrying (upgrade llama-cpp-python to match llama.cpp batch fixes)"
+            )
+            return Llama(**base)
+        raise
+
+
 class EmbeddingModel:
     def __init__(self):
         model_path = os.path.join("models", "nomic-embed-text-v1.5.Q4_K_M.gguf")
@@ -15,41 +65,21 @@ class EmbeddingModel:
         logger.info("Probing user hardware...")
 
         try:
-            # 🏎️ THE FAST PATH: Try Vulkan GPU first
-            self.model = Llama(
-                model_path=model_path,
-                embedding=True,
-                n_gpu_layers=-1, 
-                n_ctx=8192,
-                n_batch=8192,
-                n_threads=physical_cores,
-                verbose=False
-            )
+            self.model = _init_llama_embed(model_path, -1, physical_cores)
             self.model.create_embedding("hardware_test")
             logger.info("GPU acceleration engaged successfully!")
 
         except Exception as e:
-            # 🐢 THE SAFE PATH: No GPU or bad drivers? Fall back to CPU instantly.
             logger.warning(f"GPU init failed (Likely missing drivers). Falling back to CPU. Error: {e}")
-            
-            self.model = Llama(
-                model_path=model_path,
-                embedding=True,
-                n_gpu_layers=0, 
-                n_ctx=8192,
-                n_batch=8192,
-                n_threads=physical_cores,
-                verbose=False
-            )
+            self.model = _init_llama_embed(model_path, 0, physical_cores)
             logger.info("Running on CPU mode.")
 
     def embed(self, texts: list[str]) -> np.ndarray:
         """Rock-solid sequential embedding to bypass llama.cpp batching bugs."""
         embeddings = []
-        
+
         for text in texts:
-            # 1. Hard-cap the text length just below the absolute limit to guarantee zero crashes
-            safe_text = text[:25000] 
+            safe_text = _truncate_for_embed(text)
             formatted_text = f"search_document: {safe_text}"
             
             try:
@@ -73,7 +103,8 @@ class EmbeddingModel:
         
     def embed_query(self, query: str) -> np.ndarray:
         """Use this specifically in your LLM search tool!"""
-        formatted_query = f"search_query: {query}"
+        q = _truncate_for_embed(query)
+        formatted_query = f"search_query: {q}"
         response = self.model.create_embedding(formatted_query)
         vec = np.array(response["data"][0]["embedding"], dtype=np.float32)
         return self._normalize(vec) # 🔑 THE FIX

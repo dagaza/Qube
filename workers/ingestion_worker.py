@@ -2,11 +2,15 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 from pathlib import Path
 from rag.parsers import parse_file
-from rag.embedder import EmbeddingModel
+from rag.embedder import EmbeddingModel, MAX_EMBED_CHARS
+from rag.chunker import chunk_text, DEFAULT_CHUNK_SIZE
 from rag.store import DocumentStore
 import logging
 
 logger = logging.getLogger("Qube.RAG")
+
+# Slightly larger overlap than chunker default; still bounded inside chunk_text()
+_INGEST_OVERLAP = 200
 
 class IngestionWorker(QThread):
     progress_update = pyqtSignal(int)       
@@ -20,47 +24,6 @@ class IngestionWorker(QThread):
         self.embedder = embedder
         self.store = store
         self.db = db_manager
-
-    # 🔑 THE FIX: The new Semantic Chunker to protect llama.cpp
-    def semantic_chunk_text(self, text: str, max_chars: int = 1500, overlap: int = 200) -> list[str]:
-        """
-        Slices massive documents into bite-sized, overlapping paragraphs 
-        that the C++ engine can process at lightning speed safely.
-        """
-        chunks = []
-        start = 0
-        text_length = len(text)
-
-        while start < text_length:
-            end = start + max_chars
-            
-            if end >= text_length:
-                chunks.append(text[start:].strip())
-                break
-            
-            # Prefer paragraph breaks, then line breaks, then sentence breaks
-            last_double_newline = text.rfind('\n\n', start, end)
-            last_newline = text.rfind('\n', start, end)
-            last_period = text.rfind('. ', start, end)
-            
-            if last_double_newline > start + (max_chars // 2):
-                end = last_double_newline + 2
-            elif last_newline > start + (max_chars // 2):
-                end = last_newline + 1
-            elif last_period > start + (max_chars // 2):
-                end = last_period + 2
-            else:
-                last_space = text.rfind(' ', start, end)
-                if last_space > start:
-                    end = last_space + 1
-                
-            chunk_text = text[start:end].strip()
-            if chunk_text:
-                chunks.append(chunk_text)
-                
-            start = end - overlap
-            
-        return chunks
 
     def run(self):
         total_chunks = 0
@@ -86,9 +49,17 @@ class IngestionWorker(QThread):
                 raw_sections = parse_file(path)
                 chunks = []
                 
-                # 🔑 THE FIX: Route the raw text through our safe chunker
                 for section in raw_sections:
-                    chunks.extend(self.semantic_chunk_text(section))
+                    chunks.extend(
+                        chunk_text(
+                            section,
+                            chunk_size=DEFAULT_CHUNK_SIZE,
+                            overlap=_INGEST_OVERLAP,
+                        )
+                    )
+
+                # Last line of defense — never pass oversized strings to llama.cpp
+                chunks = [c[:MAX_EMBED_CHARS] for c in chunks]
 
                 if not chunks:
                     self.error_occurred.emit(f"No readable text found in {source}.")
