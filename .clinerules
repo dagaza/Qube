@@ -26,13 +26,17 @@ Qube/
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
 │   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
-│   ├── components/         # Reusable custom UI components (PrestigeToggle, Custom Sliders, Source Viewer).
+│   ├── components/         # Reusable custom UI components.
+│   │   ├── memory_debug.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
+│   │   ├── source_viewer.py # UI dialog component for displaying the raw text of cited RAG documents and web sources
+│   │   └──  toggle.py       # Toggle (custom design) we use in the UI    
 │   └── views/              # isolated widget files for each major screen
-│       ├── __init__.py    
+│       ├── __init__.py     
 │       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages
-│       ├── library_view.py
-│       ├── settings_view.py
-│       └── telemetry_view.py
+│       ├── library_view.py # Knowledge base screen
+│       ├── settings_view.py # Settings screen
+│       ├── router_dashboard.py # Visualizations go into the Telemetry screen
+│       └── telemetry_view.py # Telemetry screen
 ├── core/                   # System, Hardware, and Network Utilities
 │   ├── hardware.py         # psutil polling, GPUMonitor wrapper.
 │   ├── network.py          # Port scanning (Ollama/LM Studio detection).
@@ -41,7 +45,10 @@ Qube/
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
 │   ├── llm_worker.py       # Streams LLM tokens, handles RAG routing cascade.
+│   ├── enrichment_worker.py # Constructs atomic memories that are then stored in LanceDB.
 │   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
+│   ├── title_worker.py       # Generates titles for the conversations list (bundled Qwen 0.5B performs it)
+│   ├── intent_router.py       # Uses semantic vector embeddings for intent routing instead of rigid keywords, while cognitive_router manages load and thresholds.
 │   └── ingestion_worker.py # Parses, chunks, and embeds documents in the background.
 ├── rag/                    # Retrieval-Augmented Generation Engine
 │   ├── embedder.py         # llama-cpp-python Vulkan engine with Nomic v1.5 GGUF.
@@ -50,8 +57,12 @@ Qube/
 │   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
 ├── mcp/                    # Model Context Protocol Interfaces
 │   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
-│   └── internet_tool.py    # Web search functionality
-│   └── memory_tool.py
+│   ├── internet_tool.py    # Web search functionality
+│   ├── memory_tool.py      # Retrieves stored facts using a hybrid scoring algorithm (semantic similarity + extracted confidence + reinforcement strength) with expanded candidate pooling to prevent starvation while strictly enforcing token budgets.
+│   ├── router.py           # Maintained as a legacy fallback for the cognitive_router, this component provides stable, deterministic query routing using fixed cosine-similarity thresholds and hardcoded semantic anchors.
+│   ├── cognitive_router.py # Manages adaptive query routing by dynamically adjusting retrieval thresholds based on real-time system latency, load penalties, and conversation intent drift.
+│   ├── router_self_tuner.py # Acts as an autonomous feedback loop that continuously tunes cognitive routing sensitivities based on real-time telemetry (latency and hit rates) to penalize inefficient tool usage.
+│   ├── router_telemetry.py # Maintains a lightweight, in-memory queue of recent routing events to track latency, hit rates, and route distributions for real-time performance monitoring.
 ├── models/                 # Local AI Weights (Organized by function)
 │   ├── stt/                # Faster-Whisper weights.
 │   ├── tts/                # Piper/Kokoro voices and configs.
@@ -82,6 +93,8 @@ Qube/
 - **Status Priority Gate:** The MainWindow.update_status method must implement a priority system. "RECORDING" and "THINKING" states must take precedence over "IDLE" signals to prevent rapid-fire background threads from clobbering the active UI state.
 
 - **Context-Aware Placeholders:** Text input placeholders must dynamically reflect the system state (e.g., "Listening...", "Qube is thinking...", or "Reading documents...") based on active RAG and Audio Worker flags.
+
+- **No Raw HTML in Markdown Labels:** Never inject raw HTML links into a QLabel or QTextEdit configured for Markdown if it uses dynamic heightForWidth geometry. It will cause an infinite recalculation loop and freeze the UI thread. Use native escaped Markdown (e.g., [\[1\]](source_1)) or explicitly handle <a> tags via linkActivated with setOpenExternalLinks(False)
     
 
 ### 4.2 RAG Constraints & Embedder Stability
@@ -216,10 +229,14 @@ Memory system supports 3 logical behaviors:
 
 ### 5.5 Intent Routing Rules (CRITICAL FOR LATENCY)
 
-- Intent router must remain:
+- Semantic Intent Router (`intent_router.py`) must remain:
   - centroid-based or lightweight scoring system
-  - deterministic
+  - mathematically deterministic (Cosine Similarity)
   - fast (<10ms target)
+
+- Cognitive Router (`cognitive_router.py`) is permitted to be adaptive:
+  - dynamically shifts thresholds based on system load, latency, and intent drift
+  - acts as a higher-level orchestrator above the deterministic semantic baseline
 
 - Router MUST NOT:
   - execute tools
@@ -228,7 +245,7 @@ Memory system supports 3 logical behaviors:
   - construct DAGs
 
 - Routing output must be:
-  - single decision (CHAT | RAG | TOOL | MEMORY)
+  - single decision (CHAT | RAG | WEB | MEMORY)
   - with confidence score
 
 - If confidence is low OR margin is small:
@@ -300,25 +317,27 @@ System follows strict execution tiers:
 
 ### 5.7 UI / Thread Safety Rules (CRITICAL)
 
-- UI thread MUST NOT:
+- **UI thread MUST NOT:**
   - perform embedding
   - perform LLM calls
   - access LanceDB directly
   - perform file I/O
 
-- All heavy tasks MUST run in QThread workers.
+- **All heavy tasks MUST run in QThread workers.**
 
-- Worker communication MUST use:
+- **Worker communication MUST use:**
   - Qt signals OR
   - thread-safe queues (`queue.Queue`)
 
-- UI must NEVER:
+- **UI must NEVER:**
   - stop audio streams directly
   - call `.close()` on hardware resources
 
-- Worker interruption MUST be:
+- **Worker interruption MUST be:**
   - flag-based (`self._interrupt`, `self.is_running`)
   - not force-killed
+
+- **Strict LLM Timeouts:** All requests.post() calls to local LLM providers (e.g., LM Studio/Ollama) MUST include a strict timeout parameter. The stream loop MUST be wrapped in a try...except...finally block to guarantee the emission of response_finished and status_update("Idle"), ensuring the UI unlocks even if the local server crashes mid-stream.
 
 ---
 

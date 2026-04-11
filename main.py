@@ -54,8 +54,8 @@ class Qube:
         )
         
         # --- 4. THE GOLDEN WIRE (Signal -> Slot) ------------------------
-        # 🔑 FIX: Connect to tts_worker (The Mouth) so it fires during the Audio Window
-        self.tts_worker.playback_started.connect(self.enrichment_worker.enqueue)
+        # 🔑 THE FIX: Wait until the LLM is done streaming the chat BEFORE starting memory extraction!
+        self.llm_worker.response_finished.connect(lambda s, t: self.enrichment_worker.enqueue(s))
         
         # Start the memory worker thread
         self.enrichment_worker.start()
@@ -164,11 +164,19 @@ class Qube:
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""
         if hasattr(self, 'window'):
-            # If the user paused the mic while Qube was talking, keep it showing as deactivated
+            # 1. Determine the correct safe state
             if getattr(self.audio_worker, 'is_paused', False):
-                self.window.update_status("Voice Input Deactivated")
+                safe_status = "Voice Input Deactivated"
             else:
-                self.window.update_status("Idle")
+                safe_status = "Idle"
+                
+            # 2. Update the internal window state
+            self.window.update_status(safe_status)
+            
+            # 3. 🔑 THE FIX: Forcefully broadcast the safe status through the worker's 
+            # signal pipeline so the Top Bar and Input Box catch the update!
+            if hasattr(self, 'tts_worker'):
+                self.tts_worker.status_update.emit(safe_status)
 
     def _handle_internet_search(self, query: str):
         """Spawns the async internet worker and connects it to the UI."""
@@ -267,6 +275,44 @@ class Qube:
     def show(self) -> None:
         self.window.show()
 
+    def _graceful_shutdown(self):
+        """Called automatically when the application is closing."""
+        logger.info("Initiating graceful shutdown...")
+
+        # 1. Stop transient workers (Internet & Ingestion)
+        if self.active_internet_worker and self.active_internet_worker.isRunning():
+            self.active_internet_worker.stop()
+            self.active_internet_worker.wait(2000) # Wait up to 2 seconds for it to close safely
+            
+        if hasattr(self, 'ingestion_worker') and self.ingestion_worker.isRunning():
+            self.ingestion_worker.stop()
+            self.ingestion_worker.wait(2000)
+
+        # 2. Stop the core background loop (Enrichment/Memory)
+        if hasattr(self, 'enrichment_worker') and self.enrichment_worker.isRunning():
+            self.enrichment_worker.stop()
+            self.enrichment_worker.wait(2000)
+
+        # 3. Stop all core hardware/LLM workers
+        for name, worker in self.window.workers.items():
+            # 🔑 THE FIX: Ask if the object is a thread before asking if it's running!
+            if hasattr(worker, 'isRunning') and worker.isRunning():
+                logger.debug(f"Stopping {name} worker...")
+                if hasattr(worker, 'stop'):
+                    worker.stop() 
+                elif hasattr(worker, 'cancel_generation'):
+                    worker.cancel_generation() 
+                    
+                worker.quit() 
+                worker.wait(2000) 
+            
+            # 🔑 BONUS: Safely close database connections if they exist
+            elif hasattr(worker, 'close'):
+                logger.debug(f"Closing {name} connection...")
+                worker.close()
+
+        logger.info("All threads safely terminated. Goodbye!")
+
 
 if __name__ == "__main__":
     # Optional: The Windows Taskbar App ID fix we discussed
@@ -323,5 +369,9 @@ if __name__ == "__main__":
 
     # 4. Boot the Qube Assistant
     qube = Qube()
+    app.aboutToQuit.connect(qube._graceful_shutdown)
     qube.show()
     sys.exit(app.exec())
+
+
+    

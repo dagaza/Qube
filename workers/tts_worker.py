@@ -171,7 +171,11 @@ class TTSWorker(QThread):
 
     def add_to_queue(self, text, session_id="default"):
         """Modified to accept a session_id for the Memory Brain."""
-        # 🔑 Store as a tuple so the session_id travels with the text
+        # 🔑 THE FAILSAFE: Never queue empty text!
+        if not text or not text.strip():
+            return 
+            
+        # Store as a tuple so the session_id travels with the text
         self.sentence_queue.put((text, session_id))
         if not self.isRunning():
             self.start()

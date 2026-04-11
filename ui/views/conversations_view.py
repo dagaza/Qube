@@ -79,6 +79,92 @@ class MessageWrapper(QWidget):
         safe_max = max(int(self.width() * ratio), 100)
         
         self.bubble.setMaximumWidth(safe_max)
+
+from PyQt6.QtWidgets import QLayout
+from PyQt6.QtCore import QPoint, QRect, QSize, Qt
+
+class FlowLayout(QLayout):
+    """A custom layout that wraps items to the next line when space runs out."""
+    def __init__(self, parent=None, margin=0, spacing=10):
+        super().__init__(parent)
+        if parent is not None:
+            self.setContentsMargins(margin, margin, margin, margin)
+        self._item_list = []
+        self._spacing = spacing
+
+    def __del__(self):
+        item = self.takeAt(0)
+        while item:
+            item = self.takeAt(0)
+
+    def addItem(self, item):
+        self._item_list.append(item)
+
+    def count(self):
+        return len(self._item_list)
+
+    def itemAt(self, index):
+        if 0 <= index < len(self._item_list):
+            return self._item_list[index]
+        return None
+
+    def takeAt(self, index):
+        if 0 <= index < len(self._item_list):
+            return self._item_list.pop(index)
+        return None
+
+    def expandingDirections(self):
+        # 🔑 FIX: Remove the 's'. Use Orientation (singular) in PyQt6
+        from PyQt6.QtCore import Qt
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        height = self._do_layout(QRect(0, 0, width, 0), True)
+        return height
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._item_list:
+            size = size.expandedTo(item.minimumSize())
+        margin, _, _, _ = self.getContentsMargins()
+        size += QSize(2 * margin, 2 * margin)
+        return size
+
+    def _do_layout(self, rect, test_only):
+        x, y = rect.x(), rect.y()
+        line_height = 0
+        spacing = self._spacing
+
+        for item in self._item_list:
+            space_x = spacing
+            space_y = spacing
+            next_x = x + item.sizeHint().width() + space_x
+
+            # If the item crosses the right edge, wrap to the next line
+            if next_x - space_x > rect.right() and line_height > 0:
+                x = rect.x()
+                y = y + line_height + space_y
+                next_x = x + item.sizeHint().width() + space_x
+                line_height = 0
+
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+
+            x = next_x
+            line_height = max(line_height, item.sizeHint().height())
+
+        return y + line_height - rect.y()
+
 class PrestigeDialog(QDialog):
     def __init__(self, parent, title, message, is_dark=True, is_input=False, default_text=""):
         super().__init__(parent)
@@ -123,7 +209,6 @@ class PrestigeDialog(QDialog):
         m_lbl = QLabel(message)
         m_lbl.setWordWrap(True)
         # 🔑 FIX 2: Allow the label to dictate its minimum required height to the layout
-        from PyQt6.QtWidgets import QSizePolicy
         m_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         m_lbl.setMinimumWidth(0) # Standard safety check for word-wrapped labels
         m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
@@ -368,11 +453,11 @@ class ConversationsView(QWidget):
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.installEventFilter(self)
 
-        #Container widget
+        # Container widget
         self.transcript_container = QWidget()
         self.transcript_container.setObjectName("ChatTranscriptContainer")
         
-        # 🔑 FIX 5: Ensure scroll area truly allows horizontal expansion
+        # 🔑 The line that was crashing is perfectly safe now
         self.transcript_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.transcript_layout = QVBoxLayout(self.transcript_container)
         self.transcript_layout.setContentsMargins(20, 20, 20, 20)
@@ -384,10 +469,15 @@ class ConversationsView(QWidget):
         # 1.5 The Source Chips Container (Hidden by default)
         self.source_chips_container = QFrame()
         self.source_chips_container.setObjectName("SourceChipsContainer")
-        self.source_chips_layout = QHBoxLayout(self.source_chips_container)
-        self.source_chips_layout.setContentsMargins(10, 0, 10, 0)
-        self.source_chips_layout.setSpacing(10)
-        self.source_chips_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        # 🔑 Dynamic sizing for the FlowLayout (No inline imports!)
+        policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        policy.setHeightForWidth(True)
+        self.source_chips_container.setSizePolicy(policy)
+        self.source_chips_container.setMinimumHeight(40) # Safety net to guarantee visibility
+
+        # Swap QHBoxLayout for our custom FlowLayout
+        self.source_chips_layout = FlowLayout(self.source_chips_container, spacing=10)
         
         self.source_chips_container.hide() # Hide until we find sources
         layout.addWidget(self.source_chips_container)
@@ -461,6 +551,7 @@ class ConversationsView(QWidget):
         self._scroll_to_bottom()
 
     def log_agent_token(self, token: str) -> None:
+        import re # 🔑 Ensure re is imported
         self._clear_placeholders()
 
         is_dark = True
@@ -476,7 +567,6 @@ class ConversationsView(QWidget):
             self.transcript_layout.addWidget(header)
 
             self.agent_msg_container = QFrame()
-            # 🔑 FIX 2: Allow agent bubble to expand horizontally
             self.agent_msg_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
             
             container_layout = QVBoxLayout(self.agent_msg_container)
@@ -484,8 +574,15 @@ class ConversationsView(QWidget):
 
             self.current_agent_msg = ChatLabel()
             self.current_agent_msg.setTextFormat(Qt.TextFormat.MarkdownText)
-            self.current_agent_msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-            self.current_agent_msg.setOpenExternalLinks(True)
+            
+            # 🔑 CHANGE 1: Enable Link Interaction
+            self.current_agent_msg.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextBrowserInteraction | 
+                Qt.TextInteractionFlag.LinksAccessibleByMouse
+            )
+            # 🔑 CHANGE 2: Intercept links so our custom handler (Step 3/4 earlier) can work
+            self.current_agent_msg.setOpenExternalLinks(False)
+            self.current_agent_msg.linkActivated.connect(self._handle_inline_citation)
             
             from PyQt6.QtGui import QPalette, QColor
             palette = self.current_agent_msg.palette()
@@ -505,11 +602,14 @@ class ConversationsView(QWidget):
             self._is_agent_typing = True
 
         self._agent_text_buffer += token
-        self.current_agent_msg.setText(self._agent_text_buffer)
+
+        # 🔑 THE FIX: Escape the inner brackets (\[ \]) so PyQt doesn't confuse them!
+        # This securely creates a link formatted like: [\[1\]](source_1)
+        rich_text = re.sub(r'\[(\d+|W)\]', r'[\[\1\]](source_\1)', self._agent_text_buffer)
         
-        # 🔑 MARKDOWN FIX: Force geometry update immediately after setting new Markdown text
+        self.current_agent_msg.setText(rich_text)
+
         self.current_agent_msg.updateGeometry()
-        
         self._scroll_to_bottom()
 
     def _clear_placeholders(self):
@@ -896,7 +996,10 @@ class ConversationsView(QWidget):
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))
 
     def on_sources_found(self, sources):
-        """Builds the clickable UI chips when the LLM retrieves RAG context."""
+        """Builds the clickable UI chips and saves sources for inline links."""
+        # 🔑 THE KEY: Store the sources so inline links can find them
+        self.current_sources = sources 
+
         # 1. Clear previous source chips
         while self.source_chips_layout.count():
             child = self.source_chips_layout.takeAt(0)
@@ -907,26 +1010,51 @@ class ConversationsView(QWidget):
             self.source_chips_container.hide()
             return
             
-        # 2. Build the new chips
+        # 2. Build the new chips dynamically
         for src in sources:
-            btn = QPushButton(f"[{src['id']}] {src['filename']}")
+            filename = src.get('filename', 'Unknown Source')
+            
+            # 🔑 Determine the source type to pick the color
+            source_type = src.get('type', '')
+            filename_lower = str(filename).lower()
+            
+            # Fallback guessing if 'type' wasn't explicitly passed from the worker
+            if not source_type:
+                if filename_lower.startswith("http") or "web" in filename_lower or "duckduckgo" in filename_lower:
+                    source_type = "web"
+                elif "memory" in filename_lower:
+                    source_type = "memory"
+                else:
+                    source_type = "rag"
+            
+            # 🔑 Assign Catppuccin Theme Colors
+            if source_type == "web":
+                color_hex = "#a6e3a1"  # Green
+            elif source_type == "memory":
+                color_hex = "#fab387"  # Peach/Orange
+            else:
+                color_hex = "#89b4fa"  # Blue (Default RAG)
+
+            # Build the button
+            btn = QPushButton(f"[{src.get('id', '*')}] {filename}")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             
-            # Catppuccin styling for the chips
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: rgba(137, 180, 250, 0.1);
-                    color: #89b4fa;
-                    border: 1px solid rgba(137, 180, 250, 0.3);
+            # Apply dynamic styling using the chosen color
+            # We use CSS alpha hex codes (1A = 10%, 4D = 30%, 33 = 20%) to match your original transparency
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color_hex}1A;
+                    color: {color_hex};
+                    border: 1px solid {color_hex}4D;
                     border-radius: 12px;
                     padding: 4px 12px;
                     font-size: 11px;
                     font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: rgba(137, 180, 250, 0.2);
-                    border: 1px solid #89b4fa;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {color_hex}33;
+                    border: 1px solid {color_hex};
+                }}
             """)
             
             # Capture the dictionary securely in the lambda
@@ -934,6 +1062,27 @@ class ConversationsView(QWidget):
             self.source_chips_layout.addWidget(btn)
             
         self.source_chips_container.show()
+        # 🔑 FIX 2: Tell the main layout to recalculate space now that items exist
+        self.source_chips_container.updateGeometry()
+
+    def _handle_inline_citation(self, link_text: str):
+        """Intercepts link clicks like 'source_1' or 'source_W' and opens the preview."""
+        if not link_text.startswith("source_"):
+            # If it's a standard web link (http), open it in the default browser
+            import webbrowser
+            webbrowser.open(link_text)
+            return
+
+        # Extract the ID (e.g., '1' or 'W')
+        source_id = link_text.replace("source_", "")
+
+        # Find the source data from the list we saved in on_sources_found
+        if hasattr(self, 'current_sources'):
+            for src in self.current_sources:
+                # Convert both to string to ensure '1' matches 1
+                if str(src.get('id')) == str(source_id):
+                    self.open_source_preview(src)
+                    return
 
     def open_source_preview(self, source_dict):
         """Spawns the frameless SourcePreviewer dialog."""

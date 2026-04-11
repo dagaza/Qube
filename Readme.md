@@ -6,17 +6,18 @@
 
 Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant built with a complete multimodal pipeline. It operates entirely offline with real-time conversational streaming capabilities. By integrating state-of-the-art voice processing and a powerful Retrieval-Augmented Generation (RAG) engine, Qube allows you to interact directly with your personal documents without any data leaving your hardware.
 
-Unlike traditional chat-based assistants, Qube is designed around a **low-latency streaming architecture**, combining:  
-- deterministic intent routing
+Unlike traditional chat-based assistants, Qube is designed around a **low-latency streaming architecture**, combining:
+- adaptive cognitive routing
 - retrieval-augmented generation (RAG)
-- async memory enrichment
+- live web search integration
+- async long-term semantic memory enrichment
 - strict RAM-aware execution constraints (~10–15GB usable budget)
   
 Everything runs locally with no external API dependency.
 
 ## ✨ Key Features
 
-* **🧠 Conversational Memory & Dynamic RAG:** Qube doesn't just answer; it remembers. Using a custom SQLite "RAG Memory" injection, the assistant maintains context across multiple turns, preventing the "Amnesia Bug" common in basic RAG implementations.
+* **🧠 Long-Term Semantic Memory & RAG:** Qube doesn't just hold temporary context; it learns. Using a background async worker, Qube extracts *Atomic Facts* from your conversations, manages contradictions, applies reinforcement scoring, and stores them permanently in LanceDB. This prevents the "Amnesia Bug" and gives Qube true long-term recall alongside your documents.
 
 * **⚡ Real-Time Interruption (Barge-In):** Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
 
@@ -26,7 +27,9 @@ Everything runs locally with no external API dependency.
 
 * **🗣️ High-Fidelity TTS:** Uses the cutting-edge **Kokoro** engine for ultra-realistic Text-to-Speech, with over 30 voices included. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like a dedicated GPU (or a solid APU) acceleration.
 
-* **📚 Advanced RAG Engine:** Built on **LanceDB** for blazing-fast vector storage and **PyMuPDF** for aggressive text extraction from complex PDFs, eBooks, and text files. 
+* **📚 Advanced RAG Engine:** Built on **LanceDB** for blazing-fast vector storage and **PyMuPDF** for aggressive text extraction from complex PDFs, eBooks, and text files.
+
+* **🌐 Live Web Search Integration:** Qube can break out of its offline shell when explicitly requested. Using the `internet_tool`, it performs real-time web searches, parses the data into the context window, and provides beautifully formatted, clickable `[W]` citations right next to your local document sources. 
 
 * **🎛️ Responsive GUI:** A clean, multithreaded PyQt6 interface featuring a real-time VU meter, dynamic settings, and custom wake-word support (currently over 4 different wake-words available).
 

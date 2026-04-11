@@ -1,6 +1,6 @@
 # workers/internet_worker.py
 from PyQt6.QtCore import QThread, pyqtSignal
-from mcp.internet_tool import InternetTool
+from mcp.internet_tool import search_internet
 import logging
 
 logger = logging.getLogger("Qube.Workers.InternetWorker")
@@ -18,7 +18,6 @@ class InternetWorker(QThread):
         self.query = query
         self.max_results = max_results
         self._stop_flag = False
-        self.tool = InternetTool(max_results=self.max_results)
 
     def run(self):
         """
@@ -28,10 +27,28 @@ class InternetWorker(QThread):
         try:
             if self._stop_flag:
                 return
-            result = self.tool.search(self.query)
+                
+            logger.info(f"Executing manual web search for: '{self.query}'")
+            
+            # 🔑 FIX 1: Call the standalone function directly! 
+            # (Note: if your search_internet function accepts max_results, pass it here)
+            raw_results = search_internet(self.query)
+            
+            # Check flag again in case user canceled during the HTTP request
             if self._stop_flag:
                 return
-            self.search_result.emit(result)
+
+            if raw_results:
+                # 🔑 FIX 2: Stringify the list so the LLM can actually read it
+                if isinstance(raw_results, list):
+                    formatted_results = "\n\n".join([str(item) for item in raw_results])
+                else:
+                    formatted_results = str(raw_results)
+                    
+                self.search_result.emit(formatted_results)
+            else:
+                self.search_error.emit("DuckDuckGo returned no results for this query.")
+
         except Exception as e:
             logger.error(f"InternetWorker failed: {e}")
             self.search_error.emit(str(e))

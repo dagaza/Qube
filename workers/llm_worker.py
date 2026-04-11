@@ -91,12 +91,25 @@ class LLMWorker(QThread):
 
     # ============================================================
     def clean_text_for_tts(self, text):
+        import re
         text = re.sub(r'[*_]{1,3}', '', text)
         text = re.sub(r'#+\s+', '', text)
         text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
         text = re.sub(r'```[\s\S]*?```', '', text)
         text = re.sub(r'`([^`]+)`', r'\1', text)
-        return text.strip()
+        
+        # Strip HTML and Citations (for RAG/Web)
+        text = re.sub(r'<[^>]+>', '', text) 
+        text = re.sub(r'\[(\d+|W)\]', '', text) 
+        
+        cleaned = text.strip()
+        
+        # 🔑 THE ULTIMATE FAILSAFE: 
+        # If the string contains no letters or numbers (e.g., it's just a ".", "!", or empty), kill it.
+        if not re.search(r'[a-zA-Z0-9]', cleaned):
+            return ""
+            
+        return cleaned
 
     # ============================================================
     def generate_response(self, text: str, session_id: str):
@@ -186,13 +199,15 @@ class LLMWorker(QThread):
         tool_context = ""
         all_ui_sources = []
 
+        # 🔑 THE FIX: Initialize these dictionaries so telemetry doesn't crash
+        mem_result = {} 
+        rag_result = {}
+        web_context = "" # Also initialize this to be safe
+
         query_vector = None
 
         if execution_route in ["MEMORY", "RAG", "HYBRID"]:
             query_vector = self.embedding_cache.get_embedding(self.prompt)
-
-        mem_result = {}
-        rag_result = {}
 
         # ---- MEMORY ----
         if execution_route in ["MEMORY", "HYBRID"]:
@@ -211,7 +226,8 @@ class LLMWorker(QThread):
                 query_vector,
                 self.store
             )
-            tool_context = rag_result.get("llm_context", "")
+            # 🔑 Use += to ensure we don't accidentally wipe out other tool data
+            tool_context += rag_result.get("llm_context", "")
             all_ui_sources.extend(rag_result.get("sources", []))
 
         # ---- WEB + HYBRID ----
@@ -222,27 +238,33 @@ class LLMWorker(QThread):
             web_results = search_internet(self.prompt)
             
             if web_results:
-                # 🔑 THE FIX: If DuckDuckGo returns a list, join it into a single text block
                 if isinstance(web_results, list):
-                    # Cleanly join the snippets with double newlines
                     web_results = "\n\n".join([str(item) for item in web_results])
                 else:
-                    # Just in case it's already a string or something else
                     web_results = str(web_results)
 
-                # Trim results to avoid blowing out context window
                 web_context = web_results[:self.RAG_BUDGET]
                 
-                # Merge with RAG context if we are in HYBRID mode
+                all_ui_sources.append({
+                    "id": "W", 
+                    "filename": "Live Web Search", 
+                    "content": web_context, 
+                    "type": "web"
+                })
+                
+                # 🔑 Append Web results to tool_context
                 if tool_context:
-                    tool_context = f"{tool_context}\n\nWEB SEARCH RESULTS:\n{web_context}"
+                    tool_context = f"{tool_context}\n\n[W] WEB SEARCH RESULTS:\n{web_context}"
                 else:
-                    tool_context = web_context
+                    tool_context = f"[W] WEB SEARCH RESULTS:\n{web_context}"
                     
                 logger.info(f"[LLM Worker] Web search integrated ({len(web_context)} chars)")
-            else:
-                logger.warning("[LLM Worker] Web search returned no results.")
 
+        # 🔑 THE CRITICAL FIX: Move this OUTSIDE of the tool blocks 
+        # so it fires for RAG and Memory too!
+        if all_ui_sources:
+            self.sources_found.emit(all_ui_sources)
+        
         # ============================================================
         # TELEMETRY + SELF TUNING
         # ============================================================
@@ -300,7 +322,7 @@ class LLMWorker(QThread):
         )
 
         if execution_route in ["RAG", "HYBRID"]:
-            system_prompt += " Use provided documents with citations [1], [2]."
+            system_prompt += " You MUST cite your sources inline using brackets and the ID, like [1] or [2]."
             
         # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
         elif execution_route in ["WEB", "INTERNET"]:
@@ -311,9 +333,25 @@ class LLMWorker(QThread):
                 "CRITICAL: Respond directly to the user in a natural, conversational tone. "
                 "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
                 "Output ONLY your final answer."
+                "You MUST cite the web sources inline using brackets like [W]."
             )
 
         messages = [{"role": "system", "content": system_prompt}] + history
+
+        # 🔑 THE MISSING LINK: Inject the gathered data into the LLM's prompt!
+        if tool_context and messages and messages[-1]["role"] == "user":
+            original_query = messages[-1]["content"]
+            
+            # Combine the gathered facts with the user's actual question
+            messages[-1]["content"] = (
+                f"=== SYSTEM RETRIEVED CONTEXT ===\n"
+                f"Use the following numbered sources to answer the query. Cite them exactly as formatted.\n\n"
+                f"{tool_context}\n"
+                f"================================\n\n"
+                f"USER QUERY:\n{original_query}"
+            )
+            
+            logger.debug("Successfully injected tool context into the final prompt.")
 
         # ============================================================
         # 4. LLM STREAMING
@@ -327,61 +365,93 @@ class LLMWorker(QThread):
             "stream": True
         }
 
-        r = requests.post(self.api_url, json=payload, stream=True)
-
         current_sentence = ""
         final_text = ""
         start = time.time()
         first_token = False
+        
+        # 🔑 Initialize our safety flag
+        self._successfully_finished = False 
 
-        for line in r.iter_lines():
-            if getattr(self, "_cancel_requested", False):
-                break
+        # 🔑 THE MASTER WRAPPER: try/except/finally
+        try:
+            # The safe request with a 10-second timeout
+            r = requests.post(self.api_url, json=payload, stream=True, timeout=10)
+            r.raise_for_status() # Ensure we didn't get a 404 or 500 error
 
-            if not line:
-                continue
-
-            data = line.decode("utf-8")
-
-            if data.startswith("data: "):
-                chunk = data[6:]
-                if chunk.strip() == "[DONE]":
+            for line in r.iter_lines():
+                if getattr(self, "_cancel_requested", False):
                     break
 
-                try:
-                    packet = json.loads(chunk)
-                    delta = packet["choices"][0].get("delta", {}).get("content", "")
-
-                    if delta:
-                        if not first_token:
-                            self.ttft_latency.emit((time.time() - start) * 1000)
-                            first_token = True
-
-                        current_sentence += delta
-                        final_text += delta
-                        self.token_streamed.emit(delta)
-
-                        if any(p in delta for p in ".!?"):
-                            clean = self.clean_text_for_tts(current_sentence)
-                            if clean:
-                                self.sentence_ready.emit(clean, self.session_id)
-                            current_sentence = ""
-
-                except json.JSONDecodeError:
+                if not line:
                     continue
 
-        if current_sentence.strip():
-            clean = self.clean_text_for_tts(current_sentence)
-            self.sentence_ready.emit(clean, self.session_id)
+                data = line.decode("utf-8")
 
-        # ============================================================
-        # 5. MEMORY SAVE + RESPONSE
-        # ============================================================
-        if self.session_id and final_text.strip():
-            self.db.add_message(self.session_id, "assistant", final_text)
+                if data.startswith("data: "):
+                    chunk = data[6:]
+                    if chunk.strip() == "[DONE]":
+                        break
+
+                    try:
+                        packet = json.loads(chunk)
+                        delta = packet["choices"][0].get("delta", {}).get("content", "")
+
+                        if delta:
+                            if not first_token:
+                                self.ttft_latency.emit((time.time() - start) * 1000)
+                                first_token = True
+
+                            current_sentence += delta
+                            final_text += delta
+                            self.token_streamed.emit(delta)
+
+                            if any(p in delta for p in ".!?"):
+                                clean = self.clean_text_for_tts(current_sentence)
+                                if clean:
+                                    self.sentence_ready.emit(clean, self.session_id)
+                                current_sentence = ""
+
+                    except json.JSONDecodeError:
+                        continue
+
+            if current_sentence.strip():
+                clean = self.clean_text_for_tts(current_sentence)
+                if clean: 
+                    self.sentence_ready.emit(clean, self.session_id)
+
+            # ============================================================
+            # 5. MEMORY SAVE
+            # ============================================================
+            if self.session_id and final_text.strip():
+                self.db.add_message(self.session_id, "assistant", final_text)
+                
+            # If we reached this line, the LLM fully finished without crashing
+            self._successfully_finished = True
+
+        except requests.exceptions.Timeout:
+            logger.error("LLM Connection Error: Request timed out.")
+            final_text = "Sorry, my brain disconnected (Timeout)."
+            self.token_streamed.emit("\n\n*(Connection Timeout)*")
+            
+        except Exception as e:
+            logger.error(f"LLM Connection Error: {e}")
+            final_text = "Sorry, my brain encountered an error."
+            self.token_streamed.emit("\n\n*(Connection Error)*")
+
+        finally:
+            # 1. Unlock the Chatbox
             self.response_finished.emit(self.session_id, final_text)
+            
+            # 2. 🔑 THE CONDITIONAL IDLE:
+            # If we crashed, TTS will never run, so we MUST force "Idle" to clear the Top Bar.
+            # If we succeeded, we stay quiet and let the audio engine handle the Top Bar!
+            if not getattr(self, '_successfully_finished', False):
+                self.status_update.emit("Idle")
 
-        self.status_update.emit("Idle")
+        # 🔑 THE FIX: Delete `self.status_update.emit("Idle")` from here!  It was moved to the audio_worker.py.
+        # Why we added it back in later on, but in a different form: We need the LLM to stay completely quiet on a successful run (letting the Audio worker do its job), but we need the LLM to yell "Idle!" if it crashes.
+        # Let the audio engine control the final unlock so the UI doesn't flicker.
 
     # --- SETTERS FOR THE UI BLUEPRINT ---
     def set_provider(self, port: int):
