@@ -1034,11 +1034,13 @@ class MainWindow(QMainWindow):
     def update_status(self, message: str) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""
         msg_upper = message.upper().strip()
-        
-        # 1. Determine the incoming state
+
+        # 1. Determine the incoming state (TTS "Speaking" is separate from LLM "Thinking")
         if any(k in msg_upper for k in ["RECORDING", "LISTENING"]):
             new_state = "recording"
-        elif any(k in msg_upper for k in ["THINKING", "GENERATING", "SPEAKING", "TRANSCRIBING"]):
+        elif "SPEAKING" in msg_upper:
+            new_state = "speaking"
+        elif any(k in msg_upper for k in ["THINKING", "GENERATING", "SYNTHESIZING", "TRANSCRIBING"]):
             new_state = "thinking"
         else:
             new_state = "idle"
@@ -1047,22 +1049,22 @@ class MainWindow(QMainWindow):
         # Get the current state from the UI property
         current_state = self.status_bubble.property("state") or "idle"
 
-        # If the worker is trying to set "Idle", but we are currently Recording or Thinking, 
-        # IGNORE the idle signal. We only go back to idle when explicitly allowed.
+        # Block stray Idle while recording or actively thinking (LLM), but NOT while TTS speaking —
+        # playback_finished must be able to return the bar to Idle after audio ends.
         if new_state == "idle" and current_state in ["recording", "thinking"]:
             return
 
         # 3. Update the UI
         self.status_bubble.setText(f" {msg_upper}")
         self.status_bubble.setProperty("state", new_state)
-        
+
         # Force Style Refresh
         self.status_bubble.style().unpolish(self.status_bubble)
         self.status_bubble.style().polish(self.status_bubble)
-        
-        # Lock/Unlock input based on the new state
+
+        # Lock input only for recording / LLM work; keep unlocked during TTS playback
         if hasattr(self, 'conversations_view'):
-            self.conversations_view.set_input_enabled(new_state == "idle")
+            self.conversations_view.set_input_enabled(new_state in ("idle", "speaking"))
 
     def update_rag_indicator(self, active: bool) -> None:
         """Called by the LLM Worker when actively retrieving documents."""

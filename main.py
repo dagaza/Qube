@@ -12,6 +12,7 @@ from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
+from core.app_settings import get_enable_memory_enrichment
 from workers.enrichment_worker import EnrichmentWorker
 from workers.internet_worker import InternetWorker
 
@@ -52,11 +53,11 @@ class Qube:
             store=self.store,
             db=self.db_manager
         )
-        
+        self.enrichment_worker.set_enabled(get_enable_memory_enrichment())
+
         # --- 4. THE GOLDEN WIRE (Signal -> Slot) ------------------------
-        # 🔑 THE FIX: Wait until the LLM is done streaming the chat BEFORE starting memory extraction!
-        self.llm_worker.response_finished.connect(lambda s, t: self.enrichment_worker.enqueue(s))
-        
+        # response_finished wiring lives in _connect_signals (needs MainWindow + TTS sentinel).
+
         # Start the memory worker thread
         self.enrichment_worker.start()
 
@@ -102,14 +103,16 @@ class Qube:
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_toggle'):
             self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
+            self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
             
         # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
-        self.llm_worker.response_finished.connect(lambda s, t: w.conversations_view.set_input_enabled(True))
-        
+        self.llm_worker.response_finished.connect(self._on_llm_response_finished)
+
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
         self.audio_worker.wakeword_detected.connect(self._handle_user_interruption)
@@ -131,6 +134,15 @@ class Qube:
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
+
+    def _on_llm_response_finished(self, session_id: str, text: str) -> None:
+        """Unlock chat, queue memory extraction, and mark end of LLM turn for TTS (sentinel)."""
+        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
+            self.window.conversations_view.set_input_enabled(True)
+        if hasattr(self, 'enrichment_worker'):
+            self.enrichment_worker.enqueue(session_id)
+        if hasattr(self, 'tts_worker'):
+            self.tts_worker.enqueue_turn_complete(session_id)
 
     def _handle_voice_prompt(self, text: str):
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
@@ -157,8 +169,10 @@ class Qube:
         if hasattr(self, 'window'):
             self.window.update_status("LISTENING...")
             # 🔑 FIX: Instantly unlock the UI if the user interrupts
-            self.window.conversations_view.set_input_enabled(True) 
-            
+            self.window.conversations_view.set_input_enabled(True)
+            if hasattr(self.window.conversations_view, "clear_stale_agent_pointer"):
+                self.window.conversations_view.clear_stale_agent_pointer()
+
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
     
     def _handle_tts_finished(self):
@@ -292,6 +306,9 @@ class Qube:
         if hasattr(self, 'enrichment_worker') and self.enrichment_worker.isRunning():
             self.enrichment_worker.stop()
             self.enrichment_worker.wait(2000)
+
+        if hasattr(self, 'tts_worker'):
+            self.tts_worker.request_graceful_stop()
 
         # 3. Stop all core hardware/LLM workers
         for name, worker in self.window.workers.items():

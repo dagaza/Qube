@@ -129,7 +129,8 @@ def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, t
             sources.append({
                 "id": i,
                 "filename": f"Memory: {item['category'].title()}",
-                "content": text
+                "content": text,
+                "type": "memory",
             })
 
         logger.info(

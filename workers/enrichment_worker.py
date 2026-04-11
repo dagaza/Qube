@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QThread
+from PyQt6.QtCore import QThread, QMutex, QMutexLocker
 import logging
 import time
 import numpy as np
@@ -33,6 +33,9 @@ class EnrichmentWorker(QThread):
         self.queue = Queue()
         self.is_running = True
         self.is_processing = False
+
+        self._enabled_mutex = QMutex()
+        self._is_enabled = True
 
         self.MAX_MESSAGES = 12
 
@@ -88,6 +91,31 @@ class EnrichmentWorker(QThread):
     def enqueue(self, session_id: str):
         self.queue.put(session_id)
 
+    def set_enabled(self, enabled: bool) -> None:
+        """Toggle enrichment from the main thread; worker stays alive and idles when disabled."""
+        with QMutexLocker(self._enabled_mutex):
+            self._is_enabled = bool(enabled)
+        logger.debug(f"[Memory v5.1] enrichment enabled={self._is_enabled}")
+
+    def _is_enabled_read(self) -> bool:
+        with QMutexLocker(self._enabled_mutex):
+            return self._is_enabled
+
+    def _wait_for_chat_llm_idle(self) -> bool:
+        """
+        Avoid concurrent blocking requests to the local LLM (single-slot servers).
+        Returns False if we give up after a long wait (skip this extraction).
+        """
+        deadline = time.time() + 300.0
+        while self.llm.isRunning():
+            if time.time() > deadline:
+                logger.warning(
+                    "[Memory v5.1] Chat LLM still busy after 300s; skipping extraction for this turn"
+                )
+                return False
+            self.msleep(100)
+        return True
+
     def stop(self):
         self.is_running = False
 
@@ -99,6 +127,9 @@ class EnrichmentWorker(QThread):
         logger.info("[Memory v5.1] Worker started.")
 
         while self.is_running:
+            if not self._is_enabled_read():
+                self.msleep(100)
+                continue
             try:
                 try:
                     session_id = self.queue.get(timeout=0.5)
@@ -119,6 +150,8 @@ class EnrichmentWorker(QThread):
     # ============================================================
 
     def _process_session(self, session_id: str):
+        if not self._wait_for_chat_llm_idle():
+            return
 
         try:
             all_messages = self.db.get_session_history(session_id)

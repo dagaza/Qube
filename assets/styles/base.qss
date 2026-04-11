@@ -270,6 +270,12 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     background-color: rgba(251, 191, 36, 0.15); 
 }
 
+/* Same chip as thinking — TTS playback uses a distinct logical state only */
+#StatusBubble[state="speaking"] {
+    color: #fbbf24;
+    background-color: rgba(251, 191, 36, 0.15);
+}
+
 #StatusBubble[state="idle"] { 
     color: #34d399; /* Pastel Green */
     background-color: rgba(52, 211, 153, 0.15); 

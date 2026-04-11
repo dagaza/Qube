@@ -10,11 +10,14 @@ import logging
 
 from core.audio_utils import get_input_devices, get_output_devices
 from core.network import is_port_open
+from core.app_settings import get_enable_memory_enrichment, set_enable_memory_enrichment
+from ui.components.toggle import PrestigeToggle
 
 logger = logging.getLogger("Qube.UI.Settings")
 class SettingsView(QWidget):
     audio_pin_toggle = pyqtSignal(bool)
     auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
+    memory_enrichment_changed = pyqtSignal(bool)
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -125,6 +128,32 @@ class SettingsView(QWidget):
 
         content_layout.addWidget(ai_widget)
         content_layout.addWidget(self._build_divider())
+
+        # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
+        content_layout.addWidget(self._build_section_header("fa5s.memory", "MEMORY & PERFORMANCE"))
+        perf_widget = QWidget()
+        perf_widget.setObjectName("SettingsFormContainer")
+        perf_form = QFormLayout(perf_widget)
+        perf_form.setSpacing(15)
+        perf_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.memory_enrichment_toggle = PrestigeToggle()
+        self.mem_enrichment_label = QLabel("Enable Memory Enrichment (Requires more RAM)")
+        self.mem_enrichment_label.setWordWrap(True)
+        mem_row = QWidget()
+        mem_row_layout = QHBoxLayout(mem_row)
+        mem_row_layout.setContentsMargins(0, 0, 0, 0)
+        mem_row_layout.addWidget(self.memory_enrichment_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+        mem_row_layout.addWidget(self.mem_enrichment_label, stretch=1)
+
+        self.memory_enrichment_toggle.blockSignals(True)
+        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
+        self.memory_enrichment_toggle.blockSignals(False)
+        self.memory_enrichment_toggle.toggled.connect(self._on_memory_enrichment_toggled)
+
+        perf_form.addRow("", mem_row)
+        content_layout.addWidget(perf_widget)
+        content_layout.addWidget(self._build_divider())
         
         # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
         content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
@@ -170,6 +199,8 @@ class SettingsView(QWidget):
         self.threshold_spinner.setStyleSheet(style)
         self.pin_audio_cb.setStyleSheet(style)
         self.auto_activator_cb.setStyleSheet(style)
+        if hasattr(self, 'mem_enrichment_label'):
+            self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         
         # 🔑 Style the NLP Trigger input & list
         if hasattr(self, 'trigger_input'):
@@ -312,6 +343,9 @@ class SettingsView(QWidget):
         self.db.remove_rag_trigger(phrase)
         self._refresh_trigger_list()
 
+    def _on_memory_enrichment_toggled(self, checked: bool):
+        set_enable_memory_enrichment(checked)
+        self.memory_enrichment_changed.emit(checked)
 
     # --------------------------------------------------------- #
     #  THE PRESTIGE MENU LOGIC                                  #
@@ -405,7 +439,12 @@ class SettingsView(QWidget):
         # Update Section Header Icons
         icon_color = "#8b5cf6" if is_dark else "#4c4f69" 
         
-        for icon_lbl in [getattr(self, 'audio_icon_label', None), getattr(self, 'ai_icon_label', None), getattr(self, 'rag_icon_label', None)]:
+        for icon_lbl in [
+            getattr(self, 'audio_icon_label', None),
+            getattr(self, 'ai_icon_label', None),
+            getattr(self, 'perf_icon_label', None),
+            getattr(self, 'rag_icon_label', None),
+        ]:
             if icon_lbl:
                 name = icon_lbl.property("icon_name")
                 icon_lbl.setPixmap(qta.icon(name, color=icon_color).pixmap(QSize(18, 18)))
@@ -442,6 +481,7 @@ class SettingsView(QWidget):
         
         if "AUDIO" in title_text: self.audio_icon_label = icon_label
         elif "MODELS" in title_text: self.ai_icon_label = icon_label
+        elif "MEMORY" in title_text: self.perf_icon_label = icon_label
         elif "TRIGGERS" in title_text: self.rag_icon_label = icon_label
         
         text_label = QLabel(title_text)

@@ -289,9 +289,9 @@ Memory system supports 3 logical behaviors:
 
 ---
 
-### 5.6 Execution Model (ANTI-AGENTIC COMPLEXITY RULE)
+### 5.6 Qube Execution Model (ANTI-AGENTIC COMPLEXITY RULE)
 
-System follows strict execution tiers:
+When writing or modifying Qube's internal routing, tool use, or agentic logic, you must strictly enforce the following execution tiers to protect hardware constraints:
 
 #### Tier 1 — Instant Response
 - direct LLM response
@@ -400,8 +400,6 @@ The system prioritizes:
 3. deterministic routing (no unpredictable agent behavior)
 4. memory integrity (no schema corruption)
 5. latency consistency (no hidden blocking calls)
-
-
 
 ---
 

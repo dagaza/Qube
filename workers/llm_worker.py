@@ -3,6 +3,7 @@ import requests
 import json
 import time
 import re
+import copy
 import logging
 
 from mcp.rag_tool import rag_search
@@ -30,6 +31,11 @@ class LLMWorker(QThread):
     MAX_TOTAL_RETRIEVAL_CHARS = 4500
     MEMORY_BUDGET = 1500
     RAG_BUDGET = 3000
+
+    # Streaming: read timeout applies between SSE chunks (stall guard); wall cap is absolute safety
+    _STREAM_CONNECT_TIMEOUT = 20
+    _STREAM_READ_TIMEOUT = 180
+    _MAX_STREAM_WALL_SECONDS = 900
 
     def __init__(self, embedder, store, db_manager):
         super().__init__()
@@ -89,6 +95,29 @@ class LLMWorker(QThread):
 
         return memory_context, rag_context
 
+    def _apply_sequential_source_ids(self, sources: list, execution_route: str) -> None:
+        """Assign globally unique citation ids (1..n) in merge order: memory → RAG → web."""
+        if not sources:
+            return
+        if execution_route in ("WEB", "INTERNET") and len(sources) == 1:
+            if str(sources[0].get("type", "")).lower() == "web":
+                return
+        for i, src in enumerate(sources, start=1):
+            if isinstance(src, dict):
+                src["id"] = i
+
+    def _format_sources_for_llm_prompt(self, sources: list) -> str:
+        """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids)."""
+        parts = []
+        for src in sources:
+            if not isinstance(src, dict):
+                continue
+            sid = src.get("id")
+            name = str(src.get("filename", "Unknown"))
+            body = (src.get("content") or "").strip()
+            parts.append(f"--- SOURCE {sid}: {name} ---\n{body}")
+        return "\n\n".join(parts)
+
     # ============================================================
     def clean_text_for_tts(self, text):
         import re
@@ -139,11 +168,29 @@ class LLMWorker(QThread):
     # ============================================================
     def run(self):
         self._cancel_requested = False
+        self._active_stream_response = None
+        self._successfully_finished = False
+        final_text_out = ""
+        try:
+            final_text_out = self._execute_llm_turn()
+        except Exception:
+            logger.exception("[LLM] pipeline failure (routing, tools, or stream)")
+            if not str(final_text_out).strip():
+                final_text_out = "Sorry, my brain encountered an error."
+                self.token_streamed.emit("\n\n*(Pipeline Error)*")
+        finally:
+            self._close_active_stream()
+            self.response_finished.emit(self.session_id, final_text_out)
+            if not self._successfully_finished:
+                self.status_update.emit("Idle")
 
+    def _execute_llm_turn(self) -> str:
         if self.session_id:
             self.db.add_message(self.session_id, "user", self.prompt)
 
         history = self.db.get_session_history(self.session_id) if self.session_id else []
+        # API expects only role/content; DB rows may include "sources" for UI persistence
+        history = [{"role": m["role"], "content": m["content"]} for m in history]
         clean_prompt = self.prompt.lower().strip()
 
         # ============================================================
@@ -260,11 +307,11 @@ class LLMWorker(QThread):
                     
                 logger.info(f"[LLM Worker] Web search integrated ({len(web_context)} chars)")
 
-        # 🔑 THE CRITICAL FIX: Move this OUTSIDE of the tool blocks 
-        # so it fires for RAG and Memory too!
+        # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
+        self._apply_sequential_source_ids(all_ui_sources, execution_route)
         if all_ui_sources:
-            self.sources_found.emit(all_ui_sources)
-        
+            self.sources_found.emit(copy.deepcopy(all_ui_sources))
+
         # ============================================================
         # TELEMETRY + SELF TUNING
         # ============================================================
@@ -306,12 +353,11 @@ class LLMWorker(QThread):
             logger.debug(f"[Router Feedback] Logged latency: {latency_seconds:.2f}s | RAG used: {rag_was_used}")
 
         # ============================================================
-        # 2.5 RETRIEVAL BUDGET ENFORCEMENT
+        # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
-        memory_context, tool_context = self._enforce_retrieval_budget(
-            memory_context,
-            tool_context
-        )
+        retrieval_prompt_body = self._format_sources_for_llm_prompt(all_ui_sources)
+        if retrieval_prompt_body:
+            retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
 
         # ============================================================
         # 3. PROMPT BUILD
@@ -321,9 +367,13 @@ class LLMWorker(QThread):
             "Be concise and accurate."
         )
 
-        if execution_route in ["RAG", "HYBRID"]:
-            system_prompt += " You MUST cite your sources inline using brackets and the ID, like [1] or [2]."
-            
+        if execution_route in ["RAG", "HYBRID", "MEMORY"]:
+            system_prompt += (
+                " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
+                "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
+                "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
+            )
+
         # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
         elif execution_route in ["WEB", "INTERNET"]:
             system_prompt = (
@@ -332,26 +382,27 @@ class LLMWorker(QThread):
                 "Do not state that you are offline or cannot browse the internet. "
                 "CRITICAL: Respond directly to the user in a natural, conversational tone. "
                 "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
-                "Output ONLY your final answer."
-                "You MUST cite the web sources inline using brackets like [W]."
+                "Output ONLY your final answer. "
+                "You MUST cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
+                "no URL in parentheses after [W], and no backticks around [W]."
             )
 
         messages = [{"role": "system", "content": system_prompt}] + history
 
-        # 🔑 THE MISSING LINK: Inject the gathered data into the LLM's prompt!
-        if tool_context and messages and messages[-1]["role"] == "user":
+        # 🔑 Inject retrieval in the same order as all_ui_sources / citation ids
+        if retrieval_prompt_body and messages and messages[-1]["role"] == "user":
             original_query = messages[-1]["content"]
-            
-            # Combine the gathered facts with the user's actual question
+
             messages[-1]["content"] = (
                 f"=== SYSTEM RETRIEVED CONTEXT ===\n"
-                f"Use the following numbered sources to answer the query. Cite them exactly as formatted.\n\n"
-                f"{tool_context}\n"
+                f"Use the following numbered sources to answer the query. "
+                f"In the prose of your reply, cite with plain tokens [1], [2], or [W] only (no markdown links).\n\n"
+                f"{retrieval_prompt_body}\n"
                 f"================================\n\n"
                 f"USER QUERY:\n{original_query}"
             )
-            
-            logger.debug("Successfully injected tool context into the final prompt.")
+
+            logger.debug("Successfully injected unified retrieval context into the final prompt.")
 
         # ============================================================
         # 4. LLM STREAMING
@@ -369,17 +420,23 @@ class LLMWorker(QThread):
         final_text = ""
         start = time.time()
         first_token = False
-        
-        # 🔑 Initialize our safety flag
-        self._successfully_finished = False 
 
-        # 🔑 THE MASTER WRAPPER: try/except/finally
         try:
-            # The safe request with a 10-second timeout
-            r = requests.post(self.api_url, json=payload, stream=True, timeout=10)
-            r.raise_for_status() # Ensure we didn't get a 404 or 500 error
+            self._active_stream_response = requests.post(
+                self.api_url,
+                json=payload,
+                stream=True,
+                timeout=(self._STREAM_CONNECT_TIMEOUT, self._STREAM_READ_TIMEOUT),
+            )
+            r = self._active_stream_response
+            r.raise_for_status()
 
-            for line in r.iter_lines():
+            stream_wall_start = time.time()
+
+            for line in r.iter_lines(decode_unicode=False):
+                if time.time() - stream_wall_start > self._MAX_STREAM_WALL_SECONDS:
+                    logger.error("[LLM] SSE stream exceeded wall-time cap; closing.")
+                    break
                 if getattr(self, "_cancel_requested", False):
                     break
 
@@ -417,41 +474,31 @@ class LLMWorker(QThread):
 
             if current_sentence.strip():
                 clean = self.clean_text_for_tts(current_sentence)
-                if clean: 
+                if clean:
                     self.sentence_ready.emit(clean, self.session_id)
 
-            # ============================================================
-            # 5. MEMORY SAVE
-            # ============================================================
             if self.session_id and final_text.strip():
-                self.db.add_message(self.session_id, "assistant", final_text)
-                
-            # If we reached this line, the LLM fully finished without crashing
+                src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
+                self.db.add_message(
+                    self.session_id, "assistant", final_text, sources_json=src_payload
+                )
+
             self._successfully_finished = True
 
         except requests.exceptions.Timeout:
             logger.error("LLM Connection Error: Request timed out.")
             final_text = "Sorry, my brain disconnected (Timeout)."
             self.token_streamed.emit("\n\n*(Connection Timeout)*")
-            
+
         except Exception as e:
             logger.error(f"LLM Connection Error: {e}")
             final_text = "Sorry, my brain encountered an error."
             self.token_streamed.emit("\n\n*(Connection Error)*")
 
         finally:
-            # 1. Unlock the Chatbox
-            self.response_finished.emit(self.session_id, final_text)
-            
-            # 2. 🔑 THE CONDITIONAL IDLE:
-            # If we crashed, TTS will never run, so we MUST force "Idle" to clear the Top Bar.
-            # If we succeeded, we stay quiet and let the audio engine handle the Top Bar!
-            if not getattr(self, '_successfully_finished', False):
-                self.status_update.emit("Idle")
+            self._close_active_stream()
 
-        # 🔑 THE FIX: Delete `self.status_update.emit("Idle")` from here!  It was moved to the audio_worker.py.
-        # Why we added it back in later on, but in a different form: We need the LLM to stay completely quiet on a successful run (letting the Audio worker do its job), but we need the LLM to yell "Idle!" if it crashes.
-        # Let the audio engine control the final unlock so the UI doesn't flicker.
+        return final_text
 
     # --- SETTERS FOR THE UI BLUEPRINT ---
     def set_provider(self, port: int):
@@ -480,6 +527,20 @@ class LLMWorker(QThread):
         
     def set_mcp_internet(self, enabled: bool):
         self.mcp_internet_enabled = enabled
+
+    def _close_active_stream(self):
+        r = getattr(self, "_active_stream_response", None)
+        if r is not None:
+            try:
+                r.close()
+            except Exception:
+                pass
+            self._active_stream_response = None
+
+    def cancel_generation(self):
+        """Best-effort cancel: unblocks streaming reads; run() still finishes via finally."""
+        self._cancel_requested = True
+        self._close_active_stream()
 
     def reload_model(self):
         """Placeholder for LM Studio / Ollama model reload endpoints."""

@@ -1,12 +1,131 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
-    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QDialog, QTextEdit
+    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QTextEdit
 )
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 import qtawesome as qta
 import logging
+from urllib.parse import unquote
+import copy
+import unicodedata
+import re as _re_cite
+
+from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.source_viewer import SourcePreviewer
 
 logger = logging.getLogger("Qube.UI.Conversations")
+
+# In-text citation links must survive Qt's Markdown → anchor step. Qt's importer is flaky for
+# custom schemes with numeric path segments (qube://cite/1); https + .invalid is linkified reliably.
+CITATION_HREF_PREFIX = "https://qube.invalid/cite/"
+
+# log_agent_token(..., citation_sources=...) — distinguish "not passed" (live stream) from explicit None (DB row with no sources)
+_UNSET_SOURCES = object()
+
+
+def _normalize_citation_id(value) -> str:
+    """Single canonical form for matching cite tokens across JSON (int/float/str), Qt URLs, and LLM [W]."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(int(value))
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+    s = str(value).strip()
+    if not s:
+        return ""
+    try:
+        f = float(s)
+        if f.is_integer():
+            return str(int(f))
+        return s
+    except ValueError:
+        return s
+
+
+def _source_citation_match_keys(src: dict) -> set[str]:
+    """Normalized id values to compare against a clicked cite token (handles alternate keys)."""
+    out: set[str] = set()
+    if not isinstance(src, dict):
+        return out
+    for key in ("id", "cite_id", "source_id"):
+        if key not in src:
+            continue
+        n = _normalize_citation_id(src.get(key))
+        if n:
+            out.add(n)
+    return out
+
+
+def _normalize_stored_source_id(src: dict) -> None:
+    """Ensure citation ids are JSON-stable scalars; web citations use the string 'W' (not list/tuple)."""
+    if not isinstance(src, dict):
+        return
+    rid = src.get("id")
+    if isinstance(rid, (list, tuple)) and len(rid) == 1:
+        rid = rid[0]
+        src["id"] = rid
+    if isinstance(rid, str) and rid.strip().upper() == "W":
+        src["id"] = "W"
+        return
+    st = str(src.get("type", "")).lower()
+    if st == "web" and rid in (None, ""):
+        src["id"] = "W"
+
+
+def _snapshot_citation_sources(sources) -> list:
+    """Deep copy so each bubble owns an isolated list/dict graph (no cross-bubble mutation)."""
+    if not sources:
+        return []
+    out = copy.deepcopy(list(sources))
+    for src in out:
+        _normalize_stored_source_id(src)
+    return out
+
+
+def _prepare_stream_for_qt_citation_links(raw: str) -> str:
+    """
+    Normalize citations before QLabel Markdown linkify. Later turns often emit
+    [1](url), [[1]], or `[1]` which would otherwise stack with our link syntax and break Qt.
+    """
+    if not raw:
+        return raw
+    s = unicodedata.normalize("NFKC", raw)
+    s = s.replace("\uff3b", "[").replace("\uff3d", "]")
+    # Model-authored markdown links for citations → plain [n] / [W]
+    s = _re_cite.sub(
+        r"\[(\d+|[wW])\]\([^\)]*\)",
+        lambda m: "[W]" if m.group(1).lower() == "w" else f"[{m.group(1)}]",
+        s,
+    )
+    # Double-bracket wrappers e.g. [[1]] → [1] (repeat — models sometimes nest)
+    for _ in range(4):
+        ns = _re_cite.sub(
+            r"\[\[(\d+|[wW])\]\]",
+            lambda m: "[W]" if m.group(1).lower() == "w" else f"[{m.group(1)}]",
+            s,
+        )
+        if ns == s:
+            break
+        s = ns
+
+    def _unwrap_bt(m):
+        inner = m.group(1)
+        return "[W]" if inner.lower() == "[w]" else inner
+
+    s = _re_cite.sub(r"`(\[\d+\]|\[[wW]\])`", _unwrap_bt, s)
+    return s
+
+
+def _markdown_cite_link_replacement(match) -> str:
+    token = match.group(1)
+    key = "W" if str(token).lower() == "w" else str(token)
+    return f"[[{key}]](<{CITATION_HREF_PREFIX}{key}>)"
+
 
 class ChatLabel(QLabel):
     """A QLabel that remembers its unwrapped width to force native layout expansion."""
@@ -18,6 +137,19 @@ class ChatLabel(QLabel):
         
         self._cached_text = ""
         self._cached_ideal_width = 0
+        self._citation_sources: list = []
+        self._conversations_view = None
+
+    def attach_citation_handling(self, conversations_view):
+        """Bind link clicks to this label's own snapshot (no sender() / late-binding issues)."""
+        self._conversations_view = conversations_view
+        self.setOpenExternalLinks(False)
+        self.linkActivated.connect(self._on_citation_link_activated)
+
+    def _on_citation_link_activated(self, link_text: str):
+        view = self._conversations_view
+        if view is not None and hasattr(view, "_resolve_citation_link_for_label"):
+            view._resolve_citation_link_for_label(self, link_text)
 
     def sizeHint(self):
         from PyQt6.QtGui import QTextDocument
@@ -80,284 +212,7 @@ class MessageWrapper(QWidget):
         
         self.bubble.setMaximumWidth(safe_max)
 
-from PyQt6.QtWidgets import QLayout
-from PyQt6.QtCore import QPoint, QRect, QSize, Qt
 
-class FlowLayout(QLayout):
-    """A custom layout that wraps items to the next line when space runs out."""
-    def __init__(self, parent=None, margin=0, spacing=10):
-        super().__init__(parent)
-        if parent is not None:
-            self.setContentsMargins(margin, margin, margin, margin)
-        self._item_list = []
-        self._spacing = spacing
-
-    def __del__(self):
-        item = self.takeAt(0)
-        while item:
-            item = self.takeAt(0)
-
-    def addItem(self, item):
-        self._item_list.append(item)
-
-    def count(self):
-        return len(self._item_list)
-
-    def itemAt(self, index):
-        if 0 <= index < len(self._item_list):
-            return self._item_list[index]
-        return None
-
-    def takeAt(self, index):
-        if 0 <= index < len(self._item_list):
-            return self._item_list.pop(index)
-        return None
-
-    def expandingDirections(self):
-        # 🔑 FIX: Remove the 's'. Use Orientation (singular) in PyQt6
-        from PyQt6.QtCore import Qt
-        return Qt.Orientation(0)
-
-    def hasHeightForWidth(self):
-        return True
-
-    def heightForWidth(self, width):
-        height = self._do_layout(QRect(0, 0, width, 0), True)
-        return height
-
-    def setGeometry(self, rect):
-        super().setGeometry(rect)
-        self._do_layout(rect, False)
-
-    def sizeHint(self):
-        return self.minimumSize()
-
-    def minimumSize(self):
-        size = QSize()
-        for item in self._item_list:
-            size = size.expandedTo(item.minimumSize())
-        margin, _, _, _ = self.getContentsMargins()
-        size += QSize(2 * margin, 2 * margin)
-        return size
-
-    def _do_layout(self, rect, test_only):
-        x, y = rect.x(), rect.y()
-        line_height = 0
-        spacing = self._spacing
-
-        for item in self._item_list:
-            space_x = spacing
-            space_y = spacing
-            next_x = x + item.sizeHint().width() + space_x
-
-            # If the item crosses the right edge, wrap to the next line
-            if next_x - space_x > rect.right() and line_height > 0:
-                x = rect.x()
-                y = y + line_height + space_y
-                next_x = x + item.sizeHint().width() + space_x
-                line_height = 0
-
-            if not test_only:
-                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
-
-            x = next_x
-            line_height = max(line_height, item.sizeHint().height())
-
-        return y + line_height - rect.y()
-
-class PrestigeDialog(QDialog):
-    def __init__(self, parent, title, message, is_dark=True, is_input=False, default_text=""):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        
-        # --- NEW: ENLARGED DIMENSIONS ---
-        self.setMinimumWidth(450) # Increased from default
-        
-        self.result_text = None
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#f38ba8" if "Delete" in title else "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10) # Outer shadow/glow area
-        
-        # 🔑 FIX 1: Force the dialog to snap exactly to the height of its children
-        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
-
-        self.container = QFrame()
-        self.container.setObjectName("DialogContainer")
-        self.container.setStyleSheet(f"""
-            QFrame#DialogContainer {{ 
-                background: {bg}; 
-                border: 2px solid {accent}; 
-                border-radius: 20px; 
-            }}
-            QLabel {{ color: {fg}; border: none; background: transparent; }}
-        """)
-        
-        # Increased internal spacing and margins
-        c_layout = QVBoxLayout(self.container)
-        c_layout.setContentsMargins(30, 30, 30, 25) 
-        c_layout.setSpacing(20) 
-        
-        # Header/Title
-        t_lbl = QLabel(title.upper())
-        t_lbl.setStyleSheet(f"color: {accent}; font-weight: bold; font-size: 12px; letter-spacing: 2px;")
-        
-        # Message (Increased font size)
-        m_lbl = QLabel(message)
-        m_lbl.setWordWrap(True)
-        # 🔑 FIX 2: Allow the label to dictate its minimum required height to the layout
-        m_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        m_lbl.setMinimumWidth(0) # Standard safety check for word-wrapped labels
-        m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
-        
-        c_layout.addWidget(t_lbl)
-        c_layout.addWidget(m_lbl)
-        
-        # Input Field (Enlarged and Spaced)
-        self.field = None
-        if is_input:
-            self.field = QLineEdit(default_text)
-            self.field.setMinimumHeight(45) # Taller input field
-            self.field.setStyleSheet(f"""
-                QLineEdit {{ 
-                    background: {'#313244' if is_dark else '#f8fafc'}; 
-                    color: {fg}; 
-                    border-radius: 10px; 
-                    padding: 10px 15px; 
-                    border: 1px solid {accent};
-                    font-size: 14px;
-                }}
-            """)
-            c_layout.addWidget(self.field)
-            self.field.setFocus()
-
-       # --- ENHANCED BUTTON STYLING ---
-        btns = QHBoxLayout()
-        btns.setSpacing(15)
-        
-        cancel_btn = QPushButton("CANCEL")
-        con_b = QPushButton("CONFIRM")
-        
-        # Increased vertical padding (15px) and added min-height (45px)
-        btn_style = f"""
-            QPushButton {{ 
-                padding: 15px 15px; 
-                min-height: 30px;
-                border-radius: 12px; 
-                font-weight: bold; 
-                font-size: 12px;
-                letter-spacing: 1px;
-            }}
-        """
-        
-        cancel_btn.setStyleSheet(btn_style + f"""
-            QPushButton {{ 
-                color: {fg}; 
-                border: 1px solid {border}; 
-                background: transparent; 
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """)
-        
-        con_b.setStyleSheet(btn_style + f"""
-            QPushButton {{ 
-                background: {accent}; 
-                color: #11111b; 
-                border: none; 
-            }}
-            QPushButton:hover {{
-                background: {accent}; /* You could add a slightly brighter hex here if desired */
-                opacity: 0.9;
-            }}
-        """)
-        
-        cancel_btn.clicked.connect(self.reject)
-        con_b.clicked.connect(self.accept)
-        
-        btns.addStretch()
-        btns.addWidget(cancel_btn)
-        btns.addWidget(con_b)
-        c_layout.addLayout(btns)
-        
-        layout.addWidget(self.container)
-
-    def exec(self):
-        """Returns the input text if Accepted and is_input=True, otherwise True/None."""
-        if super().exec():
-            return self.field.text().strip() if self.field else True
-        return None
-
-    def accept_action(self):
-        if self.input_field:
-            self.result_text = self.input_field.text()
-        self.accept()
-
-class SourcePreviewer(QDialog):
-    """A sleek, frameless overlay to display raw RAG document text."""
-    def __init__(self, filename, content, parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumSize(650, 500)
-        
-        # 1. The Solid Background Frame (The "Russian Doll" fix)
-        self.bg_frame = QFrame(self)
-        self.bg_frame.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e2e;
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            QLabel { color: #89b4fa; font-weight: bold; font-size: 14px; border: none; }
-            QTextEdit { 
-                background-color: #11111b; 
-                color: #cdd6f4; 
-                border-radius: 8px; 
-                padding: 15px; 
-                font-size: 14px;
-                line-height: 1.6;
-                border: 1px solid rgba(255, 255, 255, 0.05);
-            }
-            QPushButton {
-                background-color: #313244;
-                color: #cdd6f4;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover { background-color: #45475a; }
-        """)
-        
-        outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.addWidget(self.bg_frame)
-
-        # 2. Inner Layout
-        layout = QVBoxLayout(self.bg_frame)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-        
-        title_lbl = QLabel(f"📄 Source: {filename}")
-        layout.addWidget(title_lbl)
-        
-        self.viewer = QTextEdit()
-        self.viewer.setReadOnly(True)
-        self.viewer.setPlainText(content)
-        layout.addWidget(self.viewer)
-        
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        close_btn = QPushButton("Close Preview")
-        close_btn.clicked.connect(self.close)
-        btn_layout.addWidget(close_btn)
-        
-        layout.addLayout(btn_layout)
 class ConversationsView(QWidget):
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -366,7 +221,9 @@ class ConversationsView(QWidget):
         
         self.llm = workers.get("llm")
         self.tts = workers.get("tts")
-        
+        self._pending_citation_sources = None
+        self._user_turn_id = 0
+
         self._setup_ui()
         self._start_new_chat() 
 
@@ -466,22 +323,6 @@ class ConversationsView(QWidget):
         self.scroll_area.setWidget(self.transcript_container)
         layout.addWidget(self.scroll_area)
 
-        # 1.5 The Source Chips Container (Hidden by default)
-        self.source_chips_container = QFrame()
-        self.source_chips_container.setObjectName("SourceChipsContainer")
-        
-        # 🔑 Dynamic sizing for the FlowLayout (No inline imports!)
-        policy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        policy.setHeightForWidth(True)
-        self.source_chips_container.setSizePolicy(policy)
-        self.source_chips_container.setMinimumHeight(40) # Safety net to guarantee visibility
-
-        # Swap QHBoxLayout for our custom FlowLayout
-        self.source_chips_layout = FlowLayout(self.source_chips_container, spacing=10)
-        
-        self.source_chips_container.hide() # Hide until we find sources
-        layout.addWidget(self.source_chips_container)
-
         # 2. Input Bar Area
         input_container = QFrame()
         input_container.setObjectName("ChatInputContainer")
@@ -525,6 +366,9 @@ class ConversationsView(QWidget):
 
     def log_user_message(self, text: str) -> None:
         self._clear_placeholders()
+        # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
+        self._user_turn_id += 1
+        self.current_agent_msg = None
 
         bubble = QFrame()
         # 🔑 FIX 2: Allow bubble to expand horizontally, minimum vertically
@@ -550,8 +394,7 @@ class ConversationsView(QWidget):
         self._is_agent_typing = False
         self._scroll_to_bottom()
 
-    def log_agent_token(self, token: str) -> None:
-        import re # 🔑 Ensure re is imported
+    def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
         self._clear_placeholders()
 
         is_dark = True
@@ -573,6 +416,7 @@ class ConversationsView(QWidget):
             container_layout.setContentsMargins(0, 0, 0, 20)
 
             self.current_agent_msg = ChatLabel()
+            self.current_agent_msg._assistant_turn_id = self._user_turn_id
             self.current_agent_msg.setTextFormat(Qt.TextFormat.MarkdownText)
             
             # 🔑 CHANGE 1: Enable Link Interaction
@@ -580,9 +424,7 @@ class ConversationsView(QWidget):
                 Qt.TextInteractionFlag.TextBrowserInteraction | 
                 Qt.TextInteractionFlag.LinksAccessibleByMouse
             )
-            # 🔑 CHANGE 2: Intercept links so our custom handler (Step 3/4 earlier) can work
-            self.current_agent_msg.setOpenExternalLinks(False)
-            self.current_agent_msg.linkActivated.connect(self._handle_inline_citation)
+            self.current_agent_msg.attach_citation_handling(self)
             
             from PyQt6.QtGui import QPalette, QColor
             palette = self.current_agent_msg.palette()
@@ -590,6 +432,12 @@ class ConversationsView(QWidget):
             palette.setColor(QPalette.ColorRole.Text, QColor(text_color))
             self.current_agent_msg.setPalette(palette)
             self.current_agent_msg.setStyleSheet("font-size: 14px; background: transparent; border: none;")
+
+            # Per-bubble citation context (survives new turns and session reloads)
+            if citation_sources is not _UNSET_SOURCES:
+                self.current_agent_msg._citation_sources = _snapshot_citation_sources(citation_sources)
+            else:
+                self._attach_pending_citation_sources(self.current_agent_msg)
 
             container_layout.addWidget(self.current_agent_msg)
 
@@ -603,10 +451,14 @@ class ConversationsView(QWidget):
 
         self._agent_text_buffer += token
 
-        # 🔑 THE FIX: Escape the inner brackets (\[ \]) so PyQt doesn't confuse them!
-        # This securely creates a link formatted like: [\[1\]](source_1)
-        rich_text = re.sub(r'\[(\d+|W)\]', r'[\[\1\]](source_\1)', self._agent_text_buffer)
-        
+        # Strip model markdown around cites, then linkify plain [n]/[W] for Qt MarkdownText.
+        prepared = _prepare_stream_for_qt_citation_links(self._agent_text_buffer)
+        rich_text = _re_cite.sub(
+            r"\[\s*(\d+|[wW])\s*\]",
+            _markdown_cite_link_replacement,
+            prepared,
+        )
+
         self.current_agent_msg.setText(rich_text)
 
         self.current_agent_msg.updateGeometry()
@@ -624,10 +476,9 @@ class ConversationsView(QWidget):
             child = self.transcript_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-                
-        # 🔑 THE FIX: Banish the ghost chips!
-        if hasattr(self, 'source_chips_container'):
-            self.source_chips_container.hide()
+
+        self._pending_citation_sources = None
+        self.current_agent_msg = None
 
     # --------------------------------------------------------- #
     #  INTERACTION & LOGIC                                      #
@@ -886,7 +737,10 @@ class ConversationsView(QWidget):
             if msg["role"] == "user":
                 self.log_user_message(msg["content"])
             elif msg["role"] == "assistant":
-                self.log_agent_token(msg["content"])
+                self.log_agent_token(
+                    msg["content"],
+                    citation_sources=msg.get("sources"),
+                )
                 self._is_agent_typing = False
 
     def _apply_menu_theme(self, menu, is_dark: bool):
@@ -995,99 +849,84 @@ class ConversationsView(QWidget):
         # Wait for geometry calculation, THEN wait for layout application
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))
 
+    def _attach_pending_citation_sources(self, label: ChatLabel) -> None:
+        """Apply sources from the tool phase to this bubble (or [] if none pending)."""
+        pending = getattr(self, "_pending_citation_sources", None)
+        if pending is not None:
+            label._citation_sources = _snapshot_citation_sources(pending)
+            self._pending_citation_sources = None
+        else:
+            label._citation_sources = []
+
     def on_sources_found(self, sources):
-        """Builds the clickable UI chips and saves sources for inline links."""
-        # 🔑 THE KEY: Store the sources so inline links can find them
-        self.current_sources = sources 
+        """Receive tool sources for inline citation links (no separate chip UI)."""
+        self._pending_citation_sources = _snapshot_citation_sources(sources)
+        cur = getattr(self, "current_agent_msg", None)
+        if cur is not None and getattr(cur, "_assistant_turn_id", None) == getattr(
+            self, "_user_turn_id", -1
+        ):
+            cur._citation_sources = _snapshot_citation_sources(sources)
 
-        # 1. Clear previous source chips
-        while self.source_chips_layout.count():
-            child = self.source_chips_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-                
-        if not sources:
-            self.source_chips_container.hide()
-            return
-            
-        # 2. Build the new chips dynamically
-        for src in sources:
-            filename = src.get('filename', 'Unknown Source')
-            
-            # 🔑 Determine the source type to pick the color
-            source_type = src.get('type', '')
-            filename_lower = str(filename).lower()
-            
-            # Fallback guessing if 'type' wasn't explicitly passed from the worker
-            if not source_type:
-                if filename_lower.startswith("http") or "web" in filename_lower or "duckduckgo" in filename_lower:
-                    source_type = "web"
-                elif "memory" in filename_lower:
-                    source_type = "memory"
-                else:
-                    source_type = "rag"
-            
-            # 🔑 Assign Catppuccin Theme Colors
-            if source_type == "web":
-                color_hex = "#a6e3a1"  # Green
-            elif source_type == "memory":
-                color_hex = "#fab387"  # Peach/Orange
-            else:
-                color_hex = "#89b4fa"  # Blue (Default RAG)
+    def _resolve_citation_link_for_label(self, label: ChatLabel, link_text: str):
+        """Resolve href from this bubble's isolated _citation_sources (label-bound, not sender())."""
+        raw = unquote((link_text or "").strip())
+        sources = getattr(label, "_citation_sources", None) or []
 
-            # Build the button
-            btn = QPushButton(f"[{src.get('id', '*')}] {filename}")
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            
-            # Apply dynamic styling using the chosen color
-            # We use CSS alpha hex codes (1A = 10%, 4D = 30%, 33 = 20%) to match your original transparency
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {color_hex}1A;
-                    color: {color_hex};
-                    border: 1px solid {color_hex}4D;
-                    border-radius: 12px;
-                    padding: 4px 12px;
-                    font-size: 11px;
-                    font-weight: bold;
-                }}
-                QPushButton:hover {{
-                    background-color: {color_hex}33;
-                    border: 1px solid {color_hex};
-                }}
-            """)
-            
-            # Capture the dictionary securely in the lambda
-            btn.clicked.connect(lambda checked, s=src: self.open_source_preview(s))
-            self.source_chips_layout.addWidget(btn)
-            
-        self.source_chips_container.show()
-        # 🔑 FIX 2: Tell the main layout to recalculate space now that items exist
-        self.source_chips_container.updateGeometry()
-
-    def _handle_inline_citation(self, link_text: str):
-        """Intercepts link clicks like 'source_1' or 'source_W' and opens the preview."""
-        if not link_text.startswith("source_"):
-            # If it's a standard web link (http), open it in the default browser
-            import webbrowser
-            webbrowser.open(link_text)
-            return
-
-        # Extract the ID (e.g., '1' or 'W')
-        source_id = link_text.replace("source_", "")
-
-        # Find the source data from the list we saved in on_sources_found
-        if hasattr(self, 'current_sources'):
-            for src in self.current_sources:
-                # Convert both to string to ensure '1' matches 1
-                if str(src.get('id')) == str(source_id):
+        def _resolve_and_open(source_id: str) -> bool:
+            wanted = _normalize_citation_id((source_id or "").strip())
+            if not wanted:
+                return True
+            for src in sources:
+                if wanted in _source_citation_match_keys(src):
                     self.open_source_preview(src)
-                    return
+                    return True
+            ids_debug = [
+                sorted(_source_citation_match_keys(s)) if isinstance(s, dict) else repr(type(s))
+                for s in sources[:5]
+            ]
+            logger.warning(
+                "Citation id %r (normalized %r) not found on this message (%d sources); sample ids %s",
+                source_id,
+                wanted,
+                len(sources),
+                ids_debug,
+            )
+            return True
+
+        if raw.startswith(CITATION_HREF_PREFIX):
+            tail = raw[len(CITATION_HREF_PREFIX) :].split("?")[0].split("#")[0].rstrip("/").strip()
+            _resolve_and_open(tail)
+            return
+
+        if raw.startswith("qube://cite/"):
+            tid = raw[len("qube://cite/") :].split("?")[0].split("#")[0].strip()
+            _resolve_and_open(tid)
+            return
+
+        if raw.startswith("source_"):
+            _resolve_and_open(raw.replace("source_", "", 1))
+            return
+
+        if raw.startswith("http://") or raw.startswith("https://"):
+            import webbrowser
+
+            webbrowser.open(raw)
+            return
 
     def open_source_preview(self, source_dict):
-        """Spawns the frameless SourcePreviewer dialog."""
-        viewer = SourcePreviewer(source_dict['filename'], source_dict['content'], self)
-        viewer.show() # .show() is non-blocking, so they can keep chatting!
+        """Opens the Prestige-styled SourcePreviewer (see ui/components/prestige_dialog.py)."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        viewer = SourcePreviewer(
+            source_dict.get("filename", "Source"),
+            source_dict.get("content", ""),
+            self,
+            is_dark=is_dark,
+        )
+        viewer.show()
+
+    def clear_stale_agent_pointer(self) -> None:
+        """Drop the live assistant label handle (e.g. interrupt) without advancing _user_turn_id."""
+        self.current_agent_msg = None
 
     def set_input_enabled(self, enabled: bool):
         """Locks the text input bar and resets its placeholder."""

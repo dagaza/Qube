@@ -1,5 +1,6 @@
 import sqlite3
 import uuid
+import json
 from datetime import datetime
 from pathlib import Path
 import logging
@@ -105,6 +106,13 @@ class DatabaseManager:
                 
                 conn.commit()
                 logger.info("Database initialized successfully.")
+
+                # Message-level RAG / memory citation payloads (JSON list of source dicts)
+                try:
+                    cursor.execute("ALTER TABLE messages ADD COLUMN sources_json TEXT")
+                    logger.info("Added messages.sources_json column.")
+                except sqlite3.OperationalError:
+                    pass
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
@@ -151,13 +159,19 @@ class DatabaseManager:
             conn.commit()
         return session_id
 
-    def add_message(self, session_id: str, role: str, content: str):
+    def add_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        sources_json: str | None = None,
+    ):
         msg_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
-                (msg_id, session_id, role, content)
+                "INSERT INTO messages (id, session_id, role, content, sources_json) VALUES (?, ?, ?, ?, ?)",
+                (msg_id, session_id, role, content, sources_json),
             )
             cursor.execute(
                 "UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -168,10 +182,22 @@ class DatabaseManager:
     def get_session_history(self, session_id: str) -> list[dict]:
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
+                "SELECT role, content, sources_json FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
                 (session_id,)
             )
-            return [{"role": row["role"], "content": row["content"]} for row in cursor.fetchall()]
+            rows = []
+            for row in cursor.fetchall():
+                entry = {"role": row["role"], "content": row["content"]}
+                raw = row["sources_json"]
+                if raw:
+                    try:
+                        parsed = json.loads(raw)
+                        if isinstance(parsed, list):
+                            entry["sources"] = parsed
+                    except json.JSONDecodeError:
+                        logger.warning("Bad sources_json for session %s", session_id)
+                rows.append(entry)
+            return rows
 
     def search_history(self, query: str) -> list[dict]:
         with self._get_connection() as conn:

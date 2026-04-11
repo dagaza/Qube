@@ -8,6 +8,12 @@ import time
 import logging
 logger = logging.getLogger("Qube.Audio")
 
+# Queued after the last sentence of an LLM turn so playback_finished tracks real end-of-audio.
+_END_OF_LLM_TURN = object()
+# Wake the consumer so run() can exit on app shutdown.
+_TTS_SHUTDOWN = object()
+
+
 def ensure_model_exists(model_path: str):
     """Downloads the Kokoro model and voices if they don't exist."""
     base_dir = os.path.dirname(model_path)
@@ -180,89 +186,111 @@ class TTSWorker(QThread):
         if not self.isRunning():
             self.start()
 
+    def enqueue_turn_complete(self, _session_id: str | None = None) -> None:
+        """Call once per LLM response after streaming ends (with or without TTS chunks)."""
+        self.sentence_queue.put(_END_OF_LLM_TURN)
+        if not self.isRunning():
+            self.start()
+
+    def request_graceful_stop(self) -> None:
+        """Unblocks run() so the thread can exit during app shutdown."""
+        try:
+            self.sentence_queue.put_nowait(_TTS_SHUTDOWN)
+        except Exception:
+            pass
+
     def run(self):
-        import pyaudio 
+        import pyaudio
         import time
-        
-        while not self.sentence_queue.empty():
-            self._interrupt_tts = False
 
-            # 1. Pop the item off the queue ONCE
-            item = self.sentence_queue.get()
-            
-            # 2. Unpack it safely
-            if isinstance(item, tuple):
-                text, session_id = item
-            else:
-                text, session_id = item, "default"
-            
-            # (Deleted the duplicate get() call here!)
+        _SYNTHESIS_CAP_S = 180.0
 
-            logger.info(f"[TTS] Preparing to speak: '{text[:40]}...'")
-            
-            # --- Bypass Logic ---
-            if getattr(self, 'is_muted', False) or not self.active_adapter:
-                self.sentence_queue.task_done()
-                continue
-            
-            # 3. 🔑 THE REBUILD: If the stream was destroyed by the Nuke, turn it back on!
-            if getattr(self, 'stream', None) is None:
-                try:
-                    # Make sure you have a pyaudio instance to open from!
-                    if getattr(self, 'pyaudio_instance', None) is None:
-                        self.pyaudio_instance = pyaudio.PyAudio()
-                        
-                    # **UPDATE THESE PARAMS** to match however you open self.stream in __init__!
-                    self.stream = self.pyaudio_instance.open(
-                        format=pyaudio.paInt16, 
-                        channels=1,
-                        rate=24000, # e.g., 16000, 24000, 44100
-                        output=True
-                    )
-                except Exception as e:
-                    self.status_update.emit(f"Failed to rebuild stream: {e}")
-                    self.sentence_queue.task_done()
+        try:
+            while True:
+                item = self.sentence_queue.get()
+
+                if item is _TTS_SHUTDOWN:
+                    self.playback_finished.emit()
+                    break
+
+                if item is _END_OF_LLM_TURN:
+                    self.playback_finished.emit()
                     continue
 
-            self.status_update.emit("🔊 Speaking...")
-            first_chunk_played = False 
-            start_time = time.time()   
+                self._interrupt_tts = False
 
-            try:
-                for pcm_data in self.active_adapter.synthesize(text, self.active_voice_name):
-                    if getattr(self, '_interrupt_tts', False):
-                        break 
-                        
-                    if not first_chunk_played:
-                        # 🔑 THE TRIGGER: Fire exactly when the first audio chunk plays
-                        self.tts_latency.emit((time.time() - start_time) * 1000)
-                        self.playback_started.emit(session_id) 
-                        first_chunk_played = True
-                        
-                    # --- Keep your Micro-Chunker exactly as is for Barge-in ---
-                    CHUNK_SIZE = 4096 
-                    for i in range(0, len(pcm_data), CHUNK_SIZE):
+                if isinstance(item, tuple):
+                    text, session_id = item
+                else:
+                    text, session_id = item, "default"
+
+                logger.info(f"[TTS] Preparing to speak: '{text[:40]}...'")
+
+                if getattr(self, 'is_muted', False) or not self.active_adapter:
+                    continue
+
+                if getattr(self, 'stream', None) is None:
+                    try:
+                        if getattr(self, 'pyaudio_instance', None) is None:
+                            self.pyaudio_instance = pyaudio.PyAudio()
+
+                        self.stream = self.pyaudio_instance.open(
+                            format=pyaudio.paInt16,
+                            channels=1,
+                            rate=24000,
+                            output=True
+                        )
+                    except Exception as e:
+                        self.status_update.emit(f"Failed to rebuild stream: {e}")
+                        continue
+
+                self.status_update.emit("🔊 Speaking...")
+                first_chunk_played = False
+                start_time = time.time()
+                syn_deadline = time.time() + _SYNTHESIS_CAP_S
+
+                try:
+                    for pcm_data in self.active_adapter.synthesize(text, self.active_voice_name):
+                        if time.time() > syn_deadline:
+                            logger.error("[TTS] Synthesis exceeded time cap; stopping sentence.")
+                            break
                         if getattr(self, '_interrupt_tts', False):
-                            logger.debug("Micro-chunker caught interruption! Stopping playback.")
-                            break 
-                        self.stream.write(pcm_data[i:i+CHUNK_SIZE])
-                            
-            except Exception as e:
-                self.status_update.emit(f"Audio Error: {e}")
-                    
-            self.sentence_queue.task_done()
-        
-        self.playback_finished.emit()
-            
-        # (Removed the "Idle" emit here so it doesn't overwrite the AudioWorker's status)
+                            break
+
+                        if not first_chunk_played:
+                            self.tts_latency.emit((time.time() - start_time) * 1000)
+                            self.playback_started.emit(session_id)
+                            first_chunk_played = True
+
+                        CHUNK_SIZE = 4096
+                        for i in range(0, len(pcm_data), CHUNK_SIZE):
+                            if getattr(self, '_interrupt_tts', False):
+                                logger.debug("Micro-chunker caught interruption! Stopping playback.")
+                                break
+                            self.stream.write(pcm_data[i:i+CHUNK_SIZE])
+
+                except Exception as e:
+                    self.status_update.emit(f"Audio Error: {e}")
+
+        except Exception as e:
+            logger.exception("[TTS] run loop failed: %s", e)
+            self.playback_finished.emit()
 
     def stop_playback(self):
         """Thread-safe kill switch. Empties queue and flags the loop to stop."""
         logger.info("TTS Worker: Interruption received. Clearing queue.")
-        self._interrupt_tts = True 
-        
+        self._interrupt_tts = True
+
         if hasattr(self, 'sentence_queue'):
-            with self.sentence_queue.mutex:
-                self.sentence_queue.queue.clear()
-                
+            try:
+                with self.sentence_queue.mutex:
+                    self.sentence_queue.queue.clear()
+            except Exception:
+                pass
+        # Unblock run() if it is waiting on sentence_queue.get()
+        try:
+            self.sentence_queue.put_nowait(_END_OF_LLM_TURN)
+        except Exception:
+            pass
+
         # ❌ We DO NOT close PyAudio here! It causes Segfaults!

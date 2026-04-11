@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
 import qtawesome as qta
 from pathlib import Path
-from .conversations_view import PrestigeDialog
+from ui.components.prestige_dialog import PrestigeDialog
 import logging
 
 logger = logging.getLogger("Qube.UI.Library")

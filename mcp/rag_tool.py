@@ -135,7 +135,8 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
             sources.append({
                 "id": i,
                 "filename": source,
-                "content": text
+                "content": text,
+                "type": "rag",
             })
 
         # ============================================================
