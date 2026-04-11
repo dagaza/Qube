@@ -5,6 +5,8 @@ import time
 import re
 import copy
 import logging
+import uuid
+from urllib.parse import urlparse
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -36,6 +38,9 @@ class LLMWorker(QThread):
     _STREAM_CONNECT_TIMEOUT = 20
     _STREAM_READ_TIMEOUT = 180
     _MAX_STREAM_WALL_SECONDS = 900
+
+    # Per-message cap before sending to the API (single huge assistant/user blobs).
+    CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS = 14000
 
     def __init__(self, embedder, store, db_manager):
         super().__init__()
@@ -74,9 +79,85 @@ class LLMWorker(QThread):
         self.mcp_auto_enabled = True
         self.temperature = 0.7
         self.context_window = 4096
+        # Sliding window: max DB messages to include in the chat completion (user-controlled).
+        self.max_history_messages = 10
         self.mcp_rag_enabled = True
         self.mcp_strict_enabled = False
         self.mcp_internet_enabled = False
+
+        # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
+        self._last_completed_llm_session_id = None
+        self._server_kv_cleared_for_session_id = None
+
+    def _is_local_llm_service(self) -> bool:
+        """Only localhost inference gets cache_prompt / flush hints (OpenAI cloud may 400 on extras)."""
+        try:
+            host = (urlparse(self.api_url).hostname or "").lower()
+            return host in ("localhost", "127.0.0.1", "::1")
+        except Exception:
+            return False
+
+    def _flush_server_kv_hint(self) -> None:
+        """
+        Tiny non-streaming completion so llama.cpp/LM Studio advance/rotate prompt cache
+        away from the previous conversation. Unique user text avoids prefix-cache hits.
+        """
+        if not self._is_local_llm_service():
+            return
+        token = uuid.uuid4().hex[:10]
+        body = {
+            "messages": [{"role": "user", "content": f"[qube:ctx:{token}]"}],
+            "max_tokens": 1,
+            "temperature": 0,
+            "stream": False,
+            "cache_prompt": False,
+        }
+        try:
+            logger.debug("[LLM] Cross-session server KV / prompt-cache hint (max_tokens=1)")
+            r = requests.post(
+                self.api_url,
+                json=body,
+                timeout=(5, 25),
+                headers={"Connection": "close"},
+            )
+            try:
+                r.raise_for_status()
+            except Exception:
+                logger.debug("[LLM] KV hint HTTP status: %s", getattr(r, "status_code", "?"))
+            r.close()
+        except Exception as e:
+            logger.debug("[LLM] KV hint failed (safe to ignore): %s", e)
+
+    def notify_active_session_changed(self, session_id) -> None:
+        """
+        UI focused a different chat thread while idle: hint the local server to drop reuse
+        of the previous thread's prompt/KV state before the user sends another message.
+        """
+        if not self._is_local_llm_service():
+            return
+        if self.isRunning():
+            return
+        last = self._last_completed_llm_session_id
+        if not session_id or last is None or last == session_id:
+            return
+        cleared = self._server_kv_cleared_for_session_id
+        if cleared == session_id:
+            return
+        self._flush_server_kv_hint()
+        self._server_kv_cleared_for_session_id = session_id
+
+    def _ensure_cross_session_server_flush(self) -> None:
+        """Before building the next completion, flush if this turn targets a different DB session."""
+        if not self._is_local_llm_service():
+            return
+        sid = self.session_id
+        last = self._last_completed_llm_session_id
+        if not sid or last is None or last == sid:
+            return
+        if self._server_kv_cleared_for_session_id == sid:
+            return
+        self._flush_server_kv_hint()
+        self._server_kv_cleared_for_session_id = sid
 
     # ============================================================
     # RETRIEVAL BUDGET ENFORCER
@@ -118,6 +199,42 @@ class LLMWorker(QThread):
             parts.append(f"--- SOURCE {sid}: {name} ---\n{body}")
         return "\n\n".join(parts)
 
+    def _bound_session_history(self, history: list[dict]) -> list[dict]:
+        """
+        Cull session messages for the completion request so the inference server's KV cache
+        does not grow without bound on long threads. Window size is user-controlled via
+        max_history_messages; single-message truncation remains as a safety cap.
+        """
+        if not history:
+            return []
+
+        max_single = self.CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS
+        suffix = "\n\n[…message truncated for context window]"
+
+        capped: list[dict] = []
+        for m in history:
+            role = m.get("role", "user")
+            if role not in ("user", "assistant", "system"):
+                role = "user"
+            content = m.get("content") or ""
+            if len(content) > max_single:
+                content = content[: max_single - len(suffix)] + suffix
+            capped.append({"role": role, "content": content})
+
+        n_before = len(capped)
+        limit = max(2, min(100, int(getattr(self, "max_history_messages", 10))))
+        windowed = capped[-limit:] if len(capped) > limit else capped
+
+        if n_before > len(windowed):
+            logger.info(
+                "[LLM] Chat history windowed: using last %d of %d messages (max_history_messages=%d)",
+                len(windowed),
+                n_before,
+                limit,
+            )
+
+        return windowed
+
     # ============================================================
     def clean_text_for_tts(self, text):
         import re
@@ -156,11 +273,18 @@ class LLMWorker(QThread):
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             "max_tokens": 1000,
-            "stream": False
+            "stream": False,
         }
+        if self._is_local_llm_service():
+            payload["cache_prompt"] = False
 
         try:
-            r = requests.post(self.api_url, json=payload, timeout=120)
+            r = requests.post(
+                self.api_url,
+                json=payload,
+                timeout=120,
+                headers={"Connection": "close"},
+            )
             return r.json()["choices"][0]["message"]["content"]
         except Exception:
             return ""
@@ -180,6 +304,8 @@ class LLMWorker(QThread):
                 self.token_streamed.emit("\n\n*(Pipeline Error)*")
         finally:
             self._close_active_stream()
+            self._last_completed_llm_session_id = self.session_id
+            self._server_kv_cleared_for_session_id = None
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -188,9 +314,12 @@ class LLMWorker(QThread):
         if self.session_id:
             self.db.add_message(self.session_id, "user", self.prompt)
 
+        self._ensure_cross_session_server_flush()
+
         history = self.db.get_session_history(self.session_id) if self.session_id else []
         # API expects only role/content; DB rows may include "sources" for UI persistence
         history = [{"role": m["role"], "content": m["content"]} for m in history]
+        history = self._bound_session_history(history)
         clean_prompt = self.prompt.lower().strip()
 
         # ============================================================
@@ -335,8 +464,8 @@ class LLMWorker(QThread):
             })
             
             try:
-                summary = getattr(self.telemetry, 'get_summary', lambda: {})()
-                tuner_state = self.router_tuner.get_weights() 
+                summary = self.telemetry.summarize()
+                tuner_state = self.router_tuner.get_weights()
                 self.router_telemetry_updated.emit(summary, tuner_state)
             except Exception as e:
                 logger.error(f"Failed to emit router telemetry: {e}")
@@ -413,8 +542,11 @@ class LLMWorker(QThread):
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.context_window,
-            "stream": True
+            "stream": True,
         }
+        if self._is_local_llm_service():
+            # llama.cpp server: avoid unbounded prompt-prefix / KV reuse across unrelated requests
+            payload["cache_prompt"] = False
 
         current_sentence = ""
         final_text = ""
@@ -427,6 +559,7 @@ class LLMWorker(QThread):
                 json=payload,
                 stream=True,
                 timeout=(self._STREAM_CONNECT_TIMEOUT, self._STREAM_READ_TIMEOUT),
+                headers={"Connection": "close"},
             )
             r = self._active_stream_response
             r.raise_for_status()
@@ -513,6 +646,10 @@ class LLMWorker(QThread):
     def set_context_window(self, val: int):
         self.context_window = val
         logger.debug(f"Context Window updated to {val}")
+
+    def set_max_history_messages(self, val: int):
+        self.max_history_messages = max(2, min(100, int(val)))
+        logger.debug(f"Max chat history messages updated to {self.max_history_messages}")
 
     def set_mcp_rag(self, enabled: bool):
         self.mcp_rag_enabled = enabled

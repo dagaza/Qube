@@ -252,30 +252,37 @@ class TelemetryView(QWidget):
     # ROUTER TELEMETRY UPDATE SLOT
     # ============================================================
     def update_router_telemetry(self, summary: dict, tuner_state: dict):
-        routes = summary.get("route_distribution", {})
+        routes = summary.get("route_distribution") or {}
         total = max(summary.get("total_requests", 1), 1)
 
         self.route_label.setText(f"Routes: {routes}")
-        self.latency_router_label.setText(f"Avg Latency: {summary.get('avg_latency_ms', 0):.1f} ms")
+        avg_lat = float(summary.get("avg_latency_ms") or 0)
+        self.latency_router_label.setText(f"Avg Latency: {avg_lat:.1f} ms")
 
         memory_count = routes.get("MEMORY", 0)
         rag_count = routes.get("RAG", 0)
         self.memory_label.setText(f"Memory Usage: {memory_count}/{total} ({memory_count/total:.1%})")
         self.rag_label.setText(f"RAG Usage: {rag_count}/{total} ({rag_count/total:.1%})")
 
+        # AdaptiveRouterSelfTunerV2.get_weights() uses keys hybrid / memory / rag (not *_sensitivity).
+        hy = float(
+            tuner_state.get("hybrid_sensitivity", tuner_state.get("hybrid", 1.0))
+        )
+        mem_w = float(
+            tuner_state.get("memory_sensitivity", tuner_state.get("memory", 1.0))
+        )
+        rag_w = float(tuner_state.get("rag_sensitivity", tuner_state.get("rag", 1.0)))
+
         self.tuner_label.setText(
-            f"Hybrid:{tuner_state.get('hybrid_sensitivity', 1.0):.2f} | "
-            f"Memory:{tuner_state.get('memory_sensitivity', 1.0):.2f} | "
-            f"RAG:{tuner_state.get('rag_sensitivity', 1.0):.2f}"
+            f"Hybrid:{hy:.2f} | Memory:{mem_w:.2f} | RAG:{rag_w:.2f}"
         )
 
-        hybrid_ratio = routes.get("HYBRID", 0)/total
+        hybrid_ratio = routes.get("HYBRID", 0) / total
         if hybrid_ratio > 0.6:
             health = "⚠️ Over-reliance on HYBRID"
-        # 🔑 FIX: Changed brackets [] to parentheses () and added the 1.0 fallback
-        elif tuner_state.get("memory_sensitivity", 1.0) < 0.6:
+        elif mem_w < 0.6:
             health = "⚠️ Memory recall degraded"
-        elif summary.get("avg_latency_ms", 0) > 1200:
+        elif avg_lat > 1200:
             health = "⚠️ High latency"
         else:
             health = "🟢 System Stable"

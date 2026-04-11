@@ -564,6 +564,21 @@ class MainWindow(QMainWindow):
         voice_layout.addWidget(self.global_voice_selector)
         main_layout.addLayout(voice_layout)
 
+        def create_spinbox_row(label_text, tooltip_text, spinner):
+            row = QHBoxLayout()
+            lbl = QLabel(label_text)
+            lbl.setProperty("class", "ToolsPaneControl")
+            info_icon = QLabel()
+            info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
+            info_icon.setToolTip(tooltip_text)
+            info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
+            row.addWidget(lbl)
+            row.addWidget(info_icon)
+            row.addStretch()
+            spinner.setFixedWidth(90)
+            row.addWidget(spinner)
+            return row
+
         # --- 3. GENERATION PARAMETERS ---
         param_layout = QVBoxLayout()
         param_layout.setSpacing(10)
@@ -571,27 +586,38 @@ class MainWindow(QMainWindow):
         p_title.setProperty("class", "ToolsPaneHeader")
         param_layout.addWidget(p_title)
 
-        temp_row = QHBoxLayout()
-        temp_label = QLabel("Temperature:")
-        temp_label.setProperty("class", "ToolsPaneControl")
-        temp_row.addWidget(temp_label)
+        desc_temp = (
+            "Creativity Slider: Lower values (0.1-0.3) produce strict, factual answers. "
+            "Higher values (0.7-1.0) make Qube more creative."
+        )
+        desc_ctx = (
+            "Memory Wall: Sets the absolute maximum number of tokens Qube is allowed to output in a single turn."
+        )
+        desc_history = (
+            "Short-Term Memory: How many past messages to send to the AI. Higher values give the AI "
+            "better context but consume significantly more system RAM (VRAM). Qube's background "
+            "Long-Term Memory will still remember important facts even if this is set low."
+        )
+
         self.temp_spin = NoScrollDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
         self.temp_spin.setValue(0.7)
         self.temp_spin.setProperty("class", "ToolsPaneInput")
-        temp_row.addWidget(self.temp_spin)
-        param_layout.addLayout(temp_row)
+        param_layout.addLayout(create_spinbox_row("Temperature:", desc_temp, self.temp_spin))
 
-        ctx_row = QHBoxLayout()
-        ctx_label = QLabel("Context Limit:")
-        ctx_label.setProperty("class", "ToolsPaneControl")
-        ctx_row.addWidget(ctx_label)
         self.ctx_spin = NoScrollSpinBox()
         self.ctx_spin.setRange(1024, 128000)
         self.ctx_spin.setValue(4096)
         self.ctx_spin.setProperty("class", "ToolsPaneInput")
-        ctx_row.addWidget(self.ctx_spin)
-        param_layout.addLayout(ctx_row)
+        param_layout.addLayout(create_spinbox_row("Context Limit:", desc_ctx, self.ctx_spin))
+
+        self.history_spin = NoScrollSpinBox()
+        self.history_spin.setRange(2, 100)
+        self.history_spin.setSingleStep(2)
+        self.history_spin.setValue(10)
+        self.history_spin.setProperty("class", "ToolsPaneInput")
+        param_layout.addLayout(create_spinbox_row("Chat History:", desc_history, self.history_spin))
+
         main_layout.addLayout(param_layout)
 
         # --- 4. RAG ENGINE (Consolidated) ---
@@ -619,8 +645,8 @@ class MainWindow(QMainWindow):
             # The visual indicator icon (The ONLY thing with a tooltip now)
             info_icon = QLabel()
             info_icon.setPixmap(qta.icon('fa5s.info-circle', color='#64748b').pixmap(QSize(12, 12)))
-            info_icon.setToolTip(tooltip_text) 
-            info_icon.setCursor(Qt.CursorShape.WhatsThisCursor) 
+            info_icon.setToolTip(tooltip_text)
+            info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             row.addWidget(info_icon)
             
             row.addStretch()
@@ -676,6 +702,8 @@ class MainWindow(QMainWindow):
             self._llm_worker.response_finished.connect(self._check_for_titling)
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
+            self.history_spin.valueChanged.connect(self._llm_worker.set_max_history_messages)
+            self._llm_worker.set_max_history_messages(self.history_spin.value())
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):

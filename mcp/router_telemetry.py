@@ -40,3 +40,7 @@ class RouterTelemetryBrain:
             "route_distribution": routes,
             "avg_latency_ms": total_latency / len(self.events),
         }
+
+    def get_summary(self):
+        """Alias for UI / worker code that expects this name."""
+        return self.summarize()

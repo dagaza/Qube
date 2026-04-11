@@ -1,13 +1,31 @@
+import os
+import sys
+
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
-    QLineEdit, QPushButton, QListWidget, QScrollArea, QSizePolicy, QTextEdit
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QListWidget,
+    QScrollArea,
+    QSizePolicy,
+    QTextEdit,
+    QTextBrowser,
+    QMenu,
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl
 import qtawesome as qta
 import logging
 from urllib.parse import unquote
 import copy
 import unicodedata
+import weakref
+import re
 import re as _re_cite
 
 from ui.components.prestige_dialog import PrestigeDialog
@@ -21,6 +39,19 @@ CITATION_HREF_PREFIX = "https://qube.invalid/cite/"
 
 # log_agent_token(..., citation_sources=...) — distinguish "not passed" (live stream) from explicit None (DB row with no sources)
 _UNSET_SOURCES = object()
+
+# Smart auto-scroll: only follow new tokens if the scrollbar was already at (or near) the bottom.
+_STICKY_SCROLL_TOLERANCE_PX = 24
+
+
+def _parent_conversations_view(widget: QWidget):
+    """Find ConversationsView ancestor so context menus can use _apply_menu_theme (Prestige styling)."""
+    p = widget.parentWidget()
+    while p is not None:
+        if hasattr(p, "_apply_menu_theme"):
+            return p
+        p = p.parentWidget()
+    return None
 
 
 def _normalize_citation_id(value) -> str:
@@ -127,58 +158,342 @@ def _markdown_cite_link_replacement(match) -> str:
     return f"[[{key}]](<{CITATION_HREF_PREFIX}{key}>)"
 
 
+# Qt's setMarkdown() uses a GFM-ish parser: un-fenced lines with | / + / - can be parsed as tables.
+# ASCII schematics (box-drawing with "+---+|") often produce a malformed table and break parsing for
+# the *rest* of the document. Fence those blocks as literal code so later real tables still parse.
+
+
+def _line_looks_like_box_drawing(line: str) -> bool:
+    """Heuristic: schematic / box art line (not a normal prose table row)."""
+    t = line.rstrip()
+    if not t:
+        return False
+    # Markdown table separator: | --- | --- | — keep as markdown
+    if re.match(r"^\s*\|(\s*:?-+:?\s*\|)+\s*$", t):
+        return False
+    # Strong signal: corner joints + edges
+    if "+" in t and re.search(r"\+[-+|.\s]{2,}\+", t):
+        return True
+    if "+" in t and "|" in t and "-" in t and re.match(r"^[\s|+.\-=_/\\`:]+$", t):
+        return True
+    # Heavy structural characters, few letters (ASCII maps)
+    pipe = t.count("|")
+    letters = sum(1 for c in t if c.isalpha())
+    if pipe >= 2 and letters <= max(2, len(t) // 10):
+        if any(c in t for c in "+-|"):
+            return True
+    return False
+
+
+def _fence_box_drawing_for_qt(text: str) -> str:
+    """Wrap detected ASCII/box-drawing runs in fenced code blocks (outside existing ``` fences)."""
+    if not text:
+        return text
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    in_fence = False
+    n = len(lines)
+
+    while i < n:
+        line = lines[i]
+        st = line.strip()
+        if st.startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+            i += 1
+            continue
+        if in_fence:
+            out.append(line)
+            i += 1
+            continue
+
+        if _line_looks_like_box_drawing(line):
+            j = i
+            buf: list[str] = []
+            while j < n:
+                ln = lines[j]
+                lst = ln.strip()
+                if lst.startswith("```"):
+                    break
+                if not ln.strip():
+                    if buf and j + 1 < n and _line_looks_like_box_drawing(lines[j + 1]):
+                        buf.append(ln)
+                        j += 1
+                        continue
+                    if buf:
+                        break
+                    j += 1
+                    continue
+                if _line_looks_like_box_drawing(ln):
+                    buf.append(ln)
+                    j += 1
+                    continue
+                break
+            if len(buf) >= 2:
+                out.append("```")
+                out.extend(buf)
+                out.append("```")
+                i = j
+                continue
+
+        out.append(line)
+        i += 1
+
+    return "\n".join(out)
+
+
+def _qt_safe_markdown(markdown: str) -> str:
+    """Sanitize LLM markdown before QTextDocument.setMarkdown (box art, future rules)."""
+    return _fence_box_drawing_for_qt(markdown or "")
+
+
+def _markdown_ui_stylesheet(is_dark: bool) -> str:
+    """
+    QTextDocument default stylesheet for Markdown → HTML. Must be set *before* setMarkdown()
+    so table cells, list items, and nested spans inherit foreground color (QLabel + QPalette
+    alone do not color nested rich-text elements, which default to black and vanish on dark UI).
+    """
+    fg = "#cdd6f4" if is_dark else "#1e293b"
+    link = "#89b4fa" if is_dark else "#2563eb"
+    border = "#585b70" if is_dark else "#cbd5e1"
+    code_bg = "#313244" if is_dark else "#f1f5f9"
+    return (
+        f"body, p, span, div, li, ul, ol, dd, dt, "
+        f"table, thead, tbody, tr, th, td, "
+        f"blockquote, pre, code, "
+        f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
+        f"a {{ color: {link}; text-decoration: none; }}"
+        f"table {{ border-color: {border}; }}"
+        f"th, td {{ border-color: {border}; border-width: 1px; border-style: solid; padding: 4px; }}"
+        f"code, pre {{ background-color: {code_bg}; }}"
+        f"hr {{ border-color: {border}; color: {border}; }}"
+    )
+
+
+def _maybe_dump_markdown_html_pipeline(raw_md: str, font, is_dark: bool) -> None:
+    """Set env QUBE_DUMP_MARKDOWN_HTML=1 to print to stderr (debug Qt swallow vs QLabel limits)."""
+    if not os.environ.get("QUBE_DUMP_MARKDOWN_HTML"):
+        return
+    from PyQt6.QtGui import QTextDocument
+
+    safe = _qt_safe_markdown(raw_md)
+    doc = QTextDocument()
+    doc.setDefaultFont(font)
+    doc.setDefaultStyleSheet(_markdown_ui_stylesheet(is_dark))
+    doc.setMarkdown(safe)
+    html = doc.toHtml()
+    sys.stderr.write(
+        f"\n--- QUBE_DUMP_MARKDOWN_HTML len(raw)={len(raw_md)} len(safe)={len(safe)} len(html)={len(html)} ---\n"
+    )
+    cap = 250_000
+    sys.stderr.write(html if len(html) <= cap else html[:cap] + "\n...[truncated]...\n")
+
+
 class ChatLabel(QLabel):
-    """A QLabel that remembers its unwrapped width to force native layout expansion."""
+    """User bubble: QLabel with width hint. Assistant replies use AgentMessageLabel instead."""
+
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setWordWrap(True)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
-        self.setMinimumWidth(0) # CRITICAL: Allows Qt to shrink the label gracefully
-        
+        self.setMinimumWidth(0)
         self._cached_text = ""
         self._cached_ideal_width = 0
-        self._citation_sources: list = []
-        self._conversations_view = None
 
-    def attach_citation_handling(self, conversations_view):
-        """Bind link clicks to this label's own snapshot (no sender() / late-binding issues)."""
-        self._conversations_view = conversations_view
-        self.setOpenExternalLinks(False)
-        self.linkActivated.connect(self._on_citation_link_activated)
-
-    def _on_citation_link_activated(self, link_text: str):
-        view = self._conversations_view
-        if view is not None and hasattr(view, "_resolve_citation_link_for_label"):
-            view._resolve_citation_link_for_label(self, link_text)
+    def cleanup_before_destruction(self) -> None:
+        self._cached_text = ""
+        self._cached_ideal_width = 0
+        try:
+            self.clear()
+        except RuntimeError:
+            pass
 
     def sizeHint(self):
         from PyQt6.QtGui import QTextDocument
         from PyQt6.QtCore import QSize, Qt
-        
-        hint = super().sizeHint()
-        current_text = self.text()
-        
-        # Calculate the pure, unwrapped width of the text so the layout knows we WANT to expand
-        if current_text != self._cached_text:
-            doc = QTextDocument()
-            if self.textFormat() == Qt.TextFormat.MarkdownText:
-                doc.setMarkdown(current_text)
-            else:
-                doc.setPlainText(current_text)
-                
-            doc.setDefaultFont(self.font())
-            self._cached_ideal_width = int(doc.idealWidth()) + 15 # 15px buffer for safety
-            self._cached_text = current_text
-        
-        # Tell the layout to give us the unwrapped width (capped eventually by maximumWidth)
-        return QSize(max(self._cached_ideal_width, hint.width()), hint.height())
 
-    def heightForWidth(self, w: int) -> int:
-        return super().heightForWidth(w)
+        hint = super().sizeHint()
+        layout_key = self.text()
+        if layout_key != self._cached_text:
+            doc = QTextDocument()
+            doc.setDefaultFont(self.font())
+            if self.textFormat() == Qt.TextFormat.MarkdownText:
+                doc.setMarkdown(layout_key)
+            else:
+                doc.setPlainText(layout_key)
+            self._cached_ideal_width = int(doc.idealWidth()) + 15
+            self._cached_text = layout_key
+        return QSize(max(self._cached_ideal_width, hint.width()), hint.height())
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.updateGeometry()
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.setObjectName("PrestigeMenu")
+        view = _parent_conversations_view(self)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if view is not None:
+            view._apply_menu_theme(menu, is_dark)
+
+        def _copy():
+            if self.hasSelectedText():
+                QApplication.clipboard().setText(self.selectedText())
+            elif self.text():
+                QApplication.clipboard().setText(self.text())
+
+        copy_act = QAction("Copy", self)
+        copy_act.triggered.connect(_copy)
+        copy_act.setEnabled(bool(self.text()))
+        menu.addAction(copy_act)
+        menu.exec(event.globalPos())
+
+
+class AgentMessageLabel(QTextBrowser):
+    """
+    Assistant bubble: read-only QTextBrowser shares QTextDocument with Qt's Markdown importer
+    but applies full-document CSS and sets text width on resize ( QLabel + toHtml() could clip
+    complex layouts). Pipe/box ASCII is pre-sanitized via _qt_safe_markdown().
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setReadOnly(True)
+        self.setUndoRedoEnabled(False)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setFrameShadow(QFrame.Shadow.Plain)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.setTabChangesFocus(False)
+        self.setOpenLinks(False)
+        self.setOpenExternalLinks(False)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.setMinimumWidth(0)
+        self.document().setDocumentMargin(4)
+        self.viewport().setAutoFillBackground(False)
+
+        self._cached_text = ""
+        self._cached_ideal_width = 0
+        self._citation_sources: list = []
+        self._conversations_view_ref = None
+        self._citation_anchor_connected = False
+        self._md_layout_source = ""
+        self._agent_is_dark = True
+
+    def set_agent_markdown(self, markdown: str, *, is_dark: bool) -> None:
+        self._agent_is_dark = is_dark
+        self._md_layout_source = markdown or ""
+        safe = _qt_safe_markdown(self._md_layout_source)
+        doc = self.document()
+        doc.setDefaultFont(self.font())
+        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(is_dark))
+        doc.setMarkdown(safe)
+        _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
+        vw = self.viewport().width()
+        if vw > 0:
+            doc.setTextWidth(vw)
+        self._cached_text = ""
+        self.updateGeometry()
+
+    def attach_citation_handling(self, conversations_view):
+        self._conversations_view_ref = (
+            weakref.ref(conversations_view) if conversations_view is not None else None
+        )
+        if not self._citation_anchor_connected:
+            self.anchorClicked.connect(self._on_anchor_clicked)
+            self._citation_anchor_connected = True
+
+    def _on_anchor_clicked(self, url: QUrl):
+        ref = self._conversations_view_ref
+        view = ref() if ref is not None else None
+        if view is not None and hasattr(view, "_resolve_citation_link_for_label"):
+            view._resolve_citation_link_for_label(self, url.toString() if url.isValid() else "")
+
+    def cleanup_before_destruction(self) -> None:
+        if self._citation_anchor_connected:
+            try:
+                self.anchorClicked.disconnect(self._on_anchor_clicked)
+            except TypeError:
+                pass
+            self._citation_anchor_connected = False
+        self._conversations_view_ref = None
+        self._citation_sources = []
+        self._cached_text = ""
+        self._cached_ideal_width = 0
+        self._md_layout_source = ""
+        try:
+            self.clear()
+        except RuntimeError:
+            pass
+
+    def sizeHint(self):
+        from PyQt6.QtGui import QTextDocument
+        from PyQt6.QtCore import QSize
+
+        hint = super().sizeHint()
+        layout_key = self._md_layout_source
+        if layout_key != self._cached_text:
+            doc = QTextDocument()
+            doc.setDefaultFont(self.font())
+            doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
+            doc.setMarkdown(_qt_safe_markdown(layout_key or ""))
+            self._cached_ideal_width = int(doc.idealWidth()) + 15
+            self._cached_text = layout_key
+        tw = max(min(self._cached_ideal_width, 2400), 100)
+        doc2 = QTextDocument()
+        doc2.setDefaultFont(self.font())
+        doc2.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
+        doc2.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
+        doc2.setTextWidth(tw)
+        h = int(doc2.size().height()) + 8
+        return QSize(max(self._cached_ideal_width, hint.width()), max(h, hint.height()))
+
+    def heightForWidth(self, w: int) -> int:
+        from PyQt6.QtGui import QTextDocument
+
+        if w <= 0:
+            return super().heightForWidth(w)
+        doc = QTextDocument()
+        doc.setDefaultFont(self.font())
+        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
+        doc.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
+        doc.setTextWidth(max(w - 12, 1))
+        return int(doc.size().height()) + 8
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        vw = self.viewport().width()
+        if vw > 0:
+            self.document().setTextWidth(vw)
+        self.updateGeometry()
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.setObjectName("PrestigeMenu")
+        view = _parent_conversations_view(self)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if view is not None:
+            view._apply_menu_theme(menu, is_dark)
+
+        tc = self.textCursor()
+        copy_act = QAction("Copy", self)
+        copy_act.setEnabled(tc.hasSelection())
+        copy_act.triggered.connect(self.copy)
+        menu.addAction(copy_act)
+
+        sel_act = QAction("Select All", self)
+        sel_act.triggered.connect(self.selectAll)
+        menu.addAction(sel_act)
+
+        menu.exec(event.globalPos())
+
+
 class MessageWrapper(QWidget):
     """An autonomous layout row that takes full width and safely manages bubble expansion."""
     def __init__(self, bubble: QWidget, is_user: bool, parent=None):
@@ -207,10 +522,21 @@ class MessageWrapper(QWidget):
 
     def _update_width(self):
         # 🔑 User gets capped at 80% of the screen. Agent gets the full 100%.
+        bubble = self.bubble
+        if bubble is None:
+            return
         ratio = 0.8 if self.is_user else 1.0
         safe_max = max(int(self.width() * ratio), 100)
         
-        self.bubble.setMaximumWidth(safe_max)
+        bubble.setMaximumWidth(safe_max)
+
+    def cleanup_before_destruction(self) -> None:
+        """Break references held by this row before Qt tears down the widget tree."""
+        for lbl in self.findChildren(ChatLabel):
+            lbl.cleanup_before_destruction()
+        for w in self.findChildren(AgentMessageLabel):
+            w.cleanup_before_destruction()
+        self.bubble = None
 
 
 class ConversationsView(QWidget):
@@ -225,7 +551,13 @@ class ConversationsView(QWidget):
         self._user_turn_id = 0
 
         self._setup_ui()
-        self._start_new_chat() 
+        self._start_new_chat()
+
+    def _notify_llm_active_session_changed(self) -> None:
+        """Tell the LLM worker the focused thread changed so the local server can drop stale KV/prompt cache."""
+        llm = getattr(self, "llm", None)
+        if llm is not None and hasattr(llm, "notify_active_session_changed"):
+            llm.notify_active_session_changed(getattr(self, "active_session_id", None))
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -401,8 +733,7 @@ class ConversationsView(QWidget):
         if self.window() and hasattr(self.window(), '_is_dark_theme'):
             is_dark = self.window()._is_dark_theme
             
-        text_color = "#cdd6f4" if is_dark else "#1e293b"
-        header_color = "#8b5cf6" if is_dark else "#8839ef" 
+        header_color = "#8b5cf6" if is_dark else "#8839ef"
 
         if not getattr(self, '_is_agent_typing', False):
             header = QLabel("QUBE")
@@ -415,22 +746,14 @@ class ConversationsView(QWidget):
             container_layout = QVBoxLayout(self.agent_msg_container)
             container_layout.setContentsMargins(0, 0, 0, 20)
 
-            self.current_agent_msg = ChatLabel()
+            self.current_agent_msg = AgentMessageLabel()
             self.current_agent_msg._assistant_turn_id = self._user_turn_id
-            self.current_agent_msg.setTextFormat(Qt.TextFormat.MarkdownText)
-            
-            # 🔑 CHANGE 1: Enable Link Interaction
             self.current_agent_msg.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextBrowserInteraction | 
+                Qt.TextInteractionFlag.TextBrowserInteraction |
                 Qt.TextInteractionFlag.LinksAccessibleByMouse
             )
             self.current_agent_msg.attach_citation_handling(self)
-            
-            from PyQt6.QtGui import QPalette, QColor
-            palette = self.current_agent_msg.palette()
-            palette.setColor(QPalette.ColorRole.WindowText, QColor(text_color))
-            palette.setColor(QPalette.ColorRole.Text, QColor(text_color))
-            self.current_agent_msg.setPalette(palette)
+            # Foreground for nested Markdown (td/li/…) comes from QTextDocument default stylesheet in set_agent_markdown.
             self.current_agent_msg.setStyleSheet("font-size: 14px; background: transparent; border: none;")
 
             # Per-bubble citation context (survives new turns and session reloads)
@@ -459,10 +782,13 @@ class ConversationsView(QWidget):
             prepared,
         )
 
-        self.current_agent_msg.setText(rich_text)
+        # Sticky scroll: capture "at bottom" before content grows, then scroll only if user was following the stream.
+        follow_stream_tail = self._is_transcript_scrolled_to_bottom()
+        self.current_agent_msg.set_agent_markdown(rich_text, is_dark=is_dark)
 
         self.current_agent_msg.updateGeometry()
-        self._scroll_to_bottom()
+        if follow_stream_tail:
+            self._scroll_to_bottom()
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -470,15 +796,42 @@ class ConversationsView(QWidget):
             self.placeholder_lbl.deleteLater()
             self.placeholder_lbl = None
 
-    def _clear_transcript(self):
-        """Destroys all message widgets to prepare for a new chat."""
-        while self.transcript_layout.count():
-            child = self.transcript_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+    def _teardown_transcript_row(self, row: QWidget) -> None:
+        """Disconnect citations and clear label-owned data while the widget tree is still valid."""
+        if isinstance(row, MessageWrapper):
+            row.cleanup_before_destruction()
+        else:
+            for lbl in row.findChildren(ChatLabel):
+                lbl.cleanup_before_destruction()
+            for w in row.findChildren(AgentMessageLabel):
+                w.cleanup_before_destruction()
 
-        self._pending_citation_sources = None
+    def _clear_transcript(self):
+        """Destroys all message widgets to prepare for a new chat.
+
+        deleteLater() alone can leave PyQt wrappers and citation payloads alive until GC if
+        Python still holds strong references (signal slots, view pointers, source snapshots).
+        We clear those explicitly, then flush DeferredDelete so QObject teardown runs promptly.
+        """
+        self.placeholder_lbl = None
         self.current_agent_msg = None
+        self._pending_citation_sources = None
+        self._agent_text_buffer = ""
+
+        while self.transcript_layout.count():
+            item = self.transcript_layout.takeAt(0)
+            w = item.widget()
+            if w is None:
+                continue
+            self._teardown_transcript_row(w)
+            w.deleteLater()
+
+        etype = getattr(QEvent.Type, "DeferredDelete", None)
+        if etype is not None:
+            try:
+                QCoreApplication.sendPostedEvents(None, int(etype))
+            except RuntimeError:
+                pass
 
     # --------------------------------------------------------- #
     #  INTERACTION & LOGIC                                      #
@@ -703,6 +1056,7 @@ class ConversationsView(QWidget):
 
     def _start_new_chat(self):
         self.active_session_id = self.db.create_session("New Conversation")
+        self._notify_llm_active_session_changed()
         self._clear_transcript()
 
         self.placeholder_lbl = QLabel("New chat started. Type or speak a message!")
@@ -714,11 +1068,13 @@ class ConversationsView(QWidget):
 
         self._is_agent_typing = False
         self._refresh_history_list()
+        self._scroll_to_bottom()
 
     def _load_selected_chat(self, item):
         from PyQt6.QtCore import Qt
         session_id = item.data(Qt.ItemDataRole.UserRole)
         self.active_session_id = session_id
+        self._notify_llm_active_session_changed()
 
         self._clear_transcript()
         self._is_agent_typing = False
@@ -731,6 +1087,7 @@ class ConversationsView(QWidget):
                 "color: #6c7086; font-size: 16px; margin-top: 50px; font-weight: bold;"
             )
             self.transcript_layout.addWidget(self.placeholder_lbl)
+            self._scroll_to_bottom()
             return
 
         for msg in history:
@@ -742,6 +1099,8 @@ class ConversationsView(QWidget):
                     citation_sources=msg.get("sources"),
                 )
                 self._is_agent_typing = False
+
+        self._scroll_to_bottom()
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
@@ -833,14 +1192,29 @@ class ConversationsView(QWidget):
                     widget = self.transcript_layout.itemAt(i).widget()
                     if widget and widget.objectName() in ["UserBubble", "AgentBubble"]:
                         widget.setMaximumWidth(max_w)
-            
-            # Defer scroll to bottom so Qt's native layout math finishes
-            QTimer.singleShot(0, self._scroll_to_bottom)
+
+            # Keep pinned to bottom after resize only if the user was already at the bottom (don't hijack readers).
+            was_at_bottom = self._is_transcript_scrolled_to_bottom()
+            QTimer.singleShot(0, lambda: self._scroll_to_bottom_after_resize(was_at_bottom))
             
         return super().eventFilter(obj, event)
 
+    def _is_transcript_scrolled_to_bottom(self) -> bool:
+        """True if the chat viewport is at (or within tolerance of) the bottom — user is 'following' new text."""
+        if not hasattr(self, "scroll_area"):
+            return True
+        bar = self.scroll_area.verticalScrollBar()
+        mx = bar.maximum()
+        if mx <= 0:
+            return True
+        return (mx - bar.value()) <= _STICKY_SCROLL_TOLERANCE_PX
+
+    def _scroll_to_bottom_after_resize(self, was_at_bottom: bool) -> None:
+        if was_at_bottom:
+            self._scroll_to_bottom()
+
     def _scroll_to_bottom(self):
-        """Native deferred scrolling ensuring layout pass completion."""
+        """Deferred scroll to the absolute bottom (new message, new chat, or sticky stream follow)."""
         def _execute_scroll():
             bar = self.scroll_area.verticalScrollBar()
             bar.setValue(bar.maximum())
@@ -849,7 +1223,7 @@ class ConversationsView(QWidget):
         # Wait for geometry calculation, THEN wait for layout application
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))
 
-    def _attach_pending_citation_sources(self, label: ChatLabel) -> None:
+    def _attach_pending_citation_sources(self, label: AgentMessageLabel) -> None:
         """Apply sources from the tool phase to this bubble (or [] if none pending)."""
         pending = getattr(self, "_pending_citation_sources", None)
         if pending is not None:
@@ -867,7 +1241,7 @@ class ConversationsView(QWidget):
         ):
             cur._citation_sources = _snapshot_citation_sources(sources)
 
-    def _resolve_citation_link_for_label(self, label: ChatLabel, link_text: str):
+    def _resolve_citation_link_for_label(self, label: AgentMessageLabel, link_text: str):
         """Resolve href from this bubble's isolated _citation_sources (label-bound, not sender())."""
         raw = unquote((link_text or "").strip())
         sources = getattr(label, "_citation_sources", None) or []
