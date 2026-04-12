@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
     All distinct screens are hosted within the QStackedWidget (Main Stage).
     """
 
-    def __init__(self, workers: dict, gpu_monitor):
+    def __init__(self, workers: dict, gpu_monitor, native_engine=None):
         super().__init__()
         # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
         self.setWindowIcon(QIcon("assets/qube_logo_256.png"))
@@ -108,7 +108,8 @@ class MainWindow(QMainWindow):
         self._tts_worker   = workers.get("tts")
         self._llm_worker   = workers.get("llm")
         self._gpu_monitor  = gpu_monitor
-        
+        self._native_engine = native_engine
+
         # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
         # We import it here or at the top of the file
         from workers.title_worker import TitleWorker
@@ -183,7 +184,11 @@ class MainWindow(QMainWindow):
         # 🔑 THE FIX: Renaming to match our Titling and Hardware logic
         self.conversations_view = ConversationsView(self.workers, self.workers.get("db"))
         self.library_view = LibraryView(self.workers, self.workers.get("db"))
-        self.telemetry_view = TelemetryView(self.workers, self._gpu_monitor)
+        self.telemetry_view = TelemetryView(
+            self.workers,
+            self._gpu_monitor,
+            native_engine=self._native_engine,
+        )
         self.model_manager_view = ModelManagerView(self.workers, self.workers.get("db"))
         self.settings_view = SettingsView(self.workers, self.workers.get("db"))
         

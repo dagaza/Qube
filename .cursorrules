@@ -2,13 +2,15 @@
 
 **Canonical rules and long-form directives:** `.clinerules` (source of truth).
 
-**Domain rules (Cursor `.mdc`):** `.cursor/rules/*.mdc` — e.g. `native_engine.mdc` (dual-engine inference, VRAM/CPU thread caps, llama.cpp `n_gpu_layers` / `n_threads`, settings sliders & toolbar UX).
+**Domain rules (Cursor `.mdc`):** `.cursor/rules/*.mdc` — e.g. `native_engine.mdc` (dual-engine inference, execution policy, prompt template router, debug stack), `tools-diagnostics.mdc` (CLI: `run_ablation`, `view_llm_logs`, `llm_prompt_diff`).
+
+**Native LLM inference debug (internal engine only, observer-only):** All optional; no prompt/sampling/stream changes. Logger: **`Qube.NativeLLM.Debug`**. Typical order after each completion: (1) **`QUBE_LLM_TOKEN_TRACE`** — live vs post-hoc vs sampler GT (`native_token_trace`, `native_sampler_gt`); (2) **`QUBE_LLM_CAUSALITY`** — `llm_execution_causality_report` (`llm_execution_causality`); (3) **`QUBE_LLM_COUNTERFACTUAL`** — analytical `llm_counterfactual_simulation` (`llm_counterfactual`). Baseline / parity: **`QUBE_LLM_DEBUG`** / **`QUBE_LLM_PROMPT_VALIDATE`** + **`QUBE_LLM_REFERENCE_JSON`** (optional `first_sampler_token_ids` for first-token diff). **Model reasoning profile (metadata only):** `core/model_reasoning_profile.py` classifies thinking-token support + profile **`ExecutionMode`** (`direct` / `thinking` / `hybrid` / `unknown`); **`NativeLlamaEngine`** stores **`_execution_mode`** after load. **Central execution policy:** `core/execution_policy.py` defines **`ExecutionPolicy`** via **`resolve_execution_policy(...)`** — profile + QSettings Think + **`engine_mode`**; telemetry **`ui_display_thinking`**; **`LLMWorker`** stream filters follow **`strip_thinking_output`**. **Prompt construction (observability bundle):** `core/prompt_template_router.py` — **`build_prompt_bundle`** wraps **`reconstruct_formatted_prompt`** + policy overlays (**`reasoning_mode`** disabled/soft/hard) + merged stops; **`[LLM-PROMPT-ROUTER]`** on **`Qube.PromptTemplateRouter`**; **`NativeLlamaEngine._prepare_validation_and_logs`** uses the bundle for validation / logs ( **`create_chat_completion(messages=...)`** unchanged). **Diagnostic-only:** `core/prompt_ablation_harness.py` + **`python -m tools.run_ablation`** — ablation scenarios / **`AblationReport`** (not production). Logs **`[LLM-DEBUG] execution_policy=...`**, **`[LLM-ABLATION] ...`**. See `.cursor/rules/native_engine.mdc`, `.cursor/rules/tools-diagnostics.mdc`.
 
 Below is the **Section 3 directory treemap** (keep in sync with `.clinerules` Section 3 when you add files).
 
 ```text
 Qube/
-├── main.py                 # Minimal entry point. Initializes global objects and boots the app.
+├── main.py                 # Minimal entry point. Initializes global objects, NativeLlamaEngine, passes native_engine to LLMWorker and MainWindow (telemetry).
 ├── assets/                 # Static UI and Brand Assets (Immutable)
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App icons, window logos, UI element SVGs.
@@ -16,33 +18,49 @@ Qube/
 │   ├── styles/             # base.qss (dark), light.qss — includes #SettingsMenuButton and :disabled states for locked Prestige dropdowns.
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
-│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), top bar, theme toggle.
+│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), top bar, theme toggle; passes native_engine into TelemetryView for read-only capability telemetry.
 │   ├── components/         # Reusable custom UI components.
 │   │   ├── memory_debug.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
 │   │   ├── source_viewer.py # UI dialog component for displaying the raw text of cited RAG documents and web sources
 │   │   └──  toggle.py       # Toggle (custom design) we use in the UI    
 │   └── views/              # isolated widget files for each major screen
 │       ├── __init__.py     
-│       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages
+│       ├── conversations_view.py # PrestigeDialog, chat stages, Think toggle (policy projection via telemetry ui_display_thinking; preference in app_settings).
 │       ├── library_view.py # Knowledge base screen
 │       ├── settings_view.py # Settings: dual-engine (engine vs external provider), GPU offload + CPU thread pool QSliders (caps from gpu_layers_cap / cpu_threads), ~75% hardware defaults on first run (missing QSettings keys), local GGUF list + Use/Delete, PrestigeDialog only (no QMessageBox).
 │       ├── router_dashboard.py # Visualizations go into the Telemetry screen
-│       ├── telemetry_view.py # Telemetry screen
+│       ├── telemetry_view.py # Telemetry screen (hardware graphs, router metrics, optional LLM debug panel); “Native LLM — Model capability” card polls NativeLlamaEngine.get_model_reasoning_telemetry() when internal engine is wired.
 │       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, and download/cancel flow with disk guardrails for the native engine.
-├── core/                   # System, Hardware, Preferences, and Network Utilities
-│   ├── app_settings.py     # QSettings: engine mode, internal GGUF path, internal_n_gpu_layers (VRAM cap + optional 75% default), internal_n_threads (logical CPU cap + optional 75% default), llm_models_dir, etc.
-│   ├── gpu_layers_cap.py   # VRAM detection + max_safe_n_gpu_layers + default_internal_n_gpu_layers_suggested (~75% of cap) for first-run GPU slider default.
-│   ├── cpu_threads.py      # Logical CPU count (psutil/os), max_cpu_threads_for_ui, default_internal_n_threads (~75% of cores) for native llama.cpp n_threads.
-│   ├── gpu_monitor.py      # GPUMonitor: NVIDIA (pynvml) / Linux sysfs / Windows perf for load % telemetry (not VRAM caps).
-│   ├── network.py          # Port scanning (Ollama/LM Studio detection).
+├── core/                   # System, Hardware, Preferences, Network, and Native LLM helpers (25 files; alphabetical)
+│   ├── app_settings.py     # QSettings: engine mode, internal GGUF path, internal_n_gpu_layers (VRAM cap + optional 75% default), internal_n_threads (logical CPU cap + optional 75% default), llm_models_dir, chat format token, etc.
 │   ├── audio_utils.py      # PyAudio device discovery and index mapping.
+│   ├── cpu_threads.py      # Logical CPU count (psutil/os), max_cpu_threads_for_ui, default_internal_n_threads (~75% of cores) for native llama.cpp n_threads.
 │   ├── database.py         # SQLite session/document API for the UI.
+│   ├── execution_policy.py # Central ExecutionPolicy + resolve_execution_policy (model profile + user Think override + engine_mode); reasoning allowance, UI/TTS strip flags, enforcement soft/hard (no prompt/sampling changes).
+│   ├── gpu_layers_cap.py   # VRAM detection + max_safe_n_gpu_layers + default_internal_n_gpu_layers_suggested (~75% of cap) for first-run GPU slider default.
+│   ├── gpu_monitor.py      # GPUMonitor: NVIDIA (pynvml) / Linux sysfs / Windows perf for load % telemetry (not VRAM caps).
+│   ├── llm_counterfactual.py # QUBE_LLM_COUNTERFACTUAL: analytical what-if scenarios (no inference) — one intervention at a time; emits llm_counterfactual_simulation.
+│   ├── llm_debug_sink.py   # Rotating file handler for Qube.NativeLLM.Debug -> logs/llm_debug.log (terminal quiet via logging_bootstrap).
+│   ├── llm_execution_causality.py # QUBE_LLM_CAUSALITY: post-inference causal report (prompt/template/stops/sampler vs live); optional LM Studio first-token diff via reference JSON.
+│   ├── logging_bootstrap.py # init_llm_debug_logging(): attach LLM debug file sink; keep stdout clean.
+│   ├── model_reasoning_profile.py # Classifies reasoning/thinking-token support (tokenizer vocab + GGUF chat_template metadata + name heuristics); ModelReasoningProfile + ExecutionMode; observability/routing metadata only — does not alter prompts or sampling.
+│   ├── native_llama_chat.py # OpenAI-style message normalization + GGUF chat_template / chat_format alignment for native create_chat_completion.
+│   ├── native_llama_inference.py # Extra stop strings + kwargs for native create_chat_completion (merged with formatter stops; LM Studio–style guards).
+│   ├── native_llm_debug.py # QUBE_LLM_DEBUG: reconstructed prompt logging, stop merge helpers, EOS/BOS, inference request JSON logs (LM Studio parity tooling).
+│   ├── native_meta_leading_strip.py # Native streaming path: optional strip of brief meta-instruction openers at start of assistant text (conservative).
+│   ├── native_sampler_gt.py  # Sampler ground truth: wraps Llama.generate during inference; prompt-token assembly mirrors llama-cpp-python _create_completion.
+│   ├── native_token_trace.py # QUBE_LLM_TOKEN_TRACE: JSON logs — live delta re-tokenization, post-hoc, vs sampler ground truth (see native_sampler_gt).
+│   ├── network.py          # Port scanning (Ollama/LM Studio detection).
+│   ├── prompt_ablation_harness.py # NON-PRODUCTION: diagnostic ablation scenarios (prompt/stop variants, leakage heuristics, AblationReport); run_ablation_test uses create_completion(prompt=...) — not the app chat path.
+│   ├── prompt_integrity_validator.py # Prompt structure checks, LM Studio parity scoring, QUBE_LLM_REFERENCE_JSON / first_sampler_token_ids (validation only); attaches model_reasoning_profile_detected + execution_mode (resolved policy mode) to validation JSON (metadata).
+│   ├── prompt_template_router.py # RenderPromptBundle + build_prompt_bundle: reconstruct_formatted_prompt + ExecutionPolicy overlays + stop merge; used by native engine for validation/log prefetch; [LLM-PROMPT-ROUTER] logs.
+│   ├── redacted_thinking_filter.py # Stream filter for <redacted_thinking> blocks (DeepSeek-R1–style; internal engine path).
 │   └── richtext_styles.py  # App-wide link palette / rich text helpers.
 ├── workers/                # Background Event Loops (QThreads)
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
-│   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal mode loads native model with get_internal_n_gpu_layers, get_internal_n_threads, context from settings.
-│   ├── native_llama_engine.py # QThread command loop: owns Llama (load/unload/generate); passes n_gpu_layers, n_ctx, n_threads into llama-cpp-python.
+│   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal native path uses NativeLlamaEngine.get_execution_policy() for thinking strip/display (policy-driven stream filters).
+│   ├── native_llama_engine.py # QThread: Llama load/unload/generate; build_prompt_bundle in _prepare_validation_and_logs; detect_model_reasoning_profile; get_execution_policy(); [LLM-DEBUG] reasoning_profile + execution_policy; post-inference hooks: token trace → causality → counterfactual (env-gated); stores last prompt/messages/stops for sims.
 │   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list.
 │   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.
 │   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.
@@ -71,5 +89,5 @@ Qube/
 │   ├── embeddings/         # RAG embedding models (ONNX).
 │   └── wakeword/           # OpenWakeWord detection models.
 ├── data/                   # LanceDB vector storage directory.
-├── tools/                  # Build & deployment scripts.
+├── tools/                  # Utilities package (python -m tools.<module>): llm_prompt_diff.py, view_llm_logs.py, run_ablation.py (prompt ablation CLI — diagnostic only).
 ```

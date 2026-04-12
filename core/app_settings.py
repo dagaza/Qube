@@ -12,7 +12,9 @@ _KEY_ENGINE_MODE = "engine_mode"  # "external" | "internal"
 _KEY_INTERNAL_MODEL_PATH = "internal_model_path"
 _KEY_INTERNAL_N_GPU_LAYERS = "internal_n_gpu_layers"
 _KEY_INTERNAL_N_THREADS = "internal_n_threads"
+_KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
+_KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
 
 
 def _settings() -> QSettings:
@@ -143,3 +145,72 @@ def set_llm_models_dir(path: str) -> None:
     s = _settings()
     s.setValue(_KEY_LLM_MODELS_DIR, str(path or ""))
     s.sync()
+
+
+def get_internal_native_chat_format() -> str:
+    """
+    UI / persistence token for internal llama.cpp chat template selection.
+    Values: auto | jinja | chatml | llama-3 | mistral | llama-2 (case-insensitive).
+    """
+    v = _settings().value(_KEY_INTERNAL_NATIVE_CHAT_FORMAT, "auto", type=str)
+    s = str(v or "auto").strip().lower()
+    allowed = ("auto", "jinja", "chatml", "llama-3", "mistral", "llama-2")
+    return s if s in allowed else "auto"
+
+
+def get_native_reasoning_display_user_override() -> bool | None:
+    """
+    None = user has not chosen; callers should combine with model telemetry defaults.
+    True/False = persisted explicit preference for internal native chat.
+    """
+    s = _settings()
+    if not s.contains(_KEY_NATIVE_REASONING_DISPLAY):
+        return None
+    v = s.value(_KEY_NATIVE_REASONING_DISPLAY, False, type=bool)
+    if isinstance(v, str):
+        return v.lower() in ("true", "1", "yes")
+    return bool(v)
+
+
+def set_native_reasoning_display_enabled(enabled: bool) -> None:
+    s = _settings()
+    s.setValue(_KEY_NATIVE_REASONING_DISPLAY, bool(enabled))
+    s.sync()
+
+
+def effective_native_reasoning_display_enabled(
+    *,
+    engine_mode: str = "external",
+    telemetry_snap: dict | None = None,
+) -> bool:
+    """
+    Whether the UI should show thinking tokens — mirrors telemetry
+    ``ui_display_thinking`` from NativeLlamaEngine.get_model_reasoning_telemetry() (ExecutionPolicy).
+    ``engine_mode`` is ignored; policy resolution happens in core/execution_policy.py.
+    """
+    _ = engine_mode
+    return bool((telemetry_snap or {}).get("ui_display_thinking", False))
+
+
+def set_internal_native_chat_format(mode: str) -> None:
+    s = _settings()
+    m = str(mode or "auto").strip().lower()
+    allowed = ("auto", "jinja", "chatml", "llama-3", "mistral", "llama-2")
+    s.setValue(_KEY_INTERNAL_NATIVE_CHAT_FORMAT, m if m in allowed else "auto")
+    s.sync()
+
+
+def llama_chat_format_kwarg() -> dict:
+    """Extra kwargs for llama_cpp.Llama(...) from persisted chat format (empty dict = library default)."""
+    mode = get_internal_native_chat_format()
+    if mode == "auto":
+        return {}
+    mapping = {
+        "jinja": "chat_template.default",
+        "chatml": "chatml",
+        "llama-3": "llama-3",
+        "mistral": "mistral-instruct",
+        "llama-2": "llama-2",
+    }
+    cf = mapping.get(mode)
+    return {"chat_format": cf} if cf else {}

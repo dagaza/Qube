@@ -1,3 +1,4 @@
+import os
 import psutil
 from collections import deque
 from PyQt6.QtWidgets import (
@@ -8,10 +9,11 @@ import pyqtgraph as pg
 
 
 class TelemetryView(QWidget):
-    def __init__(self, workers: dict, gpu_monitor):
+    def __init__(self, workers: dict, gpu_monitor, native_engine=None):
         super().__init__()
         self.workers = workers
         self.gpu_monitor = gpu_monitor
+        self._native_engine = native_engine
 
         # --- GRAPH DATA BUFFERS ---
         self.history_size = 60
@@ -55,16 +57,33 @@ class TelemetryView(QWidget):
         self.hardware_card = self._build_hardware_card()
         dashboard_layout.addWidget(self.hardware_card, stretch=2)
 
-        # Right Column: Latency + Router Metrics
+        # Right Column: Latency + Model capability + Router Metrics
         right_column = QVBoxLayout()
         self.latency_card = self._build_latency_card()
+        self.model_capability_card = self._build_model_capability_card()
         self.router_card = self._build_router_card()
         right_column.addWidget(self.latency_card)
+        right_column.addWidget(self.model_capability_card)
         right_column.addWidget(self.router_card)
         right_column.addStretch()
         dashboard_layout.addLayout(right_column, stretch=1)
 
         layout.addLayout(dashboard_layout)
+        if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ):
+            try:
+                from ui.components.llm_debug_log_panel import LLMDebugLogPanel
+
+                self.llm_debug_log_panel = LLMDebugLogPanel()
+                layout.addWidget(self.llm_debug_log_panel)
+            except Exception:
+                self.llm_debug_log_panel = None  # type: ignore[assignment]
+        else:
+            self.llm_debug_log_panel = None  # type: ignore[assignment]
         layout.addStretch()
 
     # ============================================================
@@ -151,6 +170,36 @@ class TelemetryView(QWidget):
         return frame
 
     # ============================================================
+    # NATIVE MODEL CAPABILITY (telemetry only)
+    # ============================================================
+    def _build_model_capability_card(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("ModelCapabilityCard")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(10)
+
+        header = QLabel("Native LLM — Model capability")
+        header.setProperty("class", "SectionHeaderLabel")
+        layout.addWidget(header)
+
+        self._cap_model_lbl = QLabel("Model: —")
+        self._cap_reasoning_lbl = QLabel("Reasoning-capable: —")
+        self._cap_mode_lbl = QLabel("Execution mode: —")
+        self._cap_conf_lbl = QLabel("Confidence: —")
+        for lbl in (
+            self._cap_model_lbl,
+            self._cap_reasoning_lbl,
+            self._cap_mode_lbl,
+            self._cap_conf_lbl,
+        ):
+            lbl.setProperty("class", "MetricSubtext")
+            lbl.setWordWrap(True)
+            layout.addWidget(lbl)
+
+        return frame
+
+    # ============================================================
     # ROUTER CARD
     # ============================================================
     def _build_router_card(self) -> QFrame:
@@ -224,6 +273,8 @@ class TelemetryView(QWidget):
         ram = int(psutil.virtual_memory().percent)
         gpu = int(self.gpu_monitor.get_load()) if self.gpu_monitor else 0
 
+        self._refresh_model_capability_labels()
+
         self.live_cpu_lbl.setText(f"CPU: {cpu}%")
         self.live_ram_lbl.setText(f"RAM: {ram}%")
         self.live_gpu_lbl.setText(f"GPU: {gpu}%")
@@ -235,6 +286,52 @@ class TelemetryView(QWidget):
         self.cpu_line.setData(list(self.cpu_data))
         self.ram_line.setData(list(self.ram_data))
         self.gpu_line.setData(list(self.gpu_data))
+
+    def _refresh_model_capability_labels(self) -> None:
+        eng = self._native_engine
+        if eng is None:
+            self._cap_model_lbl.setText("Model: — (no native engine)")
+            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
+            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_conf_lbl.setText("Confidence: —")
+            return
+        try:
+            snap = eng.get_model_reasoning_telemetry()
+        except Exception:
+            self._cap_model_lbl.setText("Model: —")
+            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
+            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_conf_lbl.setText("Confidence: —")
+            return
+        if not snap.get("loaded"):
+            self._cap_model_lbl.setText("Model: (no native model loaded)")
+            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
+            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_conf_lbl.setText("Confidence: —")
+            return
+        base = snap.get("model_basename") or ""
+        name = snap.get("model_name") or ""
+        if name and base and name != base:
+            self._cap_model_lbl.setText(f"Model: {base} ({name})")
+        elif base:
+            self._cap_model_lbl.setText(f"Model: {base}")
+        elif name:
+            self._cap_model_lbl.setText(f"Model: {name}")
+        else:
+            self._cap_model_lbl.setText("Model: —")
+        sup = snap.get("supports_thinking_tokens")
+        self._cap_reasoning_lbl.setText(
+            f"Reasoning-capable: {'yes' if sup else 'no'}"
+        )
+        pol_mode = snap.get("policy_execution_mode")
+        det_mode = snap.get("execution_mode", "unknown")
+        mode_txt = pol_mode if pol_mode else det_mode
+        self._cap_mode_lbl.setText(f"Execution mode: {mode_txt}")
+        conf = snap.get("confidence")
+        if conf is None:
+            self._cap_conf_lbl.setText("Confidence: —")
+        else:
+            self._cap_conf_lbl.setText(f"Confidence: {float(conf):.2f}")
 
     # ============================================================
     # LATENCY UPDATE SLOTS

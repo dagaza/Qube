@@ -18,6 +18,8 @@ from core.app_settings import (
     get_internal_n_threads,
     set_engine_mode as persist_engine_mode,
 )
+from core.redacted_thinking_filter import RedactedThinkingStreamFilter
+from core.native_meta_leading_strip import LeadingMetaInstructionStripper
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -552,6 +554,18 @@ class LLMWorker(QThread):
                 "no URL in parentheses after [W], and no backticks around [W]."
             )
 
+        # Native llama.cpp path: behavioral alignment (LM Studio often adds server-side polish).
+        if getattr(self, "engine_mode", "external") == "internal":
+            system_prompt += (
+                " Respond directly with the final answer, starting immediately with the answer content. "
+                "Do not include any preamble, planning, or meta commentary. "
+                "Do not restate or analyze the user's request. "
+                "Do not include phrases such as \"Provide an answer\", \"We need to\", \"We should\", "
+                "\"Step 1\", or similar instructional language. "
+                "Perform any reasoning internally and only output the final result. "
+                "Keep the response natural, concise, and focused."
+            )
+
         messages = [{"role": "system", "content": system_prompt}] + history
 
         # 🔑 Inject retrieval in the same order as all_ui_sources / citation ids
@@ -675,6 +689,14 @@ class LLMWorker(QThread):
 
         return final_text
 
+    def _max_tokens_native_completion(self) -> int:
+        """
+        Budget for *new* completion tokens in create_chat_completion (not n_ctx).
+        Passing the full context window as max_tokens harms quality and can stall streaming.
+        """
+        ctx = max(512, int(getattr(self, "context_window", 4096)))
+        return min(4096, max(256, ctx // 2))
+
     def _stream_via_native(self, messages: list[dict], all_ui_sources: list) -> str:
         """Stream tokens from NativeLlamaEngine (llama-cpp-python) on a dedicated thread."""
         token_queue: queue.Queue = queue.Queue()
@@ -682,17 +704,50 @@ class LLMWorker(QThread):
         self._native_engine.enqueue_generation(
             messages,
             self.temperature,
-            int(self.context_window),
+            self._max_tokens_native_completion(),
             token_queue,
             done_event,
         )
 
+        policy = self._native_engine.get_execution_policy()
+        strip_thinking = policy.strip_thinking_output
+        show_thinking = not strip_thinking
+        cot_filter = RedactedThinkingStreamFilter()
+        meta_disp = LeadingMetaInstructionStripper()
+        meta_tts = LeadingMetaInstructionStripper()
         current_sentence = ""
         final_text = ""
         start = time.time()
         first_token = False
         stream_wall_start = time.time()
 
+        def _emit_filtered(display_fragment: str, tts_fragment: str) -> None:
+            nonlocal current_sentence, final_text, first_token
+            if not display_fragment and not tts_fragment:
+                return
+            if display_fragment and not first_token:
+                self.ttft_latency.emit((time.time() - start) * 1000)
+                first_token = True
+            current_sentence += tts_fragment
+            final_text += display_fragment
+            if display_fragment:
+                self.token_streamed.emit(display_fragment)
+            if tts_fragment and any(p in tts_fragment for p in ".!?"):
+                clean = self.clean_text_for_tts(current_sentence)
+                if clean:
+                    self.sentence_ready.emit(clean, self.session_id)
+                current_sentence = ""
+
+        def _flush_tail() -> None:
+            cot_tail = cot_filter.flush()
+            if show_thinking:
+                _emit_filtered(meta_disp.flush(), meta_tts.feed(cot_tail))
+                _emit_filtered("", meta_tts.flush())
+            else:
+                _emit_filtered(meta_disp.feed(cot_tail), meta_tts.feed(cot_tail))
+                _emit_filtered(meta_disp.flush(), meta_tts.flush())
+
+        saw_end = False
         while True:
             if time.time() - stream_wall_start > self._MAX_STREAM_WALL_SECONDS:
                 logger.error("[LLM] Native stream exceeded wall-time cap.")
@@ -708,23 +763,24 @@ class LLMWorker(QThread):
                 continue
 
             if kind == "delta":
-                delta = data
-                if not first_token:
-                    self.ttft_latency.emit((time.time() - start) * 1000)
-                    first_token = True
-                current_sentence += delta
-                final_text += delta
-                self.token_streamed.emit(delta)
-                if any(p in delta for p in ".!?"):
-                    clean = self.clean_text_for_tts(current_sentence)
-                    if clean:
-                        self.sentence_ready.emit(clean, self.session_id)
-                    current_sentence = ""
+                raw = data
+                if show_thinking:
+                    disp = meta_disp.feed(raw)
+                    tts_piece = meta_tts.feed(cot_filter.feed(raw))
+                else:
+                    stripped = cot_filter.feed(raw)
+                    disp = meta_disp.feed(stripped)
+                    tts_piece = meta_tts.feed(stripped)
+                _emit_filtered(disp, tts_piece)
             elif kind == "error":
                 self.token_streamed.emit(f"\n\n*({data})*")
             elif kind == "end":
-                final_text = data if isinstance(data, str) else final_text
+                _flush_tail()
+                saw_end = True
                 break
+
+        if not saw_end:
+            _flush_tail()
 
         if current_sentence.strip():
             clean = self.clean_text_for_tts(current_sentence)

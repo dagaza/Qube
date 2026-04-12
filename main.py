@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ["QUBE_LLM_DEBUG"] = "1"
 
 from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
@@ -21,12 +22,17 @@ from workers.internet_worker import InternetWorker
 
 import logging
 
+from core.logging_bootstrap import init_llm_debug_logging
+
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
     level=logging.DEBUG,  # Set to INFO in production to hide the noise
     format='%(asctime)s.%(msecs)03d | %(levelname)-8s | [%(name)s] %(message)s',
     datefmt='%H:%M:%S'
 )
+
+# LLM introspection (Qube.NativeLLM.Debug) -> logs/llm_debug.log only; not the terminal
+init_llm_debug_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
@@ -78,11 +84,16 @@ class Qube:
             "llm":   self.llm_worker,
             "tts":   self.tts_worker,
             "db": self.db_manager,
-            "store": self.store
+            "store": self.store,
+            "native_engine": self.native_llama_engine,
         }
 
         # -- 5. UI -------------------------------------------------------
-        self.window = MainWindow(workers=workers, gpu_monitor=self.gpu_monitor)
+        self.window = MainWindow(
+            workers=workers,
+            gpu_monitor=self.gpu_monitor,
+            native_engine=self.native_llama_engine,
+        )
 
         # -- 6. Wire signals ---------------------------------------------
         self._connect_signals()
@@ -122,6 +133,7 @@ class Qube:
             self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
             self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
+        self.native_llama_engine.load_finished.connect(self._on_native_model_load_finished)
         if (
             hasattr(self.window, "model_manager_view")
             and hasattr(self.window, "settings_view")
@@ -306,6 +318,16 @@ class Qube:
         """Switch between localhost OpenAI server and in-process llama.cpp."""
         if hasattr(self, "llm_worker"):
             self.llm_worker.set_engine_mode(str(mode))
+        self._refresh_conversations_think_toggle()
+
+    def _on_native_model_load_finished(self, ok: bool, message: str) -> None:
+        """Update Think toggle when internal GGUF load completes."""
+        self._refresh_conversations_think_toggle()
+
+    def _refresh_conversations_think_toggle(self) -> None:
+        cv = getattr(getattr(self, "window", None), "conversations_view", None)
+        if cv is not None and hasattr(cv, "refresh_think_toggle"):
+            cv.refresh_think_toggle()
 
     def on_rag_toggle_changed(self, is_enabled: bool):
         """Updates the LLM worker when the user flips the RAG switch."""

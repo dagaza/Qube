@@ -31,6 +31,7 @@ import re as _re_cite
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.source_viewer import SourcePreviewer
+from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
 
 logger = logging.getLogger("Qube.UI.Conversations")
 
@@ -555,6 +556,7 @@ class ConversationsView(QWidget):
         # --- ADD THIS LINE AT THE BOTTOM ---
         # Forces the buttons to load with the default Dark Mode purple on startup
         self.refresh_button_themes(is_dark=True)
+        self.refresh_think_toggle()
 
     # --------------------------------------------------------- #
     #  PANEL BUILDERS                                           #
@@ -638,6 +640,14 @@ class ConversationsView(QWidget):
         input_container.setObjectName("ChatInputContainer")
         input_layout = QHBoxLayout(input_container)
         input_layout.setContentsMargins(10, 5, 5, 5)
+        input_layout.setSpacing(8)
+
+        self.think_btn = QPushButton("Think")
+        self.think_btn.setCheckable(True)
+        self.think_btn.setProperty("class", "ThinkToggleButton")
+        self.think_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.think_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.think_btn.toggled.connect(self._on_think_toggled)
 
         self.text_input = QLineEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
@@ -648,7 +658,8 @@ class ConversationsView(QWidget):
         self.send_btn.setFixedSize(35, 35)
         self.send_btn.setProperty("class", "SendButton")
 
-        input_layout.addWidget(self.text_input)
+        input_layout.addWidget(self.think_btn)
+        input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
         layout.addWidget(input_container)
 
@@ -1131,6 +1142,89 @@ class ConversationsView(QWidget):
                 if btn and btn.menu():
                     self._apply_menu_theme(btn.menu(), is_dark)
 
+    def _on_think_toggled(self, checked: bool) -> None:
+        """Persist user preference; Think state re-syncs from ExecutionPolicy via refresh_think_toggle."""
+        if not hasattr(self, "think_btn") or not self.think_btn.isEnabled():
+            return
+        set_native_reasoning_display_enabled(bool(checked))
+        self.refresh_think_toggle()
+
+    def refresh_think_toggle(self) -> None:
+        """Sync Think button from native engine telemetry (ExecutionPolicy projection only)."""
+        if not hasattr(self, "think_btn"):
+            return
+        eng = self.workers.get("native_engine") if self.workers else None
+        mode = get_engine_mode()
+        snap = eng.get_model_reasoning_telemetry() if eng else None
+        capable = (
+            mode == "internal"
+            and snap is not None
+            and snap.get("loaded")
+            and bool(snap.get("supports_thinking_tokens"))
+        )
+        eff_on = bool((snap or {}).get("ui_display_thinking", False))
+        self.think_btn.blockSignals(True)
+        try:
+            self.think_btn.setEnabled(capable)
+            if capable:
+                self.think_btn.setChecked(bool(eff_on))
+            else:
+                self.think_btn.setChecked(False)
+        finally:
+            self.think_btn.blockSignals(False)
+        self._apply_think_button_style()
+
+    def _apply_think_button_style(self) -> None:
+        """Green label when reasoning display is on; muted gray when off; dimmed when N/A."""
+        if not hasattr(self, "think_btn"):
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        green_on = "#a6e3a1"
+        off_dark = "#a6adc8"
+        off_light = "#4c4f69"
+        disabled_dark = "#6c7086"
+        disabled_light = "#9ca0b0"
+        hover = "rgba(255, 255, 255, 0.07)" if is_dark else "rgba(0, 0, 0, 0.06)"
+        if not self.think_btn.isEnabled():
+            c = disabled_dark if is_dark else disabled_light
+            self.think_btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    color: {c};
+                    background: transparent;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    padding: 6px 10px;
+                }}
+                QPushButton:disabled {{
+                    color: {c};
+                }}
+                """
+            )
+            return
+        if self.think_btn.isChecked():
+            c = green_on
+        else:
+            c = off_dark if is_dark else off_light
+        self.think_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                color: {c};
+                background: transparent;
+                border: none;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 6px 10px;
+            }}
+            QPushButton:hover {{
+                background-color: {hover};
+            }}
+            """
+        )
+
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the colors of the New Chat and Send buttons."""
         import qtawesome as qta
@@ -1156,6 +1250,7 @@ class ConversationsView(QWidget):
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
+        self._apply_think_button_style()
     
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""

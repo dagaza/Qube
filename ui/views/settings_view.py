@@ -23,6 +23,8 @@ from core.app_settings import (
     get_internal_n_threads,
     set_internal_n_threads,
     get_llm_models_dir,
+    get_internal_native_chat_format,
+    set_internal_native_chat_format,
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
@@ -235,6 +237,29 @@ class SettingsView(QWidget):
         cpu_threads_row_layout.addWidget(self.cpu_threads_slider, stretch=1)
         cpu_threads_row_layout.addWidget(self.cpu_threads_value_lbl)
 
+        self.native_chat_format_combo = QComboBox()
+        self.native_chat_format_combo.setMinimumWidth(240)
+        for label, data in [
+            ("Auto (GGUF / library default)", "auto"),
+            ("GGUF Jinja (tokenizer.chat_template)", "jinja"),
+            ("ChatML", "chatml"),
+            ("Llama 3 Instruct", "llama-3"),
+            ("Mistral / Mixtral Instruct", "mistral"),
+            ("Llama 2 Chat", "llama-2"),
+        ]:
+            self.native_chat_format_combo.addItem(label, data)
+        _fmt = get_internal_native_chat_format()
+        _fmt_idx = self.native_chat_format_combo.findData(_fmt)
+        self.native_chat_format_combo.setCurrentIndex(_fmt_idx if _fmt_idx >= 0 else 0)
+        self.native_chat_format_combo.currentIndexChanged.connect(
+            self._on_native_chat_format_changed
+        )
+        self.native_chat_format_combo.setToolTip(
+            "How OpenAI-style system/user/assistant messages are formatted for the built-in llama.cpp engine. "
+            "Use Auto for typical GGUF files. If the model ignores Qube's instructions or answers like raw text, "
+            "pick the template that matches the model family (or GGUF Jinja when the file embeds tokenizer.chat_template)."
+        )
+
         self.models_dir_label = QLabel()
         self.models_dir_label.setWordWrap(True)
 
@@ -259,6 +284,7 @@ class SettingsView(QWidget):
 
         native_form.addRow("GPU offload layers", gpu_layers_row)
         native_form.addRow("CPU thread pool", cpu_threads_row)
+        native_form.addRow("Chat template (internal)", self.native_chat_format_combo)
         native_form.addRow("Model storage", self.models_dir_label)
         native_form.addRow("On this device", local_row)
         native_form.addRow("Active model", self.active_native_model_lbl)
@@ -323,14 +349,14 @@ class SettingsView(QWidget):
         disabled_check = "#3f3f46" if is_dark else "#e2e8f0"
 
         style = f"""
-            QDoubleSpinBox, QSpinBox {{
+            QDoubleSpinBox, QSpinBox, QComboBox {{
                 background-color: {bg_color};
                 color: {text_color};
                 border: 1px solid {border_color};
                 border-radius: 8px;
                 padding: 5px 10px;
             }}
-            QDoubleSpinBox:disabled, QSpinBox:disabled {{
+            QDoubleSpinBox:disabled, QSpinBox:disabled, QComboBox:disabled {{
                 background-color: {disabled_bg};
                 color: {disabled_text};
                 border: 1px solid {disabled_border};
@@ -360,6 +386,8 @@ class SettingsView(QWidget):
         """
         self.timeout_spinner.setStyleSheet(style)
         self.threshold_spinner.setStyleSheet(style)
+        if hasattr(self, "native_chat_format_combo"):
+            self.native_chat_format_combo.setStyleSheet(style)
         if hasattr(self, "gpu_layers_slider"):
             handle = "#8b5cf6" if is_dark else "#7c3aed"
             slider_css = f"""
@@ -465,6 +493,16 @@ class SettingsView(QWidget):
     def _on_cpu_threads_slider_changed(self, v: int) -> None:
         self.cpu_threads_value_lbl.setText(str(int(v)))
         set_internal_n_threads(int(v))
+        llm = self.workers.get("llm")
+        if llm and getattr(llm, "engine_mode", "external") == "internal":
+            llm.refresh_native_model_from_settings()
+
+    def _on_native_chat_format_changed(self, _idx: int = 0) -> None:
+        if not hasattr(self, "native_chat_format_combo"):
+            return
+        data = self.native_chat_format_combo.currentData()
+        if data is not None:
+            set_internal_native_chat_format(str(data))
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", "external") == "internal":
             llm.refresh_native_model_from_settings()
