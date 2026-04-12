@@ -1,3 +1,14 @@
+"""Main window. Prefer starting the app with `python main.py` from the repo root."""
+
+import sys
+from pathlib import Path
+
+# Running `python ui/main_window.py` does not set a package; absolute `ui.*` imports need repo root on sys.path.
+if __package__ in (None, ""):
+    _repo_root = Path(__file__).resolve().parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+
 import psutil
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -6,13 +17,20 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
-from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon
+from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics
 import qtawesome as qta
-from .views.conversations_view import ConversationsView
-from .views.settings_view import SettingsView
-from .views.library_view import LibraryView
-from .views.telemetry_view import TelemetryView
+from ui.views.conversations_view import ConversationsView
+from ui.views.settings_view import SettingsView
+from ui.views.library_view import LibraryView
+from ui.views.telemetry_view import TelemetryView
+from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
+from core.app_settings import (
+    get_engine_mode,
+    get_internal_model_path,
+    get_llm_models_dir,
+    set_internal_model_path,
+)
 import logging
 
 logger = logging.getLogger("Qube.UI")
@@ -74,7 +92,7 @@ class MainWindow(QMainWindow):
         # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
         self.setWindowIcon(QIcon("assets/qube_logo_256.png"))
         self.setWindowTitle("Qube - Workspace")
-        self.setMinimumSize(1280, 720)
+        self.setMinimumSize(1200, 800)
         self.resize(1200, 800) 
 
         self.workers = workers
@@ -166,6 +184,7 @@ class MainWindow(QMainWindow):
         self.conversations_view = ConversationsView(self.workers, self.workers.get("db"))
         self.library_view = LibraryView(self.workers, self.workers.get("db"))
         self.telemetry_view = TelemetryView(self.workers, self._gpu_monitor)
+        self.model_manager_view = ModelManagerView(self.workers, self.workers.get("db"))
         self.settings_view = SettingsView(self.workers, self.workers.get("db"))
         
         # 🔑 THE FIX: Prevent UI Stretching (Policy Ignored)
@@ -173,10 +192,11 @@ class MainWindow(QMainWindow):
         self.main_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         # Add them to the Stack in the correct order
-        self.main_stage.addWidget(self.conversations_view) # Index 0
-        self.main_stage.addWidget(self.library_view)       # Index 1
-        self.main_stage.addWidget(self.telemetry_view)     # Index 2
-        self.main_stage.addWidget(self.settings_view)      # Index 3
+        self.main_stage.addWidget(self.conversations_view)   # Index 0
+        self.main_stage.addWidget(self.library_view)         # Index 1
+        self.main_stage.addWidget(self.telemetry_view)       # Index 2
+        self.main_stage.addWidget(self.model_manager_view)   # Index 3
+        self.main_stage.addWidget(self.settings_view)          # Index 4
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
         
@@ -215,6 +235,15 @@ class MainWindow(QMainWindow):
         # 5. 🔑 Sync Auto-Activator Toggles
         self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
         self.rag_auto_toggle.toggled.connect(self.settings_view.auto_activator_cb.setChecked)
+
+        # 6. Internal engine model list (toolbar) — refresh when engine mode or downloads change
+        # Pass the emitted mode so UI updates before/without relying on QSettings (slot order vs llm_worker).
+        self.settings_view.engine_mode_changed.connect(self._refresh_toolbar_native_model_from_settings_signal)
+        if hasattr(self.model_manager_view, "native_library_changed"):
+            self.model_manager_view.native_library_changed.connect(
+                self.refresh_toolbar_native_model_dropdown
+            )
+        QTimer.singleShot(0, self.refresh_toolbar_native_model_dropdown)
 
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
@@ -394,6 +423,7 @@ class MainWindow(QMainWindow):
 
         self.nav_library = create_nav_btn('fa5s.book', 1)
         self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 2)
+        self.nav_models = create_nav_btn('fa5s.microchip', 3, size=20)
 
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -409,7 +439,9 @@ class MainWindow(QMainWindow):
         self.nav_theme.clicked.connect(self._toggle_theme) 
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.nav_settings = create_nav_btn('fa5s.cog', 3, size=20)
+        layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.nav_settings = create_nav_btn('fa5s.cog', 4, size=20)
         layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # --- 🔑 THE PRESTIGE MINI-TELEMETRY BLOCK ---
@@ -443,7 +475,13 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(tele_container, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.nav_buttons = [self.nav_chat, self.nav_library, self.nav_telemetry, self.nav_settings]
+        self.nav_buttons = [
+            self.nav_chat,
+            self.nav_library,
+            self.nav_telemetry,
+            self.nav_models,
+            self.nav_settings,
+        ]
         
         return sidebar
     
@@ -487,6 +525,21 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(self.tools_content)
         main_layout.setContentsMargins(10, 20, 20, 20)
         main_layout.setSpacing(25)
+
+        # --- 0. LOCAL LLM (internal engine model picker) ---
+        native_llm_layout = QVBoxLayout()
+        native_llm_layout.setSpacing(10)
+        llm_title = QLabel("LOCAL LLM")
+        llm_title.setProperty("class", "ToolsPaneHeader")
+        native_llm_layout.addWidget(llm_title)
+
+        self.toolbar_native_model_selector = QPushButton()
+        self.toolbar_native_model_selector.setObjectName("SettingsMenuButton")
+        self.toolbar_native_model_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.toolbar_native_model_selector.setIcon(qta.icon("fa5s.chevron-down", color="#64748b"))
+        self.toolbar_native_model_selector.setMenu(QMenu(self.toolbar_native_model_selector))
+        native_llm_layout.addWidget(self.toolbar_native_model_selector)
+        main_layout.addLayout(native_llm_layout)
 
         # --- 1. AUDIO INPUT ---
         mic_layout = QVBoxLayout()
@@ -766,10 +819,100 @@ class MainWindow(QMainWindow):
         self.content_anim.start()
         self.frame_anim.start()
 
+    def _refresh_toolbar_native_model_from_settings_signal(self, mode: str) -> None:
+        """Uses the value from Settings' Inference engine menu (authoritative for this UI tick)."""
+        self.refresh_toolbar_native_model_dropdown(mode)
+
+    def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
+        """QtAwesome icons ignore QSS; match chevron to #SettingsMenuButton enabled/disabled look."""
+        is_dark = getattr(self, "_is_dark_theme", True)
+        muted = "#3f3f46" if is_dark else "#a1a1aa"
+        active = "#64748b"
+        color = active if button.isEnabled() else muted
+        button.setIcon(qta.icon("fa5s.chevron-down", color=color))
+
+    def refresh_toolbar_native_model_dropdown(self, mode: str | None = None) -> None:
+        """Toolbar picker for internal .gguf models: mirrors engine mode and downloads folder.
+
+        When *mode* is omitted, reads persisted engine mode (e.g. after model downloads).
+        When *mode* is passed (from ``engine_mode_changed``), use it so the toolbar matches
+        the user's selection even if other slots have not persisted yet.
+        """
+        if not hasattr(self, "toolbar_native_model_selector"):
+            return
+        btn = self.toolbar_native_model_selector
+        try:
+            if mode is not None:
+                m = str(mode).lower().strip()
+                if m not in ("external", "internal"):
+                    m = get_engine_mode()
+            else:
+                m = get_engine_mode()
+
+            if m == "external":
+                btn.setEnabled(False)
+                btn.setText("Managed by External Server")
+                btn.setMenu(None)
+                return
+
+            btn.setEnabled(True)
+            models_dir = Path(get_llm_models_dir())
+            try:
+                ggufs = sorted(models_dir.glob("*.gguf"), key=lambda p: p.name.lower())
+            except OSError:
+                ggufs = []
+
+            fm = QFontMetrics(btn.font())
+            cap_btn = max(100, btn.width() - 56)
+            if btn.width() <= 1:
+                cap_btn = max(100, self.tools_content.width() - 56)
+
+            if not ggufs:
+                btn.setText("(Download a model first)")
+                btn.setMenu(None)
+                return
+
+            list_cap = max(100, self.tools_content.width() - 48)
+
+            def on_pick(path: str) -> None:
+                set_internal_model_path(path)
+                if self._llm_worker:
+                    self._llm_worker.refresh_native_model_from_settings()
+                self.refresh_toolbar_native_model_dropdown()
+
+            items = []
+            for p in ggufs:
+                abs_p = str(p.resolve())
+                disp = fm.elidedText(p.name, Qt.TextElideMode.ElideMiddle, list_cap)
+                items.append((disp, abs_p))
+
+            self._build_prestige_menu(btn, items, on_pick)
+
+            current = get_internal_model_path()
+            matched: Path | None = None
+            if current:
+                try:
+                    cur = Path(current).expanduser()
+                    for p in ggufs:
+                        if p.resolve() == cur.resolve():
+                            matched = p
+                            break
+                except OSError:
+                    matched = None
+
+            if matched is not None:
+                btn.setText(
+                    fm.elidedText(matched.name, Qt.TextElideMode.ElideMiddle, cap_btn)
+                )
+            else:
+                btn.setText(fm.elidedText("Select a model", Qt.TextElideMode.ElideMiddle, cap_btn))
+        finally:
+            self._apply_settings_menu_button_chevron_state(btn)
+
     # --- PRESTIGE MENU LOGIC ---
     def _build_prestige_menu(self, button, items, callback):
         """Builds a palette-forced QMenu with a dynamic, scrollable list."""
-        from PyQt6.QtWidgets import QMenu, QWidgetAction, QListWidget
+        from PyQt6.QtWidgets import QMenu, QWidgetAction, QListWidget, QListWidgetItem
         from PyQt6.QtCore import Qt
 
         menu = QMenu(button)
@@ -788,9 +931,11 @@ class MainWindow(QMainWindow):
         # --- BUG 2 FIX: Kill the phantom horizontal scrollbar ---
         list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # 2. Populate the List
+        # 2. Populate the List (UserRole holds payload so elided labels stay unambiguous)
         for label, data in items:
-            list_widget.addItem(label)
+            row = QListWidgetItem(label)
+            row.setData(Qt.ItemDataRole.UserRole, data)
+            list_widget.addItem(row)
             
         # 3. Dynamic Height Calculation
         required_height = len(items) * 32 + 10 
@@ -803,14 +948,27 @@ class MainWindow(QMainWindow):
         def sync_dropdown_width():
             # button.width() gets the actual drawn size.
             # We subtract 8px to account for the 4px CSS padding on each side of the QMenu.
-            list_widget.setFixedWidth(button.width() - 8)
+            w = button.width() - 8
+            list_widget.setFixedWidth(w)
+            # Re-elide file rows (e.g. .gguf paths) to match the live list width
+            fm = list_widget.fontMetrics()
+            elide_w = max(40, w - 40)
+            for i in range(list_widget.count()):
+                it = list_widget.item(i)
+                data = it.data(Qt.ItemDataRole.UserRole)
+                if isinstance(data, str) and data.lower().endswith(".gguf"):
+                    it.setText(
+                        fm.elidedText(Path(data).name, Qt.TextElideMode.ElideMiddle, elide_w)
+                    )
 
         menu.aboutToShow.connect(sync_dropdown_width)
 
         # 4. Handle Selection
         def on_item_clicked(item):
             selected_label = item.text()
-            matched_data = next((d for l, d in items if l == selected_label), selected_label)
+            matched_data = item.data(Qt.ItemDataRole.UserRole)
+            if matched_data is None:
+                matched_data = next((d for l, d in items if l == selected_label), selected_label)
             self._handle_selection(button, selected_label, matched_data, callback)
             menu.hide()
 
@@ -908,6 +1066,7 @@ class MainWindow(QMainWindow):
             if btn == self.nav_chat: btn.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_library: btn.setIcon(qta.icon('fa5s.book', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_telemetry: btn.setIcon(qta.icon('fa5s.tachometer-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+            elif btn == self.nav_models: btn.setIcon(qta.icon('fa5s.microchip', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_settings: btn.setIcon(qta.icon('fa5s.cog', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
 
     def _toggle_theme(self):
@@ -945,6 +1104,10 @@ class MainWindow(QMainWindow):
             self._is_dark_theme = True
             logger.info("Theme switched to Dark Mode.")
 
+        from core.richtext_styles import apply_app_link_palette
+
+        apply_app_link_palette(app)
+
         # --- RE-THEME ATTACHED MENUS & LISTS ---
         
         # 1. Update the Settings Page menus
@@ -956,6 +1119,13 @@ class MainWindow(QMainWindow):
             toolbar_menu = self.global_voice_selector.menu()
             if toolbar_menu:
                 self._apply_menu_theme(toolbar_menu, self._is_dark_theme)
+
+        # 2b. Toolbar internal LLM model menu
+        if hasattr(self, "toolbar_native_model_selector"):
+            native_menu = self.toolbar_native_model_selector.menu()
+            if native_menu:
+                self._apply_menu_theme(native_menu, self._is_dark_theme)
+            self._apply_settings_menu_button_chevron_state(self.toolbar_native_model_selector)
 
         # 3. 🔑 THE FIX: Update Conversations View
         if hasattr(self, 'conversations_view'):
@@ -974,6 +1144,11 @@ class MainWindow(QMainWindow):
                 self.library_view.refresh_button_themes(self._is_dark_theme)
             if hasattr(self.library_view, '_update_row_colors'):
                 self.library_view._update_row_colors() # Force text repaint instantly!
+
+        if hasattr(self, "model_manager_view") and hasattr(
+            self.model_manager_view, "refresh_after_theme_toggle"
+        ):
+            self.model_manager_view.refresh_after_theme_toggle()
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #

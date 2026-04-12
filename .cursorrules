@@ -1,0 +1,75 @@
+# Qube — Cursor project index
+
+**Canonical rules and long-form directives:** `.clinerules` (source of truth).
+
+**Domain rules (Cursor `.mdc`):** `.cursor/rules/*.mdc` — e.g. `native_engine.mdc` (dual-engine inference, VRAM/CPU thread caps, llama.cpp `n_gpu_layers` / `n_threads`, settings sliders & toolbar UX).
+
+Below is the **Section 3 directory treemap** (keep in sync with `.clinerules` Section 3 when you add files).
+
+```text
+Qube/
+├── main.py                 # Minimal entry point. Initializes global objects and boots the app.
+├── assets/                 # Static UI and Brand Assets (Immutable)
+│   ├── fonts /             # Custom Inter font families.
+│   ├── icons/              # App icons, window logos, UI element SVGs.
+│   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
+│   ├── styles/             # base.qss (dark), light.qss — includes #SettingsMenuButton and :disabled states for locked Prestige dropdowns.
+│   └── screenshots/        # Screenshots of the app for Github
+├── ui/                     # Presentation Layer (Dumb Components)
+│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), top bar, theme toggle.
+│   ├── components/         # Reusable custom UI components.
+│   │   ├── memory_debug.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
+│   │   ├── source_viewer.py # UI dialog component for displaying the raw text of cited RAG documents and web sources
+│   │   └──  toggle.py       # Toggle (custom design) we use in the UI    
+│   └── views/              # isolated widget files for each major screen
+│       ├── __init__.py     
+│       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages
+│       ├── library_view.py # Knowledge base screen
+│       ├── settings_view.py # Settings: dual-engine (engine vs external provider), GPU offload + CPU thread pool QSliders (caps from gpu_layers_cap / cpu_threads), ~75% hardware defaults on first run (missing QSettings keys), local GGUF list + Use/Delete, PrestigeDialog only (no QMessageBox).
+│       ├── router_dashboard.py # Visualizations go into the Telemetry screen
+│       ├── telemetry_view.py # Telemetry screen
+│       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, and download/cancel flow with disk guardrails for the native engine.
+├── core/                   # System, Hardware, Preferences, and Network Utilities
+│   ├── app_settings.py     # QSettings: engine mode, internal GGUF path, internal_n_gpu_layers (VRAM cap + optional 75% default), internal_n_threads (logical CPU cap + optional 75% default), llm_models_dir, etc.
+│   ├── gpu_layers_cap.py   # VRAM detection + max_safe_n_gpu_layers + default_internal_n_gpu_layers_suggested (~75% of cap) for first-run GPU slider default.
+│   ├── cpu_threads.py      # Logical CPU count (psutil/os), max_cpu_threads_for_ui, default_internal_n_threads (~75% of cores) for native llama.cpp n_threads.
+│   ├── gpu_monitor.py      # GPUMonitor: NVIDIA (pynvml) / Linux sysfs / Windows perf for load % telemetry (not VRAM caps).
+│   ├── network.py          # Port scanning (Ollama/LM Studio detection).
+│   ├── audio_utils.py      # PyAudio device discovery and index mapping.
+│   ├── database.py         # SQLite session/document API for the UI.
+│   └── richtext_styles.py  # App-wide link palette / rich text helpers.
+├── workers/                # Background Event Loops (QThreads)
+│   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
+│   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
+│   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal mode loads native model with get_internal_n_gpu_layers, get_internal_n_threads, context from settings.
+│   ├── native_llama_engine.py # QThread command loop: owns Llama (load/unload/generate); passes n_gpu_layers, n_ctx, n_threads into llama-cpp-python.
+│   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list.
+│   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.
+│   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.
+│   ├── model_download_worker.py # Streams GGUF downloads from Hugging Face with Content-Length disk pre-check, cooperative cancel, and .part file cleanup.
+│   ├── enrichment_worker.py # Constructs atomic memories that are then stored in LanceDB.
+│   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
+│   ├── title_worker.py       # Generates titles for the conversations list (bundled Qwen 0.5B performs it)
+│   ├── intent_router.py       # Uses semantic vector embeddings for intent routing instead of rigid keywords, while cognitive_router manages load and thresholds.
+│   └── ingestion_worker.py # Parses, chunks, and embeds documents in the background.
+├── rag/                    # Retrieval-Augmented Generation Engine
+│   ├── embedder.py         # llama-cpp-python Vulkan engine with Nomic v1.5 GGUF.
+│   ├── store.py            # LanceDB interface (Disk-native, zero-copy vector storage).
+│   ├── chunker.py          # Semantic text splitting (1500 chars / 150 overlap).
+│   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
+├── mcp/                    # Model Context Protocol Interfaces
+│   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
+│   ├── internet_tool.py    # Web search functionality
+│   ├── memory_tool.py      # Retrieves stored facts using a hybrid scoring algorithm (semantic similarity + extracted confidence + reinforcement strength) with expanded candidate pooling to prevent starvation while strictly enforcing token budgets.
+│   ├── router.py           # Maintained as a legacy fallback for the cognitive_router, this component provides stable, deterministic query routing using fixed cosine-similarity thresholds and hardcoded semantic anchors.
+│   ├── cognitive_router.py # Manages adaptive query routing by dynamically adjusting retrieval thresholds based on real-time system latency, load penalties, and conversation intent drift.
+│   ├── router_self_tuner.py # Acts as an autonomous feedback loop that continuously tunes cognitive routing sensitivities based on real-time telemetry (latency and hit rates) to penalize inefficient tool usage.
+│   ├── router_telemetry.py # Maintains a lightweight, in-memory queue of recent routing events to track latency, hit rates, and route distributions for real-time performance monitoring.
+├── models/                 # Local AI Weights (Organized by function)
+│   ├── stt/                # Faster-Whisper weights.
+│   ├── tts/                # Piper/Kokoro voices and configs.
+│   ├── embeddings/         # RAG embedding models (ONNX).
+│   └── wakeword/           # OpenWakeWord detection models.
+├── data/                   # LanceDB vector storage directory.
+├── tools/                  # Build & deployment scripts.
+```

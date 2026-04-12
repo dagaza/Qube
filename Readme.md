@@ -4,7 +4,7 @@
 | :---: | :---: |
 | ![Dark Theme](assets/screenshots/qube_dark_mode.png) | ![Light Theme](assets/screenshots/qube_light_mode.png) |
 
-Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant built on a multithreaded, streaming-first pipeline. Operating entirely offline under a strict memory budget, it integrates state-of-the-art voice processing, adaptive cognitive routing, and asynchronous semantic memory enrichment directly into your hardware environment. Bring your own local LLM engine, load your files, and experience a genuinely intelligent second brain.
+Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant built on a multithreaded, streaming-first pipeline. Operating entirely offline under a strict memory budget, it integrates state-of-the-art voice processing, adaptive cognitive routing, and asynchronous semantic memory enrichment directly into your hardware environment. Run inference with a **built-in native llama.cpp engine** *or* plug in LM Studio / Ollama—load your files either way—and experience a genuinely intelligent second brain.
 
 Unlike traditional chat-based assistants, Qube is designed around a **low-latency streaming architecture**, combining:
 
@@ -19,7 +19,7 @@ Unlike traditional chat-based assistants, Qube is designed around a **low-latenc
 - strict RAM-aware execution constraints (~10–15GB usable budget)
     
 
-Everything runs locally with no external API dependency.
+Inference and RAG stay on-device—**no** third-party chat API. (Optional **Model Manager** downloads talk to Hugging Face only when **you** choose to fetch weights.)
 
 ✨ Quick Overview
 
@@ -27,7 +27,7 @@ Everything runs locally with no external API dependency.
 
     ⚡ Real-Time Interruption (Barge-In): Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
 
-    🤖 Local LLM Routing: Interfaces directly with local LLM providers (like LM Studio) for private, fast text generation. Features intelligent NLP triggers and UI dashboard toggles for RAG routing.
+    🤖 **Dual-mode LLM routing:** Choose **Internal Engine (native llama.cpp)** for a self-contained app with no separate server, or **External Server (localhost)** for LM Studio / Ollama-style OpenAI-compatible APIs—same streaming pipeline either way. Intelligent NLP triggers and dashboard toggles for RAG routing.
 
     🎙️ Lightning-Fast STT: Powered by faster-whisper, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
 
@@ -37,7 +37,9 @@ Everything runs locally with no external API dependency.
 
     🌐 Live Web Search Integration: Qube can break out of its offline shell when explicitly requested. Using the internet_tool, it performs real-time web searches, parses the data into the context window, and provides beautifully formatted, clickable [W] citations right next to your local document sources.
 
-    🎛️ Responsive GUI: A clean, multithreaded PyQt6 interface featuring a real-time VU meter, dynamic settings, and custom wake-word support (currently over 4 different wake-words available).
+    🎛️ **Responsive native GUI:** A lean **PyQt6** desktop shell (not an Electron wrapper)—so more of your RAM stays available for models and context. Includes a real-time VU meter, dynamic settings, custom wake-word support (currently over 4 different wake-words available), and **Model Manager**: search Hugging Face, browse Editor’s Picks, read READMEs, and download **.gguf** quantizations with **disk-space guardrails** (pre-flight free-space check + safe **.part** cleanup on cancel or failure).
+
+    🎚️ **Hardware controls:** Per-model **GPU offload layers** for the native engine, plus granular audio and generation settings—tuned for real hardware, not abstract “cloud” tiers.
 
 ---
 ## 🏗️ Deep Dive: Architecture & Features
@@ -128,16 +130,25 @@ Qube uses an adaptive routing system that selects between:
 
 ---
 
-### 🤖 Local LLM Routing
+### 🤖 Local LLM routing (dual mode)
 
-- Fully local inference via LM Studio / Ollama compatible servers.
+Qube no longer *depends* on a separate inference app. Pick your backend in **Settings → Inference engine**:
+
+| Mode | What it is |
+| :--- | :--- |
+| **Internal Engine (native)** | **llama-cpp-python** inference runs **inside Qube** on a dedicated worker thread—load **.gguf** models, set **GPU offload layers**, and stream tokens with the same low-latency path as external mode. No LM Studio or Ollama required. |
+| **External Server (localhost)** | Classic stack: **LM Studio**, **Ollama**, or any **OpenAI-compatible** server on `localhost` (e.g. ports `1234` / `11434`). |
+
+- **Streaming-first** in both modes (TTFB-friendly, sentence-chunked for TTS).
     
-- OpenAI-style streaming interface support.
+- External mode uses OpenAI-style SSE; internal mode uses the same UI and cancellation semantics via a **thread-safe queue handoff** from the native engine.
     
-- Streaming-first response design (TTFB optimized).
+- Strict timeouts and `finally`-style teardown so the chat UI **always unlocks** if a stream aborts or the server drops.
     
-- Wrapped in strict timeouts and `finally` blocks to guarantee UI unlocking even if the local server crashes mid-stream.
-    
+
+#### 🏪 Model Manager (“App Store” for weights)
+
+Open **Model Manager** from the nav to **search the Hugging Face Hub** (GGUF-oriented results), browse **Qube Verified / Editor’s Picks**, read repo **README** Markdown in-app, pick a **quantization** from the live file list, and **download** directly into Qube’s model storage—**with disk-space checks** before large downloads and clean teardown of partial files if you cancel or something fails.
 
 ---
 
@@ -184,7 +195,7 @@ Qube uses an adaptive routing system that selects between:
 
 ### 🎛️ Responsive Multithreaded GUI
 
-- Built with PyQt6 using a frameless, `qt_material` design.
+- Built with **PyQt6** (native widgets—not a RAM-heavy embedded browser), keeping headroom for models and long context.
     
 - Fully asynchronous worker architecture (UI thread is strictly isolated).
     
@@ -202,7 +213,7 @@ Qube uses an adaptive routing system that selects between:
 
 ### Prerequisites
 * Python 3.12 or higher (Linux/Windows)
-* [LM Studio](https://lmstudio.ai/) or [Ollama] (https://ollama.com/download) (or a compatible local LLM server running on `localhost:1234`)
+* **LLM backend (pick one):** use Qube’s **Internal Engine** with downloaded **.gguf** models (see **Model Manager**), *or* run **[LM Studio](https://lmstudio.ai/)** / **[Ollama](https://ollama.com/download)** (or any OpenAI-compatible server on `localhost`, e.g. `:1234` / `:11434`) if you prefer **External Server** mode.
 * **Hardware:** Minimum 16GB RAM (20GB recommended to avoid disk swapping).
 * **Suggested SLM at 16GB RAM:** Nemotron 3 Nano 4B
 * A microphone and speakers for STT & TTS interactions
@@ -247,7 +258,7 @@ Bash
 python main.py
 ```
 
-_Note: On the very first run, Qube will automatically connect to Hugging Face and download the necessary Kokoro TTS models (approx. 400MB) directly into the `models/` directory. Grab a coffee, and it will boot up as soon as the download finishes!_
+_Note: On the very first run, Qube will automatically connect to Hugging Face and download the necessary Kokoro TTS models (approx. 400MB) directly into the `models/` directory. Optional chat weights are **not** pulled automatically—use **Model Manager** when you want to fetch **.gguf** files (with on-device disk checks). Grab a coffee while TTS finishes, then you’re ready to chat._
 
 ---
 
@@ -255,7 +266,7 @@ _Note: On the very first run, Qube will automatically connect to Hugging Face an
 
 ### Voice Interaction
 
-1. Start your local LLM server (e.g., LM Studio or Ollama).
+1. **Inference:** In **Settings**, choose **Internal Engine** (after selecting a **.gguf** in **Model Manager**) *or* **External Server** and start your local LLM server (e.g., LM Studio or Ollama) if you use external mode.
     
 2. Say the wake word (Default: _"Hey Alexa"_) (training your own custom wake word in the app is coming soon).
     
@@ -278,6 +289,8 @@ Want Qube to answer questions based on a specific book or PDF?
 ## 🏗️ Architecture Stack
 
 - **UI Framework:** PyQt6 (Frameless, Thread-Isolated)
+    
+- **Chat inference (internal mode):** llama-cpp-python (**GGUF**), long-lived native worker thread + streaming queue handoff to the main LLM pipeline.
     
 - **Vector Database:** LanceDB (Disk-native, zero-copy)
     
@@ -307,7 +320,8 @@ Qube stands on the shoulders of giants. A massive thank you to the brilliant dev
 * **[LanceDB](https://lancedb.com/):** For the incredibly efficient, serverless vector database.
 * **[PyMuPDF](https://pymupdf.readthedocs.io/):** For the industrial-strength document parsing.
 * **[OpenWakeWord](https://github.com/dscripka/openWakeWord):** For lightweight, customizable wake word detection.
-* **[LM Studio] & [Ollama]:** For making local LLM hosting accessible to everyone.
+* **[Hugging Face](https://huggingface.co/):** For the Hub APIs and model artifacts used by **Model Manager** (search, READMEs, **.gguf** downloads).
+* **[LM Studio](https://lmstudio.ai/) & [Ollama](https://ollama.com/):** For optional external local LLM hosting when you’re not using the built-in engine.
 * **[PyQt6](https://riverbankcomputing.com/software/pyqt/):** For the robust framework powering the Qube UI.
 * **All the wonderful people around me who have encouraged me with the project, you rock!**
 

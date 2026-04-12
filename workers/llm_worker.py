@@ -6,7 +6,18 @@ import re
 import copy
 import logging
 import uuid
+import os
+import queue
+import threading
 from urllib.parse import urlparse
+
+from core.app_settings import (
+    get_engine_mode,
+    get_internal_model_path,
+    get_internal_n_gpu_layers,
+    get_internal_n_threads,
+    set_engine_mode as persist_engine_mode,
+)
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -42,7 +53,7 @@ class LLMWorker(QThread):
     # Per-message cap before sending to the API (single huge assistant/user blobs).
     CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS = 14000
 
-    def __init__(self, embedder, store, db_manager):
+    def __init__(self, embedder, store, db_manager, native_engine=None):
         super().__init__()
 
         self.prompt = ""
@@ -52,6 +63,8 @@ class LLMWorker(QThread):
         self.embedder = embedder
         self.store = store
         self.db = db_manager
+        self._native_engine = native_engine
+        self.engine_mode = get_engine_mode()
 
         self.embedding_cache = EmbeddingCache(self.embedder)
 
@@ -97,11 +110,16 @@ class LLMWorker(QThread):
         except Exception:
             return False
 
+    def _uses_external_http(self) -> bool:
+        return getattr(self, "engine_mode", "external") != "internal"
+
     def _flush_server_kv_hint(self) -> None:
         """
         Tiny non-streaming completion so llama.cpp/LM Studio advance/rotate prompt cache
         away from the previous conversation. Unique user text avoids prefix-cache hits.
         """
+        if not self._uses_external_http():
+            return
         if not self._is_local_llm_service():
             return
         token = uuid.uuid4().hex[:10]
@@ -133,6 +151,8 @@ class LLMWorker(QThread):
         UI focused a different chat thread while idle: hint the local server to drop reuse
         of the previous thread's prompt/KV state before the user sends another message.
         """
+        if not self._uses_external_http():
+            return
         if not self._is_local_llm_service():
             return
         if self.isRunning():
@@ -148,6 +168,8 @@ class LLMWorker(QThread):
 
     def _ensure_cross_session_server_flush(self) -> None:
         """Before building the next completion, flush if this turn targets a different DB session."""
+        if not self._uses_external_http():
+            return
         if not self._is_local_llm_service():
             return
         sid = self.session_id
@@ -269,6 +291,20 @@ class LLMWorker(QThread):
 
     # ============================================================
     def generate(self, prompt: str) -> str:
+        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+            out: list = []
+            ev = threading.Event()
+            self._native_engine.enqueue_simple_completion(
+                [{"role": "user", "content": prompt}],
+                0.1,
+                1000,
+                out,
+                ev,
+            )
+            if not ev.wait(120):
+                return ""
+            return (out[0] if out else "") or ""
+
         payload = {
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
@@ -538,13 +574,19 @@ class LLMWorker(QThread):
         # ============================================================
         self.status_update.emit("Synthesizing...")
 
+        final_text = ""
+
+        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+            final_text = self._stream_via_native(messages, all_ui_sources)
+            return final_text
+
         payload = {
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": self.context_window,
             "stream": True,
         }
-        if self._is_local_llm_service():
+        if self._uses_external_http() and self._is_local_llm_service():
             # llama.cpp server: avoid unbounded prompt-prefix / KV reuse across unrelated requests
             payload["cache_prompt"] = False
 
@@ -633,6 +675,71 @@ class LLMWorker(QThread):
 
         return final_text
 
+    def _stream_via_native(self, messages: list[dict], all_ui_sources: list) -> str:
+        """Stream tokens from NativeLlamaEngine (llama-cpp-python) on a dedicated thread."""
+        token_queue: queue.Queue = queue.Queue()
+        done_event = threading.Event()
+        self._native_engine.enqueue_generation(
+            messages,
+            self.temperature,
+            int(self.context_window),
+            token_queue,
+            done_event,
+        )
+
+        current_sentence = ""
+        final_text = ""
+        start = time.time()
+        first_token = False
+        stream_wall_start = time.time()
+
+        while True:
+            if time.time() - stream_wall_start > self._MAX_STREAM_WALL_SECONDS:
+                logger.error("[LLM] Native stream exceeded wall-time cap.")
+                self._native_engine.request_cancel_generation()
+                break
+            if getattr(self, "_cancel_requested", False):
+                self._native_engine.request_cancel_generation()
+            try:
+                kind, data = token_queue.get(timeout=0.2)
+            except queue.Empty:
+                if done_event.is_set() and token_queue.empty():
+                    break
+                continue
+
+            if kind == "delta":
+                delta = data
+                if not first_token:
+                    self.ttft_latency.emit((time.time() - start) * 1000)
+                    first_token = True
+                current_sentence += delta
+                final_text += delta
+                self.token_streamed.emit(delta)
+                if any(p in delta for p in ".!?"):
+                    clean = self.clean_text_for_tts(current_sentence)
+                    if clean:
+                        self.sentence_ready.emit(clean, self.session_id)
+                    current_sentence = ""
+            elif kind == "error":
+                self.token_streamed.emit(f"\n\n*({data})*")
+            elif kind == "end":
+                final_text = data if isinstance(data, str) else final_text
+                break
+
+        if current_sentence.strip():
+            clean = self.clean_text_for_tts(current_sentence)
+            if clean:
+                self.sentence_ready.emit(clean, self.session_id)
+
+        if self.session_id and final_text.strip():
+            src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
+            self.db.add_message(
+                self.session_id, "assistant", final_text, sources_json=src_payload
+            )
+
+        self._successfully_finished = True
+        return final_text
+
     # --- SETTERS FOR THE UI BLUEPRINT ---
     def set_provider(self, port: int):
         self.api_url = f"http://localhost:{port}/v1/chat/completions"
@@ -646,6 +753,8 @@ class LLMWorker(QThread):
     def set_context_window(self, val: int):
         self.context_window = val
         logger.debug(f"Context Window updated to {val}")
+        if getattr(self, "engine_mode", "external") == "internal":
+            self.refresh_native_model_from_settings()
 
     def set_max_history_messages(self, val: int):
         self.max_history_messages = max(2, min(100, int(val)))
@@ -678,8 +787,44 @@ class LLMWorker(QThread):
         """Best-effort cancel: unblocks streaming reads; run() still finishes via finally."""
         self._cancel_requested = True
         self._close_active_stream()
+        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+            self._native_engine.request_cancel_generation()
+
+    def set_engine_mode(self, mode: str) -> None:
+        """Switch between external OpenAI-compatible server and in-process llama.cpp."""
+        m = "internal" if str(mode).lower().strip() == "internal" else "external"
+        persist_engine_mode(m)
+        self.engine_mode = m
+        if self.isRunning():
+            self.cancel_generation()
+        if m == "external":
+            # One brain at a time: release native llama.cpp VRAM before external server use.
+            if self._native_engine:
+                self._native_engine.unload_model()
+            self.status_update.emit("Engine: External (localhost) — native model unloaded (VRAM released)")
+        else:
+            self.status_update.emit("Engine: Internal (native)")
+            self.refresh_native_model_from_settings()
+
+    def refresh_native_model_from_settings(self) -> None:
+        """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
+        if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
+            return
+        path = get_internal_model_path()
+        n_gpu = get_internal_n_gpu_layers()
+        n_threads = get_internal_n_threads()
+        n_ctx = int(getattr(self, "context_window", 4096))
+        if not path or not os.path.isfile(path):
+            if self._native_engine:
+                self._native_engine.unload_model()
+            self.status_update.emit("Native engine: select a .gguf in Model Manager")
+            return
+        self._native_engine.load_model(path, n_gpu, n_ctx, n_threads)
 
     def reload_model(self):
-        """Placeholder for LM Studio / Ollama model reload endpoints."""
+        """External: status only; Internal: reload .gguf with current settings."""
         logger.info("Model reload triggered by UI.")
-        self.status_update.emit("Model Context Updated")
+        if getattr(self, "engine_mode", "external") == "internal":
+            self.refresh_native_model_from_settings()
+        else:
+            self.status_update.emit("Model Context Updated")

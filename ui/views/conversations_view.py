@@ -28,6 +28,7 @@ import weakref
 import re
 import re as _re_cite
 
+from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.source_viewer import SourcePreviewer
 
@@ -246,29 +247,6 @@ def _fence_box_drawing_for_qt(text: str) -> str:
 def _qt_safe_markdown(markdown: str) -> str:
     """Sanitize LLM markdown before QTextDocument.setMarkdown (box art, future rules)."""
     return _fence_box_drawing_for_qt(markdown or "")
-
-
-def _markdown_ui_stylesheet(is_dark: bool) -> str:
-    """
-    QTextDocument default stylesheet for Markdown → HTML. Must be set *before* setMarkdown()
-    so table cells, list items, and nested spans inherit foreground color (QLabel + QPalette
-    alone do not color nested rich-text elements, which default to black and vanish on dark UI).
-    """
-    fg = "#cdd6f4" if is_dark else "#1e293b"
-    link = "#89b4fa" if is_dark else "#2563eb"
-    border = "#585b70" if is_dark else "#cbd5e1"
-    code_bg = "#313244" if is_dark else "#f1f5f9"
-    return (
-        f"body, p, span, div, li, ul, ol, dd, dt, "
-        f"table, thead, tbody, tr, th, td, "
-        f"blockquote, pre, code, "
-        f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
-        f"a {{ color: {link}; text-decoration: none; }}"
-        f"table {{ border-color: {border}; }}"
-        f"th, td {{ border-color: {border}; border-width: 1px; border-style: solid; padding: 4px; }}"
-        f"code, pre {{ background-color: {code_bg}; }}"
-        f"hr {{ border-color: {border}; color: {border}; }}"
-    )
 
 
 def _maybe_dump_markdown_html_pipeline(raw_md: str, font, is_dark: bool) -> None:

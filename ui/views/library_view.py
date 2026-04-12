@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QListWidget, QTextEdit, QFileDialog, QMessageBox, QSizePolicy,
     QProgressBar, QLineEdit
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
 import qtawesome as qta
 from pathlib import Path
 from ui.components.prestige_dialog import PrestigeDialog
@@ -29,6 +29,8 @@ class LibraryView(QWidget):
         self.active_filename = None
         self._setup_ui()
         self.refresh_library_list()
+        # Rows are built before this view is parented under MainWindow; QSS + selection need a pass once attached.
+        QTimer.singleShot(0, self._update_row_colors)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -218,16 +220,15 @@ class LibraryView(QWidget):
             
         self.is_loading_library = True
 
-        from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu, QApplication
+        from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import Qt, QSize
         import qtawesome as qta
         
-        # Robust theme detection
+        # Match ConversationsView._load_history_batch: window may be None until after MainWindow adds this widget.
         is_dark = True
-        if self.window() and hasattr(self.window(), '_is_dark_theme'):
-            is_dark = self.window()._is_dark_theme
-        elif "light.qss" in QApplication.instance().styleSheet().lower():
-            is_dark = False
+        main_win = self.window()
+        if main_win and hasattr(main_win, "_is_dark_theme"):
+            is_dark = main_win._is_dark_theme
 
         t_color = "#cdd6f4" if is_dark else "#1e293b"
         icon_color = "#6c7086" if is_dark else "#64748b" 
@@ -322,7 +323,7 @@ class LibraryView(QWidget):
             item = target_list.item(i)
             widget = target_list.itemWidget(item)
             if widget:
-                lbl = widget.findChild(QLabel) 
+                lbl = widget.findChild(QLabel, "HistoryRowTitle")
                 if lbl:
                     color = selected_color if item.isSelected() else normal_color
                     lbl.setStyleSheet(f"color: {color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")

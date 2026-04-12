@@ -22,10 +22,10 @@ Qube/
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App icons, window logos, UI element SVGs.
 │   ├── sounds/             # (Optional) Notification chimes or UI sound effects.
-│   ├── styles/             # Extracted .qss stylesheet files ((base.qss, light.qss).
+│   ├── styles/             # base.qss / light.qss — global widgets; #SettingsMenuButton includes :disabled for locked Prestige “dropdowns.”
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
-│   ├── main_window.py      # Manages Frameless Window mechanics, Global Nav Sidebar, Global Top Bar, and an empty center stage.
+│   ├── main_window.py      # Frameless window, sidebar, stacked views, global right toolbar (LOCAL LLM dropdown, voice, params), Prestige QMenu builders, theme toggle.
 │   ├── components/         # Reusable custom UI components.
 │   │   ├── memory_debug.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
 │   │   ├── source_viewer.py # UI dialog component for displaying the raw text of cited RAG documents and web sources
@@ -34,17 +34,28 @@ Qube/
 │       ├── __init__.py     
 │       ├── conversations_view.py # Includes PrestigeDialog and Chat Stages
 │       ├── library_view.py # Knowledge base screen
-│       ├── settings_view.py # Settings screen
+│       ├── settings_view.py # Dual-engine UI, GPU + CPU thread pool sliders (hardware-capped defaults ~75% on first run), local GGUF, PrestigeDialog-only confirmations.
 │       ├── router_dashboard.py # Visualizations go into the Telemetry screen
-│       └── telemetry_view.py # Telemetry screen
-├── core/                   # System, Hardware, and Network Utilities
-│   ├── hardware.py         # psutil polling, GPUMonitor wrapper.
+│       ├── telemetry_view.py # Telemetry screen
+│       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, and download/cancel flow with disk guardrails for the native engine.
+├── core/                   # System, Hardware, Preferences, and Network Utilities
+│   ├── app_settings.py     # QSettings: engine mode, paths, internal_n_gpu_layers (VRAM cap + ~75% default if key missing), internal_n_threads (logical CPU cap + ~75% default if key missing).
+│   ├── gpu_layers_cap.py   # VRAM detection + max_safe_n_gpu_layers + default_internal_n_gpu_layers_suggested (~75% of cap).
+│   ├── cpu_threads.py      # Logical CPU count + default_internal_n_threads (~75% of cores) for llama.cpp n_threads.
+│   ├── gpu_monitor.py      # GPUMonitor: GPU *load* telemetry (pynvml/sysfs/Windows); does not own VRAM/CPU caps (see gpu_layers_cap / cpu_threads).
 │   ├── network.py          # Port scanning (Ollama/LM Studio detection).
-│   └── audio_utils.py      # PyAudio device discovery and index mapping.
+│   ├── audio_utils.py      # PyAudio device discovery and index mapping.
+│   ├── database.py         # SQLite API for sessions and library metadata.
+│   └── richtext_styles.py  # Rich text / link palette helpers for the app.
 ├── workers/                # Background Event Loops (QThreads)
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
-│   ├── llm_worker.py       # Streams LLM tokens, handles RAG routing cascade.
+│   ├── llm_worker.py       # RAG cascade + streaming; internal path loads via NativeLlamaEngine with n_gpu_layers, n_ctx, n_threads from app_settings.
+│   ├── native_llama_engine.py # Owns Llama on engine thread; Llama(..., n_gpu_layers, n_ctx, n_threads).
+│   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list.
+│   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.
+│   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.
+│   ├── model_download_worker.py # Streams GGUF downloads from Hugging Face with Content-Length disk pre-check, cooperative cancel, and .part file cleanup.
 │   ├── enrichment_worker.py # Constructs atomic memories that are then stored in LanceDB.
 │   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
 │   ├── title_worker.py       # Generates titles for the conversations list (bundled Qwen 0.5B performs it)
@@ -133,6 +144,15 @@ Qube/
 
 ### 4.4 Packaging & Deployment
 - **PyInstaller C++ Dependencies:** When building an `.exe` or executable, PyInstaller must be run with `--collect-all llama_cpp`, `--collect-all lancedb`, and `--collect-all pyarrow` to ensure the hidden C++ binary DLLs/Shared Objects are successfully bundled into the deployment package.
+
+### 4.5 Dual-engine inference, GPU offload caps & locked Prestige controls
+
+- **Engine modes (`core/app_settings.py`):** `engine_mode` is `external` (OpenAI-compatible localhost, e.g. Ollama/LM Studio) or `internal` (in-process llama.cpp via `NativeLlamaEngine`). Switching to external must unload the native model and free VRAM (`LLMWorker.set_engine_mode` → `NativeLlamaEngine.unload_model`).
+- **“One brain at a time” UX:** When **Internal Engine** is selected in Settings, the **AI Provider** (Ollama/LM Studio) control is **disabled** — only enable it for **External Server**. The global toolbar **LOCAL LLM** control is disabled with copy **“Managed by External Server”** when the app is in external mode; when internal, it lists `.gguf` files from the configured models directory.
+- **GPU offload layers:** Settings uses a **`QSlider`** capped by **`max_safe_n_gpu_layers()`** (`core/gpu_layers_cap.py`: VRAM detection + heuristic). First launch (missing key): **`default_internal_n_gpu_layers_suggested()`** (~75% of that cap). **`get_internal_n_gpu_layers` / `set_internal_n_gpu_layers`** always clamp to the VRAM cap.
+- **CPU thread pool:** Second **`QSlider`** (min 1, max logical cores) for **`internal_n_threads`**; defaults ~75% of cores when the key is missing (`core/cpu_threads.py`). Passed to **`Llama(..., n_threads=...)`** via **`NativeLlamaEngine.load_model`**.
+- **Prestige dropdown appearance:** `#SettingsMenuButton` styles live in `assets/styles/base.qss` and `light.qss`, including **`:disabled`** (muted text/border/background). **QtAwesome** chevron icons do not dim automatically — `SettingsView` and `MainWindow` each implement `_apply_settings_menu_button_chevron_state(...)` to tint chevrons when a `SettingsMenuButton` is disabled.
+- **Global toolbar parity:** Theme toggles and `refresh_toolbar_native_model_dropdown()` must keep Prestige menu palettes and chevron tints consistent with `_is_dark_theme`.
 
 ## 5. Memory, RAG & Enrichment System Rules (CRITICAL)
 

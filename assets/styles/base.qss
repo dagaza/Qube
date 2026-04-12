@@ -49,7 +49,7 @@ QToolTip {
     border-top-right-radius: 12px;
 }
 
-#NavSidebar, #HistorySidebar, #LibrarySidebar, #ToolsPane {
+#NavSidebar, #HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #ToolsPane {
     background-color: rgba(0, 0, 0, 0.15);
     border: none;
 }
@@ -195,6 +195,76 @@ QComboBox QListView::item:selected, QComboBox QAbstractItemView::item:selected {
     color: #ffffff;
 }
 
+/* Model Manager GGUF file combo — Settings-style field (#313244, 8px); app QSS only (no per-widget sheet). */
+#HubFileComboBox {
+    combobox-popup: 1;
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    min-height: 22px;
+}
+#HubFileComboBox:hover,
+#HubFileComboBox:focus {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+#HubFileComboBox QFrame {
+    background-color: #1e1e2e !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px;
+}
+#HubFileComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 28px;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: transparent;
+}
+/* Popup list: view() is reparented out of #HubFileComboBox — target by objectName (see ModelManagerView). */
+#HubFileComboDropdownView {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    outline: none;
+    selection-background-color: rgba(255, 255, 255, 0.1);
+    selection-color: #ffffff;
+}
+#HubFileComboDropdownView::item {
+    min-height: 32px;
+    padding: 8px 12px;
+    color: #cdd6f4;
+    border-radius: 4px;
+}
+#HubFileComboDropdownView::item:selected {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+#HubFileComboDropdownView::item:hover {
+    background-color: #313244;
+    color: #cdd6f4;
+}
+#HubFileComboDropdownView QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 6px;
+    margin: 0px;
+}
+#HubFileComboDropdownView QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    min-height: 20px;
+}
+#HubFileComboDropdownView QScrollBar::add-line:vertical,
+#HubFileComboDropdownView QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
 /* --- 8. SPINNERS (QSpinBox & QDoubleSpinBox) --- */
 QSpinBox, QDoubleSpinBox {
     background-color: rgba(0, 0, 0, 0.2);
@@ -282,14 +352,14 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
 }
 
 /* --- 9. LIBRARY SPECIFIC --- */
-#LibrarySearchBar {
+#LibrarySearchBar, #HubModelSearchBar {
     background-color: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
     padding: 8px 12px;
     margin-bottom: 5px;
 }
-#LibrarySearchBar:focus {
+#LibrarySearchBar:focus, #HubModelSearchBar:focus {
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -299,6 +369,13 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     padding: 8px 15px;
     background-color: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);
+    color: #cdd6f4;
+}
+
+#SettingsMenuButton:disabled {
+    background-color: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    color: #64748b;
 }
 
 QMenu#PrestigeMenu {
@@ -403,18 +480,30 @@ QLabel#AgentMessage {
     background-color: transparent;
 }
 /* --- UNIFIED LIST STYLING (DARK) --- */
-#HistoryList, #LibraryDocList {
+#HistoryList, #LibraryDocList, #ModelHubList {
     background-color: transparent;
     border: none;
 }
 
-#HistoryList::item:hover, #LibraryDocList::item:hover {
+#HistoryList::item:hover, #LibraryDocList::item:hover, #ModelHubList::item:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-#HistoryList::item:selected, #LibraryDocList::item:selected {
+#HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected {
     background-color: #89b4fa; /* Blue selection bar */
     border-radius: 6px;
+}
+
+/* Hub list: item widgets size themselves; global QListWidget::item padding would shrink rows and clip 3-line text */
+#ModelHubList::item {
+    padding: 0px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+/* Do not inherit QListWidget::item:selected font-weight — keep metrics aligned with QFontMetrics */
+#ModelHubList::item:selected {
+    font-weight: 500;
 }
 
 #HistoryRowWidget QLabel#HistoryRowTitle, #LibraryRowWidget QLabel#LibraryRowTitle {
@@ -423,8 +512,26 @@ QLabel#AgentMessage {
     font-weight: 500;
 }
 
-/* Ensure text flips to dark when the blue selection bar is active */
-#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle, 
+/* Model Manager hub rows: fixed font metrics (must match light.qss) — no theme layout shift.
+   No line-height: QFontMetrics-based row sizing must match QLabel line spacing. */
+#ModelHubList QLabel#HubModelRowTitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: #cdd6f4 !important;
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+#ModelHubList::item:selected QLabel#HubModelRowTitle {
+    color: #ffffff !important;
+}
+
+/* Ensure text flips to dark when the blue selection bar is active.
+   Library rows use HistoryRowWidget + HistoryRowTitle (same as chat), not LibraryRowWidget. */
+#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
+#LibraryDocList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
 #LibraryDocList::item:selected #LibraryRowWidget QLabel#LibraryRowTitle {
     color: #11111b !important;
 }

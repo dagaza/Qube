@@ -5,14 +5,17 @@ from PyQt6 import QtCore
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
 
+from core.richtext_styles import apply_app_link_palette
+
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
+from workers.native_llama_engine import NativeLlamaEngine
 from workers.ingestion_worker import IngestionWorker 
 from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
-from core.app_settings import get_enable_memory_enrichment
+from core.app_settings import get_enable_memory_enrichment, get_engine_mode
 from workers.enrichment_worker import EnrichmentWorker
 from workers.internet_worker import InternetWorker
 
@@ -39,7 +42,15 @@ class Qube:
         # -- 2. Background workers ---------------------------------------
         self.audio_worker = AudioListenerWorker()
         self.stt_worker   = STTWorker()
-        self.llm_worker   = LLMWorker(self.embedder, self.store, self.db_manager)
+        self.native_llama_engine = NativeLlamaEngine()
+        self.native_llama_engine.start()
+
+        self.llm_worker = LLMWorker(
+            self.embedder,
+            self.store,
+            self.db_manager,
+            native_engine=self.native_llama_engine,
+        )
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
 
@@ -77,6 +88,9 @@ class Qube:
         self._connect_signals()
         self._sync_databases()
 
+        if get_engine_mode() == "internal":
+            self.llm_worker.refresh_native_model_from_settings()
+
         # -- 7. Start continuous processes --------------------------------
         self.audio_worker.start()
 
@@ -95,6 +109,7 @@ class Qube:
         self.audio_worker.status_update.connect(w.update_status)
         self.stt_worker.status_update.connect(w.update_status)
         self.llm_worker.status_update.connect(w.update_status)
+        self.native_llama_engine.status_update.connect(w.update_status)
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
         self.tts_worker.playback_finished.connect(self._handle_tts_finished)
@@ -105,7 +120,18 @@ class Qube:
             self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
             self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
-            
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
+            self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
+        if (
+            hasattr(self.window, "model_manager_view")
+            and hasattr(self.window, "settings_view")
+            and hasattr(self.window.model_manager_view, "native_library_changed")
+            and hasattr(self.window.settings_view, "refresh_native_local_library")
+        ):
+            self.window.model_manager_view.native_library_changed.connect(
+                self.window.settings_view.refresh_native_local_library
+            )
+
         # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
@@ -276,6 +302,11 @@ class Qube:
     #  UI State Handlers                                                   #
     # ------------------------------------------------------------------ #
 
+    def _on_engine_mode_changed(self, mode: str) -> None:
+        """Switch between localhost OpenAI server and in-process llama.cpp."""
+        if hasattr(self, "llm_worker"):
+            self.llm_worker.set_engine_mode(str(mode))
+
     def on_rag_toggle_changed(self, is_enabled: bool):
         """Updates the LLM worker when the user flips the RAG switch."""
         if hasattr(self, 'llm_worker'):
@@ -293,6 +324,10 @@ class Qube:
         """Called automatically when the application is closing."""
         logger.info("Initiating graceful shutdown...")
 
+        # 0. Model Manager — Hub search/README/list/download QThreads can block exit if still running
+        if hasattr(self.window, "model_manager_view"):
+            self.window.model_manager_view.shutdown_hf_workers()
+
         # 1. Stop transient workers (Internet & Ingestion)
         if self.active_internet_worker and self.active_internet_worker.isRunning():
             self.active_internet_worker.stop()
@@ -309,6 +344,9 @@ class Qube:
 
         if hasattr(self, 'tts_worker'):
             self.tts_worker.request_graceful_stop()
+
+        if hasattr(self, "native_llama_engine"):
+            self.native_llama_engine.stop_engine()
 
         # 3. Stop all core hardware/LLM workers
         for name, worker in self.window.workers.items():
@@ -333,8 +371,10 @@ class Qube:
 
 if __name__ == "__main__":
     # Optional: The Windows Taskbar App ID fix we discussed
-    if sys.platform == 'win32':
-        myappid = 'dagaza.qube.app.1.0'
+    if sys.platform == "win32":
+        import ctypes
+
+        myappid = "dagaza.qube.app.1.0"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # 1. PyQt6 high DPI handling
@@ -344,6 +384,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("assets/qube_logo_256.png"))
+    apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER
     font_files = [
         "assets/fonts/Inter-Regular.ttf",

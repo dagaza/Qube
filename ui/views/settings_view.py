@@ -1,23 +1,43 @@
+import os
+import logging
+from pathlib import Path
+
 import qtawesome as qta
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
-    QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem
+    QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
-from pathlib import Path
-import logging
 
 from core.audio_utils import get_input_devices, get_output_devices
 from core.network import is_port_open
-from core.app_settings import get_enable_memory_enrichment, set_enable_memory_enrichment
+from core.app_settings import (
+    get_enable_memory_enrichment,
+    set_enable_memory_enrichment,
+    get_engine_mode,
+    get_internal_model_path,
+    set_internal_model_path,
+    get_internal_n_gpu_layers,
+    set_internal_n_gpu_layers,
+    get_internal_n_threads,
+    set_internal_n_threads,
+    get_llm_models_dir,
+)
+from core.cpu_threads import max_cpu_threads_for_ui
+from core.gpu_layers_cap import max_safe_n_gpu_layers
 from ui.components.toggle import PrestigeToggle
+from ui.components.prestige_dialog import PrestigeDialog
+
 
 logger = logging.getLogger("Qube.UI.Settings")
+
+
 class SettingsView(QWidget):
     audio_pin_toggle = pyqtSignal(bool)
     auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
     memory_enrichment_changed = pyqtSignal(bool)
+    engine_mode_changed = pyqtSignal(str)
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -28,7 +48,12 @@ class SettingsView(QWidget):
         self.llm_worker = workers.get("llm")
 
         self._setup_ui()
+        self.engine_mode_changed.connect(self._sync_ai_provider_enabled_for_inference)
         self._populate_hardware_selectors()
+        os.makedirs(get_llm_models_dir(), exist_ok=True)
+        self._sync_models_dir_label()
+        self._sync_active_native_model_label()
+        self._refresh_local_gguf_list()
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
@@ -113,10 +138,11 @@ class SettingsView(QWidget):
         ai_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.wakeword_selector = QPushButton("Select Wakeword...")
+        self.engine_selector = QPushButton("Select engine...")
         self.provider_selector = QPushButton("Select Provider...")
         self.voice_selector = QPushButton("Select Voice...")
 
-        for btn in [self.wakeword_selector, self.provider_selector, self.voice_selector]:
+        for btn in [self.wakeword_selector, self.engine_selector, self.provider_selector, self.voice_selector]:
             btn.setObjectName("SettingsMenuButton")
             btn.setMaximumWidth(250)
             btn.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -124,9 +150,120 @@ class SettingsView(QWidget):
             btn.setMenu(QMenu(btn))
 
         ai_form.addRow("Active Wakeword", self.wakeword_selector)
-        ai_form.addRow("AI Provider", self.provider_selector)
+        ai_form.addRow("AI Engine", self.engine_selector)
+        ai_form.addRow("External Provider", self.provider_selector)
 
         content_layout.addWidget(ai_widget)
+        content_layout.addWidget(self._build_divider())
+
+        # --- NATIVE ENGINE & LOCAL GGUF LIBRARY ---
+        content_layout.addWidget(
+            self._build_section_header("fa5s.layer-group", "NATIVE ENGINE & LOCAL LIBRARY")
+        )
+        native_widget = QWidget()
+        native_widget.setObjectName("SettingsFormContainer")
+        native_form = QFormLayout(native_widget)
+        native_form.setSpacing(15)
+        native_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self._gpu_layers_cap = max_safe_n_gpu_layers()
+        gpu_layers_row = QWidget()
+        gpu_layers_row_layout = QHBoxLayout(gpu_layers_row)
+        gpu_layers_row_layout.setContentsMargins(0, 0, 0, 0)
+        gpu_layers_row_layout.setSpacing(12)
+
+        self.gpu_layers_slider = QSlider(Qt.Orientation.Horizontal)
+        self.gpu_layers_slider.setMinimum(0)
+        self.gpu_layers_slider.setMaximum(self._gpu_layers_cap)
+        self.gpu_layers_slider.setSingleStep(1)
+        self.gpu_layers_slider.setPageStep(max(1, self._gpu_layers_cap // 10) if self._gpu_layers_cap else 1)
+        _gpu_val = get_internal_n_gpu_layers()
+        self.gpu_layers_slider.blockSignals(True)
+        self.gpu_layers_slider.setValue(_gpu_val)
+        self.gpu_layers_slider.blockSignals(False)
+
+        self.gpu_layers_value_lbl = QLabel(str(_gpu_val))
+        self.gpu_layers_value_lbl.setMinimumWidth(44)
+        self.gpu_layers_value_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        _gpu_tip = (
+            "How many transformer layers of the built-in llama.cpp model run on the GPU. "
+            "Higher values can be faster but use more video memory; 0 runs the model on the CPU only. "
+            f"The maximum ({self._gpu_layers_cap} layers) is capped from your detected GPU memory. "
+            "On first launch, the default is about 75% of that cap to leave headroom for the system."
+        )
+        self.gpu_layers_slider.setToolTip(_gpu_tip)
+        self.gpu_layers_value_lbl.setToolTip(_gpu_tip)
+
+        self.gpu_layers_slider.valueChanged.connect(self._on_gpu_layers_slider_changed)
+
+        gpu_layers_row_layout.addWidget(self.gpu_layers_slider, stretch=1)
+        gpu_layers_row_layout.addWidget(self.gpu_layers_value_lbl)
+
+        self._cpu_threads_max = max_cpu_threads_for_ui()
+        cpu_threads_row = QWidget()
+        cpu_threads_row_layout = QHBoxLayout(cpu_threads_row)
+        cpu_threads_row_layout.setContentsMargins(0, 0, 0, 0)
+        cpu_threads_row_layout.setSpacing(12)
+
+        self.cpu_threads_slider = QSlider(Qt.Orientation.Horizontal)
+        self.cpu_threads_slider.setMinimum(1)
+        self.cpu_threads_slider.setMaximum(self._cpu_threads_max)
+        self.cpu_threads_slider.setSingleStep(1)
+        self.cpu_threads_slider.setPageStep(max(1, self._cpu_threads_max // 10))
+        _cpu_val = get_internal_n_threads()
+        self.cpu_threads_slider.blockSignals(True)
+        self.cpu_threads_slider.setValue(_cpu_val)
+        self.cpu_threads_slider.blockSignals(False)
+
+        self.cpu_threads_value_lbl = QLabel(str(_cpu_val))
+        self.cpu_threads_value_lbl.setMinimumWidth(44)
+        self.cpu_threads_value_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        _cpu_tip = (
+            "Number of CPU threads llama.cpp uses for the internal engine (matrix ops, batch decode). "
+            "Higher can speed up CPU-bound work; lower leaves more cores free for the OS and other apps. "
+            f"Range 1–{self._cpu_threads_max} (logical cores). Defaults reserve ~25% of hardware for background tasks."
+        )
+        self.cpu_threads_slider.setToolTip(_cpu_tip)
+        self.cpu_threads_value_lbl.setToolTip(_cpu_tip)
+
+        self.cpu_threads_slider.valueChanged.connect(self._on_cpu_threads_slider_changed)
+
+        cpu_threads_row_layout.addWidget(self.cpu_threads_slider, stretch=1)
+        cpu_threads_row_layout.addWidget(self.cpu_threads_value_lbl)
+
+        self.models_dir_label = QLabel()
+        self.models_dir_label.setWordWrap(True)
+
+        local_row = QHBoxLayout()
+        self.local_gguf_list = QListWidget()
+        self.local_gguf_list.setMinimumHeight(100)
+        self.local_gguf_list.setMaximumHeight(160)
+        local_row.addWidget(self.local_gguf_list, stretch=1)
+        local_btn_col = QVBoxLayout()
+        local_btn_col.setSpacing(8)
+        self.use_local_gguf_btn = QPushButton("Use selected")
+        self.use_local_gguf_btn.setToolTip("Activate a downloaded .gguf for the native engine")
+        self.use_local_gguf_btn.clicked.connect(self._apply_selected_local_gguf)
+        local_btn_col.addWidget(self.use_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        self.delete_local_gguf_btn = QPushButton("Delete")
+        self.delete_local_gguf_btn.setToolTip("Permanently delete the selected .gguf file from disk")
+        self.delete_local_gguf_btn.clicked.connect(self._delete_selected_local_gguf)
+        local_btn_col.addWidget(self.delete_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        local_row.addLayout(local_btn_col)
+
+        self.active_native_model_lbl = QLabel()
+
+        native_form.addRow("GPU offload layers", gpu_layers_row)
+        native_form.addRow("CPU thread pool", cpu_threads_row)
+        native_form.addRow("Model storage", self.models_dir_label)
+        native_form.addRow("On this device", local_row)
+        native_form.addRow("Active model", self.active_native_model_lbl)
+
+        content_layout.addWidget(native_widget)
         content_layout.addWidget(self._build_divider())
 
         # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
@@ -167,12 +304,23 @@ class SettingsView(QWidget):
         self._apply_spinbox_style(is_dark)
         main_layout.addWidget(scroll)
 
+    def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
+        """QtAwesome icons do not follow QSS; keep chevrons muted when the button is disabled."""
+        muted = "#3f3f46" if getattr(self.window(), "_is_dark_theme", True) else "#a1a1aa"
+        active = "#64748b"
+        color = active if button.isEnabled() else muted
+        button.setIcon(qta.icon("fa5s.chevron-down", color=color))
+
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
         border_color = "rgba(255, 255, 255, 0.15)" if is_dark else "#cbd5e1"
         bg_color = "#313244" if is_dark else "#ffffff"
         text_color = "#cdd6f4" if is_dark else "#1e293b"
         check_bg = "#45475a" if is_dark else "#f1f5f9"
+        disabled_border = "rgba(255, 255, 255, 0.08)" if is_dark else "#e2e8f0"
+        disabled_bg = "#252536" if is_dark else "#f1f5f9"
+        disabled_text = "#71717a" if is_dark else "#94a3b8"
+        disabled_check = "#3f3f46" if is_dark else "#e2e8f0"
 
         style = f"""
             QDoubleSpinBox, QSpinBox {{
@@ -182,7 +330,13 @@ class SettingsView(QWidget):
                 border-radius: 8px;
                 padding: 5px 10px;
             }}
+            QDoubleSpinBox:disabled, QSpinBox:disabled {{
+                background-color: {disabled_bg};
+                color: {disabled_text};
+                border: 1px solid {disabled_border};
+            }}
             QCheckBox {{ color: {text_color}; font-size: 13px; }}
+            QCheckBox:disabled {{ color: {disabled_text}; }}
             QCheckBox::indicator {{
                 width: 18px;
                 height: 18px;
@@ -190,13 +344,55 @@ class SettingsView(QWidget):
                 border-radius: 4px;
                 background-color: {check_bg};
             }}
+            QCheckBox::indicator:disabled {{
+                background-color: {disabled_check};
+                border: 1px solid {disabled_border};
+            }}
             QCheckBox::indicator:checked {{
                 background-color: #8b5cf6; 
+                image: url(assets/icons/check_mark.png);
+            }}
+            QCheckBox::indicator:checked:disabled {{
+                background-color: #6d28d9;
+                border: 1px solid {disabled_border};
                 image: url(assets/icons/check_mark.png);
             }}
         """
         self.timeout_spinner.setStyleSheet(style)
         self.threshold_spinner.setStyleSheet(style)
+        if hasattr(self, "gpu_layers_slider"):
+            handle = "#8b5cf6" if is_dark else "#7c3aed"
+            slider_css = f"""
+                QSlider::groove:horizontal {{
+                    height: 6px;
+                    background: {bg_color};
+                    border: 1px solid {border_color};
+                    border-radius: 3px;
+                }}
+                QSlider::handle:horizontal {{
+                    background: {handle};
+                    border: 1px solid {border_color};
+                    width: 16px;
+                    margin: -6px 0;
+                    border-radius: 8px;
+                }}
+                QSlider::sub-page:horizontal {{
+                    background: {handle};
+                    border-radius: 3px;
+                }}
+                QSlider:disabled {{
+                    opacity: 0.5;
+                }}
+            """
+            self.gpu_layers_slider.setStyleSheet(slider_css)
+            self.gpu_layers_value_lbl.setStyleSheet(
+                f"color: {text_color}; font-size: 13px; min-width: 44px;"
+            )
+            if hasattr(self, "cpu_threads_slider"):
+                self.cpu_threads_slider.setStyleSheet(slider_css)
+                self.cpu_threads_value_lbl.setStyleSheet(
+                    f"color: {text_color}; font-size: 13px; min-width: 44px;"
+                )
         self.pin_audio_cb.setStyleSheet(style)
         self.auto_activator_cb.setStyleSheet(style)
         if hasattr(self, 'mem_enrichment_label'):
@@ -213,6 +409,11 @@ class SettingsView(QWidget):
                     padding: 8px 15px;
                     font-size: 13px;
                 }}
+                QLineEdit:disabled {{
+                    background-color: {disabled_bg};
+                    color: {disabled_text};
+                    border: 1px solid {disabled_border};
+                }}
             """)
             
         if hasattr(self, 'trigger_list'):
@@ -226,6 +427,171 @@ class SettingsView(QWidget):
                     border-bottom: 1px solid {border_color};
                 }}
             """)
+
+        if hasattr(self, "local_gguf_list"):
+            self.local_gguf_list.setStyleSheet(f"""
+                QListWidget {{
+                    background-color: transparent;
+                    border: 1px solid {border_color};
+                    border-radius: 8px;
+                }}
+                QListWidget::item {{
+                    border-bottom: 1px solid {border_color};
+                }}
+            """)
+        if hasattr(self, "active_native_model_lbl"):
+            self.active_native_model_lbl.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+
+    def _sync_ai_provider_enabled_for_inference(self, mode: str) -> None:
+        """LM Studio / Ollama only applies when routing to an external OpenAI-compatible server."""
+        if not hasattr(self, "provider_selector"):
+            return
+        m = str(mode).lower().strip()
+        self.provider_selector.setEnabled(m == "external")
+        self._apply_settings_menu_button_chevron_state(self.provider_selector)
+
+    def _sync_models_dir_label(self) -> None:
+        self.models_dir_label.setText(get_llm_models_dir())
+
+    def _sync_active_native_model_label(self) -> None:
+        p = get_internal_model_path()
+        name = os.path.basename(p) if p else "(none)"
+        self.active_native_model_lbl.setText(name)
+
+    def _on_gpu_layers_slider_changed(self, v: int) -> None:
+        self.gpu_layers_value_lbl.setText(str(int(v)))
+        self._on_native_gpu_layers_changed(int(v))
+
+    def _on_cpu_threads_slider_changed(self, v: int) -> None:
+        self.cpu_threads_value_lbl.setText(str(int(v)))
+        set_internal_n_threads(int(v))
+        llm = self.workers.get("llm")
+        if llm and getattr(llm, "engine_mode", "external") == "internal":
+            llm.refresh_native_model_from_settings()
+
+    def _on_native_gpu_layers_changed(self, v: int) -> None:
+        set_internal_n_gpu_layers(int(v))
+        llm = self.workers.get("llm")
+        if llm and getattr(llm, "engine_mode", "external") == "internal":
+            llm.refresh_native_model_from_settings()
+
+    def _refresh_local_gguf_list(self) -> None:
+        if not hasattr(self, "local_gguf_list"):
+            return
+        self.local_gguf_list.clear()
+        root = Path(get_llm_models_dir())
+        if not root.is_dir():
+            return
+        for p in sorted(root.glob("*.gguf")):
+            item = QListWidgetItem(p.name)
+            item.setData(Qt.ItemDataRole.UserRole, str(p.resolve()))
+            self.local_gguf_list.addItem(item)
+
+        active = get_internal_model_path()
+        if active:
+            for i in range(self.local_gguf_list.count()):
+                it = self.local_gguf_list.item(i)
+                if it.data(Qt.ItemDataRole.UserRole) == active:
+                    self.local_gguf_list.setCurrentItem(it)
+                    break
+
+    def _apply_selected_local_gguf(self) -> None:
+        item = self.local_gguf_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a downloaded .gguf from the list.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if not path or not os.path.isfile(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Missing file",
+                "That file is not available on disk.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        set_internal_model_path(path)
+        self._sync_active_native_model_label()
+        llm = self.workers.get("llm")
+        if llm:
+            llm.refresh_native_model_from_settings()
+        self._refresh_toolbar_native_model_after_model_change()
+
+    def _refresh_toolbar_native_model_after_model_change(self) -> None:
+        """Keep the global toolbar Local LLM control in sync with Settings / active path."""
+        mw = self.window()
+        if mw and hasattr(mw, "refresh_toolbar_native_model_dropdown"):
+            mw.refresh_toolbar_native_model_dropdown()
+
+    def _delete_selected_local_gguf(self) -> None:
+        item = self.local_gguf_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a .gguf in the list to delete.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if not path or not os.path.isfile(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Missing file",
+                "That file is not available on disk.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        name = os.path.basename(path)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Delete model",
+            f'Permanently delete "{name}" from this device? This cannot be undone.',
+            is_dark=is_dark,
+        )
+        if not dlg.exec():
+            return
+        try:
+            os.remove(path)
+        except OSError as e:
+            logger.error("Failed to delete GGUF %s: %s", path, e)
+            PrestigeDialog(
+                self.window(),
+                "Delete failed",
+                f"Could not remove the file: {e}",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        active = get_internal_model_path()
+        try:
+            was_active = active and Path(active).resolve() == Path(path).resolve()
+        except OSError:
+            was_active = False
+        if was_active:
+            set_internal_model_path("")
+            llm = self.workers.get("llm")
+            if llm:
+                llm.refresh_native_model_from_settings()
+
+        self._sync_active_native_model_label()
+        self._refresh_local_gguf_list()
+        self._refresh_toolbar_native_model_after_model_change()
+
+    def refresh_native_local_library(self) -> None:
+        """Call when a .gguf is saved elsewhere (e.g. Model Manager download)."""
+        self._sync_models_dir_label()
+        self._sync_active_native_model_label()
+        self._refresh_local_gguf_list()
 
     # --------------------------------------------------------- #
     #  🔑 NEW RAG TRIGGER MANAGER                              #
@@ -431,7 +797,14 @@ class SettingsView(QWidget):
 
     def refresh_menu_themes(self, is_dark: bool):
         """Standardizes icons and borders when the theme is toggled."""
-        buttons = [self.mic_selector, self.device_selector, self.wakeword_selector, self.provider_selector, self.voice_selector]
+        buttons = [
+            self.mic_selector,
+            self.device_selector,
+            self.wakeword_selector,
+            self.engine_selector,
+            self.provider_selector,
+            self.voice_selector,
+        ]
         for btn in buttons:
             if btn.menu():
                 self._apply_menu_theme(btn.menu(), is_dark)
@@ -442,6 +815,7 @@ class SettingsView(QWidget):
         for icon_lbl in [
             getattr(self, 'audio_icon_label', None),
             getattr(self, 'ai_icon_label', None),
+            getattr(self, 'native_lib_icon_label', None),
             getattr(self, 'perf_icon_label', None),
             getattr(self, 'rag_icon_label', None),
         ]:
@@ -461,6 +835,7 @@ class SettingsView(QWidget):
 
         self._apply_spinbox_style(is_dark)
         self._refresh_trigger_list() # Repaints the list fonts & trash icons!
+        self._sync_ai_provider_enabled_for_inference(get_engine_mode())
 
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
@@ -479,10 +854,16 @@ class SettingsView(QWidget):
         icon_label.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(QSize(18, 18)))
         icon_label.setProperty("class", "SectionHeaderIcon")
         
-        if "AUDIO" in title_text: self.audio_icon_label = icon_label
-        elif "MODELS" in title_text: self.ai_icon_label = icon_label
-        elif "MEMORY" in title_text: self.perf_icon_label = icon_label
-        elif "TRIGGERS" in title_text: self.rag_icon_label = icon_label
+        if "AUDIO" in title_text:
+            self.audio_icon_label = icon_label
+        elif "MODELS" in title_text and "ROUTING" in title_text:
+            self.ai_icon_label = icon_label
+        elif "NATIVE ENGINE" in title_text:
+            self.native_lib_icon_label = icon_label
+        elif "MEMORY" in title_text:
+            self.perf_icon_label = icon_label
+        elif "TRIGGERS" in title_text:
+            self.rag_icon_label = icon_label
         
         text_label = QLabel(title_text)
         text_label.setProperty("class", "SectionHeaderLabel")
@@ -528,11 +909,26 @@ class SettingsView(QWidget):
                 else:
                     self.wakeword_selector.setText(wakewords[0])
 
+        engine_modes = [
+            ("External Server (localhost)", "external"),
+            ("Internal Engine (native)", "internal"),
+        ]
+        self._build_prestige_menu(
+            self.engine_selector,
+            engine_modes,
+            lambda mode: self.engine_mode_changed.emit(str(mode)),
+        )
+        em = get_engine_mode()
+        engine_label = next((lbl for lbl, m in engine_modes if m == em), engine_modes[0][0])
+        self.engine_selector.setText(engine_label)
+
         providers = [("Ollama (Port 11434)", 11434), ("LM Studio (Port 1234)", 1234)]
         self._build_prestige_menu(self.provider_selector, providers, lambda port: self.llm_worker.set_provider(port) if self.llm_worker else None)
         
         if is_port_open(1234): self.provider_selector.setText("LM Studio (Port 1234)")
         elif is_port_open(11434): self.provider_selector.setText("Ollama (Port 11434)")
+
+        self._sync_ai_provider_enabled_for_inference(get_engine_mode())
 
     def update_voice_dropdown(self, model_name: str, voices: list) -> None:
         if not voices: return
