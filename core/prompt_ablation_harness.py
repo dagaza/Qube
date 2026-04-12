@@ -15,8 +15,10 @@ from typing import Any, Dict, List, Optional
 from core.execution_policy import ExecutionPolicy
 from core.native_llama_inference import native_chat_completion_kwargs
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
+from core.model_override_store import LearnedOverride, store_override
 from core.prompt_template_router import (
     RenderPromptBundle,
+    _llama_display_name,
     build_prompt_bundle,
     infer_template_type,
     resolve_reasoning_mode,
@@ -132,6 +134,75 @@ class AblationReport:
     template_sensitivity_score: float = 0.0
     stop_token_dependency_score: float = 0.0
     reasoning_leak_trigger_source: str = "insufficient_evidence"
+
+
+def infer_override_from_ablation(
+    report: AblationReport, model_name: str
+) -> Optional[LearnedOverride]:
+    baseline = next((r for r in report.scenario_results if r.scenario == "BASELINE"), None)
+    if not baseline:
+        return None
+
+    # first_token is a single character from streaming; phrases need full/head text.
+    sample_lc = (baseline.full_text_sample or "").lower()
+    head_lc = ((baseline.first_20_tokens or "") + (baseline.first_token or "")).lower()
+    probe_lc = sample_lc if sample_lc else head_lc
+    first = baseline.first_token.lower()
+
+    extra_stops: list[str] = []
+    enforce_anchor = False
+    strip_thinking: Optional[bool] = None
+    enforcement_mode: Optional[str] = None
+    force_execution_mode: Optional[str] = None
+
+    # CASE 1: Forced thinking leakage
+    if (
+        "<redacted_thinking>" in probe_lc
+        or "let's" in probe_lc
+        or "we need to" in probe_lc
+    ):
+        extra_stops += [
+            "<redacted_thinking>",
+            "</redacted_thinking>",
+            "<thinking>",
+            "</thinking>",
+        ]
+        strip_thinking = True
+        enforcement_mode = "hard"
+        force_execution_mode = "direct"
+
+    # CASE 2: Missing assistant anchor
+    if baseline.first_token.strip() == "" or len(first) == 0:
+        enforce_anchor = True
+
+    # CASE 3: Meta commentary leakage
+    if baseline.meta_commentary_detected:
+        strip_thinking = True
+        enforcement_mode = "hard"
+
+    # CASE 4: Stop token dependency failure (first token unchanged without stops)
+    if not report.stop_token_dependency_score:
+        extra_stops += ["</s>", "<|end|>"]
+
+    if not any(
+        [
+            extra_stops,
+            enforce_anchor,
+            strip_thinking,
+            enforcement_mode,
+            force_execution_mode,
+        ]
+    ):
+        return None
+
+    return LearnedOverride(
+        model_name=model_name,
+        force_execution_mode=force_execution_mode,
+        enforcement_mode=enforcement_mode,
+        strip_thinking=strip_thinking,
+        extra_stop_tokens=list(dict.fromkeys(extra_stops)),
+        enforce_assistant_anchor=enforce_anchor,
+    )
 
 
 def _strip_overlay_suffixes(prompt: str) -> str:
@@ -273,6 +344,7 @@ def run_ablation_test(
     max_tokens: int = 96,
     temperature: float = 0.7,
     seed: int = 42,
+    model_name: Optional[str] = None,
 ) -> AblationReport:
     """
     Run each scenario once via ``llama.create_completion`` on the constructed prompt string.
@@ -372,7 +444,7 @@ def run_ablation_test(
     elif not base_leak:
         guess = "no_clear_leakage_in_heuristic_probe"
 
-    return AblationReport(
+    report = AblationReport(
         scenario_results=results,
         divergence_matrix=div,
         first_token_drift_map=drift,
@@ -380,3 +452,22 @@ def run_ablation_test(
         stop_token_dependency_score=stop_dep,
         reasoning_leak_trigger_source=guess,
     )
+
+    mn = (model_name or "").strip()
+    if not mn and model_profile is not None:
+        mn = str(getattr(model_profile, "model_name", "") or "").strip()
+    if not mn:
+        mn = _llama_display_name(llama)
+
+    override = infer_override_from_ablation(report, mn)
+    if override:
+        store_override(override)
+        logger.info(
+            "[LLM-SELF-HEAL] learned_override model=%s stops=%d anchor=%s enforcement=%s",
+            mn,
+            len(override.extra_stop_tokens),
+            override.enforce_assistant_anchor,
+            override.enforcement_mode,
+        )
+
+    return report

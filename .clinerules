@@ -15,7 +15,7 @@
 ## 3. Directory Structure & Domain Boundaries
 The project strictly enforces a modular, domain-driven directory structure to prevent "God Objects."
 
-**Native LLM inference debug (internal engine, observer-only):** Logger **`QUBE_LLM_TOKEN_TRACE`** → **`QUBE_LLM_CAUSALITY`** → **`QUBE_LLM_COUNTERFACTUAL`** on **`Qube.NativeLLM.Debug`**; parity / reference file **`QUBE_LLM_REFERENCE_JSON`**. **Model reasoning + execution policy:** `core/model_reasoning_profile.py` (**`detect_model_reasoning_profile`**: tokenizer scan → chat_template metadata → weak template hints → name/path heuristics; **`_llama_cpp_model`** = **`_model`** or **`model`**) + **`core/execution_policy.py`** — **`get_execution_policy()`** / telemetry **`ui_display_thinking`**. **Load-time behavior profiling:** `core/model_behavior.py` (ablation on load → **`llm_model_behavior_profile`** JSON). **Conversations Think UI:** **`refresh_think_toggle()`** on **`native_llama_engine.load_finished`** (**`main.py`**) and **`ConversationsView.showEvent`**. **Prompt bundle:** **`core/prompt_template_router.py`** — **`infer_template_type`**, **`apply_reasoning_injection`**, **`build_prompt_bundle`**; **`[LLM-TEMPLATE]`** logs. **Diagnostics (non-production):** **`core/prompt_ablation_harness.py`**, **`python -m tools.run_ablation`**. Details: `.cursor/rules/native_engine.mdc`, `.cursor/rules/tools-diagnostics.mdc`, `.cursor/rules/ui-rules.mdc`.
+**Native LLM inference debug (internal engine, observer-only):** Logger **`QUBE_LLM_TOKEN_TRACE`** → **`QUBE_LLM_CAUSALITY`** → **`QUBE_LLM_COUNTERFACTUAL`** on **`Qube.NativeLLM.Debug`**; parity / reference file **`QUBE_LLM_REFERENCE_JSON`**. **Model reasoning + execution policy:** `core/model_reasoning_profile.py` (**`detect_model_reasoning_profile`**: tokenizer scan → chat_template metadata → weak template hints → name/path heuristics; **`_llama_cpp_model`** = **`_model`** or **`model`**) + **`core/execution_policy.py`** — **`get_execution_policy()`** / telemetry **`ui_display_thinking`**. **Load-time behavior profiling:** `core/model_behavior.py` (ablation on load, **skipped** when **`core/model_override_store.get_override`** already has an entry → **`[LLM-SELF-HEAL] skip ablation`**) → **`llm_model_behavior_profile`** JSON). **Template / self-heal layers (prompt + stops only in router):** **`core/template_override.py`** (**`detect_template_override`**, **`[LLM-TEMPLATE-OVERRIDE]`**) → **`core/model_override_store.py`** (**`~/.qube/model_overrides.json`**, **`LearnedOverride`**, **`[LLM-SELF-HEAL-APPLY]`**; ablation **`infer_override_from_ablation`** + **`store_override`**, **`[LLM-SELF-HEAL]`**). **Conversations Think UI:** **`refresh_think_toggle()`** on **`native_llama_engine.load_finished`** (**`main.py`**) and **`ConversationsView.showEvent`**. **Prompt bundle:** **`core/prompt_template_router.py`** — **`infer_template_type`**, **`apply_reasoning_injection`**, **`build_prompt_bundle`** (above layers); **`[LLM-TEMPLATE]`** logs. **Diagnostics (non-production):** **`core/prompt_ablation_harness.py`**, **`python -m tools.run_ablation`**. Details: `.cursor/rules/native_engine.mdc`, `.cursor/rules/tools-diagnostics.mdc`, `.cursor/rules/ui-rules.mdc`.
 
 ```text
 Qube/
@@ -40,7 +40,7 @@ Qube/
 │       ├── router_dashboard.py # Visualizations go into the Telemetry screen
 │       ├── telemetry_view.py # Telemetry screen; optional native LLM capability card (reasoning + execution mode) via engine snapshot polling.
 │       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, and download/cancel flow with disk guardrails for the native engine.
-├── core/                   # System, hardware, preferences, network, native LLM helpers (26 files; alphabetical — keep in sync with .cursorrules)
+├── core/                   # System, hardware, preferences, network, native LLM helpers (28 files; alphabetical — keep in sync with .cursorrules)
 │   ├── app_settings.py     # QSettings: engine mode, paths, internal_n_gpu_layers (VRAM cap + ~75% default if key missing), internal_n_threads (logical CPU cap + ~75% default if key missing), chat format, etc.
 │   ├── audio_utils.py      # PyAudio device discovery and index mapping.
 │   ├── cpu_threads.py      # Logical CPU count + default_internal_n_threads (~75% of cores) for llama.cpp n_threads.
@@ -53,6 +53,7 @@ Qube/
 │   ├── llm_execution_causality.py # QUBE_LLM_CAUSALITY: post-inference causal report; optional LM Studio first-token diff via reference JSON.
 │   ├── logging_bootstrap.py # init_llm_debug_logging() attaches file sink; no LLM debug on stdout.
 │   ├── model_behavior.py # classify_model_behavior / resolve_behavior_override; load-time ablation → optional execution overrides.
+│   ├── model_override_store.py # ~/.qube/model_overrides.json — LearnedOverride persistence; applied in build_prompt_bundle (stops + anchor); [LLM-SELF-HEAL-APPLY].
 │   ├── model_reasoning_profile.py # Reasoning/thinking-token capability + ExecutionMode; tokenizer scan (first-hit exit) + chat_template + metadata_template weak hints + name/path heuristics; _llama_cpp_model; routing metadata only.
 │   ├── native_llama_chat.py # Message normalization + GGUF chat_template / chat_format alignment for native completions.
 │   ├── native_llama_inference.py # Extra stop strings + kwargs for native create_chat_completion (LM Studio–style guards).
@@ -61,16 +62,17 @@ Qube/
 │   ├── native_sampler_gt.py  # Sampler GT: Llama.generate wrap; prompt tokens mirror llama-cpp-python _create_completion.
 │   ├── native_token_trace.py # QUBE_LLM_TOKEN_TRACE: live / post-hoc / ground-truth token traces.
 │   ├── network.py          # Port scanning (Ollama/LM Studio detection).
-│   ├── prompt_ablation_harness.py # Diagnostic ablation harness (not production).
+│   ├── prompt_ablation_harness.py # Diagnostic ablation harness (not production); infer_override_from_ablation + store_override; [LLM-SELF-HEAL].
 │   ├── prompt_integrity_validator.py # Prompt structure + LM Studio parity; QUBE_LLM_REFERENCE_JSON / first_sampler_token_ids; model_reasoning_profile_detected + execution_mode (resolved policy) on validation records.
-│   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; [LLM-TEMPLATE]; native validation/logs.
+│   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; template_override + model_override_store; [LLM-TEMPLATE] / [LLM-TEMPLATE-OVERRIDE] / [LLM-SELF-HEAL-APPLY]; native validation/logs.
 │   ├── redacted_thinking_filter.py # Stream filter for <redacted_thinking> blocks (internal engine path).
-│   └── richtext_styles.py  # Rich text / link palette helpers for the app.
+│   ├── richtext_styles.py  # Rich text / link palette helpers for the app.
+│   └── template_override.py # Phase 4 model-name heuristics (phi / Nemotron / Mistral); [LLM-TEMPLATE-OVERRIDE].
 ├── workers/                # Background Event Loops (QThreads)
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
 │   ├── llm_worker.py       # RAG cascade + streaming; internal native stream uses get_execution_policy() for thinking strip/display.
-│   ├── native_llama_engine.py # Owns Llama; load-time behavior ablation + overrides; build_prompt_bundle in validation prep; reasoning profile + execution_policy; post-inference: token trace → causality → counterfactual (env-gated).
+│   ├── native_llama_engine.py # Owns Llama; load-time behavior ablation (skipped if persisted self-heal override exists) + overrides; build_prompt_bundle in validation prep; reasoning profile + execution_policy; post-inference: token trace → causality → counterfactual (env-gated).
 │   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list.
 │   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.
 │   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.

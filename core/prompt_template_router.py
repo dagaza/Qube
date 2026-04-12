@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from core.execution_policy import ExecutionPolicy
 from core.native_llama_inference import native_chat_completion_kwargs
+from core.model_override_store import get_override
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.template_override import TemplateOverride, detect_template_override
 
@@ -167,9 +168,8 @@ def build_prompt_bundle(
     """
     Build RenderPromptBundle using existing reconstruct_formatted_prompt + policy overlays + stops.
 
-    ``model_profile`` is reserved for future template routing; pass through from detection.
+    ``model_profile`` is used for learned override lookup; pass through from detection.
     """
-    _ = model_profile
     _cc_kw = native_chat_completion_kwargs(llama)
     prompt_txt, fmt_stop, recon_note = reconstruct_formatted_prompt(llama, messages)
     template_type = infer_template_type(llama)
@@ -209,6 +209,25 @@ def build_prompt_bundle(
             model_name,
             override.template_type,
             len(override.extra_stops),
+        )
+    learned = get_override(
+        model_profile.model_name if model_profile else "unknown"
+    )
+    if learned:
+        if learned.extra_stop_tokens:
+            merged_learned, _ = merge_stop_lists(
+                bundle.stop_tokens, learned.extra_stop_tokens
+            )
+            bundle.stop_tokens = list(merged_learned)
+        if learned.enforce_assistant_anchor:
+            s = (bundle.prompt or "").strip()
+            if not s.endswith(_ASSISTANT_ANCHOR_SUFFIXES):
+                bundle.prompt = (bundle.prompt or "") + "\n<|assistant|>\n"
+        logger.info(
+            "[LLM-SELF-HEAL-APPLY] model=%s stops=%d anchor=%s",
+            learned.model_name,
+            len(learned.extra_stop_tokens),
+            learned.enforce_assistant_anchor,
         )
     logger.info(
         "[LLM-PROMPT-ROUTER] template=%s reasoning=%s stop_count=%d",

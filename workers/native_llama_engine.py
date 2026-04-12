@@ -55,6 +55,7 @@ from core.model_reasoning_profile import (
     ModelReasoningProfile,
     detect_model_reasoning_profile,
 )
+from core.model_override_store import get_override
 from core.prompt_ablation_harness import run_ablation_test
 from core.prompt_integrity_validator import (
     compute_parity_score,
@@ -314,15 +315,23 @@ class NativeLlamaEngine(QThread):
                         if self._model_reasoning_profile
                         else ""
                     ) or os.path.basename(path)
-                    ablation = run_ablation_test(
-                        self._llama,
-                        messages=[{"role": "user", "content": "Hello"}],
-                        model_profile=self._model_reasoning_profile,
-                        execution_policy=pol,
-                        max_tokens=32,
-                        temperature=0.0,
-                        seed=42,
-                    )
+                    if get_override(mname) is not None:
+                        _debug_logger.info(
+                            "[LLM-SELF-HEAL] skip ablation — persisted override for model=%s",
+                            mname,
+                        )
+                        ablation = None
+                    else:
+                        ablation = run_ablation_test(
+                            self._llama,
+                            messages=[{"role": "user", "content": "Hello"}],
+                            model_profile=self._model_reasoning_profile,
+                            execution_policy=pol,
+                            max_tokens=32,
+                            temperature=0.0,
+                            seed=42,
+                            model_name=mname,
+                        )
                     behavior_profile = classify_model_behavior(
                         ablation_report=ablation,
                         ground_truth_trace=None,
