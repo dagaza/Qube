@@ -24,8 +24,13 @@ from core.prompt_template_router import (
 
 logger = logging.getLogger("Qube.PromptAblation")
 
-# Must match suffixes appended in core/prompt_template_router._apply_reasoning_overlay
+# End-of-prompt suffixes from core/prompt_template_router.apply_reasoning_injection (for strip scenarios).
 _OVERLAY_BLOCKS = (
+    "\nYou may use <redacted_thinking>...</redacted_thinking> internally. Only output final answer.",
+    "\nUse hidden reasoning if needed. Only output final answer.",
+    "\n(Use internal reasoning. Do not expose it.)",
+    "\nOnly output final answer.",
+    "\nRespond with final answer only.",
     "\n\nDo not output reasoning or internal thoughts. Output final answer only.",
     "\n\nYou may use <redacted_thinking>...</redacted_thinking> for reasoning. "
     "Only final answer outside.",

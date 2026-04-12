@@ -43,10 +43,19 @@ from core.llm_execution_causality import (
     causality_report_enabled,
     maybe_emit_execution_causality_report,
 )
+from core.model_behavior import (
+    ModelBehaviorProfile,
+    apply_behavior_override_to_policy,
+    behavior_profile_log_event,
+    classify_model_behavior,
+    override_materially_changes_policy,
+    resolve_behavior_override,
+)
 from core.model_reasoning_profile import (
     ModelReasoningProfile,
     detect_model_reasoning_profile,
 )
+from core.prompt_ablation_harness import run_ablation_test
 from core.prompt_integrity_validator import (
     compute_parity_score,
     load_lm_studio_reference_from_env,
@@ -100,6 +109,9 @@ class NativeLlamaEngine(QThread):
         self._model_reasoning_profile: Optional[ModelReasoningProfile] = None
         self._execution_mode: str = "unknown"
         self.execution_policy: Optional[ExecutionPolicy] = None
+        self._model_behavior_profile: Optional[ModelBehaviorProfile] = None
+        self._model_behavior_override: Optional[Dict[str, Any]] = None
+        self._behavior_override_material: bool = False
 
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
@@ -113,12 +125,14 @@ class NativeLlamaEngine(QThread):
     def get_execution_policy(self) -> ExecutionPolicy:
         """
         Single source of truth for reasoning display, stripping, and enforcement (recomputed live).
+        Applies load-time model behavior overrides when present (no prompt/sampling changes).
         """
         pol = resolve_execution_policy(
             self._model_reasoning_profile,
             get_native_reasoning_display_user_override(),
             get_engine_mode(),
         )
+        pol = apply_behavior_override_to_policy(pol, self._model_behavior_override)
         self.execution_policy = pol
         return pol
 
@@ -129,7 +143,9 @@ class NativeLlamaEngine(QThread):
         rp = self._model_reasoning_profile
         path = self._model_path or ""
         pol = self.get_execution_policy()
-        return {
+        mb = self._model_behavior_profile
+        mo = self._model_behavior_override
+        out: Dict[str, Any] = {
             "loaded": self._llama is not None,
             "model_basename": os.path.basename(path) if path else "",
             "model_name": rp.model_name if rp else "",
@@ -143,7 +159,12 @@ class NativeLlamaEngine(QThread):
             "policy_execution_mode": pol.execution_mode,
             "policy_enforcement": pol.enforcement_mode,
             "allow_thinking_tokens": pol.allow_thinking_tokens,
+            "behavior_class": mb.behavior_class.value if mb else None,
+            "behavior_confidence": float(mb.confidence) if mb else None,
+            "override_active": bool(getattr(self, "_behavior_override_material", False)),
+            "override_summary": ((mo or {}).get("reason") or "")[:240] if mo else "",
         }
+        return out
 
     def load_model(
         self,
@@ -282,6 +303,51 @@ class NativeLlamaEngine(QThread):
                 )
             pol = self.get_execution_policy()
             _debug_logger.info("[LLM-DEBUG] execution_policy=%s", pol)
+
+            self._model_behavior_profile = None
+            self._model_behavior_override = None
+            self._behavior_override_material = False
+            if self._llama is not None:
+                try:
+                    mname = (
+                        self._model_reasoning_profile.model_name
+                        if self._model_reasoning_profile
+                        else ""
+                    ) or os.path.basename(path)
+                    ablation = run_ablation_test(
+                        self._llama,
+                        messages=[{"role": "user", "content": "Hello"}],
+                        model_profile=self._model_reasoning_profile,
+                        execution_policy=pol,
+                        max_tokens=32,
+                        temperature=0.0,
+                        seed=42,
+                    )
+                    behavior_profile = classify_model_behavior(
+                        ablation_report=ablation,
+                        ground_truth_trace=None,
+                        causality_report=None,
+                        model_name=mname,
+                    )
+                    override = resolve_behavior_override(behavior_profile)
+                    self._model_behavior_profile = behavior_profile
+                    self._model_behavior_override = override
+                    self._behavior_override_material = override_materially_changes_policy(
+                        pol, override
+                    )
+                    _debug_logger.info(
+                        behavior_profile_log_event(
+                            model=mname,
+                            profile=behavior_profile,
+                            override=override,
+                            override_active=self._behavior_override_material,
+                        )
+                    )
+                except Exception as e:
+                    logger.debug("[Native] model behavior profiling skipped: %s", e)
+
+            self.execution_policy = self.get_execution_policy()
+
             logger.info(
                 "[Native] Loaded %s (n_gpu_layers=%s, n_ctx=%s, n_threads=%s, chat_format=%s)",
                 path,
@@ -299,6 +365,9 @@ class NativeLlamaEngine(QThread):
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
+            self._model_behavior_profile = None
+            self._model_behavior_override = None
+            self._behavior_override_material = False
             self.load_finished.emit(False, str(e))
             self.status_update.emit("Native engine load failed")
 
@@ -326,6 +395,9 @@ class NativeLlamaEngine(QThread):
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
+            self._model_behavior_profile = None
+            self._model_behavior_override = None
+            self._behavior_override_material = False
             gc.collect()
             self.status_update.emit("Native model unloaded")
             logger.info("[Native] Model unloaded")

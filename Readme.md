@@ -136,7 +136,7 @@ Qube no longer *depends* on a separate inference app. Pick your backend in **Set
 
 | Mode | What it is |
 | :--- | :--- |
-| **Internal Engine (native)** | **llama-cpp-python** inference runs **inside Qube** on a dedicated worker thread—load **.gguf** models, set **GPU offload layers**, and stream tokens with the same low-latency path as external mode. No LM Studio or Ollama required. |
+| **Internal Engine (native)** | **llama-cpp-python** inference runs **inside Qube** on a dedicated worker thread—load **.gguf** models, set **GPU offload layers**, and stream tokens with the same low-latency path as external mode. No LM Studio or Ollama required. Includes **execution policy** (Think toggle, reasoning strip/display), **model-aware prompt bundles** for validation and logging (template detection for ChatML, Llama&nbsp;3, Phi, Mistral, etc.—structurally safe reasoning hints), and optional **load-time behavior profiling** so difficult models get automatic policy tweaks. Chat inference still uses the normal **`messages`** → formatter path; bundles are for observability and parity, not a second sampling stack. |
 | **External Server (localhost)** | Classic stack: **LM Studio**, **Ollama**, or any **OpenAI-compatible** server on `localhost` (e.g. ports `1234` / `11434`). |
 
 - **Streaming-first** in both modes (TTFB-friendly, sentence-chunked for TTS).
@@ -290,7 +290,7 @@ Want Qube to answer questions based on a specific book or PDF?
 
 - **UI Framework:** PyQt6 (Frameless, Thread-Isolated)
     
-- **Chat inference (internal mode):** llama-cpp-python (**GGUF**), long-lived native worker thread + streaming queue handoff to the main LLM pipeline.
+- **Chat inference (internal mode):** llama-cpp-python (**GGUF**), long-lived native worker thread + streaming queue handoff to the main LLM pipeline; execution policy + template-aware prompt representation for logs/validation; optional one-shot ablation on model load for behavior classification (diagnostic **`python -m tools.run_ablation`** still available separately).
     
 - **Vector Database:** LanceDB (Disk-native, zero-copy)
     
