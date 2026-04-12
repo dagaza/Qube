@@ -1251,6 +1251,11 @@ class ConversationsView(QWidget):
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
         self._apply_think_button_style()
+
+    def showEvent(self, event: QEvent) -> None:
+        """Re-sync Think toggle when returning to Conversations (e.g. model loaded on another screen)."""
+        super().showEvent(event)
+        self.refresh_think_toggle()
     
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""

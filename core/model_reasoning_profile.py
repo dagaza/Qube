@@ -50,7 +50,7 @@ class ModelReasoningProfile:
     thinking_token_patterns: List[str]
     default_mode: ExecutionMode
     reasoning_confidence: float  # 0–1
-    detection_method: str  # "tokenizer_scan", "metadata", "heuristic", "hybrid_inference", "fallback"
+    detection_method: str  # tokenizer_scan | metadata | metadata_template | heuristic | hybrid_inference | fallback
 
 
 def _basename(path: str | None) -> str:
@@ -127,7 +127,6 @@ _TEMPLATE_REASONING_HINTS: tuple[str, ...] = (
     "redacted_thinking",
     "reasoning_content",
     "</think>",
-    "`<think>`",
     "`<think>`",
     "internal reasoning",
     "chain of thought",

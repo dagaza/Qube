@@ -15,11 +15,11 @@
 ## 3. Directory Structure & Domain Boundaries
 The project strictly enforces a modular, domain-driven directory structure to prevent "God Objects."
 
-**Native LLM inference debug (internal engine, observer-only):** Logger **`QUBE_LLM_TOKEN_TRACE`** → **`QUBE_LLM_CAUSALITY`** → **`QUBE_LLM_COUNTERFACTUAL`** on **`Qube.NativeLLM.Debug`**; parity / reference file **`QUBE_LLM_REFERENCE_JSON`**. **Model reasoning + execution policy:** `core/model_reasoning_profile.py` + **`core/execution_policy.py`** — **`get_execution_policy()`** / telemetry **`ui_display_thinking`**. **Prompt bundle:** **`core/prompt_template_router.py`** (**`build_prompt_bundle`**) — reconstruction + policy overlays + stops for validation/logs. **Diagnostics (non-production):** **`core/prompt_ablation_harness.py`**, **`python -m tools.run_ablation`**. Details: `.cursor/rules/native_engine.mdc`, `.cursor/rules/tools-diagnostics.mdc`.
+**Native LLM inference debug (internal engine, observer-only):** Logger **`QUBE_LLM_TOKEN_TRACE`** → **`QUBE_LLM_CAUSALITY`** → **`QUBE_LLM_COUNTERFACTUAL`** on **`Qube.NativeLLM.Debug`**; parity / reference file **`QUBE_LLM_REFERENCE_JSON`**. **Model reasoning + execution policy:** `core/model_reasoning_profile.py` (**`detect_model_reasoning_profile`**: tokenizer scan → chat_template metadata → weak template hints → name/path heuristics; **`_llama_cpp_model`** = **`_model`** or **`model`**) + **`core/execution_policy.py`** — **`get_execution_policy()`** / telemetry **`ui_display_thinking`**. **Conversations Think UI:** **`refresh_think_toggle()`** on **`native_llama_engine.load_finished`** (**`main.py`**) and **`ConversationsView.showEvent`** (re-sync after loading a model on another screen). **Prompt bundle:** **`core/prompt_template_router.py`** (**`build_prompt_bundle`**) — reconstruction + policy overlays + stops for validation/logs. **Diagnostics (non-production):** **`core/prompt_ablation_harness.py`**, **`python -m tools.run_ablation`**. Details: `.cursor/rules/native_engine.mdc`, `.cursor/rules/tools-diagnostics.mdc`, `.cursor/rules/ui-rules.mdc` (Think toggle).
 
 ```text
 Qube/
-├── main.py                 # Minimal entry point. Initializes global objects, NativeLlamaEngine, passes native_engine to LLMWorker and MainWindow (telemetry).
+├── main.py                 # Entry point: NativeLlamaEngine, LLMWorker, MainWindow; load_finished → Conversations Think refresh (refresh_think_toggle).
 ├── assets/                 # Static UI and Brand Assets (Immutable)
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App icons, window logos, UI element SVGs.
@@ -34,7 +34,7 @@ Qube/
 │   │   └──  toggle.py       # Toggle (custom design) we use in the UI    
 │   └── views/              # isolated widget files for each major screen
 │       ├── __init__.py     
-│       ├── conversations_view.py # PrestigeDialog, chat stages, Think toggle (telemetry ui_display_thinking; preference in app_settings).
+│       ├── conversations_view.py # PrestigeDialog, chat stages, Think toggle (telemetry ui_display_thinking; refresh_think_toggle on load_finished via main + showEvent).
 │       ├── library_view.py # Knowledge base screen
 │       ├── settings_view.py # Dual-engine UI, GPU + CPU thread pool sliders (hardware-capped defaults ~75% on first run), local GGUF, PrestigeDialog-only confirmations.
 │       ├── router_dashboard.py # Visualizations go into the Telemetry screen
@@ -52,7 +52,7 @@ Qube/
 │   ├── llm_debug_sink.py   # Rotating logs/llm_debug.log for Qube.NativeLLM.Debug; terminal quiet via bootstrap.
 │   ├── llm_execution_causality.py # QUBE_LLM_CAUSALITY: post-inference causal report; optional LM Studio first-token diff via reference JSON.
 │   ├── logging_bootstrap.py # init_llm_debug_logging() attaches file sink; no LLM debug on stdout.
-│   ├── model_reasoning_profile.py # Reasoning/thinking-token capability + ExecutionMode; tokenizer/metadata/name signals; routing metadata only.
+│   ├── model_reasoning_profile.py # Reasoning/thinking-token capability + ExecutionMode; tokenizer scan (first-hit exit) + chat_template + metadata_template weak hints + name/path heuristics; _llama_cpp_model; routing metadata only.
 │   ├── native_llama_chat.py # Message normalization + GGUF chat_template / chat_format alignment for native completions.
 │   ├── native_llama_inference.py # Extra stop strings + kwargs for native create_chat_completion (LM Studio–style guards).
 │   ├── native_llm_debug.py # QUBE_LLM_DEBUG: prompt reconstruction logs, stop merges, parity-oriented helpers.
