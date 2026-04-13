@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QTextBrowser,
     QMenu,
 )
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QTextOption
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl
 import math
 import qtawesome as qta
@@ -45,8 +45,6 @@ _UNSET_SOURCES = object()
 
 # Smart auto-scroll: only follow new tokens if the scrollbar was already at (or near) the bottom.
 _STICKY_SCROLL_TOLERANCE_PX = 24
-
-
 def _parent_conversations_view(widget: QWidget):
     """Find ConversationsView ancestor so context menus can use _apply_menu_theme (Prestige styling)."""
     p = widget.parentWidget()
@@ -276,8 +274,7 @@ class ChatLabel(QLabel):
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setWordWrap(True)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
-        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self._cached_text = ""
         self._cached_ideal_width = 0
 
@@ -347,17 +344,15 @@ class AgentMessageLabel(QTextBrowser):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.setWordWrapMode(QTextOption.WrapMode.WordWrap)
         self.setTabChangesFocus(False)
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.document().setDocumentMargin(4)
         self.viewport().setAutoFillBackground(False)
 
-        self._cached_text = ""
-        self._cached_ideal_width = 0
         self._citation_sources: list = []
         self._conversations_view_ref = None
         self._citation_anchor_connected = False
@@ -365,6 +360,7 @@ class AgentMessageLabel(QTextBrowser):
         self._agent_is_dark = True
         self._doc_layout_connected = False
         self._fixed_h = 0
+        self._syncing_height = False
 
         doc_layout = self.document().documentLayout()
         if doc_layout is not None and hasattr(doc_layout, "documentSizeChanged"):
@@ -378,12 +374,9 @@ class AgentMessageLabel(QTextBrowser):
         doc = self.document()
         doc.setDefaultFont(self.font())
         doc.setDefaultStyleSheet(_markdown_ui_stylesheet(is_dark))
+        doc.setTextWidth(self.viewport().width())
         doc.setMarkdown(safe)
         _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
-        vw = self.viewport().width()
-        if vw > 0:
-            doc.setTextWidth(vw)
-        self._cached_text = ""
         self._sync_fixed_height()
         self.updateGeometry()
 
@@ -410,8 +403,6 @@ class AgentMessageLabel(QTextBrowser):
             self._citation_anchor_connected = False
         self._conversations_view_ref = None
         self._citation_sources = []
-        self._cached_text = ""
-        self._cached_ideal_width = 0
         self._md_layout_source = ""
         if self._doc_layout_connected:
             try:
@@ -427,16 +418,7 @@ class AgentMessageLabel(QTextBrowser):
             pass
 
     def sizeHint(self):
-        from PyQt6.QtCore import QSize
-
-        hint = super().sizeHint()
-        layout_key = self._md_layout_source
-        if layout_key != self._cached_text:
-            self._cached_ideal_width = int(self.document().idealWidth()) + 15
-            self._cached_text = layout_key
-        width = max(min(self._cached_ideal_width, 2400), 100)
-        h = self._compute_doc_height(width)
-        return QSize(max(self._cached_ideal_width, hint.width()), max(h, hint.height()))
+        return super().sizeHint()
 
     def heightForWidth(self, w: int) -> int:
         if w <= 0:
@@ -448,51 +430,60 @@ class AgentMessageLabel(QTextBrowser):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        vw = self.viewport().width()
-        if vw > 0:
-            self.document().setTextWidth(vw)
+        self.document().setTextWidth(self.viewport().width())
         self._sync_fixed_height()
         self.updateGeometry()
 
-    def wheelEvent(self, event):
-        # Never let individual bubbles capture scrolling; route wheel to transcript scroller.
-        scroll_area = self._find_transcript_scroll_area()
-        if scroll_area is not None:
-            bar = scroll_area.verticalScrollBar()
-            dy = event.angleDelta().y()
-            if dy:
-                bar.setValue(bar.value() - dy)
-            event.accept()
-            return
-        super().wheelEvent(event)
-
     def _compute_doc_height(self, width: int) -> int:
-        from PyQt6.QtGui import QTextDocument
-        doc = QTextDocument()
-        doc.setDefaultFont(self.font())
-        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
-        doc.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
-        # Match the QTextBrowser viewport width so final lines are not clipped.
-        doc.setTextWidth(max(width - 8, 1))
-        return int(math.ceil(doc.size().height())) + 16
+        doc = self.document()
+        content_w = self._content_width_from_outer_width(width)
+        doc.setTextWidth(max(content_w, 1))
+        doc_layout = doc.documentLayout()
+        doc_h = doc_layout.documentSize().height() if doc_layout is not None else doc.size().height()
+        return int(math.ceil(doc_h + self._non_document_vertical_space()))
+
+    def _content_width_from_outer_width(self, outer_width: int) -> int:
+        cm = self.contentsMargins()
+        vm = self.viewportMargins()
+        frame = self.frameWidth() * 2
+        available = (
+            int(outer_width)
+            - frame
+            - cm.left()
+            - cm.right()
+            - vm.left()
+            - vm.right()
+        )
+        return max(1, available)
+
+    def _non_document_vertical_space(self) -> int:
+        cm = self.contentsMargins()
+        vm = self.viewportMargins()
+        frame = self.frameWidth() * 2
+        return (
+            frame
+            + cm.top()
+            + cm.bottom()
+            + vm.top()
+            + vm.bottom()
+            + 2  # conservative safety pad for final line descenders
+        )
 
     def _on_document_size_changed(self, _size) -> None:
         self._sync_fixed_height()
 
     def _sync_fixed_height(self) -> None:
-        w = max(self.viewport().width(), self.width(), 1)
-        h = self._compute_doc_height(w)
-        if h != self._fixed_h:
-            self._fixed_h = h
-            self.setFixedHeight(h)
-
-    def _find_transcript_scroll_area(self):
-        p = self.parentWidget()
-        while p is not None:
-            if isinstance(p, QScrollArea) and p.objectName() == "ChatScrollArea":
-                return p
-            p = p.parentWidget()
-        return None
+        if self._syncing_height:
+            return
+        self._syncing_height = True
+        try:
+            w = max(self.width(), 1)
+            h = self._compute_doc_height(w)
+            if h != self._fixed_h:
+                self._fixed_h = h
+                self.setFixedHeight(h)
+        finally:
+            self._syncing_height = False
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -526,30 +517,11 @@ class MessageWrapper(QWidget):
         
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
         if self.is_user:
-            # User: Pushed to the right by the stretch
             layout.addStretch(1)
-            layout.addWidget(bubble, 0)
+            layout.addWidget(bubble, 0, Qt.AlignmentFlag.AlignRight)
         else:
-            # 🔑 Agent: Give the bubble all the stretch so it fills the screen
             layout.addWidget(bubble, 1)
-            # We removed the layout.addStretch(1) that was trapping it on the left!
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(0, self._update_width)
-
-    def _update_width(self):
-        # 🔑 User gets capped at 80% of the screen. Agent gets the full 100%.
-        bubble = self.bubble
-        if bubble is None:
-            return
-        ratio = 0.8 if self.is_user else 1.0
-        safe_max = max(int(self.width() * ratio), 100)
-        
-        bubble.setMaximumWidth(safe_max)
 
     def cleanup_before_destruction(self) -> None:
         """Break references held by this row before Qt tears down the widget tree."""
@@ -594,8 +566,8 @@ class ConversationsView(QWidget):
 
         self.chat_stage = self._build_chat_stage()
 
-        # 🔑 THE FIX: Lock the horizontal boundaries of the chat stage
-        self.chat_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        # Let chat stage expand naturally with main viewport.
+        self.chat_stage.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         layout.addWidget(self.chat_stage, stretch=1) 
 
@@ -666,6 +638,7 @@ class ConversationsView(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.installEventFilter(self)
 
         # Container widget
@@ -673,12 +646,20 @@ class ConversationsView(QWidget):
         self.transcript_container.setObjectName("ChatTranscriptContainer")
         
         # 🔑 The line that was crashing is perfectly safe now
-        self.transcript_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.transcript_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
         self.transcript_layout = QVBoxLayout(self.transcript_container)
-        self.transcript_layout.setContentsMargins(20, 20, 20, 20)
-        self.transcript_layout.setSpacing(25)
+        self.transcript_layout.setContentsMargins(0, 0, 0, 0)
+        self.transcript_layout.setSpacing(20)
         self.transcript_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_area.setWidget(self.transcript_container)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.viewport().setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
         layout.addWidget(self.scroll_area)
 
         # 2. Per-message action bar
@@ -742,7 +723,7 @@ class ConversationsView(QWidget):
         self.text_input.returnPressed.connect(self._handle_text_submit)
         
         return frame
-    
+
     # --------------------------------------------------------- #
     #  UI UPDATE RECEIVERS (The Magic Happens Here)             #
     # --------------------------------------------------------- #
@@ -771,9 +752,6 @@ class ConversationsView(QWidget):
         wrapper = MessageWrapper(bubble, is_user=True)
         self.transcript_layout.addWidget(wrapper)
         
-        # Initial width enforcement
-        wrapper._update_width()
-
         self._is_agent_typing = False
         self._scroll_to_bottom()
 
@@ -792,12 +770,19 @@ class ConversationsView(QWidget):
             self.transcript_layout.addWidget(header)
 
             self.agent_msg_container = QFrame()
-            self.agent_msg_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+            self.agent_msg_container.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Preferred,
+            )
             
             container_layout = QVBoxLayout(self.agent_msg_container)
             container_layout.setContentsMargins(0, 0, 0, 20)
 
             self.current_agent_msg = AgentMessageLabel()
+            self.current_agent_msg.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Preferred,
+            )
             self.current_agent_msg._assistant_turn_id = self._user_turn_id
             self.current_agent_msg.setTextInteractionFlags(
                 Qt.TextInteractionFlag.TextBrowserInteraction |
@@ -818,8 +803,6 @@ class ConversationsView(QWidget):
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self.transcript_layout.addWidget(wrapper)
             
-            wrapper._update_width()
-
             self._agent_text_buffer = ""
             self._is_agent_typing = True
 
@@ -1331,22 +1314,6 @@ class ConversationsView(QWidget):
     
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
-        from PyQt6.QtCore import QEvent, QTimer
-        
-        if obj == self.scroll_area and event.type() == QEvent.Type.Resize:
-            if hasattr(self, 'transcript_layout'):
-                max_w = int(self.scroll_area.viewport().width() * 0.8)
-                
-                # Because we removed wrappers, the items ARE the bubbles!
-                for i in range(self.transcript_layout.count()):
-                    widget = self.transcript_layout.itemAt(i).widget()
-                    if widget and widget.objectName() in ["UserBubble", "AgentBubble"]:
-                        widget.setMaximumWidth(max_w)
-
-            # Keep pinned to bottom after resize only if the user was already at the bottom (don't hijack readers).
-            was_at_bottom = self._is_transcript_scrolled_to_bottom()
-            QTimer.singleShot(0, lambda: self._scroll_to_bottom_after_resize(was_at_bottom))
-            
         return super().eventFilter(obj, event)
 
     def _is_transcript_scrolled_to_bottom(self) -> bool:
