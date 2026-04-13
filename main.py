@@ -28,6 +28,7 @@ from workers.internet_worker import InternetWorker
 import logging
 
 from core.logging_bootstrap import init_llm_debug_logging
+from core.tooltip_wrap import install_wrapping_tooltips
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -459,6 +460,7 @@ if __name__ == "__main__":
     )
 
     app = QApplication(sys.argv)
+    install_wrapping_tooltips(300)
     app.setWindowIcon(QIcon("assets/qube_logo_256.png"))
     apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER

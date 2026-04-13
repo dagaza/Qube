@@ -523,6 +523,9 @@ class MainWindow(QMainWindow):
     
     def _build_tools_pane(self) -> QFrame:
         """Global Right Sidebar: Restored 'Card' look with animated content."""
+        _TOOLS_MAIN_V_SPACING = 23
+        _TOOLS_INNER_V_SPACING = 8
+
         # 1. THE MAIN BAR (The container with the background/border)
         self.tools_frame = QFrame()
         self.tools_frame.setObjectName("ToolsPane") 
@@ -559,12 +562,12 @@ class MainWindow(QMainWindow):
         
         # 🔑 FIX: Named this 'main_layout' so your section code works
         main_layout = QVBoxLayout(self.tools_content)
-        main_layout.setContentsMargins(10, 20, 20, 20)
-        main_layout.setSpacing(25)
+        main_layout.setContentsMargins(10, 18, 20, 18)
+        main_layout.setSpacing(_TOOLS_MAIN_V_SPACING)
 
         # --- 0. LOCAL LLM (internal engine model picker) ---
         native_llm_layout = QVBoxLayout()
-        native_llm_layout.setSpacing(10)
+        native_llm_layout.setSpacing(_TOOLS_INNER_V_SPACING)
         llm_title = QLabel("LOCAL LLM")
         llm_title.setProperty("class", "ToolsPaneHeader")
         native_llm_layout.addWidget(llm_title)
@@ -607,7 +610,7 @@ class MainWindow(QMainWindow):
 
         # --- 1. AUDIO & TTS VOICE ---
         audio_tts_layout = QVBoxLayout()
-        audio_tts_layout.setSpacing(10)
+        audio_tts_layout.setSpacing(_TOOLS_INNER_V_SPACING)
         at_title = QLabel("Audio & TTS Voice")
         at_title.setProperty("class", "ToolsPaneHeader")
         audio_tts_layout.addWidget(at_title)
@@ -624,8 +627,8 @@ class MainWindow(QMainWindow):
 
         self.audio_extra_controls = QWidget()
         extra_layout = QVBoxLayout(self.audio_extra_controls)
-        extra_layout.setContentsMargins(10, 5, 0, 5)
-        extra_layout.setSpacing(12)
+        extra_layout.setContentsMargins(10, 4, 0, 4)
+        extra_layout.setSpacing(_TOOLS_INNER_V_SPACING)
 
         def create_mirrored_row(label_text, spinner):
             row = QHBoxLayout()
@@ -694,7 +697,7 @@ class MainWindow(QMainWindow):
 
         # --- 3. GENERATION PARAMETERS ---
         param_layout = QVBoxLayout()
-        param_layout.setSpacing(10)
+        param_layout.setSpacing(_TOOLS_INNER_V_SPACING)
         p_title = QLabel("GENERATION PARAMETERS")
         p_title.setProperty("class", "ToolsPaneHeader")
         param_layout.addWidget(p_title)
@@ -735,7 +738,7 @@ class MainWindow(QMainWindow):
 
         # --- 4. RAG ENGINE (Consolidated) ---
         rag_layout = QVBoxLayout()
-        rag_layout.setSpacing(12)
+        rag_layout.setSpacing(_TOOLS_INNER_V_SPACING)
         r_title = QLabel("RAG ENGINE")
         r_title.setProperty("class", "ToolsPaneHeader")
         rag_layout.addWidget(r_title)
@@ -784,7 +787,7 @@ class MainWindow(QMainWindow):
 
         # --- 5. MCP TOOLS ---
         tools_layout = QVBoxLayout()
-        tools_layout.setSpacing(12)
+        tools_layout.setSpacing(_TOOLS_INNER_V_SPACING)
         t_title = QLabel("MCP TOOLS")
         t_title.setProperty("class", "ToolsPaneHeader")
         tools_layout.addWidget(t_title)

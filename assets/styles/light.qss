@@ -23,7 +23,8 @@ QToolTip {
     border-radius: 4px;
     padding: 6px 10px;
     font-size: 11px;
-    font-weight: bold;
+    font-weight: normal;
+    max-width: 300px;
 }
 
 /* --- 1. GLOBAL SHELL (The Canvas vs. The Surface) --- */
