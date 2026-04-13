@@ -17,10 +17,11 @@ from PyQt6.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal, QEvent
 from PyQt6.QtGui import (
     QIcon,
     QColor,
+    QPalette,
     QPixmap,
     QPainter,
     QTextBlockFormat,
@@ -1071,3 +1072,37 @@ class LibraryView(QWidget):
 
         if hasattr(self, "text_preview"):
             self._apply_library_preview_readability()
+
+        self._apply_library_list_surface(is_dark)
+
+    def _apply_library_list_surface(self, is_dark: bool) -> None:
+        """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
+        bg = QColor("#232337" if is_dark else "#E9EFF5")
+        if hasattr(self, "list_pane"):
+            p = self.list_pane
+            p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            p.setAutoFillBackground(True)
+            pa = p.palette()
+            pa.setColor(QPalette.ColorRole.Window, bg)
+            p.setPalette(pa)
+        if not hasattr(self, "doc_list"):
+            return
+        w = self.doc_list
+        w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        w.setAutoFillBackground(True)
+        pal = w.palette()
+        pal.setColor(QPalette.ColorRole.Window, bg)
+        w.setPalette(pal)
+        vp = w.viewport()
+        if vp is not None:
+            vp.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            vp.setAutoFillBackground(True)
+            vpal = vp.palette()
+            vpal.setColor(QPalette.ColorRole.Window, bg)
+            vpal.setColor(QPalette.ColorRole.Base, bg)
+            vp.setPalette(vpal)
+
+    def showEvent(self, event: QEvent) -> None:
+        super().showEvent(event)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_library_list_surface(is_dark)

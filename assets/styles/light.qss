@@ -429,7 +429,13 @@ QLabel#AgentMessage {
     background-color: transparent;
 }
 /* --- UNIFIED LIST STYLING (LIGHT) --- */
-#HistoryList, #LibraryDocList, #ModelHubList {
+/* Conversations + Library sidebar lists only (Model Hub unchanged). */
+#HistoryList, #LibraryDocList {
+    background-color: #E9EFF5;
+    border: none;
+}
+
+#ModelHubList {
     background-color: transparent;
     border: none;
 }

@@ -25,6 +25,7 @@ from PyQt6.QtGui import (
     QTextCursor,
     QIcon,
     QColor,
+    QPalette,
     QPixmap,
     QPainter,
     QFont,
@@ -2058,11 +2059,41 @@ class ConversationsView(QWidget):
             self.font_minus_btn.setStyleSheet(font_btn_style)
             self.font_plus_btn.setStyleSheet(font_btn_style)
         self._apply_action_toggle_styles()
+        self._apply_history_list_surface(is_dark)
+
+    def _apply_history_list_surface(self, is_dark: bool) -> None:
+        """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
+        bg = QColor("#232337" if is_dark else "#E9EFF5")
+        if hasattr(self, "history_pane"):
+            p = self.history_pane
+            p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            p.setAutoFillBackground(True)
+            pa = p.palette()
+            pa.setColor(QPalette.ColorRole.Window, bg)
+            p.setPalette(pa)
+        if not hasattr(self, "history_list"):
+            return
+        w = self.history_list
+        w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        w.setAutoFillBackground(True)
+        pal = w.palette()
+        pal.setColor(QPalette.ColorRole.Window, bg)
+        w.setPalette(pal)
+        vp = w.viewport()
+        if vp is not None:
+            vp.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            vp.setAutoFillBackground(True)
+            vpal = vp.palette()
+            vpal.setColor(QPalette.ColorRole.Window, bg)
+            vpal.setColor(QPalette.ColorRole.Base, bg)
+            vp.setPalette(vpal)
 
     def showEvent(self, event: QEvent) -> None:
         """Re-sync Think toggle when returning to Conversations (e.g. model loaded on another screen)."""
         super().showEvent(event)
         self.refresh_think_toggle()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_history_list_surface(is_dark)
     
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
