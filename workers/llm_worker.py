@@ -99,6 +99,7 @@ class LLMWorker(QThread):
         self.mcp_rag_enabled = True
         self.mcp_strict_enabled = False
         self.mcp_internet_enabled = False
+        self._force_web_next_turn = False
 
         # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
         self._last_completed_llm_session_id = None
@@ -285,6 +286,10 @@ class LLMWorker(QThread):
     def generate_response(self, text: str, session_id: str):
         """Sets the parameters and starts the thread work."""
         if self.isRunning():
+            logger.warning(
+                "[LLM] Ignoring new generate_response while previous turn is active (session_id=%s).",
+                session_id,
+            )
             return
 
         self.prompt = text
@@ -349,6 +354,8 @@ class LLMWorker(QThread):
                 self.status_update.emit("Idle")
 
     def _execute_llm_turn(self) -> str:
+        force_web = bool(getattr(self, "_force_web_next_turn", False))
+        self._force_web_next_turn = False
         if self.session_id:
             self.db.add_message(self.session_id, "user", self.prompt)
 
@@ -396,7 +403,7 @@ class LLMWorker(QThread):
         auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
 
         # Final execution decision for WEB
-        if manual_web or auto_web:
+        if force_web or manual_web or auto_web:
             execution_route = "WEB"
 
         # ============================================================
@@ -445,7 +452,7 @@ class LLMWorker(QThread):
             all_ui_sources.extend(rag_result.get("sources", []))
 
         # ---- WEB + HYBRID ----
-        if execution_route in ["WEB", "INTERNET", "HYBRID"] and self.mcp_internet_enabled:
+        if execution_route in ["WEB", "INTERNET", "HYBRID"] and (self.mcp_internet_enabled or force_web):
             from mcp.internet_tool import search_internet
             self.status_update.emit("🌐 Searching the Web...")
             
@@ -830,6 +837,10 @@ class LLMWorker(QThread):
     def set_mcp_internet(self, enabled: bool):
         self.mcp_internet_enabled = enabled
 
+    def set_force_web_next_turn(self, enabled: bool) -> None:
+        """One-shot UI override for the next user prompt."""
+        self._force_web_next_turn = bool(enabled)
+
     def _close_active_stream(self):
         r = getattr(self, "_active_stream_response", None)
         if r is not None:
@@ -841,6 +852,11 @@ class LLMWorker(QThread):
 
     def cancel_generation(self):
         """Best-effort cancel: unblocks streaming reads; run() still finishes via finally."""
+        logger.info(
+            "[LLM] Cancel requested (engine_mode=%s, thread_running=%s).",
+            getattr(self, "engine_mode", "unknown"),
+            self.isRunning(),
+        )
         self._cancel_requested = True
         self._close_active_stream()
         if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
@@ -860,7 +876,7 @@ class LLMWorker(QThread):
             self.status_update.emit("Engine: External (localhost) — native model unloaded (VRAM released)")
         else:
             self.status_update.emit("Engine: Internal (native)")
-            self.refresh_native_model_from_settings()
+            # Do not auto-load here; startup/engine transitions decide this via settings.
 
     def refresh_native_model_from_settings(self) -> None:
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""

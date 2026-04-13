@@ -89,6 +89,7 @@ PyQt6==6.11.0
 PyQt6-Qt6==6.11.0
 PyQt6_sip==13.11.1
 pyqtgraph==0.14.0
+qtawesome
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 rdflib==7.6.0
@@ -121,8 +122,6 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.3
-transformers
-torch
 sentencepiece
 llama-cpp-python
 tantivy

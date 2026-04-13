@@ -113,6 +113,7 @@ class TTSWorker(QThread):
         super().__init__()
         self.sentence_queue = queue.Queue()
         self.audio = pyaudio.PyAudio()
+        self.pyaudio_instance = None
         self.stream = None
         self.active_adapter = None 
         self.active_voice_name = "Default"
@@ -127,6 +128,10 @@ class TTSWorker(QThread):
     # --- NEW: Mute Toggle Method ---
     def set_mute(self, muted: bool):
         self.is_muted = muted
+        logger.info("[TTS] Mute toggled -> %s", "ON" if muted else "OFF")
+        # If user disables voice while audio is in-flight, cut playback immediately.
+        if muted:
+            self.stop_playback()
         state = "Muted" if muted else "Active"
         self.status_update.emit(f"TTS Voice is now {state}")
 
@@ -194,6 +199,7 @@ class TTSWorker(QThread):
 
     def request_graceful_stop(self) -> None:
         """Unblocks run() so the thread can exit during app shutdown."""
+        logger.info("[TTS] Graceful stop requested.")
         try:
             self.sentence_queue.put_nowait(_TTS_SHUTDOWN)
         except Exception:
@@ -210,10 +216,12 @@ class TTSWorker(QThread):
                 item = self.sentence_queue.get()
 
                 if item is _TTS_SHUTDOWN:
+                    logger.info("[TTS] Shutdown sentinel received; exiting run loop.")
                     self.playback_finished.emit()
                     break
 
                 if item is _END_OF_LLM_TURN:
+                    logger.debug("[TTS] End-of-turn sentinel received.")
                     self.playback_finished.emit()
                     continue
 
@@ -227,6 +235,11 @@ class TTSWorker(QThread):
                 logger.info(f"[TTS] Preparing to speak: '{text[:40]}...'")
 
                 if getattr(self, 'is_muted', False) or not self.active_adapter:
+                    logger.info(
+                        "[TTS] Skipping speech (muted=%s, adapter_ready=%s).",
+                        bool(getattr(self, "is_muted", False)),
+                        bool(self.active_adapter),
+                    )
                     continue
 
                 if getattr(self, 'stream', None) is None:
@@ -278,7 +291,16 @@ class TTSWorker(QThread):
 
     def stop_playback(self):
         """Thread-safe kill switch. Empties queue and flags the loop to stop."""
-        logger.info("TTS Worker: Interruption received. Clearing queue.")
+        dropped = None
+        if hasattr(self, "sentence_queue"):
+            try:
+                dropped = self.sentence_queue.qsize()
+            except Exception:
+                dropped = None
+        logger.info(
+            "[TTS] Interruption received. Clearing queue (queued_items_before_clear=%s).",
+            dropped if dropped is not None else "unknown",
+        )
         self._interrupt_tts = True
 
         if hasattr(self, 'sentence_queue'):
@@ -294,3 +316,26 @@ class TTSWorker(QThread):
             pass
 
         # ❌ We DO NOT close PyAudio here! It causes Segfaults!
+
+    def close_audio_resources(self) -> None:
+        """Release audio handles only after playback loop has stopped."""
+        if self.stream is not None:
+            try:
+                self.stream.stop_stream()
+                self.stream.close()
+            except Exception:
+                pass
+            self.stream = None
+        if self.audio is not None:
+            try:
+                self.audio.terminate()
+            except Exception:
+                pass
+            self.audio = None
+        if self.pyaudio_instance is not None:
+            try:
+                self.pyaudio_instance.terminate()
+            except Exception:
+                pass
+            self.pyaudio_instance = None
+        logger.info("[TTS] Output audio resources closed.")

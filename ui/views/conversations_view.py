@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl
+import math
 import qtawesome as qta
 import logging
 from urllib.parse import unquote
@@ -349,6 +350,7 @@ class AgentMessageLabel(QTextBrowser):
         self.setTabChangesFocus(False)
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.setMinimumWidth(0)
         self.document().setDocumentMargin(4)
@@ -361,6 +363,13 @@ class AgentMessageLabel(QTextBrowser):
         self._citation_anchor_connected = False
         self._md_layout_source = ""
         self._agent_is_dark = True
+        self._doc_layout_connected = False
+        self._fixed_h = 0
+
+        doc_layout = self.document().documentLayout()
+        if doc_layout is not None and hasattr(doc_layout, "documentSizeChanged"):
+            doc_layout.documentSizeChanged.connect(self._on_document_size_changed)
+            self._doc_layout_connected = True
 
     def set_agent_markdown(self, markdown: str, *, is_dark: bool) -> None:
         self._agent_is_dark = is_dark
@@ -375,6 +384,7 @@ class AgentMessageLabel(QTextBrowser):
         if vw > 0:
             doc.setTextWidth(vw)
         self._cached_text = ""
+        self._sync_fixed_height()
         self.updateGeometry()
 
     def attach_citation_handling(self, conversations_view):
@@ -403,44 +413,35 @@ class AgentMessageLabel(QTextBrowser):
         self._cached_text = ""
         self._cached_ideal_width = 0
         self._md_layout_source = ""
+        if self._doc_layout_connected:
+            try:
+                self.document().documentLayout().documentSizeChanged.disconnect(
+                    self._on_document_size_changed
+                )
+            except TypeError:
+                pass
+            self._doc_layout_connected = False
         try:
             self.clear()
         except RuntimeError:
             pass
 
     def sizeHint(self):
-        from PyQt6.QtGui import QTextDocument
         from PyQt6.QtCore import QSize
 
         hint = super().sizeHint()
         layout_key = self._md_layout_source
         if layout_key != self._cached_text:
-            doc = QTextDocument()
-            doc.setDefaultFont(self.font())
-            doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
-            doc.setMarkdown(_qt_safe_markdown(layout_key or ""))
-            self._cached_ideal_width = int(doc.idealWidth()) + 15
+            self._cached_ideal_width = int(self.document().idealWidth()) + 15
             self._cached_text = layout_key
-        tw = max(min(self._cached_ideal_width, 2400), 100)
-        doc2 = QTextDocument()
-        doc2.setDefaultFont(self.font())
-        doc2.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
-        doc2.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
-        doc2.setTextWidth(tw)
-        h = int(doc2.size().height()) + 8
+        width = max(min(self._cached_ideal_width, 2400), 100)
+        h = self._compute_doc_height(width)
         return QSize(max(self._cached_ideal_width, hint.width()), max(h, hint.height()))
 
     def heightForWidth(self, w: int) -> int:
-        from PyQt6.QtGui import QTextDocument
-
         if w <= 0:
             return super().heightForWidth(w)
-        doc = QTextDocument()
-        doc.setDefaultFont(self.font())
-        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
-        doc.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
-        doc.setTextWidth(max(w - 12, 1))
-        return int(doc.size().height()) + 8
+        return self._compute_doc_height(w)
 
     def hasHeightForWidth(self) -> bool:
         return True
@@ -450,7 +451,48 @@ class AgentMessageLabel(QTextBrowser):
         vw = self.viewport().width()
         if vw > 0:
             self.document().setTextWidth(vw)
+        self._sync_fixed_height()
         self.updateGeometry()
+
+    def wheelEvent(self, event):
+        # Never let individual bubbles capture scrolling; route wheel to transcript scroller.
+        scroll_area = self._find_transcript_scroll_area()
+        if scroll_area is not None:
+            bar = scroll_area.verticalScrollBar()
+            dy = event.angleDelta().y()
+            if dy:
+                bar.setValue(bar.value() - dy)
+            event.accept()
+            return
+        super().wheelEvent(event)
+
+    def _compute_doc_height(self, width: int) -> int:
+        from PyQt6.QtGui import QTextDocument
+        doc = QTextDocument()
+        doc.setDefaultFont(self.font())
+        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(self._agent_is_dark))
+        doc.setMarkdown(_qt_safe_markdown(self._md_layout_source or ""))
+        # Match the QTextBrowser viewport width so final lines are not clipped.
+        doc.setTextWidth(max(width - 8, 1))
+        return int(math.ceil(doc.size().height())) + 16
+
+    def _on_document_size_changed(self, _size) -> None:
+        self._sync_fixed_height()
+
+    def _sync_fixed_height(self) -> None:
+        w = max(self.viewport().width(), self.width(), 1)
+        h = self._compute_doc_height(w)
+        if h != self._fixed_h:
+            self._fixed_h = h
+            self.setFixedHeight(h)
+
+    def _find_transcript_scroll_area(self):
+        p = self.parentWidget()
+        while p is not None:
+            if isinstance(p, QScrollArea) and p.objectName() == "ChatScrollArea":
+                return p
+            p = p.parentWidget()
+        return None
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -528,6 +570,10 @@ class ConversationsView(QWidget):
         self.tts = workers.get("tts")
         self._pending_citation_sources = None
         self._user_turn_id = 0
+        self._stop_requested_callback = None
+        self._llm_in_progress = False
+        self._awaiting_tts_end = False
+        self._tts_playing = False
 
         self._setup_ui()
         self._start_new_chat()
@@ -635,12 +681,18 @@ class ConversationsView(QWidget):
         self.scroll_area.setWidget(self.transcript_container)
         layout.addWidget(self.scroll_area)
 
-        # 2. Input Bar Area
-        input_container = QFrame()
-        input_container.setObjectName("ChatInputContainer")
-        input_layout = QHBoxLayout(input_container)
-        input_layout.setContentsMargins(10, 5, 5, 5)
-        input_layout.setSpacing(8)
+        # 2. Per-message action bar
+        action_layout = QHBoxLayout()
+        action_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.setSpacing(8)
+        action_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.web_btn = QPushButton("Web")
+        self.web_btn.setCheckable(True)
+        self.web_btn.setProperty("class", "ThinkToggleButton")
+        self.web_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.web_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.web_btn.toggled.connect(self._apply_action_toggle_styles)
 
         self.think_btn = QPushButton("Think")
         self.think_btn.setCheckable(True)
@@ -648,6 +700,17 @@ class ConversationsView(QWidget):
         self.think_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.think_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.think_btn.toggled.connect(self._on_think_toggled)
+
+        action_layout.addWidget(self.web_btn)
+        action_layout.addWidget(self.think_btn)
+        layout.addLayout(action_layout)
+
+        # 3. Input Bar Area
+        input_container = QFrame()
+        input_container.setObjectName("ChatInputContainer")
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(10, 5, 5, 5)
+        input_layout.setSpacing(8)
 
         self.text_input = QLineEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
@@ -658,12 +721,11 @@ class ConversationsView(QWidget):
         self.send_btn.setFixedSize(35, 35)
         self.send_btn.setProperty("class", "SendButton")
 
-        input_layout.addWidget(self.think_btn)
         input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
         layout.addWidget(input_container)
 
-        # 3. Latency Metrics Footer
+        # 4. Latency Metrics Footer
         latency_layout = QHBoxLayout()
         self.stt_latency_lbl = QLabel("STT: -- ms")
         self.ttft_latency_lbl = QLabel("TTFT: -- ms")
@@ -676,7 +738,7 @@ class ConversationsView(QWidget):
         latency_layout.addStretch()
         layout.addLayout(latency_layout)
 
-        self.send_btn.clicked.connect(self._handle_text_submit)
+        self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.returnPressed.connect(self._handle_text_submit)
         
         return frame
@@ -827,10 +889,17 @@ class ConversationsView(QWidget):
     # --------------------------------------------------------- #
 
     def _handle_text_submit(self):
+        if self._is_stop_mode():
+            self._request_stop()
+            return
         text = self.text_input.text().strip()
         if not text: return
         self.text_input.clear()
+        self._llm_in_progress = True
+        self._awaiting_tts_end = False
+        self._tts_playing = False
         self.set_input_enabled(False)
+        self._refresh_send_stop_button()
 
         self.log_user_message(text)
 
@@ -842,6 +911,12 @@ class ConversationsView(QWidget):
                 self.active_session_id = self.db.create_session("Text Conversation")
 
         if self.llm:
+            force_web = bool(hasattr(self, "web_btn") and self.web_btn.isChecked())
+            if hasattr(self.llm, "set_force_web_next_turn"):
+                self.llm.set_force_web_next_turn(force_web)
+            if force_web:
+                # Applies to upcoming query only.
+                self.web_btn.setChecked(False)
             self.llm.generate_response(text, self.active_session_id)
 
     def update_stt_latency(self, ms: float) -> None:
@@ -1165,6 +1240,7 @@ class ConversationsView(QWidget):
         eff_on = bool((snap or {}).get("ui_display_thinking", False))
         self.think_btn.blockSignals(True)
         try:
+            self.think_btn.setVisible(capable)
             self.think_btn.setEnabled(capable)
             if capable:
                 self.think_btn.setChecked(bool(eff_on))
@@ -1172,52 +1248,44 @@ class ConversationsView(QWidget):
                 self.think_btn.setChecked(False)
         finally:
             self.think_btn.blockSignals(False)
-        self._apply_think_button_style()
+        self._apply_action_toggle_styles()
 
-    def _apply_think_button_style(self) -> None:
-        """Green label when reasoning display is on; muted gray when off; dimmed when N/A."""
-        if not hasattr(self, "think_btn"):
-            return
+    def _apply_action_toggle_styles(self) -> None:
+        """Render Web/Think toggle buttons with active/inactive styles."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        green_on = "#a6e3a1"
-        off_dark = "#a6adc8"
-        off_light = "#4c4f69"
-        disabled_dark = "#6c7086"
-        disabled_light = "#9ca0b0"
-        hover = "rgba(255, 255, 255, 0.07)" if is_dark else "rgba(0, 0, 0, 0.06)"
-        if not self.think_btn.isEnabled():
-            c = disabled_dark if is_dark else disabled_light
-            self.think_btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    color: {c};
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    padding: 6px 10px;
-                }}
-                QPushButton:disabled {{
-                    color: {c};
-                }}
-                """
-            )
+        self._apply_toggle_button_style(
+            self.web_btn if hasattr(self, "web_btn") else None,
+            is_dark=is_dark,
+            active_bg=("#89b4fa" if is_dark else "#1d4ed8"),
+        )
+        self._apply_toggle_button_style(
+            self.think_btn if hasattr(self, "think_btn") else None,
+            is_dark=is_dark,
+            active_bg=("#a6e3a1" if is_dark else "#40a02b"),
+        )
+
+    def _apply_toggle_button_style(self, btn, *, is_dark: bool, active_bg: str) -> None:
+        if btn is None:
             return
-        if self.think_btn.isChecked():
-            c = green_on
+        if btn.isChecked():
+            fg = "#11111b" if is_dark else "#ffffff"
+            bg = active_bg
+            border = bg
         else:
-            c = off_dark if is_dark else off_light
-        self.think_btn.setStyleSheet(
+            fg = "#cdd6f4" if is_dark else "#1e293b"
+            bg = "rgba(255, 255, 255, 0.05)" if is_dark else "rgba(0, 0, 0, 0.04)"
+            border = "#6c7086" if is_dark else "#cbd5e1"
+        hover = "rgba(255, 255, 255, 0.1)" if is_dark else "rgba(0, 0, 0, 0.08)"
+        btn.setStyleSheet(
             f"""
             QPushButton {{
-                color: {c};
-                background: transparent;
-                border: none;
+                color: {fg};
+                background: {bg};
+                border: 1px solid {border};
                 border-radius: 8px;
                 font-size: 12px;
                 font-weight: 600;
-                padding: 6px 10px;
+                padding: 6px 12px;
             }}
             QPushButton:hover {{
                 background-color: {hover};
@@ -1243,14 +1311,18 @@ class ConversationsView(QWidget):
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
             
-        # 2. Update Send Button (Paper Plane)
+        # 2. Update Send / Stop button icon + style
         if hasattr(self, 'send_btn'):
-            self.send_btn.setIcon(qta.icon('fa5s.paper-plane', color=icon_color))
+            icon_name = 'fa5s.stop' if self._is_stop_mode() else 'fa5s.paper-plane'
+            icon_color = "#f38ba8" if self._is_stop_mode() and is_dark else icon_color
+            if self._is_stop_mode() and not is_dark:
+                icon_color = "#dc2626"
+            self.send_btn.setIcon(qta.icon(icon_name, color=icon_color))
             self.send_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
-        self._apply_think_button_style()
+        self._apply_action_toggle_styles()
 
     def showEvent(self, event: QEvent) -> None:
         """Re-sync Think toggle when returning to Conversations (e.g. model loaded on another screen)."""
@@ -1384,7 +1456,8 @@ class ConversationsView(QWidget):
         """Locks the text input bar and resets its placeholder."""
         if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
             self.text_input.setEnabled(enabled)
-            self.send_btn.setEnabled(enabled)
+            # Keep stop clickable while text input is disabled.
+            self.send_btn.setEnabled(True)
             
             if enabled:
                 # 🔑 RESET: Back to normal
@@ -1393,6 +1466,7 @@ class ConversationsView(QWidget):
             else:
                 # 🔑 DEFAULT LOCK: We will update this dynamically in a millisecond
                 self.text_input.setPlaceholderText("Qube is thinking...")
+        self._refresh_send_stop_button()
 
     # 🔑 NEW: A dynamic receiver to update the text box live
     def update_action_placeholder(self, status: str):
@@ -1401,3 +1475,66 @@ class ConversationsView(QWidget):
             # Just clean up the string to sound natural (add an ellipsis if missing)
             display_text = status if "..." in status else f"{status}..."
             self.text_input.setPlaceholderText(display_text)
+
+    def set_stop_requested_callback(self, callback) -> None:
+        self._stop_requested_callback = callback
+
+    def on_llm_response_finished(self) -> None:
+        self._llm_in_progress = False
+        tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
+        self._awaiting_tts_end = tts_enabled
+        logger.info(
+            "[ChatUI] LLM finished; stop_mode transitions to await_tts=%s.",
+            tts_enabled,
+        )
+        if not tts_enabled:
+            self.set_input_enabled(True)
+        self._refresh_send_stop_button()
+
+    def on_tts_playback_started(self, _session_id: str = "") -> None:
+        self._tts_playing = True
+        self._awaiting_tts_end = True
+        logger.info("[ChatUI] TTS playback started; keep Stop button active.")
+        self._refresh_send_stop_button()
+
+    def on_tts_playback_finished(self) -> None:
+        self._tts_playing = False
+        self._awaiting_tts_end = False
+        logger.info("[ChatUI] TTS playback finished; restoring send mode if LLM is idle.")
+        if not self._llm_in_progress:
+            self.set_input_enabled(True)
+        self._refresh_send_stop_button()
+
+    def on_generation_stopped(self) -> None:
+        logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")
+        self._llm_in_progress = False
+        self._awaiting_tts_end = False
+        self._tts_playing = False
+        self.set_input_enabled(True)
+        self.clear_stale_agent_pointer()
+        self._refresh_send_stop_button()
+
+    def _is_stop_mode(self) -> bool:
+        return self._llm_in_progress or self._awaiting_tts_end or self._tts_playing
+
+    def _refresh_send_stop_button(self) -> None:
+        is_dark = getattr(self.window(), '_is_dark_theme', True)
+        self.refresh_button_themes(is_dark)
+
+    def _handle_send_or_stop(self) -> None:
+        if self._is_stop_mode():
+            self._request_stop()
+            return
+        self._handle_text_submit()
+
+    def _request_stop(self) -> None:
+        logger.info("[ChatUI] Stop button pressed by user.")
+        cb = self._stop_requested_callback
+        if callable(cb):
+            cb()
+        else:
+            if self.llm and self.llm.isRunning():
+                self.llm.cancel_generation()
+            if self.tts and self.tts.isRunning():
+                self.tts.stop_playback()
+            self.on_generation_stopped()

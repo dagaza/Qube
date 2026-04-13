@@ -1,0 +1,18 @@
+{
+  "report_name": "cursorrules_treemap_diff",
+  "root": "/home/personax404/Documents/Git_Repo_Clones/Qube",
+  "source": "/home/personax404/Documents/Git_Repo_Clones/Qube/.cursorrules",
+  "summary": {
+    "total_entries": 86,
+    "ok_count": 85,
+    "missing_count": 1,
+    "type_mismatch_count": 0
+  },
+  "missing": [
+    {
+      "path": "assets/sounds",
+      "declared_type": "dir"
+    }
+  ],
+  "type_mismatch": []
+}

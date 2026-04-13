@@ -388,3 +388,26 @@ class AudioListenerWorker(QThread):
                                 break
             except Exception as e:
                 logger.error("CRITICAL: Inference engine crashed during predict()!", exc_info=True)
+
+    def _close_audio_resources(self) -> None:
+        if self.stream is not None:
+            try:
+                self.stream.stop_stream()
+                self.stream.close()
+            except Exception:
+                pass
+            self.stream = None
+        if self.audio is not None:
+            try:
+                self.audio.terminate()
+            except Exception:
+                pass
+            self.audio = None
+        logger.info("[Audio] Input audio resources closed.")
+
+    def stop(self):
+        """Cooperative stop for shutdown; releases native audio handles."""
+        logger.info("[Audio] Stop requested.")
+        self.running = False
+        self.is_paused = True
+        self._close_audio_resources()

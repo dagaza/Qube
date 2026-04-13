@@ -13,6 +13,7 @@ _KEY_INTERNAL_MODEL_PATH = "internal_model_path"
 _KEY_INTERNAL_N_GPU_LAYERS = "internal_n_gpu_layers"
 _KEY_INTERNAL_N_THREADS = "internal_n_threads"
 _KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
+_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
 _KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
 
@@ -144,6 +145,20 @@ def get_llm_models_dir() -> str:
 def set_llm_models_dir(path: str) -> None:
     s = _settings()
     s.setValue(_KEY_LLM_MODELS_DIR, str(path or ""))
+    s.sync()
+
+
+def get_auto_load_last_model_on_startup() -> bool:
+    """When True, auto-load the saved internal model path at startup / when entering internal mode."""
+    v = _settings().value(_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP, False, type=bool)
+    if isinstance(v, str):
+        return v.lower() in ("true", "1", "yes")
+    return bool(v)
+
+
+def set_auto_load_last_model_on_startup(enabled: bool) -> None:
+    s = _settings()
+    s.setValue(_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP, bool(enabled))
     s.sync()
 
 

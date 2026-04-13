@@ -121,6 +121,9 @@ class LibraryView(QWidget):
 
         # Header Area for Preview
         header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
+        header_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.doc_title = QLabel("No Document Selected")
         self.doc_title.setObjectName("PreviewDocTitle")
         
@@ -137,12 +140,17 @@ class LibraryView(QWidget):
         self.doc_stats.setMinimumWidth(0)
         self.doc_stats.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        title_vbox = QVBoxLayout()
+        title_host = QWidget()
+        title_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        title_host.setMinimumWidth(0)
+        title_vbox = QVBoxLayout(title_host)
+        title_vbox.setContentsMargins(0, 0, 0, 0)
+        title_vbox.setSpacing(4)
         title_vbox.addWidget(self.doc_title)
         title_vbox.addWidget(self.doc_stats)
         
-        header_layout.addLayout(title_vbox)
-        header_layout.addStretch()
+        # Give the title block full header width so wrapping only occurs at real stage boundaries.
+        header_layout.addWidget(title_host, 1)
         layout.addLayout(header_layout)
 
         # Reconstructed Text Area

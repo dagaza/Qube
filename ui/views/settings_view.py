@@ -25,6 +25,8 @@ from core.app_settings import (
     get_llm_models_dir,
     get_internal_native_chat_format,
     set_internal_native_chat_format,
+    get_auto_load_last_model_on_startup,
+    set_auto_load_last_model_on_startup,
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
@@ -33,6 +35,26 @@ from ui.components.prestige_dialog import PrestigeDialog
 
 
 logger = logging.getLogger("Qube.UI.Settings")
+
+
+class NoScrollSpinBox(QSpinBox):
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class NoScrollDoubleSpinBox(QDoubleSpinBox):
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class NoScrollComboBox(QComboBox):
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class NoScrollSlider(QSlider):
+    def wheelEvent(self, event):
+        event.ignore()
 
 
 class SettingsView(QWidget):
@@ -101,20 +123,22 @@ class SettingsView(QWidget):
             btn.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
             btn.setMenu(QMenu(btn))
 
-        self.timeout_spinner = QDoubleSpinBox()
+        self.timeout_spinner = NoScrollDoubleSpinBox()
         self.timeout_spinner.setFixedWidth(90)
         self.timeout_spinner.setRange(0.5, 5.0)
         self.timeout_spinner.setSingleStep(0.1)
         self.timeout_spinner.setValue(self.audio_worker.silence_timeout if self.audio_worker else 2.0)
         self.timeout_spinner.setSuffix(" sec")
+        self.timeout_spinner.setToolTip("The amount of silence (in seconds) the app waits before deciding you have finished speaking. Lower values make the app respond faster, but it might interrupt you if you pause to think.")
         if self.audio_worker:
             self.timeout_spinner.valueChanged.connect(self.audio_worker.set_silence_timeout)
 
-        self.threshold_spinner = QSpinBox()
+        self.threshold_spinner = NoScrollSpinBox()
         self.threshold_spinner.setFixedWidth(90)
         self.threshold_spinner.setRange(1, 100)
         self.threshold_spinner.setValue(int(self.audio_worker.speech_threshold) if self.audio_worker else 2)
         self.threshold_spinner.setSuffix("%")
+        self.threshold_spinner.setToolTip("How loud your voice needs to be to trigger the microphone. Increase this if background noise is accidentally triggering the app; decrease it if the app is missing your quiet speech.")
         if self.audio_worker:
             self.threshold_spinner.valueChanged.connect(self.audio_worker.set_speech_threshold)
 
@@ -174,7 +198,7 @@ class SettingsView(QWidget):
         gpu_layers_row_layout.setContentsMargins(0, 0, 0, 0)
         gpu_layers_row_layout.setSpacing(12)
 
-        self.gpu_layers_slider = QSlider(Qt.Orientation.Horizontal)
+        self.gpu_layers_slider = NoScrollSlider(Qt.Orientation.Horizontal)
         self.gpu_layers_slider.setMinimum(0)
         self.gpu_layers_slider.setMaximum(self._gpu_layers_cap)
         self.gpu_layers_slider.setSingleStep(1)
@@ -189,14 +213,10 @@ class SettingsView(QWidget):
         self.gpu_layers_value_lbl.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        _gpu_tip = (
-            "How many transformer layers of the built-in llama.cpp model run on the GPU. "
-            "Higher values can be faster but use more video memory; 0 runs the model on the CPU only. "
-            f"The maximum ({self._gpu_layers_cap} layers) is capped from your detected GPU memory. "
-            "On first launch, the default is about 75% of that cap to leave headroom for the system."
-        )
+        _gpu_tip = "The number of AI 'brain layers' loaded into your graphics card (GPU). More layers make the AI generate text much faster, but setting this too high may use up all your video memory and cause crashes."
         self.gpu_layers_slider.setToolTip(_gpu_tip)
         self.gpu_layers_value_lbl.setToolTip(_gpu_tip)
+        gpu_layers_row.setToolTip(_gpu_tip)
 
         self.gpu_layers_slider.valueChanged.connect(self._on_gpu_layers_slider_changed)
 
@@ -209,7 +229,7 @@ class SettingsView(QWidget):
         cpu_threads_row_layout.setContentsMargins(0, 0, 0, 0)
         cpu_threads_row_layout.setSpacing(12)
 
-        self.cpu_threads_slider = QSlider(Qt.Orientation.Horizontal)
+        self.cpu_threads_slider = NoScrollSlider(Qt.Orientation.Horizontal)
         self.cpu_threads_slider.setMinimum(1)
         self.cpu_threads_slider.setMaximum(self._cpu_threads_max)
         self.cpu_threads_slider.setSingleStep(1)
@@ -224,41 +244,39 @@ class SettingsView(QWidget):
         self.cpu_threads_value_lbl.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        _cpu_tip = (
-            "Number of CPU threads llama.cpp uses for the internal engine (matrix ops, batch decode). "
-            "Higher can speed up CPU-bound work; lower leaves more cores free for the OS and other apps. "
-            f"Range 1–{self._cpu_threads_max} (logical cores). Defaults reserve ~25% of hardware for background tasks."
-        )
+        _cpu_tip = "How many processor cores the AI is allowed to use. Setting this close to your computer's total cores speeds up generation, but might slow down other applications running in the background."
         self.cpu_threads_slider.setToolTip(_cpu_tip)
         self.cpu_threads_value_lbl.setToolTip(_cpu_tip)
+        cpu_threads_row.setToolTip(_cpu_tip)
 
         self.cpu_threads_slider.valueChanged.connect(self._on_cpu_threads_slider_changed)
 
         cpu_threads_row_layout.addWidget(self.cpu_threads_slider, stretch=1)
         cpu_threads_row_layout.addWidget(self.cpu_threads_value_lbl)
 
-        self.native_chat_format_combo = QComboBox()
-        self.native_chat_format_combo.setMinimumWidth(240)
-        for label, data in [
+        self.native_chat_format_selector = QPushButton("Select chat template...")
+        self.native_chat_format_selector.setObjectName("SettingsMenuButton")
+        self.native_chat_format_selector.setMaximumWidth(350)
+        self.native_chat_format_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.native_chat_format_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
+        self.native_chat_format_selector.setMenu(QMenu(self.native_chat_format_selector))
+        self.native_chat_format_selector.setToolTip("The specific conversational format this AI model was trained on. If the native engine is hallucinating or talking to itself, changing this to match the model's family (e.g., Llama 3, ChatML) usually fixes it.")
+        _chat_format_items = [
             ("Auto (GGUF / library default)", "auto"),
             ("GGUF Jinja (tokenizer.chat_template)", "jinja"),
             ("ChatML", "chatml"),
             ("Llama 3 Instruct", "llama-3"),
             ("Mistral / Mixtral Instruct", "mistral"),
             ("Llama 2 Chat", "llama-2"),
-        ]:
-            self.native_chat_format_combo.addItem(label, data)
+        ]
+        self._build_prestige_menu(
+            self.native_chat_format_selector,
+            _chat_format_items,
+            self._on_native_chat_format_changed,
+        )
         _fmt = get_internal_native_chat_format()
-        _fmt_idx = self.native_chat_format_combo.findData(_fmt)
-        self.native_chat_format_combo.setCurrentIndex(_fmt_idx if _fmt_idx >= 0 else 0)
-        self.native_chat_format_combo.currentIndexChanged.connect(
-            self._on_native_chat_format_changed
-        )
-        self.native_chat_format_combo.setToolTip(
-            "How OpenAI-style system/user/assistant messages are formatted for the built-in llama.cpp engine. "
-            "Use Auto for typical GGUF files. If the model ignores Qube's instructions or answers like raw text, "
-            "pick the template that matches the model family (or GGUF Jinja when the file embeds tokenizer.chat_template)."
-        )
+        _fmt_label = next((label for label, data in _chat_format_items if data == _fmt), _chat_format_items[0][0])
+        self.native_chat_format_selector.setText(_fmt_label)
 
         self.models_dir_label = QLabel()
         self.models_dir_label.setWordWrap(True)
@@ -284,12 +302,31 @@ class SettingsView(QWidget):
 
         native_form.addRow("GPU offload layers", gpu_layers_row)
         native_form.addRow("CPU thread pool", cpu_threads_row)
-        native_form.addRow("Chat template (internal)", self.native_chat_format_combo)
+        native_form.addRow("Chat template (internal)", self.native_chat_format_selector)
         native_form.addRow("Model storage", self.models_dir_label)
         native_form.addRow("On this device", local_row)
         native_form.addRow("Active model", self.active_native_model_lbl)
 
         content_layout.addWidget(native_widget)
+        content_layout.addWidget(self._build_divider())
+
+        # --- STARTUP BEHAVIOR ---
+        content_layout.addWidget(self._build_section_header("fa5s.power-off", "STARTUP BEHAVIOR"))
+        startup_widget = QWidget()
+        startup_widget.setObjectName("SettingsFormContainer")
+        startup_form = QFormLayout(startup_widget)
+        startup_form.setSpacing(15)
+        startup_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.auto_load_last_model_cb = QCheckBox("Load last used model on startup")
+        self.auto_load_last_model_cb.setToolTip(
+            "Automatically loads the last used model at startup. This may significantly increase application startup time depending on the model size and your hardware."
+        )
+        self.auto_load_last_model_cb.setChecked(get_auto_load_last_model_on_startup())
+        self.auto_load_last_model_cb.toggled.connect(set_auto_load_last_model_on_startup)
+        startup_form.addRow("", self.auto_load_last_model_cb)
+
+        content_layout.addWidget(startup_widget)
         content_layout.addWidget(self._build_divider())
 
         # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
@@ -386,8 +423,8 @@ class SettingsView(QWidget):
         """
         self.timeout_spinner.setStyleSheet(style)
         self.threshold_spinner.setStyleSheet(style)
-        if hasattr(self, "native_chat_format_combo"):
-            self.native_chat_format_combo.setStyleSheet(style)
+        if hasattr(self, "native_chat_format_selector"):
+            self._apply_settings_menu_button_chevron_state(self.native_chat_format_selector)
         if hasattr(self, "gpu_layers_slider"):
             handle = "#8b5cf6" if is_dark else "#7c3aed"
             slider_css = f"""
@@ -423,6 +460,8 @@ class SettingsView(QWidget):
                 )
         self.pin_audio_cb.setStyleSheet(style)
         self.auto_activator_cb.setStyleSheet(style)
+        if hasattr(self, "auto_load_last_model_cb"):
+            self.auto_load_last_model_cb.setStyleSheet(style)
         if hasattr(self, 'mem_enrichment_label'):
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         
@@ -497,12 +536,9 @@ class SettingsView(QWidget):
         if llm and getattr(llm, "engine_mode", "external") == "internal":
             llm.refresh_native_model_from_settings()
 
-    def _on_native_chat_format_changed(self, _idx: int = 0) -> None:
-        if not hasattr(self, "native_chat_format_combo"):
-            return
-        data = self.native_chat_format_combo.currentData()
-        if data is not None:
-            set_internal_native_chat_format(str(data))
+    def _on_native_chat_format_changed(self, mode: str) -> None:
+        if mode is not None:
+            set_internal_native_chat_format(str(mode))
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", "external") == "internal":
             llm.refresh_native_model_from_settings()
@@ -842,6 +878,7 @@ class SettingsView(QWidget):
             self.engine_selector,
             self.provider_selector,
             self.voice_selector,
+            self.native_chat_format_selector,
         ]
         for btn in buttons:
             if btn.menu():

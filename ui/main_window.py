@@ -734,16 +734,10 @@ class MainWindow(QMainWindow):
         t_title.setProperty("class", "ToolsPaneHeader")
         tools_layout.addWidget(t_title)
 
-        # 🔑 FIX: Define the tooltip text and pass it as the second argument
-        desc_web = "Internet Agent: Allows Qube to search the live web (via DuckDuckGo) for real-time information."
-        web_row, self.tool_internet_toggle = create_toggle_row("Internet Search", desc_web)
-
         # 🔑 NEW: Cognitive/Hybrid Internet Mode
         desc_hybrid = "Hybrid Mode: Let Qube automatically decide when to search the internet based on context and cognitive routing."
         hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row("Hybrid Internet Mode", desc_hybrid, checked=False)
         tools_layout.addLayout(hybrid_row)
-        
-        tools_layout.addLayout(web_row)
         main_layout.addLayout(tools_layout)
         outer_layout.addWidget(self.tools_content)
         # --------------------------------------------------------- #
@@ -778,15 +772,14 @@ class MainWindow(QMainWindow):
             # 🔑 THE NEW AUTO-ACTIVATOR WIRE
             self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
 
-            # Manual Internet Toggle (already present)
-            self.tool_internet_toggle.toggled.connect(self._llm_worker.set_mcp_internet)
-
-            # 🔑 NEW: Hybrid toggle
+            # Hybrid toggle now controls both base internet capability and hybrid routing.
             def on_hybrid_toggled(checked: bool):
-                # Keep the manual toggle independent
+                self._llm_worker.set_mcp_internet(checked)
                 self._llm_worker.USE_COGNITIVE_ROUTER_INTERNET = checked
 
             self.tool_internet_hybrid_toggle.toggled.connect(on_hybrid_toggled)
+            # Seed worker state from the current toggle value.
+            on_hybrid_toggled(self.tool_internet_hybrid_toggle.isChecked())
 
         main_layout.addStretch()
         
@@ -873,7 +866,7 @@ class MainWindow(QMainWindow):
                 cap_btn = max(100, self.tools_content.width() - 56)
 
             if not ggufs:
-                btn.setText("(Download a model first)")
+                btn.setText("Select AI Model")
                 btn.setMenu(None)
                 return
 
@@ -893,24 +886,19 @@ class MainWindow(QMainWindow):
 
             self._build_prestige_menu(btn, items, on_pick)
 
-            current = get_internal_model_path()
+            snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
+            loaded = bool((snap or {}).get("loaded"))
+            loaded_name = str((snap or {}).get("model_basename") or "").strip()
             matched: Path | None = None
-            if current:
-                try:
-                    cur = Path(current).expanduser()
-                    for p in ggufs:
-                        if p.resolve() == cur.resolve():
-                            matched = p
-                            break
-                except OSError:
-                    matched = None
+            if loaded and loaded_name:
+                matched = next((p for p in ggufs if p.name == loaded_name), None)
 
-            if matched is not None:
+            if loaded and matched is not None:
                 btn.setText(
                     fm.elidedText(matched.name, Qt.TextElideMode.ElideMiddle, cap_btn)
                 )
             else:
-                btn.setText(fm.elidedText("Select a model", Qt.TextElideMode.ElideMiddle, cap_btn))
+                btn.setText(fm.elidedText("Select AI Model", Qt.TextElideMode.ElideMiddle, cap_btn))
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
 

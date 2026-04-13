@@ -16,7 +16,12 @@ from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
-from core.app_settings import get_enable_memory_enrichment, get_engine_mode
+from core.app_settings import (
+    get_enable_memory_enrichment,
+    get_engine_mode,
+    get_auto_load_last_model_on_startup,
+    get_internal_model_path,
+)
 from workers.enrichment_worker import EnrichmentWorker
 from workers.internet_worker import InternetWorker
 
@@ -99,7 +104,11 @@ class Qube:
         self._connect_signals()
         self._sync_databases()
 
-        if get_engine_mode() == "internal":
+        if (
+            get_engine_mode() == "internal"
+            and get_auto_load_last_model_on_startup()
+            and bool(get_internal_model_path())
+        ):
             self.llm_worker.refresh_native_model_from_settings()
 
         # -- 7. Start continuous processes --------------------------------
@@ -124,6 +133,8 @@ class Qube:
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
         self.tts_worker.playback_finished.connect(self._handle_tts_finished)
+        self.tts_worker.playback_started.connect(w.conversations_view.on_tts_playback_started)
+        self.tts_worker.playback_finished.connect(w.conversations_view.on_tts_playback_finished)
 
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
@@ -150,6 +161,7 @@ class Qube:
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
         self.llm_worker.response_finished.connect(self._on_llm_response_finished)
+        w.conversations_view.set_stop_requested_callback(self.stop_active_response)
 
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
@@ -175,8 +187,13 @@ class Qube:
 
     def _on_llm_response_finished(self, session_id: str, text: str) -> None:
         """Unlock chat, queue memory extraction, and mark end of LLM turn for TTS (sentinel)."""
+        logger.info(
+            "[Main] LLM turn finished (session_id=%s, chars=%d).",
+            session_id,
+            len(text or ""),
+        )
         if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.set_input_enabled(True)
+            self.window.conversations_view.on_llm_response_finished()
         if hasattr(self, 'enrichment_worker'):
             self.enrichment_worker.enqueue(session_id)
         if hasattr(self, 'tts_worker'):
@@ -206,12 +223,27 @@ class Qube:
             
         if hasattr(self, 'window'):
             self.window.update_status("LISTENING...")
-            # 🔑 FIX: Instantly unlock the UI if the user interrupts
-            self.window.conversations_view.set_input_enabled(True)
-            if hasattr(self.window.conversations_view, "clear_stale_agent_pointer"):
-                self.window.conversations_view.clear_stale_agent_pointer()
+            if hasattr(self.window.conversations_view, "on_generation_stopped"):
+                self.window.conversations_view.on_generation_stopped()
+            else:
+                # Backward-safe fallback
+                self.window.conversations_view.set_input_enabled(True)
+                if hasattr(self.window.conversations_view, "clear_stale_agent_pointer"):
+                    self.window.conversations_view.clear_stale_agent_pointer()
 
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
+
+    def stop_active_response(self):
+        """Manual UI stop: immediately cancel LLM + TTS and unlock text input."""
+        logger.info("[Main] Manual Stop requested from chat UI.")
+        if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
+            self.llm_worker.cancel_generation()
+        if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
+            self.tts_worker.stop_playback()
+        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
+            self.window.conversations_view.on_generation_stopped()
+        if hasattr(self, 'window'):
+            self.window.update_status("Idle")
     
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""
@@ -318,6 +350,12 @@ class Qube:
         """Switch between localhost OpenAI server and in-process llama.cpp."""
         if hasattr(self, "llm_worker"):
             self.llm_worker.set_engine_mode(str(mode))
+            if (
+                str(mode).lower().strip() == "internal"
+                and get_auto_load_last_model_on_startup()
+                and bool(get_internal_model_path())
+            ):
+                self.llm_worker.refresh_native_model_from_settings()
         self._refresh_conversations_think_toggle()
 
     def _on_native_model_load_finished(self, ok: bool, message: str) -> None:
@@ -365,7 +403,16 @@ class Qube:
             self.enrichment_worker.wait(2000)
 
         if hasattr(self, 'tts_worker'):
+            # Cut any in-flight audio first, then request cooperative thread exit.
+            self.tts_worker.stop_playback()
             self.tts_worker.request_graceful_stop()
+            tts_exited = self.tts_worker.wait(2000)
+            if not tts_exited:
+                logger.warning("[Shutdown] TTS worker did not exit within timeout.")
+            else:
+                logger.info("[Shutdown] TTS worker exited cleanly.")
+            if hasattr(self.tts_worker, "close_audio_resources"):
+                self.tts_worker.close_audio_resources()
 
         if hasattr(self, "native_llama_engine"):
             self.native_llama_engine.stop_engine()
