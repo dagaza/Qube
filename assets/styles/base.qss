@@ -226,6 +226,16 @@ QComboBox QListView::item:selected, QComboBox QAbstractItemView::item:selected {
     border-bottom-right-radius: 8px;
     background: transparent;
 }
+#HubFileComboBox::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #a6adc8;
+    border-bottom: none;
+    margin-right: 2px;
+}
 /* Popup list: view() is reparented out of #HubFileComboBox — target by objectName (see ModelManagerView). */
 #HubFileComboDropdownView {
     background-color: #1e1e2e;

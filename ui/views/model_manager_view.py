@@ -23,7 +23,6 @@ from PyQt6.QtWidgets import (
     QListView,
     QListWidgetItem,
     QComboBox,
-    QSplitter,
     QTextBrowser,
     QSizePolicy,
 )
@@ -379,15 +378,17 @@ class ModelManagerView(QWidget):
         title.setObjectName("ViewTitle")
         main_layout.addWidget(title)
 
-        # --- Hub "app store" split ---
+        # --- Hub "app store" row (fixed sidebar + expanding detail; no splitter handle) ---
         main_layout.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE — BROWSE & DOWNLOAD"))
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setChildrenCollapsible(False)
-        splitter.setHandleWidth(2)
+        hub_container = QWidget()
+        hub_h = QHBoxLayout(hub_container)
+        hub_h.setContentsMargins(0, 0, 0, 0)
+        hub_h.setSpacing(0)
 
         # Left: same sidebar shell as Conversations / Library (QSS + HistoryRowWidget pattern)
         left = QFrame()
         left.setFixedWidth(280)
+        left.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         left.setObjectName("ModelManagerSidebar")
         left_l = QVBoxLayout(left)
         left_l.setContentsMargins(15, 20, 15, 20)
@@ -406,7 +407,7 @@ class ModelManagerView(QWidget):
         self.hub_model_list = QListWidget()
         self.hub_model_list.setObjectName("ModelHubList")
         # Parent frame is 280px with horizontal margins; min width 280 here forced horizontal
-        # overflow and list items bleeding under the splitter / right panel.
+        # overflow and list items bleeding under the right panel.
         self.hub_model_list.setMinimumWidth(0)
         self.hub_model_list.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
@@ -433,8 +434,9 @@ class ModelManagerView(QWidget):
         f.setPointSize(f.pointSize() + 1)
         self.detail_title.setFont(f)
 
-        self.detail_subtitle = QLabel("")
+        self.detail_subtitle = QLabel("", parent=right)
         self.detail_subtitle.setWordWrap(True)
+        self.detail_subtitle.hide()
 
         self.readme_browser = QTextBrowser()
         self.readme_browser.setMinimumHeight(220)
@@ -469,22 +471,22 @@ class ModelManagerView(QWidget):
         self.download_progress.setRange(0, 100)
         self.download_progress.setValue(0)
         self.download_progress.setTextVisible(True)
+        _dp_pol = self.download_progress.sizePolicy()
+        _dp_pol.setRetainSizeWhenHidden(True)
+        self.download_progress.setSizePolicy(_dp_pol)
+        self.download_progress.hide()
 
         right_l.addWidget(self.detail_title)
-        right_l.addWidget(self.detail_subtitle)
-        right_l.addWidget(self.readme_browser, stretch=1)
         right_l.addWidget(q_lab)
         right_l.addLayout(files_row)
         right_l.addWidget(self.download_status)
         right_l.addWidget(self.download_progress)
+        right_l.addWidget(self.readme_browser, stretch=1)
 
-        splitter.addWidget(left)
-        splitter.addWidget(right)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([340, 720])
+        hub_h.addWidget(left)
+        hub_h.addWidget(right, stretch=1)
 
-        main_layout.addWidget(splitter, stretch=1)
+        main_layout.addWidget(hub_container, stretch=1)
 
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
@@ -861,6 +863,8 @@ class ModelManagerView(QWidget):
     def _restore_download_idle_ui(self) -> None:
         self._set_download_button_cancel_mode(False)
         self.download_btn.setEnabled(True)
+        self.download_progress.hide()
+        self.download_progress.setValue(0)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self.refresh_button_themes(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
@@ -887,6 +891,7 @@ class ModelManagerView(QWidget):
             return
 
         self.download_progress.setValue(0)
+        self.download_progress.show()
         self.download_status.setText("Starting…")
         self._set_download_button_cancel_mode(True)
 
@@ -915,13 +920,11 @@ class ModelManagerView(QWidget):
 
     def _on_download_failed(self, msg: str) -> None:
         self._restore_download_idle_ui()
-        self.download_progress.setValue(0)
         self.download_status.setText("")
         self._show_error("Download failed", msg)
 
     def _on_insufficient_space(self, required: int, available: int) -> None:
         self._restore_download_idle_ui()
-        self.download_progress.setValue(0)
         self.download_status.setText("")
         self._show_error(
             "Not enough disk space",
@@ -932,7 +935,6 @@ class ModelManagerView(QWidget):
 
     def _on_download_cancelled(self) -> None:
         self._restore_download_idle_ui()
-        self.download_progress.setValue(0)
         self.download_status.setText("Download cancelled.")
 
     def _show_error(self, title: str, message: str) -> None:
