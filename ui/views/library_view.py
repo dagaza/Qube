@@ -300,6 +300,10 @@ class LibraryView(QWidget):
         self.doc_stats.setMinimumWidth(0)
         self.doc_stats.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
+        _preview_hdr_align = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        self.doc_title.setAlignment(_preview_hdr_align)
+        self.doc_stats.setAlignment(_preview_hdr_align)
+
         title_host = QWidget()
         title_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         title_host.setMinimumWidth(0)
