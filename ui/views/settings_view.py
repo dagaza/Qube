@@ -60,6 +60,7 @@ class NoScrollSlider(QSlider):
 class SettingsView(QWidget):
     audio_pin_toggle = pyqtSignal(bool)
     auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
+    auto_load_last_model_changed = pyqtSignal(bool)
     memory_enrichment_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
     def __init__(self, workers: dict, db_manager):
@@ -138,16 +139,27 @@ class SettingsView(QWidget):
         self.threshold_spinner.setRange(1, 100)
         self.threshold_spinner.setValue(int(self.audio_worker.speech_threshold) if self.audio_worker else 2)
         self.threshold_spinner.setSuffix("%")
-        self.threshold_spinner.setToolTip("How loud your voice needs to be to trigger the microphone. Increase this if background noise is accidentally triggering the app; decrease it if the app is missing your quiet speech.")
+        self.threshold_spinner.setToolTip(
+            "Controls how loud you must speak to trigger recording. A higher number acts as a "
+            "stronger background noise filter, meaning you will need to speak louder to punch through. "
+            "If you are in a quiet environment, use the lowest setting."
+        )
         if self.audio_worker:
             self.threshold_spinner.valueChanged.connect(self.audio_worker.set_speech_threshold)
 
         hw_form.addRow("Audio Input", self.mic_selector)
         hw_form.addRow("Audio Output", self.device_selector)
         hw_form.addRow("Silence Cutoff", self.timeout_spinner)
-        hw_form.addRow("Mic Sensitivity", self.threshold_spinner)
+        hw_form.addRow("VAD Threshold", self.threshold_spinner)
 
         self.pin_audio_cb = QCheckBox("Pin Audio Controls to Toolbar")
+        self.pin_audio_cb.setToolTip(
+            "When checked, Silence Cutoff and VAD Threshold appear in the right toolbar. "
+            "Uncheck to hide them from the toolbar (settings still apply)."
+        )
+        self.pin_audio_cb.blockSignals(True)
+        self.pin_audio_cb.setChecked(True)
+        self.pin_audio_cb.blockSignals(False)
         self.pin_audio_cb.toggled.connect(self.audio_pin_toggle.emit)
         hw_form.addRow("", self.pin_audio_cb)
 
@@ -324,6 +336,7 @@ class SettingsView(QWidget):
         )
         self.auto_load_last_model_cb.setChecked(get_auto_load_last_model_on_startup())
         self.auto_load_last_model_cb.toggled.connect(set_auto_load_last_model_on_startup)
+        self.auto_load_last_model_cb.toggled.connect(self.auto_load_last_model_changed.emit)
         startup_form.addRow("", self.auto_load_last_model_cb)
 
         content_layout.addWidget(startup_widget)

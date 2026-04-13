@@ -26,9 +26,11 @@ from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from core.app_settings import (
+    get_auto_load_last_model_on_startup,
     get_engine_mode,
     get_internal_model_path,
     get_llm_models_dir,
+    set_auto_load_last_model_on_startup,
     set_internal_model_path,
 )
 import logging
@@ -222,8 +224,11 @@ class MainWindow(QMainWindow):
 
         # --- THE SYNC WIRING (Updated for new names) ---
         
-        # 1. Handle Visibility Toggle
+        # 1. Toolbar audio extra controls visibility ↔ Settings "Pin Audio Controls"
         self.settings_view.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
+        self.audio_extra_controls.setVisible(
+            self.settings_view.pin_audio_cb.isChecked()
+        )
 
         # 2. Sync Settings -> Toolbar
         self.settings_view.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
@@ -246,6 +251,14 @@ class MainWindow(QMainWindow):
         self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
         self.rag_auto_toggle.toggled.connect(self.settings_view.auto_activator_cb.setChecked)
 
+        # 5b. Auto-load last model on startup (toolbar PrestigeToggle ↔ Settings checkbox)
+        self.settings_view.auto_load_last_model_changed.connect(
+            self._sync_toolbar_auto_load_model_toggle
+        )
+        self.toolbar_auto_load_model_toggle.toggled.connect(
+            self._on_toolbar_auto_load_model_toggle_changed
+        )
+
         # 6. Internal engine model list (toolbar) — refresh when engine mode or downloads change
         # Pass the emitted mode so UI updates before/without relying on QSettings (slot order vs llm_worker).
         self.settings_view.engine_mode_changed.connect(self._refresh_toolbar_native_model_from_settings_signal)
@@ -254,6 +267,19 @@ class MainWindow(QMainWindow):
                 self.refresh_toolbar_native_model_dropdown
             )
         QTimer.singleShot(0, self.refresh_toolbar_native_model_dropdown)
+
+    def _sync_toolbar_auto_load_model_toggle(self, checked: bool) -> None:
+        t = self.toolbar_auto_load_model_toggle
+        t.blockSignals(True)
+        t.setChecked(checked)
+        t.blockSignals(False)
+
+    def _on_toolbar_auto_load_model_toggle_changed(self, checked: bool) -> None:
+        set_auto_load_last_model_on_startup(checked)
+        cb = self.settings_view.auto_load_last_model_cb
+        cb.blockSignals(True)
+        cb.setChecked(checked)
+        cb.blockSignals(False)
 
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
@@ -559,15 +585,33 @@ class MainWindow(QMainWindow):
         self._set_native_model_progress_loading(False)
         native_llm_layout.addWidget(self.toolbar_native_model_progress)
         native_llm_layout.addWidget(self.toolbar_native_model_selector)
+
+        _auto_load_model_tip = (
+            "Automatically loads the last used model at startup. This may significantly increase "
+            "application startup time depending on the model size and your hardware."
+        )
+        auto_load_row = QHBoxLayout()
+        self.toolbar_auto_load_model_toggle = PrestigeToggle()
+        self.toolbar_auto_load_model_toggle.setChecked(
+            get_auto_load_last_model_on_startup()
+        )
+        self.toolbar_auto_load_model_toggle.setToolTip(_auto_load_model_tip)
+        auto_load_lbl = QLabel("Load on startup")
+        auto_load_lbl.setProperty("class", "ToolsPaneControl")
+        auto_load_lbl.setToolTip(_auto_load_model_tip)
+        auto_load_row.addWidget(self.toolbar_auto_load_model_toggle)
+        auto_load_row.addWidget(auto_load_lbl)
+        auto_load_row.addStretch()
+        native_llm_layout.addLayout(auto_load_row)
         main_layout.addLayout(native_llm_layout)
 
-        # --- 1. AUDIO INPUT ---
-        mic_layout = QVBoxLayout()
-        mic_layout.setSpacing(10)
-        m_title = QLabel("AUDIO INPUT")
-        m_title.setProperty("class", "ToolsPaneHeader")
-        mic_layout.addWidget(m_title)
-        
+        # --- 1. AUDIO & TTS VOICE ---
+        audio_tts_layout = QVBoxLayout()
+        audio_tts_layout.setSpacing(10)
+        at_title = QLabel("Audio & TTS Voice")
+        at_title.setProperty("class", "ToolsPaneHeader")
+        audio_tts_layout.addWidget(at_title)
+
         mic_row = QHBoxLayout()
         self.voice_input_toggle = PrestigeToggle()
         self.voice_input_toggle.setChecked(True)
@@ -576,18 +620,18 @@ class MainWindow(QMainWindow):
         mic_row.addWidget(self.voice_input_toggle)
         mic_row.addWidget(mic_lbl)
         mic_row.addStretch()
-        mic_layout.addLayout(mic_row)
+        audio_tts_layout.addLayout(mic_row)
 
         self.audio_extra_controls = QWidget()
         extra_layout = QVBoxLayout(self.audio_extra_controls)
-        extra_layout.setContentsMargins(10, 5, 0, 5) 
+        extra_layout.setContentsMargins(10, 5, 0, 5)
         extra_layout.setSpacing(12)
-        
+
         def create_mirrored_row(label_text, spinner):
             row = QHBoxLayout()
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
-            lbl.setMinimumWidth(100) 
+            lbl.setMinimumWidth(100)
             spinner.setFixedWidth(90)
             spinner.setProperty("class", "ToolsPaneInput")
             row.addWidget(lbl)
@@ -595,7 +639,6 @@ class MainWindow(QMainWindow):
             row.addWidget(spinner)
             return row
 
-        # Use the NoScroll versions we defined at the top
         self.toolbar_timeout_spin = NoScrollDoubleSpinBox()
         self.toolbar_timeout_spin.setRange(0.5, 5.0)
         self.toolbar_timeout_spin.setSingleStep(0.1)
@@ -604,20 +647,17 @@ class MainWindow(QMainWindow):
         self.toolbar_threshold_spin = NoScrollSpinBox()
         self.toolbar_threshold_spin.setRange(1, 100)
         self.toolbar_threshold_spin.setSuffix("%")
+        _vad_threshold_tip = (
+            "Controls how loud you must speak to trigger recording. A higher number acts as a "
+            "stronger background noise filter, meaning you will need to speak louder to punch through. "
+            "If you are in a quiet environment, use the lowest setting."
+        )
+        self.toolbar_threshold_spin.setToolTip(_vad_threshold_tip)
 
         extra_layout.addLayout(create_mirrored_row("Silence Cutoff", self.toolbar_timeout_spin))
-        extra_layout.addLayout(create_mirrored_row("Mic Sensitivity", self.toolbar_threshold_spin))
+        extra_layout.addLayout(create_mirrored_row("VAD Threshold", self.toolbar_threshold_spin))
 
-        mic_layout.addWidget(self.audio_extra_controls)
-        self.audio_extra_controls.hide() 
-        main_layout.addLayout(mic_layout)
-
-       # --- 2. AUDIO OUTPUT & TTS ---
-        voice_layout = QVBoxLayout()
-        voice_layout.setSpacing(10)
-        v_title = QLabel("AUDIO OUTPUT & VOICE")
-        v_title.setProperty("class", "ToolsPaneHeader")
-        voice_layout.addWidget(v_title)
+        audio_tts_layout.addWidget(self.audio_extra_controls)
 
         tts_row = QHBoxLayout()
         self.voice_bypass_toggle = PrestigeToggle()
@@ -627,15 +667,15 @@ class MainWindow(QMainWindow):
         tts_row.addWidget(self.voice_bypass_toggle)
         tts_row.addWidget(tts_label)
         tts_row.addStretch()
-        voice_layout.addLayout(tts_row)
-        
+        audio_tts_layout.addLayout(tts_row)
+
         self.global_voice_selector = QPushButton("Select Voice...")
         self.global_voice_selector.setObjectName("SettingsMenuButton")
         self.global_voice_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.global_voice_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
         self.global_voice_selector.setMenu(QMenu(self.global_voice_selector))
-        voice_layout.addWidget(self.global_voice_selector)
-        main_layout.addLayout(voice_layout)
+        audio_tts_layout.addWidget(self.global_voice_selector)
+        main_layout.addLayout(audio_tts_layout)
 
         def create_spinbox_row(label_text, tooltip_text, spinner):
             row = QHBoxLayout()

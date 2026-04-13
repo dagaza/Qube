@@ -49,11 +49,15 @@ class AudioListenerWorker(QThread):
         self.pending_device_index = None
         self.oww_model = None
         
-        # Default to the first available (usually 'Alexa')
+        # Default to Hey Jarvis when present, else first discovered model
         if self.available_wakewords:
-            self.active_wakeword_name = list(self.available_wakewords.keys())[0]
-            # Tell the run loop to load this path immediately when it starts
-            self.pending_wakeword = self.available_wakewords[self.active_wakeword_name]
+            names = list(self.available_wakewords.keys())
+            chosen = next(
+                (n for n in names if "jarvis" in n.lower()),
+                names[0],
+            )
+            self.active_wakeword_name = chosen
+            self.pending_wakeword = self.available_wakewords[chosen]
         else:
             self.active_wakeword_name = None
             logger.error("CRITICAL: No wakeword models found anywhere!")
@@ -74,8 +78,16 @@ class AudioListenerWorker(QThread):
         try:
             pretrained_paths = openwakeword.get_pretrained_model_paths()
             for path in pretrained_paths:
-                # Clean up "alexa_v0.1.tflite" into "Alexa" for the UI dropdown
-                clean_name = os.path.basename(path).split('_v')[0].replace('.tflite', '').replace('.onnx', '').capitalize()
+                stem = (
+                    os.path.basename(path)
+                    .split("_v")[0]
+                    .replace(".tflite", "")
+                    .replace(".onnx", "")
+                )
+                if stem.lower() == "hey_jarvis":
+                    clean_name = "Hey Jarvis"
+                else:
+                    clean_name = stem.capitalize()
                 wakeword_map[clean_name] = path
         except Exception as e:
             logger.warning(f"Could not load pre-trained wakewords: {e}")
