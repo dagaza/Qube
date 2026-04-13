@@ -17,8 +17,8 @@ from PyQt6.QtWidgets import (
     QTextBrowser,
     QMenu,
 )
-from PyQt6.QtGui import QAction, QTextOption
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl
+from PyQt6.QtGui import QAction, QTextOption, QIcon, QColor, QPixmap, QPainter
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl, QSize
 import math
 import qtawesome as qta
 import logging
@@ -42,6 +42,18 @@ CITATION_HREF_PREFIX = "https://qube.invalid/cite/"
 
 # log_agent_token(..., citation_sources=...) — distinguish "not passed" (live stream) from explicit None (DB row with no sources)
 _UNSET_SOURCES = object()
+
+# --------------- Chat layout modes --------------- #
+LAYOUT_FULL_WIDTH = "full_width"
+LAYOUT_CENTERED_COLUMN = "centered_column"
+_CENTERED_COLUMN_MAX_WIDTH = 900
+_QWIDGETSIZE_MAX = (1 << 24) - 1
+_LAYOUT_ICON_WIDE = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-wide.svg")
+)
+_LAYOUT_ICON_NARROW = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-narrow.svg")
+)
 
 # Smart auto-scroll: only follow new tokens if the scrollbar was already at (or near) the bottom.
 _STICKY_SCROLL_TOLERANCE_PX = 24
@@ -546,6 +558,7 @@ class ConversationsView(QWidget):
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
+        self._layout_mode: str = LAYOUT_FULL_WIDTH
 
         self._setup_ui()
         self._start_new_chat()
@@ -555,6 +568,93 @@ class ConversationsView(QWidget):
         llm = getattr(self, "llm", None)
         if llm is not None and hasattr(llm, "notify_active_session_changed"):
             llm.notify_active_session_changed(getattr(self, "active_session_id", None))
+
+    # --------------------------------------------------------- #
+    #  LAYOUT MODE (container-level only)                        #
+    # --------------------------------------------------------- #
+
+    @property
+    def layout_mode(self) -> str:
+        return self._layout_mode
+
+    def set_layout_mode(self, mode: str) -> None:
+        """Switch the chat transcript between FULL_WIDTH and CENTERED_COLUMN layout.
+
+        This only reconfigures container-level constraints and scroll-area
+        alignment — individual message widgets and QTextDocument rendering
+        are never touched.
+        """
+        if mode not in (LAYOUT_FULL_WIDTH, LAYOUT_CENTERED_COLUMN):
+            return
+        if mode == self._layout_mode:
+            self._refresh_layout_mode_button()
+            return
+        self._layout_mode = mode
+        self._apply_layout_mode()
+
+    def _apply_layout_mode(self) -> None:
+        if self._layout_mode == LAYOUT_CENTERED_COLUMN:
+            self.transcript_container.setMaximumWidth(_CENTERED_COLUMN_MAX_WIDTH)
+            self.scroll_area.setAlignment(
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+            )
+        else:
+            self.transcript_container.setMaximumWidth(_QWIDGETSIZE_MAX)
+            self.scroll_area.setAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+            )
+        self.transcript_layout.invalidate()
+        self.transcript_container.updateGeometry()
+        self._refresh_layout_mode_button()
+
+    def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
+        pixmap = QPixmap(svg_path)
+        if pixmap.isNull():
+            return QIcon(svg_path)
+        target_size = QSize(size, size)
+        pixmap = pixmap.scaled(
+            target_size,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        tinted = QPixmap(pixmap.size())
+        tinted.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(tinted)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), QColor(color_hex))
+        painter.end()
+        return QIcon(tinted)
+
+    def _refresh_layout_mode_button(self, is_dark: bool | None = None) -> None:
+        btn = getattr(self, "layout_mode_btn", None)
+        if btn is None:
+            return
+        if is_dark is None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+        icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        if self.layout_mode == LAYOUT_CENTERED_COLUMN:
+            btn.setIcon(self._make_tinted_svg_icon(_LAYOUT_ICON_NARROW, icon_color))
+            btn.setToolTip("Layout mode: Centered column")
+        else:
+            btn.setIcon(self._make_tinted_svg_icon(_LAYOUT_ICON_WIDE, icon_color))
+            btn.setToolTip("Layout mode: Full width")
+        btn.setIconSize(QSize(18, 18))
+        btn.setStyleSheet(
+            f"""
+            QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+            """
+        )
+
+    def _toggle_layout_mode(self) -> None:
+        next_mode = (
+            LAYOUT_CENTERED_COLUMN
+            if self.layout_mode == LAYOUT_FULL_WIDTH
+            else LAYOUT_FULL_WIDTH
+        )
+        self.set_layout_mode(next_mode)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -632,6 +732,26 @@ class ConversationsView(QWidget):
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
 
+        utility_toolbar = QFrame()
+        utility_toolbar.setObjectName("ChatUtilityToolbar")
+        utility_toolbar.setFixedHeight(34)
+        utility_toolbar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        utility_layout = QHBoxLayout(utility_toolbar)
+        utility_layout.setContentsMargins(0, 0, 0, 0)
+        utility_layout.setSpacing(8)
+
+        self.layout_mode_btn = QPushButton()
+        self.layout_mode_btn.setObjectName("LayoutModeButton")
+        self.layout_mode_btn.setProperty("class", "IconButton")
+        self.layout_mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.layout_mode_btn.setFixedSize(30, 30)
+        self.layout_mode_btn.clicked.connect(self._toggle_layout_mode)
+
+        utility_layout.addStretch(1)
+        utility_layout.addWidget(self.layout_mode_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+        utility_layout.addStretch(1)
+        layout.addWidget(utility_toolbar)
+
         # 1. The New Architecture: A Scroll Area containing a vertical list of message widgets
         self.scroll_area = QScrollArea()
         self.scroll_area.setObjectName("ChatScrollArea")
@@ -660,6 +780,7 @@ class ConversationsView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
+        self._refresh_layout_mode_button()
         layout.addWidget(self.scroll_area)
 
         # 2. Per-message action bar
@@ -1305,6 +1426,7 @@ class ConversationsView(QWidget):
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
+        self._refresh_layout_mode_button(is_dark=is_dark)
         self._apply_action_toggle_styles()
 
     def showEvent(self, event: QEvent) -> None:
