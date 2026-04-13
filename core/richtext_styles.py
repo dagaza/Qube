@@ -38,6 +38,10 @@ def markdown_document_stylesheet(is_dark: bool) -> str:
         + f"th, td {{ border-color: {border}; border-width: 1px; border-style: solid; padding: 4px; }}"
         + f"code, pre {{ background-color: {code_bg}; }}"
         + f"hr {{ border-color: {border}; color: {border}; }}"
+        + "div.hub-readme { margin: 0; }"
+        + "div.hub-readme p { margin-top: 0.35em; margin-bottom: 0.35em; }"
+        + "div.hub-readme h1, div.hub-readme h2, div.hub-readme h3 "
+        + "{ margin-top: 0.6em; margin-bottom: 0.35em; }"
     )
 
 

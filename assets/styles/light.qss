@@ -214,16 +214,7 @@ QComboBox QAbstractItemView::item:selected {
     border-bottom-right-radius: 8px;
     background: transparent;
 }
-#HubFileComboBox::down-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #64748b;
-    border-bottom: none;
-    margin-right: 2px;
-}
+/* Hub combo chevron: set via ModelManagerView._apply_hub_combo_chevron (SVG + QUrl). */
 /* Popup list: view() is reparented — Prestige-style list (matches toolbar menus). */
 #HubFileComboDropdownView {
     background-color: #ffffff;

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger("Qube.ModelManager")
 
 import qtawesome as qta
-from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument
-from PyQt6.QtCore import QEvent, Qt, QThread, QSize, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument, QPainter
+from PyQt6.QtCore import QEvent, Qt, QThread, QSize, QTimer, QUrl, QRect, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -25,12 +26,16 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QTextBrowser,
     QSizePolicy,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
 )
 
 from core.app_settings import (
     get_llm_models_dir,
     set_internal_model_path,
 )
+from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from workers.hf_model_search_worker import HfModelSearchWorker
@@ -38,8 +43,20 @@ from workers.hf_readme_worker import HfReadmeWorker
 from workers.hf_repo_files_worker import HfRepoFilesWorker
 from workers.model_download_worker import HuggingFaceGgufDownloadWorker
 
+# Extra display data on Hub .gguf combo rows (file size, right-aligned in popup).
+HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
+
+
+def _model_manager_project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
 # Curated GGUF collections — safe starting points for new users.
 QUBE_VERIFIED_MODELS: list[dict[str, str]] = [
+    {
+        "repo_id": "google/gemma-4-26B-A4B",
+        "title": "Gemma 4 26B A4B",
+    },
     {
         "repo_id": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
         "title": "Llama 3.1 8B Instruct",
@@ -114,6 +131,64 @@ def _hub_file_combo_viewport_qss(is_dark: bool) -> str:
     )
 
 
+class HubFileComboDelegate(QStyledItemDelegate):
+    """Popup rows: filename (elided) on the left, size label flush right."""
+
+    _GAP = 10
+    _SIZE_MAX = 160
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
+        raw = index.data(int(HUB_FILE_COMBO_SIZE_ROLE))
+        if raw is None:
+            super().paint(painter, option, index)
+            return
+        size_label = str(raw).strip()
+        if not size_label:
+            super().paint(painter, option, index)
+            return
+
+        path = index.data(Qt.ItemDataRole.DisplayRole)
+        path_s = path if isinstance(path, str) else (str(path) if path is not None else "")
+        painter.save()
+
+        rect = option.rect
+        if option.state & QStyle.StateFlag.State_Selected:
+            painter.fillRect(rect, option.palette.highlight())
+            pen = option.palette.color(QPalette.ColorRole.HighlightedText)
+        else:
+            painter.fillRect(rect, option.palette.base())
+            pen = option.palette.color(QPalette.ColorRole.Text)
+        painter.setPen(pen)
+
+        fm = option.fontMetrics
+        text_w = fm.horizontalAdvance(size_label) + 12
+        size_w = max(64, min(text_w, self._SIZE_MAX, max(rect.width() // 3, 72)))
+        right_r = QRect(
+            rect.right() - size_w - 6,
+            rect.top(),
+            size_w,
+            rect.height(),
+        )
+        path_r = QRect(
+            rect.left() + 6,
+            rect.top(),
+            max(8, rect.width() - size_w - self._GAP - 12),
+            rect.height(),
+        )
+        elided = fm.elidedText(path_s, Qt.TextElideMode.ElideMiddle, path_r.width())
+        painter.drawText(
+            path_r,
+            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+            elided,
+        )
+        painter.drawText(
+            right_r,
+            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+            size_label,
+        )
+        painter.restore()
+
+
 class HubFileComboBox(QComboBox):
     """Repaints popup after open — Qt reparents the list; shell stays white without a deferred polish."""
 
@@ -160,11 +235,14 @@ class ModelManagerView(QWidget):
         self._apply_hub_muted_labels(is_dark)
         self.refresh_button_themes(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
+        self._apply_hub_combo_chevron(is_dark)
         self._update_hub_row_colors()
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_hub_combo_chevron(is_dark)
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
     def eventFilter(self, obj, event) -> bool:
@@ -454,6 +532,9 @@ class ModelManagerView(QWidget):
         # (same pattern as MainWindow._apply_menu_theme / PrestigeMenuList).
         _hub_combo_view = self.hf_file_combo.view()
         _hub_combo_view.setObjectName("HubFileComboDropdownView")
+        self._hub_file_combo_delegate = HubFileComboDelegate(_hub_combo_view)
+        _hub_combo_view.setItemDelegate(self._hub_file_combo_delegate)
+        _hub_combo_view.setMinimumWidth(420)
         _hub_combo_view.setAutoFillBackground(True)
         _vp = _hub_combo_view.viewport()
         if _vp is not None:
@@ -492,6 +573,27 @@ class ModelManagerView(QWidget):
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self._run_hub_search)
 
+    def _apply_hub_combo_chevron(self, is_dark: bool) -> None:
+        """QSS border triangles render as lines on some styles; use SVG via file URL."""
+        if not hasattr(self, "hf_file_combo"):
+            return
+        name = (
+            "hub_combo_chevron_dark.svg"
+            if is_dark
+            else "hub_combo_chevron_light.svg"
+        )
+        svg = _model_manager_project_root() / "assets" / "icons" / name
+        if not svg.is_file():
+            return
+        url = QUrl.fromLocalFile(str(svg)).toString()
+        self.hf_file_combo.setStyleSheet(
+            "#HubFileComboBox::down-arrow { "
+            f'image: url("{url}"); '
+            "width: 12px; height: 12px; "
+            "subcontrol-origin: padding; subcontrol-position: center; "
+            "}"
+        )
+
     def _apply_hub_file_combo_popup_theme(self, is_dark: bool) -> None:
         """Palette + widget-local QSS on the list view (matches MainWindow prestige menus)."""
         if not hasattr(self, "hf_file_combo"):
@@ -524,6 +626,10 @@ class ModelManagerView(QWidget):
     def _on_hub_file_combo_popup_opened(self) -> None:
         """After the popup is shown: detached window + parents often stay system-colored until styled here."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        v = self.hf_file_combo.view()
+        if v is not None and getattr(self, "_hub_file_combo_delegate", None) is not None:
+            self._hub_file_combo_delegate.setParent(v)
+            v.setItemDelegate(self._hub_file_combo_delegate)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._polish_hub_file_combo_popup_shell(is_dark)
 
@@ -614,7 +720,12 @@ class ModelManagerView(QWidget):
         self.hub_model_list.blockSignals(False)
         self.hub_list_hint.setText("Qube Verified — curated GGUF models")
         self._update_hub_row_colors()
+        self._select_first_hub_item()
         QTimer.singleShot(0, self._refresh_hub_row_heights)
+
+    def _select_first_hub_item(self) -> None:
+        if self.hub_model_list.count() > 0:
+            self.hub_model_list.setCurrentRow(0)
 
     def _run_hub_search(self) -> None:
         q = self.hub_search_edit.text().strip()
@@ -714,19 +825,33 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.addItem("-- Select a model from the list --")
         self.hf_file_combo.blockSignals(False)
 
+    def _render_readme_with_fallback(self, is_dark: bool) -> None:
+        """Python-Markdown + setHtml first (GFM tables/lists); then Qt setMarkdown; then plain text."""
+        text = self._last_readme_markdown
+        if not text:
+            return
+        prepared = strip_hub_readme_preamble(text)
+        if not prepared:
+            self.readme_browser.setHtml('<div class="hub-readme"></div>')
+            return
+        doc = self.readme_browser.document()
+        doc.setDefaultFont(self.readme_browser.font())
+        doc.setDefaultStyleSheet(markdown_document_stylesheet(is_dark))
+        html = hf_readme_markdown_to_safe_html(text)
+        if html is not None:
+            self.readme_browser.setHtml(html)
+            return
+        try:
+            self.readme_browser.setMarkdown(prepared)
+        except Exception:
+            self.readme_browser.setPlainText(prepared)
+
     def _apply_readme_if_current(self, repo: str, text: str, seq: int) -> None:
         if seq != self._detail_seq:
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._last_readme_markdown = text
-        doc = self.readme_browser.document()
-        doc.setDefaultFont(self.readme_browser.font())
-        doc.setDefaultStyleSheet(markdown_document_stylesheet(is_dark))
-        try:
-            self.readme_browser.setMarkdown(text)
-        except Exception:
-            self._last_readme_markdown = None
-            self.readme_browser.setPlainText(text)
+        self._render_readme_with_fallback(is_dark)
 
     def _apply_readme_failed_if_current(self, repo: str, err: str, seq: int) -> None:
         if seq != self._detail_seq:
@@ -756,21 +881,43 @@ class ModelManagerView(QWidget):
         if not dl_busy:
             self.download_btn.setEnabled(True)
 
-    def _on_hf_list_finished(self, paths: list, seq: int) -> None:
+    def _on_hf_list_finished(self, entries: list, seq: int) -> None:
         if seq != self._detail_seq:
             return
         self.hf_file_combo.blockSignals(True)
         self.hf_file_combo.clear()
-        if not paths:
+        normalized: list[tuple[str, int | None]] = []
+        for e in entries:
+            if isinstance(e, str):
+                normalized.append((e, None))
+            elif isinstance(e, (list, tuple)) and len(e) >= 2:
+                raw_sz = e[1]
+                sz: int | None = None
+                if raw_sz is not None:
+                    try:
+                        sz = int(raw_sz)
+                    except (TypeError, ValueError):
+                        sz = None
+                normalized.append((str(e[0]), sz))
+            elif isinstance(e, (list, tuple)) and len(e) == 1:
+                normalized.append((str(e[0]), None))
+        if not normalized:
             self.hf_file_combo.addItem("(No .gguf files in this repository)")
             self.download_status.setText("No .gguf files found for this repo.")
         else:
             self.hf_file_combo.addItem("-- Select a .gguf file --")
-            for p in paths:
-                self.hf_file_combo.addItem(p)
+            for path, size_b in normalized:
+                self.hf_file_combo.addItem(path)
+                idx = self.hf_file_combo.count() - 1
+                if size_b is not None:
+                    self.hf_file_combo.setItemData(
+                        idx,
+                        self._fmt_bytes(size_b),
+                        int(HUB_FILE_COMBO_SIZE_ROLE),
+                    )
             self.hf_file_combo.setCurrentIndex(0)
             self.download_status.setText(
-                f"{len(paths)} file(s) available. Choose a quantization, then Download."
+                f"{len(normalized)} file(s) available. Choose a quantization, then Download."
             )
         self.hf_file_combo.blockSignals(False)
 
@@ -948,6 +1095,7 @@ class ModelManagerView(QWidget):
         self._apply_hub_muted_labels(is_dark)
         self.refresh_button_themes(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
+        self._apply_hub_combo_chevron(is_dark)
         if hasattr(self, "_hub_section_icon_label") and self._hub_section_icon_label:
             name = self._hub_section_icon_label.property("icon_name")
             if name:
@@ -958,10 +1106,4 @@ class ModelManagerView(QWidget):
         self._update_hub_row_colors()
         self._refresh_hub_row_heights()
         if self._last_readme_markdown:
-            doc = self.readme_browser.document()
-            doc.setDefaultFont(self.readme_browser.font())
-            doc.setDefaultStyleSheet(markdown_document_stylesheet(is_dark))
-            try:
-                self.readme_browser.setMarkdown(self._last_readme_markdown)
-            except Exception:
-                pass
+            self._render_readme_with_fallback(is_dark)
