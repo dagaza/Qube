@@ -64,6 +64,9 @@ _LINE_HEIGHT_CSS = {
 }
 _PREVIEW_READER_FOCUS_DIM = 0.58
 
+ALIGN_LEFT = "align_left"
+ALIGN_JUSTIFY = "align_justify"
+
 
 class _LibraryTranscriptWidthHost(QWidget):
     """Centers transcript; inner width = min(available, cap). QTextEdit stays inside inner only."""
@@ -117,7 +120,8 @@ class LibraryView(QWidget):
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
         self._focus_mode_enabled: bool = False
         self._high_contrast_enabled: bool = False
-        self._layout_mode: str = LAYOUT_FULL_WIDTH
+        self._layout_mode: str = LAYOUT_CENTERED_COLUMN
+        self._transcript_alignment: str = ALIGN_JUSTIFY
 
         self._setup_ui()
         self.refresh_library_list()
@@ -246,6 +250,12 @@ class LibraryView(QWidget):
         self.line_height_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.line_height_btn.clicked.connect(self._cycle_line_height_mode)
 
+        self.text_align_btn = QPushButton()
+        self.text_align_btn.setObjectName("ReadabilityTextAlign")
+        self.text_align_btn.setProperty("class", "IconButton")
+        self.text_align_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.text_align_btn.clicked.connect(self._cycle_transcript_alignment)
+
         self.reader_focus_btn = QPushButton()
         self.reader_focus_btn.setObjectName("ReadabilityReaderFocus")
         self.reader_focus_btn.setProperty("class", "IconButton")
@@ -271,6 +281,7 @@ class LibraryView(QWidget):
         read_row.addWidget(self.font_minus_btn)
         read_row.addWidget(self.font_plus_btn)
         read_row.addWidget(self.line_height_btn)
+        read_row.addWidget(self.text_align_btn)
         read_row.addWidget(self.reader_focus_btn)
         read_row.addWidget(self.high_contrast_btn)
         read_row.addWidget(self.layout_mode_btn)
@@ -471,9 +482,16 @@ class LibraryView(QWidget):
             return "#f8fafc" if is_dark else "#0f172a"
         return "#cdd6f4" if is_dark else "#1e293b"
 
-    def _apply_preview_line_height(self, doc) -> None:
+    def _apply_preview_paragraph_formats(self, doc) -> None:
+        """Line height + transcript alignment in one merge per block (avoids format clobbering)."""
+        ha = (
+            Qt.AlignmentFlag.AlignJustify
+            if self._transcript_alignment == ALIGN_JUSTIFY
+            else Qt.AlignmentFlag.AlignLeft
+        )
         fmt = QTextBlockFormat()
         fmt.setLineHeight(float(self._line_height_proportional_percent()), 1)
+        fmt.setAlignment(ha)
         cur = QTextCursor(doc)
         cur.beginEditBlock()
         block = doc.firstBlock()
@@ -493,7 +511,7 @@ class LibraryView(QWidget):
         self.text_preview.setFont(f)
         doc = self.text_preview.document()
         doc.setDefaultFont(f)
-        self._apply_preview_line_height(doc)
+        self._apply_preview_paragraph_formats(doc)
         fg = self._preview_body_color(is_dark)
         self.text_preview.setStyleSheet(
             f"background: transparent; border: none; color: {fg}; font-size: {pt:.1f}pt;"
@@ -532,6 +550,15 @@ class LibraryView(QWidget):
         except ValueError:
             i = 1
         self._line_height_mode = order[(i + 1) % len(order)]
+        self._apply_library_preview_readability()
+        self._refresh_readability_toolbar()
+
+    def _cycle_transcript_alignment(self) -> None:
+        self._transcript_alignment = (
+            ALIGN_JUSTIFY
+            if self._transcript_alignment == ALIGN_LEFT
+            else ALIGN_LEFT
+        )
         self._apply_library_preview_readability()
         self._refresh_readability_toolbar()
 
@@ -590,6 +617,22 @@ class LibraryView(QWidget):
         hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
         icon_muted = "#8b5cf6" if is_dark else "#1e293b"
         icon_active = "#c4b5fd" if is_dark else "#2563eb"
+        is_justify = self._transcript_alignment == ALIGN_JUSTIFY
+        self.text_align_btn.setToolTip(
+            "Text alignment: Justified (click for left)"
+            if is_justify
+            else "Text alignment: Left (click for justified)"
+        )
+        self.text_align_btn.setIcon(
+            qta.icon(
+                "fa5s.align-justify" if is_justify else "fa5s.align-left",
+                color=icon_muted,
+            )
+        )
+        self.text_align_btn.setIconSize(
+            QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+        )
+        self.text_align_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.line_height_btn.setIcon(
             self._make_tinted_svg_icon(_LINE_SPACING_ICON, icon_muted, size=_CHAT_UTILITY_ICON_PX)
         )
@@ -617,7 +660,12 @@ class LibraryView(QWidget):
             QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
         )
         self.high_contrast_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
-        for btn in (self.line_height_btn, self.reader_focus_btn, self.high_contrast_btn):
+        for btn in (
+            self.line_height_btn,
+            self.text_align_btn,
+            self.reader_focus_btn,
+            self.high_contrast_btn,
+        ):
             btn.setStyleSheet(
                 f"""
                 QPushButton {{

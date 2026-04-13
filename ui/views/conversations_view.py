@@ -88,6 +88,9 @@ _LINE_HEIGHT_CSS = {
     _LINE_HEIGHT_RELAXED: "1.65",
 }
 
+ALIGN_LEFT = "align_left"
+ALIGN_JUSTIFY = "align_justify"
+
 # Smart auto-scroll: only follow new tokens if the scrollbar was already at (or near) the bottom.
 _STICKY_SCROLL_TOLERANCE_PX = 24
 def _parent_conversations_view(widget: QWidget):
@@ -412,11 +415,17 @@ class AgentMessageLabel(QTextBrowser):
             doc_layout.documentSizeChanged.connect(self._on_document_size_changed)
             self._doc_layout_connected = True
 
-    def _apply_document_proportional_line_height(self, doc, pct: int) -> None:
-        """Apply proportional line height to every block (PyQt6 has no QTextOption.setLineHeight)."""
+    def _apply_document_paragraph_formats(
+        self, doc, pct: int, justify_transcript: bool
+    ) -> None:
+        """Line height + horizontal alignment in one merge per block."""
         fmt = QTextBlockFormat()
-        # PyQt6 bindings require int; QTextBlockFormat.ProportionalHeight == 1 in Qt.
         fmt.setLineHeight(float(pct), 1)
+        fmt.setAlignment(
+            Qt.AlignmentFlag.AlignJustify
+            if justify_transcript
+            else Qt.AlignmentFlag.AlignLeft
+        )
         cur = QTextCursor(doc)
         cur.beginEditBlock()
         block = doc.firstBlock()
@@ -433,6 +442,7 @@ class AgentMessageLabel(QTextBrowser):
         is_dark: bool,
         document_stylesheet: str | None = None,
         line_height_percent: int | None = None,
+        justify_transcript: bool = False,
     ) -> None:
         self._agent_is_dark = is_dark
         self._md_layout_source = markdown or ""
@@ -451,7 +461,7 @@ class AgentMessageLabel(QTextBrowser):
             if line_height_percent is not None
             else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
         )
-        self._apply_document_proportional_line_height(doc, pct)
+        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
         _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
         self._sync_fixed_height()
         self.updateGeometry()
@@ -643,12 +653,13 @@ class ConversationsView(QWidget):
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
-        self._layout_mode: str = LAYOUT_FULL_WIDTH
+        self._layout_mode: str = LAYOUT_CENTERED_COLUMN
         self._font_scale: float = 1.0
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
         self._focus_mode_enabled: bool = False
         self._high_contrast_enabled: bool = False
         self._reader_hover_wrapper: MessageWrapper | None = None
+        self._transcript_alignment: str = ALIGN_JUSTIFY
 
         self._setup_ui()
         self._start_new_chat()
@@ -777,30 +788,32 @@ class ConversationsView(QWidget):
     def _high_contrast_markdown_css(self, is_dark: bool) -> str:
         if not self._high_contrast_enabled:
             return ""
+        fg, _ = self._user_bubble_label_colors(is_dark)
+        code_bg = self._user_bubble_frame_bg(is_dark)
         if is_dark:
             return (
-                "body, p, span, div, li, ul, ol, dd, dt, "
-                "table, thead, tbody, tr, th, td, "
-                "blockquote, pre, code, "
-                "h1, h2, h3, h4, h5, h6, strong, em { color: #f8fafc; }"
-                "a:link, a { color: #93c5fd; text-decoration: none; }"
-                "a:visited { color: #c4b5fd; text-decoration: none; }"
-                "code, pre { background-color: #334155; color: #f1f5f9; }"
-                "table { border-color: #94a3b8; }"
-                "th, td { border-color: #94a3b8; border-width: 1px; border-style: solid; }"
-                "hr { border-color: #94a3b8; color: #94a3b8; }"
+                f"body, p, span, div, li, ul, ol, dd, dt, "
+                f"table, thead, tbody, tr, th, td, "
+                f"blockquote, "
+                f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
+                f"a:link, a {{ color: #93c5fd; text-decoration: none; }}"
+                f"a:visited {{ color: #c4b5fd; text-decoration: none; }}"
+                f"code, pre {{ background-color: {code_bg}; color: {fg}; }}"
+                f"table {{ border-color: #94a3b8; }}"
+                f"th, td {{ border-color: #94a3b8; border-width: 1px; border-style: solid; }}"
+                f"hr {{ border-color: #94a3b8; color: #94a3b8; }}"
             )
         return (
-            "body, p, span, div, li, ul, ol, dd, dt, "
-            "table, thead, tbody, tr, th, td, "
-            "blockquote, pre, code, "
-            "h1, h2, h3, h4, h5, h6, strong, em { color: #0f172a; }"
-            "a:link, a { color: #1d4ed8; text-decoration: none; }"
-            "a:visited { color: #6d28d9; text-decoration: none; }"
-            "code, pre { background-color: #e2e8f0; color: #0f172a; }"
-            "table { border-color: #475569; }"
-            "th, td { border-color: #475569; border-width: 1px; border-style: solid; }"
-            "hr { border-color: #475569; color: #475569; }"
+            f"body, p, span, div, li, ul, ol, dd, dt, "
+            f"table, thead, tbody, tr, th, td, "
+            f"blockquote, "
+            f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
+            f"a:link, a {{ color: #1d4ed8; text-decoration: none; }}"
+            f"a:visited {{ color: #6d28d9; text-decoration: none; }}"
+            f"code, pre {{ background-color: {code_bg}; color: {fg}; }}"
+            f"table {{ border-color: #475569; }}"
+            f"th, td {{ border-color: #475569; border-width: 1px; border-style: solid; }}"
+            f"hr {{ border-color: #475569; color: #475569; }}"
         )
 
     def _agent_markdown_stylesheet(self, is_dark: bool) -> str:
@@ -842,6 +855,12 @@ class ConversationsView(QWidget):
         lbl.setFont(f)
         lbl._cached_text = ""
         lbl._cached_ideal_width = 0
+        if self._transcript_alignment == ALIGN_JUSTIFY:
+            lbl.setAlignment(
+                Qt.AlignmentFlag.AlignJustify | Qt.AlignmentFlag.AlignTop
+            )
+        else:
+            lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         lbl.setStyleSheet(
             f"background: transparent; border: none; font-size: {pt:.1f}pt; color: {fg};"
         )
@@ -957,6 +976,9 @@ class ConversationsView(QWidget):
                                 is_dark=is_dark,
                                 document_stylesheet=sheet,
                                 line_height_percent=self._line_height_proportional_percent(),
+                                justify_transcript=(
+                                    self._transcript_alignment == ALIGN_JUSTIFY
+                                ),
                             )
         self._refresh_ancillary_transcript_labels()
         self._refresh_readability_toolbar()
@@ -1009,6 +1031,14 @@ class ConversationsView(QWidget):
         self._high_contrast_enabled = bool(checked)
         self._refresh_all_readability()
 
+    def _cycle_transcript_alignment(self) -> None:
+        self._transcript_alignment = (
+            ALIGN_JUSTIFY
+            if self._transcript_alignment == ALIGN_LEFT
+            else ALIGN_LEFT
+        )
+        self._refresh_all_readability()
+
     def _refresh_readability_toolbar(self, is_dark: bool | None = None) -> None:
         if not hasattr(self, "line_height_btn"):
             return
@@ -1035,6 +1065,22 @@ class ConversationsView(QWidget):
         hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
         icon_muted = "#8b5cf6" if is_dark else "#1e293b"
         icon_active = "#c4b5fd" if is_dark else "#2563eb"
+        is_justify = self._transcript_alignment == ALIGN_JUSTIFY
+        self.text_align_btn.setToolTip(
+            "Text alignment: Justified (click for left)"
+            if is_justify
+            else "Text alignment: Left (click for justified)"
+        )
+        self.text_align_btn.setIcon(
+            qta.icon(
+                "fa5s.align-justify" if is_justify else "fa5s.align-left",
+                color=icon_muted,
+            )
+        )
+        self.text_align_btn.setIconSize(
+            QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+        )
+        self.text_align_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         lh_icon_color = icon_muted
         self.line_height_btn.setIcon(
             self._make_tinted_svg_icon(_LINE_SPACING_ICON, lh_icon_color, size=_CHAT_UTILITY_ICON_PX)
@@ -1063,7 +1109,12 @@ class ConversationsView(QWidget):
             QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
         )
         self.high_contrast_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
-        for btn in (self.line_height_btn, self.reader_focus_btn, self.high_contrast_btn):
+        for btn in (
+            self.line_height_btn,
+            self.text_align_btn,
+            self.reader_focus_btn,
+            self.high_contrast_btn,
+        ):
             btn.setStyleSheet(
                 f"""
                 QPushButton {{
@@ -1192,6 +1243,12 @@ class ConversationsView(QWidget):
         self.line_height_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.line_height_btn.clicked.connect(self._cycle_line_height_mode)
 
+        self.text_align_btn = QPushButton()
+        self.text_align_btn.setObjectName("ReadabilityTextAlign")
+        self.text_align_btn.setProperty("class", "IconButton")
+        self.text_align_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.text_align_btn.clicked.connect(self._cycle_transcript_alignment)
+
         self.reader_focus_btn = QPushButton()
         self.reader_focus_btn.setObjectName("ReadabilityReaderFocus")
         self.reader_focus_btn.setProperty("class", "IconButton")
@@ -1217,6 +1274,7 @@ class ConversationsView(QWidget):
         read_row.addWidget(self.font_minus_btn)
         read_row.addWidget(self.font_plus_btn)
         read_row.addWidget(self.line_height_btn)
+        read_row.addWidget(self.text_align_btn)
         read_row.addWidget(self.reader_focus_btn)
         read_row.addWidget(self.high_contrast_btn)
         read_row.addWidget(self.layout_mode_btn)
@@ -1254,7 +1312,7 @@ class ConversationsView(QWidget):
             QSizePolicy.Policy.Expanding,
         )
         self._refresh_readability_toolbar(is_dark=True)
-        self._refresh_layout_mode_button(is_dark=True)
+        self._apply_layout_mode()
         layout.addWidget(self.scroll_area)
 
         # Bottom stack: fixed cap = centered transcript column width; not tied to layout toggle.
@@ -1443,6 +1501,7 @@ class ConversationsView(QWidget):
             is_dark=is_dark,
             document_stylesheet=self._agent_markdown_stylesheet(is_dark),
             line_height_percent=self._line_height_proportional_percent(),
+            justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
         )
 
         self.current_agent_msg.updateGeometry()
