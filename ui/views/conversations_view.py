@@ -608,6 +608,27 @@ class MessageWrapper(QWidget):
         self.bubble = None
 
 
+class _ComposerRowHost(QWidget):
+    """Keeps composer controls at width min(available, max_w), centered — matches transcript column cap."""
+
+    def __init__(self, inner: QWidget, max_w: int, parent=None):
+        super().__init__(parent)
+        self._inner = inner
+        self._max_w = max_w
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addStretch(1)
+        layout.addWidget(inner, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addStretch(1)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        w = min(self._max_w, max(1, self.width()))
+        if self._inner.width() != w:
+            self._inner.setFixedWidth(w)
+
+
 class ConversationsView(QWidget):
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -1236,6 +1257,13 @@ class ConversationsView(QWidget):
         self._refresh_layout_mode_button(is_dark=True)
         layout.addWidget(self.scroll_area)
 
+        # Bottom stack: fixed cap = centered transcript column width; not tied to layout toggle.
+        self.chat_bottom_container = QWidget()
+        self.chat_bottom_container.setObjectName("ChatBottomContainer")
+        bottom_stack_layout = QVBoxLayout(self.chat_bottom_container)
+        bottom_stack_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_stack_layout.setSpacing(layout.spacing())
+
         # 2. Per-message action bar
         action_layout = QHBoxLayout()
         action_layout.setContentsMargins(0, 0, 0, 0)
@@ -1258,7 +1286,7 @@ class ConversationsView(QWidget):
 
         action_layout.addWidget(self.web_btn)
         action_layout.addWidget(self.think_btn)
-        layout.addLayout(action_layout)
+        bottom_stack_layout.addLayout(action_layout)
 
         # 3. Input Bar Area
         input_container = QFrame()
@@ -1278,7 +1306,7 @@ class ConversationsView(QWidget):
 
         input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
-        layout.addWidget(input_container)
+        bottom_stack_layout.addWidget(input_container)
 
         # 4. Latency Metrics Footer
         latency_layout = QHBoxLayout()
@@ -1291,7 +1319,20 @@ class ConversationsView(QWidget):
             latency_layout.addWidget(lbl)
             
         latency_layout.addStretch()
-        layout.addLayout(latency_layout)
+        bottom_stack_layout.addLayout(latency_layout)
+
+        self.chat_bottom_container.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum,
+        )
+        self._composer_row_host = _ComposerRowHost(
+            self.chat_bottom_container, _CENTERED_COLUMN_MAX_WIDTH
+        )
+        self._composer_row_host.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum,
+        )
+        layout.addWidget(self._composer_row_host)
 
         self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.returnPressed.connect(self._handle_text_submit)

@@ -2,7 +2,7 @@
 
 | **Dark Theme** | **Light Theme** |
 | :---: | :---: |
-| ![Dark Theme](assets/screenshots/qube_dark_mode.png) | ![Light Theme](assets/screenshots/qube_light_mode.png) |
+| ![Dark Theme](assets/screenshots/qube_conversations_dark_mode.png) | ![Light Theme](assets/screenshots/qube_conversations_light_mode.png) |
 
 Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant built on a multithreaded, streaming-first pipeline. Operating entirely offline under a strict memory budget, it integrates state-of-the-art voice processing, adaptive cognitive routing, and asynchronous semantic memory enrichment directly into your hardware environment. Run inference with a **built-in native llama.cpp engine** *or* plug in LM Studio / Ollama—load your files either way—and experience a genuinely intelligent second brain.
 
