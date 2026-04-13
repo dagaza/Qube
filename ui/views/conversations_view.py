@@ -16,8 +16,19 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QTextBrowser,
     QMenu,
+    QGraphicsOpacityEffect,
 )
-from PyQt6.QtGui import QAction, QTextOption, QIcon, QColor, QPixmap, QPainter
+from PyQt6.QtGui import (
+    QAction,
+    QTextOption,
+    QTextBlockFormat,
+    QTextCursor,
+    QIcon,
+    QColor,
+    QPixmap,
+    QPainter,
+    QFont,
+)
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl, QSize
 import math
 import qtawesome as qta
@@ -54,6 +65,28 @@ _LAYOUT_ICON_WIDE = os.path.abspath(
 _LAYOUT_ICON_NARROW = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-narrow.svg")
 )
+_LINE_SPACING_ICON = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "line-spacing.svg")
+)
+
+# Chat utility toolbar: uniform icon / hit-target sizes
+_CHAT_UTILITY_BTN = 30
+_CHAT_UTILITY_ICON_PX = 18
+
+# Readability (transcript-local; no persistence yet)
+_BASE_CHAT_FONT_PT = 10.0
+_FONT_SCALE_MIN = 0.85
+_FONT_SCALE_MAX = 1.3
+_FONT_SCALE_STEP = 0.05
+_FONT_SCALE_STEP_COARSE = 0.1
+_LINE_HEIGHT_COMPACT = "compact"
+_LINE_HEIGHT_COMFORTABLE = "comfortable"
+_LINE_HEIGHT_RELAXED = "relaxed"
+_LINE_HEIGHT_CSS = {
+    _LINE_HEIGHT_COMPACT: "1.25",
+    _LINE_HEIGHT_COMFORTABLE: "1.45",
+    _LINE_HEIGHT_RELAXED: "1.65",
+}
 
 # Smart auto-scroll: only follow new tokens if the scrollbar was already at (or near) the bottom.
 _STICKY_SCROLL_TOLERANCE_PX = 24
@@ -379,15 +412,46 @@ class AgentMessageLabel(QTextBrowser):
             doc_layout.documentSizeChanged.connect(self._on_document_size_changed)
             self._doc_layout_connected = True
 
-    def set_agent_markdown(self, markdown: str, *, is_dark: bool) -> None:
+    def _apply_document_proportional_line_height(self, doc, pct: int) -> None:
+        """Apply proportional line height to every block (PyQt6 has no QTextOption.setLineHeight)."""
+        fmt = QTextBlockFormat()
+        # PyQt6 bindings require int; QTextBlockFormat.ProportionalHeight == 1 in Qt.
+        fmt.setLineHeight(float(pct), 1)
+        cur = QTextCursor(doc)
+        cur.beginEditBlock()
+        block = doc.firstBlock()
+        while block.isValid():
+            cur.setPosition(block.position())
+            cur.mergeBlockFormat(fmt)
+            block = block.next()
+        cur.endEditBlock()
+
+    def set_agent_markdown(
+        self,
+        markdown: str,
+        *,
+        is_dark: bool,
+        document_stylesheet: str | None = None,
+        line_height_percent: int | None = None,
+    ) -> None:
         self._agent_is_dark = is_dark
         self._md_layout_source = markdown or ""
         safe = _qt_safe_markdown(self._md_layout_source)
         doc = self.document()
         doc.setDefaultFont(self.font())
-        doc.setDefaultStyleSheet(_markdown_ui_stylesheet(is_dark))
+        doc.setDefaultStyleSheet(
+            document_stylesheet
+            if document_stylesheet is not None
+            else _markdown_ui_stylesheet(is_dark)
+        )
         doc.setTextWidth(self.viewport().width())
         doc.setMarkdown(safe)
+        pct = (
+            line_height_percent
+            if line_height_percent is not None
+            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
+        )
+        self._apply_document_proportional_line_height(doc, pct)
         _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
         self._sync_fixed_height()
         self.updateGeometry()
@@ -559,6 +623,11 @@ class ConversationsView(QWidget):
         self._awaiting_tts_end = False
         self._tts_playing = False
         self._layout_mode: str = LAYOUT_FULL_WIDTH
+        self._font_scale: float = 1.0
+        self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
+        self._focus_mode_enabled: bool = False
+        self._high_contrast_enabled: bool = False
+        self._reader_hover_wrapper: MessageWrapper | None = None
 
         self._setup_ui()
         self._start_new_chat()
@@ -635,12 +704,21 @@ class ConversationsView(QWidget):
         icon_color = "#8b5cf6" if is_dark else "#1e293b"
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
-            btn.setIcon(self._make_tinted_svg_icon(_LAYOUT_ICON_NARROW, icon_color))
+            btn.setIcon(
+                self._make_tinted_svg_icon(
+                    _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
+                )
+            )
             btn.setToolTip("Layout mode: Centered column")
         else:
-            btn.setIcon(self._make_tinted_svg_icon(_LAYOUT_ICON_WIDE, icon_color))
+            btn.setIcon(
+                self._make_tinted_svg_icon(
+                    _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
+                )
+            )
             btn.setToolTip("Layout mode: Full width")
-        btn.setIconSize(QSize(18, 18))
+        btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
+        btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         btn.setStyleSheet(
             f"""
             QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
@@ -655,6 +733,329 @@ class ConversationsView(QWidget):
             else LAYOUT_FULL_WIDTH
         )
         self.set_layout_mode(next_mode)
+
+    # --------------------------------------------------------- #
+    #  READABILITY / ACCESSIBILITY (transcript-local)            #
+    # --------------------------------------------------------- #
+
+    def _scaled_chat_font_pt(self) -> float:
+        return max(8.0, min(28.0, _BASE_CHAT_FONT_PT * self._font_scale))
+
+    def _line_height_css_value(self) -> str:
+        return _LINE_HEIGHT_CSS.get(
+            self._line_height_mode, _LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]
+        )
+
+    def _line_height_proportional_percent(self) -> int:
+        """Proportional line height percent for QTextBlockFormat (e.g. 145 → 1.45× natural)."""
+        try:
+            return int(round(float(self._line_height_css_value()) * 100))
+        except ValueError:
+            return 145
+
+    def _high_contrast_markdown_css(self, is_dark: bool) -> str:
+        if not self._high_contrast_enabled:
+            return ""
+        if is_dark:
+            return (
+                "body, p, span, div, li, ul, ol, dd, dt, "
+                "table, thead, tbody, tr, th, td, "
+                "blockquote, pre, code, "
+                "h1, h2, h3, h4, h5, h6, strong, em { color: #f8fafc; }"
+                "a:link, a { color: #93c5fd; text-decoration: none; }"
+                "a:visited { color: #c4b5fd; text-decoration: none; }"
+                "code, pre { background-color: #334155; color: #f1f5f9; }"
+                "table { border-color: #94a3b8; }"
+                "th, td { border-color: #94a3b8; border-width: 1px; border-style: solid; }"
+                "hr { border-color: #94a3b8; color: #94a3b8; }"
+            )
+        return (
+            "body, p, span, div, li, ul, ol, dd, dt, "
+            "table, thead, tbody, tr, th, td, "
+            "blockquote, pre, code, "
+            "h1, h2, h3, h4, h5, h6, strong, em { color: #0f172a; }"
+            "a:link, a { color: #1d4ed8; text-decoration: none; }"
+            "a:visited { color: #6d28d9; text-decoration: none; }"
+            "code, pre { background-color: #e2e8f0; color: #0f172a; }"
+            "table { border-color: #475569; }"
+            "th, td { border-color: #475569; border-width: 1px; border-style: solid; }"
+            "hr { border-color: #475569; color: #475569; }"
+        )
+
+    def _agent_markdown_stylesheet(self, is_dark: bool) -> str:
+        base = _markdown_ui_stylesheet(is_dark)
+        parts = [base, self._high_contrast_markdown_css(is_dark)]
+        return "".join(parts)
+
+    def _user_bubble_label_colors(self, is_dark: bool) -> tuple[str, str]:
+        """(text_color, optional extra label style fragment)."""
+        if self._high_contrast_enabled:
+            if is_dark:
+                return "#020617", ""
+            return "#000000", ""
+        return "#11111b", ""
+
+    def _user_bubble_frame_bg(self, is_dark: bool) -> str:
+        if self._high_contrast_enabled:
+            if is_dark:
+                return "#7dd3fc"
+            return "#38bdf8"
+        return "#89b4fa"
+
+    def _qube_response_header_color(self, is_dark: bool) -> str:
+        """Assistant turn 'QUBE' label — unchanged by high-contrast transcript mode."""
+        return "#8b5cf6" if is_dark else "#8839ef"
+
+    def _placeholder_muted_color(self, is_dark: bool) -> str:
+        if self._high_contrast_enabled:
+            return "#cbd5e1" if is_dark else "#475569"
+        return "#6c7086"
+
+    def _style_user_bubble(self, bubble: QFrame, lbl: ChatLabel) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        pt = self._scaled_chat_font_pt()
+        fg, _ = self._user_bubble_label_colors(is_dark)
+        bg = self._user_bubble_frame_bg(is_dark)
+        f = lbl.font()
+        f.setPointSizeF(pt)
+        lbl.setFont(f)
+        lbl._cached_text = ""
+        lbl._cached_ideal_width = 0
+        lbl.setStyleSheet(
+            f"background: transparent; border: none; font-size: {pt:.1f}pt; color: {fg};"
+        )
+        bubble.setStyleSheet(
+            f"background-color: {bg}; border-radius: 18px;"
+        )
+
+    def _style_agent_message_shell(self, agent: AgentMessageLabel) -> None:
+        pt = self._scaled_chat_font_pt()
+        f = agent.font()
+        f.setPointSizeF(pt)
+        agent.setFont(f)
+        agent.setStyleSheet(
+            f"font-size: {pt:.1f}pt; background: transparent; border: none;"
+        )
+
+    def _iter_transcript_widgets(self):
+        if not hasattr(self, "transcript_layout"):
+            return
+        for i in range(self.transcript_layout.count()):
+            it = self.transcript_layout.itemAt(i)
+            if it is None:
+                continue
+            w = it.widget()
+            if w is not None:
+                yield w
+
+    def _find_latest_message_wrapper(self) -> MessageWrapper | None:
+        last = None
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, MessageWrapper):
+                last = w
+        return last
+
+    def _register_reader_focus_tracking(self, wrapper: MessageWrapper) -> None:
+        wrapper.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        wrapper.installEventFilter(self)
+
+    def _apply_reader_focus_opacity(self) -> None:
+        if not self._focus_mode_enabled:
+            self._clear_reader_focus_effects()
+            return
+        target = self._reader_hover_wrapper or self._find_latest_message_wrapper()
+        dim = 0.58
+        pl = getattr(self, "placeholder_lbl", None)
+        for i in range(self.transcript_layout.count()):
+            it = self.transcript_layout.itemAt(i)
+            if it is None:
+                continue
+            w = it.widget()
+            if w is None:
+                continue
+            if w is pl:
+                self._set_widget_opacity(w, dim)
+                continue
+            if isinstance(w, MessageWrapper):
+                self._set_widget_opacity(w, 1.0 if w is target else dim)
+                continue
+            if isinstance(w, QLabel):
+                nxt = None
+                if i + 1 < self.transcript_layout.count():
+                    nxt = self.transcript_layout.itemAt(i + 1).widget()
+                partner = target is not None and nxt is target
+                self._set_widget_opacity(w, 1.0 if partner else dim)
+                continue
+            self._set_widget_opacity(w, dim)
+
+    def _set_widget_opacity(self, w: QWidget, opacity: float) -> None:
+        if opacity >= 0.999:
+            w.setGraphicsEffect(None)
+            return
+        eff = w.graphicsEffect()
+        if not isinstance(eff, QGraphicsOpacityEffect):
+            eff = QGraphicsOpacityEffect(w)
+            w.setGraphicsEffect(eff)
+        eff.setOpacity(opacity)
+
+    def _clear_reader_focus_effects(self) -> None:
+        for w in self._iter_transcript_widgets():
+            w.setGraphicsEffect(None)
+
+    def _refresh_ancillary_transcript_labels(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        pt = self._scaled_chat_font_pt()
+        muted = self._placeholder_muted_color(is_dark)
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, QLabel) and w is not getattr(self, "placeholder_lbl", None):
+                qube_hdr = self._qube_response_header_color(is_dark)
+                w.setStyleSheet(
+                    f"color: {qube_hdr}; font-weight: bold; font-size: {pt:.1f}pt; margin-top: 15px; background: transparent;"
+                )
+        pl = getattr(self, "placeholder_lbl", None)
+        if pl is not None:
+            pl.setStyleSheet(
+                f"color: {muted}; font-size: {pt:.1f}pt; margin-top: 50px; font-weight: bold;"
+            )
+
+    def _refresh_all_readability(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        sheet = self._agent_markdown_stylesheet(is_dark)
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, MessageWrapper):
+                if w.is_user and w.bubble is not None:
+                    lbl = w.bubble.findChild(ChatLabel)
+                    if lbl is not None:
+                        self._style_user_bubble(w.bubble, lbl)
+                else:
+                    for agent in w.findChildren(AgentMessageLabel):
+                        self._style_agent_message_shell(agent)
+                        if agent._md_layout_source:
+                            agent.set_agent_markdown(
+                                agent._md_layout_source,
+                                is_dark=is_dark,
+                                document_stylesheet=sheet,
+                                line_height_percent=self._line_height_proportional_percent(),
+                            )
+        self._refresh_ancillary_transcript_labels()
+        self._refresh_readability_toolbar()
+        if self._focus_mode_enabled:
+            self._apply_reader_focus_opacity()
+        else:
+            self._clear_reader_focus_effects()
+
+    def _nudge_font_scale(self, delta: float) -> None:
+        new_v = round(self._font_scale + delta, 4)
+        new_v = max(_FONT_SCALE_MIN, min(_FONT_SCALE_MAX, new_v))
+        if new_v == self._font_scale:
+            return
+        self._font_scale = new_v
+        self._refresh_all_readability()
+
+    def _font_scale_step_for_click(self) -> float:
+        mods = QApplication.keyboardModifiers()
+        if bool(mods & Qt.KeyboardModifier.ShiftModifier):
+            return _FONT_SCALE_STEP_COARSE
+        return _FONT_SCALE_STEP
+
+    def _on_font_minus_clicked(self) -> None:
+        self._nudge_font_scale(-self._font_scale_step_for_click())
+
+    def _on_font_plus_clicked(self) -> None:
+        self._nudge_font_scale(self._font_scale_step_for_click())
+
+    def _cycle_line_height_mode(self) -> None:
+        order = (
+            _LINE_HEIGHT_COMPACT,
+            _LINE_HEIGHT_COMFORTABLE,
+            _LINE_HEIGHT_RELAXED,
+        )
+        try:
+            i = order.index(self._line_height_mode)
+        except ValueError:
+            i = 1
+        self._line_height_mode = order[(i + 1) % len(order)]
+        self._refresh_all_readability()
+
+    def _on_reader_focus_toggled(self, checked: bool) -> None:
+        self._focus_mode_enabled = bool(checked)
+        if not self._focus_mode_enabled:
+            self._reader_hover_wrapper = None
+        self._refresh_readability_toolbar()
+        self._apply_reader_focus_opacity()
+
+    def _on_high_contrast_toggled(self, checked: bool) -> None:
+        self._high_contrast_enabled = bool(checked)
+        self._refresh_all_readability()
+
+    def _refresh_readability_toolbar(self, is_dark: bool | None = None) -> None:
+        if not hasattr(self, "line_height_btn"):
+            return
+        if is_dark is None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self.font_minus_btn.setEnabled(self._font_scale > _FONT_SCALE_MIN + 1e-6)
+        self.font_plus_btn.setEnabled(self._font_scale < _FONT_SCALE_MAX - 1e-6)
+        mode_labels = {
+            _LINE_HEIGHT_COMPACT: "Compact line spacing",
+            _LINE_HEIGHT_COMFORTABLE: "Comfortable line spacing",
+            _LINE_HEIGHT_RELAXED: "Relaxed line spacing",
+        }
+        self.line_height_btn.setToolTip(
+            mode_labels.get(self._line_height_mode, "Line spacing")
+        )
+        self.reader_focus_btn.blockSignals(True)
+        self.high_contrast_btn.blockSignals(True)
+        try:
+            self.reader_focus_btn.setChecked(self._focus_mode_enabled)
+            self.high_contrast_btn.setChecked(self._high_contrast_enabled)
+        finally:
+            self.reader_focus_btn.blockSignals(False)
+            self.high_contrast_btn.blockSignals(False)
+        hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
+        icon_muted = "#8b5cf6" if is_dark else "#1e293b"
+        icon_active = "#c4b5fd" if is_dark else "#2563eb"
+        lh_icon_color = icon_muted
+        self.line_height_btn.setIcon(
+            self._make_tinted_svg_icon(_LINE_SPACING_ICON, lh_icon_color, size=_CHAT_UTILITY_ICON_PX)
+        )
+        self.line_height_btn.setIconSize(
+            QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+        )
+        self.line_height_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        self.reader_focus_btn.setIcon(
+            qta.icon(
+                "fa5s.crosshairs",
+                color=icon_active if self._focus_mode_enabled else icon_muted,
+            )
+        )
+        self.reader_focus_btn.setIconSize(
+            QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+        )
+        self.reader_focus_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        self.high_contrast_btn.setIcon(
+            qta.icon(
+                "fa5s.adjust",
+                color=icon_active if self._high_contrast_enabled else icon_muted,
+            )
+        )
+        self.high_contrast_btn.setIconSize(
+            QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+        )
+        self.high_contrast_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        for btn in (self.line_height_btn, self.reader_focus_btn, self.high_contrast_btn):
+            btn.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background: transparent;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 4px;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover_bg};
+                }}
+                """
+            )
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -734,21 +1135,72 @@ class ConversationsView(QWidget):
 
         utility_toolbar = QFrame()
         utility_toolbar.setObjectName("ChatUtilityToolbar")
-        utility_toolbar.setFixedHeight(34)
+        utility_toolbar.setFixedHeight(40)
         utility_toolbar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         utility_layout = QHBoxLayout(utility_toolbar)
         utility_layout.setContentsMargins(0, 0, 0, 0)
         utility_layout.setSpacing(8)
 
+        readability_host = QWidget()
+        readability_host.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        read_row = QHBoxLayout(readability_host)
+        read_row.setContentsMargins(0, 0, 0, 0)
+        read_row.setSpacing(6)
+
+        self.font_minus_btn = QPushButton("A−")
+        self.font_minus_btn.setObjectName("ReadabilityFontMinus")
+        self.font_minus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.font_minus_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        self.font_minus_btn.setToolTip(
+            "Decrease chat font (Shift+click: larger step)"
+        )
+        self.font_minus_btn.clicked.connect(self._on_font_minus_clicked)
+
+        self.font_plus_btn = QPushButton("A+")
+        self.font_plus_btn.setObjectName("ReadabilityFontPlus")
+        self.font_plus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.font_plus_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        self.font_plus_btn.setToolTip(
+            "Increase chat font (Shift+click: larger step)"
+        )
+        self.font_plus_btn.clicked.connect(self._on_font_plus_clicked)
+
+        self.line_height_btn = QPushButton()
+        self.line_height_btn.setObjectName("ReadabilityLineHeight")
+        self.line_height_btn.setProperty("class", "IconButton")
+        self.line_height_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.line_height_btn.clicked.connect(self._cycle_line_height_mode)
+
+        self.reader_focus_btn = QPushButton()
+        self.reader_focus_btn.setObjectName("ReadabilityReaderFocus")
+        self.reader_focus_btn.setProperty("class", "IconButton")
+        self.reader_focus_btn.setCheckable(True)
+        self.reader_focus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.reader_focus_btn.setToolTip("Reader focus: dim other messages")
+        self.reader_focus_btn.toggled.connect(self._on_reader_focus_toggled)
+
+        self.high_contrast_btn = QPushButton()
+        self.high_contrast_btn.setObjectName("ReadabilityHighContrast")
+        self.high_contrast_btn.setProperty("class", "IconButton")
+        self.high_contrast_btn.setCheckable(True)
+        self.high_contrast_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.high_contrast_btn.setToolTip("High contrast (chat transcript only)")
+        self.high_contrast_btn.toggled.connect(self._on_high_contrast_toggled)
+
         self.layout_mode_btn = QPushButton()
         self.layout_mode_btn.setObjectName("LayoutModeButton")
         self.layout_mode_btn.setProperty("class", "IconButton")
         self.layout_mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.layout_mode_btn.setFixedSize(30, 30)
         self.layout_mode_btn.clicked.connect(self._toggle_layout_mode)
 
-        utility_layout.addStretch(1)
-        utility_layout.addWidget(self.layout_mode_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+        read_row.addWidget(self.font_minus_btn)
+        read_row.addWidget(self.font_plus_btn)
+        read_row.addWidget(self.line_height_btn)
+        read_row.addWidget(self.reader_focus_btn)
+        read_row.addWidget(self.high_contrast_btn)
+        read_row.addWidget(self.layout_mode_btn)
+
+        utility_layout.addWidget(readability_host, 0, Qt.AlignmentFlag.AlignLeft)
         utility_layout.addStretch(1)
         layout.addWidget(utility_toolbar)
 
@@ -780,7 +1232,8 @@ class ConversationsView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        self._refresh_layout_mode_button()
+        self._refresh_readability_toolbar(is_dark=True)
+        self._refresh_layout_mode_button(is_dark=True)
         layout.addWidget(self.scroll_area)
 
         # 2. Per-message action bar
@@ -859,22 +1312,24 @@ class ConversationsView(QWidget):
         # 🔑 FIX 2: Allow bubble to expand horizontally, minimum vertically
         bubble.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         bubble.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        bubble.setStyleSheet("background-color: #89b4fa; border-radius: 18px;")
 
         bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setContentsMargins(16, 12, 16, 12)
 
         lbl = ChatLabel(text)
         lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        lbl.setStyleSheet("background: transparent; border: none; font-size: 14px; color: #11111b;")
-        
+        self._style_user_bubble(bubble, lbl)
+
         bubble_layout.addWidget(lbl)
 
         wrapper = MessageWrapper(bubble, is_user=True)
+        self._register_reader_focus_tracking(wrapper)
         self.transcript_layout.addWidget(wrapper)
         
         self._is_agent_typing = False
         self._scroll_to_bottom()
+        if self._focus_mode_enabled:
+            self._apply_reader_focus_opacity()
 
     def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
         self._clear_placeholders()
@@ -883,11 +1338,14 @@ class ConversationsView(QWidget):
         if self.window() and hasattr(self.window(), '_is_dark_theme'):
             is_dark = self.window()._is_dark_theme
             
-        header_color = "#8b5cf6" if is_dark else "#8839ef"
+        header_color = self._qube_response_header_color(is_dark)
+        hdr_pt = self._scaled_chat_font_pt()
 
         if not getattr(self, '_is_agent_typing', False):
             header = QLabel("QUBE")
-            header.setStyleSheet(f"color: {header_color}; font-weight: bold; font-size: 11px; margin-top: 15px; background: transparent;")
+            header.setStyleSheet(
+                f"color: {header_color}; font-weight: bold; font-size: {hdr_pt:.1f}pt; margin-top: 15px; background: transparent;"
+            )
             self.transcript_layout.addWidget(header)
 
             self.agent_msg_container = QFrame()
@@ -910,8 +1368,7 @@ class ConversationsView(QWidget):
                 Qt.TextInteractionFlag.LinksAccessibleByMouse
             )
             self.current_agent_msg.attach_citation_handling(self)
-            # Foreground for nested Markdown (td/li/…) comes from QTextDocument default stylesheet in set_agent_markdown.
-            self.current_agent_msg.setStyleSheet("font-size: 14px; background: transparent; border: none;")
+            self._style_agent_message_shell(self.current_agent_msg)
 
             # Per-bubble citation context (survives new turns and session reloads)
             if citation_sources is not _UNSET_SOURCES:
@@ -922,6 +1379,7 @@ class ConversationsView(QWidget):
             container_layout.addWidget(self.current_agent_msg)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
+            self._register_reader_focus_tracking(wrapper)
             self.transcript_layout.addWidget(wrapper)
             
             self._agent_text_buffer = ""
@@ -939,11 +1397,18 @@ class ConversationsView(QWidget):
 
         # Sticky scroll: capture "at bottom" before content grows, then scroll only if user was following the stream.
         follow_stream_tail = self._is_transcript_scrolled_to_bottom()
-        self.current_agent_msg.set_agent_markdown(rich_text, is_dark=is_dark)
+        self.current_agent_msg.set_agent_markdown(
+            rich_text,
+            is_dark=is_dark,
+            document_stylesheet=self._agent_markdown_stylesheet(is_dark),
+            line_height_percent=self._line_height_proportional_percent(),
+        )
 
         self.current_agent_msg.updateGeometry()
         if follow_stream_tail:
             self._scroll_to_bottom()
+        if self._focus_mode_enabled:
+            self._apply_reader_focus_opacity()
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -968,6 +1433,8 @@ class ConversationsView(QWidget):
         Python still holds strong references (signal slots, view pointers, source snapshots).
         We clear those explicitly, then flush DeferredDelete so QObject teardown runs promptly.
         """
+        self._reader_hover_wrapper = None
+        self._clear_reader_focus_effects()
         self.placeholder_lbl = None
         self.current_agent_msg = None
         self._pending_citation_sources = None
@@ -1229,10 +1696,8 @@ class ConversationsView(QWidget):
 
         self.placeholder_lbl = QLabel("New chat started. Type or speak a message!")
         self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.placeholder_lbl.setStyleSheet(
-            "color: #6c7086; font-size: 16px; margin-top: 50px; font-weight: bold;"
-        )
         self.transcript_layout.addWidget(self.placeholder_lbl)
+        self._refresh_ancillary_transcript_labels()
 
         self._is_agent_typing = False
         self._refresh_history_list()
@@ -1251,10 +1716,8 @@ class ConversationsView(QWidget):
         if not history:
             self.placeholder_lbl = QLabel("Empty conversation.")
             self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.placeholder_lbl.setStyleSheet(
-                "color: #6c7086; font-size: 16px; margin-top: 50px; font-weight: bold;"
-            )
             self.transcript_layout.addWidget(self.placeholder_lbl)
+            self._refresh_ancillary_transcript_labels()
             self._scroll_to_bottom()
             return
 
@@ -1268,6 +1731,7 @@ class ConversationsView(QWidget):
                 )
                 self._is_agent_typing = False
 
+        self._refresh_all_readability()
         self._scroll_to_bottom()
 
     def _apply_menu_theme(self, menu, is_dark: bool):
@@ -1426,7 +1890,29 @@ class ConversationsView(QWidget):
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
+        self._refresh_readability_toolbar(is_dark=is_dark)
         self._refresh_layout_mode_button(is_dark=is_dark)
+        if hasattr(self, "font_minus_btn"):
+            dis = "#6c7086" if is_dark else "#94a3b8"
+            font_btn_style = f"""
+                QPushButton {{
+                    background: transparent;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 2px 4px;
+                    color: {icon_color};
+                    font-weight: 700;
+                    font-size: 13px;
+                    min-width: {_CHAT_UTILITY_BTN}px;
+                    max-width: {_CHAT_UTILITY_BTN}px;
+                    min-height: {_CHAT_UTILITY_BTN}px;
+                    max-height: {_CHAT_UTILITY_BTN}px;
+                }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+                QPushButton:disabled {{ color: {dis}; }}
+            """
+            self.font_minus_btn.setStyleSheet(font_btn_style)
+            self.font_plus_btn.setStyleSheet(font_btn_style)
         self._apply_action_toggle_styles()
 
     def showEvent(self, event: QEvent) -> None:
@@ -1436,6 +1922,15 @@ class ConversationsView(QWidget):
     
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
+        if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
+            et = event.type()
+            if et == QEvent.Type.HoverEnter:
+                self._reader_hover_wrapper = obj
+                self._apply_reader_focus_opacity()
+            elif et == QEvent.Type.HoverLeave:
+                if self._reader_hover_wrapper is obj:
+                    self._reader_hover_wrapper = None
+                    self._apply_reader_focus_opacity()
         return super().eventFilter(obj, event)
 
     def _is_transcript_scrolled_to_bottom(self) -> bool:
