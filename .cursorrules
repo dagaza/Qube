@@ -18,7 +18,7 @@ Qube/
 │   ├── styles/             # base.qss (dark), light.qss — includes #SettingsMenuButton and :disabled states for locked Prestige dropdowns.
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
-│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), top bar, theme toggle; passes native_engine into TelemetryView for read-only capability telemetry.
+│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), optimistic LOCAL LLM picker label + zero-shift 4px load progress bar + stale load-finish guard, top bar, theme toggle; passes native_engine into TelemetryView for read-only capability telemetry.
 │   ├── router_dashboard.py # Visualizations go into the Telemetry screen
 │   ├── components/         # Reusable custom UI components.
 │   │   ├── memory_debug_panel.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
@@ -64,7 +64,7 @@ Qube/
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
 │   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal native path uses NativeLlamaEngine.get_execution_policy() for thinking strip/display (policy-driven stream filters).
-│   ├── native_llama_engine.py # QThread: Llama load/unload/generate; load-time behavior ablation (skipped if get_override has persisted self-heal) + model_behavior overrides; build_prompt_bundle in _prepare_validation_and_logs; detect_model_reasoning_profile; get_execution_policy(); [LLM-DEBUG] reasoning_profile + execution_policy + llm_model_behavior_profile; post-inference: token trace → causality → counterfactual (env-gated).
+│   ├── native_llama_engine.py # QThread: Llama load/unload/generate; load-time behavior ablation (skipped if get_override has persisted self-heal) + model_behavior overrides; coalesces queued rapid load bursts so latest pending model wins; build_prompt_bundle in _prepare_validation_and_logs; detect_model_reasoning_profile; get_execution_policy(); [LLM-DEBUG] reasoning_profile + execution_policy + llm_model_behavior_profile; post-inference: token trace → causality → counterfactual (env-gated).
 │   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list.
 │   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.
 │   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.

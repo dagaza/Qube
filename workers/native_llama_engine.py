@@ -174,6 +174,14 @@ class NativeLlamaEngine(QThread):
         n_ctx: int,
         n_threads: int,
     ) -> None:
+        # Collapse queued load bursts (A->B->C clicks) so only the latest pending load remains.
+        try:
+            with self._cmd_queue.mutex:
+                self._cmd_queue.queue = queue.deque(
+                    c for c in self._cmd_queue.queue if c.get("op") != "load"
+                )
+        except Exception:
+            pass
         self._cmd_queue.put(
             {
                 "op": "load",

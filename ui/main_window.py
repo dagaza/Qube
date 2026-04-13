@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QApplication, QLabel, QFrame, 
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
-    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox
+    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
 from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics
@@ -109,6 +109,9 @@ class MainWindow(QMainWindow):
         self._llm_worker   = workers.get("llm")
         self._gpu_monitor  = gpu_monitor
         self._native_engine = native_engine
+        self._pending_native_model_path: str | None = None
+        self._native_model_loading: bool = False
+        self._native_model_loaded_success: bool = False
 
         # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
         # We import it here or at the top of the file
@@ -119,6 +122,8 @@ class MainWindow(QMainWindow):
         self._is_dark_theme = True
 
         self._setup_ui()
+        if self._native_engine is not None:
+            self._native_engine.load_finished.connect(self._on_native_model_load_finished_ui)
         self._setup_tray()
         self._start_timers()
 
@@ -543,6 +548,16 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.toolbar_native_model_selector.setIcon(qta.icon("fa5s.chevron-down", color="#64748b"))
         self.toolbar_native_model_selector.setMenu(QMenu(self.toolbar_native_model_selector))
+        self.toolbar_native_model_selector.setText("Select AI Model")
+        self._apply_native_model_selector_text_state(False)
+        self.toolbar_native_model_progress = QProgressBar()
+        self.toolbar_native_model_progress.setObjectName("NativeModelLoadProgress")
+        self.toolbar_native_model_progress.setRange(0, 100)
+        self.toolbar_native_model_progress.setValue(0)
+        self.toolbar_native_model_progress.setTextVisible(False)
+        self.toolbar_native_model_progress.setFixedHeight(4)
+        self._set_native_model_progress_loading(False)
+        native_llm_layout.addWidget(self.toolbar_native_model_progress)
         native_llm_layout.addWidget(self.toolbar_native_model_selector)
         main_layout.addLayout(native_llm_layout)
 
@@ -848,8 +863,13 @@ class MainWindow(QMainWindow):
                 m = get_engine_mode()
 
             if m == "external":
+                self._pending_native_model_path = None
+                self._native_model_loading = False
+                self._native_model_loaded_success = False
+                self._set_native_model_progress_loading(False)
                 btn.setEnabled(False)
                 btn.setText("Managed by External Server")
+                self._apply_native_model_selector_text_state(False)
                 btn.setMenu(None)
                 return
 
@@ -866,7 +886,12 @@ class MainWindow(QMainWindow):
                 cap_btn = max(100, self.tools_content.width() - 56)
 
             if not ggufs:
+                self._pending_native_model_path = None
+                self._native_model_loading = False
+                self._native_model_loaded_success = False
+                self._set_native_model_progress_loading(False)
                 btn.setText("Select AI Model")
+                self._apply_native_model_selector_text_state(False)
                 btn.setMenu(None)
                 return
 
@@ -875,8 +900,16 @@ class MainWindow(QMainWindow):
             def on_pick(path: str) -> None:
                 set_internal_model_path(path)
                 if self._llm_worker:
+                    self._pending_native_model_path = path
+                    self._native_model_loading = True
+                    self._native_model_loaded_success = False
+                    self._set_native_model_progress_loading(True)
+                    self._apply_native_model_selector_text_state(False)
+                    btn.setText(
+                        fm.elidedText(Path(path).name, Qt.TextElideMode.ElideMiddle, cap_btn)
+                    )
                     self._llm_worker.refresh_native_model_from_settings()
-                self.refresh_toolbar_native_model_dropdown()
+                # Keep optimistic label; final state is resolved by load_finished.
 
             items = []
             for p in ggufs:
@@ -885,6 +918,12 @@ class MainWindow(QMainWindow):
                 items.append((disp, abs_p))
 
             self._build_prestige_menu(btn, items, on_pick)
+
+            if self._native_model_loading and self._pending_native_model_path:
+                pending_name = Path(self._pending_native_model_path).name
+                btn.setText(fm.elidedText(pending_name, Qt.TextElideMode.ElideMiddle, cap_btn))
+                self._apply_native_model_selector_text_state(False)
+                return
 
             snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
             loaded = bool((snap or {}).get("loaded"))
@@ -897,10 +936,71 @@ class MainWindow(QMainWindow):
                 btn.setText(
                     fm.elidedText(matched.name, Qt.TextElideMode.ElideMiddle, cap_btn)
                 )
+                self._apply_native_model_selector_text_state(self._native_model_loaded_success)
             else:
                 btn.setText(fm.elidedText("Select AI Model", Qt.TextElideMode.ElideMiddle, cap_btn))
+                self._apply_native_model_selector_text_state(False)
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
+
+    def _set_native_model_progress_loading(self, loading: bool) -> None:
+        if not hasattr(self, "toolbar_native_model_progress"):
+            return
+        bar = self.toolbar_native_model_progress
+        if loading:
+            bar.setRange(0, 0)  # indeterminate, no layout shift
+            bar.setStyleSheet(
+                """
+                QProgressBar {
+                    background: rgba(255, 255, 255, 0.08);
+                    border: none;
+                    border-radius: 2px;
+                }
+                QProgressBar::chunk {
+                    background-color: #8b5cf6;
+                    border-radius: 2px;
+                }
+                """
+            )
+        else:
+            bar.setRange(0, 100)
+            bar.setValue(0)
+            # Keep spacer height without visible fill.
+            bar.setStyleSheet(
+                """
+                QProgressBar {
+                    background: transparent;
+                    border: none;
+                    border-radius: 2px;
+                }
+                QProgressBar::chunk {
+                    background: transparent;
+                    border: none;
+                }
+                """
+            )
+
+    def _apply_native_model_selector_text_state(self, success: bool) -> None:
+        if not hasattr(self, "toolbar_native_model_selector"):
+            return
+        if success:
+            self.toolbar_native_model_selector.setStyleSheet(
+                "color: #10b981; font-weight: 600;"
+            )
+        else:
+            self.toolbar_native_model_selector.setStyleSheet("")
+
+    def _on_native_model_load_finished_ui(self, ok: bool, message: str) -> None:
+        if self._native_model_loading and self._pending_native_model_path:
+            pending_name = Path(self._pending_native_model_path).name
+            # Ignore stale completion from an older rapid selection.
+            if ok and str(message or "").strip() and str(message).strip() != pending_name:
+                return
+        self._native_model_loading = False
+        self._native_model_loaded_success = bool(ok)
+        self._pending_native_model_path = None
+        self._set_native_model_progress_loading(False)
+        self.refresh_toolbar_native_model_dropdown()
 
     # --- PRESTIGE MENU LOGIC ---
     def _build_prestige_menu(self, button, items, callback):
