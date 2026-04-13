@@ -64,6 +64,48 @@ class DocumentStore:
             
         return []
 
+    def find_sources_matching_text(self, query: str) -> set[str]:
+        """
+        Return source filenames (library titles) that have indexed text matching query.
+        Uses FTS when available; otherwise scans chunks per source (substring, case-insensitive).
+        """
+        q = (query or "").strip()
+        if not q:
+            return set()
+        needle = q.lower()
+        matched: set[str] = set()
+        try:
+            rows = (
+                self.table.search(q, query_type="fts")
+                .select(["source"])
+                .limit(100_000)
+                .to_list()
+            )
+            for row in rows:
+                src = row.get("source")
+                if src:
+                    matched.add(str(src))
+        except Exception as e:
+            logger.debug("LanceDB FTS library search skipped: %s", e)
+        if matched:
+            return matched
+        dummy = [0.0] * VECTOR_DIM
+        try:
+            for src in self.get_all_indexed_sources():
+                esc = str(src).replace("'", "''")
+                rows = (
+                    self.table.search(dummy)
+                    .limit(50_000)
+                    .where(f"source = '{esc}'")
+                    .select(["text"])
+                    .to_list()
+                )
+                if any(needle in (r.get("text") or "").lower() for r in rows):
+                    matched.add(str(src))
+        except Exception as e:
+            logger.warning("Library substring scan failed: %s", e)
+        return matched
+
     def add_chunks(self, chunks: list[dict]):
         self.table.add(chunks)
         

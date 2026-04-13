@@ -201,16 +201,20 @@ class DatabaseManager:
 
     def search_history(self, query: str) -> list[dict]:
         with self._get_connection() as conn:
-            safe_query = f"{query}*" 
-            cursor = conn.execute("""
-                SELECT m.session_id, s.title, m.role, snippet(messages_fts, -1, '<b>', '</b>', '...', 10) as highlight
-                FROM messages_fts fts
+            safe_query = f"{query}*"
+            cursor = conn.execute(
+                """
+                SELECT m.session_id, s.title, m.role,
+                       snippet(fts, -1, '<b>', '</b>', '...', 10) AS highlight
+                FROM messages_fts AS fts
                 JOIN messages m ON fts.rowid = m.rowid
                 JOIN sessions s ON m.session_id = s.id
-                WHERE messages_fts MATCH ?
+                WHERE fts MATCH ?
                 ORDER BY m.timestamp DESC
                 LIMIT 20
-            """, (safe_query,))
+                """,
+                (safe_query,),
+            )
             return [dict(row) for row in cursor.fetchall()]
 
     def get_recent_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
@@ -218,6 +222,28 @@ class DatabaseManager:
             cursor = conn.execute(
                 "SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC LIMIT ? OFFSET ?",
                 (limit, offset)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_sessions_for_sidebar_search(self, query: str, limit: int = 200) -> list[dict]:
+        """Sessions whose title or any message body matches query (case-insensitive substring)."""
+        q = (query or "").strip()
+        if not q:
+            return []
+        ql = q.lower()
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, title, updated_at FROM sessions
+                WHERE instr(lower(title), ?) > 0
+                UNION
+                SELECT s.id, s.title, s.updated_at FROM sessions s
+                INNER JOIN messages m ON m.session_id = s.id
+                WHERE instr(lower(m.content), ?) > 0
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """,
+                (ql, ql, limit),
             )
             return [dict(row) for row in cursor.fetchall()]
         
@@ -237,7 +263,53 @@ class DatabaseManager:
                 (limit, offset)
             )
             return [dict(row) for row in cursor.fetchall()]
-        
+
+    def get_library_documents_for_sidebar_search(
+        self,
+        query: str,
+        content_match_filenames: list[str] | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        """Documents whose filename matches query and/or appear in content_match_filenames (e.g. RAG chunk hits)."""
+        q = (query or "").strip().lower()
+        names = list(dict.fromkeys(content_match_filenames or []))[:400]
+        if not q and not names:
+            return []
+        with self._get_connection() as conn:
+            if q and names:
+                ph = ",".join("?" * len(names))
+                cursor = conn.execute(
+                    f"""
+                    SELECT * FROM documents
+                    WHERE instr(lower(filename), ?) > 0 OR filename IN ({ph})
+                    ORDER BY ingested_at DESC
+                    LIMIT ?
+                    """,
+                    (q, *names, limit),
+                )
+            elif q:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM documents
+                    WHERE instr(lower(filename), ?) > 0
+                    ORDER BY ingested_at DESC
+                    LIMIT ?
+                    """,
+                    (q, limit),
+                )
+            else:
+                ph = ",".join("?" * len(names))
+                cursor = conn.execute(
+                    f"""
+                    SELECT * FROM documents
+                    WHERE filename IN ({ph})
+                    ORDER BY ingested_at DESC
+                    LIMIT ?
+                    """,
+                    (*names, limit),
+                )
+            return [dict(row) for row in cursor.fetchall()]
+
     def delete_document_metadata(self, filename: str):
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))

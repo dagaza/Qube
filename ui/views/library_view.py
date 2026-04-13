@@ -184,10 +184,13 @@ class LibraryView(QWidget):
 
         # The Search Bar
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search documents...")
+        self.search_bar.setPlaceholderText("Search filenames or indexed text…")
         self.search_bar.setObjectName("LibrarySearchBar")
-        self.search_bar.textChanged.connect(self._filter_list)
         layout.addWidget(self.search_bar)
+        self._library_search_timer = QTimer(self)
+        self._library_search_timer.setSingleShot(True)
+        self._library_search_timer.timeout.connect(self._reload_library_sidebar)
+        self.search_bar.textChanged.connect(self._on_library_search_changed)
 
         # Document List
         self.doc_list = QListWidget()
@@ -701,8 +704,7 @@ class LibraryView(QWidget):
         """)
 
     def refresh_library_list(self):
-        """Clears the list, resets the offset, and pulls the first batch."""
-        self.doc_list.clear()
+        """Resets offset and rebuilds the list (respects search box)."""
         self.library_offset = 0
         self.is_loading_library = False
 
@@ -711,9 +713,8 @@ class LibraryView(QWidget):
         
         if hasattr(self, 'list_title'):
             self.list_title.setText(f"KNOWLEDGE BASE ({display_count})")
-            
-        # Load the initial batch!
-        self._load_library_batch()
+
+        self._reload_library_sidebar()
 
     def _on_library_scroll(self, value):
         """Triggered every time the user scrolls."""
@@ -722,90 +723,133 @@ class LibraryView(QWidget):
         if value == bar.maximum():
             self._load_library_batch()
 
-    def _load_library_batch(self):
-        """Fetches the next chunk of documents and appends it to the list."""
-        if getattr(self, 'is_loading_library', False):
-            return 
-            
-        self.is_loading_library = True
+    def _on_library_search_changed(self, _text: str) -> None:
+        self._library_search_timer.stop()
+        self._library_search_timer.start(280)
 
+    def _reload_library_sidebar(self) -> None:
+        """Rebuild sidebar: filename + indexed text search when non-empty, else paged recent list."""
+        self.doc_list.clear()
+        self.library_offset = 0
+        self.is_loading_library = False
+        q = self.search_bar.text().strip() if getattr(self, "search_bar", None) else ""
+        if q:
+            content_hits: set[str] = set()
+            if self.store and hasattr(self.store, "find_sources_matching_text"):
+                try:
+                    content_hits = self.store.find_sources_matching_text(q)
+                except Exception as e:
+                    logger.exception("Library sidebar content search failed: %s", e)
+            try:
+                docs = self.db.get_library_documents_for_sidebar_search(
+                    q, list(content_hits), limit=200
+                )
+            except Exception as e:
+                logger.exception("Library sidebar DB search failed: %s", e)
+                docs = []
+            for doc in docs:
+                self._append_library_doc_row(doc)
+            self.library_offset = 10**9
+            self.is_loading_library = False
+        else:
+            self._load_library_batch()
+        self._update_row_colors()
+
+    def _append_library_doc_row(self, doc: dict) -> None:
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
-        from PyQt6.QtCore import Qt, QSize
+        from PyQt6.QtCore import QSize
         import qtawesome as qta
-        
-        # Match ConversationsView._load_history_batch: window may be None until after MainWindow adds this widget.
+
         is_dark = True
         main_win = self.window()
         if main_win and hasattr(main_win, "_is_dark_theme"):
             is_dark = main_win._is_dark_theme
 
         t_color = "#cdd6f4" if is_dark else "#1e293b"
-        icon_color = "#6c7086" if is_dark else "#64748b" 
-        
-        # 🔑 THE FIX: Pass both limit and offset to the DB
+        icon_color = "#6c7086" if is_dark else "#64748b"
+
+        item = QListWidgetItem()
+        item.setData(Qt.ItemDataRole.UserRole, doc)
+
+        row = QWidget()
+        row.setObjectName("HistoryRowWidget")
+        row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        lay = QHBoxLayout(row)
+        lay.setContentsMargins(15, 0, 10, 0)
+        lay.setSpacing(10)
+
+        item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
+        lbl = QLabel(item_text)
+        lbl.setObjectName("HistoryRowTitle")
+        lbl.setStyleSheet(
+            f"color: {t_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;"
+        )
+
+        btn = QPushButton()
+        btn.setObjectName("HistoryOptionsBtn")
+        btn.setFixedSize(28, 28)
+        btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+        btn.setIconSize(QSize(16, 16))
+        btn.setStyleSheet(
+            "QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }"
+        )
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        menu = QMenu(btn)
+        if hasattr(self, "_apply_menu_theme"):
+            self._apply_menu_theme(menu, is_dark)
+
+        rename_action = menu.addAction(
+            qta.icon("fa5s.edit", color="#89b4fa"), "Rename Document"
+        )
+        rename_action.triggered.connect(
+            lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
+        )
+
+        menu.addSeparator()
+
+        delete_action = menu.addAction(
+            qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Document"
+        )
+        delete_action.triggered.connect(
+            lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
+        )
+
+        btn.setMenu(menu)
+
+        lay.addWidget(lbl)
+        lay.addStretch()
+        lay.addWidget(btn)
+
+        item.setSizeHint(QSize(0, 45))
+        self.doc_list.addItem(item)
+        self.doc_list.setItemWidget(item, row)
+
+    def _load_library_batch(self):
+        """Fetches the next chunk of documents and appends it to the list."""
+        if getattr(self, "search_bar", None) and self.search_bar.text().strip():
+            self.is_loading_library = False
+            return
+        if getattr(self, "is_loading_library", False):
+            return
+
+        self.is_loading_library = True
+
         try:
             docs = self.db.get_library_documents(limit=20, offset=self.library_offset)
         except TypeError:
-            # Fallback if DB isn't updated yet
             docs = self.db.get_library_documents()
             if self.library_offset > 0:
-                docs = [] 
+                docs = []
 
         if not docs:
             self.is_loading_library = False
             return
 
         for doc in docs:
-            item = QListWidgetItem()
-            item.setData(Qt.ItemDataRole.UserRole, doc)
-            
-            row = QWidget()
-            row.setObjectName("HistoryRowWidget")
-            row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-            
-            lay = QHBoxLayout(row)
-            lay.setContentsMargins(15, 0, 10, 0)
-            lay.setSpacing(10)
-            
-            # 1. The Title
-            item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
-            lbl = QLabel(item_text)
-            lbl.setObjectName("HistoryRowTitle")
-            lbl.setStyleSheet(f"color: {t_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
-            
-            # 2. The Kebab Button
-            btn = QPushButton()
-            btn.setObjectName("HistoryOptionsBtn")
-            btn.setFixedSize(28, 28)
-            btn.setIcon(qta.icon('fa5s.ellipsis-v', color=icon_color))
-            btn.setIconSize(QSize(16, 16)) 
-            btn.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }")
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            
-            # 3. The Menu
-            menu = QMenu(btn)
-            if hasattr(self, '_apply_menu_theme'):
-                self._apply_menu_theme(menu, is_dark)
-            
-            rename_action = menu.addAction(qta.icon('fa5s.edit', color='#89b4fa'), "Rename Document")
-            rename_action.triggered.connect(lambda _, fname=doc['filename']: self._trigger_rename_document(fname))
-            
-            menu.addSeparator()
+            self._append_library_doc_row(doc)
 
-            delete_action = menu.addAction(qta.icon('fa5s.trash-alt', color='#ef4444'), "Delete Document")
-            delete_action.triggered.connect(lambda _, fname=doc['filename']: self._trigger_delete_document(fname))
-            
-            btn.setMenu(menu)
-            
-            lay.addWidget(lbl)
-            lay.addStretch()
-            lay.addWidget(btn)
-            
-            item.setSizeHint(QSize(0, 45))
-            self.doc_list.addItem(item)
-            self.doc_list.setItemWidget(item, row)
-
-        # 🔑 Increment the offset for the next scroll
         self.library_offset += 20
         self.is_loading_library = False
 
@@ -882,18 +926,6 @@ class LibraryView(QWidget):
                 self._apply_library_preview_readability()
 
             self.refresh_library_list()
-
-    def _filter_list(self, text: str):
-        """Hides/Shows list items based on the search bar text."""
-        search_term = text.lower()
-        for i in range(self.doc_list.count()):
-            item = self.doc_list.item(i)
-            # Retrieve the filename from the stored metadata
-            doc_data = item.data(Qt.ItemDataRole.UserRole)
-            if doc_data and search_term in doc_data['filename'].lower():
-                item.setHidden(False)
-            else:
-                item.setHidden(True)
 
     def _on_document_selected(self, item):
         doc_data = item.data(Qt.ItemDataRole.UserRole)

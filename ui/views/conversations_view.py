@@ -1179,9 +1179,13 @@ class ConversationsView(QWidget):
         layout.addLayout(header_layout)
 
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search history...")
+        self.search_bar.setPlaceholderText("Search titles or messages…")
         self.search_bar.setObjectName("HistorySearch")
         layout.addWidget(self.search_bar)
+        self._history_search_timer = QTimer(self)
+        self._history_search_timer.setSingleShot(True)
+        self._history_search_timer.timeout.connect(self._reload_history_sidebar)
+        self.search_bar.textChanged.connect(self._on_history_search_changed)
 
         self.history_list = QListWidget()
         self.history_list.setObjectName("HistoryList")
@@ -1599,25 +1603,117 @@ class ConversationsView(QWidget):
     def update_tts_latency(self, ms: float) -> None:
         self.tts_latency_lbl.setText(f"TTS: {ms:.0f} ms")
 
-    def _refresh_history_list(self):
-        """Clears the list, resets the offset, and pulls the first batch."""
+    def _on_history_search_changed(self, _text: str) -> None:
+        self._history_search_timer.stop()
+        self._history_search_timer.start(280)
+
+    def _reload_history_sidebar(self) -> None:
+        """Rebuild sidebar: full-text search when the search box is non-empty, else paged recent list."""
         self.history_list.clear()
+        self.history_offset = 0
+        self.is_loading_history = False
+        q = self.search_bar.text().strip() if getattr(self, "search_bar", None) else ""
+        if q:
+            try:
+                sessions = self.db.get_sessions_for_sidebar_search(q, limit=200)
+            except Exception as e:
+                logger.exception("Sidebar history search failed: %s", e)
+                sessions = []
+            for session in sessions:
+                self._append_history_session_row(session)
+            self.history_offset = 10**9
+            self.is_loading_history = False
+        else:
+            self._load_history_batch()
+        self._update_row_colors()
+
+    def _append_history_session_row(self, session: dict) -> None:
+        from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
+        from PyQt6.QtCore import QSize
+        import qtawesome as qta
+
+        is_dark = True
+        main_win = self.window()
+        if main_win and hasattr(main_win, "_is_dark_theme"):
+            is_dark = main_win._is_dark_theme
+
+        text_color = "#cdd6f4" if is_dark else "#1e293b"
+        icon_color = "#6c7086" if is_dark else "#64748b"
+
+        item = QListWidgetItem()
+        item.setData(Qt.ItemDataRole.UserRole, session["id"])
+
+        row_widget = QWidget()
+        row_widget.setObjectName("HistoryRowWidget")
+        row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(15, 0, 10, 0)
+        row_layout.setSpacing(10)
+
+        title_lbl = QLabel(session["title"])
+        title_lbl.setObjectName("HistoryRowTitle")
+        title_lbl.setStyleSheet(
+            f"color: {text_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;"
+        )
+
+        opts_btn = QPushButton()
+        opts_btn.setObjectName("HistoryOptionsBtn")
+        opts_btn.setFixedSize(28, 28)
+        opts_btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+        opts_btn.setIconSize(QSize(16, 16))
+        opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        opts_btn.setStyleSheet(
+            "QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }"
+        )
+
+        menu = QMenu(opts_btn)
+        if hasattr(self, "_apply_menu_theme"):
+            self._apply_menu_theme(menu, is_dark)
+
+        rename_action = menu.addAction(
+            qta.icon("fa5s.edit", color="#89b4fa"), "Rename Chat"
+        )
+        rename_action.triggered.connect(
+            lambda _, s_id=session["id"], old_t=session["title"]: self._trigger_rename_chat(
+                s_id, old_t
+            )
+        )
+        menu.addSeparator()
+
+        delete_action = menu.addAction(
+            qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Chat"
+        )
+        delete_action.triggered.connect(
+            lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id)
+        )
+        opts_btn.setMenu(menu)
+
+        row_layout.addWidget(title_lbl)
+        row_layout.addStretch()
+        row_layout.addWidget(opts_btn)
+
+        item.setSizeHint(QSize(0, 45))
+        self.history_list.addItem(item)
+        self.history_list.setItemWidget(item, row_widget)
+
+    def _refresh_history_list(self):
+        """Resets offset, runs cleanup, updates count, rebuilds list (respects search box)."""
         self.history_offset = 0
         self.is_loading_history = False
 
         # Silent garbage collection for empty sessions
-        current_active = getattr(self, 'active_session_id', None)
-        if hasattr(self.db, 'cleanup_empty_sessions'):
+        current_active = getattr(self, "active_session_id", None)
+        if hasattr(self.db, "cleanup_empty_sessions"):
             self.db.cleanup_empty_sessions(current_active)
 
         # Update the Title Count
         count = self.db.get_session_count()
         display_count = "999+" if count > 999 else str(count)
-        if hasattr(self, 'list_title'):
+        if hasattr(self, "list_title"):
             self.list_title.setText(f"CONVERSATIONS ({display_count})")
-            
-        # Load the initial batch!
-        self._load_history_batch()
+
+        self._reload_history_sidebar()
 
     def _on_history_scroll(self, value):
         """Triggered every time the user scrolls."""
@@ -1628,23 +1724,13 @@ class ConversationsView(QWidget):
 
     def _load_history_batch(self):
         """Fetches the next chunk of history and appends it to the list."""
-        if getattr(self, 'is_loading_history', False):
-            return # Prevent spamming the database if already loading
-            
-        self.is_loading_history = True
+        if getattr(self, "search_bar", None) and self.search_bar.text().strip():
+            self.is_loading_history = False
+            return
+        if getattr(self, "is_loading_history", False):
+            return
 
-        from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
-        from PyQt6.QtCore import Qt, QSize
-        import qtawesome as qta
-        
-        # 1. Determine theme state
-        is_dark = True
-        main_win = self.window()
-        if main_win and hasattr(main_win, '_is_dark_theme'):
-            is_dark = main_win._is_dark_theme
-        
-        text_color = "#cdd6f4" if is_dark else "#1e293b"
-        icon_color = "#6c7086" if is_dark else "#64748b"
+        self.is_loading_history = True
         
         # 🔑 THE FIX: Pass both the limit AND the current offset to the DB
         # Note: If your DB doesn't support 'offset' yet, we'll need to update it!
@@ -1661,50 +1747,8 @@ class ConversationsView(QWidget):
             return
 
         for session in sessions:
-            item = QListWidgetItem()
-            item.setData(Qt.ItemDataRole.UserRole, session["id"])
-            
-            row_widget = QWidget()
-            row_widget.setObjectName("HistoryRowWidget")
-            row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-            
-            row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(15, 0, 10, 0)
-            row_layout.setSpacing(10)
-            
-            title_lbl = QLabel(session["title"])
-            title_lbl.setObjectName("HistoryRowTitle")
-            title_lbl.setStyleSheet(f"color: {text_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
-            
-            opts_btn = QPushButton()
-            opts_btn.setObjectName("HistoryOptionsBtn")
-            opts_btn.setFixedSize(28, 28)
-            opts_btn.setIcon(qta.icon('fa5s.ellipsis-v', color=icon_color))
-            opts_btn.setIconSize(QSize(16, 16))
-            opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus) 
-            opts_btn.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }")
-            
-            menu = QMenu(opts_btn)
-            if hasattr(self, '_apply_menu_theme'):
-                 self._apply_menu_theme(menu, is_dark)
+            self._append_history_session_row(session)
 
-            rename_action = menu.addAction(qta.icon('fa5s.edit', color='#89b4fa'), "Rename Chat")
-            rename_action.triggered.connect(lambda _, s_id=session["id"], old_t=session["title"]: self._trigger_rename_chat(s_id, old_t))
-            menu.addSeparator()
-
-            delete_action = menu.addAction(qta.icon('fa5s.trash-alt', color='#ef4444'), "Delete Chat")
-            delete_action.triggered.connect(lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id))
-            opts_btn.setMenu(menu)
-            
-            row_layout.addWidget(title_lbl)
-            row_layout.addStretch()
-            row_layout.addWidget(opts_btn)
-            
-            item.setSizeHint(QSize(0, 45))
-            self.history_list.addItem(item)
-            self.history_list.setItemWidget(item, row_widget)
-
-        # 🔑 Increment the offset so the next scroll fetches the NEXT 20
         self.history_offset += 20
         self.is_loading_history = False
 
