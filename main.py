@@ -409,9 +409,14 @@ class Qube:
             tts_exited = self.tts_worker.wait(2000)
             if not tts_exited:
                 logger.warning("[Shutdown] TTS worker did not exit within timeout.")
+                # One more cooperative nudge before giving up on native handle teardown.
+                self.tts_worker.request_graceful_stop()
+                tts_exited = self.tts_worker.wait(3000)
+                if not tts_exited:
+                    logger.error("[Shutdown] TTS worker still active; skipping audio handle close to avoid crash.")
             else:
                 logger.info("[Shutdown] TTS worker exited cleanly.")
-            if hasattr(self.tts_worker, "close_audio_resources"):
+            if tts_exited and hasattr(self.tts_worker, "close_audio_resources"):
                 self.tts_worker.close_audio_resources()
 
         if hasattr(self, "native_llama_engine"):
@@ -426,8 +431,10 @@ class Qube:
                     worker.stop() 
                 elif hasattr(worker, 'cancel_generation'):
                     worker.cancel_generation() 
-                    
-                worker.quit() 
+
+                # Only ask Qt event-loop threads to quit; custom while-loop workers stop via flags.
+                if hasattr(worker, "quit") and name not in ("audio", "tts", "native_engine"):
+                    worker.quit()
                 worker.wait(2000) 
             
             # 🔑 BONUS: Safely close database connections if they exist

@@ -260,36 +260,37 @@ class AudioListenerWorker(QThread):
         last_trigger_time = 0.0
         time.sleep(2.5)
 
-        while self.running:
-            # --- 0. Thread-Safe Teardown (For Pauses & Device Swaps) ---
-            needs_reboot = False
+        try:
+            while self.running:
+                # --- 0. Thread-Safe Teardown (For Pauses & Device Swaps) ---
+                needs_reboot = False
             
-            if getattr(self, 'pending_device_index', None) is not None:
-                self.input_device_index = self.pending_device_index
-                self.pending_device_index = None
-                needs_reboot = True
-                logger.info(f"Target input device updated to {self.input_device_index}")
+                if getattr(self, 'pending_device_index', None) is not None:
+                    self.input_device_index = self.pending_device_index
+                    self.pending_device_index = None
+                    needs_reboot = True
+                    logger.info(f"Target input device updated to {self.input_device_index}")
                 
-            if getattr(self, 'is_paused', False) and self.stream is not None:
-                needs_reboot = True
+                if getattr(self, 'is_paused', False) and self.stream is not None:
+                    needs_reboot = True
 
-            if needs_reboot and self.stream:
-                try:
-                    self.stream.stop_stream()
-                    self.stream.close()
-                except Exception:
-                    pass
-                self.stream = None
-                logger.info("Hardware audio stream safely released by background thread.")
+                if needs_reboot and self.stream:
+                    try:
+                        self.stream.stop_stream()
+                        self.stream.close()
+                    except Exception:
+                        pass
+                    self.stream = None
+                    logger.info("Hardware audio stream safely released by background thread.")
 
             # --- 1. Check for Pause State ---
-            if getattr(self, 'is_paused', False):
-                time.sleep(0.5)
-                continue
+                if getattr(self, 'is_paused', False):
+                    time.sleep(0.5)
+                    continue
 
             # --- 2. Safely Load the ONNX Model ---
-            if self.pending_wakeword:
-                self.status_update.emit("Loading Wakeword...")
+                if self.pending_wakeword:
+                    self.status_update.emit("Loading Wakeword...")
 
                 # Close the mic stream before reloading the model.
                 # This is essential for hot-swaps: the new model must open a fresh
@@ -297,97 +298,100 @@ class AudioListenerWorker(QThread):
                 # scratch. If the stream stays open, the new model inherits a stale
                 # rolling buffer from the previous model and scores stay at 0.0.
                 # On cold boot self.stream is already None, so this is a safe no-op.
-                if self.stream is not None:
+                    if self.stream is not None:
+                        try:
+                            self.stream.stop_stream()
+                            self.stream.close()
+                        except Exception:
+                            pass
+                        self.stream = None
+                        logger.info("Audio stream closed for clean wakeword hot-swap.")
+
                     try:
-                        self.stream.stop_stream()
-                        self.stream.close()
-                    except Exception:
-                        pass
-                    self.stream = None
-                    logger.info("Audio stream closed for clean wakeword hot-swap.")
+                        logger.info(f"Loading ONNX Model: {os.path.basename(self.pending_wakeword)}")
+                        self.oww_model = Model(wakeword_model_paths=[self.pending_wakeword])
+                        logger.info("ONNX Model initialized successfully.")
+                    except Exception as e:
+                        logger.error("CRITICAL: Failed to load wakeword model!", exc_info=True)
 
-                try:
-                    logger.info(f"Loading ONNX Model: {os.path.basename(self.pending_wakeword)}")
-                    self.oww_model = Model(wakeword_model_paths=[self.pending_wakeword])
-                    logger.info("ONNX Model initialized successfully.")
-                except Exception as e:
-                    logger.error("CRITICAL: Failed to load wakeword model!", exc_info=True)
-
-                self.pending_wakeword = None
-                self.status_update.emit("Idle")
-                continue
-
-            if self.oww_model is None:
-                time.sleep(0.5)
-                continue
-
-            # --- 3. Open the Microphone & Read Audio ---
-            if self.stream is None:
-                if not self._open_mic_with_warmup():
-                    time.sleep(2)
+                    self.pending_wakeword = None
+                    self.status_update.emit("Idle")
                     continue
 
+                if self.oww_model is None:
+                    time.sleep(0.5)
+                    continue
+
+            # --- 3. Open the Microphone & Read Audio ---
+                if self.stream is None:
+                    if not self._open_mic_with_warmup():
+                        time.sleep(2)
+                        continue
+
             # Read the live, clean audio buffer
-            try:
-                read_chunk = CHUNK if self.current_rate == 16000 else CHUNK * 3
-                data = self.stream.read(read_chunk, exception_on_overflow=False)
-            except Exception as read_err:
-                logger.error(f"Failed to read audio stream (Zombie Stream detected): {read_err}")
-                if self.stream:
-                    try:
-                        self.stream.stop_stream()
-                        self.stream.close()
-                    except Exception:
-                        pass
-                    self.stream = None
-                time.sleep(1)
-                continue
+                try:
+                    read_chunk = CHUNK if self.current_rate == 16000 else CHUNK * 3
+                    data = self.stream.read(read_chunk, exception_on_overflow=False)
+                except Exception as read_err:
+                    logger.error(f"Failed to read audio stream (Zombie Stream detected): {read_err}")
+                    if self.stream:
+                        try:
+                            self.stream.stop_stream()
+                            self.stream.close()
+                        except Exception:
+                            pass
+                        self.stream = None
+                    time.sleep(1)
+                    continue
 
             # --- 4. Process Audio ---
-            audio_data = np.frombuffer(data, dtype=np.int16)
-            if self.current_rate == 48000:
-                audio_data = audio_data[::3] 
+                audio_data = np.frombuffer(data, dtype=np.int16)
+                if self.current_rate == 48000:
+                    audio_data = audio_data[::3] 
                 
-            try:
-                peak = np.max(np.abs(audio_data))
+                try:
+                    peak = np.max(np.abs(audio_data))
                 
                 # 🔑 THE FIX: Calculate the 0.0 to 1.0 float and emit it
-                normalized_level = min(1.0, peak / 32767.0)
-                self.volume_update.emit(float(normalized_level))
+                    normalized_level = min(1.0, peak / 32767.0)
+                    self.volume_update.emit(float(normalized_level))
                 
                 # Keep your existing integer logic for the logger
-                self.current_volume = int(normalized_level * 100)
+                    self.current_volume = int(normalized_level * 100)
                 
                 # Volume Logger
-                if self.current_volume > 0 and (time.time() - getattr(self, '_last_log_time', 0) > 5.0):
-                    logger.debug(f"Audio Buffer Active. Peak Volume: {self.current_volume}%")
-                    self._last_log_time = time.time()
+                    if self.current_volume > 0 and (time.time() - getattr(self, '_last_log_time', 0) > 5.0):
+                        logger.debug(f"Audio Buffer Active. Peak Volume: {self.current_volume}%")
+                        self._last_log_time = time.time()
                     
-            except ValueError:
-                self.current_volume = 0
-                self.volume_update.emit(0.0)
+                except ValueError:
+                    self.current_volume = 0
+                    self.volume_update.emit(0.0)
             
             # --- 5. Hardened Inference Engine ---
-            try:
-                self.oww_model.predict(audio_data)
+                try:
+                    self.oww_model.predict(audio_data)
                 
-                for wakeword_name in self.oww_model.prediction_buffer.keys():
-                    if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
-                        score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
-                        if score > 0.5:
-                            # 🔑 THE DEBOUNCE FIX: Put the trigger inside the 2-second cooldown!
-                            if (time.time() - last_trigger_time) > 2.0:
-                                logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
-                                
-                                # 1. NOW it only tells main.py once!
-                                self.wakeword_detected.emit()
-                                
-                                # 2. Drop into recording
-                                self._record_until_silence()
-                                last_trigger_time = time.time()
-                                break
-            except Exception as e:
-                logger.error("CRITICAL: Inference engine crashed during predict()!", exc_info=True)
+                    for wakeword_name in self.oww_model.prediction_buffer.keys():
+                        if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
+                            score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
+                            if score > 0.5:
+                                # 🔑 THE DEBOUNCE FIX: Put the trigger inside the 2-second cooldown!
+                                if (time.time() - last_trigger_time) > 2.0:
+                                    logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
+                                    
+                                    # 1. NOW it only tells main.py once!
+                                    self.wakeword_detected.emit()
+                                    
+                                    # 2. Drop into recording
+                                    self._record_until_silence()
+                                    last_trigger_time = time.time()
+                                    break
+                except Exception as e:
+                    logger.error("CRITICAL: Inference engine crashed during predict()!", exc_info=True)
+        finally:
+            # Ensure native audio handles are closed by the owner thread.
+            self._close_audio_resources()
 
     def _close_audio_resources(self) -> None:
         if self.stream is not None:
@@ -406,8 +410,7 @@ class AudioListenerWorker(QThread):
         logger.info("[Audio] Input audio resources closed.")
 
     def stop(self):
-        """Cooperative stop for shutdown; releases native audio handles."""
+        """Cooperative stop for shutdown."""
         logger.info("[Audio] Stop requested.")
         self.running = False
         self.is_paused = True
-        self._close_audio_resources()
