@@ -1,3 +1,4 @@
+import logging
 import os
 import psutil
 from collections import deque
@@ -6,6 +7,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
+
+from core.app_settings import get_engine_mode
+
+logger = logging.getLogger("Qube.UI.Telemetry")
 
 
 class TelemetryView(QWidget):
@@ -35,6 +40,13 @@ class TelemetryView(QWidget):
 
         self._setup_ui()
         self._start_hardware_monitor()
+        eng = self._resolve_native_engine()
+        if eng is not None and hasattr(eng, "load_finished"):
+            try:
+                eng.load_finished.connect(self._on_native_load_finished_telemetry)
+            except Exception as e:
+                logger.debug("Telemetry native load_finished connect skipped: %s", e)
+        self._refresh_router_from_worker_snapshot()
 
     # ============================================================
     # UI SETUP
@@ -213,12 +225,12 @@ class TelemetryView(QWidget):
         header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        self.route_label = QLabel("Routes: ...")
-        self.latency_router_label = QLabel("Avg Latency: ...")
-        self.memory_label = QLabel("Memory Usage: ...")
-        self.rag_label = QLabel("RAG Usage: ...")
-        self.tuner_label = QLabel("Tuner State: ...")
-        self.health_label = QLabel("System Health: 🟢")
+        self.route_label = QLabel("Routes: —")
+        self.latency_router_label = QLabel("Avg retrieval phase: —")
+        self.memory_label = QLabel("MEMORY route share: —")
+        self.rag_label = QLabel("RAG route share: —")
+        self.tuner_label = QLabel("Tuner weights: —")
+        self.health_label = QLabel("System health: —")
 
         for lbl in [
             self.route_label,
@@ -268,12 +280,47 @@ class TelemetryView(QWidget):
         self.timer.timeout.connect(self._refresh_hardware)
         self.timer.start(1000)
 
-    def _refresh_hardware(self):
-        cpu = int(psutil.cpu_percent())
-        ram = int(psutil.virtual_memory().percent)
-        gpu = int(self.gpu_monitor.get_load()) if self.gpu_monitor else 0
-
+    def showEvent(self, event):
+        super().showEvent(event)
         self._refresh_model_capability_labels()
+        self._refresh_router_from_worker_snapshot()
+
+    def _on_native_load_finished_telemetry(self, _ok: bool, _msg: str) -> None:
+        self._refresh_model_capability_labels()
+
+    def _resolve_native_engine(self):
+        """Prefer ctor ref; fall back to workers dict (same object in normal app startup)."""
+        return self._native_engine or (
+            self.workers.get("native_engine") if getattr(self, "workers", None) else None
+        )
+
+    def _refresh_router_from_worker_snapshot(self) -> None:
+        """Live read of in-memory router stats (no LLM turn required for tuner weights / idle copy)."""
+        llm = self.workers.get("llm") if getattr(self, "workers", None) else None
+        if not llm or not hasattr(llm, "telemetry") or not hasattr(llm, "router_tuner"):
+            return
+        try:
+            summary = llm.telemetry.summarize()
+            tuner_state = llm.router_tuner.get_weights()
+            self.update_router_telemetry(summary or {}, tuner_state or {})
+        except Exception as e:
+            logger.debug("Router telemetry snapshot failed: %s", e)
+
+    def _refresh_hardware(self):
+        self._refresh_model_capability_labels()
+        self._refresh_router_from_worker_snapshot()
+
+        try:
+            cpu = int(psutil.cpu_percent())
+            ram = int(psutil.virtual_memory().percent)
+        except Exception as e:
+            logger.debug("CPU/RAM read failed: %s", e)
+            cpu, ram = 0, 0
+        try:
+            gpu = int(self.gpu_monitor.get_load()) if self.gpu_monitor else 0
+        except Exception as e:
+            logger.debug("GPU load read failed: %s", e)
+            gpu = 0
 
         self.live_cpu_lbl.setText(f"CPU: {cpu}%")
         self.live_ram_lbl.setText(f"RAM: {ram}%")
@@ -288,25 +335,32 @@ class TelemetryView(QWidget):
         self.gpu_line.setData(list(self.gpu_data))
 
     def _refresh_model_capability_labels(self) -> None:
-        eng = self._native_engine
+        eng = self._resolve_native_engine()
+        mode = get_engine_mode()
         if eng is None:
-            self._cap_model_lbl.setText("Model: — (no native engine)")
+            self._cap_model_lbl.setText("Model: — (native engine not wired)")
             self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_mode_lbl.setText(f"Engine mode: {mode}")
             self._cap_conf_lbl.setText("Confidence: —")
             return
         try:
             snap = eng.get_model_reasoning_telemetry()
-        except Exception:
-            self._cap_model_lbl.setText("Model: —")
+        except Exception as e:
+            logger.debug("Model capability telemetry failed: %s", e)
+            self._cap_model_lbl.setText("Model: — (telemetry error)")
             self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_mode_lbl.setText(f"Engine mode: {mode}")
             self._cap_conf_lbl.setText("Confidence: —")
             return
         if not snap.get("loaded"):
-            self._cap_model_lbl.setText("Model: (no native model loaded)")
+            if mode != "internal":
+                self._cap_model_lbl.setText(
+                    "Model: — (external / API mode — load a GGUF in Settings → Internal to see native profile)"
+                )
+            else:
+                self._cap_model_lbl.setText("Model: — (no GGUF loaded in native engine yet)")
             self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText("Execution mode: —")
+            self._cap_mode_lbl.setText(f"Policy (when loaded): {snap.get('policy_execution_mode', '—')}")
             self._cap_conf_lbl.setText("Confidence: —")
             return
         base = snap.get("model_basename") or ""
@@ -331,7 +385,10 @@ class TelemetryView(QWidget):
         if conf is None:
             self._cap_conf_lbl.setText("Confidence: —")
         else:
-            self._cap_conf_lbl.setText(f"Confidence: {float(conf):.2f}")
+            try:
+                self._cap_conf_lbl.setText(f"Confidence: {float(conf):.2f}")
+            except (TypeError, ValueError):
+                self._cap_conf_lbl.setText("Confidence: —")
 
     # ============================================================
     # LATENCY UPDATE SLOTS
@@ -348,30 +405,55 @@ class TelemetryView(QWidget):
     # ============================================================
     # ROUTER TELEMETRY UPDATE SLOT
     # ============================================================
-    def update_router_telemetry(self, summary: dict, tuner_state: dict):
+    def update_router_telemetry(self, summary: dict | None, tuner_state: dict | None):
+        summary = summary or {}
+        tuner_state = tuner_state or {}
         routes = summary.get("route_distribution") or {}
-        total = max(summary.get("total_requests", 1), 1)
+        total = int(summary.get("total_requests") or 0)
 
-        self.route_label.setText(f"Routes: {routes}")
+        if routes:
+            route_txt = ", ".join(f"{k}: {v}" for k, v in sorted(routes.items()))
+        else:
+            route_txt = "—"
+        self.route_label.setText(f"Routes: {route_txt}")
+
+        # AdaptiveRouterSelfTunerV2.get_weights() uses keys hybrid / memory / rag (not *_sensitivity).
+        try:
+            hy = float(
+                tuner_state.get("hybrid_sensitivity", tuner_state.get("hybrid", 1.0))
+            )
+            mem_w = float(
+                tuner_state.get("memory_sensitivity", tuner_state.get("memory", 1.0))
+            )
+            rag_w = float(
+                tuner_state.get("rag_sensitivity", tuner_state.get("rag", 1.0))
+            )
+        except (TypeError, ValueError):
+            hy, mem_w, rag_w = 1.0, 1.0, 1.0
+
+        self.tuner_label.setText(
+            f"Tuner weights — hybrid: {hy:.2f} | memory: {mem_w:.2f} | rag: {rag_w:.2f}"
+        )
+
+        if total <= 0:
+            self.latency_router_label.setText("Avg retrieval phase: — (no turns logged)")
+            self.memory_label.setText("MEMORY route share: —")
+            self.rag_label.setText("RAG route share: —")
+            self.health_label.setText(
+                "System health: ⚪ Idle — chat to record routing + retrieval latency"
+            )
+            return
+
         avg_lat = float(summary.get("avg_latency_ms") or 0)
-        self.latency_router_label.setText(f"Avg Latency: {avg_lat:.1f} ms")
+        self.latency_router_label.setText(f"Avg retrieval phase: {avg_lat:.1f} ms")
 
         memory_count = routes.get("MEMORY", 0)
         rag_count = routes.get("RAG", 0)
-        self.memory_label.setText(f"Memory Usage: {memory_count}/{total} ({memory_count/total:.1%})")
-        self.rag_label.setText(f"RAG Usage: {rag_count}/{total} ({rag_count/total:.1%})")
-
-        # AdaptiveRouterSelfTunerV2.get_weights() uses keys hybrid / memory / rag (not *_sensitivity).
-        hy = float(
-            tuner_state.get("hybrid_sensitivity", tuner_state.get("hybrid", 1.0))
+        self.memory_label.setText(
+            f"MEMORY route share: {memory_count}/{total} ({memory_count / total:.1%})"
         )
-        mem_w = float(
-            tuner_state.get("memory_sensitivity", tuner_state.get("memory", 1.0))
-        )
-        rag_w = float(tuner_state.get("rag_sensitivity", tuner_state.get("rag", 1.0)))
-
-        self.tuner_label.setText(
-            f"Hybrid:{hy:.2f} | Memory:{mem_w:.2f} | RAG:{rag_w:.2f}"
+        self.rag_label.setText(
+            f"RAG route share: {rag_count}/{total} ({rag_count / total:.1%})"
         )
 
         hybrid_ratio = routes.get("HYBRID", 0) / total
@@ -382,6 +464,6 @@ class TelemetryView(QWidget):
         elif avg_lat > 1200:
             health = "⚠️ High latency"
         else:
-            health = "🟢 System Stable"
+            health = "🟢 System stable"
 
-        self.health_label.setText(f"System Health: {health}")
+        self.health_label.setText(f"System health: {health}")

@@ -1838,7 +1838,7 @@ class ConversationsView(QWidget):
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
-        self.placeholder_lbl = QLabel("New chat started. Type or speak a message!")
+        self.placeholder_lbl = QLabel("New chat started. Type or speak a message after saying your wake word!")
         self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.transcript_layout.addWidget(self.placeholder_lbl)
         self._refresh_ancillary_transcript_labels()

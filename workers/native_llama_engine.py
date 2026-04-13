@@ -141,6 +141,14 @@ class NativeLlamaEngine(QThread):
         """
         Read-only snapshot for UI telemetry (main thread may read while engine thread updates).
         """
+        def _safe_float(v: Any) -> Optional[float]:
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
         rp = self._model_reasoning_profile
         path = self._model_path or ""
         pol = self.get_execution_policy()
@@ -152,7 +160,7 @@ class NativeLlamaEngine(QThread):
             "model_name": rp.model_name if rp else "",
             "supports_thinking_tokens": bool(rp.supports_thinking_tokens) if rp else False,
             "execution_mode": str(self._execution_mode or "unknown"),
-            "confidence": float(rp.reasoning_confidence) if rp else None,
+            "confidence": _safe_float(rp.reasoning_confidence) if rp else None,
             "detection_method": str(rp.detection_method) if rp else "",
             "ui_display_thinking": pol.ui_display_thinking,
             "strip_thinking_output": pol.strip_thinking_output,
@@ -161,7 +169,7 @@ class NativeLlamaEngine(QThread):
             "policy_enforcement": pol.enforcement_mode,
             "allow_thinking_tokens": pol.allow_thinking_tokens,
             "behavior_class": mb.behavior_class.value if mb else None,
-            "behavior_confidence": float(mb.confidence) if mb else None,
+            "behavior_confidence": _safe_float(mb.confidence) if mb else None,
             "override_active": bool(getattr(self, "_behavior_override_material", False)),
             "override_summary": ((mo or {}).get("reason") or "")[:240] if mo else "",
         }
