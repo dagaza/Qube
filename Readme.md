@@ -23,19 +23,19 @@ Inference and RAG stay on-device—**no** third-party chat API. (Optional **Mode
 
 ✨ Quick Overview
 
-🧠 Long-Term Semantic Memory & RAG: Qube doesn't just hold temporary context; it learns. Using a background async worker, Qube extracts Atomic Facts from your conversations, manages contradictions, applies reinforcement scoring, and stores them permanently in LanceDB. This prevents the "Amnesia Bug" and gives Qube true long-term recall alongside your documents.
+🧠 **Long-Term Semantic Memory & RAG:** Qube doesn't just hold temporary context; it learns. Using a background async worker, Qube extracts Atomic Facts from your conversations, manages contradictions, applies reinforcement scoring, and stores them permanently in LanceDB. This prevents the "Amnesia Bug" and gives Qube true long-term recall alongside your documents.
 
-⚡ Real-Time Interruption (Barge-In): Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
+⚡ **Real-Time Interruption (Barge-In):** Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
 
 🤖 **Dual-mode LLM routing:** Choose **Internal Engine (native llama.cpp)** for a self-contained app with no separate server, or **External Server (localhost)** for LM Studio / Ollama-style OpenAI-compatible APIs—same streaming pipeline either way. Intelligent NLP triggers and dashboard toggles for RAG routing.
 
-🎙️ Lightning-Fast STT: Powered by faster-whisper, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
+🎙️ **Lightning-Fast STT:** Powered by faster-whisper, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
 
-🗣️ High-Fidelity TTS: Uses the cutting-edge Kokoro engine for ultra-realistic Text-to-Speech, with over 30 voices included. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like a dedicated GPU (or a solid APU) acceleration.
+🗣️ **High-Fidelity TTS:** Uses the cutting-edge Kokoro engine for ultra-realistic Text-to-Speech, with over 30 voices included. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like a dedicated GPU (or a solid APU) acceleration.
 
-📚 Advanced RAG Engine: Built on LanceDB for blazing-fast vector storage and PyMuPDF for aggressive text extraction from complex PDFs, eBooks, and text files.
+📚 **Advanced RAG Engine:** Built on LanceDB for blazing-fast vector storage and PyMuPDF for aggressive text extraction from complex PDFs, eBooks, and text files.
 
-🌐 Live Web Search Integration: Qube can break out of its offline shell when explicitly requested. Using the internet_tool, it performs real-time web searches, parses the data into the context window, and provides beautifully formatted, clickable [W] citations right next to your local document sources.
+🌐 **Live Web Search Integration:** Qube can break out of its offline shell when explicitly requested. Using the internet_tool, it performs real-time web searches, parses the data into the context window, and provides beautifully formatted, clickable [W] citations right next to your local document sources.
 
 🎛️ **Responsive native GUI:** A lean **PyQt6** desktop shell (not an Electron wrapper)—so more of your RAM stays available for models and context. Includes a real-time VU meter, dynamic settings, custom wake-word support (currently over 4 different wake-words available), and **Model Manager**: search Hugging Face, browse Editor’s Picks, read READMEs, and download **.gguf** quantizations with **disk-space guardrails** (pre-flight free-space check + safe **.part** cleanup on cancel or failure).
 
