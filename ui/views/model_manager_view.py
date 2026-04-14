@@ -35,6 +35,7 @@ from core.app_settings import (
     get_llm_models_dir,
     set_internal_model_path,
 )
+from core.gpu_layers_cap import detect_gpu_vram_bytes
 from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
@@ -46,6 +47,7 @@ from workers.model_download_worker import HuggingFaceGgufDownloadWorker
 
 # Extra display data on Hub .gguf combo rows (file size, right-aligned in popup).
 HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
+HUB_FILE_COMBO_BYTES_ROLE = int(Qt.ItemDataRole.UserRole) + 43
 
 
 def _model_manager_project_root() -> Path:
@@ -550,6 +552,16 @@ class ModelManagerView(QWidget):
         self.meta_caps_value_lbl.setWordWrap(True)
         meta_row_2_l.addWidget(self.meta_caps_title_lbl)
         meta_row_2_l.addWidget(self.meta_caps_value_lbl, stretch=1)
+
+        self.meta_row_3 = QWidget(parent=right)
+        meta_row_3_l = QHBoxLayout(self.meta_row_3)
+        meta_row_3_l.setContentsMargins(0, 0, 0, 0)
+        meta_row_3_l.setSpacing(8)
+        self.meta_gpu_fit_title_lbl = QLabel("GPU Fit:")
+        self.meta_gpu_fit_value_lbl = QLabel("--")
+        self.meta_gpu_fit_value_lbl.setWordWrap(True)
+        meta_row_3_l.addWidget(self.meta_gpu_fit_title_lbl)
+        meta_row_3_l.addWidget(self.meta_gpu_fit_value_lbl, stretch=1)
         self.meta_hint_lbl = QLabel("", parent=right)
         self.meta_hint_lbl.setWordWrap(True)
         self.meta_hint_lbl.hide()
@@ -566,6 +578,7 @@ class ModelManagerView(QWidget):
         self.hf_file_combo = HubFileComboBox(self)
         self.hf_file_combo.setObjectName("HubFileComboBox")
         self.hf_file_combo.setMinimumWidth(200)
+        self.hf_file_combo.currentIndexChanged.connect(self._update_gpu_fit_status)
         # Popup QListView is reparented to a separate window; style it by objectName + palette
         # (same pattern as MainWindow._apply_menu_theme / PrestigeMenuList).
         _hub_combo_view = self.hf_file_combo.view()
@@ -598,6 +611,7 @@ class ModelManagerView(QWidget):
         right_l.addWidget(self.detail_title)
         right_l.addWidget(self.meta_row_1)
         right_l.addWidget(self.meta_row_2)
+        right_l.addWidget(self.meta_row_3)
         right_l.addWidget(self.meta_hint_lbl)
         right_l.addWidget(q_lab)
         right_l.addLayout(files_row)
@@ -630,6 +644,7 @@ class ModelManagerView(QWidget):
             self.meta_domain_lbl.setText("Domain: --")
             self.meta_format_lbl.setText("Format: --")
             self.meta_caps_value_lbl.setText("--")
+            self.meta_gpu_fit_value_lbl.setText("--")
         if hasattr(self, "meta_hint_lbl"):
             self.meta_hint_lbl.hide()
 
@@ -663,10 +678,46 @@ class ModelManagerView(QWidget):
         self._meta_style(self.meta_format_lbl, is_dark=is_dark)
         self._meta_style(self.meta_caps_title_lbl, is_dark=is_dark, strong=True)
         self._meta_style(self.meta_caps_value_lbl, is_dark=is_dark)
+        self._meta_style(self.meta_gpu_fit_title_lbl, is_dark=is_dark, strong=True)
+        self._meta_style(self.meta_gpu_fit_value_lbl, is_dark=is_dark)
         hint_color = "#6c7086" if is_dark else "#64748b"
         self.meta_hint_lbl.setStyleSheet(
             f"color: {hint_color}; font-size: 11px; font-weight: 500; background: transparent;"
         )
+
+    @staticmethod
+    def _fmt_gib(n: int) -> str:
+        return f"{(max(0, int(n)) / (1024**3)):.2f} GB"
+
+    def _update_gpu_fit_status(self, _index: int | None = None) -> None:
+        if not hasattr(self, "hf_file_combo") or not hasattr(self, "meta_gpu_fit_value_lbl"):
+            return
+        idx = self.hf_file_combo.currentIndex()
+        if idx < 0:
+            self.meta_gpu_fit_value_lbl.setText("--")
+            return
+        size_b = self.hf_file_combo.itemData(idx, int(HUB_FILE_COMBO_BYTES_ROLE))
+        try:
+            q_bytes = int(size_b) if size_b is not None else 0
+        except (TypeError, ValueError):
+            q_bytes = 0
+        if q_bytes <= 0:
+            self.meta_gpu_fit_value_lbl.setText("Unknown (quantization size unavailable)")
+            return
+        vram_b = int(detect_gpu_vram_bytes() or 0)
+        if vram_b <= 0:
+            self.meta_gpu_fit_value_lbl.setText(
+                f"Unknown (GPU VRAM not detected) - Quant: {self._fmt_gib(q_bytes)}"
+            )
+            return
+        if q_bytes <= vram_b:
+            self.meta_gpu_fit_value_lbl.setText(
+                f"Yes - {self._fmt_gib(q_bytes)} model <= {self._fmt_gib(vram_b)} VRAM"
+            )
+        else:
+            self.meta_gpu_fit_value_lbl.setText(
+                f"No - {self._fmt_gib(q_bytes)} model > {self._fmt_gib(vram_b)} VRAM"
+            )
 
     def _apply_hub_list_surface(self, is_dark: bool) -> None:
         """Match Conversations sidebar/list background palette on both themes."""
@@ -962,6 +1013,7 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.addItem("-- Select a model from the list --")
         self.hf_file_combo.blockSignals(False)
         self._reset_hub_metadata_labels()
+        self._update_gpu_fit_status()
 
     def _apply_meta_if_current(self, repo: str, meta: dict, seq: int) -> None:
         if seq != self._detail_seq:
@@ -1066,11 +1118,17 @@ class ModelManagerView(QWidget):
                         self._fmt_bytes(size_b),
                         int(HUB_FILE_COMBO_SIZE_ROLE),
                     )
+                    self.hf_file_combo.setItemData(
+                        idx,
+                        int(size_b),
+                        int(HUB_FILE_COMBO_BYTES_ROLE),
+                    )
             self.hf_file_combo.setCurrentIndex(0)
             self.download_status.setText(
                 f"{len(normalized)} file(s) available. Choose a quantization, then Download."
             )
         self.hf_file_combo.blockSignals(False)
+        self._update_gpu_fit_status()
 
     def _on_hf_list_failed(self, msg: str, seq: int) -> None:
         if seq != self._detail_seq:
@@ -1079,6 +1137,7 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.clear()
         self.hf_file_combo.addItem("-- Could not list files --")
         self.hf_file_combo.blockSignals(False)
+        self._update_gpu_fit_status()
         self.download_status.setText("")
         self._show_error("Could not list files", msg)
 
