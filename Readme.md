@@ -41,7 +41,7 @@ Inference and RAG stay on-device—**no** third-party chat API. (Optional **Mode
 
     🎚️ **Hardware controls:** Per-model **GPU offload layers** for the native engine, plus granular audio and generation settings—tuned for real hardware, not abstract “cloud” tiers.
 
----
+
 ## 🏗️ Deep Dive: Architecture & Features
 
 ### 🧠 Dual Memory System (RAG + Long-Term Atomic Memory)
