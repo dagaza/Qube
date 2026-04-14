@@ -39,6 +39,7 @@ from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_read
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from workers.hf_model_search_worker import HfModelSearchWorker
+from workers.hf_model_meta_worker import HfModelMetaWorker
 from workers.hf_readme_worker import HfReadmeWorker
 from workers.hf_repo_files_worker import HfRepoFilesWorker
 from workers.model_download_worker import HuggingFaceGgufDownloadWorker
@@ -219,6 +220,7 @@ class ModelManagerView(QWidget):
         self._list_worker: HfRepoFilesWorker | None = None
         self._search_worker: HfModelSearchWorker | None = None
         self._readme_worker: HfReadmeWorker | None = None
+        self._meta_worker: HfModelMetaWorker | None = None
         self._download_ui_cancel_mode = False
         self._search_seq = 0
         self._detail_seq = 0
@@ -233,7 +235,9 @@ class ModelManagerView(QWidget):
         self._populate_editors_picks()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_muted_labels(is_dark)
+        self._apply_hub_metadata_styles(is_dark)
         self.refresh_button_themes(is_dark)
+        self._apply_hub_list_surface(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._apply_hub_combo_chevron(is_dark)
         self._update_hub_row_colors()
@@ -242,6 +246,8 @@ class ModelManagerView(QWidget):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_hub_list_surface(is_dark)
+        self._apply_hub_metadata_styles(is_dark)
         self._apply_hub_combo_chevron(is_dark)
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
@@ -377,7 +383,7 @@ class ModelManagerView(QWidget):
             if not dw.wait(10_000):
                 logger.warning("Download worker did not finish within 10s during shutdown.")
 
-        for attr in ("_search_worker", "_readme_worker", "_list_worker"):
+        for attr in ("_search_worker", "_readme_worker", "_list_worker", "_meta_worker"):
             w = getattr(self, attr, None)
             if w is None or not w.isRunning():
                 continue
@@ -449,15 +455,10 @@ class ModelManagerView(QWidget):
 
     def _setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(40, 40, 40, 40)
+        # Keep right breathing room, but let the sidebar reach top and bottom like Conversations.
+        main_layout.setContentsMargins(0, 0, 40, 0)
         main_layout.setSpacing(16)
-
-        title = QLabel("MODEL MANAGER")
-        title.setObjectName("ViewTitle")
-        main_layout.addWidget(title)
-
         # --- Hub "app store" row (fixed sidebar + expanding detail; no splitter handle) ---
-        main_layout.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE — BROWSE & DOWNLOAD"))
         hub_container = QWidget()
         hub_h = QHBoxLayout(hub_container)
         hub_h.setContentsMargins(0, 0, 0, 0)
@@ -471,6 +472,12 @@ class ModelManagerView(QWidget):
         left_l = QVBoxLayout(left)
         left_l.setContentsMargins(15, 20, 15, 20)
         left_l.setSpacing(15)
+        self.hub_sidebar = left
+
+        title = QLabel("MODEL MANAGER")
+        title.setObjectName("ViewTitle")
+        left_l.addWidget(title)
+        left_l.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE REPOSITORIES"))
 
         self.hub_search_edit = QLineEdit()
         self.hub_search_edit.setObjectName("HubModelSearchBar")
@@ -502,19 +509,50 @@ class ModelManagerView(QWidget):
         # Right: detail
         right = QWidget()
         right_l = QVBoxLayout(right)
-        right_l.setContentsMargins(8, 0, 0, 0)
+        # Match transcript-like vertical start while keeping bottom breathing room.
+        right_l.setContentsMargins(8, 75, 0, 40)
         right_l.setSpacing(10)
 
         self.detail_title = QLabel("Select a model")
         self.detail_title.setWordWrap(True)
         f = self.detail_title.font()
         f.setBold(True)
-        f.setPointSize(f.pointSize() + 1)
+        f.setPointSize(18)
         self.detail_title.setFont(f)
 
         self.detail_subtitle = QLabel("", parent=right)
         self.detail_subtitle.setWordWrap(True)
         self.detail_subtitle.hide()
+
+        self.meta_row_1 = QWidget(parent=right)
+        meta_row_1_l = QHBoxLayout(self.meta_row_1)
+        meta_row_1_l.setContentsMargins(0, 0, 0, 0)
+        meta_row_1_l.setSpacing(14)
+        self.meta_params_lbl = QLabel("Params: --")
+        self.meta_arch_lbl = QLabel("Arch: --")
+        self.meta_domain_lbl = QLabel("Domain: --")
+        self.meta_format_lbl = QLabel("Format: --")
+        for w in (
+            self.meta_params_lbl,
+            self.meta_arch_lbl,
+            self.meta_domain_lbl,
+            self.meta_format_lbl,
+        ):
+            meta_row_1_l.addWidget(w)
+        meta_row_1_l.addStretch(1)
+
+        self.meta_row_2 = QWidget(parent=right)
+        meta_row_2_l = QHBoxLayout(self.meta_row_2)
+        meta_row_2_l.setContentsMargins(0, 0, 0, 0)
+        meta_row_2_l.setSpacing(8)
+        self.meta_caps_title_lbl = QLabel("Capabilities:")
+        self.meta_caps_value_lbl = QLabel("--")
+        self.meta_caps_value_lbl.setWordWrap(True)
+        meta_row_2_l.addWidget(self.meta_caps_title_lbl)
+        meta_row_2_l.addWidget(self.meta_caps_value_lbl, stretch=1)
+        self.meta_hint_lbl = QLabel("", parent=right)
+        self.meta_hint_lbl.setWordWrap(True)
+        self.meta_hint_lbl.hide()
 
         self.readme_browser = QTextBrowser()
         self.readme_browser.setMinimumHeight(220)
@@ -558,6 +596,9 @@ class ModelManagerView(QWidget):
         self.download_progress.hide()
 
         right_l.addWidget(self.detail_title)
+        right_l.addWidget(self.meta_row_1)
+        right_l.addWidget(self.meta_row_2)
+        right_l.addWidget(self.meta_hint_lbl)
         right_l.addWidget(q_lab)
         right_l.addLayout(files_row)
         right_l.addWidget(self.download_status)
@@ -572,6 +613,87 @@ class ModelManagerView(QWidget):
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self._run_hub_search)
+
+    def _meta_style(self, label: QLabel, *, is_dark: bool, strong: bool = False) -> None:
+        fg = "#cdd6f4" if is_dark else "#1e293b"
+        muted = "#94a3b8" if is_dark else "#64748b"
+        color = fg if strong else muted
+        weight = 600 if strong else 500
+        label.setStyleSheet(
+            f"color: {color}; font-size: 12px; font-weight: {weight}; background: transparent;"
+        )
+
+    def _reset_hub_metadata_labels(self) -> None:
+        if hasattr(self, "meta_params_lbl"):
+            self.meta_params_lbl.setText("Params: --")
+            self.meta_arch_lbl.setText("Arch: --")
+            self.meta_domain_lbl.setText("Domain: --")
+            self.meta_format_lbl.setText("Format: --")
+            self.meta_caps_value_lbl.setText("--")
+        if hasattr(self, "meta_hint_lbl"):
+            self.meta_hint_lbl.hide()
+
+    def _set_meta_hint(self, text: str | None) -> None:
+        if not hasattr(self, "meta_hint_lbl"):
+            return
+        msg = str(text or "").strip()
+        self.meta_hint_lbl.setText(msg)
+        self.meta_hint_lbl.setVisible(bool(msg))
+
+    def _apply_hub_metadata(self, meta: dict | None) -> None:
+        m = meta or {}
+        self.meta_params_lbl.setText(f"Params: {m.get('params', 'Unknown')}")
+        self.meta_arch_lbl.setText(f"Arch: {m.get('arch', 'Unknown')}")
+        self.meta_domain_lbl.setText(f"Domain: {m.get('domain', 'Unknown')}")
+        self.meta_format_lbl.setText(f"Format: {m.get('format', 'Unknown')}")
+        caps = m.get("capabilities") or []
+        if isinstance(caps, list):
+            clean_caps = [str(c).strip() for c in caps if str(c).strip()]
+        else:
+            clean_caps = []
+        self.meta_caps_value_lbl.setText("  ".join(clean_caps) if clean_caps else "Unknown")
+        self._set_meta_hint(None)
+
+    def _apply_hub_metadata_styles(self, is_dark: bool) -> None:
+        if not hasattr(self, "meta_params_lbl"):
+            return
+        self._meta_style(self.meta_params_lbl, is_dark=is_dark)
+        self._meta_style(self.meta_arch_lbl, is_dark=is_dark)
+        self._meta_style(self.meta_domain_lbl, is_dark=is_dark)
+        self._meta_style(self.meta_format_lbl, is_dark=is_dark)
+        self._meta_style(self.meta_caps_title_lbl, is_dark=is_dark, strong=True)
+        self._meta_style(self.meta_caps_value_lbl, is_dark=is_dark)
+        hint_color = "#6c7086" if is_dark else "#64748b"
+        self.meta_hint_lbl.setStyleSheet(
+            f"color: {hint_color}; font-size: 11px; font-weight: 500; background: transparent;"
+        )
+
+    def _apply_hub_list_surface(self, is_dark: bool) -> None:
+        """Match Conversations sidebar/list background palette on both themes."""
+        bg = QColor("#232337" if is_dark else "#E9EFF5")
+        if hasattr(self, "hub_sidebar"):
+            p = self.hub_sidebar
+            p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            p.setAutoFillBackground(True)
+            pa = p.palette()
+            pa.setColor(QPalette.ColorRole.Window, bg)
+            p.setPalette(pa)
+        if not hasattr(self, "hub_model_list"):
+            return
+        w = self.hub_model_list
+        w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        w.setAutoFillBackground(True)
+        pal = w.palette()
+        pal.setColor(QPalette.ColorRole.Window, bg)
+        w.setPalette(pal)
+        vp = w.viewport()
+        if vp is not None:
+            vp.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            vp.setAutoFillBackground(True)
+            vpal = vp.palette()
+            vpal.setColor(QPalette.ColorRole.Window, bg)
+            vpal.setColor(QPalette.ColorRole.Base, bg)
+            vp.setPalette(vpal)
 
     def _apply_hub_combo_chevron(self, is_dark: bool) -> None:
         """QSS border triangles render as lines on some styles; use SVG via file URL."""
@@ -798,6 +920,8 @@ class ModelManagerView(QWidget):
         self._readme_worker = None
         self._retire_hf_thread(self._list_worker)
         self._list_worker = None
+        self._retire_hf_thread(self._meta_worker)
+        self._meta_worker = None
 
         self._readme_worker = HfReadmeWorker(str(repo))
         self._readme_worker.finished_ok.connect(
@@ -808,6 +932,17 @@ class ModelManagerView(QWidget):
         )
         self._readme_worker.start()
 
+        self._reset_hub_metadata_labels()
+        self._set_meta_hint("Loading model metadata…")
+        self._meta_worker = HfModelMetaWorker(str(repo))
+        self._meta_worker.finished_ok.connect(
+            lambda r, meta, s=seq: self._apply_meta_if_current(r, meta, s)
+        )
+        self._meta_worker.failed.connect(
+            lambda r, err, s=seq: self._apply_meta_failed_if_current(r, err, s)
+        )
+        self._meta_worker.start()
+
         self._start_list_worker_for_repo(str(repo), seq)
 
     def _clear_detail_pane(self) -> None:
@@ -815,6 +950,8 @@ class ModelManagerView(QWidget):
         self._readme_worker = None
         self._retire_hf_thread(self._list_worker)
         self._list_worker = None
+        self._retire_hf_thread(self._meta_worker)
+        self._meta_worker = None
         self._current_repo_id = ""
         self._last_readme_markdown = None
         self.detail_title.setText("Select a model")
@@ -824,6 +961,20 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.clear()
         self.hf_file_combo.addItem("-- Select a model from the list --")
         self.hf_file_combo.blockSignals(False)
+        self._reset_hub_metadata_labels()
+
+    def _apply_meta_if_current(self, repo: str, meta: dict, seq: int) -> None:
+        if seq != self._detail_seq:
+            return
+        self._apply_hub_metadata(meta)
+
+    def _apply_meta_failed_if_current(self, repo: str, err: str, seq: int) -> None:
+        if seq != self._detail_seq:
+            return
+        self._reset_hub_metadata_labels()
+        self._set_meta_hint(
+            "Model metadata unavailable for this repository. Quantization and README are still available."
+        )
 
     def _render_readme_with_fallback(self, is_dark: bool) -> None:
         """Python-Markdown + setHtml first (GFM tables/lists); then Qt setMarkdown; then plain text."""
@@ -1093,7 +1244,9 @@ class ModelManagerView(QWidget):
         """Keep Hub chrome aligned with global light/dark (see MainWindow._toggle_theme)."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_muted_labels(is_dark)
+        self._apply_hub_metadata_styles(is_dark)
         self.refresh_button_themes(is_dark)
+        self._apply_hub_list_surface(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._apply_hub_combo_chevron(is_dark)
         if hasattr(self, "_hub_section_icon_label") and self._hub_section_icon_label:

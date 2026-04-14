@@ -1289,6 +1289,19 @@ class MainWindow(QMainWindow):
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
 
+    def _restore_workspace_from_tray(self) -> None:
+        """Show the main window after hide-to-tray or minimize; raise and focus."""
+        self.show()
+        if self.isMinimized():
+            self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _on_tray_icon_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        """Double-click tray icon → same as 'Open Workspace' (single-click stays for context menu)."""
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self._restore_workspace_from_tray()
+
     def _setup_tray(self) -> None:
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(qta.icon('fa5s.cube', color='#89b4fa'))
@@ -1296,7 +1309,7 @@ class MainWindow(QMainWindow):
         tray_menu.setStyleSheet("background-color: #1e1e2e; color: #cdd6f4;")
         
         show_action = QAction("Open Workspace", self)
-        show_action.triggered.connect(self.showNormal)
+        show_action.triggered.connect(self._restore_workspace_from_tray)
         quit_action = QAction("Exit Qube", self)
         quit_action.triggered.connect(QApplication.quit)
 
@@ -1304,6 +1317,7 @@ class MainWindow(QMainWindow):
         tray_menu.addSeparator()
         tray_menu.addAction(quit_action)
         self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_icon_activated)
         self.tray_icon.show()
 
     def _start_timers(self) -> None:
