@@ -460,7 +460,10 @@ class ModelManagerView(QWidget):
     def _style_hub_title_label(self, lbl: QLabel, item: QListWidgetItem) -> None:
         """Explicit font + foreground (Library row pattern): QSS alone drifts when the app sheet is replaced on toggle."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        fg = "#ffffff" if item.isSelected() else ("#cdd6f4" if is_dark else "#1e293b")
+        if item.isSelected():
+            fg = "#ffffff" if is_dark else "#1e293b"
+        else:
+            fg = "#cdd6f4" if is_dark else "#1e293b"
         lbl.setStyleSheet(
             f"color: {fg}; background: transparent; border: none; "
             'font-size: 13px; font-weight: 500; font-family: "Inter"; '

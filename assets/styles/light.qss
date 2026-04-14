@@ -551,7 +551,7 @@ QLabel#AgentMessage {
 }
 
 #ModelHubList::item:selected QLabel#HubModelRowTitle {
-    color: #ffffff !important;
+    color: #1e293b !important;
 }
 
 /* Ensure text flips to white when the dark selection bar is active.
