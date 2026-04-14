@@ -322,6 +322,76 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     color: #cdd6f4;
 }
 
+/* --- MODEL MANAGER CHIP/BADGE LANGUAGE --- */
+.MetaPanelCard, .DownloadOptionsCard {
+    background-color: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.MetaLabel {
+    color: rgba(205, 214, 244, 0.72);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[class~="Chip"] {
+    border-radius: 10px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+    color: #cdd6f4;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[class~="accent"] {
+    background: rgba(139, 92, 246, 0.22);
+    border: 1px solid rgba(139, 92, 246, 0.55);
+    color: #dbeafe;
+}
+
+QLabel[class~="primary"] {
+    background: rgba(137, 180, 250, 0.22);
+    border: 1px solid rgba(137, 180, 250, 0.55);
+    color: #dbeafe;
+}
+
+QLabel[class~="outlined"] {
+    background: transparent;
+    border: 1px solid rgba(205, 214, 244, 0.25);
+    color: rgba(205, 214, 244, 0.86);
+}
+
+QLabel[class~="muted"] {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(205, 214, 244, 0.62);
+}
+
+QFrame[class~="capability"] {
+    border-radius: 10px;
+    padding: 0px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+QFrame[class~="capability"] QLabel[class="ChipLabel"],
+QFrame[class~="capability"] QLabel[class="ChipIcon"] {
+    color: #cdd6f4;
+    background: transparent;
+    border: none;
+    padding: 0px;
+}
+
+/* Metadata card: keep one consistent blue stroke across all chips/badges. */
+QFrame[class~="MetaPanelCard"] QLabel[class~="Chip"] {
+    border: 1px solid rgba(137, 180, 250, 0.55);
+}
+QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
+    border: 1px solid rgba(137, 180, 250, 0.55);
+}
+
 /* --- STATUS BUBBLE (DARK) --- */
 #StatusBubble {
     font-weight: bold; 

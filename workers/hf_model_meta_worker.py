@@ -88,21 +88,31 @@ def _infer_format(tags: list[str]) -> str:
 
 def _infer_capabilities(tags: list[str], card: dict[str, Any]) -> list[str]:
     tl = [t.lower() for t in tags]
+    text_pool: list[str] = list(tl)
+    for key in ("pipeline_tag", "library_name", "base_model", "tags", "model_name"):
+        v = card.get(key)
+        if isinstance(v, str) and v.strip():
+            text_pool.append(v.lower())
+        elif isinstance(v, list):
+            text_pool.extend(str(x).lower() for x in v if str(x).strip())
+    corpus = " ".join(text_pool)
+
     caps: list[str] = []
-    mapping = (
-        (("vision", "image-text-to-text", "multimodal"), "Vision"),
-        (("tool-use", "tools", "function-calling"), "Tool Use"),
-        (("reasoning", "chain-of-thought"), "Reasoning"),
-        (("code", "coding"), "Coding"),
-        (("multilingual",), "Multilingual"),
-    )
-    for keys, label in mapping:
-        if any(k in tl for k in keys):
+
+    def add_if(label: str, needles: tuple[str, ...]) -> None:
+        if any(n in corpus for n in needles) and label not in caps:
             caps.append(label)
-    if not caps:
-        task = card.get("pipeline_tag")
-        if isinstance(task, str) and task.strip() == "text-generation":
-            caps.append("Text Generation")
+
+    add_if("Vision", ("vision", "image-text-to-text", "multimodal", "vl", "vlm"))
+    add_if("Tool Use", ("tool-use", "tool use", "function-calling", "function calling", "tools"))
+    add_if("Reasoning", ("reasoning", "chain-of-thought", "cot", "thinking"))
+    add_if("Coding", ("code", "coding", "codegen"))
+    add_if("TTS", ("text-to-speech", "text to speech", "tts"))
+    add_if("STT", ("automatic-speech-recognition", "speech-to-text", "stt", "asr"))
+    add_if("Audio", ("audio", "speech", "voice"))
+    add_if("Multilingual", ("multilingual",))
+
+    # Do not force "Text Generation" as a generic fallback; show only meaningful capabilities.
     return caps
 
 

@@ -339,6 +339,76 @@ QAbstractScrollArea::corner {
     color: #0f172a;
 }
 
+/* --- MODEL MANAGER CHIP/BADGE LANGUAGE --- */
+.MetaPanelCard, .DownloadOptionsCard {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.MetaLabel {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[class~="Chip"] {
+    border-radius: 10px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QLabel[class~="accent"] {
+    background: #ede9fe;
+    border: 1px solid #a78bfa;
+    color: #1e3a8a;
+}
+
+QLabel[class~="primary"] {
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a;
+}
+
+QLabel[class~="outlined"] {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+QLabel[class~="muted"] {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+QFrame[class~="capability"] {
+    border-radius: 10px;
+    padding: 0px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+}
+
+QFrame[class~="capability"] QLabel[class="ChipLabel"],
+QFrame[class~="capability"] QLabel[class="ChipIcon"] {
+    color: #1e293b;
+    background: transparent;
+    border: none;
+    padding: 0px;
+}
+
+/* Metadata card: keep one consistent blue stroke across all chips/badges. */
+QFrame[class~="MetaPanelCard"] QLabel[class~="Chip"] {
+    border: 1px solid #93c5fd;
+}
+QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
+    border: 1px solid #93c5fd;
+}
+
 /* --- 9. STATUS BUBBLE --- */
 #StatusBubble {
     font-weight: bold; 

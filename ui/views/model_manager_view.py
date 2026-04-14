@@ -135,10 +135,21 @@ def _hub_file_combo_viewport_qss(is_dark: bool) -> str:
 
 
 class HubFileComboDelegate(QStyledItemDelegate):
-    """Popup rows: filename (elided) on the left, size label flush right."""
+    """Popup rows: format chip, model/quant chips, size, and chevron."""
 
     _GAP = 10
     _SIZE_MAX = 160
+
+    @staticmethod
+    def _infer_quant_label(path_s: str) -> str:
+        name = Path(path_s).name
+        stem = name[:-5] if name.lower().endswith(".gguf") else name
+        tokens = [t for t in stem.replace("_", "-").split("-") if t]
+        for t in reversed(tokens):
+            u = t.upper()
+            if u.startswith(("Q", "IQ")) and any(ch.isdigit() for ch in u):
+                return u
+        return "AUTO"
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
         raw = index.data(int(HUB_FILE_COMBO_SIZE_ROLE))
@@ -164,31 +175,46 @@ class HubFileComboDelegate(QStyledItemDelegate):
         painter.setPen(pen)
 
         fm = option.fontMetrics
-        text_w = fm.horizontalAdvance(size_label) + 12
-        size_w = max(64, min(text_w, self._SIZE_MAX, max(rect.width() // 3, 72)))
-        right_r = QRect(
-            rect.right() - size_w - 6,
-            rect.top(),
-            size_w,
-            rect.height(),
-        )
-        path_r = QRect(
-            rect.left() + 6,
-            rect.top(),
-            max(8, rect.width() - size_w - self._GAP - 12),
-            rect.height(),
-        )
-        elided = fm.elidedText(path_s, Qt.TextElideMode.ElideMiddle, path_r.width())
-        painter.drawText(
-            path_r,
-            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
-            elided,
-        )
-        painter.drawText(
-            right_r,
-            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-            size_label,
-        )
+        chevron_w = 18
+        size_text_w = fm.horizontalAdvance(size_label) + 14
+        size_w = max(72, min(size_text_w, self._SIZE_MAX, max(rect.width() // 3, 84)))
+        right_edge = rect.right() - 6
+        chev_r = QRect(right_edge - chevron_w + 1, rect.top(), chevron_w, rect.height())
+        size_r = QRect(chev_r.left() - size_w - 8, rect.top(), size_w, rect.height())
+
+        left = rect.left() + 8
+        chip_h = max(18, rect.height() - 12)
+        chip_y = rect.top() + (rect.height() - chip_h) // 2
+
+        def draw_chip(text: str, width_pad: int, role: QPalette.ColorRole) -> int:
+            nonlocal left
+            tw = fm.horizontalAdvance(text) + width_pad
+            cw = max(48, tw)
+            cr = QRect(left, chip_y, cw, chip_h)
+            c = option.palette.color(role)
+            c.setAlpha(55)
+            painter.setBrush(c)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(cr, 9, 9)
+            painter.setPen(option.palette.color(QPalette.ColorRole.Text))
+            painter.drawText(cr, int(Qt.AlignmentFlag.AlignCenter), text)
+            left += cw + 8
+            return cw
+
+        draw_chip("GGUF", 18, QPalette.ColorRole.Highlight)
+        quant = self._infer_quant_label(path_s)
+        quant_w = max(48, fm.horizontalAdvance(quant) + 20)
+        model_r = QRect(left, rect.top(), max(20, size_r.left() - left - quant_w - 16), rect.height())
+        model_name = Path(path_s).name
+        mono_font = painter.font()
+        mono_font.setFamilies(["Consolas", "Monospace"])
+        painter.setFont(mono_font)
+        elided = fm.elidedText(model_name, Qt.TextElideMode.ElideMiddle, model_r.width())
+        painter.drawText(model_r, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), elided)
+        left = model_r.right() + 8
+        draw_chip(quant, 20, QPalette.ColorRole.Mid)
+        painter.drawText(size_r, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), size_label)
+        painter.drawText(chev_r, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter), "▾")
         painter.restore()
 
 
@@ -224,6 +250,7 @@ class ModelManagerView(QWidget):
         self._readme_worker: HfReadmeWorker | None = None
         self._meta_worker: HfModelMetaWorker | None = None
         self._download_ui_cancel_mode = False
+        self._download_ui_load_mode = False
         self._search_seq = 0
         self._detail_seq = 0
         self._current_repo_id = ""
@@ -510,6 +537,7 @@ class ModelManagerView(QWidget):
 
         # Right: detail
         right = QWidget()
+        right.setMaximumWidth(900)
         right_l = QVBoxLayout(right)
         # Match transcript-like vertical start while keeping bottom breathing room.
         right_l.setContentsMargins(8, 75, 0, 40)
@@ -526,59 +554,106 @@ class ModelManagerView(QWidget):
         self.detail_subtitle.setWordWrap(True)
         self.detail_subtitle.hide()
 
-        self.meta_row_1 = QWidget(parent=right)
+        # Metadata panel (chip-heavy layout; actual colors come from QSS semantic classes).
+        self.meta_panel = QFrame(parent=right)
+        self.meta_panel.setProperty("class", "MetaPanelCard")
+        meta_panel_l = QVBoxLayout(self.meta_panel)
+        meta_panel_l.setContentsMargins(12, 12, 12, 12)
+        meta_panel_l.setSpacing(8)
+
+        self.meta_row_1 = QWidget(parent=self.meta_panel)
         meta_row_1_l = QHBoxLayout(self.meta_row_1)
         meta_row_1_l.setContentsMargins(0, 0, 0, 0)
-        meta_row_1_l.setSpacing(14)
-        self.meta_params_lbl = QLabel("Params: --")
-        self.meta_arch_lbl = QLabel("Arch: --")
-        self.meta_domain_lbl = QLabel("Domain: --")
-        self.meta_format_lbl = QLabel("Format: --")
+        meta_row_1_l.setSpacing(10)
+
+        self.meta_params_title_lbl = QLabel("Params:")
+        self.meta_params_title_lbl.setProperty("class", "MetaLabel")
+        self.meta_params_chip = QLabel("--")
+        self.meta_params_chip.setProperty("class", "Chip primary")
+        self.meta_arch_title_lbl = QLabel("Arch:")
+        self.meta_arch_title_lbl.setProperty("class", "MetaLabel")
+        self.meta_arch_chip = QLabel("--")
+        self.meta_arch_chip.setProperty("class", "Chip primary")
+        self.meta_domain_title_lbl = QLabel("Domain:")
+        self.meta_domain_title_lbl.setProperty("class", "MetaLabel")
+        self.meta_domain_chip = QLabel("--")
+        self.meta_domain_chip.setProperty("class", "Chip primary")
+        self.meta_format_title_lbl = QLabel("Format:")
+        self.meta_format_title_lbl.setProperty("class", "MetaLabel")
+        self.meta_format_chip = QLabel("--")
+        self.meta_format_chip.setProperty("class", "Chip accent")
+
         for w in (
-            self.meta_params_lbl,
-            self.meta_arch_lbl,
-            self.meta_domain_lbl,
-            self.meta_format_lbl,
+            self.meta_params_title_lbl,
+            self.meta_params_chip,
+            self.meta_arch_title_lbl,
+            self.meta_arch_chip,
+            self.meta_domain_title_lbl,
+            self.meta_domain_chip,
+            self.meta_format_title_lbl,
+            self.meta_format_chip,
         ):
             meta_row_1_l.addWidget(w)
         meta_row_1_l.addStretch(1)
 
-        self.meta_row_2 = QWidget(parent=right)
+        self.meta_row_2 = QWidget(parent=self.meta_panel)
         meta_row_2_l = QHBoxLayout(self.meta_row_2)
         meta_row_2_l.setContentsMargins(0, 0, 0, 0)
         meta_row_2_l.setSpacing(8)
         self.meta_caps_title_lbl = QLabel("Capabilities:")
-        self.meta_caps_value_lbl = QLabel("--")
-        self.meta_caps_value_lbl.setWordWrap(True)
+        self.meta_caps_title_lbl.setProperty("class", "MetaLabel")
+        self.meta_caps_wrap = QWidget(parent=self.meta_row_2)
+        self.meta_caps_wrap_l = QHBoxLayout(self.meta_caps_wrap)
+        self.meta_caps_wrap_l.setContentsMargins(0, 0, 0, 0)
+        self.meta_caps_wrap_l.setSpacing(6)
         meta_row_2_l.addWidget(self.meta_caps_title_lbl)
-        meta_row_2_l.addWidget(self.meta_caps_value_lbl, stretch=1)
+        meta_row_2_l.addWidget(self.meta_caps_wrap, stretch=1)
 
-        self.meta_row_3 = QWidget(parent=right)
-        meta_row_3_l = QHBoxLayout(self.meta_row_3)
-        meta_row_3_l.setContentsMargins(0, 0, 0, 0)
-        meta_row_3_l.setSpacing(8)
-        self.meta_gpu_fit_title_lbl = QLabel("GPU Fit:")
-        self.meta_gpu_fit_value_lbl = QLabel("--")
-        self.meta_gpu_fit_value_lbl.setWordWrap(True)
-        meta_row_3_l.addWidget(self.meta_gpu_fit_title_lbl)
-        meta_row_3_l.addWidget(self.meta_gpu_fit_value_lbl, stretch=1)
-        self.meta_hint_lbl = QLabel("", parent=right)
+        self.meta_hint_lbl = QLabel("", parent=self.meta_panel)
         self.meta_hint_lbl.setWordWrap(True)
         self.meta_hint_lbl.hide()
+
+        meta_panel_l.addWidget(self.meta_row_1)
+        meta_panel_l.addWidget(self.meta_row_2)
+        meta_panel_l.addWidget(self.meta_hint_lbl)
 
         self.readme_browser = QTextBrowser()
         self.readme_browser.setMinimumHeight(220)
         self.readme_browser.setOpenExternalLinks(True)
         self.readme_browser.setLineWrapMode(QTextBrowser.LineWrapMode.WidgetWidth)
 
-        q_lab = QLabel("Quantization (.gguf file)")
+        # Download options card
+        self.download_options_card = QFrame(parent=right)
+        self.download_options_card.setProperty("class", "DownloadOptionsCard")
+        dl_card_l = QVBoxLayout(self.download_options_card)
+        dl_card_l.setContentsMargins(12, 12, 12, 12)
+        dl_card_l.setSpacing(10)
+
+        dl_header_row = QWidget(parent=self.download_options_card)
+        dl_header_l = QHBoxLayout(dl_header_row)
+        dl_header_l.setContentsMargins(0, 0, 0, 0)
+        dl_header_l.setSpacing(8)
+        dl_header_icon = QLabel()
+        self._download_options_icon_label = dl_header_icon
+        dl_header_icon.setProperty("icon_name", "fa5s.box-open")
+        dl_header_title = QLabel("Download Options")
+        dl_header_title.setProperty("class", "SectionHeaderLabel")
+        dl_header_l.addWidget(dl_header_icon)
+        dl_header_l.addWidget(dl_header_title)
+        dl_header_l.addStretch(1)
+
+        q_lab = QLabel("Loading available files…")
+        self.hub_quant_hint_lbl = q_lab
         q_lab.setProperty("class", "ToolsPaneControl")
 
         files_row = QHBoxLayout()
+        files_row.setContentsMargins(0, 0, 0, 0)
+        files_row.setSpacing(8)
         self.hf_file_combo = HubFileComboBox(self)
         self.hf_file_combo.setObjectName("HubFileComboBox")
         self.hf_file_combo.setMinimumWidth(200)
         self.hf_file_combo.currentIndexChanged.connect(self._update_gpu_fit_status)
+        self.hf_file_combo.currentIndexChanged.connect(self._on_hf_file_combo_changed)
         # Popup QListView is reparented to a separate window; style it by objectName + palette
         # (same pattern as MainWindow._apply_menu_theme / PrestigeMenuList).
         _hub_combo_view = self.hf_file_combo.view()
@@ -592,12 +667,13 @@ class ModelManagerView(QWidget):
             _vp.setAutoFillBackground(True)
         files_row.addWidget(self.hf_file_combo, stretch=1)
         self.download_btn = QPushButton("Download")
+        self.download_btn.setProperty("class", "PrimaryActionButton")
         self.download_btn.setIcon(qta.icon("fa5s.download", color="#89b4fa"))
         self.download_btn.clicked.connect(self._start_download)
-        files_row.addWidget(self.download_btn)
 
         self.download_status = QLabel("")
         self.download_status.setWordWrap(True)
+        self.download_status.setVisible(False)
 
         self.download_progress = QProgressBar()
         self.download_progress.setRange(0, 100)
@@ -608,19 +684,38 @@ class ModelManagerView(QWidget):
         self.download_progress.setSizePolicy(_dp_pol)
         self.download_progress.hide()
 
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(8)
+        self.system_chip_lbl = QLabel("System: --")
+        self.system_chip_lbl.setProperty("class", "Chip outlined")
+        self._set_system_match_style("unknown")
+        action_row.addWidget(self.system_chip_lbl, stretch=0)
+        action_row.addStretch(1)
+        action_row.addWidget(self.download_btn, stretch=0)
+
+        dl_card_l.addWidget(dl_header_row)
+        dl_card_l.addWidget(q_lab)
+        dl_card_l.addLayout(files_row)
+        dl_card_l.addLayout(action_row)
+        dl_card_l.addWidget(self.download_status)
+        dl_card_l.addWidget(self.download_progress)
+
         right_l.addWidget(self.detail_title)
-        right_l.addWidget(self.meta_row_1)
-        right_l.addWidget(self.meta_row_2)
-        right_l.addWidget(self.meta_row_3)
-        right_l.addWidget(self.meta_hint_lbl)
-        right_l.addWidget(q_lab)
-        right_l.addLayout(files_row)
-        right_l.addWidget(self.download_status)
-        right_l.addWidget(self.download_progress)
+        right_l.addWidget(self.meta_panel)
+        right_l.addWidget(self.download_options_card)
         right_l.addWidget(self.readme_browser, stretch=1)
 
+        right_host = QWidget()
+        right_host_l = QHBoxLayout(right_host)
+        # Keep a fixed gap from the sidebar while preserving left pinning behavior on resize.
+        right_host_l.setContentsMargins(10, 0, 0, 0)
+        right_host_l.setSpacing(0)
+        right_host_l.addWidget(right, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        right_host_l.addStretch(1)
+
         hub_h.addWidget(left)
-        hub_h.addWidget(right, stretch=1)
+        hub_h.addWidget(right_host, stretch=1)
 
         main_layout.addWidget(hub_container, stretch=1)
 
@@ -638,15 +733,20 @@ class ModelManagerView(QWidget):
         )
 
     def _reset_hub_metadata_labels(self) -> None:
-        if hasattr(self, "meta_params_lbl"):
-            self.meta_params_lbl.setText("Params: --")
-            self.meta_arch_lbl.setText("Arch: --")
-            self.meta_domain_lbl.setText("Domain: --")
-            self.meta_format_lbl.setText("Format: --")
-            self.meta_caps_value_lbl.setText("--")
-            self.meta_gpu_fit_value_lbl.setText("--")
+        if hasattr(self, "meta_params_chip"):
+            self.meta_params_chip.setText("--")
+            self.meta_arch_chip.setText("--")
+            self.meta_domain_chip.setText("--")
+            self.meta_format_chip.setText("--")
+        self._render_capability_chips([])
+        if hasattr(self, "system_chip_lbl"):
+            self.system_chip_lbl.setText("System: --")
+            self._set_system_match_style("unknown")
+        if hasattr(self, "download_btn"):
+            self.download_btn.setText("Download")
         if hasattr(self, "meta_hint_lbl"):
             self.meta_hint_lbl.hide()
+        self._set_download_status_text("")
 
     def _set_meta_hint(self, text: str | None) -> None:
         if not hasattr(self, "meta_hint_lbl"):
@@ -657,44 +757,110 @@ class ModelManagerView(QWidget):
 
     def _apply_hub_metadata(self, meta: dict | None) -> None:
         m = meta or {}
-        self.meta_params_lbl.setText(f"Params: {m.get('params', 'Unknown')}")
-        self.meta_arch_lbl.setText(f"Arch: {m.get('arch', 'Unknown')}")
-        self.meta_domain_lbl.setText(f"Domain: {m.get('domain', 'Unknown')}")
-        self.meta_format_lbl.setText(f"Format: {m.get('format', 'Unknown')}")
+        self.meta_params_chip.setText(str(m.get("params", "Unknown")))
+        self.meta_arch_chip.setText(str(m.get("arch", "Unknown")))
+        self.meta_domain_chip.setText(str(m.get("domain", "Unknown")))
+        self.meta_format_chip.setText(str(m.get("format", "Unknown")))
         caps = m.get("capabilities") or []
         if isinstance(caps, list):
             clean_caps = [str(c).strip() for c in caps if str(c).strip()]
         else:
             clean_caps = []
-        self.meta_caps_value_lbl.setText("  ".join(clean_caps) if clean_caps else "Unknown")
+        self._render_capability_chips(clean_caps)
         self._set_meta_hint(None)
 
     def _apply_hub_metadata_styles(self, is_dark: bool) -> None:
-        if not hasattr(self, "meta_params_lbl"):
+        if not hasattr(self, "meta_params_chip"):
             return
-        self._meta_style(self.meta_params_lbl, is_dark=is_dark)
-        self._meta_style(self.meta_arch_lbl, is_dark=is_dark)
-        self._meta_style(self.meta_domain_lbl, is_dark=is_dark)
-        self._meta_style(self.meta_format_lbl, is_dark=is_dark)
-        self._meta_style(self.meta_caps_title_lbl, is_dark=is_dark, strong=True)
-        self._meta_style(self.meta_caps_value_lbl, is_dark=is_dark)
-        self._meta_style(self.meta_gpu_fit_title_lbl, is_dark=is_dark, strong=True)
-        self._meta_style(self.meta_gpu_fit_value_lbl, is_dark=is_dark)
+        for lbl in (
+            self.meta_params_title_lbl,
+            self.meta_arch_title_lbl,
+            self.meta_domain_title_lbl,
+            self.meta_format_title_lbl,
+            self.meta_caps_title_lbl,
+        ):
+            self._meta_style(lbl, is_dark=is_dark, strong=True)
+        for chip in (
+            self.meta_params_chip,
+            self.meta_arch_chip,
+            self.meta_domain_chip,
+            self.meta_format_chip,
+        ):
+            chip.style().unpolish(chip)
+            chip.style().polish(chip)
+            chip.update()
         hint_color = "#6c7086" if is_dark else "#64748b"
         self.meta_hint_lbl.setStyleSheet(
             f"color: {hint_color}; font-size: 11px; font-weight: 500; background: transparent;"
         )
+        self._set_system_match_style("unknown")
+        self._refresh_download_options_header_icon()
+
+    def _refresh_download_options_header_icon(self) -> None:
+        if not hasattr(self, "_download_options_icon_label"):
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+        self._download_options_icon_label.setPixmap(
+            qta.icon("fa5s.box-open", color=icon_color).pixmap(QSize(14, 14))
+        )
+
+    def _capability_icon_name(self, cap: str) -> str:
+        c = cap.lower()
+        if "vision" in c:
+            return "fa5s.eye"
+        if "tool" in c:
+            return "fa5s.wrench"
+        if "reason" in c:
+            return "fa5s.brain"
+        if "code" in c:
+            return "fa5s.code"
+        if "multi" in c:
+            return "fa5s.globe"
+        return "fa5s.star"
+
+    def _render_capability_chips(self, caps: list[str]) -> None:
+        if not hasattr(self, "meta_caps_wrap_l"):
+            return
+        while self.meta_caps_wrap_l.count():
+            it = self.meta_caps_wrap_l.takeAt(0)
+            w = it.widget()
+            if w is not None:
+                w.deleteLater()
+        if not caps:
+            empty_chip = QLabel("Unknown")
+            empty_chip.setProperty("class", "Chip muted")
+            self.meta_caps_wrap_l.addWidget(empty_chip)
+            self.meta_caps_wrap_l.addStretch(1)
+            return
+        for cap in caps:
+            chip = QFrame()
+            chip.setProperty("class", "Chip capability")
+            chip_l = QHBoxLayout(chip)
+            chip_l.setContentsMargins(8, 3, 8, 3)
+            chip_l.setSpacing(6)
+            icon_lbl = QLabel()
+            icon_lbl.setProperty("class", "ChipIcon")
+            icon_lbl.setPixmap(qta.icon(self._capability_icon_name(cap)).pixmap(QSize(11, 11)))
+            txt_lbl = QLabel(cap)
+            txt_lbl.setProperty("class", "ChipLabel")
+            chip_l.addWidget(icon_lbl)
+            chip_l.addWidget(txt_lbl)
+            self.meta_caps_wrap_l.addWidget(chip)
+        self.meta_caps_wrap_l.addStretch(1)
 
     @staticmethod
     def _fmt_gib(n: int) -> str:
         return f"{(max(0, int(n)) / (1024**3)):.2f} GB"
 
     def _update_gpu_fit_status(self, _index: int | None = None) -> None:
-        if not hasattr(self, "hf_file_combo") or not hasattr(self, "meta_gpu_fit_value_lbl"):
+        if not hasattr(self, "hf_file_combo"):
             return
         idx = self.hf_file_combo.currentIndex()
         if idx < 0:
-            self.meta_gpu_fit_value_lbl.setText("--")
+            if hasattr(self, "system_chip_lbl"):
+                self.system_chip_lbl.setText("System: --")
+                self._set_system_match_style("unknown")
             return
         size_b = self.hf_file_combo.itemData(idx, int(HUB_FILE_COMBO_BYTES_ROLE))
         try:
@@ -702,22 +868,174 @@ class ModelManagerView(QWidget):
         except (TypeError, ValueError):
             q_bytes = 0
         if q_bytes <= 0:
-            self.meta_gpu_fit_value_lbl.setText("Unknown (quantization size unavailable)")
+            if hasattr(self, "system_chip_lbl"):
+                self.system_chip_lbl.setText("System: Unknown")
+                self._set_system_match_style("unknown")
             return
         vram_b = int(detect_gpu_vram_bytes() or 0)
         if vram_b <= 0:
-            self.meta_gpu_fit_value_lbl.setText(
-                f"Unknown (GPU VRAM not detected) - Quant: {self._fmt_gib(q_bytes)}"
-            )
+            if hasattr(self, "system_chip_lbl"):
+                self.system_chip_lbl.setText(f"System: Quant {self._fmt_gib(q_bytes)}")
+                self._set_system_match_style("unknown")
             return
         if q_bytes <= vram_b:
-            self.meta_gpu_fit_value_lbl.setText(
-                f"Yes - {self._fmt_gib(q_bytes)} model <= {self._fmt_gib(vram_b)} VRAM"
-            )
+            status = f"Fits ({self._fmt_gib(q_bytes)} / {self._fmt_gib(vram_b)})"
+            if hasattr(self, "system_chip_lbl"):
+                self.system_chip_lbl.setText(f"System: {status}")
+                self._set_system_match_style("fit")
         else:
-            self.meta_gpu_fit_value_lbl.setText(
-                f"No - {self._fmt_gib(q_bytes)} model > {self._fmt_gib(vram_b)} VRAM"
-            )
+            status = f"Does not fit ({self._fmt_gib(q_bytes)} / {self._fmt_gib(vram_b)})"
+            if hasattr(self, "system_chip_lbl"):
+                self.system_chip_lbl.setText(f"System: {status}")
+                self._set_system_match_style("no_fit")
+
+    def _on_hf_file_combo_changed(self, _index: int) -> None:
+        self._update_download_button_label()
+        self._sync_download_action_state()
+
+    def _update_download_button_label(self) -> None:
+        if not hasattr(self, "download_btn") or not hasattr(self, "hf_file_combo"):
+            return
+        if getattr(self, "_download_ui_load_mode", False):
+            return
+        idx = self.hf_file_combo.currentIndex()
+        if idx < 0:
+            self.download_btn.setText("Download")
+            return
+        raw = self.hf_file_combo.itemData(idx, int(HUB_FILE_COMBO_BYTES_ROLE))
+        try:
+            sz = int(raw) if raw is not None else 0
+        except (TypeError, ValueError):
+            sz = 0
+        if sz > 0:
+            self.download_btn.setText(f"Download ({self._fmt_bytes(sz)})")
+        else:
+            self.download_btn.setText("Download")
+
+    def _set_download_progress_text(self, prefix: str = "Downloading model") -> None:
+        if not hasattr(self, "download_progress"):
+            return
+        self.download_progress.setFormat(f"{prefix} (%p%)")
+
+    def _on_download_progress_pct(self, pct: int) -> None:
+        self.download_progress.setValue(int(pct))
+        self._set_download_progress_text()
+
+    def _on_download_status_message(self, msg: str) -> None:
+        # Keep status label quiet during active download; progress text carries the state.
+        # Preserve "Downloading model" text per UX request.
+        if self._download_worker and self._download_worker.isRunning():
+            self._set_download_progress_text()
+
+    def _set_download_status_text(self, text: str) -> None:
+        if not hasattr(self, "download_status"):
+            return
+        msg = str(text or "").strip()
+        self.download_status.setText(msg)
+        self.download_status.setVisible(bool(msg))
+
+    def _selected_local_model_path(self) -> Path | None:
+        sel = self._selected_hf_repo_file()
+        if not sel:
+            return None
+        return Path(get_llm_models_dir()) / Path(sel).name
+
+    def _is_selected_model_downloaded(self) -> bool:
+        p = self._selected_local_model_path()
+        return bool(p is not None and p.is_file())
+
+    def _is_selected_model_loaded(self) -> bool:
+        p = self._selected_local_model_path()
+        if p is None:
+            return False
+        eng = self.workers.get("native_engine") if self.workers else None
+        snap = eng.get_model_reasoning_telemetry() if eng else None
+        if not snap or not snap.get("loaded"):
+            return False
+        return str(snap.get("model_basename") or "").strip() == p.name
+
+    def _set_download_button_download_mode(self) -> None:
+        try:
+            self.download_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        self._download_ui_cancel_mode = False
+        self._download_ui_load_mode = False
+        self.download_btn.setEnabled(True)
+        self._apply_download_action_button_style(mode="download")
+        self.download_btn.clicked.connect(self._start_download)
+        self._update_download_button_label()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self.refresh_button_themes(is_dark)
+
+    def _set_download_button_load_mode(self, enabled: bool) -> None:
+        try:
+            self.download_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        self._download_ui_cancel_mode = False
+        self._download_ui_load_mode = True
+        self.download_btn.setText("Load Model")
+        self.download_btn.setIcon(qta.icon("fa5s.play", color="#f8fafc"))
+        self._apply_download_action_button_style(mode="load")
+        self.download_btn.setEnabled(bool(enabled))
+        self.download_btn.clicked.connect(self._load_selected_model)
+
+    def _apply_download_action_button_style(self, mode: str) -> None:
+        """Theme-safe button colors for Download/Load actions."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if mode == "load":
+            if is_dark:
+                bg, fg, border = ("rgba(255, 255, 255, 0.08)", "#cdd6f4", "rgba(255, 255, 255, 0.16)")
+            else:
+                bg, fg, border = ("#ffffff", "#1e293b", "#cbd5e1")
+        else:
+            if is_dark:
+                bg, fg, border = ("#8b5cf6", "#f8fafc", "#8b5cf6")
+            else:
+                bg, fg, border = ("#1e293b", "#f8fafc", "#1e293b")
+        self.download_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {bg};
+                color: {fg};
+                border: 1px solid {border};
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-weight: 700;
+            }}
+            """
+        )
+
+    def _sync_download_action_state(self) -> None:
+        if getattr(self, "_download_ui_cancel_mode", False):
+            return
+        if self._is_selected_model_downloaded():
+            loaded = self._is_selected_model_loaded()
+            self._set_download_button_load_mode(enabled=not loaded)
+            p = self._selected_local_model_path()
+            if loaded:
+                self._set_download_status_text(f"Loaded: {p.name if p else 'model'}")
+            else:
+                self._set_download_status_text(f"Saved: {p.name if p else 'model'}")
+            self.download_progress.hide()
+            return
+        self._set_download_button_download_mode()
+        if not (self._download_worker and self._download_worker.isRunning()):
+            self._set_download_status_text("")
+
+    def _load_selected_model(self) -> None:
+        p = self._selected_local_model_path()
+        if p is None or not p.is_file():
+            self._show_error("Model not found", "Selected file is not available locally.")
+            self._sync_download_action_state()
+            return
+        set_internal_model_path(str(p))
+        if self._llm:
+            self._llm.refresh_native_model_from_settings()
+        self.native_library_changed.emit()
+        self._set_download_status_text(f"Loaded: {p.name}")
+        self._set_download_button_load_mode(enabled=False)
 
     def _apply_hub_list_surface(self, is_dark: bool) -> None:
         """Match Conversations sidebar/list background palette on both themes."""
@@ -872,14 +1190,31 @@ class ModelManagerView(QWidget):
 
     def refresh_button_themes(self, is_dark: bool) -> None:
         """Icon accents for Hub actions — same pattern as LibraryView.refresh_button_themes."""
-        icon_color = "#8b5cf6" if is_dark else "#1e293b"
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-        if hasattr(self, "download_btn") and not getattr(self, "_download_ui_cancel_mode", False):
-            self.download_btn.setIcon(qta.icon("fa5s.download", color=icon_color))
-            self.download_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 8px 12px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+        filled_icon_color = "#f8fafc"
+        if not hasattr(self, "download_btn"):
+            return
+        if getattr(self, "_download_ui_cancel_mode", False):
+            return
+        if getattr(self, "_download_ui_load_mode", False):
+            self.download_btn.setIcon(qta.icon("fa5s.play", color=filled_icon_color))
+            self._apply_download_action_button_style(mode="load")
+            return
+        self.download_btn.setIcon(qta.icon("fa5s.download", color=filled_icon_color))
+        self._apply_download_action_button_style(mode="download")
+
+    def _set_system_match_style(self, state: str) -> None:
+        """Render System label as plain text (no chip card), colored by fit state."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if state == "fit":
+            color = "#10b981"
+        elif state == "no_fit":
+            color = "#f59e0b" if is_dark else "#b45309"
+        else:
+            color = "#94a3b8" if is_dark else "#64748b"
+        if hasattr(self, "system_chip_lbl"):
+            self.system_chip_lbl.setStyleSheet(
+                f"background: transparent; border: none; padding: 0px; color: {color}; font-size: 12px; font-weight: 600;"
+            )
 
     def _schedule_hub_search(self, _text: str = "") -> None:
         self._search_timer.stop()
@@ -965,7 +1300,9 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.clear()
         self.hf_file_combo.addItem("Loading file list…")
         self.hf_file_combo.blockSignals(False)
-        self.download_status.setText("")
+        self._set_download_status_text("")
+        if hasattr(self, "hub_quant_hint_lbl"):
+            self.hub_quant_hint_lbl.setText("Loading available quantizations…")
 
         self._retire_hf_thread(self._readme_worker)
         self._readme_worker = None
@@ -1013,7 +1350,11 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.addItem("-- Select a model from the list --")
         self.hf_file_combo.blockSignals(False)
         self._reset_hub_metadata_labels()
+        if hasattr(self, "hub_quant_hint_lbl"):
+            self.hub_quant_hint_lbl.setText("Select a model to view available quantizations.")
+        self._update_download_button_label()
         self._update_gpu_fit_status()
+        self._sync_download_action_state()
 
     def _apply_meta_if_current(self, repo: str, meta: dict, seq: int) -> None:
         if seq != self._detail_seq:
@@ -1067,7 +1408,8 @@ class ModelManagerView(QWidget):
 
     def _start_list_worker_for_repo(self, repo: str, seq: int) -> None:
         self.download_btn.setEnabled(False)
-        self.download_status.setText("Fetching .gguf file list…")
+        if hasattr(self, "hub_quant_hint_lbl"):
+            self.hub_quant_hint_lbl.setText("Fetching .gguf file list…")
 
         self._retire_hf_thread(self._list_worker)
         self._list_worker = None
@@ -1104,9 +1446,18 @@ class ModelManagerView(QWidget):
                 normalized.append((str(e[0]), sz))
             elif isinstance(e, (list, tuple)) and len(e) == 1:
                 normalized.append((str(e[0]), None))
+        # Smallest-to-largest by known size; unknown sizes are sent to the end.
+        normalized.sort(
+            key=lambda it: (
+                it[1] is None,
+                int(it[1]) if it[1] is not None else 0,
+                str(it[0]).lower(),
+            )
+        )
         if not normalized:
             self.hf_file_combo.addItem("(No .gguf files in this repository)")
-            self.download_status.setText("No .gguf files found for this repo.")
+            if hasattr(self, "hub_quant_hint_lbl"):
+                self.hub_quant_hint_lbl.setText("No .gguf files found for this repository.")
         else:
             self.hf_file_combo.addItem("-- Select a .gguf file --")
             for path, size_b in normalized:
@@ -1123,12 +1474,16 @@ class ModelManagerView(QWidget):
                         int(size_b),
                         int(HUB_FILE_COMBO_BYTES_ROLE),
                     )
-            self.hf_file_combo.setCurrentIndex(0)
-            self.download_status.setText(
-                f"{len(normalized)} file(s) available. Choose a quantization, then Download."
-            )
+            # Auto-select the smallest quantization entry.
+            self.hf_file_combo.setCurrentIndex(1)
+            if hasattr(self, "hub_quant_hint_lbl"):
+                self.hub_quant_hint_lbl.setText(
+                    f"{len(normalized)} file(s) available. Choose a quantization, then Download."
+                )
         self.hf_file_combo.blockSignals(False)
+        self._update_download_button_label()
         self._update_gpu_fit_status()
+        self._sync_download_action_state()
 
     def _on_hf_list_failed(self, msg: str, seq: int) -> None:
         if seq != self._detail_seq:
@@ -1137,8 +1492,11 @@ class ModelManagerView(QWidget):
         self.hf_file_combo.clear()
         self.hf_file_combo.addItem("-- Could not list files --")
         self.hf_file_combo.blockSignals(False)
+        if hasattr(self, "hub_quant_hint_lbl"):
+            self.hub_quant_hint_lbl.setText("Could not list .gguf files for this repository.")
+        self._update_download_button_label()
         self._update_gpu_fit_status()
-        self.download_status.setText("")
+        self._sync_download_action_state()
         self._show_error("Could not list files", msg)
 
     def _section_header(self, icon_name: str, text: str) -> QWidget:
@@ -1194,6 +1552,7 @@ class ModelManagerView(QWidget):
         except TypeError:
             pass
         self._download_ui_cancel_mode = cancel_mode
+        self._download_ui_load_mode = False
         if cancel_mode:
             self.download_btn.setText("Cancel")
             self.download_btn.setIcon(qta.icon("fa5s.times", color="#fef2f2"))
@@ -1212,23 +1571,20 @@ class ModelManagerView(QWidget):
             )
             self.download_btn.clicked.connect(self._cancel_download)
         else:
-            self.download_btn.setText("Download")
-            self.download_btn.setIcon(qta.icon("fa5s.download", color="#89b4fa"))
-            self.download_btn.setStyleSheet("")
-            self.download_btn.clicked.connect(self._start_download)
+            self._set_download_button_download_mode()
 
     def _restore_download_idle_ui(self) -> None:
-        self._set_download_button_cancel_mode(False)
-        self.download_btn.setEnabled(True)
+        self._download_ui_cancel_mode = False
         self.download_progress.hide()
         self.download_progress.setValue(0)
+        self.download_progress.setFormat("(%p%)")
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        self.refresh_button_themes(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
+        self._sync_download_action_state()
 
     def _cancel_download(self) -> None:
         if self._download_worker and self._download_worker.isRunning():
-            self.download_status.setText("Cancelling…")
+            self._set_download_status_text("Cancelling…")
             self._download_worker.cancel()
 
     def _start_download(self) -> None:
@@ -1249,7 +1605,8 @@ class ModelManagerView(QWidget):
 
         self.download_progress.setValue(0)
         self.download_progress.show()
-        self.download_status.setText("Starting…")
+        self._set_download_status_text("")
+        self._set_download_progress_text()
         self._set_download_button_cancel_mode(True)
 
         self._retire_hf_thread(self._download_worker)
@@ -1257,8 +1614,8 @@ class ModelManagerView(QWidget):
         self._download_worker = HuggingFaceGgufDownloadWorker(
             repo, fname, get_llm_models_dir()
         )
-        self._download_worker.progress_pct.connect(self.download_progress.setValue)
-        self._download_worker.status_message.connect(self.download_status.setText)
+        self._download_worker.progress_pct.connect(self._on_download_progress_pct)
+        self._download_worker.status_message.connect(self._on_download_status_message)
         self._download_worker.finished_ok.connect(self._on_download_finished)
         self._download_worker.failed.connect(self._on_download_failed)
         self._download_worker.insufficient_space_error.connect(
@@ -1269,20 +1626,20 @@ class ModelManagerView(QWidget):
 
     def _on_download_finished(self, path: str) -> None:
         self._restore_download_idle_ui()
-        self.download_status.setText(f"Saved: {os.path.basename(path)}")
+        self._set_download_status_text(f"Saved: {os.path.basename(path)}")
         set_internal_model_path(path)
-        if self._llm:
-            self._llm.refresh_native_model_from_settings()
+        # Do not auto-load after download; user can manually select/load later.
         self.native_library_changed.emit()
+        self._sync_download_action_state()
 
     def _on_download_failed(self, msg: str) -> None:
         self._restore_download_idle_ui()
-        self.download_status.setText("")
+        self._set_download_status_text("")
         self._show_error("Download failed", msg)
 
     def _on_insufficient_space(self, required: int, available: int) -> None:
         self._restore_download_idle_ui()
-        self.download_status.setText("")
+        self._set_download_status_text("")
         self._show_error(
             "Not enough disk space",
             f"This download needs about {self._fmt_bytes(required)} free on the destination "
@@ -1292,7 +1649,7 @@ class ModelManagerView(QWidget):
 
     def _on_download_cancelled(self) -> None:
         self._restore_download_idle_ui()
-        self.download_status.setText("Download cancelled.")
+        self._set_download_status_text("Download cancelled.")
 
     def _show_error(self, title: str, message: str) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
