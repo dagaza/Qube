@@ -46,6 +46,7 @@ from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
 from ui.components.source_viewer import SourcePreviewer
+from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
 
 logger = logging.getLogger("Qube.UI.Conversations")
@@ -618,6 +619,8 @@ class MessageWrapper(QWidget):
             lbl.cleanup_before_destruction()
         for w in self.findChildren(AgentMessageLabel):
             w.cleanup_before_destruction()
+        for ind in self.findChildren(TypingIndicatorWidget):
+            ind.stop()
         self.bubble = None
 
 
@@ -663,6 +666,7 @@ class ConversationsView(QWidget):
         self._high_contrast_enabled: bool = False
         self._reader_hover_wrapper: MessageWrapper | None = None
         self._transcript_alignment: str = ALIGN_JUSTIFY
+        self._agent_typing_wrapper: MessageWrapper | None = None
 
         self._setup_ui()
         self._start_new_chat()
@@ -1408,7 +1412,7 @@ class ConversationsView(QWidget):
     #  UI UPDATE RECEIVERS (The Magic Happens Here)             #
     # --------------------------------------------------------- #
 
-    def log_user_message(self, text: str) -> None:
+    def log_user_message(self, text: str, *, pending_assistant: bool = False) -> None:
         self._clear_placeholders()
         # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
         self._user_turn_id += 1
@@ -1437,7 +1441,46 @@ class ConversationsView(QWidget):
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
 
+        if pending_assistant:
+            self._show_agent_typing_row()
+
+    def _show_agent_typing_row(self) -> None:
+        """Assistant row with animated dots until the first streamed token arrives."""
+        self._hide_agent_typing_row()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        bubble = QFrame()
+        bubble.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        bubble.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        bl = QVBoxLayout(bubble)
+        bl.setContentsMargins(8, 10, 16, 8)
+        bl.setSpacing(0)
+        indicator = TypingIndicatorWidget(
+            mode=TypingIndicatorMode.FADE,
+            dot_count=3,
+            fixed_width=52,
+            fixed_height=24,
+        )
+        indicator.set_dark_theme(is_dark)
+        bl.addWidget(indicator, 0, Qt.AlignmentFlag.AlignLeft)
+        indicator.start()
+        wrap = MessageWrapper(bubble, is_user=False)
+        self._register_reader_focus_tracking(wrap)
+        self._agent_typing_wrapper = wrap
+        self.transcript_layout.addWidget(wrap)
+        self._scroll_to_bottom()
+
+    def _hide_agent_typing_row(self) -> None:
+        w = self._agent_typing_wrapper
+        if w is None:
+            return
+        self._agent_typing_wrapper = None
+        for ind in w.findChildren(TypingIndicatorWidget):
+            ind.stop()
+        self.transcript_layout.removeWidget(w)
+        w.deleteLater()
+
     def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
+        self._hide_agent_typing_row()
         self._clear_placeholders()
 
         is_dark = True
@@ -1546,6 +1589,7 @@ class ConversationsView(QWidget):
         self.current_agent_msg = None
         self._pending_citation_sources = None
         self._agent_text_buffer = ""
+        self._hide_agent_typing_row()
 
         while self.transcript_layout.count():
             item = self.transcript_layout.takeAt(0)
@@ -1579,7 +1623,7 @@ class ConversationsView(QWidget):
         self.set_input_enabled(False)
         self._refresh_send_stop_button()
 
-        self.log_user_message(text)
+        self.log_user_message(text, pending_assistant=True)
 
         if not hasattr(self, 'active_session_id'):
             recent_sessions = self.db.get_recent_sessions(limit=1)
@@ -2019,6 +2063,10 @@ class ConversationsView(QWidget):
             self.font_plus_btn.setStyleSheet(font_btn_style)
         self._apply_action_toggle_styles()
         self._apply_history_list_surface(is_dark)
+        tw = self._agent_typing_wrapper
+        if tw is not None:
+            for ind in tw.findChildren(TypingIndicatorWidget):
+                ind.set_dark_theme(is_dark)
 
     def _apply_history_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
@@ -2198,6 +2246,7 @@ class ConversationsView(QWidget):
         self._stop_requested_callback = callback
 
     def on_llm_response_finished(self) -> None:
+        self._hide_agent_typing_row()
         self._llm_in_progress = False
         tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
         self._awaiting_tts_end = tts_enabled
@@ -2225,6 +2274,7 @@ class ConversationsView(QWidget):
 
     def on_generation_stopped(self) -> None:
         logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")
+        self._hide_agent_typing_row()
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False

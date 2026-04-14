@@ -209,7 +209,7 @@ class Qube:
         # 🔑 FIX: Lock the UI while processing a voice command
         self.window.conversations_view.set_input_enabled(False)
 
-        self.window.conversations_view.log_user_message(text)
+        self.window.conversations_view.log_user_message(text, pending_assistant=True)
         self.llm_worker.generate_response(text, session_id)
 
     def _handle_user_interruption(self):
