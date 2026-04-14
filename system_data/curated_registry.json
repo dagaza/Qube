@@ -1,0 +1,96 @@
+{
+  "exact": {
+    "deepseek-r1": {
+      "reasoning": true
+    },
+    "meta-llama/llama-3-vision": {
+      "vision": true
+    }
+  },
+  "patterns": [
+    {
+      "match": "deepseek-r1",
+      "type": "prefix",
+      "capabilities": {
+        "reasoning": true
+      }
+    },
+    {
+      "match": "qwen2.5",
+      "type": "prefix",
+      "capabilities": {
+        "tool_use": true
+      }
+    },
+    {
+      "match": "llava",
+      "type": "contains",
+      "capabilities": {
+        "vision": true
+      }
+    },
+    {
+      "match": "vl",
+      "type": "contains",
+      "capabilities": {
+        "vision": true
+      }
+    },
+    {
+      "match": "whisper",
+      "type": "contains",
+      "capabilities": {
+        "stt": true
+      }
+    },
+    {
+      "match": "xtts",
+      "type": "contains",
+      "capabilities": {
+        "tts": true
+      }
+    },
+    {
+      "match": "coder",
+      "type": "contains",
+      "capabilities": {
+        "coding": true
+      }
+    },
+    {
+      "match": "code",
+      "type": "contains",
+      "capabilities": {
+        "coding": true
+      }
+    },
+    {
+      "match": "ocr",
+      "type": "contains",
+      "capabilities": {
+        "vision": true
+      }
+    },
+    {
+      "match": "tts",
+      "type": "contains",
+      "capabilities": {
+        "tts": true
+      }
+    },
+    {
+      "match": "stt",
+      "type": "contains",
+      "capabilities": {
+        "stt": true
+      }
+    },
+    {
+      "match": "asr",
+      "type": "contains",
+      "capabilities": {
+        "stt": true
+      }
+    }
+  ]
+}

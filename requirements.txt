@@ -20,6 +20,7 @@ dlinfo==2.0.0
 EbookLib==0.20
 espeakng-loader==0.2.4
 faster-whisper==1.2.1
+fastapi==0.121.0
 filelock==3.25.2
 flatbuffers==25.12.19
 fsspec==2026.3.0

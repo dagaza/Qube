@@ -9,10 +9,12 @@ from pathlib import Path
 logger = logging.getLogger("Qube.ModelManager")
 
 import qtawesome as qta
-from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument, QPainter
+from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument, QPainter, QIcon
 from PyQt6.QtCore import QEvent, Qt, QThread, QSize, QTimer, QUrl, QRect, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
+    QLayout,
+    QLayoutItem,
     QVBoxLayout,
     QHBoxLayout,
     QFrame,
@@ -37,6 +39,7 @@ from core.app_settings import (
 )
 from core.gpu_layers_cap import detect_gpu_vram_bytes
 from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
+from core.model_capability_service import ModelCapabilityService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from workers.hf_model_search_worker import HfModelSearchWorker
@@ -48,6 +51,14 @@ from workers.model_download_worker import HuggingFaceGgufDownloadWorker
 # Extra display data on Hub .gguf combo rows (file size, right-aligned in popup).
 HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
 HUB_FILE_COMBO_BYTES_ROLE = int(Qt.ItemDataRole.UserRole) + 43
+MODEL_MANAGER_LEFT_SIDEBAR_WIDTH = 364  # 280 * 1.30
+MODEL_MANAGER_CONTENT_WIDTH_SCALE = 1.2
+HUB_ROW_REPO_ROLE = int(Qt.ItemDataRole.UserRole)
+HUB_ROW_TITLE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+HUB_ROW_DESC_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+HUB_ROW_CAPS_ROLE = int(Qt.ItemDataRole.UserRole) + 3
+HUB_ROW_UPDATED_ROLE = int(Qt.ItemDataRole.UserRole) + 4
+HUB_ROW_VERIFIED_ROLE = int(Qt.ItemDataRole.UserRole) + 5
 
 
 def _model_manager_project_root() -> Path:
@@ -231,6 +242,115 @@ class HubFileComboBox(QComboBox):
         if m is not None:
             QTimer.singleShot(0, m._on_hub_file_combo_popup_opened)
 
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        m = self._hub_manager
+        if m is None:
+            return
+        pm = getattr(m, "_hub_combo_chevron_pixmap", None)
+        if pm is None:
+            return
+        r = self.rect()
+        x = r.right() - 16 - pm.width() // 2
+        y = r.center().y() - pm.height() // 2
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        p.drawPixmap(x, y, pm)
+        p.end()
+
+
+class FlowLayout(QLayout):
+    """Minimal flow layout for wrapping chip rows on narrow widths."""
+
+    def __init__(self, parent: QWidget | None = None, spacing: int = 6):
+        super().__init__(parent)
+        self._items: list[QLayoutItem] = []
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSpacing(spacing)
+
+    def addItem(self, item: QLayoutItem) -> None:
+        self._items.append(item)
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, index: int) -> QLayoutItem | None:
+        return self._items[index] if 0 <= index < len(self._items) else None
+
+    def takeAt(self, index: int) -> QLayoutItem | None:
+        return self._items.pop(index) if 0 <= index < len(self._items) else None
+
+    def expandingDirections(self) -> Qt.Orientations:
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return self._do_layout(QRect(0, 0, width, 0), test_only=True)
+
+    def setGeometry(self, rect: QRect) -> None:
+        super().setGeometry(rect)
+        self._do_layout(rect, test_only=False)
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSize()
+
+    def minimumSize(self) -> QSize:
+        size = QSize(0, 0)
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        m = self.contentsMargins()
+        size += QSize(m.left() + m.right(), m.top() + m.bottom())
+        return size
+
+    def _do_layout(self, rect: QRect, *, test_only: bool) -> int:
+        m = self.contentsMargins()
+        start_x = rect.x() + m.left()
+        x = start_x
+        y = rect.y() + m.top()
+        max_right = rect.right() - m.right()
+
+        line_items: list[tuple[QLayoutItem, QSize]] = []
+        line_h = 0
+
+        def flush_line() -> None:
+            nonlocal x, y, line_h, line_items
+            if not line_items:
+                return
+            cx = start_x
+            for it, sz in line_items:
+                if not test_only:
+                    dy = (line_h - sz.height()) // 2
+                    it.setGeometry(QRect(cx, y + dy, sz.width(), sz.height()))
+                cx += sz.width() + self.spacing()
+            y += line_h + self.spacing()
+            x = start_x
+            line_h = 0
+            line_items = []
+
+        for item in self._items:
+            hint = item.sizeHint()
+            next_x = x + hint.width()
+            if line_items and next_x > max_right:
+                flush_line()
+                next_x = x + hint.width()
+            line_items.append((item, hint))
+            x = next_x + self.spacing()
+            line_h = max(line_h, hint.height())
+
+        # Last line should not include extra trailing spacing in measured height.
+        if line_items:
+            if not test_only:
+                cx = start_x
+                for it, sz in line_items:
+                    dy = (line_h - sz.height()) // 2
+                    it.setGeometry(QRect(cx, y + dy, sz.width(), sz.height()))
+                    cx += sz.width() + self.spacing()
+            y += line_h
+
+        return (y - rect.y()) + m.bottom()
+
 
 class ModelManagerView(QWidget):
     """Hub browser: search, README, file list, and GGUF downloads."""
@@ -238,6 +358,38 @@ class ModelManagerView(QWidget):
     native_library_changed = pyqtSignal()
 
     _HUB_LIST_MAX_LINES = 3
+
+    @staticmethod
+    def _scaled_content_width(px: int) -> int:
+        return max(1, int(round(px * MODEL_MANAGER_CONTENT_WIDTH_SCALE)))
+
+    @staticmethod
+    def _elide_single_line(text: str, lbl: QLabel) -> str:
+        fm = lbl.fontMetrics()
+        width = max(8, lbl.width())
+        return fm.elidedText(str(text or ""), Qt.TextElideMode.ElideRight, width)
+
+    @staticmethod
+    def _capability_chip_spec(cap: str) -> tuple[str, str]:
+        c = str(cap or "").strip()
+        low = c.lower()
+        if "audio" in low:
+            return ("fa5s.volume-up", "capability audio")
+        if "tts" in low:
+            return ("fa5s.volume-up", "capability tts")
+        if "stt" in low or "asr" in low:
+            return ("fa5s.microphone", "capability stt")
+        if "vision" in low:
+            return ("fa5s.eye", "capability vision")
+        if "tool" in low:
+            return ("fa5s.wrench", "capability tools")
+        if "reason" in low:
+            return ("fa5s.brain", "capability reasoning")
+        if "code" in low or "coder" in low:
+            return ("fa5s.code", "capability coding")
+        if "chat" in low:
+            return ("fa5s.comments", "capability chat")
+        return ("fa5s.star", "capability general")
 
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -249,6 +401,9 @@ class ModelManagerView(QWidget):
         self._search_worker: HfModelSearchWorker | None = None
         self._readme_worker: HfReadmeWorker | None = None
         self._meta_worker: HfModelMetaWorker | None = None
+        self._curated_meta_worker: HfModelMetaWorker | None = None
+        self._curated_meta_queue: list[str] = []
+        self._capability_service = ModelCapabilityService()
         self._download_ui_cancel_mode = False
         self._download_ui_load_mode = False
         self._search_seq = 0
@@ -412,7 +567,7 @@ class ModelManagerView(QWidget):
             if not dw.wait(10_000):
                 logger.warning("Download worker did not finish within 10s during shutdown.")
 
-        for attr in ("_search_worker", "_readme_worker", "_list_worker", "_meta_worker"):
+        for attr in ("_search_worker", "_readme_worker", "_list_worker", "_meta_worker", "_curated_meta_worker"):
             w = getattr(self, attr, None)
             if w is None or not w.isRunning():
                 continue
@@ -431,45 +586,37 @@ class ModelManagerView(QWidget):
             w.wait(3000)
 
     def _apply_hub_row_size_hint(self, item: QListWidgetItem, row: QWidget) -> None:
-        """Uniform row height (N lines via QTextDocument, same as elision) + elide overflow."""
+        """High-density card sizing + one-line elision for title/description."""
         lay = row.layout()
         if not lay:
             return
-        m = lay.contentsMargins()
         vw = self._hub_viewport_width_for_rows()
-        lbl = row.findChild(QLabel, "HubModelRowTitle")
-        if not lbl:
-            item.setSizeHint(QSize(vw, 52))
-            return
-
         row.setFixedWidth(vw)
         row.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        item.setSizeHint(QSize(vw, 72))
 
-        text_w = max(1, vw - m.left() - m.right())
-        self._style_hub_title_label(lbl, item)
-        lbl.ensurePolished()
-        font = lbl.font()
-        content_h = self._hub_uniform_label_content_height(font, text_w)
+        title_lbl = row.findChild(QLabel, "HubModelRowTitle")
+        desc_lbl = row.findChild(QLabel, "HubModelRowDescription")
+        ts_lbl = row.findChild(QLabel, "HubModelRowTimestamp")
+        if not title_lbl or not desc_lbl or not ts_lbl:
+            return
 
-        title = item.data(Qt.ItemDataRole.UserRole + 1)
-        repo = item.data(Qt.ItemDataRole.UserRole)
-        full = f"{title or ''}\n{repo or ''}"
+        self._style_hub_title_label(title_lbl, item)
 
-        lbl.setWordWrap(True)
-        lbl.setTextFormat(Qt.TextFormat.PlainText)
-        lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        lbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        lbl.setMinimumWidth(0)
-        lbl.setMaximumWidth(text_w)
-        lbl.setFixedWidth(text_w)
-        display = self._hub_elide_plain_text_for_height(full, font, text_w, content_h)
-        lbl.setText(display)
-        lbl.setFixedHeight(int(content_h))
+        title_lbl.setText(self._elide_single_line(item.data(HUB_ROW_TITLE_ROLE), title_lbl))
+        desc_lbl.setText(self._elide_single_line(item.data(HUB_ROW_DESC_ROLE), desc_lbl))
+        ts_lbl.setText(self._elide_single_line(item.data(HUB_ROW_UPDATED_ROLE), ts_lbl))
 
-        total_h = int(m.top() + m.bottom() + content_h)
-        item.setSizeHint(QSize(vw, total_h))
-        lbl.updateGeometry()
+        title_lbl.updateGeometry()
+        desc_lbl.updateGeometry()
+        ts_lbl.updateGeometry()
         row.updateGeometry()
+
+    def _apply_hub_row_surface(self, row: QWidget) -> None:
+        row.setStyleSheet(
+            "background-color: transparent; border: none;"
+        )
+        row.update()
 
     def _refresh_hub_row_heights(self) -> None:
         """Recompute after resize, first show, or when viewport width was unknown during populate."""
@@ -495,7 +642,7 @@ class ModelManagerView(QWidget):
 
         # Left: same sidebar shell as Conversations / Library (QSS + HistoryRowWidget pattern)
         left = QFrame()
-        left.setFixedWidth(280)
+        left.setFixedWidth(MODEL_MANAGER_LEFT_SIDEBAR_WIDTH)
         left.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         left.setObjectName("ModelManagerSidebar")
         left_l = QVBoxLayout(left)
@@ -538,6 +685,7 @@ class ModelManagerView(QWidget):
         # Right: detail
         right = QWidget()
         right.setMaximumWidth(900)
+        right.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         right_l = QVBoxLayout(right)
         # Match transcript-like vertical start while keeping bottom breathing room.
         right_l.setContentsMargins(8, 75, 0, 40)
@@ -557,14 +705,14 @@ class ModelManagerView(QWidget):
         # Metadata panel (chip-heavy layout; actual colors come from QSS semantic classes).
         self.meta_panel = QFrame(parent=right)
         self.meta_panel.setProperty("class", "MetaPanelCard")
+        self.meta_panel.setObjectName("ModelManagerMetaCard")
         meta_panel_l = QVBoxLayout(self.meta_panel)
         meta_panel_l.setContentsMargins(12, 12, 12, 12)
         meta_panel_l.setSpacing(8)
 
         self.meta_row_1 = QWidget(parent=self.meta_panel)
-        meta_row_1_l = QHBoxLayout(self.meta_row_1)
+        meta_row_1_l = FlowLayout(self.meta_row_1, spacing=8)
         meta_row_1_l.setContentsMargins(0, 0, 0, 0)
-        meta_row_1_l.setSpacing(10)
 
         self.meta_params_title_lbl = QLabel("Params:")
         self.meta_params_title_lbl.setProperty("class", "MetaLabel")
@@ -593,8 +741,8 @@ class ModelManagerView(QWidget):
             self.meta_format_title_lbl,
             self.meta_format_chip,
         ):
+            w.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             meta_row_1_l.addWidget(w)
-        meta_row_1_l.addStretch(1)
 
         self.meta_row_2 = QWidget(parent=self.meta_panel)
         meta_row_2_l = QHBoxLayout(self.meta_row_2)
@@ -603,21 +751,34 @@ class ModelManagerView(QWidget):
         self.meta_caps_title_lbl = QLabel("Capabilities:")
         self.meta_caps_title_lbl.setProperty("class", "MetaLabel")
         self.meta_caps_wrap = QWidget(parent=self.meta_row_2)
-        self.meta_caps_wrap_l = QHBoxLayout(self.meta_caps_wrap)
+        self.meta_caps_wrap_l = FlowLayout(self.meta_caps_wrap, spacing=6)
         self.meta_caps_wrap_l.setContentsMargins(0, 0, 0, 0)
-        self.meta_caps_wrap_l.setSpacing(6)
         meta_row_2_l.addWidget(self.meta_caps_title_lbl)
         meta_row_2_l.addWidget(self.meta_caps_wrap, stretch=1)
+
+        self.meta_rows_divider = QFrame(parent=self.meta_panel)
+        self.meta_rows_divider.setFrameShape(QFrame.Shape.HLine)
+        self.meta_rows_divider.setFrameShadow(QFrame.Shadow.Plain)
+        self.meta_rows_divider.setStyleSheet(
+            "QFrame { border: none; background: rgba(139, 92, 246, 0.45); min-height: 1px; max-height: 1px; }"
+        )
+        divider_host = QWidget(parent=self.meta_panel)
+        divider_l = QHBoxLayout(divider_host)
+        divider_l.setContentsMargins(8, 2, 8, 2)
+        divider_l.setSpacing(0)
+        divider_l.addWidget(self.meta_rows_divider)
 
         self.meta_hint_lbl = QLabel("", parent=self.meta_panel)
         self.meta_hint_lbl.setWordWrap(True)
         self.meta_hint_lbl.hide()
 
         meta_panel_l.addWidget(self.meta_row_1)
+        meta_panel_l.addWidget(divider_host)
         meta_panel_l.addWidget(self.meta_row_2)
         meta_panel_l.addWidget(self.meta_hint_lbl)
 
         self.readme_browser = QTextBrowser()
+        self.readme_browser.setObjectName("ModelManagerReadmeCard")
         self.readme_browser.setMinimumHeight(220)
         self.readme_browser.setOpenExternalLinks(True)
         self.readme_browser.setLineWrapMode(QTextBrowser.LineWrapMode.WidgetWidth)
@@ -625,6 +786,7 @@ class ModelManagerView(QWidget):
         # Download options card
         self.download_options_card = QFrame(parent=right)
         self.download_options_card.setProperty("class", "DownloadOptionsCard")
+        self.download_options_card.setObjectName("ModelManagerDownloadCard")
         dl_card_l = QVBoxLayout(self.download_options_card)
         dl_card_l.setContentsMargins(12, 12, 12, 12)
         dl_card_l.setSpacing(10)
@@ -651,7 +813,7 @@ class ModelManagerView(QWidget):
         files_row.setSpacing(8)
         self.hf_file_combo = HubFileComboBox(self)
         self.hf_file_combo.setObjectName("HubFileComboBox")
-        self.hf_file_combo.setMinimumWidth(200)
+        self.hf_file_combo.setMinimumWidth(self._scaled_content_width(200))
         self.hf_file_combo.currentIndexChanged.connect(self._update_gpu_fit_status)
         self.hf_file_combo.currentIndexChanged.connect(self._on_hf_file_combo_changed)
         # Popup QListView is reparented to a separate window; style it by objectName + palette
@@ -660,7 +822,7 @@ class ModelManagerView(QWidget):
         _hub_combo_view.setObjectName("HubFileComboDropdownView")
         self._hub_file_combo_delegate = HubFileComboDelegate(_hub_combo_view)
         _hub_combo_view.setItemDelegate(self._hub_file_combo_delegate)
-        _hub_combo_view.setMinimumWidth(420)
+        _hub_combo_view.setMinimumWidth(self._scaled_content_width(420))
         _hub_combo_view.setAutoFillBackground(True)
         _vp = _hub_combo_view.viewport()
         if _vp is not None:
@@ -711,8 +873,7 @@ class ModelManagerView(QWidget):
         # Keep a fixed gap from the sidebar while preserving left pinning behavior on resize.
         right_host_l.setContentsMargins(10, 0, 0, 0)
         right_host_l.setSpacing(0)
-        right_host_l.addWidget(right, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        right_host_l.addStretch(1)
+        right_host_l.addWidget(right, 1)
 
         hub_h.addWidget(left)
         hub_h.addWidget(right_host, stretch=1)
@@ -807,13 +968,19 @@ class ModelManagerView(QWidget):
 
     def _capability_icon_name(self, cap: str) -> str:
         c = cap.lower()
+        if "audio" in c:
+            return "fa5s.volume-up"
+        if "tts" in c:
+            return "fa5s.volume-up"
+        if "stt" in c or "asr" in c:
+            return "fa5s.microphone"
         if "vision" in c:
             return "fa5s.eye"
         if "tool" in c:
             return "fa5s.wrench"
         if "reason" in c:
             return "fa5s.brain"
-        if "code" in c:
+        if "code" in c or "coder" in c:
             return "fa5s.code"
         if "multi" in c:
             return "fa5s.globe"
@@ -822,6 +989,10 @@ class ModelManagerView(QWidget):
     def _render_capability_chips(self, caps: list[str]) -> None:
         if not hasattr(self, "meta_caps_wrap_l"):
             return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        icon_color = "#cdd6f4" if is_dark else "#334155"
+        chip_fg = "#cdd6f4" if is_dark else "#1e293b"
+        chip_border = "#8b5cf6"
         while self.meta_caps_wrap_l.count():
             it = self.meta_caps_wrap_l.takeAt(0)
             w = it.widget()
@@ -831,23 +1002,25 @@ class ModelManagerView(QWidget):
             empty_chip = QLabel("Unknown")
             empty_chip.setProperty("class", "Chip muted")
             self.meta_caps_wrap_l.addWidget(empty_chip)
-            self.meta_caps_wrap_l.addStretch(1)
             return
         for cap in caps:
             chip = QFrame()
             chip.setProperty("class", "Chip capability")
+            chip.setStyleSheet(
+                f"QFrame {{ border: 1px solid {chip_border}; border-radius: 10px; background: transparent; }}"
+                f"QLabel {{ color: {chip_fg}; background: transparent; border: none; }}"
+            )
             chip_l = QHBoxLayout(chip)
             chip_l.setContentsMargins(8, 3, 8, 3)
             chip_l.setSpacing(6)
             icon_lbl = QLabel()
             icon_lbl.setProperty("class", "ChipIcon")
-            icon_lbl.setPixmap(qta.icon(self._capability_icon_name(cap)).pixmap(QSize(11, 11)))
+            icon_lbl.setPixmap(qta.icon(self._capability_icon_name(cap), color=icon_color).pixmap(QSize(11, 11)))
             txt_lbl = QLabel(cap)
             txt_lbl.setProperty("class", "ChipLabel")
             chip_l.addWidget(icon_lbl)
             chip_l.addWidget(txt_lbl)
             self.meta_caps_wrap_l.addWidget(chip)
-        self.meta_caps_wrap_l.addStretch(1)
 
     @staticmethod
     def _fmt_gib(n: int) -> str:
@@ -1040,6 +1213,8 @@ class ModelManagerView(QWidget):
     def _apply_hub_list_surface(self, is_dark: bool) -> None:
         """Match Conversations sidebar/list background palette on both themes."""
         bg = QColor("#232337" if is_dark else "#E9EFF5")
+        bg_hex = "#232337" if is_dark else "#E9EFF5"
+        border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
         if hasattr(self, "hub_sidebar"):
             p = self.hub_sidebar
             p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -1064,6 +1239,32 @@ class ModelManagerView(QWidget):
             vpal.setColor(QPalette.ColorRole.Base, bg)
             vp.setPalette(vpal)
 
+        if hasattr(self, "meta_panel"):
+            self.meta_panel.setStyleSheet(
+                f"#ModelManagerMetaCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
+            )
+        if hasattr(self, "download_options_card"):
+            self.download_options_card.setStyleSheet(
+                f"#ModelManagerDownloadCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
+            )
+        if hasattr(self, "readme_browser"):
+            self.readme_browser.setStyleSheet(
+                f"#ModelManagerReadmeCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
+            )
+            self.readme_browser.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            self.readme_browser.setAutoFillBackground(True)
+            rp = self.readme_browser.palette()
+            rp.setColor(QPalette.ColorRole.Base, bg)
+            rp.setColor(QPalette.ColorRole.Window, bg)
+            self.readme_browser.setPalette(rp)
+            rv = self.readme_browser.viewport()
+            if rv is not None:
+                rv.setAutoFillBackground(True)
+                vp2 = rv.palette()
+                vp2.setColor(QPalette.ColorRole.Base, bg)
+                vp2.setColor(QPalette.ColorRole.Window, bg)
+                rv.setPalette(vp2)
+
     def _apply_hub_combo_chevron(self, is_dark: bool) -> None:
         """QSS border triangles render as lines on some styles; use SVG via file URL."""
         if not hasattr(self, "hf_file_combo"):
@@ -1076,12 +1277,15 @@ class ModelManagerView(QWidget):
         svg = _model_manager_project_root() / "assets" / "icons" / name
         if not svg.is_file():
             return
+        self._hub_combo_chevron_pixmap = QIcon(str(svg)).pixmap(QSize(12, 12))
         url = QUrl.fromLocalFile(str(svg)).toString()
         self.hf_file_combo.setStyleSheet(
+            "#HubFileComboBox { padding-right: 28px; } "
+            "#HubFileComboBox::drop-down { "
+            "subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border: none; "
+            "} "
             "#HubFileComboBox::down-arrow { "
-            f'image: url("{url}"); '
-            "width: 12px; height: 12px; "
-            "subcontrol-origin: padding; subcontrol-position: center; "
+            f'image: url("{url}"); width: 12px; height: 12px; '
             "}"
         )
 
@@ -1159,32 +1363,195 @@ class ModelManagerView(QWidget):
             self.hub_list_hint.setStyleSheet(hint_style)
         if hasattr(self, "detail_subtitle"):
             self.detail_subtitle.setStyleSheet(sub_style)
+        if hasattr(self, "hub_model_list"):
+            for i in range(self.hub_model_list.count()):
+                item = self.hub_model_list.item(i)
+                row = self.hub_model_list.itemWidget(item)
+                if not row:
+                    continue
+                desc_lbl = row.findChild(QLabel, "HubModelRowDescription")
+                ts_lbl = row.findChild(QLabel, "HubModelRowTimestamp")
+                if desc_lbl is not None:
+                    desc_lbl.setStyleSheet(
+                        f"color: {muted}; background: transparent; border: none; font-size: 11px; font-weight: 500;"
+                    )
+                if ts_lbl is not None:
+                    ts_lbl.setStyleSheet(
+                        f"color: {muted}; background: transparent; border: none; font-size: 11px; font-weight: 500;"
+                    )
 
-    def _append_hub_model_row(self, title: str, repo_id: str) -> None:
-        """One Hub row — same HistoryRowWidget / HistoryRowTitle pattern as Chat & Library."""
+    def _append_hub_model_row(
+        self,
+        title: str,
+        repo_id: str,
+        *,
+        description: str = "",
+        capabilities: list[str] | None = None,
+        updated_at: str = "",
+        verified: bool = False,
+    ) -> None:
+        """One Hub row as a dense card with avatar, chips, and metadata."""
         item = QListWidgetItem()
-        item.setData(Qt.ItemDataRole.UserRole, repo_id)
-        item.setData(Qt.ItemDataRole.UserRole + 1, title)
+        item.setData(HUB_ROW_REPO_ROLE, repo_id)
+        item.setData(HUB_ROW_TITLE_ROLE, title)
+        item.setData(HUB_ROW_DESC_ROLE, description or repo_id)
+        item.setData(HUB_ROW_CAPS_ROLE, list(capabilities or []))
+        item.setData(HUB_ROW_UPDATED_ROLE, updated_at or "")
+        item.setData(HUB_ROW_VERIFIED_ROLE, bool(verified))
 
         row = QWidget()
         row.setObjectName("HistoryRowWidget")
-        row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        lay = QHBoxLayout(row)
-        lay.setContentsMargins(15, 8, 10, 10)
-        lay.setSpacing(8)
+        self._apply_hub_row_surface(row)
+        base_l = QHBoxLayout(row)
+        base_l.setContentsMargins(12, 8, 10, 8)
+        base_l.setSpacing(10)
 
-        lbl = QLabel()
-        lbl.setObjectName("HubModelRowTitle")
-        lbl.setWordWrap(True)
-        # Title color + Inter 13px: _style_hub_title_label (same idea as Library history rows).
-        lay.addWidget(lbl, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
+        avatar = QLabel()
+        avatar.setObjectName("HubModelRowAvatar")
+        avatar.setFixedSize(24, 24)
+        logo_path = _model_manager_project_root() / "assets" / "icons" / "hf-logo.svg"
+        if logo_path.is_file():
+            avatar.setPixmap(QIcon(str(logo_path)).pixmap(QSize(22, 22)))
+        base_l.addWidget(avatar, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
+
+        right_col = QWidget()
+        right_l = QVBoxLayout(right_col)
+        right_l.setContentsMargins(0, 0, 0, 0)
+        right_l.setSpacing(4)
+
+        top_row = QWidget()
+        top_l = QHBoxLayout(top_row)
+        top_l.setContentsMargins(0, 0, 0, 0)
+        top_l.setSpacing(6)
+
+        title_lbl = QLabel(str(title or repo_id))
+        title_lbl.setObjectName("HubModelRowTitle")
+        title_lbl.setProperty("class", "ModelCardTitle")
+        title_lbl.setWordWrap(False)
+        top_l.addWidget(title_lbl, stretch=0)
+
+        verified_lbl = QLabel()
+        verified_lbl.setObjectName("HubModelRowVerifiedIcon")
+        verified_lbl.setPixmap(qta.icon("fa5s.award", color="#8b5cf6").pixmap(QSize(12, 12)))
+        verified_lbl.setVisible(bool(verified))
+        top_l.addWidget(verified_lbl, stretch=0)
+
+        top_l.addStretch(1)
+
+        caps_wrap = QWidget()
+        caps_wrap_l = QHBoxLayout(caps_wrap)
+        caps_wrap_l.setContentsMargins(0, 0, 0, 0)
+        caps_wrap_l.setSpacing(4)
+        caps_wrap.setObjectName("HubModelRowCapabilities")
+        self._populate_hub_capability_chips(caps_wrap, capabilities or [])
+        top_l.addWidget(caps_wrap, stretch=0)
+
+        bottom_row = QWidget()
+        bottom_l = QHBoxLayout(bottom_row)
+        bottom_l.setContentsMargins(0, 0, 0, 0)
+        bottom_l.setSpacing(6)
+
+        desc_lbl = QLabel(str(description or repo_id))
+        desc_lbl.setObjectName("HubModelRowDescription")
+        desc_lbl.setWordWrap(False)
+        desc_lbl.setProperty("class", "muted")
+        bottom_l.addWidget(desc_lbl, stretch=1)
+        bottom_l.addStretch(1)
+
+        ts_lbl = QLabel(str(updated_at or ""))
+        ts_lbl.setObjectName("HubModelRowTimestamp")
+        ts_lbl.setProperty("class", "muted")
+        bottom_l.addWidget(ts_lbl, stretch=0)
+
+        right_l.addWidget(top_row)
+        right_l.addWidget(bottom_row)
+        base_l.addWidget(right_col, stretch=1)
 
         self.hub_model_list.addItem(item)
         self.hub_model_list.setItemWidget(item, row)
         self._apply_hub_row_size_hint(item, row)
 
+    def _populate_hub_capability_chips(self, caps_wrap: QWidget, capabilities: list[str]) -> None:
+        lay = caps_wrap.layout()
+        if lay is None:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        icon_color = "#8b5cf6"
+        chip_border = "#8b5cf6"
+        while lay.count():
+            it = lay.takeAt(0)
+            w = it.widget()
+            if w is not None:
+                w.deleteLater()
+        for cap in (capabilities or [])[:3]:
+            icon_name, cap_class = self._capability_chip_spec(cap)
+            chip = QFrame()
+            chip.setProperty("class", f"Chip outlined {cap_class}")
+            chip.setToolTip(str(cap))
+            chip.setStyleSheet(
+                f"QFrame {{ border: 1px solid {chip_border}; border-radius: 10px; background-color: transparent; }}"
+            )
+            chip_l = QHBoxLayout(chip)
+            chip_l.setContentsMargins(6, 3, 6, 3)
+            chip_l.setSpacing(0)
+            chip_icon = QLabel()
+            chip_icon.setStyleSheet("QLabel { border: none; background: transparent; padding: 0px; margin: 0px; }")
+            chip_icon.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(QSize(10, 10)))
+            chip_l.addWidget(chip_icon)
+            lay.addWidget(chip)
+
+    def _resolve_row_capabilities(
+        self,
+        *,
+        repo_id: str,
+        title: str,
+        description: str,
+        hf_pipeline_tag: str = "",
+        hf_tags: list[str] | None = None,
+        readme: str | None = None,
+        fallback_caps: list[str] | None = None,
+    ) -> list[str]:
+        model_payload = {
+            "id": str(repo_id or "").strip(),
+            "name": str(title or "").strip(),
+            "description": str(description or "").strip(),
+            "readme": str(readme or ""),
+            "huggingface": {
+                "pipeline_tag": str(hf_pipeline_tag or "").strip(),
+                "tags": list(hf_tags or []),
+            },
+        }
+        if fallback_caps:
+            # Use fallback inferred capabilities as additional weak hint tags.
+            model_payload["huggingface"]["tags"] = list(model_payload["huggingface"]["tags"]) + [
+                str(c).lower() for c in fallback_caps if str(c).strip()
+            ]
+        # Force refresh so new pattern/heuristic updates (e.g., coding) appear immediately in UI.
+        caps = self._capability_service.get_or_detect(model_payload, force_refresh=True)
+        summary = self._capability_service.summarize_for_ui(caps)
+        labels: list[str] = []
+        label_map = {
+            "reasoning": "Reasoning",
+            "tool_use": "Tool Use",
+            "vision": "Vision",
+            "coding": "Coding",
+            "tts": "TTS",
+            "stt": "STT",
+            "audio": "Audio",
+        }
+        for key in ("reasoning", "tool_use", "vision", "coding", "audio", "tts", "stt"):
+            entry = summary.get(key) or {}
+            if bool(entry.get("value", False)):
+                labels.append(label_map[key])
+        return labels[:4]
+
     def _update_hub_row_colors(self) -> None:
         """Re-apply hub title fg for selection + theme, then re-layout row heights."""
+        for i in range(self.hub_model_list.count()):
+            it = self.hub_model_list.item(i)
+            row = self.hub_model_list.itemWidget(it)
+            if row is not None:
+                self._apply_hub_row_surface(row)
         self.hub_model_list.viewport().update()
         self._refresh_hub_row_heights()
 
@@ -1224,12 +1591,95 @@ class ModelManagerView(QWidget):
         self.hub_model_list.blockSignals(True)
         self.hub_model_list.clear()
         for entry in QUBE_VERIFIED_MODELS:
-            self._append_hub_model_row(entry["title"], entry["repo_id"])
+            rid = str(entry["repo_id"])
+            title = str(entry["title"])
+            description = rid
+            resolved_caps = self._resolve_row_capabilities(
+                repo_id=rid,
+                title=title,
+                description=description,
+            )
+            self._append_hub_model_row(
+                title,
+                rid,
+                description=description,
+                capabilities=resolved_caps,
+                updated_at="",
+                verified=True,
+            )
         self.hub_model_list.blockSignals(False)
         self.hub_list_hint.setText("Qube Verified — curated GGUF models")
+        self._start_curated_metadata_refresh()
+        self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
         self._update_hub_row_colors()
         self._select_first_hub_item()
         QTimer.singleShot(0, self._refresh_hub_row_heights)
+
+    def _start_curated_metadata_refresh(self) -> None:
+        self._curated_meta_queue = [str(e.get("repo_id", "")).strip() for e in QUBE_VERIFIED_MODELS]
+        self._curated_meta_queue = [r for r in self._curated_meta_queue if r]
+        self._start_next_curated_meta_worker()
+
+    def _start_next_curated_meta_worker(self) -> None:
+        if self._curated_meta_worker is not None and self._curated_meta_worker.isRunning():
+            return
+        if not self._curated_meta_queue:
+            return
+        repo = self._curated_meta_queue.pop(0)
+        self._retire_hf_thread(self._curated_meta_worker)
+        self._curated_meta_worker = HfModelMetaWorker(repo)
+        self._curated_meta_worker.finished_ok.connect(self._on_curated_meta_finished)
+        self._curated_meta_worker.failed.connect(self._on_curated_meta_failed)
+        self._curated_meta_worker.finished.connect(self._on_curated_meta_thread_finished)
+        self._curated_meta_worker.start()
+
+    def _on_curated_meta_finished(self, repo: str, meta: dict) -> None:
+        self._apply_curated_card_metadata(repo, meta)
+
+    def _on_curated_meta_failed(self, _repo: str, _err: str) -> None:
+        pass
+
+    def _on_curated_meta_thread_finished(self) -> None:
+        self._retire_hf_thread(self._curated_meta_worker)
+        self._curated_meta_worker = None
+        self._start_next_curated_meta_worker()
+
+    def _apply_curated_card_metadata(self, repo: str, meta: dict) -> None:
+        if not hasattr(self, "hub_model_list"):
+            return
+        repo_s = str(repo or "").strip()
+        if not repo_s:
+            return
+        updated = str((meta or {}).get("updated_at", "") or "").strip()
+        raw_caps = [str(c).strip() for c in list((meta or {}).get("capabilities") or []) if str(c).strip()]
+        for i in range(self.hub_model_list.count()):
+            item = self.hub_model_list.item(i)
+            if item is None:
+                continue
+            if str(item.data(HUB_ROW_REPO_ROLE) or "").strip() != repo_s:
+                continue
+            title = str(item.data(HUB_ROW_TITLE_ROLE) or repo_s)
+            desc = str(item.data(HUB_ROW_DESC_ROLE) or repo_s)
+            caps = self._resolve_row_capabilities(
+                repo_id=repo_s,
+                title=title,
+                description=desc,
+                fallback_caps=raw_caps,
+            )
+            if updated:
+                item.setData(HUB_ROW_UPDATED_ROLE, updated)
+            if caps:
+                item.setData(HUB_ROW_CAPS_ROLE, caps[:3])
+            row = self.hub_model_list.itemWidget(item)
+            if row is not None:
+                ts_lbl = row.findChild(QLabel, "HubModelRowTimestamp")
+                if ts_lbl is not None:
+                    ts_lbl.setText(updated)
+                caps_wrap = row.findChild(QWidget, "HubModelRowCapabilities")
+                if caps_wrap is not None and caps:
+                    self._populate_hub_capability_chips(caps_wrap, caps[:3])
+                self._apply_hub_row_size_hint(item, row)
+            break
 
     def _select_first_hub_item(self) -> None:
         if self.hub_model_list.count() > 0:
@@ -1262,8 +1712,25 @@ class ModelManagerView(QWidget):
             title = m.get("title", rid)
             if not rid:
                 continue
-            self._append_hub_model_row(title, rid)
+            description = str(m.get("description", "") or rid)
+            resolved_caps = self._resolve_row_capabilities(
+                repo_id=str(rid),
+                title=str(title),
+                description=description,
+                hf_pipeline_tag=str(m.get("hf_pipeline_tag", "") or ""),
+                hf_tags=[str(t) for t in list(m.get("hf_tags") or []) if str(t).strip()],
+                fallback_caps=list(m.get("capabilities") or []),
+            )
+            self._append_hub_model_row(
+                title,
+                rid,
+                description=description,
+                capabilities=resolved_caps,
+                updated_at=str(m.get("updated_at", "") or ""),
+                verified=False,
+            )
         self.hub_model_list.blockSignals(False)
+        self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
         self._update_hub_row_colors()
         n = self.hub_model_list.count()
         self.hub_list_hint.setText(
@@ -1283,8 +1750,8 @@ class ModelManagerView(QWidget):
         if not current:
             self._clear_detail_pane()
             return
-        repo = current.data(Qt.ItemDataRole.UserRole)
-        title = current.data(Qt.ItemDataRole.UserRole + 1) or repo
+        repo = current.data(HUB_ROW_REPO_ROLE)
+        title = current.data(HUB_ROW_TITLE_ROLE) or repo
         if not repo:
             return
         self._detail_seq += 1
@@ -1359,6 +1826,21 @@ class ModelManagerView(QWidget):
     def _apply_meta_if_current(self, repo: str, meta: dict, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
+        row_title = str(current.data(HUB_ROW_TITLE_ROLE) or self.detail_title.text() or repo) if current else str(self.detail_title.text() or repo)
+        row_desc = str(current.data(HUB_ROW_DESC_ROLE) or repo) if current else str(repo)
+        hf_tags = [str(t) for t in list((meta or {}).get("hf_tags") or []) if str(t).strip()]
+        hf_pipeline_tag = str((meta or {}).get("hf_pipeline_tag") or "")
+        resolved_caps = self._resolve_row_capabilities(
+            repo_id=str(repo),
+            title=row_title,
+            description=row_desc,
+            hf_pipeline_tag=hf_pipeline_tag,
+            hf_tags=hf_tags,
+            fallback_caps=list((meta or {}).get("capabilities") or []),
+        )
+        meta = dict(meta or {})
+        meta["capabilities"] = resolved_caps
         self._apply_hub_metadata(meta)
 
     def _apply_meta_failed_if_current(self, repo: str, err: str, seq: int) -> None:
@@ -1396,6 +1878,27 @@ class ModelManagerView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._last_readme_markdown = text
         self._render_readme_with_fallback(is_dark)
+        current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
+        if current is None:
+            return
+        repo_id = str(current.data(HUB_ROW_REPO_ROLE) or repo)
+        title = str(current.data(HUB_ROW_TITLE_ROLE) or repo_id)
+        desc = str(current.data(HUB_ROW_DESC_ROLE) or repo_id)
+        refreshed_caps = self._resolve_row_capabilities(
+            repo_id=repo_id,
+            title=title,
+            description=desc,
+            readme=text,
+            fallback_caps=list(current.data(HUB_ROW_CAPS_ROLE) or []),
+        )
+        current.setData(HUB_ROW_CAPS_ROLE, refreshed_caps)
+        row = self.hub_model_list.itemWidget(current)
+        if row is not None:
+            caps_wrap = row.findChild(QWidget, "HubModelRowCapabilities")
+            if caps_wrap is not None:
+                self._populate_hub_capability_chips(caps_wrap, refreshed_caps)
+            self._apply_hub_row_size_hint(current, row)
+        self._render_capability_chips(refreshed_caps)
 
     def _apply_readme_failed_if_current(self, repo: str, err: str, seq: int) -> None:
         if seq != self._detail_seq:

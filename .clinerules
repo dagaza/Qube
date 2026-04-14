@@ -39,8 +39,8 @@ Qube/
 │       ├── settings_view.py # Dual-engine UI, GPU + CPU thread pool sliders (hardware-capped defaults ~75% on first run), local GGUF, PrestigeDialog-only confirmations.
 │       ├── router_dashboard.py # Visualizations go into the Telemetry screen
 │       ├── telemetry_view.py # Telemetry screen; optional native LLM capability card (reasoning + execution mode) via engine snapshot polling.
-│       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, and download/cancel flow with disk guardrails for the native engine.
-├── core/                   # System, hardware, preferences, network, native LLM helpers (28 files; alphabetical — keep in sync with .cursorrules)
+│       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, download/cancel flow, and service-backed capability chips (sidebar + mainstage) with progressive post-README enrichment.
+├── core/                   # System, hardware, preferences, network, native LLM helpers (31 files; alphabetical — keep in sync with .cursorrules)
 │   ├── app_settings.py     # QSettings: engine mode, paths, internal_n_gpu_layers (VRAM cap + ~75% default if key missing), internal_n_threads (logical CPU cap + ~75% default if key missing), chat format, etc.
 │   ├── audio_utils.py      # PyAudio device discovery and index mapping.
 │   ├── cpu_threads.py      # Logical CPU count + default_internal_n_threads (~75% of cores) for llama.cpp n_threads.
@@ -53,6 +53,8 @@ Qube/
 │   ├── llm_execution_causality.py # QUBE_LLM_CAUSALITY: post-inference causal report; optional LM Studio first-token diff via reference JSON.
 │   ├── logging_bootstrap.py # init_llm_debug_logging() attaches file sink; no LLM debug on stdout.
 │   ├── model_behavior.py # classify_model_behavior / resolve_behavior_override; load-time ablation → optional execution overrides.
+│   ├── model_capability_detection.py # Offline capability pipeline: user_override -> ground_truth -> learned_registry -> curated exact/pattern -> file inference -> HF -> readme extraction -> soft defaults -> heuristics; includes normalization, pattern matching, safe README parsing + negation guard.
+│   ├── model_capability_service.py # Capability orchestration service: cache-or-detect, overrides, runtime ground-truth ingestion, post-load enrichment, missed-model logging, UI/API summaries.
 │   ├── model_override_store.py # ~/.qube/model_overrides.json — LearnedOverride persistence; applied in build_prompt_bundle (stops + anchor); [LLM-SELF-HEAL-APPLY].
 │   ├── model_reasoning_profile.py # Reasoning/thinking-token capability + ExecutionMode; tokenizer scan (first-hit exit) + chat_template + metadata_template weak hints + name/path heuristics; _llama_cpp_model; routing metadata only.
 │   ├── native_llama_chat.py # Message normalization + GGUF chat_template / chat_format alignment for native completions.
@@ -67,7 +69,10 @@ Qube/
 │   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; template_override + model_override_store; [LLM-TEMPLATE] / [LLM-TEMPLATE-OVERRIDE] / [LLM-SELF-HEAL-APPLY]; native validation/logs.
 │   ├── redacted_thinking_filter.py # Stream filter for <redacted_thinking> blocks (internal engine path).
 │   ├── richtext_styles.py  # Rich text / link palette helpers for the app.
+│   ├── system_capabilities_store.py # Isolated system SQLite + JSON artifacts under ~/.qube/system_data (capabilities.db incl. ground_truth_capabilities, curated_registry.json, learned_capabilities.json, missed_models.json); survives user DB/LanceDB resets.
 │   └── template_override.py # Phase 4 model-name heuristics (phi / Nemotron / Mistral); [LLM-TEMPLATE-OVERRIDE].
+├── api/                    # HTTP service layer
+│   └── model_capabilities_api.py # FastAPI endpoints for capability summaries, full/debug detail, overrides, runtime-loaded capability ingest, post-load enrichment, and offline export bundles.
 ├── workers/                # Background Event Loops (QThreads)
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
@@ -101,6 +106,12 @@ Qube/
 │   ├── embeddings/         # RAG embedding models (ONNX).
 │   └── wakeword/           # OpenWakeWord detection models.
 ├── data/                   # LanceDB vector storage directory.
+├── system_data/            # Seeded capability artifacts copied/merged into ~/.qube/system_data at runtime
+│   ├── curated_registry.json # Curated exact + pattern rules for capability inheritance.
+│   ├── example_models.json # Example model payloads for capability detection.
+│   ├── learned_capabilities.json # Learned local capability registry from runtime truth.
+│   ├── missed_models.json  # Missed-detection feedback loop log seed.
+│   └── schema.sql          # System capabilities SQLite schema.
 ├── tools/                  # python -m tools.* — llm_prompt_diff, view_llm_logs, run_ablation (diagnostic).
 ```
 
@@ -174,6 +185,38 @@ Qube/
 - **CPU thread pool:** Second **`QSlider`** (min 1, max logical cores) for **`internal_n_threads`**; defaults ~75% of cores when the key is missing (`core/cpu_threads.py`). Passed to **`Llama(..., n_threads=...)`** via **`NativeLlamaEngine.load_model`**.
 - **Prestige dropdown appearance:** `#SettingsMenuButton` styles live in `assets/styles/base.qss` and `light.qss`, including **`:disabled`** (muted text/border/background). **QtAwesome** chevron icons do not dim automatically — `SettingsView` and `MainWindow` each implement `_apply_settings_menu_button_chevron_state(...)` to tint chevrons when a `SettingsMenuButton` is disabled.
 - **Global toolbar parity:** Theme toggles and `refresh_toolbar_native_model_dropdown()` must keep Prestige menu palettes and chevron tints consistent with `_is_dark_theme`.
+
+### 4.6 Model Manager Capability Detection (Offline-First, Self-Healing)
+
+- Capability storage is **system-scoped**, not user-scoped:
+  - keep all capability cache/ground-truth/learned artifacts under **`~/.qube/system_data`**
+  - never store capability metadata in user SQLite (`qube_data.db`) or LanceDB
+- Pipeline order contract:
+  1. `user_override`
+  2. `ground_truth`
+  3. `learned_registry`
+  4. `curated_exact`
+  5. `curated_pattern`
+  6. `file_inference`
+  7. `huggingface`
+  8. `readme_extraction`
+  9. `soft_default`
+  10. `heuristic`
+- README extraction must be deterministic and safe:
+  - strip markdown/code blocks/links
+  - phrase-only matching (no LLM/embedding inference)
+  - negation guard (e.g., "not designed for tool use", "does not support vision")
+  - bounded input length
+- Progressive enrichment is required:
+  - pre-load list may show partial chips
+  - post-load/README availability must trigger capability recompute + UI refresh
+  - sidebar cards and mainstage metadata chips must resolve from the same capability service
+- Runtime-loaded capabilities are treated as ground truth:
+  - persist to `ground_truth_capabilities` table
+  - update learned registry (`learned_capabilities.json`)
+  - recompute cached capability aggregate
+- Missed detection loop:
+  - if all capabilities are false, append structured entry to `missed_models.json` for future curation.
 
 ## 5. Memory, RAG & Enrichment System Rules (CRITICAL)
 

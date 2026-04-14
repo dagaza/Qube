@@ -1,0 +1,37 @@
+[
+  {
+    "id": "qwen2.5-vl-7b",
+    "name": "Qwen2.5 VL 7B",
+    "description": "Multimodal model with strong vision support",
+    "files": {
+      "has_mmproj": true,
+      "formats": [
+        "gguf"
+      ]
+    },
+    "huggingface": {
+      "pipeline_tag": "image-to-text",
+      "tags": [
+        "vision",
+        "multimodal"
+      ]
+    }
+  },
+  {
+    "id": "deepseek-r1",
+    "name": "DeepSeek R1",
+    "description": "Reasoning-focused model with chain-of-thought tuning",
+    "files": {
+      "has_mmproj": false,
+      "formats": [
+        "gguf"
+      ]
+    },
+    "huggingface": {
+      "pipeline_tag": "text-generation",
+      "tags": [
+        "reasoning"
+      ]
+    }
+  }
+]

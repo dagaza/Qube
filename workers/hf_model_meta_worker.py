@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime
 from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -116,6 +117,20 @@ def _infer_capabilities(tags: list[str], card: dict[str, Any]) -> list[str]:
     return caps
 
 
+def _format_hf_timestamp(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d")
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+    # Common HF shape: 2024-01-12T10:20:30.000Z -> date-only label
+    if "T" in s:
+        return s.split("T", 1)[0]
+    return s[:10] if len(s) >= 10 else s
+
+
 class HfModelMetaWorker(QThread):
     """Fetches model metadata from Hub model_info/card_data."""
 
@@ -147,6 +162,9 @@ class HfModelMetaWorker(QThread):
                 "domain": _infer_domain(card, tags),
                 "format": _infer_format(tags),
                 "capabilities": _infer_capabilities(tags, card),
+                "updated_at": _format_hf_timestamp(getattr(info, "lastModified", None)),
+                "hf_tags": tags,
+                "hf_pipeline_tag": str(getattr(info, "pipeline_tag", "") or ""),
             }
             self.finished_ok.emit(repo, meta)
         except Exception as e:
@@ -167,6 +185,9 @@ class HfModelMetaWorker(QThread):
                         "domain": _infer_domain(card, tags),
                         "format": _infer_format(tags),
                         "capabilities": _infer_capabilities(tags, card),
+                        "updated_at": _format_hf_timestamp(getattr(m, "lastModified", None)),
+                        "hf_tags": tags,
+                        "hf_pipeline_tag": str(getattr(m, "pipeline_tag", "") or ""),
                     }
                     self.finished_ok.emit(repo, meta)
                     return

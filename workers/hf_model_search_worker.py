@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -26,7 +27,7 @@ def _is_gguf_model(m: Any) -> bool:
 class HfModelSearchWorker(QThread):
     """
     Queries Hub for models and keeps those that look GGUF-related (tags or repo id).
-    Emits list of dicts: {"repo_id": str, "title": str} where title is repo_id or card name.
+    Emits list of dicts with repo/title plus lightweight metadata for list cards.
     """
 
     finished_ok = pyqtSignal(list, int)  # models, request_seq
@@ -78,7 +79,62 @@ class HfModelSearchWorker(QThread):
                             title = t.strip()
                 except Exception:
                     pass
-                out.append({"repo_id": rid, "title": title})
+                description = ""
+                capabilities: list[str] = []
+                updated_at = ""
+                try:
+                    card = getattr(m, "card_data", None)
+                    if isinstance(card, dict):
+                        d = card.get("description") or card.get("summary")
+                        if isinstance(d, str):
+                            description = d.strip()
+                        caps = card.get("capabilities")
+                        if isinstance(caps, list):
+                            capabilities = [str(c).strip() for c in caps if str(c).strip()]
+                        elif isinstance(caps, str) and caps.strip():
+                            capabilities = [caps.strip()]
+                except Exception:
+                    pass
+                if not description:
+                    try:
+                        mid = getattr(m, "id", None)
+                        if isinstance(mid, str):
+                            description = mid.strip()
+                    except Exception:
+                        pass
+                if not capabilities:
+                    try:
+                        tags = getattr(m, "tags", None) or []
+                        tset = {str(t).lower() for t in tags}
+                        if "text-generation" in tset:
+                            capabilities.append("Text")
+                        if "conversational" in tset:
+                            capabilities.append("Chat")
+                        if "vision" in tset:
+                            capabilities.append("Vision")
+                        if "tool-use" in tset or "tools" in tset:
+                            capabilities.append("Tools")
+                    except Exception:
+                        pass
+                try:
+                    lm = getattr(m, "lastModified", None)
+                    if isinstance(lm, datetime):
+                        updated_at = lm.strftime("%Y-%m-%d")
+                    elif lm is not None:
+                        updated_at = str(lm).strip()
+                except Exception:
+                    pass
+                out.append(
+                    {
+                        "repo_id": rid,
+                        "title": title,
+                        "description": description,
+                        "capabilities": capabilities[:3],
+                        "updated_at": updated_at,
+                        "hf_pipeline_tag": str(getattr(m, "pipeline_tag", "") or ""),
+                        "hf_tags": [str(t) for t in (getattr(m, "tags", None) or []) if str(t).strip()],
+                    }
+                )
                 if len(out) >= self._limit:
                     break
         except Exception as e:

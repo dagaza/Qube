@@ -568,7 +568,8 @@ QLabel#AgentMessage {
 }
 
 #HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected {
-    background-color: #89b4fa; /* Blue selection bar */
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid #8b5cf6;
     border-radius: 6px;
 }
 
@@ -577,6 +578,7 @@ QLabel#AgentMessage {
     padding: 0px;
     border-radius: 6px;
     margin-bottom: 4px;
+    background-color: #232337;
 }
 
 /* Do not inherit QListWidget::item:selected font-weight — keep metrics aligned with QFontMetrics */
