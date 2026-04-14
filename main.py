@@ -3,7 +3,7 @@ import os
 os.environ["QUBE_LLM_DEBUG"] = "1"
 
 from PyQt6 import QtCore
-from PyQt6.QtWidgets import QApplication
+from core.qube_tooltip import QubeApplication, qube_tooltip_set_theme
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
 
 from core.richtext_styles import apply_app_link_palette
@@ -28,7 +28,6 @@ from workers.internet_worker import InternetWorker
 import logging
 
 from core.logging_bootstrap import init_llm_debug_logging
-from core.tooltip_wrap import install_wrapping_tooltips
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -455,12 +454,11 @@ if __name__ == "__main__":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # 1. PyQt6 high DPI handling
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
+    QubeApplication.setHighDpiScaleFactorRoundingPolicy(
         QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
-    app = QApplication(sys.argv)
-    install_wrapping_tooltips(300)
+    app = QubeApplication(sys.argv)
     app.setWindowIcon(QIcon("assets/qube_logo_256.png"))
     apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER
@@ -505,6 +503,7 @@ if __name__ == "__main__":
 
     # 4. Boot the Qube Assistant
     qube = Qube()
+    qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
     app.aboutToQuit.connect(qube._graceful_shutdown)
     qube.show()
     sys.exit(app.exec())

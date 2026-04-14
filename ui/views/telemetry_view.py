@@ -4,10 +4,11 @@ import psutil
 from collections import deque
 from PyQt6.QtGui import QWheelEvent
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QScrollArea
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QScrollArea, QToolButton
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QSize
 import pyqtgraph as pg
+import qtawesome as qta
 
 from core.app_settings import get_engine_mode
 
@@ -189,9 +190,24 @@ class TelemetryView(QWidget):
         header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        stt_layout, self.stt_val = self._make_metric_row("Whisper STT", "Voice-to-Text inference time", "-- ms")
-        ttft_layout, self.ttft_val = self._make_metric_row("LLM TTFT", "Time To First Token", "-- ms")
-        tts_layout, self.tts_val = self._make_metric_row("TTS Generation", "Text-to-Speech synthesis time", "-- ms")
+        stt_layout, self.stt_val = self._make_metric_row(
+            "Whisper STT",
+            "Voice-to-Text inference time",
+            "-- ms",
+            "Measured in STTWorker as wall-clock time from entering transcription to final text assembly, then emitted via stt_latency (ms).",
+        )
+        ttft_layout, self.ttft_val = self._make_metric_row(
+            "LLM TTFT",
+            "Time To First Token",
+            "-- ms",
+            "Measured in LLMWorker as wall-clock time from stream request start to first emitted token, via ttft_latency (ms).",
+        )
+        tts_layout, self.tts_val = self._make_metric_row(
+            "TTS Generation",
+            "Text-to-Speech synthesis time",
+            "-- ms",
+            "Measured in TTSWorker as wall-clock time from sentence synth start to first playable PCM chunk, then emitted via tts_latency (ms).",
+        )
 
         layout.addLayout(stt_layout)
         layout.addLayout(ttft_layout)
@@ -217,21 +233,25 @@ class TelemetryView(QWidget):
             "Model",
             "Loaded native model identity",
             "—",
+            "From NativeLlamaEngine.get_model_reasoning_telemetry(): prefers model file basename and appends profile model_name when both differ.",
         )
         reasoning_row, self._cap_reasoning_val = self._make_metric_row(
             "Reasoning-capable",
             "Thinking token capability",
             "—",
+            "Boolean from supports_thinking_tokens in native engine reasoning profile detection (tokenizer/template/name signals).",
         )
         mode_row, self._cap_mode_val = self._make_metric_row(
             "Execution mode",
             "Resolved policy execution mode",
             "—",
+            "Shows policy_execution_mode when available (resolved by execution_policy), otherwise profile execution_mode fallback.",
         )
         conf_row, self._cap_conf_val = self._make_metric_row(
             "Confidence",
             "Model capability classification confidence",
             "—",
+            "Numeric reasoning-profile confidence from native detection pipeline, formatted to 2 decimals when present.",
         )
         layout.addLayout(model_row)
         layout.addLayout(reasoning_row)
@@ -259,31 +279,37 @@ class TelemetryView(QWidget):
             "Routes",
             "Current route distribution",
             "—",
+            "Counts by route from RouterTelemetryBrain.summarize() over its rolling in-memory event deque (max 200 samples).",
         )
         latency_row, self.latency_router_val = self._make_metric_row(
             "Avg retrieval phase",
             "Mean retrieval latency across turns",
             "—",
+            "Average of per-turn retrieval-phase latency_ms recorded in LLMWorker (route/tool phase timing only, before token streaming).",
         )
         memory_row, self.memory_val = self._make_metric_row(
             "MEMORY route share",
             "Portion of turns routed to memory",
             "—",
+            "Computed as MEMORY route count / total routed requests from telemetry summary, shown as count and percentage.",
         )
         rag_row, self.rag_val = self._make_metric_row(
             "RAG route share",
             "Portion of turns routed to RAG",
             "—",
+            "Computed as RAG route count / total routed requests from telemetry summary, shown as count and percentage.",
         )
         tuner_row, self.tuner_val = self._make_metric_row(
             "Tuner weights",
             "Adaptive router weight state",
             "—",
+            "Live adaptive weights from AdaptiveRouterSelfTunerV2.get_weights(): hybrid/memory/rag sensitivities (clamped 0.4 to 2.0).",
         )
         health_row, self.health_val = self._make_metric_row(
             "System health",
             "Router health summary",
             "—",
+            "Rule-based status from telemetry snapshot: flags HYBRID overuse (>60%), weak memory weight (<0.6), or high latency (>1200 ms).",
         )
 
         layout.addLayout(routes_row)
@@ -296,16 +322,28 @@ class TelemetryView(QWidget):
 
         return frame
 
-    def _make_metric_row(self, title: str, description: str, value_text: str) -> tuple[QHBoxLayout, QLabel]:
+    def _make_metric_row(
+        self,
+        title: str,
+        description: str,
+        value_text: str,
+        tooltip_text: str = "",
+    ) -> tuple[QHBoxLayout, QLabel]:
         row = QHBoxLayout()
         vbox = QVBoxLayout()
         vbox.setSpacing(2)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(6)
         title_lbl = QLabel(title)
         title_lbl.setProperty("class", "MetricTitle")
+        title_row.addWidget(title_lbl)
+        if tooltip_text:
+            title_row.addWidget(self._make_metric_info_button(tooltip_text))
+        title_row.addStretch()
         desc_lbl = QLabel(description)
         desc_lbl.setProperty("class", "MetricSubtext")
         desc_lbl.setWordWrap(True)
-        vbox.addWidget(title_lbl)
+        vbox.addLayout(title_row)
         vbox.addWidget(desc_lbl)
         val_lbl = QLabel(value_text)
         val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -315,6 +353,16 @@ class TelemetryView(QWidget):
         row.addStretch()
         row.addWidget(val_lbl)
         return row, val_lbl
+
+    def _make_metric_info_button(self, tooltip_text: str) -> QToolButton:
+        btn = QToolButton()
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(tooltip_text)
+        btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        btn.setIconSize(QSize(12, 12))
+        btn.setAutoRaise(True)
+        btn.setStyleSheet("QToolButton { border: none; padding: 0px; background: transparent; }")
+        return btn
 
     # ============================================================
     # LEGEND CREATOR

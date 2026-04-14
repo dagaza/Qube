@@ -33,6 +33,7 @@ from core.app_settings import (
     set_auto_load_last_model_on_startup,
     set_internal_model_path,
 )
+from core.qube_tooltip import qube_tooltip_set_theme
 import logging
 
 logger = logging.getLogger("Qube.UI")
@@ -1228,6 +1229,7 @@ class MainWindow(QMainWindow):
             
             self.nav_theme.setIcon(qta.icon('fa5s.sun', color='#d7827e'))
             self._is_dark_theme = False
+            qube_tooltip_set_theme(False)
             logger.info("Theme switched to Light Mode.")
         else:
             # --- Load Dark Theme ---
@@ -1238,6 +1240,7 @@ class MainWindow(QMainWindow):
                     
             self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
             self._is_dark_theme = True
+            qube_tooltip_set_theme(True)
             logger.info("Theme switched to Dark Mode.")
 
         from core.richtext_styles import apply_app_link_palette
