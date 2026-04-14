@@ -1285,6 +1285,10 @@ class MainWindow(QMainWindow):
             self.model_manager_view, "refresh_after_theme_toggle"
         ):
             self.model_manager_view.refresh_after_theme_toggle()
+        if hasattr(self, "telemetry_view") and hasattr(
+            self.telemetry_view, "refresh_after_theme_toggle"
+        ):
+            self.telemetry_view.refresh_after_theme_toggle()
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #

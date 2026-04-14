@@ -2,8 +2,9 @@ import logging
 import os
 import psutil
 from collections import deque
+from PyQt6.QtGui import QWheelEvent
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QScrollArea
 )
 from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
@@ -52,7 +53,20 @@ class TelemetryView(QWidget):
     # UI SETUP
     # ============================================================
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        root_layout.addWidget(scroll)
+
+        content = QWidget()
+        scroll.setWidget(content)
+
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
 
@@ -61,13 +75,22 @@ class TelemetryView(QWidget):
         title.setObjectName("ViewTitle")
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        # Main Dashboard Layout (2 Columns)
-        dashboard_layout = QHBoxLayout()
+        # Main Dashboard Layout:
+        # Row 1 -> Graph (left) + Latency/Capability (right)
+        # Row 2 -> Router card full-width
+        dashboard_layout = QVBoxLayout()
         dashboard_layout.setSpacing(20)
+
+        top_row_layout = QHBoxLayout()
+        top_row_layout.setSpacing(20)
 
         # Left Column: Hardware Graph
         self.hardware_card = self._build_hardware_card()
-        dashboard_layout.addWidget(self.hardware_card, stretch=2)
+        left_column = QVBoxLayout()
+        left_column.setSpacing(0)
+        left_column.addWidget(self.hardware_card)
+        left_column.addStretch(1)
+        top_row_layout.addLayout(left_column, stretch=2)
 
         # Right Column: Latency + Model capability + Router Metrics
         right_column = QVBoxLayout()
@@ -76,10 +99,11 @@ class TelemetryView(QWidget):
         self.router_card = self._build_router_card()
         right_column.addWidget(self.latency_card)
         right_column.addWidget(self.model_capability_card)
-        right_column.addWidget(self.router_card)
         right_column.addStretch()
-        dashboard_layout.addLayout(right_column, stretch=1)
+        top_row_layout.addLayout(right_column, stretch=1)
 
+        dashboard_layout.addLayout(top_row_layout)
+        dashboard_layout.addWidget(self.router_card)
         layout.addLayout(dashboard_layout)
         if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
             "1",
@@ -104,6 +128,9 @@ class TelemetryView(QWidget):
     def _build_hardware_card(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("HardwareCard")
+        frame.setSizePolicy(frame.sizePolicy().horizontalPolicy(), frame.sizePolicy().verticalPolicy())
+        # Align hardware-card bottom with "Native LLM — Model capability" card bottom at compact sizes.
+        frame.setMinimumHeight(355)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(20, 20, 20, 20)
 
@@ -125,8 +152,17 @@ class TelemetryView(QWidget):
         pg.setConfigOptions(antialias=True)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground('transparent')
-        self.plot_widget.setYRange(0, 100)
+        self.plot_widget.setYRange(-5, 105)
+        self.plot_widget.setLimits(yMin=-5, yMax=105, minYRange=110, maxYRange=110)
         self.plot_widget.showGrid(x=False, y=True, alpha=0.2)
+        self.plot_widget.setMinimumHeight(220)
+        self.plot_widget.setMenuEnabled(False)
+        self.plot_widget.setMouseEnabled(x=False, y=False)
+        self.plot_widget.getViewBox().setMouseEnabled(x=False, y=False)
+        self.plot_widget.getViewBox().setMouseMode(self.plot_widget.getViewBox().PanMode)
+        self.plot_widget.getPlotItem().hideButtons()
+        # Fully disable wheel interaction so page scrolling always wins.
+        self.plot_widget.wheelEvent = self._ignore_plot_wheel_event
 
         self.plot_widget.getAxis('bottom').setStyle(showValues=False)
         self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#94a3b8', width=1))
@@ -153,27 +189,9 @@ class TelemetryView(QWidget):
         header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        def make_metric(title, description):
-            row = QHBoxLayout()
-            vbox = QVBoxLayout()
-            vbox.setSpacing(2)
-            title_lbl = QLabel(title)
-            title_lbl.setProperty("class", "MetricTitle")
-            desc_lbl = QLabel(description)
-            desc_lbl.setProperty("class", "MetricSubtext")
-            vbox.addWidget(title_lbl)
-            vbox.addWidget(desc_lbl)
-            val_lbl = QLabel("-- ms")
-            val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            val_lbl.setProperty("class", "MetricValueLarge")
-            row.addLayout(vbox)
-            row.addStretch()
-            row.addWidget(val_lbl)
-            return row, val_lbl
-
-        stt_layout, self.stt_val = make_metric("Whisper STT", "Voice-to-Text inference time")
-        ttft_layout, self.ttft_val = make_metric("LLM TTFT", "Time To First Token")
-        tts_layout, self.tts_val = make_metric("TTS Generation", "Text-to-Speech synthesis time")
+        stt_layout, self.stt_val = self._make_metric_row("Whisper STT", "Voice-to-Text inference time", "-- ms")
+        ttft_layout, self.ttft_val = self._make_metric_row("LLM TTFT", "Time To First Token", "-- ms")
+        tts_layout, self.tts_val = self._make_metric_row("TTS Generation", "Text-to-Speech synthesis time", "-- ms")
 
         layout.addLayout(stt_layout)
         layout.addLayout(ttft_layout)
@@ -186,28 +204,40 @@ class TelemetryView(QWidget):
     # ============================================================
     def _build_model_capability_card(self) -> QFrame:
         frame = QFrame()
-        frame.setObjectName("ModelCapabilityCard")
+        frame.setObjectName("LatencyCard")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(25, 25, 25, 25)
-        layout.setSpacing(10)
+        layout.setSpacing(25)
 
         header = QLabel("Native LLM — Model capability")
         header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        self._cap_model_lbl = QLabel("Model: —")
-        self._cap_reasoning_lbl = QLabel("Reasoning-capable: —")
-        self._cap_mode_lbl = QLabel("Execution mode: —")
-        self._cap_conf_lbl = QLabel("Confidence: —")
-        for lbl in (
-            self._cap_model_lbl,
-            self._cap_reasoning_lbl,
-            self._cap_mode_lbl,
-            self._cap_conf_lbl,
-        ):
-            lbl.setProperty("class", "MetricSubtext")
-            lbl.setWordWrap(True)
-            layout.addWidget(lbl)
+        model_row, self._cap_model_val = self._make_metric_row(
+            "Model",
+            "Loaded native model identity",
+            "—",
+        )
+        reasoning_row, self._cap_reasoning_val = self._make_metric_row(
+            "Reasoning-capable",
+            "Thinking token capability",
+            "—",
+        )
+        mode_row, self._cap_mode_val = self._make_metric_row(
+            "Execution mode",
+            "Resolved policy execution mode",
+            "—",
+        )
+        conf_row, self._cap_conf_val = self._make_metric_row(
+            "Confidence",
+            "Model capability classification confidence",
+            "—",
+        )
+        layout.addLayout(model_row)
+        layout.addLayout(reasoning_row)
+        layout.addLayout(mode_row)
+        layout.addLayout(conf_row)
+        layout.addStretch()
 
         return frame
 
@@ -216,34 +246,75 @@ class TelemetryView(QWidget):
     # ============================================================
     def _build_router_card(self) -> QFrame:
         frame = QFrame()
-        frame.setObjectName("RouterCard")
+        frame.setObjectName("LatencyCard")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(25, 25, 25, 25)
-        layout.setSpacing(15)
+        layout.setSpacing(25)
 
         header = QLabel("Router Intelligence")
         header.setProperty("class", "SectionHeaderLabel")
         layout.addWidget(header)
 
-        self.route_label = QLabel("Routes: —")
-        self.latency_router_label = QLabel("Avg retrieval phase: —")
-        self.memory_label = QLabel("MEMORY route share: —")
-        self.rag_label = QLabel("RAG route share: —")
-        self.tuner_label = QLabel("Tuner weights: —")
-        self.health_label = QLabel("System health: —")
+        routes_row, self.route_val = self._make_metric_row(
+            "Routes",
+            "Current route distribution",
+            "—",
+        )
+        latency_row, self.latency_router_val = self._make_metric_row(
+            "Avg retrieval phase",
+            "Mean retrieval latency across turns",
+            "—",
+        )
+        memory_row, self.memory_val = self._make_metric_row(
+            "MEMORY route share",
+            "Portion of turns routed to memory",
+            "—",
+        )
+        rag_row, self.rag_val = self._make_metric_row(
+            "RAG route share",
+            "Portion of turns routed to RAG",
+            "—",
+        )
+        tuner_row, self.tuner_val = self._make_metric_row(
+            "Tuner weights",
+            "Adaptive router weight state",
+            "—",
+        )
+        health_row, self.health_val = self._make_metric_row(
+            "System health",
+            "Router health summary",
+            "—",
+        )
 
-        for lbl in [
-            self.route_label,
-            self.latency_router_label,
-            self.memory_label,
-            self.rag_label,
-            self.tuner_label,
-            self.health_label
-        ]:
-            lbl.setProperty("class", "MetricSubtext")
-            layout.addWidget(lbl)
+        layout.addLayout(routes_row)
+        layout.addLayout(latency_row)
+        layout.addLayout(memory_row)
+        layout.addLayout(rag_row)
+        layout.addLayout(tuner_row)
+        layout.addLayout(health_row)
+        layout.addStretch()
 
         return frame
+
+    def _make_metric_row(self, title: str, description: str, value_text: str) -> tuple[QHBoxLayout, QLabel]:
+        row = QHBoxLayout()
+        vbox = QVBoxLayout()
+        vbox.setSpacing(2)
+        title_lbl = QLabel(title)
+        title_lbl.setProperty("class", "MetricTitle")
+        desc_lbl = QLabel(description)
+        desc_lbl.setProperty("class", "MetricSubtext")
+        desc_lbl.setWordWrap(True)
+        vbox.addWidget(title_lbl)
+        vbox.addWidget(desc_lbl)
+        val_lbl = QLabel(value_text)
+        val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # Match value size to field label scale (non-oversized).
+        val_lbl.setProperty("class", "MetricTitle")
+        row.addLayout(vbox)
+        row.addStretch()
+        row.addWidget(val_lbl)
+        return row, val_lbl
 
     # ============================================================
     # LEGEND CREATOR
@@ -282,8 +353,15 @@ class TelemetryView(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._apply_card_surfaces()
+        self._sync_hardware_card_min_height()
         self._refresh_model_capability_labels()
         self._refresh_router_from_worker_snapshot()
+    
+    def refresh_after_theme_toggle(self) -> None:
+        """Keep telemetry card shells aligned with global light/dark theme."""
+        self._apply_card_surfaces()
+        self._sync_hardware_card_min_height()
 
     def _on_native_load_finished_telemetry(self, _ok: bool, _msg: str) -> None:
         self._refresh_model_capability_labels()
@@ -334,61 +412,88 @@ class TelemetryView(QWidget):
         self.ram_line.setData(list(self.ram_data))
         self.gpu_line.setData(list(self.gpu_data))
 
+    def _apply_card_surfaces(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        bg = "#232337" if is_dark else "#E9EFF5"
+        border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
+        for card in (
+            getattr(self, "hardware_card", None),
+            getattr(self, "latency_card", None),
+            getattr(self, "model_capability_card", None),
+            getattr(self, "router_card", None),
+        ):
+            if card is not None:
+                name = card.objectName() or "TelemetryCard"
+                card.setStyleSheet(
+                    f"QFrame#{name} {{ background-color: {bg}; border: 1px solid {border}; border-radius: 12px; }}"
+                )
+
+    def _sync_hardware_card_min_height(self) -> None:
+        """Match hardware-card bottom to end of Native LLM card (latency + spacing + model capability)."""
+        if not all(
+            hasattr(self, n)
+            for n in ("hardware_card", "latency_card", "model_capability_card")
+        ):
+            return
+        latency_h = int(self.latency_card.sizeHint().height())
+        model_h = int(self.model_capability_card.sizeHint().height())
+        # right_column spacing between cards is 6? currently default QVBoxLayout; use explicit conservative bridge.
+        inter_card_gap = 20
+        target = max(300, latency_h + inter_card_gap + model_h)
+        self.hardware_card.setMinimumHeight(target)
+
+    @staticmethod
+    def _ignore_plot_wheel_event(_event: QWheelEvent) -> None:
+        _event.ignore()
+
     def _refresh_model_capability_labels(self) -> None:
         eng = self._resolve_native_engine()
         mode = get_engine_mode()
         if eng is None:
-            self._cap_model_lbl.setText("Model: — (native engine not wired)")
-            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText(f"Engine mode: {mode}")
-            self._cap_conf_lbl.setText("Confidence: —")
+            self._cap_model_val.setText("—")
+            self._cap_reasoning_val.setText("—")
+            self._cap_mode_val.setText(mode)
+            self._cap_conf_val.setText("—")
             return
         try:
             snap = eng.get_model_reasoning_telemetry()
         except Exception as e:
             logger.debug("Model capability telemetry failed: %s", e)
-            self._cap_model_lbl.setText("Model: — (telemetry error)")
-            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText(f"Engine mode: {mode}")
-            self._cap_conf_lbl.setText("Confidence: —")
+            self._cap_model_val.setText("—")
+            self._cap_reasoning_val.setText("—")
+            self._cap_mode_val.setText(mode)
+            self._cap_conf_val.setText("—")
             return
         if not snap.get("loaded"):
-            if mode != "internal":
-                self._cap_model_lbl.setText(
-                    "Model: — (external / API mode — load a GGUF in Settings → Internal to see native profile)"
-                )
-            else:
-                self._cap_model_lbl.setText("Model: — (no GGUF loaded in native engine yet)")
-            self._cap_reasoning_lbl.setText("Reasoning-capable: —")
-            self._cap_mode_lbl.setText(f"Policy (when loaded): {snap.get('policy_execution_mode', '—')}")
-            self._cap_conf_lbl.setText("Confidence: —")
+            self._cap_model_val.setText("—")
+            self._cap_reasoning_val.setText("—")
+            self._cap_mode_val.setText(str(snap.get("policy_execution_mode", mode)))
+            self._cap_conf_val.setText("—")
             return
         base = snap.get("model_basename") or ""
         name = snap.get("model_name") or ""
         if name and base and name != base:
-            self._cap_model_lbl.setText(f"Model: {base} ({name})")
+            self._cap_model_val.setText(f"{base} ({name})")
         elif base:
-            self._cap_model_lbl.setText(f"Model: {base}")
+            self._cap_model_val.setText(str(base))
         elif name:
-            self._cap_model_lbl.setText(f"Model: {name}")
+            self._cap_model_val.setText(str(name))
         else:
-            self._cap_model_lbl.setText("Model: —")
+            self._cap_model_val.setText("—")
         sup = snap.get("supports_thinking_tokens")
-        self._cap_reasoning_lbl.setText(
-            f"Reasoning-capable: {'yes' if sup else 'no'}"
-        )
+        self._cap_reasoning_val.setText("yes" if sup else "no")
         pol_mode = snap.get("policy_execution_mode")
         det_mode = snap.get("execution_mode", "unknown")
         mode_txt = pol_mode if pol_mode else det_mode
-        self._cap_mode_lbl.setText(f"Execution mode: {mode_txt}")
+        self._cap_mode_val.setText(str(mode_txt))
         conf = snap.get("confidence")
         if conf is None:
-            self._cap_conf_lbl.setText("Confidence: —")
+            self._cap_conf_val.setText("—")
         else:
             try:
-                self._cap_conf_lbl.setText(f"Confidence: {float(conf):.2f}")
+                self._cap_conf_val.setText(f"{float(conf):.2f}")
             except (TypeError, ValueError):
-                self._cap_conf_lbl.setText("Confidence: —")
+                self._cap_conf_val.setText("—")
 
     # ============================================================
     # LATENCY UPDATE SLOTS
@@ -415,7 +520,7 @@ class TelemetryView(QWidget):
             route_txt = ", ".join(f"{k}: {v}" for k, v in sorted(routes.items()))
         else:
             route_txt = "—"
-        self.route_label.setText(f"Routes: {route_txt}")
+        self.route_val.setText(route_txt)
 
         # AdaptiveRouterSelfTunerV2.get_weights() uses keys hybrid / memory / rag (not *_sensitivity).
         try:
@@ -431,30 +536,23 @@ class TelemetryView(QWidget):
         except (TypeError, ValueError):
             hy, mem_w, rag_w = 1.0, 1.0, 1.0
 
-        self.tuner_label.setText(
-            f"Tuner weights — hybrid: {hy:.2f} | memory: {mem_w:.2f} | rag: {rag_w:.2f}"
-        )
+        self.tuner_val.setText(f"h:{hy:.2f} m:{mem_w:.2f} r:{rag_w:.2f}")
 
         if total <= 0:
-            self.latency_router_label.setText("Avg retrieval phase: — (no turns logged)")
-            self.memory_label.setText("MEMORY route share: —")
-            self.rag_label.setText("RAG route share: —")
-            self.health_label.setText(
-                "System health: ⚪ Idle — chat to record routing + retrieval latency"
-            )
+            self.latency_router_val.setText("—")
+            self.memory_val.setText("—")
+            self.rag_val.setText("—")
+            self.health_val.setText("⚪ Idle")
+            self.health_val.setToolTip("Chat to record routing + retrieval latency.")
             return
 
         avg_lat = float(summary.get("avg_latency_ms") or 0)
-        self.latency_router_label.setText(f"Avg retrieval phase: {avg_lat:.1f} ms")
+        self.latency_router_val.setText(f"{avg_lat:.1f} ms")
 
         memory_count = routes.get("MEMORY", 0)
         rag_count = routes.get("RAG", 0)
-        self.memory_label.setText(
-            f"MEMORY route share: {memory_count}/{total} ({memory_count / total:.1%})"
-        )
-        self.rag_label.setText(
-            f"RAG route share: {rag_count}/{total} ({rag_count / total:.1%})"
-        )
+        self.memory_val.setText(f"{memory_count}/{total} ({memory_count / total:.1%})")
+        self.rag_val.setText(f"{rag_count}/{total} ({rag_count / total:.1%})")
 
         hybrid_ratio = routes.get("HYBRID", 0) / total
         if hybrid_ratio > 0.6:
@@ -466,4 +564,5 @@ class TelemetryView(QWidget):
         else:
             health = "🟢 System stable"
 
-        self.health_label.setText(f"System health: {health}")
+        self.health_val.setText(health)
+        self.health_val.setToolTip(f"System health: {health}")

@@ -316,8 +316,8 @@ QAbstractScrollArea::corner {
 
 /* --- 8. TELEMETRY CARDS --- */
 #HardwareCard, #LatencyCard {
-    background-color: #ffffff;
-    border: 1px solid #cbd5e1;
+    background-color: #E9EFF5;
+    border: 1px solid #dbe4ee;
     border-radius: 12px;
 }
 
