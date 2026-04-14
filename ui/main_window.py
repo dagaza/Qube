@@ -594,6 +594,11 @@ class MainWindow(QMainWindow):
             "Automatically loads the last used model at startup. This may significantly increase "
             "application startup time depending on the model size and your hardware."
         )
+        _silence_cutoff_tip = (
+            "The amount of silence (in seconds) the app waits before deciding you have finished "
+            "speaking. Lower values make the app respond faster, but it might interrupt you if "
+            "you pause to think."
+        )
         auto_load_row = QHBoxLayout()
         self.toolbar_auto_load_model_toggle = PrestigeToggle()
         self.toolbar_auto_load_model_toggle.setChecked(
@@ -602,9 +607,16 @@ class MainWindow(QMainWindow):
         self.toolbar_auto_load_model_toggle.setToolTip(_auto_load_model_tip)
         auto_load_lbl = QLabel("Load on startup")
         auto_load_lbl.setProperty("class", "ToolsPaneControl")
-        auto_load_lbl.setToolTip(_auto_load_model_tip)
+        auto_load_lbl.setToolTip("")
+        auto_load_info = QLabel()
+        auto_load_info.setPixmap(
+            qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12))
+        )
+        auto_load_info.setToolTip(_auto_load_model_tip)
+        auto_load_info.setCursor(Qt.CursorShape.PointingHandCursor)
         auto_load_row.addWidget(self.toolbar_auto_load_model_toggle)
         auto_load_row.addWidget(auto_load_lbl)
+        auto_load_row.addWidget(auto_load_info)
         auto_load_row.addStretch()
         native_llm_layout.addLayout(auto_load_row)
         main_layout.addLayout(native_llm_layout)
@@ -631,14 +643,22 @@ class MainWindow(QMainWindow):
         extra_layout.setContentsMargins(10, 4, 0, 4)
         extra_layout.setSpacing(_TOOLS_INNER_V_SPACING)
 
-        def create_mirrored_row(label_text, spinner):
+        def create_mirrored_row(label_text, spinner, tooltip_text=None):
             row = QHBoxLayout()
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
             lbl.setMinimumWidth(100)
+            if tooltip_text:
+                lbl.setToolTip("")
+                info_icon = QLabel()
+                info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
+                info_icon.setToolTip(tooltip_text)
+                info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             spinner.setFixedWidth(90)
             spinner.setProperty("class", "ToolsPaneInput")
             row.addWidget(lbl)
+            if tooltip_text:
+                row.addWidget(info_icon)
             row.addStretch()
             row.addWidget(spinner)
             return row
@@ -658,8 +678,21 @@ class MainWindow(QMainWindow):
         )
         self.toolbar_threshold_spin.setToolTip(_vad_threshold_tip)
 
-        extra_layout.addLayout(create_mirrored_row("Silence Cutoff", self.toolbar_timeout_spin))
-        extra_layout.addLayout(create_mirrored_row("VAD Threshold", self.toolbar_threshold_spin))
+        self.toolbar_timeout_spin.setToolTip(_silence_cutoff_tip)
+        extra_layout.addLayout(
+            create_mirrored_row(
+                "Silence Cutoff",
+                self.toolbar_timeout_spin,
+                tooltip_text=_silence_cutoff_tip,
+            )
+        )
+        extra_layout.addLayout(
+            create_mirrored_row(
+                "VAD Threshold",
+                self.toolbar_threshold_spin,
+                tooltip_text=_vad_threshold_tip,
+            )
+        )
 
         audio_tts_layout.addWidget(self.audio_extra_controls)
 

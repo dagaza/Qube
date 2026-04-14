@@ -653,7 +653,7 @@ class ModelManagerView(QWidget):
         left_l.setSpacing(15)
         self.hub_sidebar = left
 
-        title = QLabel("MODEL MANAGER")
+        title = QLabel("Model Manager")
         title.setObjectName("ViewTitle")
         left_l.addWidget(title)
         left_l.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE REPOSITORIES"))
@@ -993,8 +993,9 @@ class ModelManagerView(QWidget):
         if not hasattr(self, "meta_caps_wrap_l"):
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#cdd6f4" if is_dark else "#334155"
-        chip_fg = "#cdd6f4" if is_dark else "#1e293b"
+        # Light mode: match parameter chip label tone (blue) for visual parity.
+        icon_color = "#cdd6f4" if is_dark else "#1e3a8a"
+        chip_fg = "#cdd6f4" if is_dark else "#1e3a8a"
         chip_border = "#8b5cf6"
         while self.meta_caps_wrap_l.count():
             it = self.meta_caps_wrap_l.takeAt(0)

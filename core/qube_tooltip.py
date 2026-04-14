@@ -10,6 +10,9 @@ from __future__ import annotations
 from PyQt6.QtCore import QEvent, QObject, QPoint, QSize, Qt, QTimer
 from PyQt6.QtGui import QCursor, QHelpEvent
 from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QVBoxLayout, QWidget
+import weakref
+
+_TOOLTIP_TEXT_WIDTH_PX = 300
 
 
 class QubeApplication(QApplication):
@@ -17,6 +20,7 @@ class QubeApplication(QApplication):
 
     def notify(self, receiver: QObject, event: QEvent) -> bool:
         et = event.type()
+        ctrl = QubeToolTipController.instance()
         if et == QEvent.Type.ToolTip:
             if isinstance(receiver, QWidget):
                 raw = receiver.toolTip()
@@ -25,12 +29,19 @@ class QubeApplication(QApplication):
                         gpos = event.globalPos()
                     else:
                         gpos = QCursor.pos()
-                    QubeToolTipController.instance().show_tip(
-                        receiver, gpos, str(raw)
-                    )
+                    ctrl.show_tip(receiver, gpos, str(raw))
                     return True
-        if et in (QEvent.Type.MouseButtonPress, QEvent.Type.Wheel):
-            QubeToolTipController.instance().hide_tip()
+        if et in (
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.Wheel,
+            QEvent.Type.Leave,
+            QEvent.Type.HoverLeave,
+            QEvent.Type.WindowDeactivate,
+            QEvent.Type.FocusOut,
+        ):
+            ctrl.hide_tip()
+        elif et in (QEvent.Type.MouseMove, QEvent.Type.HoverMove):
+            ctrl.hide_if_cursor_left_anchor()
         return super().notify(receiver, event)
 
 
@@ -48,6 +59,7 @@ class QubeToolTipController(QObject):
         self._popup: QWidget | None = None
         self._shell: QFrame | None = None
         self._label: QLabel | None = None
+        self._anchor_ref: weakref.ReferenceType[QWidget] | None = None
         self._hide_timer = QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self.hide_tip)
@@ -101,6 +113,8 @@ class QubeToolTipController(QObject):
         # Transparent host removes the visible square backdrop behind rounded corners.
         self._popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self._popup.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        # Tooltip must never steal pointer events from its anchor widget.
+        self._popup.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         root_layout = QVBoxLayout(self._popup)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
@@ -112,7 +126,8 @@ class QubeToolTipController(QObject):
         self._label = QLabel(self._shell)
         self._label.setObjectName("QubeToolTipLabel")
         self._label.setWordWrap(True)
-        self._label.setMaximumWidth(300)
+        self._label.setMinimumWidth(_TOOLTIP_TEXT_WIDTH_PX)
+        self._label.setMaximumWidth(_TOOLTIP_TEXT_WIDTH_PX)
         self._label.setTextFormat(Qt.TextFormat.PlainText)
         layout = QVBoxLayout(self._shell)
         layout.setContentsMargins(10, 6, 10, 6)
@@ -123,6 +138,7 @@ class QubeToolTipController(QObject):
     def show_tip(self, _anchor: QWidget, global_pos: QPoint, text: str) -> None:
         self._ensure_popup()
         assert self._popup is not None and self._label is not None
+        self._anchor_ref = weakref.ref(_anchor)
         self._hide_timer.stop()
         self._label.setText(text)
         self._popup.adjustSize()
@@ -145,8 +161,22 @@ class QubeToolTipController(QObject):
 
     def hide_tip(self) -> None:
         self._hide_timer.stop()
+        self._anchor_ref = None
         if self._popup is not None:
             self._popup.hide()
+
+    def hide_if_cursor_left_anchor(self) -> None:
+        ref = self._anchor_ref
+        anchor = ref() if ref is not None else None
+        if anchor is None or not anchor.isVisible():
+            self.hide_tip()
+            return
+        # Prefer underMouse fast path; fall back to global-geometry containment.
+        if anchor.underMouse():
+            return
+        p = anchor.mapFromGlobal(QCursor.pos())
+        if not anchor.rect().contains(p):
+            self.hide_tip()
 
 
 def qube_tooltip_set_theme(is_dark: bool) -> None:

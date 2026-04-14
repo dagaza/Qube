@@ -72,7 +72,7 @@ class TelemetryView(QWidget):
         layout.setSpacing(20)
 
         # Header
-        title = QLabel("ADVANCED TELEMETRY")
+        title = QLabel("Advanced Telemetry")
         title.setObjectName("ViewTitle")
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
 

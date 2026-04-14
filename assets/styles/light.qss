@@ -505,6 +505,13 @@ QLabel#AgentMessage {
     border: none;
 }
 
+/* Match base.qss: no extra item padding — row widget supplies horizontal inset. */
+#HistoryList::item, #LibraryDocList::item {
+    padding: 0px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
 #ModelHubList {
     background-color: transparent;
     border: none;
@@ -533,10 +540,14 @@ QLabel#AgentMessage {
     font-weight: 500;
 }
 
-#HistoryRowWidget QLabel#HistoryRowTitle, #LibraryRowWidget QLabel#LibraryRowTitle {
-    color: #1e293b !important; /* Force Deep Slate */
+/* Sidebar row titles: scope to QListWidget::item (setItemWidget); light = slate always */
+#HistoryList::item QLabel#HistoryRowTitle,
+#LibraryDocList::item QLabel#HistoryRowTitle,
+#LibraryDocList::item QLabel#LibraryRowTitle {
     background-color: transparent !important;
+    font-size: 13px;
     font-weight: 500;
+    color: #1e293b !important;
 }
 
 /* Model Manager hub rows: same font metrics as base.qss (size, weight). No line-height — matches QFontMetrics sizing. */
@@ -554,17 +565,12 @@ QLabel#AgentMessage {
     color: #1e293b !important;
 }
 
-/* Ensure text flips to white when the dark selection bar is active.
-   Library rows use HistoryRowWidget + HistoryRowTitle (same as chat), not LibraryRowWidget. */
-#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected #LibraryRowWidget QLabel#LibraryRowTitle {
-    color: #ffffff !important;
-}
-
 #HistoryOptionsBtn, #LibraryOptionsBtn {
     background: transparent;
     border: none;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
 }
 
 #HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {

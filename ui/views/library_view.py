@@ -30,6 +30,8 @@ from PyQt6.QtGui import (
 import qtawesome as qta
 from pathlib import Path
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
+from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
 import logging
 
 logger = logging.getLogger("Qube.UI.Library")
@@ -37,7 +39,7 @@ logger = logging.getLogger("Qube.UI.Library")
 # Match ConversationsView utility toolbar / layout (library preview).
 LAYOUT_FULL_WIDTH = "full_width"
 LAYOUT_CENTERED_COLUMN = "centered_column"
-_CENTERED_COLUMN_MAX_WIDTH = 900
+_CENTERED_COLUMN_MAX_WIDTH = 800
 _QWIDGETSIZE_MAX = (1 << 24) - 1
 _LAYOUT_ICON_WIDE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-wide.svg")
@@ -159,8 +161,8 @@ class LibraryView(QWidget):
 
         # --- HEADER AREA ---
         header_layout = QHBoxLayout()
-        self.list_title = QLabel("KNOWLEDGE BASE")
-        self.list_title.setProperty("class", "SidebarTitle")
+        self.list_title = QLabel("Library")
+        self.list_title.setObjectName("ViewTitle")
         
         self.add_btn = QPushButton()
         self.add_btn.setIcon(qta.icon('fa5s.plus')) 
@@ -328,9 +330,13 @@ class LibraryView(QWidget):
         title_vbox.setSpacing(4)
         title_vbox.addWidget(self.doc_title)
         title_vbox.addWidget(self.doc_stats)
-        
-        # Give the title block full header width so wrapping only occurs at real stage boundaries.
-        header_layout.addWidget(title_host, 1)
+
+        # Use the same width host as transcript content so header width tracks available space
+        # but never exceeds 800px; this prevents narrow sizeHint collapse.
+        self._preview_header_width_host = _LibraryTranscriptWidthHost(
+            title_host, _CENTERED_COLUMN_MAX_WIDTH
+        )
+        header_layout.addWidget(self._preview_header_width_host, 1)
         layout.addLayout(header_layout)
 
         # Reconstructed Text Area
@@ -709,11 +715,8 @@ class LibraryView(QWidget):
         self.library_offset = 0
         self.is_loading_library = False
 
-        count = self.db.get_document_count()
-        display_count = "999+" if count > 999 else str(count)
-        
-        if hasattr(self, 'list_title'):
-            self.list_title.setText(f"KNOWLEDGE BASE ({display_count})")
+        # Document total (sidebar title stays "Library"; count reserved for telemetry)
+        self._document_count = self.db.get_document_count()
 
         self._reload_library_sidebar()
 
@@ -766,7 +769,6 @@ class LibraryView(QWidget):
         if main_win and hasattr(main_win, "_is_dark_theme"):
             is_dark = main_win._is_dark_theme
 
-        t_color = "#cdd6f4" if is_dark else "#1e293b"
         icon_color = "#6c7086" if is_dark else "#64748b"
 
         item = QListWidgetItem()
@@ -777,15 +779,12 @@ class LibraryView(QWidget):
         row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         lay = QHBoxLayout(row)
-        lay.setContentsMargins(15, 0, 10, 0)
+        lay.setContentsMargins(10, 0, 10, 0)
         lay.setSpacing(10)
 
         item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
         lbl = QLabel(item_text)
         lbl.setObjectName("HistoryRowTitle")
-        lbl.setStyleSheet(
-            f"color: {t_color}; background: transparent; border: none; font-size: 13px; font-weight: 500;"
-        )
 
         btn = QPushButton()
         btn.setObjectName("HistoryOptionsBtn")
@@ -793,7 +792,8 @@ class LibraryView(QWidget):
         btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
         btn.setIconSize(QSize(16, 16))
         btn.setStyleSheet(
-            "QPushButton::menu-indicator { image: none; width: 0px; } QPushButton { border: none; background: transparent; }"
+            "QPushButton::menu-indicator { image: none; width: 0px; } "
+            "QPushButton { border: none; background: transparent; padding: 0px; }"
         )
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
@@ -855,32 +855,10 @@ class LibraryView(QWidget):
         self.is_loading_library = False
 
     def _update_row_colors(self):
-        """Forces text color changes since Qt CSS cannot pass :selected states to setItemWidget."""
-        from PyQt6.QtWidgets import QLabel
-        
-        # 1. Safely Detect Theme
-        is_dark = getattr(self.window(), '_is_dark_theme', True)
-            
-        # 2. 🔑 THE FIX: The Colors!
-        # Unselected: Light gray in Dark Mode, Slate in Light Mode
-        normal_color = "#cdd6f4" if is_dark else "#1e293b"
-        # Selected: The background bubble is solid, so text should ALWAYS be White
-        selected_color = "#ffffff" 
-
-        # 3. Target whichever list is in this specific file
-        target_list = getattr(self, 'doc_list', getattr(self, 'history_list', None))
-        if not target_list: 
-            return
-
-        # 4. Loop through and forcefully apply the correct color
-        for i in range(target_list.count()):
-            item = target_list.item(i)
-            widget = target_list.itemWidget(item)
-            if widget:
-                lbl = widget.findChild(QLabel, "HistoryRowTitle")
-                if lbl:
-                    color = selected_color if item.isSelected() else normal_color
-                    lbl.setStyleSheet(f"color: {color}; background: transparent; border: none; font-size: 13px; font-weight: 500;")
+        """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        target_list = getattr(self, "doc_list", getattr(self, "history_list", None))
+        apply_sidebar_row_title_colors(target_list, is_dark=is_dark)
 
     def _trigger_rename_document(self, old_filename):
         is_dark = getattr(self.window(), '_is_dark_theme', True)
@@ -1034,14 +1012,14 @@ class LibraryView(QWidget):
         """Dynamically updates the color of the Add Document button."""
         import qtawesome as qta
         
-        # Icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
-        icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        # Keep utility-toolbar button colors theme-based only (not status-coupled).
+        base_icon_color = "#8b5cf6" if is_dark else "#1e293b"
         
         # Subtle hover background
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
         
         if hasattr(self, 'add_btn'):
-            self.add_btn.setIcon(qta.icon('fa5s.plus', color=icon_color))
+            self.add_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
             self.add_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
@@ -1049,24 +1027,9 @@ class LibraryView(QWidget):
 
         self._refresh_readability_toolbar(is_dark=is_dark)
         if hasattr(self, "font_minus_btn"):
-            dis = "#6c7086" if is_dark else "#94a3b8"
-            font_btn_style = f"""
-                QPushButton {{
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 2px 4px;
-                    color: {icon_color};
-                    font-weight: 700;
-                    font-size: 13px;
-                    min-width: {_CHAT_UTILITY_BTN}px;
-                    max-width: {_CHAT_UTILITY_BTN}px;
-                    min-height: {_CHAT_UTILITY_BTN}px;
-                    max-height: {_CHAT_UTILITY_BTN}px;
-                }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-                QPushButton:disabled {{ color: {dis}; }}
-            """
+            font_btn_style = readability_font_pair_stylesheet(
+                is_dark=is_dark, button_px=_CHAT_UTILITY_BTN
+            )
             self.font_minus_btn.setStyleSheet(font_btn_style)
             self.font_plus_btn.setStyleSheet(font_btn_style)
 

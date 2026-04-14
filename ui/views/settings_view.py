@@ -87,7 +87,7 @@ class SettingsView(QWidget):
         main_layout.setContentsMargins(40, 40, 40, 40)
 
         # Title
-        title = QLabel("SYSTEM SETTINGS")
+        title = QLabel("System Settings")
         title.setObjectName("ViewTitle")
         main_layout.addWidget(title)
 

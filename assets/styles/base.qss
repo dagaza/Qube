@@ -558,6 +558,14 @@ QLabel#AgentMessage {
     border: none;
 }
 
+/* Sidebar rows size themselves (HistoryRowWidget margins); global QListWidget::item padding
+   would inset content and push the options button away from the list edge. */
+#HistoryList::item, #LibraryDocList::item {
+    padding: 0px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
 #ModelHubList {
     background-color: transparent;
     border: none;
@@ -586,10 +594,20 @@ QLabel#AgentMessage {
     font-weight: 500;
 }
 
-#HistoryRowWidget QLabel#HistoryRowTitle, #LibraryRowWidget QLabel#LibraryRowTitle {
-    color: #cdd6f4 !important; /* Force Catppuccin Text */
+/* Sidebar row titles: scope to QListWidget::item so colors apply reliably to setItemWidget rows. */
+#HistoryList::item QLabel#HistoryRowTitle,
+#LibraryDocList::item QLabel#HistoryRowTitle,
+#LibraryDocList::item QLabel#LibraryRowTitle {
     background-color: transparent !important;
+    font-size: 13px;
     font-weight: 500;
+    color: #6c7086 !important; /* Slate — unselected (dark) */
+}
+
+#HistoryList::item:selected QLabel#HistoryRowTitle,
+#LibraryDocList::item:selected QLabel#HistoryRowTitle,
+#LibraryDocList::item:selected QLabel#LibraryRowTitle {
+    color: #ffffff !important;
 }
 
 /* Model Manager hub rows: fixed font metrics (must match light.qss) — no theme layout shift.
@@ -608,17 +626,12 @@ QLabel#AgentMessage {
     color: #ffffff !important;
 }
 
-/* Ensure text flips to dark when the blue selection bar is active.
-   Library rows use HistoryRowWidget + HistoryRowTitle (same as chat), not LibraryRowWidget. */
-#HistoryList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected #HistoryRowWidget QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected #LibraryRowWidget QLabel#LibraryRowTitle {
-    color: #11111b !important;
-}
-
 #HistoryOptionsBtn, #LibraryOptionsBtn {
     background: transparent;
     border: none;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
 }
 
 #HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {

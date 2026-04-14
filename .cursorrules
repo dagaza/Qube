@@ -29,6 +29,8 @@ Qube/
 │   │   ├── source_viewer.py # UI dialog component for displaying the raw text of cited RAG documents and web sources
 │   │   ├── toggle.py       # Toggle (custom design) we use in the UI
 │   │   ├── prestige_dialog.py # Frameless dark/light confirmation & input dialog (replaces QMessageBox/QInputDialog everywhere)
+│   │   ├── readability_toolbar_styles.py # Shared QSS for A−/A+ font controls (Conversations + Library preview toolbars).
+│   │   ├── sidebar_list_qss.py # apply_sidebar_row_title_colors: row QLabel colors for History/Library setItemWidget lists (QSS ::item selectors are unreliable).
 │   │   └── llm_debug_log_panel.py # Optional live llm_debug.log panel for Telemetry view (QUBE_LLM_LOG_UI=1)
 │   └── views/              # isolated widget files for each major screen
 │       ├── conversations_view.py # PrestigeDialog, chat stages, Think toggle (telemetry ui_display_thinking; refresh_think_toggle on load_finished via main + showEvent).
