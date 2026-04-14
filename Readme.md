@@ -21,7 +21,7 @@ Unlike traditional chat-based assistants, Qube is designed around a **low-latenc
 
 Inference and RAG stay on-device—**no** third-party chat API. (Optional **Model Manager** downloads talk to Hugging Face only when **you** choose to fetch weights.)
 
-✨ Quick Overview
+## ✨ Quick Overview
 
 🧠 **Long-Term Semantic Memory & RAG:** Qube doesn't just hold temporary context; it learns. Using a background async worker, Qube extracts Atomic Facts from your conversations, manages contradictions, applies reinforcement scoring, and stores them permanently in LanceDB. This prevents the "Amnesia Bug" and gives Qube true long-term recall alongside your documents.
 
@@ -284,7 +284,7 @@ Want Qube to answer questions based on a specific book or PDF?
 | :---: | :---: |
 | ![Qube Library Dark Theme](assets/screenshots/qube_library_dark_mode.png) | ![Qube Library Light Theme](assets/screenshots/qube_library_light_mode.png) |
     
-2. Use the **RAG Toggle** in the tools pane or use trigger phrases like _"According to my files..."_ which **you can define yourself** in the settings area! Yes, you heard that right, Qube has NLP-triggered RAG functionality inside! 
+2. Use the **RAG Toggle** in the tools pane or use trigger phrases like _"According to my files..."_ You can define your own trigger phrases in the settings. In practice, only a few examples are needed—the cognitive router will generalize from them, so there’s no need to repeat exact wording. Qube supports NLP-triggered RAG, web search, and other tool-calling capabilities out of the box. 
     
 3. Ask your question. Qube will retrieve the most relevant chunks and inject them into the LLM's context window, which also showing you the sources and citations
     
