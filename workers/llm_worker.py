@@ -781,6 +781,12 @@ class LLMWorker(QThread):
                 _emit_filtered(disp, tts_piece)
             elif kind == "error":
                 self.token_streamed.emit(f"\n\n*({data})*")
+                err_txt = str(data or "")
+                if "native model not loaded" in err_txt.lower():
+                    self.status_update.emit("Load a Model")
+                    spoken = self.clean_text_for_tts(err_txt)
+                    if spoken:
+                        self.sentence_ready.emit(spoken, self.session_id)
             elif kind == "end":
                 _flush_tail()
                 saw_end = True

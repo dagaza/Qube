@@ -423,6 +423,11 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
     background-color: rgba(52, 211, 153, 0.15); 
 }
 
+#StatusBubble[state="needs_model"] {
+    color: #fb923c; /* Pastel Orange */
+    background-color: rgba(251, 146, 60, 0.15);
+}
+
 /* --- 9. LIBRARY SPECIFIC --- */
 #LibrarySearchBar, #HubModelSearchBar {
     background-color: rgba(0, 0, 0, 0.2);

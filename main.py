@@ -243,7 +243,7 @@ class Qube:
         if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
             self.window.conversations_view.on_generation_stopped()
         if hasattr(self, 'window'):
-            self.window.update_status("Idle")
+            self.window.update_status("Idle", force=True)
     
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""

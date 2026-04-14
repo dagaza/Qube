@@ -623,7 +623,7 @@ class NativeLlamaEngine(QThread):
         max_tokens = int(cmd.get("max_tokens", 512))
 
         if self._llama is None:
-            token_queue.put(("error", "Native model not loaded"))
+            token_queue.put(("error", "Native model not loaded, please load a model first or use the external server mode"))
             token_queue.put(("end", ""))
             done_event.set()
             return

@@ -1424,7 +1424,7 @@ class MainWindow(QMainWindow):
     # These methods receive signals from workers. Once we build the 
     # ConversationsView, we will forward these calls directly to it.
 
-    def update_status(self, message: str) -> None:
+    def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""
         msg_upper = message.upper().strip()
 
@@ -1433,6 +1433,8 @@ class MainWindow(QMainWindow):
             new_state = "recording"
         elif "SPEAKING" in msg_upper:
             new_state = "speaking"
+        elif msg_upper == "LOAD A MODEL":
+            new_state = "needs_model"
         elif any(k in msg_upper for k in ["THINKING", "GENERATING", "SYNTHESIZING", "TRANSCRIBING"]):
             new_state = "thinking"
         else:
@@ -1442,13 +1444,21 @@ class MainWindow(QMainWindow):
         # Get the current state from the UI property
         current_state = self.status_bubble.property("state") or "idle"
 
-        # Block stray Idle while recording or actively thinking (LLM), but NOT while TTS speaking —
-        # playback_finished must be able to return the bar to Idle after audio ends.
-        if new_state == "idle" and current_state in ["recording", "thinking"]:
-            return
+        # Block stray Idle only while the mic pipeline is actively in "recording" UI state.
+        # End-of-capture uses the trusted phrase "Voice capture idle" (see AudioListenerWorker).
+        # LLM/TTS completion must be able to return to Idle from "thinking" (e.g. errors with no speech).
+        if new_state == "idle" and current_state == "recording":
+            if not force and msg_upper != "VOICE CAPTURE IDLE":
+                return
 
         # 3. Update the UI
-        self.status_bubble.setText(f" {msg_upper}")
+        if msg_upper == "VOICE CAPTURE IDLE":
+            display = " IDLE"
+        elif new_state == "needs_model":
+            display = "Load a Model"
+        else:
+            display = msg_upper
+        self.status_bubble.setText(f" {display}")
         self.status_bubble.setProperty("state", new_state)
 
         # Force Style Refresh
@@ -1457,7 +1467,9 @@ class MainWindow(QMainWindow):
 
         # Lock input only for recording / LLM work; keep unlocked during TTS playback
         if hasattr(self, 'conversations_view'):
-            self.conversations_view.set_input_enabled(new_state in ("idle", "speaking"))
+            self.conversations_view.set_input_enabled(
+                new_state in ("idle", "speaking", "needs_model")
+            )
 
     def update_rag_indicator(self, active: bool) -> None:
         """Called by the LLM Worker when actively retrieving documents."""

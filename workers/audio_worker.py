@@ -157,8 +157,6 @@ class AudioListenerWorker(QThread):
             logger.debug(f"Safely ignored PyAudio buffer flush error: {e}")
 
         recording = []
-        
-        INITIAL_TIMEOUT = 5.0    
         silence_start_time = time.time()
         has_spoken = False
 
@@ -199,11 +197,11 @@ class AudioListenerWorker(QThread):
                 has_spoken = True
                 
             elapsed_silence = time.time() - silence_start_time
-            
-            # If nothing is heard after the gate opens for 5 seconds, go idle
-            if not has_spoken and elapsed_silence > INITIAL_TIMEOUT:
-                self.status_update.emit("Idle")
-                return 
+
+            # No utterance crossed the speech threshold: same silence window as post-speech cutoff
+            if not has_spoken and elapsed_silence > self.silence_timeout:
+                self.status_update.emit("Voice capture idle")
+                return
                 
             if has_spoken and elapsed_silence > self.silence_timeout:
                 self.status_update.emit("Transcribing...")
