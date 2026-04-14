@@ -41,3 +41,12 @@ models/**/*.json
 .DS_Store
 Thumbs.db
 tools/test_outputs/
+
+# --- Cursor ---
+.cursor/    
+
+# --- Cursorrules ---
+.cursorrules
+
+# --- Clinerules ---
+.clinerules
