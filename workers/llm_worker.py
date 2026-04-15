@@ -37,12 +37,12 @@ logger = logging.getLogger("Qube.LLM")
 
 class LLMWorker(QThread):
     sentence_ready = pyqtSignal(str, str)
-    token_streamed = pyqtSignal(str)
+    token_streamed = pyqtSignal(str, str)  # session_id, token
     status_update = pyqtSignal(str)
     ttft_latency = pyqtSignal(float)
     context_retrieved = pyqtSignal(bool)
     response_finished = pyqtSignal(str, str)
-    sources_found = pyqtSignal(list)
+    sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
 
     MAX_TOTAL_RETRIEVAL_CHARS = 4500
@@ -346,7 +346,7 @@ class LLMWorker(QThread):
             logger.exception("[LLM] pipeline failure (routing, tools, or stream)")
             if not str(final_text_out).strip():
                 final_text_out = "Sorry, my brain encountered an error."
-                self.token_streamed.emit("\n\n*(Pipeline Error)*")
+                self.token_streamed.emit(self.session_id or "", "\n\n*(Pipeline Error)*")
         finally:
             self._close_active_stream()
             self._last_completed_llm_session_id = self.session_id
@@ -486,7 +486,7 @@ class LLMWorker(QThread):
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)
         if all_ui_sources:
-            self.sources_found.emit(copy.deepcopy(all_ui_sources))
+            self.sources_found.emit(self.session_id or "", copy.deepcopy(all_ui_sources))
 
         # ============================================================
         # TELEMETRY + SELF TUNING
@@ -659,7 +659,7 @@ class LLMWorker(QThread):
 
                             current_sentence += delta
                             final_text += delta
-                            self.token_streamed.emit(delta)
+                            self.token_streamed.emit(self.session_id or "", delta)
 
                             if any(p in delta for p in ".!?"):
                                 clean = self.clean_text_for_tts(current_sentence)
@@ -686,12 +686,12 @@ class LLMWorker(QThread):
         except requests.exceptions.Timeout:
             logger.error("LLM Connection Error: Request timed out.")
             final_text = "Sorry, my brain disconnected (Timeout)."
-            self.token_streamed.emit("\n\n*(Connection Timeout)*")
+            self.token_streamed.emit(self.session_id or "", "\n\n*(Connection Timeout)*")
 
         except Exception as e:
             logger.error(f"LLM Connection Error: {e}")
             final_text = "Sorry, my brain encountered an error."
-            self.token_streamed.emit("\n\n*(Connection Error)*")
+            self.token_streamed.emit(self.session_id or "", "\n\n*(Connection Error)*")
 
         finally:
             self._close_active_stream()
@@ -740,7 +740,7 @@ class LLMWorker(QThread):
             current_sentence += tts_fragment
             final_text += display_fragment
             if display_fragment:
-                self.token_streamed.emit(display_fragment)
+                self.token_streamed.emit(self.session_id or "", display_fragment)
             if tts_fragment and any(p in tts_fragment for p in ".!?"):
                 clean = self.clean_text_for_tts(current_sentence)
                 if clean:
@@ -782,7 +782,7 @@ class LLMWorker(QThread):
                     tts_piece = meta_tts.feed(stripped)
                 _emit_filtered(disp, tts_piece)
             elif kind == "error":
-                self.token_streamed.emit(f"\n\n*({data})*")
+                self.token_streamed.emit(self.session_id or "", f"\n\n*({data})*")
                 err_txt = str(data or "")
                 if "native model not loaded" in err_txt.lower():
                     self.status_update.emit("Load a Model")

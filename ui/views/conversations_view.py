@@ -654,6 +654,8 @@ class ConversationsView(QWidget):
         self.llm = workers.get("llm")
         self.tts = workers.get("tts")
         self._pending_citation_sources = None
+        self._pending_stream_tokens_by_session: dict[str, str] = {}
+        self._pending_stream_sources_by_session: dict[str, list] = {}
         self._user_turn_id = 0
         self._stop_requested_callback = None
         self._llm_in_progress = False
@@ -1881,6 +1883,7 @@ class ConversationsView(QWidget):
             self.placeholder_lbl = QLabel("Empty conversation.")
             self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.transcript_layout.addWidget(self.placeholder_lbl)
+            self._flush_pending_stream_for_active_session()
             self._refresh_ancillary_transcript_labels()
             self._scroll_to_bottom()
             return
@@ -1894,6 +1897,9 @@ class ConversationsView(QWidget):
                     citation_sources=msg.get("sources"),
                 )
                 self._is_agent_typing = False
+
+        # Reconcile stream chunks received while this session was not visible.
+        self._flush_pending_stream_for_active_session()
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
@@ -2149,8 +2155,38 @@ class ConversationsView(QWidget):
         else:
             label._citation_sources = []
 
-    def on_sources_found(self, sources):
+    def _flush_pending_stream_for_active_session(self) -> None:
+        """Render stream chunks that arrived while this session was off-screen."""
+        sid = str(getattr(self, "active_session_id", "") or "")
+        if not sid:
+            return
+        buffered = str(self._pending_stream_tokens_by_session.pop(sid, "") or "")
+        if not buffered:
+            return
+        src = self._pending_stream_sources_by_session.pop(sid, None)
+        if src is not None:
+            self._pending_citation_sources = _snapshot_citation_sources(src)
+        self.log_agent_token(buffered)
+
+    def on_llm_token_streamed(self, session_id: str, token: str) -> None:
+        """Only render stream chunks for the currently active chat session."""
+        active = str(getattr(self, "active_session_id", "") or "")
+        sid = str(session_id or "")
+        if not active or sid != active:
+            if sid:
+                prev = self._pending_stream_tokens_by_session.get(sid, "")
+                self._pending_stream_tokens_by_session[sid] = prev + str(token or "")
+            return
+        self.log_agent_token(token)
+
+    def on_sources_found(self, session_id: str, sources):
         """Receive tool sources for inline citation links (no separate chip UI)."""
+        active = str(getattr(self, "active_session_id", "") or "")
+        sid = str(session_id or "")
+        if not active or sid != active:
+            if sid:
+                self._pending_stream_sources_by_session[sid] = _snapshot_citation_sources(sources)
+            return
         self._pending_citation_sources = _snapshot_citation_sources(sources)
         cur = getattr(self, "current_agent_msg", None)
         if cur is not None and getattr(cur, "_assistant_turn_id", None) == getattr(
@@ -2246,7 +2282,14 @@ class ConversationsView(QWidget):
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
 
-    def on_llm_response_finished(self) -> None:
+    def on_llm_response_finished(self, session_id: str) -> None:
+        sid = str(session_id or "")
+        if sid:
+            self._pending_stream_tokens_by_session.pop(sid, None)
+            self._pending_stream_sources_by_session.pop(sid, None)
+        active = str(getattr(self, "active_session_id", "") or "")
+        if not active or sid != active:
+            return
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))

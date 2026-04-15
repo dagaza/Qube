@@ -157,7 +157,7 @@ class Qube:
             )
 
         # Conversations View Routing
-        self.llm_worker.token_streamed.connect(w.conversations_view.log_agent_token)
+        self.llm_worker.token_streamed.connect(w.conversations_view.on_llm_token_streamed)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
@@ -194,7 +194,7 @@ class Qube:
             len(text or ""),
         )
         if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.on_llm_response_finished()
+            self.window.conversations_view.on_llm_response_finished(session_id)
         if hasattr(self, 'enrichment_worker'):
             self.enrichment_worker.enqueue(session_id)
         if hasattr(self, 'tts_worker'):
