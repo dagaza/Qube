@@ -1173,6 +1173,7 @@ class ConversationsView(QWidget):
         # --- THE FIX: Change 'title' to 'self.list_title' ---
         self.list_title = QLabel("Conversations")
         self.list_title.setObjectName("ViewTitle")
+        self.list_title.setProperty("class", "PageTitle")
         
         self.new_chat_btn = QPushButton()
         self.new_chat_btn.setIcon(qta.icon('fa5s.plus'))

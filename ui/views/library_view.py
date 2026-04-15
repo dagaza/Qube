@@ -163,6 +163,7 @@ class LibraryView(QWidget):
         header_layout = QHBoxLayout()
         self.list_title = QLabel("Library")
         self.list_title.setObjectName("ViewTitle")
+        self.list_title.setProperty("class", "PageTitle")
         
         self.add_btn = QPushButton()
         self.add_btn.setIcon(qta.icon('fa5s.plus')) 
@@ -187,7 +188,7 @@ class LibraryView(QWidget):
 
         # The Search Bar
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search filenames or indexed text…")
+        self.search_bar.setPlaceholderText("Search titles or indexed text…")
         self.search_bar.setObjectName("LibrarySearchBar")
         layout.addWidget(self.search_bar)
         self._library_search_timer = QTimer(self)

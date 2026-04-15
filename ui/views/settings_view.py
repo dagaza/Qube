@@ -94,6 +94,7 @@ class SettingsView(QWidget):
         # Title
         title = QLabel("System Settings")
         title.setObjectName("ViewTitle")
+        title.setProperty("class", "PageTitle")
         main_layout.addWidget(title)
 
         # Scrollable Area
@@ -306,10 +307,12 @@ class SettingsView(QWidget):
         local_btn_col = QVBoxLayout()
         local_btn_col.setSpacing(8)
         self.use_local_gguf_btn = QPushButton("Use selected")
+        self.use_local_gguf_btn.setProperty("class", "PrimaryActionButton BrandPrimaryButton")
         self.use_local_gguf_btn.setToolTip("Activate a downloaded .gguf for the native engine")
         self.use_local_gguf_btn.clicked.connect(self._apply_selected_local_gguf)
         local_btn_col.addWidget(self.use_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
         self.delete_local_gguf_btn = QPushButton("Delete")
+        self.delete_local_gguf_btn.setProperty("class", "PrimaryActionButton BrandDangerButton")
         self.delete_local_gguf_btn.setToolTip("Permanently delete the selected .gguf file from disk")
         self.delete_local_gguf_btn.clicked.connect(self._delete_selected_local_gguf)
         local_btn_col.addWidget(self.delete_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)

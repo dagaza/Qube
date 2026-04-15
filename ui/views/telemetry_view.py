@@ -74,6 +74,7 @@ class TelemetryView(QWidget):
         # Header
         title = QLabel("Advanced Telemetry")
         title.setObjectName("ViewTitle")
+        title.setProperty("class", "PageTitle")
         layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Main Dashboard Layout:

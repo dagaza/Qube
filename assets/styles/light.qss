@@ -67,10 +67,10 @@ QToolTip {
     color: #1e293b; /* Deep slate, almost black, but softer on the eyes */
 }
 
-#ViewTitle {
+#ViewTitle, QLabel[class~="PageTitle"] {
     font-size: 22px;
     font-weight: 800;
-    color: #0f172a;
+    color: #89b4fa;
 }
 
 .SidebarTitle, .ToolsPaneHeader, .SectionHeaderLabel {
@@ -120,12 +120,48 @@ QPushButton:hover { background-color: #f1f5f9; }
 QPushButton:pressed { background-color: #e2e8f0; }
 
 .PrimaryActionButton {
-    background-color: #0f172a; 
-    color: #ffffff; 
-    border: none;
+    background-color: #8b5cf6;
+    color: #8b5cf6;
+    border: 1px solid #8b5cf6;
     border-radius: 6px;
+    font-weight: 700;
 }
-.PrimaryActionButton:hover { background-color: #334155; }
+.PrimaryActionButton:hover { background-color: #7c3aed; border: 1px solid #7c3aed; }
+.PrimaryActionButton:disabled {
+    background-color: rgba(100, 116, 139, 0.22);
+    color: rgba(148, 163, 184, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* Reusable brand action variants for cross-screen button consistency. */
+QPushButton[class~="BrandPrimaryButton"] {
+    background-color: #8b5cf6;
+    color: #8b5cf6;
+    border: 1px solid #8b5cf6;
+}
+QPushButton[class~="BrandPrimaryButton"]:hover {
+    background-color: #7c3aed;
+    border: 1px solid #7c3aed;
+}
+QPushButton[class~="BrandSuccessButton"] {
+    background-color: #16a34a;
+    color: #f8fafc;
+    border: 1px solid #15803d;
+}
+QPushButton[class~="BrandSuccessButton"]:hover {
+    background-color: #15803d;
+    border: 1px solid #15803d;
+}
+QPushButton[class~="BrandDangerButton"] {
+    background-color: #dc2626;
+    color: #dc2626;
+    border: 1px solid #b91c1c;
+}
+QPushButton[class~="BrandDangerButton"]:hover {
+    background-color: #b91c1c;
+    color: #b91c1c;
+    border: 1px solid #b91c1c;
+}
 
 .WindowControlButton, .IconButton, .NavButton {
     background-color: transparent; border: none;

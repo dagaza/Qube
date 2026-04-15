@@ -50,3 +50,8 @@ tools/test_outputs/
 
 # --- Clinerules ---
 .clinerules
+
+# --- Logs ---
+logs/
+logs/**/*
+!logs/**/.gitkeep

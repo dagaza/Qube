@@ -8,7 +8,10 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_publisher_branding import HuggingFaceBrandingResolver
+
 logger = logging.getLogger("Qube.HFModelSearch")
+_BRANDING_RESOLVER = HuggingFaceBrandingResolver()
 
 
 def _model_id(m: Any) -> str:
@@ -33,11 +36,11 @@ class HfModelSearchWorker(QThread):
     finished_ok = pyqtSignal(list, int)  # models, request_seq
     failed = pyqtSignal(str, int)  # message, request_seq
 
-    def __init__(self, query: str, request_seq: int, limit: int = 40):
+    def __init__(self, query: str, request_seq: int, limit: int = 200):
         super().__init__()
         self._query = (query or "").strip()
         self._seq = int(request_seq)
-        self._limit = max(5, min(100, int(limit)))
+        self._limit = max(20, min(500, int(limit)))
 
     def run(self) -> None:
         try:
@@ -133,6 +136,13 @@ class HfModelSearchWorker(QThread):
                         "updated_at": updated_at,
                         "hf_pipeline_tag": str(getattr(m, "pipeline_tag", "") or ""),
                         "hf_tags": [str(t) for t in (getattr(m, "tags", None) or []) if str(t).strip()],
+                        "branding": _BRANDING_RESOLVER.resolve_for_model(
+                            rid,
+                            preloaded_model={
+                                "id": rid,
+                                "cardData": getattr(m, "card_data", None),
+                            },
+                        ),
                     }
                 )
                 if len(out) >= self._limit:

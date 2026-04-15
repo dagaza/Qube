@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 os.environ["QUBE_LLM_DEBUG"] = "1"
 
 from PyQt6 import QtCore
@@ -459,7 +460,14 @@ if __name__ == "__main__":
     )
 
     app = QubeApplication(sys.argv)
-    app.setWindowIcon(QIcon("assets/qube_logo_256.png"))
+    repo_root = Path(__file__).resolve().parent
+    window_icon_path = repo_root / "assets" / "logos" / "qube_logo_256.png"
+    if not window_icon_path.is_file():
+        window_icon_path = repo_root / "assets" / "icons" / "qube_logo_256.png"
+    if not window_icon_path.is_file():
+        window_icon_path = repo_root / "assets" / "qube_logo_256.png"
+    if window_icon_path.is_file():
+        app.setWindowIcon(QIcon(str(window_icon_path)))
     apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER
     font_files = [

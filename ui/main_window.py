@@ -95,8 +95,11 @@ class MainWindow(QMainWindow):
 
     def __init__(self, workers: dict, gpu_monitor, native_engine=None):
         super().__init__()
+        self._project_root = Path(__file__).resolve().parent.parent
         # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
-        self.setWindowIcon(QIcon("assets/qube_logo_256.png"))
+        logo_icon_path = self._resolve_logo_asset("qube_logo_256.png")
+        if logo_icon_path is not None:
+            self.setWindowIcon(QIcon(str(logo_icon_path)))
         self.setWindowTitle("Qube - Workspace")
         self.setMinimumSize(1200, 800)
         self.resize(1200, 800) 
@@ -136,6 +139,14 @@ class MainWindow(QMainWindow):
         # 🔑 4. Wire the AI Titling Logic
         # We wait until the UI is setup so we can access conversations_view
         self._setup_titling_connections()
+
+    def _resolve_logo_asset(self, name: str) -> Path | None:
+        """Resolve logo paths across new and legacy asset directories."""
+        for rel in (Path("assets/logos") / name, Path("assets/icons") / name, Path("assets") / name):
+            candidate = self._project_root / rel
+            if candidate.is_file():
+                return candidate
+        return None
 
     def _setup_titling_connections(self):
         """Wires the background AI to the Chat UI."""
@@ -316,7 +327,8 @@ class MainWindow(QMainWindow):
         self.app_logo = QLabel()
         from PyQt6.QtGui import QPixmap 
 
-        logo_img = QPixmap("assets/qube_logo_256.png") 
+        logo_path = self._resolve_logo_asset("qube_logo_256.png")
+        logo_img = QPixmap(str(logo_path)) if logo_path is not None else QPixmap()
         if not logo_img.isNull():
             self.app_logo.setPixmap(logo_img.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:

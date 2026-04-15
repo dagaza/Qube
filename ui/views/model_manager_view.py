@@ -9,7 +9,7 @@ from pathlib import Path
 logger = logging.getLogger("Qube.ModelManager")
 
 import qtawesome as qta
-from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument, QPainter, QIcon
+from PyQt6.QtGui import QColor, QFont, QPalette, QTextDocument, QPainter, QIcon, QDesktopServices
 from PyQt6.QtCore import QEvent, Qt, QThread, QSize, QTimer, QUrl, QRect, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
@@ -43,6 +43,7 @@ from core.app_settings import (
 )
 from core.gpu_layers_cap import detect_gpu_vram_bytes
 from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
+from core.hf_publisher_branding import HuggingFaceBrandingResolver
 from core.model_capability_service import ModelCapabilityService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
@@ -64,6 +65,8 @@ HUB_ROW_DESC_ROLE = int(Qt.ItemDataRole.UserRole) + 2
 HUB_ROW_CAPS_ROLE = int(Qt.ItemDataRole.UserRole) + 3
 HUB_ROW_UPDATED_ROLE = int(Qt.ItemDataRole.UserRole) + 4
 HUB_ROW_VERIFIED_ROLE = int(Qt.ItemDataRole.UserRole) + 5
+HUB_ROW_BRANDING_ROLE = int(Qt.ItemDataRole.UserRole) + 6
+HUB_SEARCH_PAGE_SIZE = 20
 
 
 def _model_manager_project_root() -> Path:
@@ -411,6 +414,7 @@ class ModelManagerView(QWidget):
         self._curated_meta_worker: HfModelMetaWorker | None = None
         self._curated_meta_queue: list[str] = []
         self._capability_service = ModelCapabilityService()
+        self._branding_resolver = HuggingFaceBrandingResolver()
         self._download_ui_cancel_mode = False
         self._download_ui_load_mode = False
         self._download_queue_paths: list[tuple[str, int | None]] = []
@@ -429,6 +433,8 @@ class ModelManagerView(QWidget):
         # drop the last reference while isRunning() or Qt aborts with "Destroyed while still running".
         self._retired_hf_threads: list[QThread] = []
         self._current_meta_capabilities: list[str] = []
+        self._search_models_cache: list[dict] = []
+        self._search_visible_count: int = 0
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
@@ -671,6 +677,7 @@ class ModelManagerView(QWidget):
 
         title = QLabel("Model Manager")
         title.setObjectName("ViewTitle")
+        title.setProperty("class", "PageTitle")
         left_l.addWidget(title)
         left_l.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE REPOSITORIES"))
 
@@ -700,6 +707,11 @@ class ModelManagerView(QWidget):
         self.hub_model_list.itemSelectionChanged.connect(self._update_hub_row_colors)
         left_l.addWidget(self.hub_model_list, stretch=1)
         self.hub_model_list.viewport().installEventFilter(self)
+        self.hub_load_more_btn = QPushButton("Load More")
+        self.hub_load_more_btn.setProperty("class", "PrimaryActionButton BrandPrimaryButton")
+        self.hub_load_more_btn.setVisible(False)
+        self.hub_load_more_btn.clicked.connect(self._load_more_hub_search_results)
+        left_l.addWidget(self.hub_load_more_btn)
 
         # Right: detail
         right = QWidget()
@@ -710,16 +722,43 @@ class ModelManagerView(QWidget):
         right_l.setContentsMargins(8, 75, 0, 40)
         right_l.setSpacing(10)
 
+        detail_header_row = QWidget(parent=right)
+        detail_header_l = QHBoxLayout(detail_header_row)
+        detail_header_l.setContentsMargins(0, 0, 0, 0)
+        detail_header_l.setSpacing(8)
         self.detail_title = QLabel("Select a model")
         self.detail_title.setWordWrap(True)
         f = self.detail_title.font()
         f.setBold(True)
         f.setPointSize(18)
         self.detail_title.setFont(f)
+        detail_header_l.addWidget(self.detail_title, stretch=1)
+        self.detail_source_btn = QPushButton()
+        self.detail_source_btn.setObjectName("ModelManagerSourceButton")
+        self.detail_source_btn.setProperty("class", "IconButton")
+        self.detail_source_btn.setToolTip("Open source repository on Hugging Face")
+        self.detail_source_btn.setIcon(qta.icon("fa5s.external-link-alt", color="#8b5cf6"))
+        self.detail_source_btn.setIconSize(QSize(14, 14))
+        self.detail_source_btn.setVisible(False)
+        self.detail_source_btn.clicked.connect(self._open_current_repo_source)
+        detail_header_l.addWidget(self.detail_source_btn, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.detail_subtitle = QLabel("", parent=right)
         self.detail_subtitle.setWordWrap(True)
         self.detail_subtitle.hide()
+        self.detail_branding_row = QWidget(parent=right)
+        detail_branding_l = QHBoxLayout(self.detail_branding_row)
+        detail_branding_l.setContentsMargins(0, 0, 0, 0)
+        detail_branding_l.setSpacing(6)
+        self.detail_brand_logo = QLabel(parent=self.detail_branding_row)
+        self.detail_brand_logo.setObjectName("ModelManagerDetailBrandLogo")
+        self.detail_brand_logo.setFixedSize(16, 16)
+        self.detail_brand_text = QLabel("", parent=self.detail_branding_row)
+        self.detail_brand_text.setObjectName("ModelManagerDetailBrandText")
+        detail_branding_l.addWidget(self.detail_brand_logo, stretch=0)
+        detail_branding_l.addWidget(self.detail_brand_text, stretch=0)
+        detail_branding_l.addStretch(1)
+        self.detail_branding_row.hide()
 
         # Metadata panel (chip-heavy layout; actual colors come from QSS semantic classes).
         self.meta_panel = QFrame(parent=right)
@@ -849,7 +888,7 @@ class ModelManagerView(QWidget):
         files_row.addWidget(self.hf_file_combo, stretch=1)
         self.download_btn = QPushButton("Download")
         self.download_btn.setProperty("class", "PrimaryActionButton")
-        self.download_btn.setIcon(qta.icon("fa5s.download", color="#89b4fa"))
+        self.download_btn.setIcon(qta.icon("fa5s.download", color="#8b5cf6"))
         self.download_btn.clicked.connect(self._start_download)
 
         self.download_status = QLabel("")
@@ -882,7 +921,8 @@ class ModelManagerView(QWidget):
         dl_card_l.addWidget(self.download_status)
         dl_card_l.addWidget(self.download_progress)
 
-        right_l.addWidget(self.detail_title)
+        right_l.addWidget(detail_header_row)
+        right_l.addWidget(self.detail_branding_row)
         right_l.addWidget(self.meta_panel)
         right_l.addWidget(self.download_options_card)
         right_l.addWidget(self.readme_browser, stretch=1)
@@ -1244,38 +1284,18 @@ class ModelManagerView(QWidget):
         self.download_btn.clicked.connect(self._load_selected_model)
 
     def _apply_download_action_button_style(self, mode: str) -> None:
-        """Theme-safe button colors for Download/Load actions."""
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        """Apply reusable brand action classes (theme stylesheet-owned)."""
         if mode == "load":
-            if is_dark:
-                bg, fg, border, hover_bg = ("#16a34a", "#f8fafc", "#15803d", "#15803d")
-            else:
-                bg, fg, border, hover_bg = ("#16a34a", "#f8fafc", "#15803d", "#15803d")
+            cls = "PrimaryActionButton BrandSuccessButton"
+        elif mode == "cancel":
+            cls = "PrimaryActionButton BrandDangerButton"
         else:
-            if is_dark:
-                bg, fg, border, hover_bg = ("#8b5cf6", "#f8fafc", "#8b5cf6", "#7c3aed")
-            else:
-                bg, fg, border, hover_bg = ("#1e293b", "#f8fafc", "#1e293b", "#0f172a")
-        self.download_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                background-color: {bg};
-                color: {fg};
-                border: 1px solid {border};
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-weight: 700;
-            }}
-            QPushButton:hover {{
-                background-color: {hover_bg};
-            }}
-            QPushButton:disabled {{
-                background-color: rgba(100, 116, 139, 0.22);
-                color: rgba(148, 163, 184, 0.85);
-                border: 1px solid rgba(148, 163, 184, 0.35);
-            }}
-            """
-        )
+            cls = "PrimaryActionButton BrandPrimaryButton"
+        self.download_btn.setStyleSheet("")
+        self.download_btn.setProperty("class", cls)
+        self.download_btn.style().unpolish(self.download_btn)
+        self.download_btn.style().polish(self.download_btn)
+        self.download_btn.update()
 
     def _sync_download_action_state(self) -> None:
         if getattr(self, "_download_ui_cancel_mode", False):
@@ -1506,6 +1526,7 @@ class ModelManagerView(QWidget):
         capabilities: list[str] | None = None,
         updated_at: str = "",
         verified: bool = False,
+        branding: dict | None = None,
     ) -> None:
         """One Hub row as a dense card with avatar, chips, and metadata."""
         item = QListWidgetItem()
@@ -1515,6 +1536,7 @@ class ModelManagerView(QWidget):
         item.setData(HUB_ROW_CAPS_ROLE, list(capabilities or []))
         item.setData(HUB_ROW_UPDATED_ROLE, updated_at or "")
         item.setData(HUB_ROW_VERIFIED_ROLE, bool(verified))
+        item.setData(HUB_ROW_BRANDING_ROLE, dict(branding or {}))
 
         row = QWidget()
         row.setObjectName("HistoryRowWidget")
@@ -1526,10 +1548,21 @@ class ModelManagerView(QWidget):
         avatar = QLabel()
         avatar.setObjectName("HubModelRowAvatar")
         avatar.setFixedSize(24, 24)
-        logo_path = _model_manager_project_root() / "assets" / "icons" / "hf-logo.svg"
+        root = _model_manager_project_root()
+        branding_data = dict(branding or {})
+        publisher_name = str(branding_data.get("name", "") or "").strip()
+        branding_logo = str(branding_data.get("logo", "") or "").strip()
+        logo_path = self._resolve_hub_brand_logo(branding_logo)
+        is_official = bool(branding_data.get("official", False))
+        if logo_path is None:
+            logo_path = root / "assets" / "logos" / "hf-logo.svg"
+            if not logo_path.is_file():
+                logo_path = root / "assets" / "icons" / "hf-logo.svg"
         if logo_path.is_file():
             avatar.setPixmap(QIcon(str(logo_path)).pixmap(QSize(22, 22)))
-        base_l.addWidget(avatar, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
+        if is_official and publisher_name:
+            avatar.setToolTip(f"Official model by {publisher_name}")
+        base_l.addWidget(avatar, stretch=0, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         right_col = QWidget()
         right_l = QVBoxLayout(right_col)
@@ -1541,10 +1574,17 @@ class ModelManagerView(QWidget):
         top_l.setContentsMargins(0, 0, 0, 0)
         top_l.setSpacing(6)
 
+        branding_data = dict(branding or {})
+        publisher_name = str(branding_data.get("name", "") or "").strip()
+        branding_logo = str(branding_data.get("logo", "") or "").strip()
+        logo_path = self._resolve_hub_brand_logo(branding_logo)
+        is_official = bool(branding_data.get("official", False))
         title_lbl = QLabel(str(title or repo_id))
         title_lbl.setObjectName("HubModelRowTitle")
         title_lbl.setProperty("class", "ModelCardTitle")
         title_lbl.setWordWrap(False)
+        if logo_path is not None and publisher_name:
+            title_lbl.setToolTip(f"Official model by {publisher_name}")
         top_l.addWidget(title_lbl, stretch=0)
 
         verified_lbl = QLabel()
@@ -1552,6 +1592,17 @@ class ModelManagerView(QWidget):
         verified_lbl.setPixmap(qta.icon("fa5s.award", color="#8b5cf6").pixmap(QSize(12, 12)))
         verified_lbl.setVisible(bool(verified))
         top_l.addWidget(verified_lbl, stretch=0)
+
+        if logo_path is not None and is_official:
+            official_lbl = QLabel("Official")
+            official_lbl.setObjectName("HubModelRowOfficialBadge")
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            badge_fg = "#cdd6f4" if is_dark else "#1e3a8a"
+            official_lbl.setStyleSheet(
+                f"QLabel {{ color: {badge_fg}; font-size: 10px; font-weight: 700; background: transparent; }}"
+            )
+            official_lbl.setToolTip(f"Official model by {publisher_name}" if publisher_name else "Official model")
+            top_l.addWidget(official_lbl, stretch=0)
 
         top_l.addStretch(1)
 
@@ -1587,6 +1638,43 @@ class ModelManagerView(QWidget):
         self.hub_model_list.addItem(item)
         self.hub_model_list.setItemWidget(item, row)
         self._apply_hub_row_size_hint(item, row)
+
+    def _resolve_hub_brand_logo(self, logo_url: str) -> Path | None:
+        """Resolve branding logo URL (e.g. /assets/logos/foo.svg) to project-local path."""
+        logo = str(logo_url or "").strip()
+        if not logo:
+            return None
+        rel = logo.lstrip("/")
+        root = _model_manager_project_root()
+        p = root / rel
+        return p if p.is_file() else None
+
+    def _apply_detail_branding(self, branding: dict | None) -> None:
+        if not hasattr(self, "detail_branding_row"):
+            return
+        data = dict(branding or {})
+        publisher_name = str(data.get("name", "") or "").strip()
+        logo_url = str(data.get("logo", "") or "").strip()
+        is_official = bool(data.get("official", False))
+        logo_path = self._resolve_hub_brand_logo(logo_url)
+        if not (publisher_name and is_official and logo_path is not None):
+            self.detail_branding_row.hide()
+            self.detail_brand_logo.clear()
+            self.detail_brand_text.setText("")
+            self.detail_brand_text.setToolTip("")
+            self.detail_brand_logo.setToolTip("")
+            return
+        self.detail_brand_logo.setPixmap(QIcon(str(logo_path)).pixmap(QSize(16, 16)))
+        text = f"Official model by {publisher_name}"
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        fg = "#cdd6f4" if is_dark else "#1e3a8a"
+        self.detail_brand_text.setText(text)
+        self.detail_brand_text.setStyleSheet(
+            f"color: {fg}; font-size: 12px; font-weight: 600; background: transparent;"
+        )
+        self.detail_brand_logo.setToolTip(text)
+        self.detail_brand_text.setToolTip(text)
+        self.detail_branding_row.show()
 
     def _populate_hub_capability_chips(self, caps_wrap: QWidget, capabilities: list[str]) -> None:
         lay = caps_wrap.layout()
@@ -1675,6 +1763,7 @@ class ModelManagerView(QWidget):
     def refresh_button_themes(self, is_dark: bool) -> None:
         """Icon accents for Hub actions — same pattern as LibraryView.refresh_button_themes."""
         filled_icon_color = "#f8fafc"
+        brand_icon_color = "#8b5cf6"
         if not hasattr(self, "download_btn"):
             return
         if getattr(self, "_download_ui_cancel_mode", False):
@@ -1683,7 +1772,7 @@ class ModelManagerView(QWidget):
             self.download_btn.setIcon(qta.icon("fa5s.play", color=filled_icon_color))
             self._apply_download_action_button_style(mode="load")
             return
-        self.download_btn.setIcon(qta.icon("fa5s.download", color=filled_icon_color))
+        self.download_btn.setIcon(qta.icon("fa5s.download", color=brand_icon_color))
         self._apply_download_action_button_style(mode="download")
 
     def _set_system_match_style(self, state: str) -> None:
@@ -1700,17 +1789,30 @@ class ModelManagerView(QWidget):
                 f"background: transparent; border: none; padding: 0px; color: {color}; font-size: 12px; font-weight: 600;"
             )
 
+    def _open_current_repo_source(self) -> None:
+        repo = str(getattr(self, "_current_repo_id", "") or "").strip()
+        if not repo:
+            return
+        url = QUrl(f"https://huggingface.co/{repo}")
+        if url.isValid():
+            QDesktopServices.openUrl(url)
+
     def _schedule_hub_search(self, _text: str = "") -> None:
         self._search_timer.stop()
         self._search_timer.start(500)
 
     def _populate_editors_picks(self) -> None:
+        self._search_models_cache = []
+        self._search_visible_count = 0
+        if hasattr(self, "hub_load_more_btn"):
+            self.hub_load_more_btn.setVisible(False)
         self.hub_model_list.blockSignals(True)
         self.hub_model_list.clear()
         for entry in QUBE_VERIFIED_MODELS:
             rid = str(entry["repo_id"])
             title = str(entry["title"])
             description = rid
+            branding = self._branding_resolver.resolve_for_model(rid, preloaded_model={"id": rid})
             resolved_caps = self._resolve_row_capabilities(
                 repo_id=rid,
                 title=title,
@@ -1723,6 +1825,7 @@ class ModelManagerView(QWidget):
                 capabilities=resolved_caps,
                 updated_at="",
                 verified=True,
+                branding=branding,
             )
         self.hub_model_list.blockSignals(False)
         self.hub_list_hint.setText("Qube Verified — curated GGUF models")
@@ -1811,53 +1914,102 @@ class ModelManagerView(QWidget):
 
         self._search_seq += 1
         seq = self._search_seq
+        self._search_models_cache = []
+        self._search_visible_count = 0
         self.hub_list_hint.setText("Searching Hugging Face (GGUF-tagged models)…")
+        if hasattr(self, "hub_load_more_btn"):
+            self.hub_load_more_btn.setVisible(False)
 
         self._retire_hf_thread(self._search_worker)
-        self._search_worker = HfModelSearchWorker(q, seq)
+        self._search_worker = HfModelSearchWorker(q, seq, limit=200)
         self._search_worker.finished_ok.connect(self._apply_hub_search_results)
         self._search_worker.failed.connect(self._on_hub_search_failed)
         self._search_worker.start()
 
-    def _apply_hub_search_results(self, models: list, seq: int) -> None:
-        if seq != self._search_seq:
+    def _append_hub_search_result_row(self, m: dict) -> None:
+        rid = m.get("repo_id", "")
+        title = m.get("title", rid)
+        if not rid:
             return
+        description = str(m.get("description", "") or rid)
+        resolved_caps = self._resolve_row_capabilities(
+            repo_id=str(rid),
+            title=str(title),
+            description=description,
+            hf_pipeline_tag=str(m.get("hf_pipeline_tag", "") or ""),
+            hf_tags=[str(t) for t in list(m.get("hf_tags") or []) if str(t).strip()],
+            fallback_caps=list(m.get("capabilities") or []),
+        )
+        self._append_hub_model_row(
+            title,
+            rid,
+            description=description,
+            capabilities=resolved_caps,
+            updated_at=str(m.get("updated_at", "") or ""),
+            verified=False,
+            branding=dict(m.get("branding") or {}),
+        )
+
+    def _render_hub_search_page(self) -> None:
+        total = len(self._search_models_cache)
+        visible = max(0, min(self._search_visible_count, total))
+        prev_repo = ""
+        cur = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
+        if cur is not None:
+            prev_repo = str(cur.data(HUB_ROW_REPO_ROLE) or "")
         self.hub_model_list.blockSignals(True)
         self.hub_model_list.clear()
-        for m in models:
-            rid = m.get("repo_id", "")
-            title = m.get("title", rid)
-            if not rid:
-                continue
-            description = str(m.get("description", "") or rid)
-            resolved_caps = self._resolve_row_capabilities(
-                repo_id=str(rid),
-                title=str(title),
-                description=description,
-                hf_pipeline_tag=str(m.get("hf_pipeline_tag", "") or ""),
-                hf_tags=[str(t) for t in list(m.get("hf_tags") or []) if str(t).strip()],
-                fallback_caps=list(m.get("capabilities") or []),
-            )
-            self._append_hub_model_row(
-                title,
-                rid,
-                description=description,
-                capabilities=resolved_caps,
-                updated_at=str(m.get("updated_at", "") or ""),
-                verified=False,
-            )
+        for m in self._search_models_cache[:visible]:
+            self._append_hub_search_result_row(m)
         self.hub_model_list.blockSignals(False)
         self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
         self._update_hub_row_colors()
-        n = self.hub_model_list.count()
-        self.hub_list_hint.setText(
-            f"{n} GGUF-related model(s) — refine your search if needed."
-        )
+        if total == 0:
+            self.hub_list_hint.setText("No GGUF-related models found for this query.")
+        elif visible < total:
+            self.hub_list_hint.setText(
+                f"Showing {visible} of {total} GGUF-related model(s). Click Load More to view more results."
+            )
+        else:
+            self.hub_list_hint.setText(f"Showing all {total} GGUF-related model(s).")
+        if hasattr(self, "hub_load_more_btn"):
+            self.hub_load_more_btn.setVisible(visible < total)
+        if self.hub_model_list.count() > 0:
+            restored = False
+            if prev_repo:
+                for i in range(self.hub_model_list.count()):
+                    it = self.hub_model_list.item(i)
+                    if str(it.data(HUB_ROW_REPO_ROLE) or "") == prev_repo:
+                        self.hub_model_list.setCurrentRow(i)
+                        restored = True
+                        break
+            if not restored:
+                self.hub_model_list.setCurrentRow(0)
         QTimer.singleShot(0, self._refresh_hub_row_heights)
+
+    def _load_more_hub_search_results(self) -> None:
+        total = len(self._search_models_cache)
+        if total <= 0:
+            if hasattr(self, "hub_load_more_btn"):
+                self.hub_load_more_btn.setVisible(False)
+            return
+        self._search_visible_count = min(total, self._search_visible_count + HUB_SEARCH_PAGE_SIZE)
+        self._render_hub_search_page()
+
+    def _apply_hub_search_results(self, models: list, seq: int) -> None:
+        if seq != self._search_seq:
+            return
+        self._search_models_cache = list(models or [])
+        self._search_visible_count = min(HUB_SEARCH_PAGE_SIZE, len(self._search_models_cache))
+        self._render_hub_search_page()
 
     def _on_hub_search_failed(self, msg: str, seq: int) -> None:
         if seq != self._search_seq:
             return
+        self._search_models_cache = []
+        self._search_visible_count = 0
+        if hasattr(self, "hub_load_more_btn"):
+            self.hub_load_more_btn.setVisible(False)
         self.hub_list_hint.setText("Search failed — try different keywords.")
         self._show_error("Hub search failed", msg)
 
@@ -1876,6 +2028,9 @@ class ModelManagerView(QWidget):
         self._current_repo_id = str(repo)
         self.detail_title.setText(str(title))
         self.detail_subtitle.setText(str(repo))
+        if hasattr(self, "detail_source_btn"):
+            self.detail_source_btn.setVisible(True)
+        self._apply_detail_branding(dict(current.data(HUB_ROW_BRANDING_ROLE) or {}))
         self.readme_browser.clear()
         self.readme_browser.setPlainText("Loading README…")
         self._last_readme_markdown = None
@@ -1928,6 +2083,9 @@ class ModelManagerView(QWidget):
         self._last_readme_markdown = None
         self.detail_title.setText("Select a model")
         self.detail_subtitle.setText("")
+        if hasattr(self, "detail_source_btn"):
+            self.detail_source_btn.setVisible(False)
+        self._apply_detail_branding(None)
         self.readme_browser.clear()
         self.hf_file_combo.blockSignals(True)
         self.hf_file_combo.clear()
@@ -2261,19 +2419,7 @@ class ModelManagerView(QWidget):
         if cancel_mode:
             self.download_btn.setText("Cancel")
             self.download_btn.setIcon(qta.icon("fa5s.times", color="#fef2f2"))
-            self.download_btn.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #dc2626;
-                    border: 1px solid #b91c1c;
-                    color: #fef2f2;
-                    font-weight: bold;
-                    border-radius: 6px;
-                    padding: 8px 12px;
-                }
-                QPushButton:hover { background-color: #b91c1c; }
-                """
-            )
+            self._apply_download_action_button_style(mode="cancel")
             self.download_btn.clicked.connect(self._cancel_download)
         else:
             self._set_download_button_download_mode()
@@ -2459,5 +2605,7 @@ class ModelManagerView(QWidget):
                 )
         self._update_hub_row_colors()
         self._refresh_hub_row_heights()
+        current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
+        self._apply_detail_branding(dict(current.data(HUB_ROW_BRANDING_ROLE) or {}) if current else None)
         if self._last_readme_markdown:
             self._render_readme_with_fallback(is_dark)
