@@ -428,6 +428,7 @@ class ModelManagerView(QWidget):
         # Strong refs to QThread instances that are still running after we replace them — never
         # drop the last reference while isRunning() or Qt aborts with "Destroyed while still running".
         self._retired_hf_threads: list[QThread] = []
+        self._current_meta_capabilities: list[str] = []
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
@@ -968,6 +969,9 @@ class ModelManagerView(QWidget):
             chip.style().unpolish(chip)
             chip.style().polish(chip)
             chip.update()
+        # Capability chips are built dynamically with widget-local styles, so rebuild
+        # them on theme refresh instead of relying on app-level QSS to override them.
+        self._render_capability_chips(list(getattr(self, "_current_meta_capabilities", [])))
         hint_color = "#6c7086" if is_dark else "#64748b"
         self.meta_hint_lbl.setStyleSheet(
             f"color: {hint_color}; font-size: 11px; font-weight: 500; background: transparent;"
@@ -1007,26 +1011,28 @@ class ModelManagerView(QWidget):
     def _render_capability_chips(self, caps: list[str]) -> None:
         if not hasattr(self, "meta_caps_wrap_l"):
             return
-        # Palette-driven foreground keeps chip text legible across theme toggles.
-        chip_fg = self.palette().color(QPalette.ColorRole.Text).name()
+        self._current_meta_capabilities = [str(cap).strip() for cap in (caps or []) if str(cap).strip()]
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        # Keep capability chips aligned with metadata chip language in each theme.
+        chip_fg = "#cdd6f4" if is_dark else "#1e3a8a"
         icon_color = chip_fg
-        chip_border = "#8b5cf6"
+        chip_border = "#8b5cf6" if is_dark else "#93c5fd"
         while self.meta_caps_wrap_l.count():
             it = self.meta_caps_wrap_l.takeAt(0)
             w = it.widget()
             if w is not None:
                 w.deleteLater()
-        if not caps:
+        if not self._current_meta_capabilities:
             empty_chip = QLabel("Unknown")
             empty_chip.setProperty("class", "Chip muted")
             self.meta_caps_wrap_l.addWidget(empty_chip)
             return
-        for cap in caps:
+        for cap in self._current_meta_capabilities:
             chip = QFrame()
             chip.setProperty("class", "Chip capability")
             chip.setStyleSheet(
                 f"QFrame {{ border: 1px solid {chip_border}; border-radius: 10px; background: transparent; }}"
-                f"QLabel {{ color: {chip_fg}; background: transparent; border: none; }}"
+                f"QLabel[class='ChipLabel'], QLabel[class='ChipIcon'] {{ color: {chip_fg}; background: transparent; border: none; }}"
             )
             chip_l = QHBoxLayout(chip)
             chip_l.setContentsMargins(8, 3, 8, 3)

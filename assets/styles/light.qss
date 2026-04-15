@@ -409,6 +409,12 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
     border: 1px solid #93c5fd;
 }
 
+/* Model Manager metadata capabilities: keep label text accent-blue in light mode. */
+#ModelManagerMetaCard QFrame[class~="capability"] QLabel[class="ChipLabel"],
+#ModelManagerMetaCard QFrame[class~="capability"] QLabel[class="ChipIcon"] {
+    color: #1e3a8a;
+}
+
 /* --- 9. STATUS BUBBLE --- */
 #StatusBubble {
     font-weight: bold; 
