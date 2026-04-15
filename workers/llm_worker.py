@@ -118,6 +118,21 @@ class LLMWorker(QThread):
     def _uses_external_http(self) -> bool:
         return getattr(self, "engine_mode", "external") != "internal"
 
+    def _is_internal_nvidia_family(self) -> bool:
+        """Best-effort detection for Nemotron/NVIDIA models loaded in native engine."""
+        if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
+            return False
+        try:
+            snap = self._native_engine.get_model_reasoning_telemetry() or {}
+            if not bool(snap.get("loaded")):
+                return False
+            name = str(snap.get("model_name", "") or "")
+            base = str(snap.get("model_basename", "") or "")
+            ident = f"{name} {base}".lower()
+            return ("nemotron" in ident) or ("nvidia" in ident)
+        except Exception:
+            return False
+
     def _flush_server_kv_hint(self) -> None:
         """
         Tiny non-streaming completion so llama.cpp/LM Studio advance/rotate prompt cache
@@ -565,15 +580,23 @@ class LLMWorker(QThread):
 
         # Native llama.cpp path: behavioral alignment (LM Studio often adds server-side polish).
         if getattr(self, "engine_mode", "external") == "internal":
-            system_prompt += (
-                " Respond directly with the final answer, starting immediately with the answer content. "
-                "Do not include any preamble, planning, or meta commentary. "
-                "Do not restate or analyze the user's request. "
-                "Do not include phrases such as \"Provide an answer\", \"We need to\", \"We should\", "
-                "\"Step 1\", or similar instructional language. "
-                "Perform any reasoning internally and only output the final result. "
-                "Keep the response natural, concise, and focused."
-            )
+            if self._is_internal_nvidia_family():
+                system_prompt += (
+                    " Respond directly with the final answer and avoid meta preambles. "
+                    "Perform any reasoning internally and do not expose chain-of-thought. "
+                    "Prioritize clarity and completeness. "
+                    "Use short answers for simple questions, but give fuller explanations when the user asks to explain, compare, or summarize."
+                )
+            else:
+                system_prompt += (
+                    " Respond directly with the final answer, starting immediately with the answer content. "
+                    "Do not include any preamble, planning, or meta commentary. "
+                    "Do not restate or analyze the user's request. "
+                    "Do not include phrases such as \"Provide an answer\", \"We need to\", \"We should\", "
+                    "\"Step 1\", or similar instructional language. "
+                    "Perform any reasoning internally and only output the final result. "
+                    "Keep the response natural, concise, and focused."
+                )
 
         messages = [{"role": "system", "content": system_prompt}] + history
 
@@ -664,7 +687,8 @@ class LLMWorker(QThread):
                             if any(p in delta for p in ".!?"):
                                 clean = self.clean_text_for_tts(current_sentence)
                                 if clean:
-                                    self.sentence_ready.emit(clean, self.session_id)
+                                    if not bool(getattr(self, "_cancel_requested", False)):
+                                        self.sentence_ready.emit(clean, self.session_id)
                                 current_sentence = ""
 
                     except json.JSONDecodeError:
@@ -673,7 +697,8 @@ class LLMWorker(QThread):
             if current_sentence.strip():
                 clean = self.clean_text_for_tts(current_sentence)
                 if clean:
-                    self.sentence_ready.emit(clean, self.session_id)
+                    if not bool(getattr(self, "_cancel_requested", False)):
+                        self.sentence_ready.emit(clean, self.session_id)
 
             if self.session_id and final_text.strip():
                 src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
@@ -744,7 +769,8 @@ class LLMWorker(QThread):
             if tts_fragment and any(p in tts_fragment for p in ".!?"):
                 clean = self.clean_text_for_tts(current_sentence)
                 if clean:
-                    self.sentence_ready.emit(clean, self.session_id)
+                    if not bool(getattr(self, "_cancel_requested", False)):
+                        self.sentence_ready.emit(clean, self.session_id)
                 current_sentence = ""
 
         def _flush_tail() -> None:
@@ -800,7 +826,8 @@ class LLMWorker(QThread):
         if current_sentence.strip():
             clean = self.clean_text_for_tts(current_sentence)
             if clean:
-                self.sentence_ready.emit(clean, self.session_id)
+                if not bool(getattr(self, "_cancel_requested", False)):
+                    self.sentence_ready.emit(clean, self.session_id)
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None

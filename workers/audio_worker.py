@@ -147,7 +147,7 @@ class AudioListenerWorker(QThread):
         # 🔑 THE TEMPORAL GATE SETUP
         # This ignores the first X seconds of audio to let speakers go silent.
         gate_start_time = time.time()
-        DELAY_BUFFER = 0.65  # Adjust to 1.0 if you still hear "phantom" syllables
+        DELAY_BUFFER = 0.50  # Adjust to 1.0 if you still hear "phantom" syllables
         
         # 🔑 THE ECHO FLUSH: Instantly throw away the mic's hardware buffer!
         try:

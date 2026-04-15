@@ -2,7 +2,7 @@
 
 **Canonical rules and long-form directives:** `.clinerules` (source of truth).
 
-**Domain rules (Cursor `.mdc`):** `.cursor/rules/*.mdc` — `native_engine.mdc` (dual-engine inference, execution policy, prompt template router, template_override + model_override_store self-heal, reasoning detection, debug stack), `tools-diagnostics.mdc` (CLI: `run_ablation`, `view_llm_logs`, `llm_prompt_diff`; ablation may persist `~/.qube/model_overrides.json`), `ui-rules.mdc` (Think toggle / telemetry polling + service-backed Model Manager capability chips + tooltip reliability contract), `audio-workers.mdc` (routing, prompting, TTS/interrupt safety), `model_manager.mdc` (Hub browsing/download flow + worker/thread rules + isolated capability detection/cache pipeline + official publisher branding), `rag-engine.mdc` (RAG + memory + router constraints).
+**Domain rules (Cursor `.mdc`):** `.cursor/rules/*.mdc` — `native_engine.mdc` (dual-engine inference, execution policy, prompt template router, template_override + model_override_store self-heal, reasoning detection, debug stack, NVIDIA/Nemotron auto ChatML preference in Auto mode, and NVIDIA-specific internal prompt policy), `tools-diagnostics.mdc` (CLI: `run_ablation`, `view_llm_logs`, `llm_prompt_diff`; ablation may persist `~/.qube/model_overrides.json`), `ui-rules.mdc` (Think toggle / telemetry polling + service-backed Model Manager capability chips + tooltip reliability contract), `audio-workers.mdc` (routing, prompting, TTS/interrupt safety), `model_manager.mdc` (Hub browsing/download flow + worker/thread rules + isolated capability detection/cache pipeline + official publisher branding), `rag-engine.mdc` (RAG + memory + router constraints).
 
 **Model Manager styling note (critical):** For right-panel card background parity (metadata/download/README) use objectName-scoped styles in `ModelManagerView._apply_hub_list_surface(...)` and set `QTextBrowser` + viewport palette together; generic class/global QSS may override expected surfaces.
 
@@ -57,7 +57,7 @@ Qube/
 │   ├── hf_publisher_branding.py # Trusted HF publisher allowlist + derivative/verification gating + cached model/org metadata resolver for official logos in Model Manager.
 │   ├── model_override_store.py # Phase 5: ~/.qube/model_overrides.json — LearnedOverride load/save; build_prompt_bundle merges extra_stop_tokens + assistant anchor; [LLM-SELF-HEAL-APPLY].
 │   ├── model_reasoning_profile.py # detect_model_reasoning_profile: tokenizer scan (first hit) + chat_template + metadata_template weak hints + name/path; _llama_cpp_model; ModelReasoningProfile + ExecutionMode; metadata only — no prompt/sampling changes.
-│   ├── native_llama_chat.py # OpenAI-style message normalization + GGUF chat_template / chat_format alignment for native create_chat_completion.
+│   ├── native_llama_chat.py # OpenAI-style message normalization + chat_format alignment for native create_chat_completion; in Auto mode, prefers ChatML for NVIDIA/Nemotron when available, otherwise keeps GGUF Jinja fallback.
 │   ├── native_llama_inference.py # Extra stop strings + kwargs for native create_chat_completion (merged with formatter stops; LM Studio–style guards).
 │   ├── native_llm_debug.py # QUBE_LLM_DEBUG: reconstructed prompt logging, stop merge helpers, EOS/BOS, inference request JSON logs (LM Studio parity tooling).
 │   ├── native_meta_leading_strip.py # Native streaming path: optional strip of brief meta-instruction openers at start of assistant text (conservative).
@@ -77,7 +77,7 @@ Qube/
 ├── workers/                # Background Event Loops (QThreads)
 │   ├── audio_worker.py     # Captures audio, runs OpenWakeWord.
 │   ├── stt_worker.py       # Runs Faster-Whisper on audio byte chunks.
-│   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal native path uses NativeLlamaEngine.get_execution_policy() for thinking strip/display (policy-driven stream filters).
+│   ├── llm_worker.py       # Streams LLM tokens, RAG cascade; internal native path uses NativeLlamaEngine.get_execution_policy() for thinking strip/display (policy-driven stream filters) and applies a NVIDIA/Nemotron-specific internal prompt policy tuned for completeness without exposing reasoning.
 │   ├── native_llama_engine.py # QThread: Llama load/unload/generate; load-time behavior ablation (skipped if get_override has persisted self-heal) + model_behavior overrides; coalesces queued rapid load bursts so latest pending model wins; build_prompt_bundle in _prepare_validation_and_logs; detect_model_reasoning_profile; get_execution_policy(); [LLM-DEBUG] reasoning_profile + execution_policy + llm_model_behavior_profile; post-inference: token trace → causality → counterfactual (env-gated).
 │   ├── hf_model_search_worker.py # Background Hugging Face Hub model search (GGUF-oriented filtering) for the Model Manager browse list; returns branding payloads and supports paged UI consumption.
 │   ├── hf_readme_worker.py # Fetches repository README markdown from Hugging Face for the Model Manager detail pane.

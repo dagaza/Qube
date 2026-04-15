@@ -5,7 +5,9 @@ and aligning chat_format with GGUF tokenizer metadata (parity with LM Studio / s
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
+from core.app_settings import get_internal_native_chat_format
 
 logger = logging.getLogger("Qube.NativeLlamaChat")
 
@@ -70,6 +72,20 @@ def _stringify_message_content(raw: Any) -> str:
     return str(raw)
 
 
+def _model_identity_text(llama: Any) -> str:
+    md = getattr(llama, "metadata", None) or {}
+    names: list[str] = []
+    if isinstance(md, dict):
+        for k in ("general.name", "general.basename", "name"):
+            v = md.get(k)
+            if isinstance(v, str) and v.strip():
+                names.append(v.strip())
+    mp = getattr(llama, "model_path", None)
+    if isinstance(mp, str) and mp:
+        names.append(os.path.basename(mp))
+    return " ".join(names).lower()
+
+
 def prefer_gguf_jinja_chat_format(llama: Any) -> None:
     """
     If llama-cpp-python fell back to \"llama-2\" but the GGUF embeds tokenizer.chat_template,
@@ -78,9 +94,25 @@ def prefer_gguf_jinja_chat_format(llama: Any) -> None:
     Mutates llama.chat_format in place when safe.
     """
     try:
+        # Respect explicit user choice. Auto mode is where model-aware coercion is allowed.
+        if get_internal_native_chat_format() != "auto":
+            return
         fmt = getattr(llama, "chat_format", None)
         md = getattr(llama, "metadata", None) or {}
         handlers = getattr(llama, "_chat_handlers", None) or {}
+        ident = _model_identity_text(llama)
+        is_nvidia_family = ("nemotron" in ident) or ("nvidia" in ident)
+        if (
+            is_nvidia_family
+            and fmt == "llama-2"
+            and "chatml" in handlers
+        ):
+            llama.chat_format = "chatml"
+            logger.info(
+                "[Native] chat_format adjusted: llama-2 -> chatml "
+                "(NVIDIA/Nemotron auto-detect)"
+            )
+            return
         if (
             fmt == "llama-2"
             and "tokenizer.chat_template" in md
