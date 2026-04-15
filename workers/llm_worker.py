@@ -16,6 +16,7 @@ from core.app_settings import (
     get_internal_model_path,
     get_internal_n_gpu_layers,
     get_internal_n_threads,
+    resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
 )
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
@@ -888,7 +889,7 @@ class LLMWorker(QThread):
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
         if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
             return
-        path = get_internal_model_path()
+        path = resolve_internal_model_path(get_internal_model_path())
         n_gpu = get_internal_n_gpu_layers()
         n_threads = get_internal_n_threads()
         n_ctx = int(getattr(self, "context_window", 4096))

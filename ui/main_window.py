@@ -29,7 +29,9 @@ from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
     get_internal_model_path,
+    is_secondary_gguf_shard,
     get_llm_models_dir,
+    resolve_internal_model_path,
     set_auto_load_last_model_on_startup,
     set_internal_model_path,
 )
@@ -953,7 +955,10 @@ class MainWindow(QMainWindow):
             btn.setEnabled(True)
             models_dir = Path(get_llm_models_dir())
             try:
-                ggufs = sorted(models_dir.glob("*.gguf"), key=lambda p: p.name.lower())
+                ggufs = sorted(
+                    (p for p in models_dir.glob("*.gguf") if not is_secondary_gguf_shard(str(p))),
+                    key=lambda p: p.name.lower(),
+                )
             except OSError:
                 ggufs = []
 
@@ -975,6 +980,7 @@ class MainWindow(QMainWindow):
             list_cap = max(100, self.tools_content.width() - 48)
 
             def on_pick(path: str) -> None:
+                path = resolve_internal_model_path(path)
                 set_internal_model_path(path)
                 if self._llm_worker:
                     self._pending_native_model_path = path

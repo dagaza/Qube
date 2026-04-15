@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
 
 from core.app_settings import (
     get_llm_models_dir,
+    resolve_internal_model_path,
     set_internal_model_path,
 )
 from core.gpu_layers_cap import detect_gpu_vram_bytes
@@ -1115,7 +1116,8 @@ class ModelManagerView(QWidget):
         sel = self._selected_hf_repo_file()
         if not sel:
             return None
-        return Path(get_llm_models_dir()) / Path(sel).name
+        raw = Path(get_llm_models_dir()) / Path(sel).name
+        return Path(resolve_internal_model_path(str(raw)))
 
     def _is_selected_model_downloaded(self) -> bool:
         p = self._selected_local_model_path()
@@ -2133,8 +2135,9 @@ class ModelManagerView(QWidget):
 
     def _on_download_finished(self, path: str) -> None:
         self._restore_download_idle_ui()
-        self._set_download_status_text(f"Saved: {os.path.basename(path)}")
-        set_internal_model_path(path)
+        resolved = resolve_internal_model_path(path)
+        self._set_download_status_text(f"Saved: {os.path.basename(resolved)}")
+        set_internal_model_path(resolved)
         # Do not auto-load after download; user can manually select/load later.
         self.native_library_changed.emit()
         self._sync_download_action_state()

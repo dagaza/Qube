@@ -3,6 +3,9 @@ Application preferences persisted with QSettings (native on Qt; no DB migration)
 
 Call getters/setters only after QApplication exists (e.g. from UI code).
 """
+import os
+import re
+
 from PyQt6.QtCore import QSettings
 
 _ORG = "Dagaza"
@@ -16,6 +19,7 @@ _KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
 _KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
 _KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
+_SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\.gguf$", re.IGNORECASE)
 
 
 def _settings() -> QSettings:
@@ -61,13 +65,50 @@ def set_engine_mode(mode: str) -> None:
 
 def get_internal_model_path() -> str:
     v = _settings().value(_KEY_INTERNAL_MODEL_PATH, "", type=str)
-    return str(v or "")
+    return resolve_internal_model_path(str(v or ""))
 
 
 def set_internal_model_path(path: str) -> None:
     s = _settings()
-    s.setValue(_KEY_INTERNAL_MODEL_PATH, str(path or ""))
+    s.setValue(_KEY_INTERNAL_MODEL_PATH, resolve_internal_model_path(str(path or "")))
     s.sync()
+
+
+def is_secondary_gguf_shard(path: str) -> bool:
+    """True when path looks like shard N-of-M where N > 1."""
+    name = os.path.basename(str(path or ""))
+    m = _SHARDED_GGUF_RE.match(name)
+    if not m:
+        return False
+    try:
+        return int(m.group("part")) > 1
+    except (TypeError, ValueError):
+        return False
+
+
+def resolve_internal_model_path(path: str) -> str:
+    """
+    Normalize selected model path for sharded GGUF sets.
+
+    If a non-first shard (e.g. *-00003-of-00003.gguf) is selected and shard 1 exists
+    in the same directory, return shard 1 so llama.cpp opens the entry file.
+    """
+    p = str(path or "").strip()
+    if not p:
+        return ""
+    name = os.path.basename(p)
+    m = _SHARDED_GGUF_RE.match(name)
+    if not m:
+        return p
+    try:
+        part = int(m.group("part"))
+    except (TypeError, ValueError):
+        return p
+    if part <= 1:
+        return p
+    first_name = f"{m.group('prefix')}-{'1'.zfill(len(m.group('part')))}-of-{m.group('total')}.gguf"
+    first_path = os.path.join(os.path.dirname(p), first_name)
+    return first_path if os.path.isfile(first_path) else p
 
 
 def get_internal_n_gpu_layers() -> int:

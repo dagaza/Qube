@@ -17,6 +17,8 @@ from core.app_settings import (
     set_enable_memory_enrichment,
     get_engine_mode,
     get_internal_model_path,
+    is_secondary_gguf_shard,
+    resolve_internal_model_path,
     set_internal_model_path,
     get_internal_n_gpu_layers,
     set_internal_n_gpu_layers,
@@ -570,6 +572,8 @@ class SettingsView(QWidget):
         if not root.is_dir():
             return
         for p in sorted(root.glob("*.gguf")):
+            if is_secondary_gguf_shard(str(p)):
+                continue
             item = QListWidgetItem(p.name)
             item.setData(Qt.ItemDataRole.UserRole, str(p.resolve()))
             self.local_gguf_list.addItem(item)
@@ -593,7 +597,7 @@ class SettingsView(QWidget):
                 is_dark=is_dark,
             ).exec()
             return
-        path = item.data(Qt.ItemDataRole.UserRole)
+        path = resolve_internal_model_path(item.data(Qt.ItemDataRole.UserRole))
         if not path or not os.path.isfile(path):
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             PrestigeDialog(

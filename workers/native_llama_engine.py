@@ -26,6 +26,7 @@ from core.app_settings import (
     get_engine_mode,
     get_native_reasoning_display_user_override,
     llama_chat_format_kwarg,
+    resolve_internal_model_path,
 )
 from core.execution_policy import ExecutionPolicy, resolve_execution_policy
 from core.native_llama_chat import normalize_chat_messages, prefer_gguf_jinja_chat_format
@@ -267,7 +268,7 @@ class NativeLlamaEngine(QThread):
                 self._do_chat_once(cmd)
 
     def _do_load(self, cmd: dict) -> None:
-        path = cmd.get("path") or ""
+        path = resolve_internal_model_path(cmd.get("path") or "")
         n_gpu = int(cmd.get("n_gpu_layers", 0))
         n_ctx = int(cmd.get("n_ctx", 4096))
         n_threads = int(cmd.get("n_threads") or 0)
