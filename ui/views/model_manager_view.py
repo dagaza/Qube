@@ -35,6 +35,9 @@ from PyQt6.QtWidgets import (
 
 from core.app_settings import (
     get_llm_models_dir,
+    is_secondary_gguf_shard,
+    missing_gguf_shards,
+    parse_gguf_shard_info,
     resolve_internal_model_path,
     set_internal_model_path,
 )
@@ -52,6 +55,7 @@ from workers.model_download_worker import HuggingFaceGgufDownloadWorker
 # Extra display data on Hub .gguf combo rows (file size, right-aligned in popup).
 HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
 HUB_FILE_COMBO_BYTES_ROLE = int(Qt.ItemDataRole.UserRole) + 43
+HUB_FILE_COMBO_SHARD_ENTRIES_ROLE = int(Qt.ItemDataRole.UserRole) + 44
 MODEL_MANAGER_LEFT_SIDEBAR_WIDTH = 364  # 280 * 1.30
 MODEL_MANAGER_CONTENT_WIDTH_SCALE = 1.2
 HUB_ROW_REPO_ROLE = int(Qt.ItemDataRole.UserRole)
@@ -173,7 +177,9 @@ class HubFileComboDelegate(QStyledItemDelegate):
             super().paint(painter, option, index)
             return
 
-        path = index.data(Qt.ItemDataRole.DisplayRole)
+        path = index.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(path, str) or not path.lower().endswith(".gguf"):
+            path = index.data(Qt.ItemDataRole.DisplayRole)
         path_s = path if isinstance(path, str) else (str(path) if path is not None else "")
         painter.save()
 
@@ -407,6 +413,14 @@ class ModelManagerView(QWidget):
         self._capability_service = ModelCapabilityService()
         self._download_ui_cancel_mode = False
         self._download_ui_load_mode = False
+        self._download_queue_paths: list[tuple[str, int | None]] = []
+        self._download_queue_index: int = 0
+        self._download_completed_paths: list[str] = []
+        self._download_failed_path: str | None = None
+        self._download_total_bytes: int = 0
+        self._download_completed_bytes: int = 0
+        self._download_current_bytes_total: int = 0
+        self._download_current_path: str = ""
         self._search_seq = 0
         self._detail_seq = 0
         self._current_repo_id = ""
@@ -993,10 +1007,9 @@ class ModelManagerView(QWidget):
     def _render_capability_chips(self, caps: list[str]) -> None:
         if not hasattr(self, "meta_caps_wrap_l"):
             return
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        # Light mode: match parameter chip label tone (blue) for visual parity.
-        icon_color = "#cdd6f4" if is_dark else "#1e3a8a"
-        chip_fg = "#cdd6f4" if is_dark else "#1e3a8a"
+        # Palette-driven foreground keeps chip text legible across theme toggles.
+        chip_fg = self.palette().color(QPalette.ColorRole.Text).name()
+        icon_color = chip_fg
         chip_border = "#8b5cf6"
         while self.meta_caps_wrap_l.count():
             it = self.meta_caps_wrap_l.takeAt(0)
@@ -1069,7 +1082,21 @@ class ModelManagerView(QWidget):
 
     def _on_hf_file_combo_changed(self, _index: int) -> None:
         self._update_download_button_label()
+        self._update_download_selection_hint()
         self._sync_download_action_state()
+
+    def _download_queue_active(self) -> bool:
+        return len(self._download_queue_paths) > 0
+
+    def _reset_download_queue_state(self) -> None:
+        self._download_queue_paths = []
+        self._download_queue_index = 0
+        self._download_completed_paths = []
+        self._download_failed_path = None
+        self._download_total_bytes = 0
+        self._download_completed_bytes = 0
+        self._download_current_bytes_total = 0
+        self._download_current_path = ""
 
     def _update_download_button_label(self) -> None:
         if not hasattr(self, "download_btn") or not hasattr(self, "hf_file_combo"):
@@ -1079,6 +1106,18 @@ class ModelManagerView(QWidget):
         idx = self.hf_file_combo.currentIndex()
         if idx < 0:
             self.download_btn.setText("Download")
+            return
+        entries = self._selected_hf_repo_files_for_download()
+        if len(entries) > 1:
+            raw = self.hf_file_combo.itemData(idx, int(HUB_FILE_COMBO_BYTES_ROLE))
+            try:
+                sz = int(raw) if raw is not None else 0
+            except (TypeError, ValueError):
+                sz = 0
+            if sz > 0:
+                self.download_btn.setText(f"Download {len(entries)} files ({self._fmt_bytes(sz)})")
+            else:
+                self.download_btn.setText(f"Download {len(entries)} files")
             return
         raw = self.hf_file_combo.itemData(idx, int(HUB_FILE_COMBO_BYTES_ROLE))
         try:
@@ -1090,20 +1129,58 @@ class ModelManagerView(QWidget):
         else:
             self.download_btn.setText("Download")
 
+    def _update_download_selection_hint(self) -> None:
+        if not hasattr(self, "hub_quant_hint_lbl") or not hasattr(self, "hf_file_combo"):
+            return
+        idx = self.hf_file_combo.currentIndex()
+        if idx <= 0:
+            return
+        entries = self._selected_hf_repo_files_for_download()
+        if len(entries) <= 1:
+            return
+        names = [Path(p).name for p, _ in entries]
+        if len(names) <= 3:
+            suffix = ", ".join(names)
+        else:
+            suffix = ", ".join(names[:3]) + f", +{len(names) - 3} more"
+        self.hub_quant_hint_lbl.setText(
+            f"Bundle selected: downloading all {len(entries)} shard files automatically ({suffix})."
+        )
+
     def _set_download_progress_text(self, prefix: str = "Downloading model") -> None:
         if not hasattr(self, "download_progress"):
             return
         self.download_progress.setFormat(f"{prefix} (%p%)")
 
     def _on_download_progress_pct(self, pct: int) -> None:
-        self.download_progress.setValue(int(pct))
+        pct_i = max(0, min(100, int(pct)))
+        if self._download_queue_active():
+            n = len(self._download_queue_paths)
+            current_idx = max(0, min(self._download_queue_index + 1, n))
+            agg_pct = pct_i
+            if self._download_total_bytes > 0 and self._download_current_bytes_total > 0:
+                done = self._download_completed_bytes + (
+                    self._download_current_bytes_total * (pct_i / 100.0)
+                )
+                agg_pct = int(min(100, max(0, (done * 100.0) / self._download_total_bytes)))
+            elif n > 0:
+                agg_pct = int(min(100, ((self._download_queue_index + (pct_i / 100.0)) * 100.0) / n))
+            self.download_progress.setValue(agg_pct)
+            self._set_download_progress_text(f"Downloading shard {current_idx}/{n}")
+            return
+        self.download_progress.setValue(pct_i)
         self._set_download_progress_text()
 
     def _on_download_status_message(self, msg: str) -> None:
         # Keep status label quiet during active download; progress text carries the state.
         # Preserve "Downloading model" text per UX request.
         if self._download_worker and self._download_worker.isRunning():
-            self._set_download_progress_text()
+            if self._download_queue_active():
+                n = len(self._download_queue_paths)
+                idx = max(1, min(self._download_queue_index + 1, n))
+                self._set_download_progress_text(f"Downloading shard {idx}/{n}")
+            else:
+                self._set_download_progress_text()
 
     def _set_download_status_text(self, text: str) -> None:
         if not hasattr(self, "download_status"):
@@ -1165,14 +1242,14 @@ class ModelManagerView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         if mode == "load":
             if is_dark:
-                bg, fg, border = ("rgba(255, 255, 255, 0.08)", "#cdd6f4", "rgba(255, 255, 255, 0.16)")
+                bg, fg, border, hover_bg = ("#16a34a", "#f8fafc", "#15803d", "#15803d")
             else:
-                bg, fg, border = ("#ffffff", "#1e293b", "#cbd5e1")
+                bg, fg, border, hover_bg = ("#16a34a", "#f8fafc", "#15803d", "#15803d")
         else:
             if is_dark:
-                bg, fg, border = ("#8b5cf6", "#f8fafc", "#8b5cf6")
+                bg, fg, border, hover_bg = ("#8b5cf6", "#f8fafc", "#8b5cf6", "#7c3aed")
             else:
-                bg, fg, border = ("#1e293b", "#f8fafc", "#1e293b")
+                bg, fg, border, hover_bg = ("#1e293b", "#f8fafc", "#1e293b", "#0f172a")
         self.download_btn.setStyleSheet(
             f"""
             QPushButton {{
@@ -1182,6 +1259,14 @@ class ModelManagerView(QWidget):
                 border-radius: 6px;
                 padding: 8px 12px;
                 font-weight: 700;
+            }}
+            QPushButton:hover {{
+                background-color: {hover_bg};
+            }}
+            QPushButton:disabled {{
+                background-color: rgba(100, 116, 139, 0.22);
+                color: rgba(148, 163, 184, 0.85);
+                border: 1px solid rgba(148, 163, 184, 0.35);
             }}
             """
         )
@@ -1198,10 +1283,12 @@ class ModelManagerView(QWidget):
             else:
                 self._set_download_status_text(f"Saved: {p.name if p else 'model'}")
             self.download_progress.hide()
+            self._update_gpu_fit_status()
             return
         self._set_download_button_download_mode()
         if not (self._download_worker and self._download_worker.isRunning()):
             self._set_download_status_text("")
+        self._update_gpu_fit_status()
 
     def _load_selected_model(self) -> None:
         p = self._selected_local_model_path()
@@ -1209,8 +1296,26 @@ class ModelManagerView(QWidget):
             self._show_error("Model not found", "Selected file is not available locally.")
             self._sync_download_action_state()
             return
+        missing = missing_gguf_shards(str(p))
+        if missing:
+            preview = "\n".join(f"- {name}" for name in missing[:8])
+            extra = ""
+            if len(missing) > 8:
+                extra = f"\n- ... and {len(missing) - 8} more"
+            self._show_error(
+                "Missing model shards",
+                "This model is split across multiple GGUF shard files, but some parts are missing.\n\n"
+                "Download the missing files before loading:\n"
+                f"{preview}{extra}",
+            )
+            self._set_download_status_text("Missing shards - download all parts first.")
+            self._sync_download_action_state()
+            return
         set_internal_model_path(str(p))
         if self._llm:
+            cv = getattr(self.window(), "conversations_view", None)
+            if cv is not None and hasattr(cv, "interrupt_active_response"):
+                cv.interrupt_active_response()
             self._llm.refresh_native_model_from_settings()
         self.native_library_changed.emit()
         self._set_download_status_text(f"Loaded: {p.name}")
@@ -1955,6 +2060,31 @@ class ModelManagerView(QWidget):
                 normalized.append((str(e[0]), sz))
             elif isinstance(e, (list, tuple)) and len(e) == 1:
                 normalized.append((str(e[0]), None))
+        # Hide secondary shard fragments (N-of-M where N>1) from the picker and
+        # collapse shard sets into one logical selection row.
+        hidden_secondary = 0
+        filtered: list[tuple[str, int | None]] = []
+        shard_totals: dict[str, int] = {}
+        shard_group_entries: dict[str, list[tuple[int, str, int | None]]] = {}
+        for path, size_b in normalized:
+            s_info = parse_gguf_shard_info(path)
+            if s_info is not None:
+                key = str(s_info["prefix"]).lower()
+                try:
+                    shard_totals[key] = max(shard_totals.get(key, 0), int(s_info["total"]))
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    part_i = int(s_info["part"])
+                except (TypeError, ValueError):
+                    part_i = 1
+                shard_group_entries.setdefault(key, []).append((part_i, path, size_b))
+            if is_secondary_gguf_shard(path):
+                hidden_secondary += 1
+                continue
+            filtered.append((path, size_b))
+        normalized = filtered
+
         # Smallest-to-largest by known size; unknown sizes are sent to the end.
         normalized.sort(
             key=lambda it: (
@@ -1970,27 +2100,50 @@ class ModelManagerView(QWidget):
         else:
             self.hf_file_combo.addItem("-- Select a .gguf file --")
             for path, size_b in normalized:
-                self.hf_file_combo.addItem(path)
+                label = path
+                shard_entries: list[tuple[str, int | None]] = [(path, size_b)]
+                agg_size_b = size_b if isinstance(size_b, int) else None
+                s_info = parse_gguf_shard_info(path)
+                if s_info is not None:
+                    key = str(s_info["prefix"]).lower()
+                    total = shard_totals.get(key, int(s_info["total"]))
+                    bundle_name = f"{Path(str(s_info['prefix'])).name}.gguf"
+                    label = f"{bundle_name} ({total} shards)"
+                    grp = shard_group_entries.get(key) or []
+                    if grp:
+                        grp_sorted = sorted(grp, key=lambda it: (int(it[0]), str(it[1]).lower()))
+                        shard_entries = [(p, sz) for _, p, sz in grp_sorted]
+                        known_sizes = [int(sz) for _, _, sz in grp_sorted if isinstance(sz, int)]
+                        if len(known_sizes) == len(grp_sorted):
+                            agg_size_b = sum(known_sizes)
+                self.hf_file_combo.addItem(label, path)
                 idx = self.hf_file_combo.count() - 1
-                if size_b is not None:
+                self.hf_file_combo.setItemData(
+                    idx,
+                    shard_entries,
+                    int(HUB_FILE_COMBO_SHARD_ENTRIES_ROLE),
+                )
+                if agg_size_b is not None:
                     self.hf_file_combo.setItemData(
                         idx,
-                        self._fmt_bytes(size_b),
+                        self._fmt_bytes(agg_size_b),
                         int(HUB_FILE_COMBO_SIZE_ROLE),
                     )
                     self.hf_file_combo.setItemData(
                         idx,
-                        int(size_b),
+                        int(agg_size_b),
                         int(HUB_FILE_COMBO_BYTES_ROLE),
                     )
             # Auto-select the smallest quantization entry.
             self.hf_file_combo.setCurrentIndex(1)
             if hasattr(self, "hub_quant_hint_lbl"):
-                self.hub_quant_hint_lbl.setText(
-                    f"{len(normalized)} file(s) available. Choose a quantization, then Download."
-                )
+                msg = f"{len(normalized)} file(s) available. Choose a quantization, then Download."
+                if hidden_secondary > 0:
+                    msg += f" ({hidden_secondary} shard fragment file(s) hidden.)"
+                self.hub_quant_hint_lbl.setText(msg)
         self.hf_file_combo.blockSignals(False)
         self._update_download_button_label()
+        self._update_download_selection_hint()
         self._update_gpu_fit_status()
         self._sync_download_action_state()
 
@@ -2037,12 +2190,49 @@ class ModelManagerView(QWidget):
         i = self.hf_file_combo.currentIndex()
         if i < 0:
             return None
+        raw = self.hf_file_combo.itemData(i, int(Qt.ItemDataRole.UserRole))
+        if isinstance(raw, str) and raw.lower().endswith(".gguf"):
+            return raw
         t = self.hf_file_combo.itemText(i).strip()
         if t.startswith("--") or t.startswith("("):
             return None
         if not t.lower().endswith(".gguf"):
             return None
         return t
+
+    def _selected_hf_repo_files_for_download(self) -> list[tuple[str, int | None]]:
+        if self.hf_file_combo.count() == 0:
+            return []
+        i = self.hf_file_combo.currentIndex()
+        if i < 0:
+            return []
+        raw_entries = self.hf_file_combo.itemData(i, int(HUB_FILE_COMBO_SHARD_ENTRIES_ROLE))
+        out: list[tuple[str, int | None]] = []
+        if isinstance(raw_entries, (list, tuple)):
+            for ent in raw_entries:
+                if not isinstance(ent, (list, tuple)) or len(ent) < 1:
+                    continue
+                path = str(ent[0] or "").strip()
+                if not path.lower().endswith(".gguf"):
+                    continue
+                sz: int | None = None
+                if len(ent) > 1 and ent[1] is not None:
+                    try:
+                        sz = int(ent[1])
+                    except (TypeError, ValueError):
+                        sz = None
+                out.append((path, sz))
+        if out:
+            return out
+        one = self._selected_hf_repo_file()
+        if not one:
+            return []
+        raw_sz = self.hf_file_combo.itemData(i, int(HUB_FILE_COMBO_BYTES_ROLE))
+        try:
+            one_sz = int(raw_sz) if raw_sz is not None else None
+        except (TypeError, ValueError):
+            one_sz = None
+        return [(one, one_sz)]
 
     @staticmethod
     def _fmt_bytes(n: int) -> str:
@@ -2087,6 +2277,7 @@ class ModelManagerView(QWidget):
         self.download_progress.hide()
         self.download_progress.setValue(0)
         self.download_progress.setFormat("(%p%)")
+        self._reset_download_queue_state()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._sync_download_action_state()
@@ -2101,11 +2292,11 @@ class ModelManagerView(QWidget):
             self._show_error("Busy", "A download is already in progress.")
             return
         repo = self._current_repo_id.strip()
-        fname = self._selected_hf_repo_file()
+        entries = self._selected_hf_repo_files_for_download()
         if not repo:
             self._show_error("No model", "Select a model from the Hub list first.")
             return
-        if not fname:
+        if not entries:
             self._show_error(
                 "No file selected",
                 "Wait for the file list to load, then choose a .gguf variant.",
@@ -2117,6 +2308,38 @@ class ModelManagerView(QWidget):
         self._set_download_status_text("")
         self._set_download_progress_text()
         self._set_download_button_cancel_mode(True)
+        self._download_queue_paths = list(entries)
+        self._download_queue_index = 0
+        self._download_completed_paths = []
+        self._download_failed_path = None
+        self._download_total_bytes = sum(int(sz) for _, sz in entries if isinstance(sz, int) and sz > 0)
+        self._download_completed_bytes = 0
+        self._download_current_bytes_total = 0
+        self._download_current_path = ""
+        self._start_next_shard_download(repo)
+
+    def _start_next_shard_download(self, repo: str) -> None:
+        n = len(self._download_queue_paths)
+        if n == 0:
+            return
+        if self._download_queue_index >= n:
+            # Queue complete.
+            first = self._download_queue_paths[0][0]
+            local_first = Path(get_llm_models_dir()) / Path(first).name
+            resolved = resolve_internal_model_path(str(local_first))
+            self._restore_download_idle_ui()
+            self._set_download_status_text(f"Saved: {os.path.basename(resolved)} ({n}/{n} shards)")
+            set_internal_model_path(resolved)
+            self.native_library_changed.emit()
+            self._sync_download_action_state()
+            return
+
+        fname, sz = self._download_queue_paths[self._download_queue_index]
+        self._download_current_path = str(fname)
+        self._download_current_bytes_total = int(sz) if isinstance(sz, int) and sz > 0 else 0
+        step = self._download_queue_index + 1
+        self._set_download_status_text(f"Downloading shard {step}/{n}: {Path(fname).name}")
+        self._set_download_progress_text(f"Downloading shard {step}/{n}")
 
         self._retire_hf_thread(self._download_worker)
         self._download_worker = None
@@ -2134,6 +2357,20 @@ class ModelManagerView(QWidget):
         self._download_worker.start()
 
     def _on_download_finished(self, path: str) -> None:
+        if self._download_queue_active():
+            self._download_completed_paths.append(str(path))
+            if self._download_current_bytes_total > 0:
+                self._download_completed_bytes += self._download_current_bytes_total
+            self._download_queue_index += 1
+            n = len(self._download_queue_paths)
+            if self._download_queue_index < n:
+                self._set_download_status_text(
+                    f"Saved {self._download_queue_index}/{n} shards"
+                )
+                self._start_next_shard_download(self._current_repo_id.strip())
+                return
+            self._start_next_shard_download(self._current_repo_id.strip())
+            return
         self._restore_download_idle_ui()
         resolved = resolve_internal_model_path(path)
         self._set_download_status_text(f"Saved: {os.path.basename(resolved)}")
@@ -2143,11 +2380,37 @@ class ModelManagerView(QWidget):
         self._sync_download_action_state()
 
     def _on_download_failed(self, msg: str) -> None:
+        failed_name = Path(self._download_current_path).name if self._download_current_path else "model"
+        if self._download_queue_active():
+            self._download_failed_path = failed_name
+            n = len(self._download_queue_paths)
+            done = self._download_queue_index
+            self._restore_download_idle_ui()
+            self._set_download_status_text(f"Download failed after {done}/{n} shards")
+            self._show_error(
+                "Download failed",
+                f"Failed while downloading shard {done + 1}/{n}: {failed_name}\n\n{msg}",
+            )
+            return
         self._restore_download_idle_ui()
         self._set_download_status_text("")
         self._show_error("Download failed", msg)
 
     def _on_insufficient_space(self, required: int, available: int) -> None:
+        failed_name = Path(self._download_current_path).name if self._download_current_path else "model"
+        if self._download_queue_active():
+            n = len(self._download_queue_paths)
+            done = self._download_queue_index
+            self._restore_download_idle_ui()
+            self._set_download_status_text(f"Stopped at {done}/{n} shards (disk full)")
+            self._show_error(
+                "Not enough disk space",
+                f"Stopped while downloading shard {done + 1}/{n}: {failed_name}\n\n"
+                f"This download needs about {self._fmt_bytes(required)} free on the destination "
+                f"drive (including a 500 MB safety margin). "
+                f"You have about {self._fmt_bytes(available)} available.",
+            )
+            return
         self._restore_download_idle_ui()
         self._set_download_status_text("")
         self._show_error(
@@ -2158,6 +2421,12 @@ class ModelManagerView(QWidget):
         )
 
     def _on_download_cancelled(self) -> None:
+        if self._download_queue_active():
+            n = len(self._download_queue_paths)
+            done = self._download_queue_index
+            self._restore_download_idle_ui()
+            self._set_download_status_text(f"Download cancelled ({done}/{n} shards saved).")
+            return
         self._restore_download_idle_ui()
         self._set_download_status_text("Download cancelled.")
 

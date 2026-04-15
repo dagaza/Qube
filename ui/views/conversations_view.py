@@ -2306,3 +2306,11 @@ class ConversationsView(QWidget):
             if self.tts and self.tts.isRunning():
                 self.tts.stop_playback()
             self.on_generation_stopped()
+
+    def interrupt_active_response(self) -> None:
+        """
+        Public interrupt hook for non-chat UI actions (e.g. model switching).
+        Reuses the same stop path as the chat Stop button.
+        """
+        if self._is_stop_mode():
+            self._request_stop()

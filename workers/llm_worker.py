@@ -16,6 +16,7 @@ from core.app_settings import (
     get_internal_model_path,
     get_internal_n_gpu_layers,
     get_internal_n_threads,
+    missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
 )
@@ -889,6 +890,13 @@ class LLMWorker(QThread):
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
         if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
             return
+        if self.isRunning():
+            self.cancel_generation()
+            # Give the current turn a brief window to unwind so model load can proceed quickly.
+            for _ in range(20):
+                if not self.isRunning():
+                    break
+                time.sleep(0.05)
         path = resolve_internal_model_path(get_internal_model_path())
         n_gpu = get_internal_n_gpu_layers()
         n_threads = get_internal_n_threads()
@@ -897,6 +905,14 @@ class LLMWorker(QThread):
             if self._native_engine:
                 self._native_engine.unload_model()
             self.status_update.emit("Native engine: select a .gguf in Model Manager")
+            return
+        missing = missing_gguf_shards(path)
+        if missing:
+            if self._native_engine:
+                self._native_engine.unload_model()
+            self.status_update.emit(
+                f"Native engine: missing shard files ({len(missing)} missing) - download all parts"
+            )
             return
         self._native_engine.load_model(path, n_gpu, n_ctx, n_threads)
 

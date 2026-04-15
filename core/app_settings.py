@@ -86,6 +86,69 @@ def is_secondary_gguf_shard(path: str) -> bool:
         return False
 
 
+def parse_gguf_shard_info(path: str) -> dict | None:
+    """
+    Parse shard metadata from a GGUF filename.
+
+    Returns None when the file is not named like:
+    <prefix>-00001-of-00003.gguf
+    """
+    name = os.path.basename(str(path or ""))
+    m = _SHARDED_GGUF_RE.match(name)
+    if not m:
+        return None
+    try:
+        part = int(m.group("part"))
+        total = int(m.group("total"))
+    except (TypeError, ValueError):
+        return None
+    if part < 1 or total < 1 or part > total:
+        return None
+    return {
+        "prefix": m.group("prefix"),
+        "part": part,
+        "total": total,
+        "width": len(m.group("part")),
+    }
+
+
+def expected_gguf_shard_filenames(path: str) -> list[str]:
+    """Expected local shard filenames for a sharded GGUF, else [basename(path)]."""
+    p = str(path or "").strip()
+    if not p:
+        return []
+    info = parse_gguf_shard_info(p)
+    if info is None:
+        return [os.path.basename(p)]
+    prefix = str(info["prefix"])
+    total = int(info["total"])
+    width = int(info["width"])
+    return [
+        f"{prefix}-{str(i).zfill(width)}-of-{str(total).zfill(width)}.gguf"
+        for i in range(1, total + 1)
+    ]
+
+
+def missing_gguf_shards(path: str) -> list[str]:
+    """
+    Missing shard filenames for selected GGUF path.
+
+    For non-sharded files returns [].
+    """
+    p = str(path or "").strip()
+    if not p:
+        return []
+    info = parse_gguf_shard_info(p)
+    if info is None:
+        return []
+    folder = os.path.dirname(p) or "."
+    missing: list[str] = []
+    for name in expected_gguf_shard_filenames(p):
+        if not os.path.isfile(os.path.join(folder, name)):
+            missing.append(name)
+    return missing
+
+
 def resolve_internal_model_path(path: str) -> str:
     """
     Normalize selected model path for sharded GGUF sets.

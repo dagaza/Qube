@@ -17,7 +17,9 @@ from core.app_settings import (
     set_enable_memory_enrichment,
     get_engine_mode,
     get_internal_model_path,
+    expected_gguf_shard_filenames,
     is_secondary_gguf_shard,
+    parse_gguf_shard_info,
     resolve_internal_model_path,
     set_internal_model_path,
     get_internal_n_gpu_layers,
@@ -37,6 +39,7 @@ from ui.components.prestige_dialog import PrestigeDialog
 
 
 logger = logging.getLogger("Qube.UI.Settings")
+LOCAL_GGUF_SHARD_PATHS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
 
 class NoScrollSpinBox(QSpinBox):
@@ -574,8 +577,25 @@ class SettingsView(QWidget):
         for p in sorted(root.glob("*.gguf")):
             if is_secondary_gguf_shard(str(p)):
                 continue
-            item = QListWidgetItem(p.name)
-            item.setData(Qt.ItemDataRole.UserRole, str(p.resolve()))
+            resolved_primary = str(p.resolve())
+            shard_paths: list[str] = [resolved_primary]
+            display_name = p.name
+            shard_info = parse_gguf_shard_info(str(p))
+            if shard_info is not None:
+                expected = expected_gguf_shard_filenames(str(p))
+                found_paths: list[str] = []
+                for fname in expected:
+                    part = root / fname
+                    if part.is_file():
+                        found_paths.append(str(part.resolve()))
+                if found_paths:
+                    shard_paths = found_paths
+                total = int(shard_info.get("total", len(shard_paths)))
+                bundle_name = f"{Path(str(shard_info['prefix'])).name}.gguf"
+                display_name = f"{bundle_name} ({len(shard_paths)}/{total} shards)"
+            item = QListWidgetItem(display_name)
+            item.setData(Qt.ItemDataRole.UserRole, resolved_primary)
+            item.setData(LOCAL_GGUF_SHARD_PATHS_ROLE, shard_paths)
             self.local_gguf_list.addItem(item)
 
         active = get_internal_model_path()
@@ -611,6 +631,9 @@ class SettingsView(QWidget):
         self._sync_active_native_model_label()
         llm = self.workers.get("llm")
         if llm:
+            cv = getattr(self.window(), "conversations_view", None)
+            if cv is not None and hasattr(cv, "interrupt_active_response"):
+                cv.interrupt_active_response()
             llm.refresh_native_model_from_settings()
         self._refresh_toolbar_native_model_after_model_change()
 
@@ -641,31 +664,54 @@ class SettingsView(QWidget):
                 is_dark=is_dark,
             ).exec()
             return
-        name = os.path.basename(path)
+        shard_paths = item.data(LOCAL_GGUF_SHARD_PATHS_ROLE) or [path]
+        shard_paths = [str(p) for p in shard_paths if isinstance(p, str) and p]
+        if not shard_paths:
+            shard_paths = [path]
+        primary_name = os.path.basename(path)
+        if len(shard_paths) > 1:
+            confirm_msg = (
+                f'Permanently delete "{primary_name}" and {len(shard_paths) - 1} related shard file(s) '
+                "from this device? This cannot be undone."
+            )
+        else:
+            confirm_msg = f'Permanently delete "{primary_name}" from this device? This cannot be undone.'
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         dlg = PrestigeDialog(
             self.window(),
             "Delete model",
-            f'Permanently delete "{name}" from this device? This cannot be undone.',
+            confirm_msg,
             is_dark=is_dark,
         )
         if not dlg.exec():
             return
-        try:
-            os.remove(path)
-        except OSError as e:
-            logger.error("Failed to delete GGUF %s: %s", path, e)
+        deleted_paths: list[str] = []
+        failed_paths: list[tuple[str, OSError]] = []
+        for shard_path in shard_paths:
+            if not os.path.isfile(shard_path):
+                continue
+            try:
+                os.remove(shard_path)
+                deleted_paths.append(shard_path)
+            except OSError as e:
+                failed_paths.append((shard_path, e))
+                logger.error("Failed to delete GGUF %s: %s", shard_path, e)
+        if failed_paths:
+            preview = "\n".join(f"- {os.path.basename(fp)}: {err}" for fp, err in failed_paths[:4])
+            more = f"\n- ... and {len(failed_paths) - 4} more errors" if len(failed_paths) > 4 else ""
             PrestigeDialog(
                 self.window(),
                 "Delete failed",
-                f"Could not remove the file: {e}",
+                "Some files could not be removed:\n\n"
+                f"{preview}{more}",
                 is_dark=is_dark,
             ).exec()
-            return
 
         active = get_internal_model_path()
         try:
-            was_active = active and Path(active).resolve() == Path(path).resolve()
+            active_resolved = str(Path(active).resolve()) if active else ""
+            deleted_resolved = {str(Path(p).resolve()) for p in deleted_paths}
+            was_active = bool(active_resolved and active_resolved in deleted_resolved)
         except OSError:
             was_active = False
         if was_active:

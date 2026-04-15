@@ -26,6 +26,7 @@ from core.app_settings import (
     get_engine_mode,
     get_native_reasoning_display_user_override,
     llama_chat_format_kwarg,
+    missing_gguf_shards,
     resolve_internal_model_path,
 )
 from core.execution_policy import ExecutionPolicy, resolve_execution_policy
@@ -278,6 +279,15 @@ class NativeLlamaEngine(QThread):
         if not path or not os.path.isfile(path):
             self.load_finished.emit(False, f"Model file not found: {path}")
             self.status_update.emit("Native engine: no model file")
+            return
+        missing = missing_gguf_shards(path)
+        if missing:
+            shown = ", ".join(missing[:3])
+            if len(missing) > 3:
+                shown += f", +{len(missing) - 3} more"
+            msg = f"Missing model shards: {shown}"
+            self.load_finished.emit(False, msg)
+            self.status_update.emit("Native engine load failed: missing shard files")
             return
 
         self._do_unload()

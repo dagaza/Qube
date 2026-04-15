@@ -25,6 +25,7 @@ from ui.views.library_view import LibraryView
 from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
+from ui.components.prestige_dialog import PrestigeDialog
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
@@ -983,6 +984,9 @@ class MainWindow(QMainWindow):
                 path = resolve_internal_model_path(path)
                 set_internal_model_path(path)
                 if self._llm_worker:
+                    cv = getattr(self, "conversations_view", None)
+                    if cv is not None and hasattr(cv, "interrupt_active_response"):
+                        cv.interrupt_active_response()
                     self._pending_native_model_path = path
                     self._native_model_loading = True
                     self._native_model_loaded_success = False
@@ -1083,6 +1087,15 @@ class MainWindow(QMainWindow):
         self._native_model_loaded_success = bool(ok)
         self._pending_native_model_path = None
         self._set_native_model_progress_loading(False)
+        if not ok and "missing model shards" in str(message or "").lower():
+            is_dark = getattr(self, "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Missing model shards",
+                "This GGUF model is split into multiple shard files and some parts are missing.\n\n"
+                f"{str(message or '').strip()}",
+                is_dark=is_dark,
+            ).exec()
         self.refresh_toolbar_native_model_dropdown()
 
     # --- PRESTIGE MENU LOGIC ---
