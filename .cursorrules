@@ -18,7 +18,7 @@ Below is the **Section 3 directory treemap** (keep in sync with `.clinerules` Se
 
 ```text
 Qube/
-├── main.py                 # Entry point: NativeLlamaEngine, LLMWorker, MainWindow; load_finished → _on_native_model_load_finished → conversations Think refresh (refresh_think_toggle).
+├── main.py                 # Entry point: NativeLlamaEngine, LLMWorker, MainWindow; load_finished → _on_native_model_load_finished → conversations Think refresh (refresh_think_toggle). Owns EnrichmentWorker + MemoryReflectionWorker lifecycle (start on boot, shutdown+wait on exit). _on_enrichment_context_ready caches per-turn provenance payload (session_id / last_user_msg_id / last_assistant_msg_id / rag_chunk_ids) and forwards it to enrichment_worker.enqueue at response_finished.
 ├── assets/                 # Static UI and Brand Assets (Immutable)
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App UI icons (chevrons/layout controls; keep backward-compat fallbacks where used).
@@ -27,7 +27,7 @@ Qube/
 │   ├── styles/             # base.qss (dark), light.qss — includes #SettingsMenuButton and :disabled states for locked Prestige dropdowns.
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
-│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), optimistic LOCAL LLM picker label + zero-shift 4px load progress bar + stale load-finish guard, top bar, theme toggle; passes native_engine into TelemetryView for read-only capability telemetry.
+│   ├── main_window.py      # Frameless shell, nav, global toolbar (incl. LOCAL LLM SettingsMenuButton + Prestige menus), optimistic LOCAL LLM picker label + zero-shift 4px load progress bar + stale load-finish guard, top bar, theme toggle; passes native_engine into TelemetryView for read-only capability telemetry. Nav order: Chat (0) / Library (1) / Memories (2, fa5s.brain — MemoryManagerView) / Telemetry (3) / Models (4) / Settings (5); _route_view + _toggle_theme call memory_manager_view.refresh_theme on theme change.
 │   ├── router_dashboard.py # Visualizations go into the Telemetry screen
 │   ├── components/         # Reusable custom UI components.
 │   │   ├── memory_debug_panel.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline
@@ -42,6 +42,7 @@ Qube/
 │   └── views/              # isolated widget files for each major screen
 │       ├── conversations_view.py # PrestigeDialog, chat stages, Think toggle (telemetry ui_display_thinking; refresh_think_toggle on load_finished via main + showEvent).
 │       ├── library_view.py # Knowledge base screen
+│       ├── memory_manager_view.py # Memory v6 Phase C — user-facing inspector + editor for the LanceDB memory store. Filters: SelectorButton category dropdown / Flagged-only toggle / text search. Top "Flagged for review" pseudo-section followed by category-grouped sections; per-row Edit (PrestigeDialog input) / Flag-Unflag / Delete (PrestigeDialog confirm + apply_brand_danger). Bulk "Delete all visible" (apply_brand_danger). Off-thread MemoryManagerWorker (QThread + Queue) handles every store.table read / delete / re-add. Every delete also writes the row content+vector into core/memory_negative_list so the same memory cannot be recreated by the next extraction pass. refresh_theme(is_dark) re-applies row + section + control palette on theme toggle.
 │       ├── settings_view.py # Settings: dual-engine (engine vs external provider), GPU offload + CPU thread pool QSliders (caps from gpu_layers_cap / cpu_threads), ~75% hardware defaults on first run (missing QSettings keys), local GGUF list + Use/Delete, PrestigeDialog only (no QMessageBox).
 │       ├── telemetry_view.py # Telemetry screen (hardware graphs, router metrics, optional LLM debug panel); “Native LLM — Model capability” card polls NativeLlamaEngine.get_model_reasoning_telemetry() when internal engine is wired.
 │       └── model_manager_view.py # App Store-style Hub browser (search, README, quant dropdown), local GGUF library, download/cancel flow, and capability chips sourced from ModelCapabilityService for sidebar + mainstage with progressive post-README enrichment.
@@ -57,6 +58,9 @@ Qube/
 │   ├── llm_debug_sink.py   # Rotating file handler for Qube.NativeLLM.Debug -> logs/llm_debug.log (terminal quiet via logging_bootstrap).
 │   ├── llm_execution_causality.py # QUBE_LLM_CAUSALITY: post-inference causal report (prompt/template/stops/sampler vs live); optional LM Studio first-token diff via reference JSON.
 │   ├── logging_bootstrap.py # init_llm_debug_logging(): attach LLM debug file sink; keep stdout clean.
+│   ├── memory_filters.py   # Memory v6 Phase A — single source of truth for ASSISTANT_FAILURE_PATTERNS / is_assistant_failure_message / is_thin_content / detect_explicit_remember / detect_recall_intent / RECALL_FUSION_SYSTEM_SUFFIX; shared by EnrichmentWorker (extraction filter) and LLMWorker (recall fusion + system suffix) so the rules can never drift between the two paths.
+│   ├── memory_negative_list.py # Memory v6 Phase C — persistent ~/.qube/memory_negatives.json of vectors for memories the user explicitly deleted in Memory Manager; EnrichmentWorker rejects extraction candidates within DEFAULT_REJECT_DISTANCE (0.20 L2) so the same memory cannot be recreated from a similar conversation. FIFO-capped at MAX_NEGATIVES=500.
+│   ├── memory_usage_recorder.py # Memory v6 Phase C — process-wide thread-safe queue of (kind, memory_id) events. Producers: mcp/memory_tool.memory_search records "retrieved" per result, LLMWorker scans final text for [N] cites and records "cited". Consumer: EnrichmentWorker._maybe_drain_usage_recorder batches every USAGE_DRAIN_INTERVAL_SEC and bumps times_retrieved / times_cited_positively / last_used_at on each affected row.
 │   ├── model_behavior.py # classify_model_behavior + resolve_behavior_override; load-time ablation → execution overrides (no prompt/sampling in resolver).
 │   ├── model_capability_detection.py # CapabilitySignal/ModelCapabilities + hybrid pipeline: user_override -> ground_truth -> learned_registry -> curated exact/pattern -> file inference -> HF -> readme extraction -> soft defaults -> heuristics; includes normalization, pattern matching, safe README parsing, negation guard.
 │   ├── model_capability_service.py # System capability orchestrator: cache-or-detect, overrides API, runtime ground-truth ingest, post-load enrichment, UI summaries, and missed-model logging.
@@ -74,6 +78,7 @@ Qube/
 │   ├── prompt_integrity_validator.py # Prompt structure checks, LM Studio parity scoring, QUBE_LLM_REFERENCE_JSON / first_sampler_token_ids (validation only); attaches model_reasoning_profile_detected + execution_mode (resolved policy mode) to validation JSON (metadata).
 │   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; template_override + model_override_store layers; [LLM-TEMPLATE] / [LLM-TEMPLATE-OVERRIDE] / [LLM-SELF-HEAL-APPLY] / [LLM-PROMPT-ROUTER]; validation/log prefetch (chat path unchanged).
 │   ├── redacted_thinking_filter.py # Stream filter for <redacted_thinking> blocks (DeepSeek-R1–style; internal engine path).
+│   ├── stream_repetition_guard.py # StreamRepetitionGuard: observer-only tail check over streamed deltas; trips on N consecutive identical short whitespace atoms (e.g. runaway [W] [W] [W] …) so llm_worker can cancel the generation instead of waiting for the 15 min wall cap.
 │   ├── richtext_styles.py  # App-wide link palette / rich text helpers.
 │   ├── qube_tooltip.py     # Custom app-owned tooltip pipeline (QubeApplication notify interception + transparent host/rounded shell) for consistent cross-theme rendering on frameless Linux.
 │   ├── system_capabilities_store.py # Isolated system SQLite + JSON artifacts under ~/.qube/system_data (capabilities.db with ground_truth_capabilities table, curated_registry.json, learned_capabilities.json, missed_models.json); survives user DB/LanceDB resets.
@@ -90,7 +95,8 @@ Qube/
 │   ├── hf_repo_files_worker.py # Lists .gguf file paths in a model repo via Hub API for quantization selection.
 │   ├── model_download_worker.py # Streams GGUF downloads from Hugging Face with Content-Length disk pre-check, cooperative cancel, and .part file cleanup.
 │   ├── internet_worker.py  # QThread for non-blocking web search queries (mcp/internet_tool.search_internet).
-│   ├── enrichment_worker.py # Constructs atomic memories that are then stored in LanceDB.
+│   ├── enrichment_worker.py # Memory v6 — atomic memory extraction + storage. Phase A: typed schema (subject/source_role/durability/provenance_quote) with explicit NEGATIVE prompt examples (person_name stub, no-internet) and server-side _validate_fact dropping system/assistant/third_party-without-knowledge/non-long_term/thin/failure-pattern/missing-provenance candidates; explicit-remember bypass via detect_explicit_remember; assistant failure messages scrubbed before _build_prompt. Phase B: enqueue contract takes per-turn payload (last_user_msg_id / last_assistant_msg_id / rag_chunk_ids); base_payload threads source_session_id / source_message_ids / origin / links_to_document_ids; embedding-based _assign_cluster (CLUSTER_JOIN_DISTANCE=0.30) with keyword fallback; two-stage _judge_contradiction (Jaccard fast-path + LLM judge → duplicate|contradiction|complement). Phase C: payload carries times_retrieved / times_cited_positively / last_used_at / last_reflected_at / flagged_for_review; _maybe_drain_usage_recorder flushes the MemoryUsageRecorder queue every USAGE_DRAIN_INTERVAL_SEC; _maybe_run_decay_sweep every 24h re-scores usefulness/decay and purges rows below DECAY_PURGE_THRESHOLD=0.15; pre-extraction reject against memory_negative_list at distance < DEFAULT_REJECT_DISTANCE.
+│   ├── memory_reflection_worker.py # Memory v6 Phase C — periodic LLM self-audit of stored memories. Wakes every REFLECT_INTERVAL_SEC (6h), batches BATCH_SIZE (10) least-recently-reflected non-flagged rows older than MIN_REFLECT_AGE_SEC (7d), asks the same titler LLM to label each as durable_user_fact / third_party_stub / system_claim / transient / unclear, sets flagged_for_review on anything other than durable_user_fact, and stamps last_reflected_at + reflection_label. NEVER auto-deletes — flagged rows surface in MemoryManagerView for the user to confirm.
 │   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
 │   ├── title_worker.py       # Generates titles for the conversations list (bundled Qwen 0.5B performs it)
 │   ├── intent_router.py       # Uses semantic vector embeddings for intent routing instead of rigid keywords, while cognitive_router manages load and thresholds.
@@ -101,11 +107,11 @@ Qube/
 │   ├── chunker.py          # Semantic text splitting (1500 chars / 150 overlap).
 │   └── parsers.py          # Document parsers (PDF, EPUB, TXT, MD, Wiki dumps).
 ├── mcp/                    # Model Context Protocol Interfaces
-│   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor.
+│   ├── rag_tool.py         # Disk-backed search function called by the LLM interceptor. Phase B: emits chunk_id as composite "<source>::<chunk_int>" on every UI source so EnrichmentWorker can persist links_to_document_ids and memory_tool can later expand them back to the originating RAG chunks.
 │   ├── internet_tool.py    # Web search functionality
-│   ├── memory_tool.py      # Retrieves stored facts using a hybrid scoring algorithm (semantic similarity + extracted confidence + reinforcement strength) with expanded candidate pooling to prevent starvation while strictly enforcing token budgets.
+│   ├── memory_tool.py      # Retrieves stored facts via hybrid score (semantic distance + confidence + strength + Phase C decay) with strict token budgets. Phase B: auto-expands payload.links_to_document_ids into additional type="rag" sources up to MAX_LINK_EXPANSIONS_PER_MEMORY / TOTAL / CHARS budgets so a recall query against a thin memory still receives the originating document context. Phase C: every returned memory is reported to MemoryUsageRecorder as "retrieved" and carries memory_id in the UI source dict so LLMWorker can later record [N] cites against the same id.
 │   ├── router.py           # Maintained as a legacy fallback for the cognitive_router, this component provides stable, deterministic query routing using fixed cosine-similarity thresholds and hardcoded semantic anchors.
-│   ├── cognitive_router.py # Manages adaptive query routing by dynamically adjusting retrieval thresholds based on real-time system latency, load penalties, and conversation intent drift.
+│   ├── cognitive_router.py # Manages adaptive query routing by dynamically adjusting retrieval thresholds based on real-time system latency, load penalties, and conversation intent drift. Phase B: optional recall_centroid (installed by LLMWorker via set_recall_centroid) drives _score_recall_intent; when recall_active, route is forced to HYBRID (after web override) so recall-style queries always fuse memory + RAG.
 │   ├── router_self_tuner.py # Acts as an autonomous feedback loop that continuously tunes cognitive routing sensitivities based on real-time telemetry (latency and hit rates) to penalize inefficient tool usage.
 │   ├── router_telemetry.py # Maintains a lightweight, in-memory queue of recent routing events to track latency, hit rates, and route distributions for real-time performance monitoring.
 ├── models/                 # Local AI Weights (Organized by function)

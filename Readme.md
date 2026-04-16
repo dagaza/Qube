@@ -23,7 +23,9 @@ Inference and RAG stay on-device—**no** third-party chat API. (Optional **Mode
 
 ## ✨ Quick Overview
 
-🧠 **Long-Term Semantic Memory & RAG:** Qube doesn't just hold temporary context; it learns. Using a background async worker, Qube extracts Atomic Facts from your conversations, manages contradictions, applies reinforcement scoring, and stores them permanently in LanceDB. This prevents the "Amnesia Bug" and gives Qube true long-term recall alongside your documents.
+🧠 **Long-Term Semantic Memory & RAG (v6):** Qube doesn't just hold temporary context; it learns. A background enrichment worker extracts **typed atomic facts** (subject / source_role / durability / provenance_quote) from your conversations, drops thin or unprovable claims at the door, links each memory back to the document chunk that inspired it, and stores everything in LanceDB. **Hardened against the classic memory regressions**: assistant refusal messages ("I don't have internet access") are scrubbed before extraction, single-token name stubs cannot become a memory on their own, and a persistent negative list ensures a memory you delete cannot be recreated. **Usage-driven decay** prunes memories that aren't earning their keep, and a periodic **self-reflection auditor** flags suspect entries for your review without ever deleting them on its own.
+
+🗂️ **Memory Manager (NEW):** A dedicated **Memories** screen exposes everything Qube remembers about you. Filter by category, search by content, flip the **Flagged for review** toggle to see what the self-reflection worker has surfaced, and use per-row **Edit / Flag / Delete** (or bulk delete) to take direct editorial control of the assistant's long-term knowledge of you. Every delete also writes the entry into the negative list so the same memory cannot be recreated by a similar conversation in the future.
 
 ⚡ **Real-Time Interruption (Barge-In):** Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
 
@@ -59,29 +61,51 @@ Qube uses two complementary memory layers:
 - Injects retrieved context directly into LLM prompts using sequential numeric citations (e.g., `[1]`).
     
 
-#### 2. Long-Term Atomic Memory (v5.1)
+#### 2. Long-Term Atomic Memory (v6)
 
 - Extracts durable “facts” from conversations asynchronously.
-    
+
 - Runs in a background **QThread Enrichment Worker** that yields to the main LLM to prevent local server deadlocks.
-    
+
 - Stores structured atomic memory in LanceDB using a dedicated `qube_memory::%` namespace.
-    
 
-**Key properties:**
+**Key properties (Phase A → C hardening):**
 
-- Atomic fact extraction (no summaries stored as memory).
-    
-- JSON-structured memory payloads.
-    
-- Confidence-based filtering.
-    
-- Semantic deduplication using vector similarity thresholds before insertion.
-    
-- Reinforcement system (frequent facts become stronger).
-    
-- Contradiction handling (schema-safe updates to existing facts instead of duplicating them).
-    
+- **Typed extraction schema** — every memory carries `subject` (user / third_party / system), `source_role` (user / assistant / derived), `durability`, `category`, `content`, `provenance_quote`, and `confidence`. The LLM is given explicit NEGATIVE examples for the classic regressions ("Tell me about Alice" → `[]`, "I don't have internet access" → `[]`).
+
+- **Role-aware preprocessing** — assistant refusal / limitation messages are matched against a regex blacklist and replaced with `[failure message omitted]` *before* the extraction prompt is built, so a one-off "I can't access the internet" turn cannot become a permanent "the agent has no internet" memory.
+
+- **Server-side validation** — drops candidates that are `subject=system`, `source_role=assistant` (without an explicit `remember that…` from the user), bare third-party stubs, non-`long_term`, thin (`< 3 words` / single proper-noun / all stop-words), match an assistant-failure pattern, or are missing a `provenance_quote`.
+
+- **Per-turn provenance** — each memory records its `source_session_id`, `source_message_ids`, `origin` (user_stated / user_confirmed / document_derived / system_derived), and `links_to_document_ids` for the RAG chunks that were in context when it was formed. On retrieval, a thin memory **auto-expands to its originating document chunk** so "Who is Alice?" answers from the actual document, not the bare name.
+
+- **Embedding-based clustering** — replaces the old keyword-length cluster key with a nearest-neighbor join (`L2 < 0.30`) on the memory table, so related-but-distinct facts ("I prefer dark roast" / "my favorite is arabica") share a cluster and can trigger the contradiction judge.
+
+- **Two-stage contradiction judge** — Jaccard fast-path detects literal duplicates; otherwise a short LLM micro-call labels the pair `duplicate` (reinforce strength), `contradiction` (replace old with new), or `complement` (insert alongside).
+
+- **Persistent negative-pattern list** — every memory you delete in the Memory Manager is appended (content + vector) to `~/.qube/memory_negatives.json` so the next extraction pass rejects any candidate within `L2 < 0.20` of a deleted memory. The same memory cannot be recreated by a similar conversation tomorrow.
+
+- **Usage-driven decay** — payloads carry `times_retrieved`, `times_cited_positively`, `last_used_at`. A 24 h sweep recomputes `usefulness` and `decay`, purges rows below `decay < 0.15`, and the retrieval scorer re-weights to include the decay term so memories that earn their keep float to the top.
+
+- **Self-reflection worker** — every 6 hours, batches 10 least-recently-reflected memories and asks the titler LLM to label each as `durable_user_fact` / `third_party_stub` / `system_claim` / `transient` / `unclear`. Anything other than `durable_user_fact` is marked `flagged_for_review` and surfaced in the Memory Manager's Flagged section. **Never auto-deletes** — final say belongs to you.
+
+---
+
+### 🗂️ Memory Manager
+
+A dedicated nav screen (between Library and Telemetry) that makes the long-term memory store a first-class, user-editable surface.
+
+- **Top "Flagged for review" section** shows entries the self-reflection worker has surfaced as suspect, so you can confirm or delete them in one pass.
+
+- **Category-grouped sections** for everything else (preference / identity / project / knowledge / context), with subject, origin, confidence, decay, and usage counters visible at a glance.
+
+- **Per-row actions:** Edit content (PrestigeDialog input), Flag / Unflag for review, Delete (PrestigeDialog confirm). Bulk **Delete all visible** for cleanup passes.
+
+- **Filters:** SelectorButton category dropdown, **Flagged only** toggle, free-text search across memory content.
+
+- **Negative-list integration:** every delete also records the entry into `~/.qube/memory_negatives.json`, so the enrichment pipeline cannot recreate it from a similar conversation later.
+
+- **Off-thread DB work:** all LanceDB read / delete / re-add goes through a `MemoryManagerWorker` QThread; the UI stays fluid even on large stores.
 
 ---
 
@@ -124,6 +148,8 @@ Qube uses an adaptive routing system that selects between:
 - Deterministic decision making with a <10ms latency target.
     
 - Safe fallback to CHAT under uncertainty.
+
+- **Semantic RECALL intent (Memory v6 Phase B):** "tell me about X", "remind me about X", "who is Y" style queries are scored against a recall-intent centroid and forced into the **HYBRID** memory + RAG fusion path automatically — so a thin name-stub memory is always answered with the actual document context behind it instead of just the bare name.
     
 - No DAGs, multi-step planners, or recursive loops (intentional simplicity to protect hardware constraints).
     
@@ -289,6 +315,19 @@ Want Qube to answer questions based on a specific book or PDF?
 3. Ask your question. Qube will retrieve the most relevant chunks and inject them into the LLM's context window, which also showing you the sources and citations
     
 4. **Conversational Turn:** Because Qube saves context to its internal "RAG Memory," you can ask follow-up questions about your documents without re-triggering a search.
+
+### Memory Manager
+
+Qube learns about you over time. Open the **Memories** screen (between Library and Telemetry) to see exactly what the assistant has filed away — preferences, identity facts, ongoing projects, knowledge you explicitly asked it to remember — and curate it directly:
+
+1. **Review the "Flagged for review" section at the top.** The self-reflection worker labels suspect entries (third-party stubs, system claims, transient notes) and parks them here for your decision. Confirm or delete in one pass.
+
+2. **Filter and search** by category, by flagged state, or by free-text content to zero in on a memory.
+
+3. **Edit** rephrases a memory in place. **Flag** marks it for the next reflection pass. **Delete** removes it AND records it into the negative list at `~/.qube/memory_negatives.json`, so the same memory cannot be recreated by a similar conversation later.
+
+You never *have* to use the Memory Manager — extraction filtering, decay, and self-reflection keep the store healthy on their own — but it's there whenever you want direct editorial control.
+
 ---
 
 ## 🏗️ Architecture Stack
@@ -300,6 +339,8 @@ Want Qube to answer questions based on a specific book or PDF?
 - **Vector Database:** LanceDB (Disk-native, zero-copy)
     
 - **Embeddings:** Nomic v1.5 GGUF via llama-cpp-python (Vulkan/CPU).
+
+- **Long-Term Memory pipeline (v6):** Typed-schema extraction with role-aware preprocessing + server-side validation in **`workers/enrichment_worker.py`**; per-turn provenance with `links_to_document_ids` for RAG chunks in context; embedding-based clustering + two-stage contradiction judge (Jaccard + LLM micro-call); usage counters drained from a thread-safe **`MemoryUsageRecorder`** queue; 24 h decay sweep that purges below `decay < 0.15`; persistent negative-pattern list at **`~/.qube/memory_negatives.json`**; periodic self-reflection via **`workers/memory_reflection_worker.py`** (6 h cadence, flags only — never auto-deletes); user-facing **`ui/views/memory_manager_view.py`** for Edit / Flag / Delete with all DB work on a **`MemoryManagerWorker`** QThread.
     
 - **Wake Word:** OpenWakeWord
     

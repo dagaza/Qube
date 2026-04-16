@@ -22,6 +22,19 @@ from core.app_settings import (
 )
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
+from core.stream_repetition_guard import StreamRepetitionGuard
+from core.memory_filters import (
+    detect_recall_intent,
+    detect_explicit_remember,
+    detect_file_search_intent,
+    is_thin_content,
+    RECALL_FUSION_SYSTEM_SUFFIX,
+    FILE_SEARCH_SYSTEM_SUFFIX,
+    CITATION_DISCIPLINE_SUFFIX,
+    GROUNDED_ANSWER_SYSTEM_SUFFIX,
+    NO_SOURCES_SYSTEM_SUFFIX,
+)
+from core.memory_usage_recorder import get_memory_usage_recorder
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -44,6 +57,10 @@ class LLMWorker(QThread):
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
+    # Phase B: turn-scoped enrichment context (session_id + rag chunk ids + message ids).
+    # Emitted once per completed turn, before response_finished, so main.py can
+    # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
+    enrichment_context_ready = pyqtSignal(dict)
 
     MAX_TOTAL_RETRIEVAL_CHARS = 4500
     MEMORY_BUDGET = 1500
@@ -229,8 +246,89 @@ class LLMWorker(QThread):
             if isinstance(src, dict):
                 src["id"] = i
 
+    # Phase B: curated recall examples used to build the semantic centroid
+    # consumed by ``CognitiveRouterV4._score_recall_intent``. Kept short so
+    # the one-time embedding pass at first use is cheap.
+    _RECALL_INTENT_EXAMPLES = (
+        "tell me about Alice",
+        "who is John Smith?",
+        "what do you know about my brother?",
+        "remind me about the project deadline",
+        "what did we say about the proposal yesterday?",
+        "summarize what you know about the trip plans",
+        "do you remember anything about my coffee preference?",
+        "refresh my memory on the Berlin meeting",
+        "recall what I told you about my thesis",
+        "what is the user's preferred coding style?",
+    )
+
+    def _record_memory_citations(self, final_text: str, sources: list) -> None:
+        """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
+        corresponding memory rows.
+
+        Only memory-type sources are credited (web/rag don't need usage
+        tracking). The actual disk write is deferred to EnrichmentWorker
+        which drains the recorder queue.
+        """
+        if not final_text or not sources:
+            return
+        try:
+            cited_ids: set[int] = set()
+            for m in re.finditer(r"\[(\d+)\]", final_text):
+                try:
+                    cited_ids.add(int(m.group(1)))
+                except Exception:
+                    continue
+            if not cited_ids:
+                return
+            recorder = get_memory_usage_recorder()
+            for src in sources:
+                if not isinstance(src, dict):
+                    continue
+                if str(src.get("type", "")).lower() != "memory":
+                    continue
+                cid_id = src.get("id")
+                if cid_id in cited_ids:
+                    mid = src.get("memory_id")
+                    if mid:
+                        recorder.record_cited(str(mid))
+        except Exception:
+            logger.exception("[LLM] memory citation scan failed")
+
+    def _ensure_recall_centroid(self) -> None:
+        """Lazily build and install the RECALL semantic centroid on the
+        cognitive router. Called once on the first turn that uses the
+        cognitive router. No-op on subsequent calls and on any failure
+        (the router falls back to substring detection)."""
+        if not getattr(self, "cognitive_router", None):
+            return
+        if getattr(self.cognitive_router, "recall_centroid", None) is not None:
+            return
+        embedder = getattr(self.embedding_cache, "embedder", None)
+        if embedder is None:
+            return
+        try:
+            from workers.intent_router import build_centroid
+            centroid = build_centroid(embedder, list(self._RECALL_INTENT_EXAMPLES))
+            self.cognitive_router.set_recall_centroid(centroid)
+            logger.info("[LLM Worker] Recall semantic centroid installed.")
+        except Exception:
+            logger.exception("[LLM Worker] Failed to build recall centroid")
+
     def _format_sources_for_llm_prompt(self, sources: list) -> str:
-        """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids)."""
+        """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids).
+
+        Thin memory stubs (short memory entries whose content is essentially a
+        bare name or < 3 informative words) are annotated when at least one
+        non-memory source exists in the same block, so the LLM knows to prefer
+        the richer document / web source for detail on "tell me about X"
+        style queries.
+        """
+        has_non_memory = any(
+            isinstance(s, dict) and str(s.get("type", "")).lower() not in ("memory", "")
+            for s in sources
+        )
+
         parts = []
         for src in sources:
             if not isinstance(src, dict):
@@ -238,6 +336,15 @@ class LLMWorker(QThread):
             sid = src.get("id")
             name = str(src.get("filename", "Unknown"))
             body = (src.get("content") or "").strip()
+
+            src_type = str(src.get("type", "")).lower()
+            if (
+                has_non_memory
+                and src_type == "memory"
+                and is_thin_content(body)
+            ):
+                name = f"{name} (short memory stub; prefer documents for detail)"
+
             parts.append(f"--- SOURCE {sid}: {name} ---\n{body}")
         return "\n\n".join(parts)
 
@@ -366,6 +473,16 @@ class LLMWorker(QThread):
             self._close_active_stream()
             self._last_completed_llm_session_id = self.session_id
             self._server_kv_cleared_for_session_id = None
+            try:
+                enrichment_payload = {
+                    "session_id": self.session_id,
+                    "last_user_msg_id": getattr(self, "_turn_last_user_msg_id", None),
+                    "last_assistant_msg_id": getattr(self, "_turn_last_assistant_msg_id", None),
+                    "rag_chunk_ids": list(getattr(self, "_turn_rag_chunk_ids", []) or []),
+                }
+                self.enrichment_context_ready.emit(enrichment_payload)
+            except Exception:
+                logger.exception("[LLM] failed to emit enrichment context")
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -373,8 +490,16 @@ class LLMWorker(QThread):
     def _execute_llm_turn(self) -> str:
         force_web = bool(getattr(self, "_force_web_next_turn", False))
         self._force_web_next_turn = False
+
+        # Phase B: reset per-turn enrichment context captured during this turn.
+        self._turn_rag_chunk_ids: list[str] = []
+        self._turn_last_user_msg_id = None
+        self._turn_last_assistant_msg_id = None
+
         if self.session_id:
-            self.db.add_message(self.session_id, "user", self.prompt)
+            self._turn_last_user_msg_id = self.db.add_message(
+                self.session_id, "user", self.prompt
+            )
 
         self._ensure_cross_session_server_flush()
 
@@ -385,14 +510,83 @@ class LLMWorker(QThread):
         clean_prompt = self.prompt.lower().strip()
 
         # ============================================================
+        # 0. EXPLICIT-REMEMBER SHORT-CIRCUIT (Memory v6.1)
+        # ------------------------------------------------------------
+        # When the user asks the assistant to STORE a fact
+        # ("please remember that my mom's name is Cornelia",
+        # "don't forget my wifi password is ...", etc.) this turn is a
+        # write — not a recall. We must:
+        #   (a) skip memory / RAG / web retrieval entirely
+        #   (b) bypass the cognitive router's semantic recall centroid,
+        #       which otherwise scores high on the literal word "remember"
+        #       and routes the turn to HYBRID — pulling the web tool into
+        #       scope. A failed web fetch then injected a "[W] WEB SEARCH
+        #       RESULTS: Internet search failed..." block, causing the LLM
+        #       to loop on the "[W]" token (StreamRepetitionGuard cancelled
+        #       the stream, producing the visible "[W][W][W]" stub bug).
+        # The enrichment worker still picks the fact up asynchronously; we
+        # just answer with a brief acknowledgment here.
+        # ============================================================
+        explicit_remember_body = detect_explicit_remember(self.prompt)
+        explicit_remember_active = bool(explicit_remember_body)
+
+        # ============================================================
+        # 0.5 EXPLICIT FILE-SEARCH OVERRIDE (Memory v6.1)
+        # ------------------------------------------------------------
+        # When the user literally points Qube at their library
+        # ("look into my files and tell me if there is a mention of X",
+        # "check my documents for ...", "in my notes ...", etc.) we
+        # want RAG only — skipping memory + web entirely.
+        #
+        # Without this, the cognitive router's semantic recall centroid
+        # tends to fire on "tell me if there is a mention of <name>"
+        # (high cosine similarity to the recall example set) and forces
+        # HYBRID. HYBRID then calls ``memory_search`` and injects any
+        # top-k memories regardless of topical relevance — a stored
+        # "my mom's name is Cornelia" memory ended up in the prompt of
+        # a Dr. Evelyn file-lookup query, confusing the LLM into
+        # emitting a bare "[2]" citation token.
+        #
+        # Explicit-remember still beats file-search (a write turn has
+        # absolute priority over any retrieval path).
+        # ============================================================
+        file_search_active = (
+            not explicit_remember_active
+            and detect_file_search_intent(self.prompt)
+        )
+
+        # ============================================================
         # 1. ROUTING PHASE
         # ============================================================
         self.status_update.emit("Thinking...")
 
         intent_vector = None
 
-        if self.USE_COGNITIVE_ROUTER:
+        if explicit_remember_active:
+            logger.info(
+                "[LLM Worker] Explicit-remember intent detected; skipping routing/retrieval."
+            )
+            decision = {
+                "route": "none",
+                "strategy": "explicit_remember",
+                "explicit_remember": True,
+            }
+        elif file_search_active:
+            logger.info(
+                "[LLM Worker] Explicit file-search intent detected; forcing RAG, skipping memory/web."
+            )
+            decision = {
+                "route": "rag",
+                "strategy": "explicit_file_search",
+                "file_search": True,
+                "rag_query": self.prompt,
+            }
+            # The cognitive router is skipped entirely — we don't want its
+            # semantic recall centroid or its internet_enabled flag to
+            # override a turn the user scoped to document lookup.
+        elif self.USE_COGNITIVE_ROUTER:
             intent_vector = self.embedding_cache.get_embedding(self.prompt)
+            self._ensure_recall_centroid()
             decision = self.cognitive_router.route(
                 self.prompt,
                 intent_vector=intent_vector,
@@ -403,8 +597,28 @@ class LLMWorker(QThread):
 
         execution_route = decision["route"].upper()
 
+        # ------------------------------------------------------------
+        # Phase A: recall-intent fusion override.
+        # "Tell me about X" / "who is X" / "remind me about X" style queries
+        # must consult BOTH memory and documents so the LLM can synthesize
+        # from the richer source. Without this override the router will
+        # frequently pick pure MEMORY (matching on "remember") or NONE and
+        # miss the document chunk that actually describes X.
+        # Web route is NOT overridden here — web triggers win below.
+        # Explicit-remember is a write, so the fusion override is skipped.
+        # ------------------------------------------------------------
+        if (
+            not explicit_remember_active
+            and not file_search_active
+            and detect_recall_intent(clean_prompt)
+            and execution_route in ("NONE", "MEMORY", "RAG")
+        ):
+            logger.info("[LLM Worker] Recall intent detected; routing to HYBRID")
+            execution_route = "HYBRID"
+            decision["recall_fusion"] = True
+
         # custom triggers override
-        if self.mcp_auto_enabled:
+        if not explicit_remember_active and not file_search_active and self.mcp_auto_enabled:
             if any(t in clean_prompt for t in self.cached_custom_triggers):
                 execution_route = "RAG"
                 decision["rag_query"] = self.prompt
@@ -412,16 +626,19 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         # INTERNET TRIGGER (manual + cognitive)
         # ------------------------------------------------------------
-        # Manual trigger: user text contains known web commands
-        web_triggers = ["search the internet", "who won", "current news", "weather"]
-        manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
+        # Skipped on explicit-remember (write turn) and explicit file-search
+        # (the user scoped this turn to the local library).
+        if not explicit_remember_active and not file_search_active:
+            # Manual trigger: user text contains known web commands
+            web_triggers = ["search the internet", "who won", "current news", "weather"]
+            manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
 
-        # Automatic trigger: cognitive router decides internet is needed
-        auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
+            # Automatic trigger: cognitive router decides internet is needed
+            auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
 
-        # Final execution decision for WEB
-        if force_web or manual_web or auto_web:
-            execution_route = "WEB"
+            # Final execution decision for WEB
+            if force_web or manual_web or auto_web:
+                execution_route = "WEB"
 
         # ============================================================
         # ROUTING START TIME (telemetry)
@@ -466,7 +683,16 @@ class LLMWorker(QThread):
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")
-            all_ui_sources.extend(rag_result.get("sources", []))
+            rag_sources = rag_result.get("sources", []) or []
+            all_ui_sources.extend(rag_sources)
+
+            # Phase B: collect per-turn rag chunk ids for the enrichment
+            # context. ``chunk_id`` is populated by rag_tool.rag_search (UI
+            # contract additive field). We dedupe while preserving order.
+            for s in rag_sources:
+                cid = s.get("chunk_id") if isinstance(s, dict) else None
+                if cid and cid not in self._turn_rag_chunk_ids:
+                    self._turn_rag_chunk_ids.append(str(cid))
 
         # ---- WEB + HYBRID ----
         if execution_route in ["WEB", "INTERNET", "HYBRID"] and (self.mcp_internet_enabled or force_web):
@@ -474,7 +700,29 @@ class LLMWorker(QThread):
             self.status_update.emit("🌐 Searching the Web...")
             
             web_results = search_internet(self.prompt)
-            
+
+            # Defensive guard: when search_internet fails (e.g. DNS /
+            # connection reset / no-result sentinel) it still returns a
+            # list of the shape [{"title": "", "snippet": "Internet search
+            # failed..."}]. Previously we injected that sentinel into the
+            # prompt with a "[W]" tag, and the small-LLM happily looped
+            # "[W][W][W]" until StreamRepetitionGuard cancelled the turn.
+            # Treat any such sentinel as "no web data for this turn".
+            if isinstance(web_results, list):
+                _snips = " ".join(
+                    str((r or {}).get("snippet") or "") if isinstance(r, dict) else str(r or "")
+                    for r in web_results
+                )
+                if (
+                    "Internet search failed" in _snips
+                    or "No relevant internet results found" in _snips
+                    or not _snips.strip()
+                ):
+                    logger.info(
+                        "[LLM Worker] Web results dropped (empty / failure sentinel); not injecting [W] context."
+                    )
+                    web_results = None
+
             if web_results:
                 if isinstance(web_results, list):
                     web_results = "\n\n".join([str(item) for item in web_results])
@@ -558,12 +806,53 @@ class LLMWorker(QThread):
             "Be concise and accurate."
         )
 
-        if execution_route in ["RAG", "HYBRID", "MEMORY"]:
-            system_prompt += (
-                " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
-                "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
-                "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
+        if explicit_remember_active:
+            # Write-intent turn: acknowledge briefly, don't retrieve, don't cite.
+            quoted_fact = (explicit_remember_body or "").strip()
+            system_prompt = (
+                "You are Qube. The user has just asked you to remember a fact for future reference. "
+                "Acknowledge briefly — one short sentence — that you've made a note of it, "
+                "and optionally paraphrase the fact naturally. "
+                "Do NOT use bracket tokens like [1], [2], or [W]. "
+                "Do NOT cite sources. "
+                "Do NOT say you cannot remember things; Qube persists long-term memories automatically."
             )
+            if quoted_fact:
+                system_prompt += f" The fact to acknowledge is: \"{quoted_fact}\"."
+        elif execution_route in ["RAG", "HYBRID", "MEMORY"]:
+            # v6.1: if retrieval ran but nothing survived filtering
+            # (proper-noun gate, semantic floor, soft L2 gate, empty
+            # tables) we flip into the "no sources" mode. Without this,
+            # the normal "you MUST cite your sources" instruction below
+            # pushes a small LLM into fabricating a plausible-sounding
+            # answer and inventing a citation (see: the "Dr. Evelyn
+            # Vogel" confabulation against a Cornelia memory).
+            if not all_ui_sources:
+                logger.info(
+                    "[LLM Worker] No sources survived retrieval filtering; "
+                    "switching to NO_SOURCES system prompt (route=%s).",
+                    execution_route,
+                )
+                system_prompt = (
+                    "You are Qube, a highly capable offline AI assistant. "
+                    "Be concise and accurate."
+                )
+                system_prompt += NO_SOURCES_SYSTEM_SUFFIX
+            else:
+                system_prompt += (
+                    " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
+                    "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
+                    "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
+                )
+                system_prompt += RECALL_FUSION_SYSTEM_SUFFIX
+                system_prompt += CITATION_DISCIPLINE_SUFFIX
+                system_prompt += GROUNDED_ANSWER_SYSTEM_SUFFIX
+                # File-search turns get an extra steering block so the model
+                # answers strictly from numbered document sources (and says
+                # so plainly when nothing matches) — never from stored
+                # memories that happen to surface.
+                if file_search_active:
+                    system_prompt += FILE_SEARCH_SYSTEM_SUFFIX
 
         # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
         elif execution_route in ["WEB", "INTERNET"]:
@@ -574,9 +863,12 @@ class LLMWorker(QThread):
                 "CRITICAL: Respond directly to the user in a natural, conversational tone. "
                 "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
                 "Output ONLY your final answer. "
-                "You MUST cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
-                "no URL in parentheses after [W], and no backticks around [W]."
+                "Cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
+                "no URL in parentheses after [W], and no backticks around [W]. "
+                "Use [W] at most once at the end of each sentence that relies on the web results, "
+                "and never output [W] two or more times in a row."
             )
+            system_prompt += CITATION_DISCIPLINE_SUFFIX
 
         # Native llama.cpp path: behavioral alignment (LM Studio often adds server-side polish).
         if getattr(self, "engine_mode", "external") == "internal":
@@ -653,6 +945,7 @@ class LLMWorker(QThread):
             r.raise_for_status()
 
             stream_wall_start = time.time()
+            repetition_guard = StreamRepetitionGuard()
 
             for line in r.iter_lines(decode_unicode=False):
                 if time.time() - stream_wall_start > self._MAX_STREAM_WALL_SECONDS:
@@ -691,6 +984,13 @@ class LLMWorker(QThread):
                                         self.sentence_ready.emit(clean, self.session_id)
                                 current_sentence = ""
 
+                            if repetition_guard.observe(delta):
+                                logger.error(
+                                    "[LLM] SSE stream degeneration detected (%s); cancelling.",
+                                    repetition_guard.trip_reason,
+                                )
+                                break
+
                     except json.JSONDecodeError:
                         continue
 
@@ -702,9 +1002,10 @@ class LLMWorker(QThread):
 
             if self.session_id and final_text.strip():
                 src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
-                self.db.add_message(
+                self._turn_last_assistant_msg_id = self.db.add_message(
                     self.session_id, "assistant", final_text, sources_json=src_payload
                 )
+                self._record_memory_citations(final_text, all_ui_sources)
 
             self._successfully_finished = True
 
@@ -749,6 +1050,7 @@ class LLMWorker(QThread):
         cot_filter = RedactedThinkingStreamFilter()
         meta_disp = LeadingMetaInstructionStripper()
         meta_tts = LeadingMetaInstructionStripper()
+        repetition_guard = StreamRepetitionGuard()
         current_sentence = ""
         final_text = ""
         start = time.time()
@@ -807,6 +1109,15 @@ class LLMWorker(QThread):
                     disp = meta_disp.feed(stripped)
                     tts_piece = meta_tts.feed(stripped)
                 _emit_filtered(disp, tts_piece)
+                if disp and repetition_guard.observe(disp):
+                    logger.error(
+                        "[LLM] Native stream degeneration detected (%s); cancelling.",
+                        repetition_guard.trip_reason,
+                    )
+                    self._native_engine.request_cancel_generation()
+                    _flush_tail()
+                    saw_end = True
+                    break
             elif kind == "error":
                 self.token_streamed.emit(self.session_id or "", f"\n\n*({data})*")
                 err_txt = str(data or "")
@@ -831,9 +1142,10 @@ class LLMWorker(QThread):
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
-            self.db.add_message(
+            self._turn_last_assistant_msg_id = self.db.add_message(
                 self.session_id, "assistant", final_text, sources_json=src_payload
             )
+            self._record_memory_citations(final_text, all_ui_sources)
 
         self._successfully_finished = True
         return final_text

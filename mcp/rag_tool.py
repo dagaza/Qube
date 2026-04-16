@@ -132,11 +132,23 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
             )
 
             # UI CONTRACT (NEVER CHANGE THIS SHAPE)
+            # Phase B (memory enrichment): ``chunk_id`` is an ADDITIVE field —
+            # ``id`` (1..n citation) and the other three contract fields are
+            # unchanged. ``chunk_id`` is encoded as ``"<source>::<chunk_int>"``
+            # so the memory tool can look the exact chunk back up later
+            # (chunk_id alone is not unique across documents).
+            raw_cid = doc.get("chunk_id")
+            if raw_cid is None:
+                raw_cid = doc.get("id")
+            chunk_id_val = (
+                f"{source}::{raw_cid}" if raw_cid is not None else None
+            )
             sources.append({
                 "id": i,
                 "filename": source,
                 "content": text,
                 "type": "rag",
+                "chunk_id": chunk_id_val,
             })
 
         # ============================================================

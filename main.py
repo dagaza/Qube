@@ -24,6 +24,7 @@ from core.app_settings import (
     get_internal_model_path,
 )
 from workers.enrichment_worker import EnrichmentWorker
+from workers.memory_reflection_worker import MemoryReflectionWorker
 from workers.internet_worker import InternetWorker
 
 import logging
@@ -83,6 +84,17 @@ class Qube:
 
         # Start the memory worker thread
         self.enrichment_worker.start()
+
+        # Phase C: periodic memory self-reflection (6h cadence). Shares
+        # the LLM titler that EnrichmentWorker uses, and the same
+        # LanceDB store. Never auto-deletes — only sets
+        # ``flagged_for_review``; the user reviews flagged entries in
+        # the Memory Manager.
+        self.memory_reflection_worker = MemoryReflectionWorker(
+            llm=self.llm_worker,
+            store=self.store,
+        )
+        self.memory_reflection_worker.start()
 
         workers = {
             "audio": self.audio_worker,
@@ -162,6 +174,11 @@ class Qube:
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
         self.llm_worker.response_finished.connect(self._on_llm_response_finished)
+        # Phase B memory enrichment: per-turn rich context (rag chunk ids +
+        # message ids) is emitted just before response_finished. Capture it
+        # on self and hand it to the enrichment worker in
+        # _on_llm_response_finished so provenance is exact.
+        self.llm_worker.enrichment_context_ready.connect(self._on_enrichment_context_ready)
         w.conversations_view.set_stop_requested_callback(self.stop_active_response)
 
         # Background Data Pipeline
@@ -186,6 +203,16 @@ class Qube:
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
 
+    def _on_enrichment_context_ready(self, payload: dict) -> None:
+        """Cache the turn-scoped enrichment context emitted by LLMWorker.
+
+        Stored here so ``_on_llm_response_finished`` can pass it to
+        ``EnrichmentWorker.enqueue`` along with (or instead of) a bare
+        session id. Signals fire on the main thread via Qt queued
+        connections so a plain attribute assignment is safe.
+        """
+        self._pending_enrichment_context = payload or {}
+
     def _on_llm_response_finished(self, session_id: str, text: str) -> None:
         """Unlock chat, queue memory extraction, and mark end of LLM turn for TTS (sentinel)."""
         logger.info(
@@ -196,7 +223,12 @@ class Qube:
         if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
             self.window.conversations_view.on_llm_response_finished(session_id)
         if hasattr(self, 'enrichment_worker'):
-            self.enrichment_worker.enqueue(session_id)
+            ctx = getattr(self, "_pending_enrichment_context", None) or {}
+            if ctx.get("session_id") == session_id:
+                self.enrichment_worker.enqueue(ctx)
+            else:
+                self.enrichment_worker.enqueue(session_id)
+            self._pending_enrichment_context = None
         if hasattr(self, 'tts_worker'):
             self.tts_worker.enqueue_turn_complete(session_id)
 
@@ -402,6 +434,11 @@ class Qube:
         if hasattr(self, 'enrichment_worker') and self.enrichment_worker.isRunning():
             self.enrichment_worker.stop()
             self.enrichment_worker.wait(2000)
+
+        # Phase C: stop the periodic memory self-reflection worker.
+        if hasattr(self, 'memory_reflection_worker') and self.memory_reflection_worker.isRunning():
+            self.memory_reflection_worker.shutdown()
+            self.memory_reflection_worker.wait(2000)
 
         if hasattr(self, 'tts_worker'):
             # Cut any in-flight audio first, then request cooperative thread exit.

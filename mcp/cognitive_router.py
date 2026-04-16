@@ -3,6 +3,8 @@ import logging
 from collections import deque, defaultdict
 import numpy as np
 
+from core.memory_filters import detect_recall_intent
+
 logger = logging.getLogger("Qube.CognitiveRouterV4")
 
 
@@ -39,6 +41,15 @@ class CognitiveRouterV4:
 
         # Load control
         self.recent_rag_usage = deque(maxlen=10)
+
+        # Phase B: semantic RECALL centroid + thresholds.
+        # The centroid is set externally (typically by llm_worker on first
+        # use, using ``workers.intent_router.build_centroid`` over a curated
+        # example set). When unset we fall back to the substring detector
+        # in core.memory_filters.detect_recall_intent.
+        self.recall_centroid: np.ndarray | None = None
+        self.recall_threshold = 0.55
+        self.recall_margin_over_chat = 0.05
 
     # ============================================================
     # PUBLIC ENTRY
@@ -87,7 +98,8 @@ class CognitiveRouterV4:
         rag_score = self._score_rag_intent(q)
         
         # 🔑 FIX: Changed to match the actual function name _score_web_intent
-        web_score = self._score_web_intent(q)  
+        web_score = self._score_web_intent(q)
+        recall_score = self._score_recall_intent(intent_vector, q)
         complexity_score = estimated_complexity
 
         # Apply dynamic thresholds
@@ -103,13 +115,20 @@ class CognitiveRouterV4:
             rag_enabled = False
             internet_enabled = False  # NEW
 
+        # Phase B: semantic recall override forces HYBRID so memory + RAG
+        # are fused for "tell me about X" / "who is X" queries. Web intent
+        # still wins because the user explicitly asked to look online.
+        recall_active = recall_score >= self.recall_threshold
+
         # High complexity forces hybrid
         if complexity_score > 0.75:
             route = "hybrid"
-        elif rag_enabled and memory_enabled:
-            route = "hybrid"
         elif internet_enabled:
             route = "web"  # NEW: internet-first route
+        elif recall_active:
+            route = "hybrid"
+        elif rag_enabled and memory_enabled:
+            route = "hybrid"
         elif rag_enabled:
             route = "rag"
         elif memory_enabled:
@@ -123,9 +142,12 @@ class CognitiveRouterV4:
             "memory_score": memory_score,
             "rag_score": rag_score,
             "web_score": web_score, # 🔑 FIX: Tracked the corrected variable
+            "recall_score": recall_score,
+            "recall_active": recall_active,
             "rag_threshold": self.dynamic_rag_threshold,
             "memory_threshold": self.dynamic_memory_threshold,
             "internet_threshold": self.dynamic_internet_threshold,  # NEW
+            "recall_threshold": self.recall_threshold,
             "strategy": "adaptive_v4"
         }
 
@@ -152,6 +174,43 @@ class CognitiveRouterV4:
         ]
         return sum(t in q for t in triggers)
     
+    def set_recall_centroid(self, centroid: np.ndarray) -> None:
+        """Install the semantic centroid used by ``_score_recall_intent``.
+
+        Built externally with ``workers.intent_router.build_centroid`` from a
+        curated example set ("tell me about X", "who is X", "remind me
+        about X", etc.). Called once on first use by ``llm_worker``.
+        """
+        try:
+            self.recall_centroid = np.asarray(centroid, dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"[RouterV4] failed to install recall centroid: {e}")
+            self.recall_centroid = None
+
+    def _score_recall_intent(self, intent_vector, q: str) -> float:
+        """Phase B semantic recall score in [0, 1].
+
+        When an embedding centroid + query vector are available we use
+        cosine similarity (Nomic v1.5 vectors are L2 normalized so dot
+        product = cosine). Falls back to the substring detector from
+        ``core.memory_filters.detect_recall_intent`` (returns 1.0 / 0.0)
+        when no embedding is available.
+        """
+        if intent_vector is not None and self.recall_centroid is not None:
+            try:
+                v = np.asarray(intent_vector, dtype=np.float32)
+                vn = np.linalg.norm(v)
+                if vn > 0:
+                    v = v / vn
+                cn = np.linalg.norm(self.recall_centroid)
+                c = self.recall_centroid / cn if cn > 0 else self.recall_centroid
+                return float(np.dot(v, c))
+            except Exception as e:
+                logger.debug(f"[RouterV4] recall centroid score failed: {e}")
+
+        # Substring fallback: 1.0 when a recall phrase is present, else 0.
+        return 1.0 if detect_recall_intent(q) else 0.0
+
     def _score_web_intent(self, q: str):
         """NEW: detect clear user intent to search online"""
         triggers = [

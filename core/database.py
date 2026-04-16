@@ -165,7 +165,14 @@ class DatabaseManager:
         role: str,
         content: str,
         sources_json: str | None = None,
-    ):
+    ) -> str:
+        """Insert a message and return its generated id.
+
+        The id is used by the memory enrichment pipeline to record the exact
+        source message(s) for each extracted fact (``source_message_ids`` on
+        the LanceDB payload). Existing callers that ignore the return value
+        are unaffected.
+        """
         msg_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -178,16 +185,21 @@ class DatabaseManager:
                 (session_id,)
             )
             conn.commit()
+        return msg_id
 
     def get_session_history(self, session_id: str) -> list[dict]:
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT role, content, sources_json FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
+                "SELECT id, role, content, sources_json FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
                 (session_id,)
             )
             rows = []
             for row in cursor.fetchall():
-                entry = {"role": row["role"], "content": row["content"]}
+                entry = {
+                    "id": row["id"],
+                    "role": row["role"],
+                    "content": row["content"],
+                }
                 raw = row["sources_json"]
                 if raw:
                     try:

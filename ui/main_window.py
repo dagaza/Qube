@@ -22,6 +22,7 @@ import qtawesome as qta
 from ui.views.conversations_view import ConversationsView
 from ui.views.settings_view import SettingsView
 from ui.views.library_view import LibraryView
+from ui.views.memory_manager_view import MemoryManagerView
 from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
@@ -206,6 +207,7 @@ class MainWindow(QMainWindow):
         # 🔑 THE FIX: Renaming to match our Titling and Hardware logic
         self.conversations_view = ConversationsView(self.workers, self.workers.get("db"))
         self.library_view = LibraryView(self.workers, self.workers.get("db"))
+        self.memory_manager_view = MemoryManagerView(self.workers, self.workers.get("db"))
         self.telemetry_view = TelemetryView(
             self.workers,
             self._gpu_monitor,
@@ -221,9 +223,10 @@ class MainWindow(QMainWindow):
         # Add them to the Stack in the correct order
         self.main_stage.addWidget(self.conversations_view)   # Index 0
         self.main_stage.addWidget(self.library_view)         # Index 1
-        self.main_stage.addWidget(self.telemetry_view)       # Index 2
-        self.main_stage.addWidget(self.model_manager_view)   # Index 3
-        self.main_stage.addWidget(self.settings_view)          # Index 4
+        self.main_stage.addWidget(self.memory_manager_view)  # Index 2
+        self.main_stage.addWidget(self.telemetry_view)       # Index 3
+        self.main_stage.addWidget(self.model_manager_view)   # Index 4
+        self.main_stage.addWidget(self.settings_view)          # Index 5
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
         
@@ -491,11 +494,14 @@ class MainWindow(QMainWindow):
         self.nav_chat.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa'))
 
         self.nav_library = create_nav_btn('fa5s.book', 1)
-        self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 2)
-        self.nav_models = create_nav_btn('fa5s.microchip', 3, size=20)
+        self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22)
+        self.nav_memory.setToolTip("Memory Manager")
+        self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3)
+        self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20)
 
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.nav_memory, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addStretch()
@@ -510,7 +516,7 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.nav_settings = create_nav_btn('fa5s.cog', 4, size=20)
+        self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20)
         layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # --- 🔑 THE PRESTIGE MINI-TELEMETRY BLOCK ---
@@ -547,6 +553,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons = [
             self.nav_chat,
             self.nav_library,
+            self.nav_memory,
             self.nav_telemetry,
             self.nav_models,
             self.nav_settings,
@@ -1297,6 +1304,7 @@ class MainWindow(QMainWindow):
             # Reset icon colors to default, then highlight the active one
             if btn == self.nav_chat: btn.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_library: btn.setIcon(qta.icon('fa5s.book', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+            elif btn == self.nav_memory: btn.setIcon(qta.icon('fa5s.brain', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_telemetry: btn.setIcon(qta.icon('fa5s.tachometer-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_models: btn.setIcon(qta.icon('fa5s.microchip', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_settings: btn.setIcon(qta.icon('fa5s.cog', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
@@ -1379,6 +1387,10 @@ class MainWindow(QMainWindow):
             if hasattr(self.library_view, '_update_row_colors'):
                 self.library_view._update_row_colors() # Force text repaint instantly!
 
+        if hasattr(self, "memory_manager_view") and hasattr(
+            self.memory_manager_view, "refresh_theme"
+        ):
+            self.memory_manager_view.refresh_theme(self._is_dark_theme)
         if hasattr(self, "model_manager_view") and hasattr(
             self.model_manager_view, "refresh_after_theme_toggle"
         ):
