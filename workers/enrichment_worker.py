@@ -7,6 +7,7 @@ import re
 from queue import Queue, Empty
 
 from core.memory_filters import (
+    derive_memory_tier,
     detect_explicit_remember,
     is_assistant_failure_message,
     is_thin_content,
@@ -1272,10 +1273,25 @@ Conversation:
                         base_payload["strength"] = 1
 
                 if not skip_insert:
+                    # T3.4 tier-aware namespacing. The tier is a
+                    # deterministic function of the payload (see
+                    # derive_memory_tier) and lands in the LanceDB
+                    # ``source`` column as
+                    # ``qube_memory::<tier>::<category>`` so the
+                    # retrieval layer can scope queries by tier via
+                    # cheap prefix LIKE filters. Episodes keep their
+                    # T3.2 per-session namespace and never flow through
+                    # this branch (_replace_episode_row writes them).
+                    tier = derive_memory_tier({
+                        **fact,
+                        "category": category,
+                        "subject": subject,
+                        "origin": origin,
+                    })
                     records_to_add.append({
                         "text": json.dumps(base_payload),
                         "vector": vector,
-                        "source": f"qube_memory::{category}",
+                        "source": f"qube_memory::{tier}::{category}",
                         "chunk_id": 0
                     })
 

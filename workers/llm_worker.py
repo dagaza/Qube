@@ -774,11 +774,61 @@ class LLMWorker(QThread):
 
         # ---- MEMORY ----
         if execution_route in ["MEMORY", "HYBRID"]:
+            # T3.4 tier flags per route (see §3.3 of the plan):
+            #  * MEMORY route (router centroid picked ``memory``, which is
+            #    recall-leaning by construction) OR HYBRID route
+            #    (recall+docs fusion): include_preference + include_knowledge
+            #    + include_context. Knowledge rows (third-party facts /
+            #    document-derived claims) are exactly what the user wants
+            #    when they ask "remind me about X" / "who is X".
+            #  * Narrative: additionally include_episode. ``prefer_episode``
+            #    alone already forces episode in ``memory_tool``; we pass
+            #    ``include_episode=True`` explicitly for clarity and so the
+            #    WHERE builder sees the same flag set the caller intended.
+            prefer_episode = bool(
+                decision.get("prefer_episode") or narrative_active
+            )
+            include_episode = prefer_episode or narrative_active
+
             mem_result = memory_search(
                 decision.get("memory_query") or self.prompt,
                 query_vector,
                 self.store,
-                prefer_episode=bool(decision.get("prefer_episode") or narrative_active),
+                prefer_episode=prefer_episode,
+                include_preference=True,
+                include_knowledge=True,
+                include_episode=include_episode,
+                include_context=True,
+            )
+            memory_context = mem_result.get("memory_context", "")
+            all_ui_sources.extend(mem_result.get("memory_sources", []))
+        elif (
+            execution_route == "NONE"
+            and not explicit_remember_active
+            and not file_search_active
+        ):
+            # T3.4 §3.3 "default every turn (even CHAT)": on a plain chat
+            # turn (router picked ``none``) run a cheap preferences-only
+            # retrieval (MemGPT-style core memory). This is the lane where
+            # stable user preferences like "I prefer metric units" or
+            # "call me by my first name" surface into every conversation
+            # without the user having to trigger recall intent.
+            #
+            # Explicit-remember is a write turn — skip retrieval. File-
+            # search scopes to docs; memory retrieval would just dilute
+            # the context window.
+            if query_vector is None:
+                query_vector = self.embedding_cache.get_embedding(self.prompt)
+            mem_result = memory_search(
+                self.prompt,
+                query_vector,
+                self.store,
+                prefer_episode=False,
+                include_preference=True,
+                include_knowledge=False,
+                include_episode=False,
+                include_context=True,
+                top_k=3,
             )
             memory_context = mem_result.get("memory_context", "")
             all_ui_sources.extend(mem_result.get("memory_sources", []))

@@ -70,6 +70,42 @@ MEMORY_CATEGORIES: tuple[str, ...] = (
     "episode",
 )
 
+# T3.4 structural tiers. A memory's tier lives in the LanceDB ``source``
+# column as ``qube_memory::<tier>::<category>``; legacy rows without an
+# explicit tier collapse to "context".
+MEMORY_TIER_FILTERS: tuple[str, ...] = (
+    "all",
+    "preference",
+    "knowledge",
+    "episode",
+    "context",
+)
+
+_TIER_BADGE_TEXT: dict[str, str] = {
+    "preference": "PREF",
+    "knowledge": "KNOW",
+    "episode": "EP",
+    "context": "CTX",
+}
+
+
+def _tier_from_source(source: str) -> str:
+    """Derive the structural tier from the LanceDB ``source`` string.
+
+    Accepts both the new ``qube_memory::<tier>::<category>`` form and the
+    legacy pre-T3.4 ``qube_memory::<category>`` form (falls back to
+    ``"context"``). Unknown tier tokens collapse to ``"context"`` too so
+    the UI never crashes on an unexpected source string.
+    """
+    if not isinstance(source, str):
+        return "context"
+    parts = source.split("::")
+    if len(parts) >= 3 and parts[0] == "qube_memory":
+        tier = parts[1].strip().lower()
+        if tier in {"preference", "knowledge", "episode", "context"}:
+            return tier
+    return "context"
+
 # Cap how many memory rows we ever load into the UI in one pass — the
 # whole point of the negative-list / decay pipeline is that the user
 # never accumulates millions of memories, but we still want a defensive
@@ -268,6 +304,7 @@ class _MemoryRowCard(QFrame):
         self.item = item
         self.row_id: str = item.get("id") or ""
         self.payload: dict = dict(item.get("payload") or {})
+        self._tier: str = _tier_from_source(item.get("source") or "")
 
         self.setObjectName("MemoryRowCard")
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -276,10 +313,18 @@ class _MemoryRowCard(QFrame):
         outer.setContentsMargins(16, 14, 16, 14)
         outer.setSpacing(8)
 
-        # Top line: category badge, subject, flagged badge
+        # Top line: tier badge, category badge, subject, flagged badge
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.setSpacing(8)
+
+        # T3.4 tier badge: small coloured pill indicating the memory's
+        # structural tier (preference / knowledge / episode / context).
+        # Styled widget-level (see _style_tier_badge) rather than via
+        # app-level QSS selectors, to match the brand-button contract.
+        self._tier_lbl = QLabel(_TIER_BADGE_TEXT.get(self._tier, "CTX"))
+        self._tier_lbl.setObjectName("MemoryRowTierBadge")
+        top.addWidget(self._tier_lbl)
 
         self._category_lbl = QLabel(self._cat_text())
         self._category_lbl.setObjectName("MemoryRowCategoryBadge")
@@ -391,6 +436,39 @@ class _MemoryRowCard(QFrame):
     def _cat_text(self) -> str:
         return str(self.payload.get("category") or "context").upper()
 
+    # T3.4: tier-specific colour palette for the PREF / KNOW / EP / CTX
+    # badge. Values are intentionally distinct from the category-badge
+    # purple so the two badges read as separate signals.
+    _TIER_COLOURS: dict[str, tuple[str, str]] = {
+        # (background rgba, foreground)
+        "preference": ("rgba(34, 197, 94, 0.18)", "#22c55e"),   # green
+        "knowledge":  ("rgba(139, 92, 246, 0.18)", "#8b5cf6"),  # purple
+        "episode":    ("rgba(59, 130, 246, 0.18)", "#3b82f6"),  # blue
+        "context":    ("rgba(148, 163, 184, 0.18)", "#94a3b8"), # slate
+    }
+
+    def _style_tier_badge(self, is_dark: bool) -> None:
+        """Widget-level QSS for the tier badge (see brand-button rule).
+
+        Widget-level styles beat anything the app-level sheet could try,
+        so the tier pill is guaranteed to render in its colour even if a
+        future base.qss rule tries to generalise ``QLabel``.
+        """
+        bg, fg = self._TIER_COLOURS.get(self._tier, self._TIER_COLOURS["context"])
+        self._tier_lbl.setStyleSheet(
+            f"""
+            QLabel#MemoryRowTierBadge {{
+                background: {bg};
+                color: {fg};
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }}
+            """
+        )
+
     def _on_flag_clicked(self) -> None:
         new_flag = not bool(self.payload.get("flagged_for_review"))
         self.flag_toggled.emit(self.row_id, new_flag)
@@ -403,6 +481,8 @@ class _MemoryRowCard(QFrame):
         accent = "#8b5cf6"
         amber_bg = "rgba(245, 158, 11, 0.18)"
         amber_fg = "#f59e0b"
+
+        self._style_tier_badge(is_dark)
 
         self.setStyleSheet(
             f"""
@@ -530,6 +610,7 @@ class MemoryManagerView(QWidget):
         self._all_rows: list[dict] = []
         self._row_widgets: dict[str, _MemoryRowCard] = {}
         self._filter_category = "all"
+        self._filter_tier = "all"
         self._flagged_only = False
         self._search_text = ""
         # Timestamp (monotonic seconds) of the last refresh. Used by
@@ -623,6 +704,14 @@ class MemoryManagerView(QWidget):
         filter_row.setContentsMargins(0, 0, 0, 0)
         filter_row.setSpacing(10)
 
+        # T3.4 two-level filter: tier first, then category. Tier maps to
+        # the structural ``qube_memory::<tier>::%`` namespace — it's a
+        # more robust cut than the free-form ``category`` label.
+        self.tier_selector = SelectorButton("All tiers", is_dark=is_dark)
+        self.tier_selector.setMaximumWidth(200)
+        self._build_tier_menu()
+        filter_row.addWidget(self.tier_selector)
+
         self.category_selector = SelectorButton("All categories", is_dark=is_dark)
         self.category_selector.setMaximumWidth(220)
         self._build_category_menu()
@@ -681,6 +770,25 @@ class MemoryManagerView(QWidget):
             act.triggered.connect(lambda _checked=False, c=cat, l=label: self._on_category_picked(c, l))
         self.category_selector.setMenu(menu)
 
+    def _build_tier_menu(self) -> None:
+        menu = QMenu(self.tier_selector)
+        for tier in MEMORY_TIER_FILTERS:
+            if tier == "all":
+                label = "All tiers"
+            elif tier == "preference":
+                label = "Preferences"
+            elif tier == "knowledge":
+                label = "Knowledge"
+            elif tier == "episode":
+                label = "Episodes"
+            else:
+                label = tier.capitalize()
+            act = menu.addAction(label)
+            act.triggered.connect(
+                lambda _checked=False, t=tier, l=label: self._on_tier_picked(t, l)
+            )
+        self.tier_selector.setMenu(menu)
+
     # ------------------------------------------------------------------
     # Filter handlers
     # ------------------------------------------------------------------
@@ -688,6 +796,11 @@ class MemoryManagerView(QWidget):
     def _on_category_picked(self, category: str, label: str) -> None:
         self._filter_category = category
         self.category_selector.setText(label)
+        self._render_rows()
+
+    def _on_tier_picked(self, tier: str, label: str) -> None:
+        self._filter_tier = tier
+        self.tier_selector.setText(label)
         self._render_rows()
 
     def _on_flagged_toggled(self, on: bool) -> None:
@@ -730,6 +843,13 @@ class MemoryManagerView(QWidget):
             cat = str(payload.get("category") or "context").lower()
             if self._filter_category != "all" and cat != self._filter_category:
                 continue
+            # T3.4 tier filter — independent of category. Uses the
+            # structural ``source`` namespace derived by
+            # ``_tier_from_source`` so legacy rows collapse to context.
+            if self._filter_tier != "all":
+                tier = _tier_from_source(item.get("source") or "")
+                if tier != self._filter_tier:
+                    continue
             if self._flagged_only and not payload.get("flagged_for_review"):
                 continue
             if self._search_text:
@@ -1009,6 +1129,11 @@ class MemoryManagerView(QWidget):
 
         try:
             self.category_selector.apply_theme(is_dark)
+        except Exception:
+            pass
+
+        try:
+            self.tier_selector.apply_theme(is_dark)
         except Exception:
             pass
 

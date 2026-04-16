@@ -433,6 +433,63 @@ NO_SOURCES_SYSTEM_SUFFIX: str = (
 
 
 # ============================================================
+# Memory tiering (T3.4).
+# ------------------------------------------------------------
+# A pure function mapping an extracted fact payload to its
+# structural tier ("preference" / "knowledge" / "episode" /
+# "context"). The tier is embedded in the LanceDB ``source``
+# field as ``qube_memory::<tier>::<category>``. Retrieval uses
+# the tier as a cheap WHERE filter so ordinary chat turns see
+# only preferences (+ legacy context) while recall / hybrid /
+# narrative turns also see knowledge and episodes.
+#
+# Classification order (first match wins):
+#   1. category=="episode"                               -> episode
+#   2. subject=="user" AND origin in user_stated /
+#      user_confirmed                                    -> preference
+#   3. fact["_explicit_remember"] is True                -> knowledge
+#   4. subject=="third_party"                            -> knowledge
+#   5. origin=="document_derived"                        -> knowledge
+#   6. anything else                                     -> context
+# ============================================================
+MEMORY_TIERS: tuple[str, ...] = (
+    "preference",
+    "knowledge",
+    "episode",
+    "context",
+)
+
+
+def derive_memory_tier(fact: dict) -> str:
+    """Deterministic mapping from a fact payload to its storage tier.
+
+    Defensive against missing / malformed keys: an empty dict or a dict
+    whose ``category`` / ``subject`` / ``origin`` are missing falls back
+    to ``"context"``. Unknown category values also fall back to
+    ``"context"``.
+    """
+    if not isinstance(fact, dict):
+        return "context"
+
+    category = str(fact.get("category") or "").strip().lower()
+    subject = str(fact.get("subject") or "").strip().lower()
+    origin = str(fact.get("origin") or "").strip().lower()
+    explicit_remember = bool(fact.get("_explicit_remember", False))
+
+    if category == "episode":
+        return "episode"
+    if subject == "user" and origin in {"user_stated", "user_confirmed"}:
+        return "preference"
+    if explicit_remember:
+        return "knowledge"
+    if subject == "third_party":
+        return "knowledge"
+    if origin == "document_derived":
+        return "knowledge"
+    return "context"
+
+
+# ============================================================
 # Narrative / recap suffix (T3.2).
 # ------------------------------------------------------------
 # Appended to the system prompt when ``detect_narrative_intent`` fires.
@@ -456,6 +513,8 @@ __all__ = [
     "detect_recall_intent",
     "detect_narrative_intent",
     "detect_file_search_intent",
+    "derive_memory_tier",
+    "MEMORY_TIERS",
     "RECALL_FUSION_SYSTEM_SUFFIX",
     "FILE_SEARCH_SYSTEM_SUFFIX",
     "CITATION_DISCIPLINE_SUFFIX",
