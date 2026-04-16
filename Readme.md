@@ -75,6 +75,8 @@ Qube uses two complementary memory layers:
 
 - **Role-aware preprocessing** — assistant refusal / limitation messages are matched against a regex blacklist and replaced with `[failure message omitted]` *before* the extraction prompt is built, so a one-off "I can't access the internet" turn cannot become a permanent "the agent has no internet" memory.
 
+- **Tool-aware turn fences (T3.3)** — the LLM worker now tells the enrichment worker when a turn should not be mined at all. Stream-repetition guard trips, web-search failure sentinels on WEB/INTERNET/HYBRID routes, pipeline errors, and assistant-failure final text all set `enrichment_mode = "skip"`. Explicit-remember turns ("please remember that…") set `enrichment_mode = "explicit_only"` so the user-requested fact is still seeded while the extractor LLM call is skipped on the acknowledgement. Cadence-driven maintenance (usage drain, decay sweep) keeps running independently.
+
 - **Server-side validation** — drops candidates that are `subject=system`, `source_role=assistant` (without an explicit `remember that…` from the user), bare third-party stubs, non-`long_term`, thin (`< 3 words` / single proper-noun / all stop-words), match an assistant-failure pattern, or are missing a `provenance_quote`.
 
 - **Per-turn provenance** — each memory records its `source_session_id`, `source_message_ids`, `origin` (user_stated / user_confirmed / document_derived / system_derived), and `links_to_document_ids` for the RAG chunks that were in context when it was formed. On retrieval, a thin memory **auto-expands to its originating document chunk** so "Who is Alice?" answers from the actual document, not the bare name.

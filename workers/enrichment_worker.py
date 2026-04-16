@@ -255,10 +255,21 @@ class EnrichmentWorker(QThread):
 
         Accepts either a bare ``session_id`` (legacy) or a dict payload
         containing ``{session_id, last_user_msg_id, last_assistant_msg_id,
-        rag_chunk_ids}`` (Phase B per-turn context). When a payload is
-        provided the worker will extract only from the exact user+assistant
-        pair that ended the turn, and each stored fact will carry the
-        matching provenance + ``links_to_document_ids``.
+        rag_chunk_ids, skip_enrichment, enrichment_mode, skip_reason}``
+        (Phase B per-turn context + T3.3 tool-aware skip plumbing). When a
+        payload is provided the worker will extract only from the exact
+        user+assistant pair that ended the turn, and each stored fact will
+        carry the matching provenance + ``links_to_document_ids``.
+
+        T3.3 fields:
+            - ``skip_enrichment`` (bool, default False): when True the
+              extractor is short-circuited. Cadence-based maintenance
+              (usage drain, decay sweep) still runs.
+            - ``enrichment_mode`` (str, optional): one of ``full`` /
+              ``explicit_only`` / ``skip``. ``explicit_only`` skips the
+              extractor LLM call but still lets the explicit-remember
+              bypass seed its knowledge fact.
+            - ``skip_reason`` (str, optional): diagnostic only.
         """
         if isinstance(session_id_or_payload, dict):
             payload = dict(session_id_or_payload)
@@ -324,7 +335,18 @@ class EnrichmentWorker(QThread):
 
                 self.is_processing = True
                 if isinstance(item, dict):
-                    self._process_turn(item)
+                    # T3.3: honour the per-turn skip flag emitted by
+                    # LLMWorker. Maintenance (usage drain + decay sweep)
+                    # is cadence-driven and stays on its own timers via
+                    # the ``finally`` block below.
+                    if item.get("skip_enrichment"):
+                        logger.info(
+                            "[Memory v6] enrichment skipped for session=%s reason=%r",
+                            item.get("session_id"),
+                            item.get("skip_reason") or "unspecified",
+                        )
+                    else:
+                        self._process_turn(item)
                 else:
                     self._process_session(item)
 
@@ -355,6 +377,17 @@ class EnrichmentWorker(QThread):
         last_user_msg_id = payload.get("last_user_msg_id")
         last_assistant_msg_id = payload.get("last_assistant_msg_id")
         rag_chunk_ids = list(payload.get("rag_chunk_ids") or [])
+
+        # T3.3: ``enrichment_mode`` from LLMWorker controls whether we run
+        # the normal extractor (``full``), only the explicit-remember
+        # bypass (``explicit_only``), or nothing at all (``skip``). The
+        # ``skip`` case is already short-circuited in ``run()`` before we
+        # reach this method, but we still guard defensively here.
+        mode = str(payload.get("enrichment_mode") or "full").lower()
+        if mode not in ("full", "explicit_only", "skip"):
+            mode = "full"
+        if mode == "skip":
+            return
 
         if not self._wait_for_chat_llm_idle():
             return
@@ -393,6 +426,7 @@ class EnrichmentWorker(QThread):
             last_user_msg_id=last_user_msg_id,
             last_assistant_msg_id=last_assistant_msg_id,
             rag_chunk_ids=rag_chunk_ids,
+            mode=mode,
         )
 
     def _process_session(self, session_id: str):
@@ -425,16 +459,30 @@ class EnrichmentWorker(QThread):
         last_user_msg_id,
         last_assistant_msg_id,
         rag_chunk_ids: list[str],
+        mode: str = "full",
     ) -> None:
         """Shared extraction path used by both whole-session and per-turn modes.
 
         All provenance + link fields are threaded down to ``_store_facts`` so
         Phase B's richer payload schema is populated uniformly.
-        """
-        prompt = self._build_prompt(messages)
-        raw = self._generate_memory(prompt)
 
-        facts = self._extract_json_facts(raw) if raw else []
+        ``mode``: ``full`` (default) runs the normal extractor LLM call.
+        ``explicit_only`` skips the extractor and only lets the
+        explicit-remember bypass seed its knowledge fact — used on turns
+        where the assistant's acknowledgement is cheap write-confirmation
+        text and mining it would introduce third-party false positives.
+        """
+        if mode not in ("full", "explicit_only"):
+            mode = "full"
+
+        if mode == "explicit_only":
+            # Skip the extractor LLM call; only the bypass below seeds a fact.
+            facts: list[dict] = []
+        else:
+            prompt = self._build_prompt(messages)
+            raw = self._generate_memory(prompt)
+
+            facts = self._extract_json_facts(raw) if raw else []
 
         # Explicit "remember that ..." bypass. Even if the LLM extractor
         # returns nothing (or drops the user's explicit ask because

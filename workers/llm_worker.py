@@ -27,6 +27,7 @@ from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
     detect_file_search_intent,
+    is_assistant_failure_message,
     is_thin_content,
     RECALL_FUSION_SYSTEM_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
@@ -295,6 +296,44 @@ class LLMWorker(QThread):
         except Exception:
             logger.exception("[LLM] memory citation scan failed")
 
+    # ============================================================
+    # T3.3: per-turn enrichment skip / mode plumbing.
+    #
+    # ``_turn_enrichment_mode`` is one of:
+    #   - "full"          : run the normal EnrichmentWorker extraction.
+    #   - "explicit_only" : skip the extractor LLM call but still let the
+    #                       explicit-remember bypass seed its knowledge fact
+    #                       (the user's own message is clean even on a
+    #                       broken assistant response).
+    #   - "skip"          : short-circuit enrichment entirely for this turn.
+    #
+    # ``_turn_skip_enrichment_reason`` is a short diagnostic string used
+    # only for INFO-level logging on the EnrichmentWorker side.
+    # ============================================================
+    def _reset_turn_enrichment_flags(self) -> None:
+        self._turn_enrichment_mode: str = "full"
+        self._turn_skip_enrichment_reason: str | None = None
+
+    def _mark_skip_enrichment(self, reason: str) -> None:
+        """Mark this turn as ``skip`` enrichment, unless an explicit-remember
+        turn has already claimed it (in which case the bypass must still run,
+        but we record the secondary cause in the reason for diagnostics).
+        """
+        if not reason:
+            return
+        current_mode = getattr(self, "_turn_enrichment_mode", "full")
+        if current_mode == "explicit_only":
+            if not getattr(self, "_turn_skip_enrichment_reason", None):
+                self._turn_skip_enrichment_reason = reason
+            return
+        self._turn_enrichment_mode = "skip"
+        if not getattr(self, "_turn_skip_enrichment_reason", None):
+            self._turn_skip_enrichment_reason = reason
+
+    def _mark_explicit_remember_mode(self, reason: str = "explicit_remember_write_only") -> None:
+        self._turn_enrichment_mode = "explicit_only"
+        self._turn_skip_enrichment_reason = reason
+
     def _ensure_recall_centroid(self) -> None:
         """Lazily build and install the RECALL semantic centroid on the
         cognitive router. Called once on the first turn that uses the
@@ -461,11 +500,19 @@ class LLMWorker(QThread):
         self._cancel_requested = False
         self._active_stream_response = None
         self._successfully_finished = False
+        # T3.3: reset skip/mode flags before the turn begins; _execute_llm_turn
+        # re-primes them at the very top but keeping it here is belt-and-braces
+        # in case an early exception fires before that method is called.
+        self._reset_turn_enrichment_flags()
         final_text_out = ""
         try:
             final_text_out = self._execute_llm_turn()
         except Exception:
             logger.exception("[LLM] pipeline failure (routing, tools, or stream)")
+            # T3.3: a pipeline-level exception means whatever assistant text we
+            # have is partial / "Sorry, my brain encountered an error." — do
+            # not mine it for memories.
+            self._mark_skip_enrichment("pipeline_error")
             if not str(final_text_out).strip():
                 final_text_out = "Sorry, my brain encountered an error."
                 self.token_streamed.emit(self.session_id or "", "\n\n*(Pipeline Error)*")
@@ -473,12 +520,33 @@ class LLMWorker(QThread):
             self._close_active_stream()
             self._last_completed_llm_session_id = self.session_id
             self._server_kv_cleared_for_session_id = None
+            # T3.3: cheap belt-and-suspenders — if the final assistant text
+            # looks like a failure / limitation claim, skip extraction even
+            # when no upstream trip condition fired.
             try:
+                if (
+                    getattr(self, "_turn_enrichment_mode", "full") == "full"
+                    and is_assistant_failure_message(final_text_out or "")
+                ):
+                    self._mark_skip_enrichment("assistant_failure_final_text")
+            except Exception:
+                pass
+            try:
+                mode = getattr(self, "_turn_enrichment_mode", "full")
+                reason = getattr(self, "_turn_skip_enrichment_reason", None)
                 enrichment_payload = {
                     "session_id": self.session_id,
                     "last_user_msg_id": getattr(self, "_turn_last_user_msg_id", None),
                     "last_assistant_msg_id": getattr(self, "_turn_last_assistant_msg_id", None),
                     "rag_chunk_ids": list(getattr(self, "_turn_rag_chunk_ids", []) or []),
+                    # T3.3: per-turn enrichment gate. ``skip_enrichment`` is
+                    # the primary boolean honoured by EnrichmentWorker;
+                    # ``enrichment_mode`` carries the finer tri-state so the
+                    # explicit-remember bypass can still seed its knowledge
+                    # fact on an "explicit_only" turn.
+                    "skip_enrichment": mode == "skip",
+                    "enrichment_mode": mode,
+                    "skip_reason": reason,
                 }
                 self.enrichment_context_ready.emit(enrichment_payload)
             except Exception:
@@ -495,6 +563,8 @@ class LLMWorker(QThread):
         self._turn_rag_chunk_ids: list[str] = []
         self._turn_last_user_msg_id = None
         self._turn_last_assistant_msg_id = None
+        # T3.3: reset tool-aware enrichment skip / mode flags for this turn.
+        self._reset_turn_enrichment_flags()
 
         if self.session_id:
             self._turn_last_user_msg_id = self.db.add_message(
@@ -529,6 +599,15 @@ class LLMWorker(QThread):
         # ============================================================
         explicit_remember_body = detect_explicit_remember(self.prompt)
         explicit_remember_active = bool(explicit_remember_body)
+
+        # T3.3: an explicit-remember turn is a write turn — we do NOT want to
+        # run the normal extractor over the brief acknowledgement the
+        # assistant will emit, because that text is easily misread as a
+        # third-party claim. The explicit-remember bypass (synthesised
+        # server-side from the user's own message) still runs on the
+        # enrichment worker side under the ``explicit_only`` mode.
+        if explicit_remember_active:
+            self._mark_explicit_remember_mode()
 
         # ============================================================
         # 0.5 EXPLICIT FILE-SEARCH OVERRIDE (Memory v6.1)
@@ -722,6 +801,12 @@ class LLMWorker(QThread):
                         "[LLM Worker] Web results dropped (empty / failure sentinel); not injecting [W] context."
                     )
                     web_results = None
+                    # T3.3: a web-route turn without web data is effectively
+                    # a capability failure — skip enrichment so the thin /
+                    # "I couldn't find anything online" style reply is not
+                    # mined as a user fact.
+                    if execution_route in ("WEB", "INTERNET", "HYBRID"):
+                        self._mark_skip_enrichment("web_tool_failure")
 
             if web_results:
                 if isinstance(web_results, list):
@@ -989,6 +1074,9 @@ class LLMWorker(QThread):
                                     "[LLM] SSE stream degeneration detected (%s); cancelling.",
                                     repetition_guard.trip_reason,
                                 )
+                                # T3.3: truncated / degenerate assistant text
+                                # must not be mined for memories.
+                                self._mark_skip_enrichment("stream_repetition_cancelled")
                                 break
 
                     except json.JSONDecodeError:
@@ -1114,6 +1202,9 @@ class LLMWorker(QThread):
                         "[LLM] Native stream degeneration detected (%s); cancelling.",
                         repetition_guard.trip_reason,
                     )
+                    # T3.3: truncated / degenerate assistant text must not be
+                    # mined for memories.
+                    self._mark_skip_enrichment("stream_repetition_cancelled")
                     self._native_engine.request_cancel_generation()
                     _flush_tail()
                     saw_end = True
