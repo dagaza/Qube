@@ -173,6 +173,63 @@ def _lookup_rag_chunk(store, link_id: str) -> dict | None:
     }
 
 
+_TIER_TO_SOURCE_PREFIX: dict[str, str] = {
+    "preference": "qube_memory::preference::%",
+    "knowledge": "qube_memory::knowledge::%",
+    "episode": "qube_memory::episode::%",
+    "context": "qube_memory::context::%",
+    # Pre-T3.4 rows used ``qube_memory::<category>`` directly. We honour
+    # them as legacy context so existing installs without a DB wipe still
+    # retrieve their memories, without structurally conflating them with
+    # the new explicit preference/knowledge namespaces.
+    "legacy_context": "qube_memory::%",
+}
+
+
+def _build_tier_where_clause(
+    *,
+    include_preference: bool,
+    include_knowledge: bool,
+    include_episode: bool,
+    include_context: bool,
+) -> str:
+    """Compose the LanceDB WHERE clause from the tier flags.
+
+    Returns ``"source LIKE 'qube_memory::%'"`` when every tier flag is
+    disabled (defensive — avoids an empty WHERE that would drop all
+    rows). The legacy ``qube_memory::<category>`` namespace is routed
+    together with ``context`` so pre-T3.4 memories keep surfacing on
+    plain chat turns.
+    """
+    prefixes: list[str] = []
+    if include_preference:
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["preference"])
+    if include_knowledge:
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["knowledge"])
+    if include_episode:
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["episode"])
+    if include_context:
+        # Legacy rows (pre-T3.4) land here too — they do not carry a
+        # tier segment in their source string and we want them visible
+        # alongside the new context tier until the store is wiped.
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["context"])
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["legacy_context"])
+
+    if not prefixes:
+        return "source LIKE 'qube_memory::%'"
+
+    # Dedup while preserving order (legacy + context differ in prefix
+    # but may still overlap logically if we ever rename the table).
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for p in prefixes:
+        if p in seen:
+            continue
+        seen.add(p)
+        uniq.append(p)
+    return " OR ".join(f"source LIKE '{p}'" for p in uniq)
+
+
 def memory_search(
     query: str,
     query_vector: np.ndarray,
@@ -180,6 +237,11 @@ def memory_search(
     top_k: int = 5,
     trace: bool = False,
     prefer_episode: bool = False,
+    *,
+    include_preference: bool = True,
+    include_knowledge: bool = False,
+    include_episode: bool = False,
+    include_context: bool = True,
 ) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
@@ -194,9 +256,27 @@ def memory_search(
       above atomic facts AND bypasses the proper-noun gate for them so
       narrative recap queries ("what have we been working on?") surface
       the session summary even when the query has no named entity.
+    ✔ T3.4: tier flags (``include_preference`` / ``include_knowledge`` /
+      ``include_episode`` / ``include_context``) scope the LanceDB WHERE
+      clause so plain chat turns see only preferences + context while
+      recall / hybrid / narrative turns also see knowledge and episodes.
     """
 
-    logger.info(f"[Memory v6] Searching: '{query}' (prefer_episode={prefer_episode})")
+    logger.info(
+        "[Memory v6] Searching: %r (prefer_episode=%s pref=%s know=%s ep=%s ctx=%s)",
+        query,
+        prefer_episode,
+        include_preference,
+        include_knowledge,
+        include_episode,
+        include_context,
+    )
+    where_clause = _build_tier_where_clause(
+        include_preference=include_preference,
+        include_knowledge=include_knowledge,
+        include_episode=include_episode or prefer_episode,
+        include_context=include_context,
+    )
 
     # v6.1: collect distinctive proper-noun tokens from the query up-front.
     # When the query is entity-scoped (e.g. "tell me about Dr. Evelyn"),
@@ -213,7 +293,7 @@ def memory_search(
         results = (
             store.table
             .search(query_vector)
-            .where("source LIKE 'qube_memory::%'")
+            .where(where_clause)
             .limit(top_k * CANDIDATE_MULTIPLIER)
             .to_list()
         )

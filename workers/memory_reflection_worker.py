@@ -62,6 +62,12 @@ VALID_LABELS = {
     "system_claim",
     "transient",
     "unclear",
+    # T3.4 structural labels set deterministically by
+    # ``_structural_label_for`` BEFORE the LLM judge runs. They are
+    # added to the valid set so ``_parse_label`` never rewrites them
+    # back to "unclear" on an LLM echo / round-trip.
+    "tier_mismatch",
+    "orphan_knowledge",
 }
 
 
@@ -194,9 +200,20 @@ class MemoryReflectionWorker(QThread):
         if not content:
             return
 
-        prompt = self._build_prompt(payload)
-        raw = self._call_llm(prompt)
-        label = self._parse_label(raw)
+        # T3.4: structural labels trump the LLM judge. If the stored
+        # ``source`` tier disagrees with what ``derive_memory_tier``
+        # would assign today (e.g. a row tagged as preference but
+        # whose subject is "third_party"), flag as ``tier_mismatch``
+        # without spending an LLM cycle. Likewise, a knowledge row
+        # that has lost all provenance + links + explicit-remember
+        # origin is an ``orphan_knowledge`` candidate.
+        structural = self._structural_label_for(cand, payload)
+        if structural is not None:
+            label = structural
+        else:
+            prompt = self._build_prompt(payload)
+            raw = self._call_llm(prompt)
+            label = self._parse_label(raw)
         flagged = label != "durable_user_fact"
 
         new_payload = dict(payload)
@@ -212,6 +229,43 @@ class MemoryReflectionWorker(QThread):
                 label,
                 flagged,
             )
+
+    def _structural_label_for(self, cand: dict, payload: dict) -> Optional[str]:
+        """Cheap deterministic tier / orphan check (T3.4).
+
+        Runs BEFORE the LLM judge so we never waste a reflection cycle
+        on rows whose structural metadata alone is enough to flag them.
+        Returns ``None`` when there is no structural issue and the LLM
+        judge should run instead.
+        """
+        source = str(cand.get("source") or "").strip().lower()
+        subject = str(payload.get("subject") or "").strip().lower()
+
+        # Tier mismatch: a row parked in the preference namespace must
+        # be about the user. A preference row with subject=third_party
+        # (or missing subject) is structurally wrong and the user
+        # should review it.
+        if source.startswith("qube_memory::preference::") and subject != "user":
+            return "tier_mismatch"
+
+        # A knowledge-tier row that has lost every piece of evidence
+        # it was stored for (provenance quote, RAG document link, or
+        # the explicit-remember origin stamp) is an orphan and almost
+        # always a stale scrape.
+        if source.startswith("qube_memory::knowledge::"):
+            prov = str(payload.get("provenance_quote") or "").strip()
+            links = payload.get("links_to_document_ids") or []
+            origin = str(payload.get("origin") or "").strip().lower()
+            explicit = bool(payload.get("_explicit_remember", False))
+            if (
+                not prov
+                and not (isinstance(links, list) and links)
+                and origin != "explicit_remember"
+                and not explicit
+            ):
+                return "orphan_knowledge"
+
+        return None
 
     def _build_prompt(self, payload: dict) -> str:
         content = (payload.get("content") or "").strip()
