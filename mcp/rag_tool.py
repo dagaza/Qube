@@ -6,6 +6,31 @@ logger = logging.getLogger("Qube.RAGTool")
 
 MAX_CONTEXT_CHARS = 12000
 
+# ============================================================
+# T4.1: HARD semantic-relevance floor for RAG vector hits.
+# ------------------------------------------------------------
+# Nomic v1.5 embeddings are L2-normalised, so
+#   semantic_score = max(0, 1 - _distance)
+# is a proxy for cosine similarity. Anything below this floor is
+# topically unrelated — and yet top-k vector search will still return
+# the nearest chunks in the library (by construction there is ALWAYS
+# a "nearest" row, no matter how semantically distant it is).
+#
+# Without this gate, asking "Why is the sky blue?" against a library
+# whose only document is "Project Omega (Blue Jay migration study)"
+# returned the Omega chunk as SOURCE 1, because it was the least-far
+# vector in the space. The LLM, given the citation-discipline system
+# prompt, degenerated to a bare "[1]" token on that irrelevant source.
+#
+# This is the RAG-side mirror of mcp.memory_tool.MIN_SEMANTIC_SCORE
+# (0.35). The RAG floor is slightly more permissive (0.30) because
+# RAG chunks are longer than memory rows so their embeddings average
+# over more text and tend to score lower on specific single-topic
+# queries. Candidates dropped by this gate never reach llm_context,
+# never appear in UI sources, and never enter fused ranking.
+# ============================================================
+MIN_RAG_SEMANTIC_SCORE = 0.30
+
 
 def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k: int = 5) -> dict:
     """
@@ -59,6 +84,58 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
                 "llm_context": "",
                 "sources": []
             }
+
+        # ============================================================
+        # 1.5 T4.1: HARD SEMANTIC-RELEVANCE GATE (vector channel)
+        # ------------------------------------------------------------
+        # Apply MIN_RAG_SEMANTIC_SCORE to each vector hit. If the
+        # vector channel produced candidates but the gate drops ALL
+        # of them, the FTS hits are also dropped: lexical matches
+        # without semantic corroboration are almost always brittle
+        # (e.g. FTS matching the bare word "blue" in a Blue Jay
+        # migration study when the user asks about Rayleigh
+        # scattering). If vector search was unavailable (empty by
+        # exception path), we keep FTS as a fallback signal — the
+        # gate only fires when vector results EXISTED.
+        # ============================================================
+        had_vector_candidates = bool(vector_results)
+        if had_vector_candidates:
+            filtered_vector_results = []
+            for doc in vector_results:
+                distance = doc.get("_distance")
+                if distance is None:
+                    filtered_vector_results.append(doc)
+                    continue
+                try:
+                    dist_val = float(distance)
+                except (TypeError, ValueError):
+                    filtered_vector_results.append(doc)
+                    continue
+                semantic_score = max(0.0, 1.0 - dist_val)
+                if semantic_score < MIN_RAG_SEMANTIC_SCORE:
+                    logger.info(
+                        "[RAG] dropped chunk below relevance floor "
+                        "(semantic=%.3f < %.2f; source=%s)",
+                        semantic_score,
+                        MIN_RAG_SEMANTIC_SCORE,
+                        doc.get("source") or doc.get("filename") or "?",
+                    )
+                    continue
+                filtered_vector_results.append(doc)
+
+            if not filtered_vector_results:
+                logger.info(
+                    "[RAG] All %d vector candidates dropped by relevance floor "
+                    "(floor=%.2f); suppressing FTS fallback to avoid brittle "
+                    "lexical-only matches.",
+                    len(vector_results),
+                    MIN_RAG_SEMANTIC_SCORE,
+                )
+                return {
+                    "llm_context": "",
+                    "sources": []
+                }
+            vector_results = filtered_vector_results
 
         # ============================================================
         # 2. SAFE FUSION LAYER (DB-AGNOSTIC RANK MERGE)
