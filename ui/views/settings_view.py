@@ -31,11 +31,21 @@ from core.app_settings import (
     set_internal_native_chat_format,
     get_auto_load_last_model_on_startup,
     set_auto_load_last_model_on_startup,
+    get_audio_input_device_index,
+    set_audio_input_device_index,
+    get_audio_output_device_index,
+    set_audio_output_device_index,
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
+from ui.components.brand_buttons import (
+    apply_brand_primary,
+    apply_brand_danger,
+)
+from ui.components.wakeword_testbed_dialog import WakewordTestbedDialog
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.selector_button import SelectorButton
 
 
 logger = logging.getLogger("Qube.UI.Settings")
@@ -84,10 +94,17 @@ class SettingsView(QWidget):
         self._sync_models_dir_label()
         self._sync_active_native_model_label()
         self._refresh_local_gguf_list()
+        self._wakeword_testbed_dialog = None
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
-        
+
+        # Resolved once here and reused for every SelectorButton in this view.
+        # SettingsView is built before it's parented to MainWindow, so window()
+        # may not yet expose _is_dark_theme — each SelectorButton's showEvent
+        # re-checks and re-applies the theme once it becomes visible.
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(40, 40, 40, 40)
 
@@ -120,14 +137,11 @@ class SettingsView(QWidget):
         hw_form.setSpacing(15)
         hw_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         
-        self.mic_selector = QPushButton("Select Input Device...")
-        self.device_selector = QPushButton("Select Output Device...")
-        
+        self.mic_selector = SelectorButton("Select Input Device...", is_dark=is_dark)
+        self.device_selector = SelectorButton("Select Output Device...", is_dark=is_dark)
+
         for btn in [self.mic_selector, self.device_selector]:
-            btn.setObjectName("SettingsMenuButton")
             btn.setMaximumWidth(350)
-            btn.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            btn.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
             btn.setMenu(QMenu(btn))
 
         self.timeout_spinner = NoScrollDoubleSpinBox()
@@ -181,19 +195,43 @@ class SettingsView(QWidget):
         ai_form.setSpacing(15)
         ai_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
-        self.wakeword_selector = QPushButton("Select Wakeword...")
-        self.engine_selector = QPushButton("Select engine...")
-        self.provider_selector = QPushButton("Select Provider...")
-        self.voice_selector = QPushButton("Select Voice...")
+        self.wakeword_selector = SelectorButton("Select Wakeword...", is_dark=is_dark)
+        self.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
+        self.provider_selector = SelectorButton("Select Provider...", is_dark=is_dark)
+        self.voice_selector = SelectorButton("Select Voice...", is_dark=is_dark)
 
-        for btn in [self.wakeword_selector, self.engine_selector, self.provider_selector, self.voice_selector]:
-            btn.setObjectName("SettingsMenuButton")
+        self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
+        self.wakeword_selector.setFixedWidth(300)
+
+        for btn in [self.engine_selector, self.provider_selector, self.voice_selector]:
             btn.setMaximumWidth(250)
-            btn.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            btn.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
             btn.setMenu(QMenu(btn))
+        self.wakeword_selector.setToolTip(
+            "Always run Wakeword Testbed after selecting a wakeword. "
+            "Both Community and Recommended wakewords can perform differently "
+            "depending on your voice, mic setup, room noise, and sensitivity."
+            "You can always download your own wakewords and place them in the wakewords folder."
+        )
 
-        ai_form.addRow("Active Wakeword", self.wakeword_selector)
+        wakeword_row = QWidget()
+        wakeword_row_layout = QHBoxLayout(wakeword_row)
+        wakeword_row_layout.setContentsMargins(0, 0, 0, 0)
+        wakeword_row_layout.setSpacing(8)
+        wakeword_row_layout.addWidget(self.wakeword_selector)
+        self.wakeword_info_btn = QPushButton()
+        self.wakeword_info_btn.setFixedSize(24, 24)
+        self.wakeword_info_btn.setObjectName("WakewordInfoButton")
+        self.wakeword_info_btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        self.wakeword_info_btn.setToolTip(self.wakeword_selector.toolTip())
+        self.wakeword_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        wakeword_row_layout.addWidget(self.wakeword_info_btn)
+        wakeword_row_layout.addStretch()
+
+        ai_form.addRow("Active Wakeword", wakeword_row)
+        self.wakeword_test_lab_btn = QPushButton("Open Wakeword Test Lab")
+        apply_brand_primary(self.wakeword_test_lab_btn)
+        self.wakeword_test_lab_btn.clicked.connect(self._open_wakeword_test_lab)
+        ai_form.addRow("", self.wakeword_test_lab_btn)
         ai_form.addRow("AI Engine", self.engine_selector)
         ai_form.addRow("External Provider", self.provider_selector)
 
@@ -272,11 +310,8 @@ class SettingsView(QWidget):
         cpu_threads_row_layout.addWidget(self.cpu_threads_slider, stretch=1)
         cpu_threads_row_layout.addWidget(self.cpu_threads_value_lbl)
 
-        self.native_chat_format_selector = QPushButton("Select chat template...")
-        self.native_chat_format_selector.setObjectName("SettingsMenuButton")
+        self.native_chat_format_selector = SelectorButton("Select chat template...", is_dark=is_dark)
         self.native_chat_format_selector.setMaximumWidth(350)
-        self.native_chat_format_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.native_chat_format_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
         self.native_chat_format_selector.setMenu(QMenu(self.native_chat_format_selector))
         self.native_chat_format_selector.setToolTip("The specific conversational format this AI model was trained on. If the native engine is hallucinating or talking to itself, changing this to match the model's family (e.g., Llama 3, ChatML) usually fixes it.")
         _chat_format_items = [
@@ -307,12 +342,12 @@ class SettingsView(QWidget):
         local_btn_col = QVBoxLayout()
         local_btn_col.setSpacing(8)
         self.use_local_gguf_btn = QPushButton("Use selected")
-        self.use_local_gguf_btn.setProperty("class", "PrimaryActionButton BrandPrimaryButton")
+        apply_brand_primary(self.use_local_gguf_btn)
         self.use_local_gguf_btn.setToolTip("Activate a downloaded .gguf for the native engine")
         self.use_local_gguf_btn.clicked.connect(self._apply_selected_local_gguf)
         local_btn_col.addWidget(self.use_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
         self.delete_local_gguf_btn = QPushButton("Delete")
-        self.delete_local_gguf_btn.setProperty("class", "PrimaryActionButton BrandDangerButton")
+        apply_brand_danger(self.delete_local_gguf_btn)
         self.delete_local_gguf_btn.setToolTip("Permanently delete the selected .gguf file from disk")
         self.delete_local_gguf_btn.clicked.connect(self._delete_selected_local_gguf)
         local_btn_col.addWidget(self.delete_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
@@ -389,8 +424,19 @@ class SettingsView(QWidget):
         main_layout.addWidget(scroll)
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
-        """QtAwesome icons do not follow QSS; keep chevrons muted when the button is disabled."""
-        muted = "#3f3f46" if getattr(self.window(), "_is_dark_theme", True) else "#a1a1aa"
+        """Keep chevrons / selector styling in sync with the button's enabled state.
+
+        Every Settings dropdown is now a ``SelectorButton`` (custom-painted chevron
+        + text); it handles disabled rendering internally via ``apply_theme(...)``.
+        The legacy ``QtAwesome`` icon branch is kept for any remaining
+        ``#SettingsMenuButton``-style buttons outside this view (chevrons don't
+        follow QSS and need explicit re-tinting on enable/disable).
+        """
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if isinstance(button, SelectorButton):
+            button.apply_theme(is_dark)
+            return
+        muted = "#3f3f46" if is_dark else "#a1a1aa"
         active = "#64748b"
         color = active if button.isEnabled() else muted
         button.setIcon(qta.icon("fa5s.chevron-down", color=color))
@@ -537,6 +583,60 @@ class SettingsView(QWidget):
         m = str(mode).lower().strip()
         self.provider_selector.setEnabled(m == "external")
         self._apply_settings_menu_button_chevron_state(self.provider_selector)
+
+    def _sync_wakeword_catalog(self, trigger: str = "manual") -> None:
+        _ = trigger
+        if not self.audio_worker:
+            return
+        try:
+            self.audio_worker.refresh_wakewords(include_remote=False)
+            recommended = [
+                ("Recommended - " + spec.display_name, spec.display_name)
+                for spec in self.audio_worker.wakeword_manager.list_recommended()
+            ]
+            community = [
+                ("Community - " + spec.display_name, spec.display_name)
+                for spec in self.audio_worker.wakeword_manager.list_community()
+            ]
+            wakeword_items = recommended + community
+            if wakeword_items:
+                self._build_prestige_menu(
+                    self.wakeword_selector,
+                    wakeword_items,
+                    self._on_wakeword_selection_changed,
+                )
+                active_name = getattr(self.audio_worker, "active_wakeword_name", "") or wakeword_items[0][1]
+                matching_label = next((label for label, data in wakeword_items if data == active_name), wakeword_items[0][0])
+                self.wakeword_selector.setText(matching_label)
+        except Exception as exc:
+            logger.exception("Wakeword catalog sync failed: %s", exc)
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Wakeword load failed",
+                f"{exc}",
+                is_dark=is_dark,
+            ).exec()
+
+    def _on_wakeword_selector_pressed(self) -> None:
+        self._sync_wakeword_catalog(trigger="dropdown")
+
+    def _open_wakeword_test_lab(self) -> None:
+        if not self.audio_worker:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Wakeword test unavailable",
+                "Audio worker is not available.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        if self._wakeword_testbed_dialog is None:
+            self._wakeword_testbed_dialog = WakewordTestbedDialog(self.window(), self.audio_worker)
+        self._wakeword_testbed_dialog.on_wakeword_selection_changed()
+        self._wakeword_testbed_dialog.show()
+        self._wakeword_testbed_dialog.raise_()
+        self._wakeword_testbed_dialog.activateWindow()
 
     def _sync_models_dir_label(self) -> None:
         self.models_dir_label.setText(get_llm_models_dir())
@@ -881,7 +981,8 @@ class SettingsView(QWidget):
         list_widget.setFixedHeight(min(required_height, max_height))
 
         def sync_dropdown_width():
-            list_widget.setFixedWidth(button.width() - 8)
+            content_w = list_widget.sizeHintForColumn(0) + 40
+            list_widget.setFixedWidth(max(button.width() - 8, content_w, 220))
 
         menu.aboutToShow.connect(sync_dropdown_width)
 
@@ -947,6 +1048,8 @@ class SettingsView(QWidget):
             self.native_chat_format_selector,
         ]
         for btn in buttons:
+            if isinstance(btn, SelectorButton):
+                btn.apply_theme(is_dark)
             if btn.menu():
                 self._apply_menu_theme(btn.menu(), is_dark)
 
@@ -978,9 +1081,20 @@ class SettingsView(QWidget):
         self._refresh_trigger_list() # Repaints the list fonts & trash icons!
         self._sync_ai_provider_enabled_for_inference(get_engine_mode())
 
+        if self._wakeword_testbed_dialog is not None:
+            self._wakeword_testbed_dialog.refresh_theme(is_dark)
+
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
         callback(data)
+
+    def _on_wakeword_selection_changed(self, display_name: str) -> None:
+        if not self.audio_worker:
+            return
+        self._wakeword_selected_label = str(display_name)
+        self.audio_worker.set_wakeword(display_name)
+        if self._wakeword_testbed_dialog is not None:
+            self._wakeword_testbed_dialog.on_wakeword_selection_changed()
 
     def _build_section_header(self, icon_name, title_text):
         container = QWidget()
@@ -1023,32 +1137,47 @@ class SettingsView(QWidget):
     def _populate_hardware_selectors(self):
         mics = get_input_devices() 
         if mics:
-            self._build_prestige_menu(self.mic_selector, [(name, idx) for idx, name in mics], lambda idx: self.audio_worker.set_input_device(idx) if self.audio_worker else None)
+            self._build_prestige_menu(
+                self.mic_selector,
+                [(name, idx) for idx, name in mics],
+                self._on_input_device_selected,
+            )
+            saved_input_idx = get_audio_input_device_index()
+            if saved_input_idx is not None and self.audio_worker:
+                self.audio_worker.set_input_device(saved_input_idx)
             active_mic_name = mics[0][1] 
-            if self.audio_worker and hasattr(self.audio_worker, 'input_device_index'):
+            active_input_idx = saved_input_idx
+            if active_input_idx is None and self.audio_worker and hasattr(self.audio_worker, 'input_device_index'):
+                active_input_idx = self.audio_worker.input_device_index
+            if active_input_idx is not None:
                 for idx, name in mics:
-                    if idx == self.audio_worker.input_device_index:
+                    if idx == active_input_idx:
                         active_mic_name = name; break
             self.mic_selector.setText(active_mic_name)
 
         outputs = get_output_devices()
         if outputs:
-            self._build_prestige_menu(self.device_selector, [(name, idx) for idx, name in outputs], lambda idx: self.tts_worker.set_device(idx) if self.tts_worker else None)
+            self._build_prestige_menu(
+                self.device_selector,
+                [(name, idx) for idx, name in outputs],
+                self._on_output_device_selected,
+            )
+            saved_output_idx = get_audio_output_device_index()
+            if saved_output_idx is not None and self.tts_worker:
+                self.tts_worker.set_device(saved_output_idx)
             active_output_name = outputs[0][1]
-            if self.tts_worker and hasattr(self.tts_worker, 'current_device_index'):
+            active_output_idx = saved_output_idx
+            if active_output_idx is None and self.tts_worker and hasattr(self.tts_worker, 'current_device_index'):
+                active_output_idx = self.tts_worker.current_device_index
+            if active_output_idx is not None:
                 for idx, name in outputs:
-                    if idx == self.tts_worker.current_device_index:
+                    if idx == active_output_idx:
                         active_output_name = name; break
             self.device_selector.setText(active_output_name)
 
         if self.audio_worker:
-            wakewords = list(self.audio_worker.available_wakewords.keys())
-            if wakewords:
-                self._build_prestige_menu(self.wakeword_selector, [(w, w) for w in wakewords], self.audio_worker.set_wakeword)
-                if hasattr(self.audio_worker, 'active_wakeword_name') and self.audio_worker.active_wakeword_name:
-                    self.wakeword_selector.setText(self.audio_worker.active_wakeword_name)
-                else:
-                    self.wakeword_selector.setText(wakewords[0])
+            self.wakeword_selector.pressed.connect(self._on_wakeword_selector_pressed)
+            self._sync_wakeword_catalog(trigger="settings load")
 
         engine_modes = [
             ("External Server (localhost)", "external"),
@@ -1070,6 +1199,16 @@ class SettingsView(QWidget):
         elif is_port_open(11434): self.provider_selector.setText("Ollama (Port 11434)")
 
         self._sync_ai_provider_enabled_for_inference(get_engine_mode())
+
+    def _on_input_device_selected(self, idx: int) -> None:
+        set_audio_input_device_index(idx)
+        if self.audio_worker:
+            self.audio_worker.set_input_device(idx)
+
+    def _on_output_device_selected(self, idx: int) -> None:
+        set_audio_output_device_index(idx)
+        if self.tts_worker:
+            self.tts_worker.set_device(idx)
 
     def update_voice_dropdown(self, model_name: str, voices: list) -> None:
         if not voices: return

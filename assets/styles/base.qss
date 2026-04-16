@@ -125,48 +125,90 @@ QPushButton:pressed {
     background-color: rgba(0, 0, 0, 0.2);
 }
 
-.PrimaryActionButton {
-    background-color: #8b5cf6;
-    color: #8b5cf6;
-    border: 1px solid #8b5cf6;
+/*
+ * PRIMARY ACTION / BRAND BUTTON TEMPLATES
+ *
+ * For buttons that use `widget.setProperty("class", "PrimaryActionButton ...")`
+ * ALWAYS match them with the explicit attribute-selector form
+ * `QPushButton[class~="Name"]` and NOT with the bare class shortcut
+ * `.Name { ... }`. Per Qt docs `.Name` expands to `*[class~="Name"]` (0,1,0)
+ * specificity (universal element) while our explicit form is (0,1,1). When
+ * both match, the explicit form wins unambiguously — avoiding the gotcha
+ * where `.PrimaryActionButton` at (0,1,0) tied with other low-specificity
+ * rules and left light-theme buttons rendered white-on-off-white because
+ * `background-color` was lost while `color` was preserved.
+ *
+ * `!important` on bg / color / border is used so Primary / Brand variants
+ * reliably defeat the generic `QPushButton` rule above in EVERY render path
+ * (including native style composition where QSS cascade can otherwise leak
+ * the widget's palette background through). Do not drop `!important` on the
+ * bg / color / border properties — it is load-bearing. Every Brand variant
+ * also provides its own `:disabled` rule so disabled branded buttons do not
+ * fall back to the generic QPushButton disabled surface.
+ *
+ * If you add a new Brand variant, follow this template exactly and include a
+ * `:hover` and `:disabled` block with `!important` on bg / color / border.
+ */
+QPushButton[class~="PrimaryActionButton"] {
+    background-color: #8b5cf6 !important;
+    color: #f8fafc !important;
+    border: 1px solid #8b5cf6 !important;
     border-radius: 6px;
     font-weight: 700;
 }
-.PrimaryActionButton:hover { background-color: #7c3aed; border: 1px solid #7c3aed; }
-.PrimaryActionButton:disabled {
-    background-color: rgba(100, 116, 139, 0.22);
-    color: rgba(148, 163, 184, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.35);
+QPushButton[class~="PrimaryActionButton"]:hover {
+    background-color: #7c3aed !important;
+    border: 1px solid #7c3aed !important;
+}
+QPushButton[class~="PrimaryActionButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
-/* Reusable brand action variants for cross-screen button consistency. */
+/* Brand action variants: override the Primary base with their accent color. */
 QPushButton[class~="BrandPrimaryButton"] {
-    background-color: #8b5cf6;
-    color: #8b5cf6;
-    border: 1px solid #8b5cf6;
+    background-color: #8b5cf6 !important;
+    color: #f8fafc !important;
+    border: 1px solid #8b5cf6 !important;
 }
 QPushButton[class~="BrandPrimaryButton"]:hover {
-    background-color: #7c3aed;
-    border: 1px solid #7c3aed;
+    background-color: #7c3aed !important;
+    border: 1px solid #7c3aed !important;
+}
+QPushButton[class~="BrandPrimaryButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 QPushButton[class~="BrandSuccessButton"] {
-    background-color: #16a34a;
-    color: #f8fafc;
-    border: 1px solid #15803d;
+    background-color: #16a34a !important;
+    color: #f8fafc !important;
+    border: 1px solid #15803d !important;
 }
 QPushButton[class~="BrandSuccessButton"]:hover {
-    background-color: #15803d;
-    border: 1px solid #15803d;
+    background-color: #15803d !important;
+    border: 1px solid #15803d !important;
+}
+QPushButton[class~="BrandSuccessButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 QPushButton[class~="BrandDangerButton"] {
-    background-color: #dc2626;
-    color: #dc2626;
-    border: 1px solid #b91c1c;
+    background-color: #dc2626 !important;
+    color: #f8fafc !important;
+    border: 1px solid #b91c1c !important;
 }
 QPushButton[class~="BrandDangerButton"]:hover {
-    background-color: #b91c1c;
-    color: #b91c1c;
-    border: 1px solid #b91c1c;
+    background-color: #b91c1c !important;
+    color: #f8fafc !important;
+    border: 1px solid #b91c1c !important;
+}
+QPushButton[class~="BrandDangerButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
 /* Transparent utility buttons (window controls, nav icons) */

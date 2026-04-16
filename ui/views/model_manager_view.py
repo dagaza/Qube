@@ -47,6 +47,11 @@ from core.hf_publisher_branding import HuggingFaceBrandingResolver
 from core.model_capability_service import ModelCapabilityService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.brand_buttons import (
+    apply_brand_primary,
+    apply_brand_success,
+    apply_brand_danger,
+)
 from workers.hf_model_search_worker import HfModelSearchWorker
 from workers.hf_model_meta_worker import HfModelMetaWorker
 from workers.hf_readme_worker import HfReadmeWorker
@@ -708,7 +713,7 @@ class ModelManagerView(QWidget):
         left_l.addWidget(self.hub_model_list, stretch=1)
         self.hub_model_list.viewport().installEventFilter(self)
         self.hub_load_more_btn = QPushButton("Load More")
-        self.hub_load_more_btn.setProperty("class", "PrimaryActionButton BrandPrimaryButton")
+        apply_brand_primary(self.hub_load_more_btn)
         self.hub_load_more_btn.setVisible(False)
         self.hub_load_more_btn.clicked.connect(self._load_more_hub_search_results)
         left_l.addWidget(self.hub_load_more_btn)
@@ -887,8 +892,7 @@ class ModelManagerView(QWidget):
             _vp.setAutoFillBackground(True)
         files_row.addWidget(self.hf_file_combo, stretch=1)
         self.download_btn = QPushButton("Download")
-        self.download_btn.setProperty("class", "PrimaryActionButton")
-        self.download_btn.setIcon(qta.icon("fa5s.download", color="#8b5cf6"))
+        apply_brand_primary(self.download_btn, icon_name="fa5s.download")
         self.download_btn.clicked.connect(self._start_download)
 
         self.download_status = QLabel("")
@@ -1278,24 +1282,28 @@ class ModelManagerView(QWidget):
         self._download_ui_cancel_mode = False
         self._download_ui_load_mode = True
         self.download_btn.setText("Load Model")
-        self.download_btn.setIcon(qta.icon("fa5s.play", color="#f8fafc"))
         self._apply_download_action_button_style(mode="load")
         self.download_btn.setEnabled(bool(enabled))
         self.download_btn.clicked.connect(self._load_selected_model)
 
     def _apply_download_action_button_style(self, mode: str) -> None:
-        """Apply reusable brand action classes (theme stylesheet-owned)."""
+        """Apply the brand style + matching icon for the current mode.
+
+        Uses the shared `brand_buttons` helper so widget-level QSS drives the
+        final render (highest specificity in Qt), avoiding the light-theme
+        leak-through where the generic `QPushButton { background-color: #ffffff; }`
+        rule beats app-level `QPushButton[class~="..."]` rules on some styles.
+        The helper also tints the mode-specific icon to the variant's
+        foreground color (`BRAND_FG_COLOR`) so the icon never blends into its
+        own background (regression guard: the default `fa5s.download` icon
+        used to render in brand-purple on the brand-purple button).
+        """
         if mode == "load":
-            cls = "PrimaryActionButton BrandSuccessButton"
+            apply_brand_success(self.download_btn, icon_name="fa5s.play")
         elif mode == "cancel":
-            cls = "PrimaryActionButton BrandDangerButton"
+            apply_brand_danger(self.download_btn, icon_name="fa5s.times")
         else:
-            cls = "PrimaryActionButton BrandPrimaryButton"
-        self.download_btn.setStyleSheet("")
-        self.download_btn.setProperty("class", cls)
-        self.download_btn.style().unpolish(self.download_btn)
-        self.download_btn.style().polish(self.download_btn)
-        self.download_btn.update()
+            apply_brand_primary(self.download_btn, icon_name="fa5s.download")
 
     def _sync_download_action_state(self) -> None:
         if getattr(self, "_download_ui_cancel_mode", False):
@@ -1761,18 +1769,23 @@ class ModelManagerView(QWidget):
         self._refresh_hub_row_heights()
 
     def refresh_button_themes(self, is_dark: bool) -> None:
-        """Icon accents for Hub actions — same pattern as LibraryView.refresh_button_themes."""
-        filled_icon_color = "#f8fafc"
-        brand_icon_color = "#8b5cf6"
+        """Re-apply the brand style + mode-matched icon for the Download action.
+
+        `_apply_download_action_button_style` already routes to the correct
+        brand variant AND tints the correct icon through the shared
+        `brand_buttons` helper, so theme toggles only need to re-invoke it
+        for whichever mode is currently active. The `is_dark` argument is
+        kept for parity with `LibraryView.refresh_button_themes` (all brand
+        variants intentionally use the same icon color in both themes).
+        """
         if not hasattr(self, "download_btn"):
             return
         if getattr(self, "_download_ui_cancel_mode", False):
+            self._apply_download_action_button_style(mode="cancel")
             return
         if getattr(self, "_download_ui_load_mode", False):
-            self.download_btn.setIcon(qta.icon("fa5s.play", color=filled_icon_color))
             self._apply_download_action_button_style(mode="load")
             return
-        self.download_btn.setIcon(qta.icon("fa5s.download", color=brand_icon_color))
         self._apply_download_action_button_style(mode="download")
 
     def _set_system_match_style(self, state: str) -> None:
@@ -2418,7 +2431,6 @@ class ModelManagerView(QWidget):
         self._download_ui_load_mode = False
         if cancel_mode:
             self.download_btn.setText("Cancel")
-            self.download_btn.setIcon(qta.icon("fa5s.times", color="#fef2f2"))
             self._apply_download_action_button_style(mode="cancel")
             self.download_btn.clicked.connect(self._cancel_download)
         else:

@@ -5,6 +5,7 @@ Call getters/setters only after QApplication exists (e.g. from UI code).
 """
 import os
 import re
+import json
 
 from PyQt6.QtCore import QSettings
 
@@ -19,6 +20,10 @@ _KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
 _KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
 _KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
+_KEY_WAKEWORD_ACTIVE_ID = "wakeword_active_id"
+_KEY_WAKEWORD_THRESHOLDS_JSON = "wakeword_thresholds_json"
+_KEY_AUDIO_INPUT_DEVICE_INDEX = "audio_input_device_index"
+_KEY_AUDIO_OUTPUT_DEVICE_INDEX = "audio_output_device_index"
 _SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\.gguf$", re.IGNORECASE)
 
 
@@ -333,3 +338,95 @@ def llama_chat_format_kwarg() -> dict:
     }
     cf = mapping.get(mode)
     return {"chat_format": cf} if cf else {}
+
+
+def get_active_wakeword_id() -> str:
+    v = _settings().value(_KEY_WAKEWORD_ACTIVE_ID, "", type=str)
+    return str(v or "").strip()
+
+
+def set_active_wakeword_id(wakeword_id: str) -> None:
+    s = _settings()
+    s.setValue(_KEY_WAKEWORD_ACTIVE_ID, str(wakeword_id or "").strip())
+    s.sync()
+
+
+def get_wakeword_threshold_overrides() -> dict[str, float]:
+    raw = _settings().value(_KEY_WAKEWORD_THRESHOLDS_JSON, "{}", type=str)
+    try:
+        parsed = json.loads(str(raw or "{}"))
+    except Exception:
+        return {}
+    out: dict[str, float] = {}
+    if not isinstance(parsed, dict):
+        return out
+    for key, val in parsed.items():
+        try:
+            out[str(key)] = float(val)
+        except Exception:
+            continue
+    return out
+
+
+def set_wakeword_threshold_overrides(overrides: dict[str, float]) -> None:
+    safe: dict[str, float] = {}
+    for key, val in (overrides or {}).items():
+        try:
+            safe[str(key)] = float(val)
+        except Exception:
+            continue
+    s = _settings()
+    s.setValue(_KEY_WAKEWORD_THRESHOLDS_JSON, json.dumps(safe, sort_keys=True))
+    s.sync()
+
+
+def get_wakeword_threshold_override(wakeword_id: str) -> float | None:
+    val = get_wakeword_threshold_overrides().get(str(wakeword_id or ""))
+    return float(val) if val is not None else None
+
+
+def set_wakeword_threshold_override(wakeword_id: str, threshold: float) -> None:
+    key = str(wakeword_id or "").strip()
+    if not key:
+        return
+    overrides = get_wakeword_threshold_overrides()
+    overrides[key] = float(threshold)
+    set_wakeword_threshold_overrides(overrides)
+
+
+def get_audio_input_device_index() -> int | None:
+    s = _settings()
+    if not s.contains(_KEY_AUDIO_INPUT_DEVICE_INDEX):
+        return None
+    try:
+        return int(s.value(_KEY_AUDIO_INPUT_DEVICE_INDEX, -1, type=int))
+    except Exception:
+        return None
+
+
+def set_audio_input_device_index(index: int | None) -> None:
+    s = _settings()
+    if index is None:
+        s.remove(_KEY_AUDIO_INPUT_DEVICE_INDEX)
+    else:
+        s.setValue(_KEY_AUDIO_INPUT_DEVICE_INDEX, int(index))
+    s.sync()
+
+
+def get_audio_output_device_index() -> int | None:
+    s = _settings()
+    if not s.contains(_KEY_AUDIO_OUTPUT_DEVICE_INDEX):
+        return None
+    try:
+        return int(s.value(_KEY_AUDIO_OUTPUT_DEVICE_INDEX, -1, type=int))
+    except Exception:
+        return None
+
+
+def set_audio_output_device_index(index: int | None) -> None:
+    s = _settings()
+    if index is None:
+        s.remove(_KEY_AUDIO_OUTPUT_DEVICE_INDEX)
+    else:
+        s.setValue(_KEY_AUDIO_OUTPUT_DEVICE_INDEX, int(index))
+    s.sync()

@@ -2,11 +2,13 @@ from PyQt6.QtCore import QThread, pyqtSignal, QMutex
 import pyaudio
 import numpy as np
 import time
-import glob
 import os
-import openwakeword
 from openwakeword.model import Model
 import logging
+
+from core.app_settings import set_wakeword_threshold_override
+from core.wakeword_manager import WakewordManager, WakewordSpec
+from core.wakeword_testbed import ConfidenceSmoother
 
 logger = logging.getLogger("Qube.Audio")
 
@@ -23,6 +25,10 @@ class AudioListenerWorker(QThread):
 
     # 🔑 NEW: Signal to broadcast live audio levels (0.0 to 1.0)
     volume_update = pyqtSignal(float)
+    wakeword_score_update = pyqtSignal(float, float)
+    wakeword_test_detection = pyqtSignal(float)
+    wakeword_test_false_trigger = pyqtSignal()
+    wakeword_model_error = pyqtSignal(str)
 
     wakeword_detected = pyqtSignal() # 🔑 THE NEW SIGNAL
 
@@ -40,9 +46,9 @@ class AudioListenerWorker(QThread):
         
         self.silence_timeout = 2.0  
         self.speech_threshold = 2
-        
-        # --- FIX: Dynamic Model Discovery using exact file paths ---
-        self.available_wakewords = self._discover_wakewords()
+        self.wakeword_manager = WakewordManager()
+        self.available_wakewords = {}
+        self.catalog_by_ui_name: dict[str, WakewordSpec] = {}
         
         # --- NEW: Thread-safe loading flags ---
         self.pending_wakeword = None
@@ -50,17 +56,12 @@ class AudioListenerWorker(QThread):
         self.oww_model = None
         
         # Default to Hey Jarvis when present, else first discovered model
-        if self.available_wakewords:
-            names = list(self.available_wakewords.keys())
-            chosen = next(
-                (n for n in names if "jarvis" in n.lower()),
-                names[0],
-            )
-            self.active_wakeword_name = chosen
-            self.pending_wakeword = self.available_wakewords[chosen]
-        else:
-            self.active_wakeword_name = None
-            logger.error("CRITICAL: No wakeword models found anywhere!")
+        self.active_wakeword_name = None
+        self.active_wakeword_id = ""
+        self.active_wakeword_threshold = 0.5
+        self._smoother = ConfidenceSmoother(maxlen=12)
+        self._test_mode_active = False
+        self.refresh_wakewords(include_remote=True)
 
     def set_paused(self, paused: bool):
         """Thread-safe request to pause the audio stream."""
@@ -70,38 +71,27 @@ class AudioListenerWorker(QThread):
         else:
             self.status_update.emit("Boot: Reconnecting Mic...")
 
-    def _discover_wakewords(self) -> dict:
-        """Scans for default and custom wakewords, returning a clean UI Name -> File Path mapping."""
-        wakeword_map = {}
-        
-        # 1. Ask openwakeword where its default models live on the hard drive
-        try:
-            pretrained_paths = openwakeword.get_pretrained_model_paths()
-            for path in pretrained_paths:
-                stem = (
-                    os.path.basename(path)
-                    .split("_v")[0]
-                    .replace(".tflite", "")
-                    .replace(".onnx", "")
-                )
-                if stem.lower() == "hey_jarvis":
-                    clean_name = "Hey Jarvis"
-                else:
-                    clean_name = stem.capitalize()
-                wakeword_map[clean_name] = path
-        except Exception as e:
-            logger.warning(f"Could not load pre-trained wakewords: {e}")
-
-        # 2. Append any custom models from your local models/wakeword folder
-        wakeword_dir = os.path.join("models", "wakeword")
-        os.makedirs(wakeword_dir, exist_ok=True)
-        custom_paths = glob.glob(os.path.join(wakeword_dir, "*.tflite")) + glob.glob(os.path.join(wakeword_dir, "*.onnx"))
-        
-        for path in custom_paths:
-            clean_name = os.path.basename(path).replace('.tflite', '').replace('.onnx', '')
-            wakeword_map[f"Custom: {clean_name}"] = path
-            
-        return wakeword_map
+    def refresh_wakewords(self, include_remote: bool = True) -> dict:
+        catalog = self.wakeword_manager.refresh_catalog(include_remote=include_remote)
+        self.catalog_by_ui_name.clear()
+        self.available_wakewords.clear()
+        for spec in self.wakeword_manager.list_recommended() + self.wakeword_manager.list_community():
+            self.catalog_by_ui_name[spec.display_name] = spec
+            self.available_wakewords[spec.display_name] = spec.path
+        active = self.wakeword_manager.get_active_or_default()
+        if active:
+            self.active_wakeword_name = active.display_name
+            self.active_wakeword_id = active.wakeword_id
+            self.active_wakeword_threshold = active.threshold()
+            try:
+                self.pending_wakeword = self.wakeword_manager.ensure_model_available(active)
+            except Exception as exc:
+                logger.error("Failed to prepare wakeword model '%s': %s", active.display_name, exc)
+                self.wakeword_model_error.emit(str(exc))
+        else:
+            self.active_wakeword_name = None
+            logger.error("CRITICAL: No wakeword models found anywhere!")
+        return self.available_wakewords
 
     def emit_available_wakewords(self):
         """Emits just the clean names (keys) to populate the UI ComboBox."""
@@ -111,19 +101,33 @@ class AudioListenerWorker(QThread):
         """Receives the clean UI name and flags the background thread to hot-swap."""
         self.mutex.lock()
         try:
-            target_path = self.available_wakewords.get(ui_name)
-            if not target_path:
+            spec = self.catalog_by_ui_name.get(ui_name)
+            if not spec:
                 logger.error(f"Wakeword '{ui_name}' not found in the mapping dictionary.")
                 return
-                
+
+            target_path = self.wakeword_manager.ensure_model_available(spec)
             self.active_wakeword_name = ui_name
-            self.pending_wakeword = target_path  # The background thread will pick this up!
+            self.active_wakeword_id = spec.wakeword_id
+            self.active_wakeword_threshold = spec.threshold()
+            self.pending_wakeword = target_path
+            self.wakeword_manager.mark_active(spec.wakeword_id)
             logger.info(f"Wakeword swap requested: {ui_name}")
-            
         except Exception as e:
             logger.error(f"Failed to request wakeword {ui_name}: {e}")
+            self.wakeword_model_error.emit(str(e))
         finally:
             self.mutex.unlock()
+
+    def set_wakeword_threshold(self, threshold: float) -> None:
+        safe = max(0.1, min(float(threshold), 0.95))
+        self.active_wakeword_threshold = safe
+        if self.active_wakeword_id:
+            set_wakeword_threshold_override(self.active_wakeword_id, safe)
+
+    def set_test_mode(self, enabled: bool) -> None:
+        self._test_mode_active = bool(enabled)
+        self._smoother.reset()
 
     def set_silence_timeout(self, seconds: float):
         self.silence_timeout = seconds
@@ -380,21 +384,22 @@ class AudioListenerWorker(QThread):
             
             # --- 5. Hardened Inference Engine ---
                 try:
-                    self.oww_model.predict(audio_data)
+                    scores = self.oww_model.predict(audio_data)
                 
                     for wakeword_name in self.oww_model.prediction_buffer.keys():
                         if len(self.oww_model.prediction_buffer[wakeword_name]) > 0:
                             score = list(self.oww_model.prediction_buffer[wakeword_name])[-1]
-                            if score > 0.5:
+                            smoothed = self._smoother.add(float(score))
+                            self.wakeword_score_update.emit(float(score), float(smoothed))
+                            if score > self.active_wakeword_threshold:
                                 # 🔑 THE DEBOUNCE FIX: Put the trigger inside the 2-second cooldown!
                                 if (time.time() - last_trigger_time) > 2.0:
                                     logger.info(f"Wakeword '{wakeword_name}' triggered with score {score}!")
-                                    
-                                    # 1. NOW it only tells main.py once!
-                                    self.wakeword_detected.emit()
-                                    
-                                    # 2. Drop into recording
-                                    self._record_until_silence()
+                                    if self._test_mode_active:
+                                        self.wakeword_test_detection.emit(float(score))
+                                    else:
+                                        self.wakeword_detected.emit()
+                                        self._record_until_silence()
                                     last_trigger_time = time.time()
                                     break
                 except Exception as e:

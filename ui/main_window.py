@@ -248,19 +248,36 @@ class MainWindow(QMainWindow):
         # 2. Sync Settings -> Toolbar
         self.settings_view.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
         self.settings_view.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
+        if hasattr(self.settings_view, "wakeword_sensitivity"):
+            self.settings_view.wakeword_sensitivity.valueChanged.connect(
+                self.toolbar_wakeword_sensitivity_spin.setValue
+            )
 
         # 3. Sync Toolbar -> Settings
         self.toolbar_timeout_spin.valueChanged.connect(self.settings_view.timeout_spinner.setValue)
         self.toolbar_threshold_spin.valueChanged.connect(self.settings_view.threshold_spinner.setValue)
+        if hasattr(self.settings_view, "wakeword_sensitivity"):
+            self.toolbar_wakeword_sensitivity_spin.valueChanged.connect(
+                self.settings_view.wakeword_sensitivity.setValue
+            )
 
         # 4. Initialize Toolbar values from the worker
         if self._audio_worker:
             self.toolbar_timeout_spin.setValue(self._audio_worker.silence_timeout)
             self.toolbar_threshold_spin.setValue(int(self._audio_worker.speech_threshold))
+            wakeword_threshold = float(getattr(self._audio_worker, "active_wakeword_threshold", 0.5))
+            self.toolbar_wakeword_sensitivity_spin.setValue(
+                max(10, min(95, int((1.0 - wakeword_threshold) * 100)))
+            )
             
             # Wire Toolbar directly to worker methods
             self.toolbar_timeout_spin.valueChanged.connect(self._audio_worker.set_silence_timeout)
             self.toolbar_threshold_spin.valueChanged.connect(self._audio_worker.set_speech_threshold)
+            self.toolbar_wakeword_sensitivity_spin.valueChanged.connect(
+                lambda v: self._audio_worker.set_wakeword_threshold(
+                    max(0.1, min(0.95, 1.0 - (float(v) / 100.0)))
+                )
+            )
 
         # 5. 🔑 Sync Auto-Activator Toggles
         self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
@@ -687,11 +704,18 @@ class MainWindow(QMainWindow):
         self.toolbar_threshold_spin.setRange(1, 100)
         self.toolbar_threshold_spin.setSuffix("%")
         _vad_threshold_tip = (
-            "Controls how loud you must speak to trigger recording. A higher number acts as a "
-            "stronger background noise filter, meaning you will need to speak louder to punch through. "
-            "If you are in a quiet environment, use the lowest setting."
+            "VAD Threshold controls when normal speech is considered loud enough to keep "
+            "recording/transcription active. This is separate from Wakeword Sensitivity."
         )
         self.toolbar_threshold_spin.setToolTip(_vad_threshold_tip)
+        self.toolbar_wakeword_sensitivity_spin = NoScrollSpinBox()
+        self.toolbar_wakeword_sensitivity_spin.setRange(10, 95)
+        self.toolbar_wakeword_sensitivity_spin.setSuffix("%")
+        _wakeword_sensitivity_tip = (
+            "Wakeword Sensitivity controls the wakeword detection threshold for trigger words. "
+            "This is separate from VAD Threshold, which controls normal speech activity during recording."
+        )
+        self.toolbar_wakeword_sensitivity_spin.setToolTip(_wakeword_sensitivity_tip)
 
         self.toolbar_timeout_spin.setToolTip(_silence_cutoff_tip)
         extra_layout.addLayout(
@@ -706,6 +730,13 @@ class MainWindow(QMainWindow):
                 "VAD Threshold",
                 self.toolbar_threshold_spin,
                 tooltip_text=_vad_threshold_tip,
+            )
+        )
+        extra_layout.addLayout(
+            create_mirrored_row(
+                "Wakeword Sensitivity",
+                self.toolbar_wakeword_sensitivity_spin,
+                tooltip_text=_wakeword_sensitivity_tip,
             )
         )
 
