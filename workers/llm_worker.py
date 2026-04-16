@@ -957,6 +957,46 @@ class LLMWorker(QThread):
             logger.debug(f"[Router Feedback] Logged latency: {latency_seconds:.2f}s | RAG used: {rag_was_used}")
 
         # ============================================================
+        # 2.75 T4.1: POST-RETRIEVAL ROUTE DOWNGRADE
+        # ------------------------------------------------------------
+        # If we routed into a retrieval lane (MEMORY / RAG / HYBRID) but
+        # every channel came back empty or below-floor (rag_tool's
+        # MIN_RAG_SEMANTIC_SCORE gate killed all vector candidates,
+        # memory_tool's MIN_SEMANTIC_SCORE + proper-noun gate killed
+        # all memory candidates), downgrade this turn to NONE.
+        #
+        # Why: the prompt-build branch at §3 currently has TWO modes
+        # for a retrieval route — the citation-disciplined "you MUST
+        # cite your sources" branch (when ``all_ui_sources`` is
+        # populated) and the NO_SOURCES fallback. The fallback already
+        # existed, but even the NO_SOURCES suffix carries a subtle
+        # "you were meant to answer from retrieved sources" framing
+        # that biases small LLMs towards "I couldn't find anything in
+        # my sources." responses on general-knowledge questions. By
+        # downgrading to NONE here, the turn is treated as a plain
+        # chat turn and gets the base system prompt + no retrieval
+        # wrapper in the user message — the LLM answers from its own
+        # knowledge as if no retrieval had been attempted.
+        #
+        # We do this AFTER telemetry so ``router_telemetry`` still
+        # records the original executed route (useful for tuning the
+        # cognitive router's recall centroid over time). WEB is not
+        # downgraded here: an empty-web turn is handled by the
+        # existing ``web_tool_failure`` skip-enrichment path and the
+        # web branch at §3 has its own fallback framing.
+        # ============================================================
+        if (
+            execution_route in ("MEMORY", "RAG", "HYBRID")
+            and not all_ui_sources
+        ):
+            logger.info(
+                "[LLM Worker] All retrieval channels empty after relevance "
+                "gates; downgrading route %s -> NONE for prompt build.",
+                execution_route,
+            )
+            execution_route = "NONE"
+
+        # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
         retrieval_prompt_body = self._format_sources_for_llm_prompt(all_ui_sources)
