@@ -67,6 +67,7 @@ MEMORY_CATEGORIES: tuple[str, ...] = (
     "project",
     "knowledge",
     "context",
+    "episode",
 )
 
 # Cap how many memory rows we ever load into the UI in one pass — the
@@ -332,6 +333,29 @@ class _MemoryRowCard(QFrame):
         else:
             self._prov_lbl = None
 
+        # T3.2: episode rows carry ``topics`` — render them below the
+        # provenance slot as a muted tag line so the user can recognise a
+        # session summary at a glance.
+        topics = self.payload.get("topics") or []
+        if (
+            str(self.payload.get("category") or "").lower() == "episode"
+            and isinstance(topics, list)
+            and topics
+        ):
+            try:
+                topic_line = " · ".join(str(t) for t in topics if str(t).strip())
+            except Exception:
+                topic_line = ""
+            if topic_line:
+                self._topics_lbl = QLabel(f"topics: {topic_line}")
+                self._topics_lbl.setObjectName("MemoryRowTopics")
+                self._topics_lbl.setWordWrap(True)
+                outer.addWidget(self._topics_lbl)
+            else:
+                self._topics_lbl = None
+        else:
+            self._topics_lbl = None
+
         # Action row
         actions = QHBoxLayout()
         actions.setContentsMargins(0, 4, 0, 0)
@@ -418,6 +442,12 @@ class _MemoryRowCard(QFrame):
                 color: {muted};
                 font-size: 11px;
                 font-style: italic;
+            }}
+            QLabel#MemoryRowTopics {{
+                color: {accent};
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.3px;
             }}
             QPushButton#MemoryRowEditButton,
             QPushButton#MemoryRowFlagButton {{

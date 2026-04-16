@@ -242,6 +242,47 @@ def detect_recall_intent(user_text: str) -> bool:
 
 
 # ============================================================
+# Narrative / recap intent detector (T3.2).
+#
+# Used by the T3.2 episodic-summaries pass to route narrative questions
+# ("what have we been working on?", "recap my session", "where did we
+# leave off?") to MEMORY with ``prefer_episode=True`` so the episode
+# summary rows outrank the atomic-fact rows in retrieval.
+# ============================================================
+_NARRATIVE_INTENT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE) for p in (
+        r"\bwhat\s+have\s+(?:we|i)\s+been\b",
+        r"\bwhat\s+were\s+we\b",
+        r"\bwhat\s+(?:did|were)\s+we\s+(?:talk(?:ing)?|work(?:ing)?|discuss(?:ing)?)\b",
+        r"\brecap\b",
+        r"\bcatch\s+me\s+up\b",
+        r"\bwhere\s+did\s+we\s+leave\s+off\b",
+        r"\bwhat'?s\s+the\s+status\b",
+        r"\bsummari[sz]e\s+(?:our|my|this|the)\s+(?:chat|conversation|session|discussion|project)\b",
+        r"\bwhat\s+have\s+we\s+decided\b",
+    )
+)
+
+
+def detect_narrative_intent(user_text: str) -> bool:
+    """True when the user is asking a narrative / recap / "what were we
+    working on?" style question.
+
+    Used by T3.2 to force the turn onto the MEMORY route and boost
+    ``qube_memory::episode::*`` rows over the atomic-fact rows.
+    """
+    if not user_text:
+        return False
+    s = user_text.strip()
+    if not s:
+        return False
+    for p in _NARRATIVE_INTENT_PATTERNS:
+        if p.search(s):
+            return True
+    return False
+
+
+# ============================================================
 # Explicit file-search intent detector.
 #
 # Catches "look into my files", "check my documents", "is there a mention
@@ -391,16 +432,34 @@ NO_SOURCES_SYSTEM_SUFFIX: str = (
 )
 
 
+# ============================================================
+# Narrative / recap suffix (T3.2).
+# ------------------------------------------------------------
+# Appended to the system prompt when ``detect_narrative_intent`` fires.
+# Tells the LLM to prefer the EPISODE-labelled sources (session
+# summaries) over atomic facts on a recap-style turn.
+# ============================================================
+NARRATIVE_RECALL_SYSTEM_SUFFIX: str = (
+    " This is a narrative/recap question. Prefer the EPISODE-labelled "
+    "memory sources (session summaries) over atomic facts; cite them "
+    "inline. If no episode summary is available, answer concisely from "
+    "atomic facts that are clearly relevant. Do not invent a session "
+    "history that is not reflected in the sources."
+)
+
+
 __all__ = [
     "ASSISTANT_FAILURE_PATTERNS",
     "is_assistant_failure_message",
     "is_thin_content",
     "detect_explicit_remember",
     "detect_recall_intent",
+    "detect_narrative_intent",
     "detect_file_search_intent",
     "RECALL_FUSION_SYSTEM_SUFFIX",
     "FILE_SEARCH_SYSTEM_SUFFIX",
     "CITATION_DISCIPLINE_SUFFIX",
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
+    "NARRATIVE_RECALL_SYSTEM_SUFFIX",
 ]
