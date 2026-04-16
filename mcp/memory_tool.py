@@ -173,7 +173,14 @@ def _lookup_rag_chunk(store, link_id: str) -> dict | None:
     }
 
 
-def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, trace: bool = False) -> dict:
+def memory_search(
+    query: str,
+    query_vector: np.ndarray,
+    store,
+    top_k: int = 5,
+    trace: bool = False,
+    prefer_episode: bool = False,
+) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
 
@@ -183,9 +190,13 @@ def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, t
     ✔ Stable for low-RAM local deployments
     ✔ Phase B: auto-expands ``links_to_document_ids`` into rag-type sources
       so thin memories surface their originating document chunk
+    ✔ T3.2: ``prefer_episode=True`` boosts ``category=="episode"`` rows
+      above atomic facts AND bypasses the proper-noun gate for them so
+      narrative recap queries ("what have we been working on?") surface
+      the session summary even when the query has no named entity.
     """
 
-    logger.info(f"[Memory v6] Searching: '{query}'")
+    logger.info(f"[Memory v6] Searching: '{query}' (prefer_episode={prefer_episode})")
 
     # v6.1: collect distinctive proper-noun tokens from the query up-front.
     # When the query is entity-scoped (e.g. "tell me about Dr. Evelyn"),
@@ -249,6 +260,10 @@ def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, t
                 + max(0.0, min(1.0, decay)) * 0.15
             )
 
+            is_episode = (category == "episode")
+            if prefer_episode and is_episode:
+                final_score += 0.35
+
             if trace:
                 logger.debug(
                     f"[Memory TRACE] content='{content[:40]}...' "
@@ -287,8 +302,13 @@ def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, t
             # Bypassed when the query has no distinctive proper nouns —
             # generic questions ("what are my preferences?", "summarize my
             # notes") still flow through the permissive semantic gate.
-            if query_proper_nouns and not _content_has_any_token(
-                content, query_proper_nouns
+            if (
+                query_proper_nouns
+                and not _content_has_any_token(content, query_proper_nouns)
+                # Episode summaries never carry individual proper nouns;
+                # they are narrative recap rows and must survive this gate
+                # when the caller opted into the episode-preferring path.
+                and not (prefer_episode and is_episode)
             ):
                 if trace:
                     logger.debug(
@@ -329,7 +349,15 @@ def memory_search(query: str, query_vector: np.ndarray, store, top_k: int = 5, t
             if current_chars + len(text) > MAX_MEMORY_CHARS:
                 break
             current_chars += len(text)
-            context_blocks.append(f"- {text}")
+            # T3.2: label episode rows inline so the LLM can tell a
+            # session summary apart from an atomic fact without extra
+            # plumbing. NARRATIVE_RECALL_SYSTEM_SUFFIX explicitly tells
+            # the LLM to prefer these rows on recap turns.
+            label = "EPISODE" if item.get("category") == "episode" else None
+            if label:
+                context_blocks.append(f"- [{label}] {text}")
+            else:
+                context_blocks.append(f"- {text}")
             kept_items.append(item)
 
         recorder = get_memory_usage_recorder()

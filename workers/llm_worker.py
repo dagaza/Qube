@@ -27,10 +27,12 @@ from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
     detect_file_search_intent,
+    detect_narrative_intent,
     is_assistant_failure_message,
     is_thin_content,
     RECALL_FUSION_SYSTEM_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
+    NARRATIVE_RECALL_SYSTEM_SUFFIX,
     CITATION_DISCIPLINE_SUFFIX,
     GROUNDED_ANSWER_SYSTEM_SUFFIX,
     NO_SOURCES_SYSTEM_SUFFIX,
@@ -635,6 +637,22 @@ class LLMWorker(QThread):
         )
 
         # ============================================================
+        # 0.6 T3.2: NARRATIVE / RECAP OVERRIDE
+        # ------------------------------------------------------------
+        # Narrative recap queries ("what have we been working on?",
+        # "recap my session", "where did we leave off?") must route to
+        # MEMORY with ``prefer_episode=True`` so the session-summary rows
+        # outrank the atomic-fact rows. File-search and explicit-remember
+        # both win over narrative (file-search is a document query, and
+        # explicit-remember is a write turn).
+        # ============================================================
+        narrative_active = (
+            not explicit_remember_active
+            and not file_search_active
+            and detect_narrative_intent(self.prompt)
+        )
+
+        # ============================================================
         # 1. ROUTING PHASE
         # ============================================================
         self.status_update.emit("Thinking...")
@@ -663,6 +681,17 @@ class LLMWorker(QThread):
             # The cognitive router is skipped entirely — we don't want its
             # semantic recall centroid or its internet_enabled flag to
             # override a turn the user scoped to document lookup.
+        elif narrative_active:
+            logger.info(
+                "[LLM Worker] Narrative recap intent detected; forcing MEMORY with prefer_episode=True."
+            )
+            decision = {
+                "route": "memory",
+                "strategy": "narrative_recap",
+                "narrative": True,
+                "memory_query": self.prompt,
+                "prefer_episode": True,
+            }
         elif self.USE_COGNITIVE_ROUTER:
             intent_vector = self.embedding_cache.get_embedding(self.prompt)
             self._ensure_recall_centroid()
@@ -748,7 +777,8 @@ class LLMWorker(QThread):
             mem_result = memory_search(
                 decision.get("memory_query") or self.prompt,
                 query_vector,
-                self.store
+                self.store,
+                prefer_episode=bool(decision.get("prefer_episode") or narrative_active),
             )
             memory_context = mem_result.get("memory_context", "")
             all_ui_sources.extend(mem_result.get("memory_sources", []))
@@ -938,6 +968,11 @@ class LLMWorker(QThread):
                 # memories that happen to surface.
                 if file_search_active:
                     system_prompt += FILE_SEARCH_SYSTEM_SUFFIX
+                # T3.2: narrative / recap turns prefer the EPISODE-labelled
+                # memory sources over atomic facts. memory_tool tags those
+                # sources inline so the LLM can see the [EPISODE] label.
+                if narrative_active:
+                    system_prompt += NARRATIVE_RECALL_SYSTEM_SUFFIX
 
         # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
         elif execution_route in ["WEB", "INTERNET"]:

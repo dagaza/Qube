@@ -11,6 +11,12 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
 )
+# T3.2 episode summary constants — exposed for testing + ``.cursorrules``
+# reference. Turn cadence + idle window + summary length cap live here so
+# unit tests can monkeypatch without touching the worker instance.
+EPISODE_SUMMARY_TURN_CADENCE = 8
+EPISODE_SUMMARY_IDLE_SEC = 15 * 60
+MAX_EPISODE_CHARS = 800
 from core.memory_usage_recorder import (
     KIND_CITED,
     KIND_RETRIEVED,
@@ -96,6 +102,13 @@ class EnrichmentWorker(QThread):
         self.DECAY_PURGE_THRESHOLD = 0.15
         self._last_usage_drain = 0.0
         self._last_decay_sweep = 0.0
+
+        # T3.2 episode summary bookkeeping — per-session turn counter + last
+        # turn wall-clock ts. The summariser fires on
+        # (counter >= EPISODE_SUMMARY_TURN_CADENCE) OR
+        # (idle > EPISODE_SUMMARY_IDLE_SEC since previous turn).
+        self._session_turns_since_summary: dict[str, int] = {}
+        self._session_last_turn_ts: dict[str, float] = {}
 
     # ============================================================
     # CLUSTERING (NOW ACTUALLY USED)
@@ -545,6 +558,281 @@ class EnrichmentWorker(QThread):
             "conversation_text": conversation_text,
         }
         self._store_facts(facts, turn_context=turn_context)
+
+        # T3.2: after the atomic-fact flush, opportunistically summarise
+        # the session into a single ``episode`` row. Cadence + idle window
+        # are bounded inside the helper so a bad LLM response here cannot
+        # block the atomic-fact path above.
+        try:
+            self._maybe_summarise_session(session_id)
+        except Exception as e:
+            logger.debug(f"[Memory v6] episode summariser failed: {e}")
+
+    # ============================================================
+    # T3.2: EPISODE SUMMARIES
+    # ============================================================
+
+    def _maybe_summarise_session(self, session_id: str) -> None:
+        """Cadence-gated hook that may write a ``qube_memory::episode::%``
+        row summarising the recent conversation.
+
+        Fires when EITHER:
+          - the per-session turn counter has reached
+            ``EPISODE_SUMMARY_TURN_CADENCE`` turns since the last summary,
+            OR
+          - the session has been idle for more than
+            ``EPISODE_SUMMARY_IDLE_SEC`` since the previous turn (in
+            which case we summarise on the first turn back).
+
+        Failures are logged at debug level; the atomic-fact pipeline is
+        not affected.
+        """
+        if not session_id:
+            return
+
+        now = time.time()
+        prev_ts = self._session_last_turn_ts.get(session_id)
+        counter = self._session_turns_since_summary.get(session_id, 0) + 1
+        self._session_turns_since_summary[session_id] = counter
+        self._session_last_turn_ts[session_id] = now
+
+        idle_fire = (
+            prev_ts is not None
+            and counter >= 2
+            and (now - prev_ts) >= EPISODE_SUMMARY_IDLE_SEC
+        )
+        cadence_fire = counter >= EPISODE_SUMMARY_TURN_CADENCE
+
+        if not (cadence_fire or idle_fire):
+            return
+
+        fired_reason = "cadence" if cadence_fire else "idle"
+        try:
+            self._summarise_session_now(session_id, reason=fired_reason)
+        finally:
+            self._session_turns_since_summary[session_id] = 0
+
+    def _summarise_session_now(self, session_id: str, reason: str = "cadence") -> None:
+        """Generate one episode summary for ``session_id`` and store it."""
+        try:
+            all_messages = self.db.get_session_history(session_id) or []
+        except Exception as e:
+            logger.debug(f"[Memory v6] episode history load failed: {e}")
+            return
+        if not all_messages:
+            return
+
+        # Bound the window to roughly the cadence window (user+assistant
+        # pair per turn) so we never feed the full session into a small
+        # summariser LLM.
+        window = all_messages[-(EPISODE_SUMMARY_TURN_CADENCE * 2):]
+        scrubbed = self._scrub_assistant_failures(window)
+        if not scrubbed:
+            return
+
+        conversation = "\n".join(
+            f"{m.get('role') or 'user'}: {m.get('content') or ''}"
+            for m in scrubbed
+        )
+        if not conversation.strip():
+            return
+
+        prompt = self._build_episode_prompt(conversation)
+        raw = self._generate_memory(prompt)
+        if not raw:
+            return
+
+        summary, topics = self._parse_episode_response(raw)
+        if not summary:
+            logger.debug("[Memory v6] episode summariser returned no SUMMARY line")
+            return
+
+        summary_clean = summary.strip()
+        if summary_clean.upper() == "SKIP":
+            logger.debug("[Memory v6] episode summariser returned SKIP")
+            return
+
+        if is_thin_content(summary_clean):
+            logger.debug("[Memory v6] episode summary rejected (thin_content)")
+            return
+        if is_assistant_failure_message(summary_clean):
+            logger.debug("[Memory v6] episode summary rejected (assistant_failure)")
+            return
+        if len(summary_clean) > MAX_EPISODE_CHARS:
+            summary_clean = summary_clean[:MAX_EPISODE_CHARS]
+
+        msg_ids: list = [m.get("id") for m in window if m.get("id")]
+
+        try:
+            vector = self.embedder.embed_query(summary_clean)
+        except Exception as e:
+            logger.debug(f"[Memory v6] episode embed failed: {e}")
+            return
+
+        # Phase C negative-list reject: if the user already deleted a
+        # near-identical episode summary, do not recreate it.
+        try:
+            neg_list = get_memory_negative_list()
+            if neg_list.is_negative(vector, threshold=DEFAULT_REJECT_DISTANCE):
+                logger.info(
+                    "[Memory v6] episode summary dropped (negative_list): %r",
+                    summary_clean[:80],
+                )
+                return
+        except Exception:
+            pass
+
+        self._replace_episode_row(
+            session_id=session_id,
+            summary=summary_clean,
+            topics=topics,
+            source_message_ids=msg_ids,
+            vector=vector,
+            reason=reason,
+            turn_count=len(window) // 2,
+        )
+
+    def _build_episode_prompt(self, conversation: str) -> str:
+        return f"""You are writing a single-paragraph summary of the recent conversation below.
+
+Goal: capture what the user was DOING or DECIDING in this session, so the assistant can later answer "what have we been working on?" or "recap this conversation".
+
+STRICT RULES:
+- One paragraph. <= 120 words. Plain English prose.
+- Describe the USER's project / goal / decisions / open questions. Never describe the assistant.
+- Never invent facts that are not in the conversation.
+- If the conversation is small talk, trivial, or has no narrative arc, output EXACTLY:
+  SUMMARY: SKIP
+  TOPICS:
+- Otherwise output EXACTLY this format (two labeled lines):
+
+SUMMARY: <one paragraph summary>
+TOPICS: <comma-separated short topic keywords>
+
+CONVERSATION:
+{conversation}
+"""
+
+    def _parse_episode_response(self, raw: str) -> tuple[str, list[str]]:
+        """Extract (summary, topics) from the episode LLM output.
+
+        Tolerates extra whitespace / leading markdown / casing. Returns
+        ``("", [])`` on anything unexpected so the caller can bail out.
+        """
+        if not raw:
+            return "", []
+        text = raw.strip()
+
+        summary = ""
+        topics: list[str] = []
+
+        # Pull SUMMARY: line (may wrap onto subsequent lines until TOPICS).
+        m_sum = re.search(
+            r"SUMMARY\s*:\s*(.*?)(?:\n\s*TOPICS\s*:|$)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if m_sum:
+            summary = re.sub(r"\s+", " ", m_sum.group(1)).strip()
+
+        m_top = re.search(
+            r"TOPICS\s*:\s*(.*?)$",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if m_top:
+            raw_topics = m_top.group(1).strip()
+            topics = [
+                t.strip().lower()
+                for t in re.split(r"[,\n]", raw_topics)
+                if t.strip()
+            ][:6]
+
+        return summary, topics
+
+    def _replace_episode_row(
+        self,
+        *,
+        session_id: str,
+        summary: str,
+        topics: list[str],
+        source_message_ids: list,
+        vector,
+        reason: str,
+        turn_count: int,
+    ) -> None:
+        """Delete any existing episode row for ``session_id`` and write a
+        fresh one. Episodes are "replace in place" per session — we only
+        ever keep one episode row per session id so the Memory Manager
+        view stays readable.
+        """
+        # Build the per-session source namespace used by retrieval policy.
+        safe_session = (session_id or "unknown").replace("'", "''")
+        source = f"qube_memory::episode::{safe_session}"
+
+        # Delete any prior episode for this session (safe no-op if none).
+        try:
+            self.store.table.delete(f"source = '{source}'")
+        except Exception as e:
+            logger.debug(f"[Memory v6] episode replace-delete failed: {e}")
+
+        now_ts = int(time.time())
+        payload = {
+            "type": "fact",
+            "category": "episode",
+            "content": summary,
+
+            # typed schema reused for uniform Memory Manager rendering.
+            "subject": "user",
+            "source_role": "derived",
+            "durability": "long_term",
+            "provenance_quote": "",
+
+            # Phase B provenance.
+            "source_session_id": session_id,
+            "source_message_ids": list(source_message_ids),
+            "origin": "session_summary",
+            "links_to_document_ids": [],
+
+            # T3.2 episode-specific fields.
+            "topics": list(topics),
+            "turn_count": int(turn_count),
+            "episode_reason": reason,
+
+            # Reuse the standard bookkeeping so the Memory Manager +
+            # retrieval ranking / decay pipeline don't need a special
+            # case for episodes.
+            "strength": 1,
+            "confidence": 0.85,
+            "importance": 0.85,
+            "decay": 1.0,
+            "cluster": f"episode::{safe_session}",
+
+            "times_retrieved": 0,
+            "times_cited_positively": 0,
+            "last_used_at": now_ts,
+            "last_reflected_at": 0,
+            "flagged_for_review": False,
+
+            "timestamp": now_ts,
+        }
+
+        try:
+            self.store.table.add([{
+                "text": json.dumps(payload),
+                "vector": vector,
+                "source": source,
+                "chunk_id": 0,
+            }])
+            logger.info(
+                "[Memory v6] wrote episode summary session=%s turns=%d reason=%s topics=%s",
+                safe_session,
+                turn_count,
+                reason,
+                ",".join(topics) or "-",
+            )
+        except Exception as e:
+            logger.error(f"[Memory v6] episode write failed: {e}")
 
     # ============================================================
     # PROMPT
