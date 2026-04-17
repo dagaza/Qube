@@ -265,6 +265,27 @@ class LLMWorker(QThread):
         "what is the user's preferred coding style?",
     )
 
+    # T4.2: curated chat / general-knowledge examples used to build the
+    # NEGATIVE-class centroid consumed by
+    # ``CognitiveRouterV4._score_chat_intent``. Deliberately avoids
+    # "remember" / "recall" / "tell me about" / "who is" tokens so the
+    # centroid sits visibly away from the recall centroid in embedding
+    # space. Mix is factual / general-knowledge / chitchat / task /
+    # coding, 10 short prompts (≤ ~60 chars each) to mirror the shape of
+    # ``_RECALL_INTENT_EXAMPLES``.
+    _CHAT_INTENT_EXAMPLES = (
+        "Why is the sky blue?",
+        "How does photosynthesis work?",
+        "What is the speed of light in a vacuum?",
+        "Explain how a transformer neural network works.",
+        "Write me a haiku about the sea.",
+        "Give me a Python snippet to reverse a string.",
+        "Translate 'good morning' into Spanish.",
+        "What's the capital of Australia?",
+        "Summarize the plot of Macbeth in two sentences.",
+        "How do I convert 32 degrees Fahrenheit to Celsius?",
+    )
+
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
         corresponding memory rows.
@@ -336,25 +357,42 @@ class LLMWorker(QThread):
         self._turn_enrichment_mode = "explicit_only"
         self._turn_skip_enrichment_reason = reason
 
-    def _ensure_recall_centroid(self) -> None:
-        """Lazily build and install the RECALL semantic centroid on the
-        cognitive router. Called once on the first turn that uses the
-        cognitive router. No-op on subsequent calls and on any failure
-        (the router falls back to substring detection)."""
+    def _ensure_router_centroids(self) -> None:
+        """T4.2: lazily build and install BOTH the RECALL and CHAT
+        (negative-class) semantic centroids on the cognitive router.
+
+        Called once on the first turn that uses the cognitive router.
+        Each centroid is only built if it has not been installed yet,
+        so the method is cheap to call on every turn. The router falls
+        back to substring detection for recall if anything fails here;
+        an unset chat centroid simply returns ``chat_score = 0.0`` and
+        leaves the margin gate trivially satisfied (backwards compatible
+        with the single-centroid pre-T4.2 behaviour).
+        """
         if not getattr(self, "cognitive_router", None):
-            return
-        if getattr(self.cognitive_router, "recall_centroid", None) is not None:
             return
         embedder = getattr(self.embedding_cache, "embedder", None)
         if embedder is None:
             return
         try:
             from workers.intent_router import build_centroid
-            centroid = build_centroid(embedder, list(self._RECALL_INTENT_EXAMPLES))
-            self.cognitive_router.set_recall_centroid(centroid)
-            logger.info("[LLM Worker] Recall semantic centroid installed.")
+            if self.cognitive_router.recall_centroid is None:
+                self.cognitive_router.set_recall_centroid(
+                    build_centroid(embedder, list(self._RECALL_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Recall centroid installed.")
+            if self.cognitive_router.chat_centroid is None:
+                self.cognitive_router.set_chat_centroid(
+                    build_centroid(embedder, list(self._CHAT_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Chat centroid installed.")
         except Exception:
-            logger.exception("[LLM Worker] Failed to build recall centroid")
+            logger.exception("[LLM Worker] Failed to build router centroids")
+
+    # T4.2: keep the old name as a back-compat alias so any existing
+    # call site (e.g. ``_execute_llm_turn``) keeps working without
+    # edits, and so out-of-tree callers don't break.
+    _ensure_recall_centroid = _ensure_router_centroids
 
     def _format_sources_for_llm_prompt(self, sources: list) -> str:
         """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids).
