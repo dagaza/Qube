@@ -246,61 +246,208 @@ class LLMWorkerDowngradeContractTests(unittest.TestCase):
         with open(path, "r", encoding="utf-8") as f:
             cls.src = f.read()
 
+    # Distinctive log line emitted by the post-retrieval downgrade
+    # block. Shared by every test in this class as a structural
+    # anchor so we don't accidentally find the earlier proactive
+    # WEB-veto assignment (which uses its own log line).
+    _POST_RETRIEVAL_ANCHOR = "All retrieval channels empty after relevance"
+
     def test_downgrade_block_exists(self) -> None:
         # The downgrade flips execution_route to "NONE" when
-        # all_ui_sources is empty on a retrieval route. Assert both
-        # the predicate and the assignment exist.
+        # all_ui_sources is empty on a retrieval route. Assert the
+        # tuple (now widened to include WEB / INTERNET so the
+        # ``[W]`` hallucination regression can't come back), the
+        # guard, and the assignment anchored to the downgrade log.
         self.assertRegex(
             self.src,
-            r'execution_route\s+in\s+\(\s*"MEMORY"\s*,\s*"RAG"\s*,\s*"HYBRID"\s*\)',
-            "Expected a tuple-membership check for retrieval routes "
-            "in the downgrade block.",
+            r'execution_route\s+in\s+\(\s*"MEMORY"\s*,\s*"RAG"\s*,'
+            r'\s*"HYBRID"\s*,\s*"WEB"\s*,\s*"INTERNET"\s*\)',
+            "Expected a tuple-membership check including WEB / "
+            "INTERNET in the downgrade block — WEB turns with no "
+            "sources must also downgrade to NONE so the 'You have "
+            "live web results' system prompt cannot fire without "
+            "any actual sources.",
         )
         self.assertRegex(
             self.src,
             r'not\s+all_ui_sources',
             "Expected the downgrade to be guarded by ``not all_ui_sources``.",
         )
+        # Anchor the NONE assignment to the distinctive post-retrieval
+        # downgrade log so this test isn't satisfied by the earlier
+        # proactive WEB-veto ``execution_route = "NONE"`` assignment.
+        # ``[\s\S]*?`` is used instead of ``.*?`` because the default
+        # regex ``.`` does not match newlines and ``re.search`` (which
+        # ``assertRegex`` calls under the hood) does not expose the
+        # ``re.DOTALL`` flag.
         self.assertRegex(
             self.src,
-            r'execution_route\s*=\s*"NONE"',
-            "Expected the downgrade to reassign execution_route to NONE.",
+            re.escape(self._POST_RETRIEVAL_ANCHOR)
+            + r'[\s\S]*?execution_route\s*=\s*"NONE"',
+            "Expected the ``execution_route = 'NONE'`` assignment "
+            "immediately after the post-retrieval downgrade log line.",
         )
 
     def test_downgrade_runs_after_telemetry(self) -> None:
         """Telemetry must log the actually-executed route. The
-        downgrade must therefore sit AFTER the telemetry block."""
+        post-retrieval downgrade must therefore sit AFTER the
+        telemetry block."""
         telemetry_idx = self.src.find("self.telemetry.log(")
         self.assertGreater(telemetry_idx, 0, "telemetry log call not found")
-        # Locate our downgrade assignment.
-        downgrade_match = re.search(
-            r'execution_route\s*=\s*"NONE"',
-            self.src,
-        )
-        self.assertIsNotNone(downgrade_match, "downgrade assignment not found")
+        # Anchor to the distinctive post-retrieval log line — a plain
+        # ``execution_route = "NONE"`` match would now find the earlier
+        # proactive WEB-veto assignment instead.
+        post_retrieval_idx = self.src.find(self._POST_RETRIEVAL_ANCHOR)
         self.assertGreater(
-            downgrade_match.start(), telemetry_idx,
-            "T4.1 downgrade must run after telemetry so the original "
-            "route is still recorded for router tuning.",
+            post_retrieval_idx, 0,
+            f"post-retrieval downgrade log line "
+            f"{self._POST_RETRIEVAL_ANCHOR!r} not found.",
+        )
+        self.assertGreater(
+            post_retrieval_idx, telemetry_idx,
+            "T4.1 post-retrieval downgrade must run after telemetry "
+            "so the original executed route is still recorded for "
+            "router tuning.",
         )
 
     def test_downgrade_runs_before_system_prompt_build(self) -> None:
-        """The downgrade must run before the system-prompt branch
-        (``elif execution_route in ["RAG", "HYBRID", "MEMORY"]``)
-        so that an empty-retrieval turn lands on the base prompt."""
-        downgrade_match = re.search(
-            r'execution_route\s*=\s*"NONE"',
-            self.src,
-        )
-        self.assertIsNotNone(downgrade_match)
+        """The post-retrieval downgrade must run before the
+        system-prompt branch (``elif execution_route in ["RAG",
+        "HYBRID", "MEMORY"]``) so that an empty-retrieval turn
+        lands on the base prompt."""
+        post_retrieval_idx = self.src.find(self._POST_RETRIEVAL_ANCHOR)
+        self.assertGreater(post_retrieval_idx, 0)
         prompt_branch_idx = self.src.find(
             'elif execution_route in ["RAG", "HYBRID", "MEMORY"]'
         )
         self.assertGreater(prompt_branch_idx, 0)
         self.assertLess(
-            downgrade_match.start(), prompt_branch_idx,
+            post_retrieval_idx, prompt_branch_idx,
             "T4.1 downgrade must run before the system-prompt build "
             "so the prompt branch sees the updated route.",
+        )
+
+    def test_web_downgrade_marks_skip_enrichment(self) -> None:
+        """When the empty-retrieval downgrade fires on a WEB /
+        INTERNET turn the worker must also call
+        ``_mark_skip_enrichment("web_route_no_sources")`` so the
+        thin "I can't check live data" reply isn't mined for user
+        facts by the enrichment worker — mirroring the existing
+        ``web_tool_failure`` behaviour on the sentinel path."""
+        # The ``skip_enrichment`` call must sit inside the
+        # post-retrieval downgrade block (anchored to the downgrade
+        # log) and specifically be guarded by a ``WEB`` / ``INTERNET``
+        # check so the MEMORY / RAG / HYBRID paths don't get the
+        # same enrichment skip (those turns are legitimate and
+        # should still enrich).
+        self.assertRegex(
+            self.src,
+            re.escape(self._POST_RETRIEVAL_ANCHOR)
+            + r'[\s\S]*?execution_route\s+in\s+\(\s*"WEB"\s*,\s*"INTERNET"\s*\)'
+            + r'[\s\S]*?_mark_skip_enrichment\(\s*"web_route_no_sources"\s*\)',
+            "Expected the empty-WEB downgrade path to mark "
+            "``skip_enrichment(\"web_route_no_sources\")`` so the "
+            "thin reply isn't enriched into user-fact memories.",
+        )
+
+
+class LLMWorkerWebVetoContractTests(unittest.TestCase):
+    """Static contract check for the proactive WEB-route veto added
+    alongside the T4.1 downgrade widening.
+
+    The cognitive router internally promotes ``route = "web"`` as
+    soon as ``_score_web_intent`` clears its threshold (keywords
+    like "weather" / "today"). That value flows through
+    ``execution_route = decision["route"].upper()`` BEFORE the
+    manual/auto/force triggers are evaluated. Without a proactive
+    veto, a query like "what's the weather in Copenhagen today?"
+    arrives at the system-prompt branch already pinned to WEB even
+    when the user has disabled the internet tool — which then fires
+    the "You have live web results" prompt against an empty source
+    set and causes the small LLM to hallucinate a ``[W]`` citation.
+
+    These tests guard against the veto block being removed or
+    weakened.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = os.path.join(ROOT, "workers", "llm_worker.py")
+        with open(path, "r", encoding="utf-8") as f:
+            cls.src = f.read()
+
+    # The veto's INFO log string is split across multiple adjacent
+    # string literals in ``llm_worker.py`` (for readability); pick
+    # the first literal as a stable anchor for source searches.
+    _VETO_LOG_ANCHOR = "Cognitive router picked WEB but internet"
+
+    def test_proactive_web_veto_log_line_exists(self) -> None:
+        """The veto block emits a distinctive INFO log line so the
+        fix is greppable in ``logs/llm_debug.log``."""
+        self.assertIn(
+            self._VETO_LOG_ANCHOR,
+            self.src,
+            "Expected the proactive WEB-veto INFO log line — silent "
+            "config changes make future regressions invisible.",
+        )
+
+    def test_proactive_web_veto_checks_tool_disabled(self) -> None:
+        """The veto predicate must gate on
+        ``not self.mcp_internet_enabled`` — i.e. the user has
+        explicitly turned off the internet tool."""
+        # Anchor to the veto log line so this test isn't satisfied
+        # by an unrelated ``mcp_internet_enabled`` check elsewhere.
+        anchor_idx = self.src.find(self._VETO_LOG_ANCHOR)
+        self.assertGreater(anchor_idx, 0)
+        # Take a window AROUND the anchor (the predicate is a few
+        # lines above the log line). 400 chars is plenty for the
+        # if-block + preceding condition lines.
+        window_start = max(0, anchor_idx - 600)
+        window = self.src[window_start:anchor_idx]
+        self.assertIn(
+            "not self.mcp_internet_enabled",
+            window,
+            "Expected the proactive veto to be guarded by "
+            "``not self.mcp_internet_enabled`` so it only fires "
+            "when the user has disabled the internet tool.",
+        )
+
+    def test_proactive_web_veto_respects_force_flag(self) -> None:
+        """The veto must NOT fire when ``force_web`` is set (the
+        user clicked the Web button on the chat UI), nor when a
+        manual web trigger / auto trigger fired — those paths have
+        already legitimately earned the WEB route."""
+        anchor_idx = self.src.find(self._VETO_LOG_ANCHOR)
+        self.assertGreater(anchor_idx, 0)
+        window_start = max(0, anchor_idx - 600)
+        window = self.src[window_start:anchor_idx]
+        for flag in ("not force_web", "not manual_web", "not auto_web"):
+            self.assertIn(
+                flag,
+                window,
+                f"Expected the proactive veto predicate to include "
+                f"``{flag}`` so it only fires when no legitimate "
+                f"web-intent path claimed this turn.",
+            )
+
+    def test_proactive_web_veto_runs_before_post_retrieval_downgrade(
+        self,
+    ) -> None:
+        """The proactive veto must run BEFORE the §2.75 post-retrieval
+        downgrade so it can short-circuit the WEB tool-execution
+        block entirely — we don't want to waste a web search call
+        on a route the user has disabled."""
+        veto_idx = self.src.find(self._VETO_LOG_ANCHOR)
+        downgrade_idx = self.src.find(
+            "All retrieval channels empty after relevance"
+        )
+        self.assertGreater(veto_idx, 0)
+        self.assertGreater(downgrade_idx, 0)
+        self.assertLess(
+            veto_idx, downgrade_idx,
+            "Proactive WEB veto must run before the post-retrieval "
+            "downgrade so the WEB tool-execution block is skipped, "
+            "not retried.",
         )
 
 
