@@ -14,14 +14,32 @@ import weakref
 
 _TOOLTIP_TEXT_WIDTH_PX = 300
 
+_ET_TOOLTIP = int(QEvent.Type.ToolTip)
+_ET_HIDE = frozenset({
+    int(QEvent.Type.MouseButtonPress),
+    int(QEvent.Type.Wheel),
+    int(QEvent.Type.Leave),
+    int(QEvent.Type.HoverLeave),
+    int(QEvent.Type.WindowDeactivate),
+    int(QEvent.Type.FocusOut),
+})
+_ET_MOVE = frozenset({
+    int(QEvent.Type.MouseMove),
+    int(QEvent.Type.HoverMove),
+})
+
 
 class QubeApplication(QApplication):
     """Routes tooltips through QubeToolTipController instead of native QToolTip."""
 
     def notify(self, receiver: QObject, event: QEvent) -> bool:
-        et = event.type()
+        try:
+            et = int(event.type())
+        except RecursionError:
+            return super().notify(receiver, event)
+
         ctrl = QubeToolTipController.instance()
-        if et == QEvent.Type.ToolTip:
+        if et == _ET_TOOLTIP:
             if isinstance(receiver, QWidget):
                 raw = receiver.toolTip()
                 if raw and str(raw).strip():
@@ -31,16 +49,9 @@ class QubeApplication(QApplication):
                         gpos = QCursor.pos()
                     ctrl.show_tip(receiver, gpos, str(raw))
                     return True
-        if et in (
-            QEvent.Type.MouseButtonPress,
-            QEvent.Type.Wheel,
-            QEvent.Type.Leave,
-            QEvent.Type.HoverLeave,
-            QEvent.Type.WindowDeactivate,
-            QEvent.Type.FocusOut,
-        ):
+        if et in _ET_HIDE:
             ctrl.hide_tip()
-        elif et in (QEvent.Type.MouseMove, QEvent.Type.HoverMove):
+        elif et in _ET_MOVE:
             ctrl.hide_if_cursor_left_anchor()
         return super().notify(receiver, event)
 
