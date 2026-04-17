@@ -48,7 +48,20 @@ class CognitiveRouterV4:
         # example set). When unset we fall back to the substring detector
         # in core.memory_filters.detect_recall_intent.
         self.recall_centroid: np.ndarray | None = None
-        self.recall_threshold = 0.55
+        # T4.2: semantic CHAT (negative class) centroid. Installed
+        # symmetrically to ``recall_centroid`` by ``llm_worker``. When
+        # unset, ``_score_chat_intent`` returns 0.0 and the margin gate
+        # in ``route(...)`` is trivially satisfied — this preserves
+        # backwards compatibility with fresh installs that haven't
+        # installed the chat centroid yet.
+        self.chat_centroid: np.ndarray | None = None
+        # T4.2: raised from 0.55 to 0.62. The old single-centroid
+        # classifier at 0.55 was too permissive — "Why is the sky blue?"
+        # landed at ~0.61 against the recall centroid simply because it
+        # shares high cosine geometry with "tell me about X" phrasings.
+        self.recall_threshold = 0.62
+        # T4.2: now USED. Recall must beat chat by this margin before
+        # ``recall_active`` fires (see ``route(...)`` decision block).
         self.recall_margin_over_chat = 0.05
 
     # ============================================================
@@ -100,6 +113,7 @@ class CognitiveRouterV4:
         # 🔑 FIX: Changed to match the actual function name _score_web_intent
         web_score = self._score_web_intent(q)
         recall_score = self._score_recall_intent(intent_vector, q)
+        chat_score = self._score_chat_intent(intent_vector, q)
         complexity_score = estimated_complexity
 
         # Apply dynamic thresholds
@@ -118,7 +132,30 @@ class CognitiveRouterV4:
         # Phase B: semantic recall override forces HYBRID so memory + RAG
         # are fused for "tell me about X" / "who is X" queries. Web intent
         # still wins because the user explicitly asked to look online.
-        recall_active = recall_score >= self.recall_threshold
+        #
+        # T4.2: two gates — absolute threshold AND margin over the chat
+        # (negative) class. When ``chat_centroid`` is unset,
+        # ``chat_score`` is 0.0 so the margin requirement is trivially
+        # satisfied, preserving backwards compatibility on fresh installs
+        # that haven't installed the chat centroid yet.
+        recall_active = (
+            recall_score >= self.recall_threshold
+            and (recall_score - chat_score) >= self.recall_margin_over_chat
+        )
+
+        # T4.2 observability: when the absolute threshold would have
+        # fired but the margin over the chat class blocked it, surface
+        # one INFO line so a human can grep ``logs/llm_debug.log`` for
+        # the fix working. Silent config changes are the enemy.
+        if recall_score >= self.recall_threshold and not recall_active:
+            logger.info(
+                "[RouterV4] recall blocked by chat-class margin "
+                "(recall=%.3f, chat=%.3f, margin=%.3f, required=%.3f)",
+                recall_score,
+                chat_score,
+                recall_score - chat_score,
+                self.recall_margin_over_chat,
+            )
 
         # High complexity forces hybrid
         if complexity_score > 0.75:
@@ -144,6 +181,8 @@ class CognitiveRouterV4:
             "web_score": web_score, # 🔑 FIX: Tracked the corrected variable
             "recall_score": recall_score,
             "recall_active": recall_active,
+            "chat_score": chat_score,
+            "recall_margin_over_chat": self.recall_margin_over_chat,
             "rag_threshold": self.dynamic_rag_threshold,
             "memory_threshold": self.dynamic_memory_threshold,
             "internet_threshold": self.dynamic_internet_threshold,  # NEW
@@ -186,6 +225,49 @@ class CognitiveRouterV4:
         except Exception as e:
             logger.warning(f"[RouterV4] failed to install recall centroid: {e}")
             self.recall_centroid = None
+
+    def set_chat_centroid(self, centroid: np.ndarray) -> None:
+        """T4.2: install the semantic centroid for the general-knowledge /
+        chat negative class.
+
+        Built externally with ``workers.intent_router.build_centroid``
+        from a curated example set (factual questions, coding snippets,
+        short translations, etc. — see ``LLMWorker._CHAT_INTENT_EXAMPLES``).
+        Called once on first use by ``llm_worker`` alongside
+        ``set_recall_centroid``.
+        """
+        try:
+            self.chat_centroid = np.asarray(centroid, dtype=np.float32)
+        except Exception as e:
+            logger.warning(f"[RouterV4] failed to install chat centroid: {e}")
+            self.chat_centroid = None
+
+    def _score_chat_intent(self, intent_vector, q: str) -> float:
+        """T4.2: symmetric to ``_score_recall_intent`` but against the
+        chat (negative-class) centroid.
+
+        Returns cosine similarity in [-1, 1] when a centroid + query
+        vector are available; returns ``0.0`` otherwise (so the margin
+        gate in ``route(...)`` stays trivially satisfied on installs
+        where the chat centroid hasn't been built yet). The raw query
+        string ``q`` is accepted for signature parity with
+        ``_score_recall_intent`` but is intentionally unused — there is
+        no substring fallback for the negative class.
+        """
+        del q  # unused; signature parity with _score_recall_intent
+        if intent_vector is None or self.chat_centroid is None:
+            return 0.0
+        try:
+            v = np.asarray(intent_vector, dtype=np.float32)
+            vn = np.linalg.norm(v)
+            if vn > 0:
+                v = v / vn
+            cn = np.linalg.norm(self.chat_centroid)
+            c = self.chat_centroid / cn if cn > 0 else self.chat_centroid
+            return float(np.dot(v, c))
+        except Exception as e:
+            logger.debug(f"[RouterV4] chat centroid score failed: {e}")
+            return 0.0
 
     def _score_recall_intent(self, intent_vector, q: str) -> float:
         """Phase B semantic recall score in [0, 1].
