@@ -748,6 +748,45 @@ class LLMWorker(QThread):
             if force_web or manual_web or auto_web:
                 execution_route = "WEB"
 
+            # ------------------------------------------------------------
+            # PROACTIVE WEB-ROUTE VETO
+            # ------------------------------------------------------------
+            # The cognitive router internally promotes ``route`` to
+            # ``"web"`` as soon as ``_score_web_intent`` clears its
+            # threshold (keywords like "weather" / "today" / "news").
+            # That value then flows through ``execution_route =
+            # decision["route"].upper()`` above, *before* we ever reach
+            # the manual/force/auto gate. So a query like "what's the
+            # weather in Copenhagen today?" can arrive here already
+            # pinned to WEB even when the user has explicitly disabled
+            # the internet tool (``mcp_internet_enabled=False``) and is
+            # not force-routing this turn.
+            #
+            # If neither the force flag, the manual trigger, nor the
+            # explicit cognitive-router-internet auto-trigger fired,
+            # AND the web tool is disabled, the router's WEB pick has
+            # no justification on this turn — revert to NONE so the
+            # downstream tool-execution and system-prompt branches
+            # don't end up on the WEB path. This prevents the "You
+            # have been provided with live web search results" system
+            # prompt from firing on a turn that will carry no web
+            # sources (the root cause of the hallucinated [W]
+            # citation regression).
+            if (
+                execution_route == "WEB"
+                and not force_web
+                and not manual_web
+                and not auto_web
+                and not self.mcp_internet_enabled
+            ):
+                logger.info(
+                    "[LLM Worker] Cognitive router picked WEB but internet "
+                    "tool is disabled and no explicit web trigger fired; "
+                    "reverting execution_route to NONE."
+                )
+                execution_route = "NONE"
+                decision["web_vetoed_tool_disabled"] = True
+
         # ============================================================
         # ROUTING START TIME (telemetry)
         # ============================================================
@@ -959,11 +998,13 @@ class LLMWorker(QThread):
         # ============================================================
         # 2.75 T4.1: POST-RETRIEVAL ROUTE DOWNGRADE
         # ------------------------------------------------------------
-        # If we routed into a retrieval lane (MEMORY / RAG / HYBRID) but
-        # every channel came back empty or below-floor (rag_tool's
-        # MIN_RAG_SEMANTIC_SCORE gate killed all vector candidates,
-        # memory_tool's MIN_SEMANTIC_SCORE + proper-noun gate killed
-        # all memory candidates), downgrade this turn to NONE.
+        # If we routed into a retrieval lane (MEMORY / RAG / HYBRID /
+        # WEB / INTERNET) but every channel came back empty or
+        # below-floor (rag_tool's MIN_RAG_SEMANTIC_SCORE gate killed
+        # all vector candidates, memory_tool's MIN_SEMANTIC_SCORE +
+        # proper-noun gate killed all memory candidates, or
+        # search_internet was skipped/sentinel-cleared), downgrade
+        # this turn to NONE.
         #
         # Why: the prompt-build branch at §3 currently has TWO modes
         # for a retrieval route — the citation-disciplined "you MUST
@@ -978,15 +1019,32 @@ class LLMWorker(QThread):
         # wrapper in the user message — the LLM answers from its own
         # knowledge as if no retrieval had been attempted.
         #
+        # WEB / INTERNET are included here because the WEB system-
+        # prompt branch at §3 asserts "You have just been provided
+        # with real-time, live web search results" and instructs the
+        # model to cite with ``[W]``. When ``all_ui_sources`` is
+        # empty (internet tool disabled, or ``search_internet``
+        # returned the "Internet search failed" sentinel and the
+        # guard at §2 cleared ``web_results``), the prompt is lying
+        # to the model about context that doesn't exist — a small
+        # LLM then fabricates both an answer and the ``[W]``
+        # citation, which the UI correctly flags as a missing
+        # source. Downgrading to NONE on the WEB path lands the
+        # turn on the base "You are Qube, be concise" prompt with
+        # no ``[W]`` instruction, so the model either answers
+        # conservatively from its own parameters or honestly says
+        # it can't check live data right now.
+        #
         # We do this AFTER telemetry so ``router_telemetry`` still
         # records the original executed route (useful for tuning the
-        # cognitive router's recall centroid over time). WEB is not
-        # downgraded here: an empty-web turn is handled by the
-        # existing ``web_tool_failure`` skip-enrichment path and the
-        # web branch at §3 has its own fallback framing.
+        # cognitive router's thresholds over time). On the WEB path
+        # we also mark ``skip_enrichment`` for the same reason
+        # ``web_tool_failure`` does on the sentinel path: a turn
+        # where the assistant said "I can't check without internet
+        # access" should not be mined for user facts.
         # ============================================================
         if (
-            execution_route in ("MEMORY", "RAG", "HYBRID")
+            execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
         ):
             logger.info(
@@ -994,6 +1052,8 @@ class LLMWorker(QThread):
                 "gates; downgrading route %s -> NONE for prompt build.",
                 execution_route,
             )
+            if execution_route in ("WEB", "INTERNET"):
+                self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
 
         # ============================================================
