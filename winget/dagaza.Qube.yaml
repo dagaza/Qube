@@ -1,0 +1,49 @@
+# WinGet Package Manifest for Qube
+# https://github.com/microsoft/winget-pkgs
+#
+# To submit:
+#   1. Fork https://github.com/microsoft/winget-pkgs
+#   2. Copy this file to:
+#      manifests/d/dagaza/Qube/<version>/dagaza.Qube.yaml
+#   3. Replace <sha256> with the hash from the GitHub Release
+#   4. Validate:  winget validate --manifest <path-to-folder>
+#   5. Open a PR — the winget-pkgs-automation bot will run checks
+#
+# To automate future updates, install wingetcreate and run:
+#   wingetcreate update dagaza.Qube ^
+#     --version <version> ^
+#     --urls https://github.com/dagaza/Qube/releases/download/v<version>/Qube-<version>-Setup.exe ^
+#     --submit --token <GITHUB_PAT>
+
+PackageIdentifier: dagaza.Qube
+PackageVersion: 1.0.0
+PackageName: Qube
+Publisher: dagaza
+License: MIT
+LicenseUrl: https://github.com/dagaza/Qube/blob/main/LICENSE
+ShortDescription: Local hardware-accelerated AI desktop assistant
+Description: >-
+  Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant.
+  It integrates speech-to-text (faster-whisper), text-to-speech (Kokoro),
+  retrieval-augmented generation (LanceDB + Nomic embeddings), and local LLM
+  inference (llama.cpp) into a native PyQt6 desktop shell. Runs entirely
+  offline under a strict memory budget.
+PackageUrl: https://github.com/dagaza/Qube
+Tags:
+  - ai
+  - assistant
+  - local
+  - privacy
+  - voice
+  - llm
+  - desktop
+InstallerType: inno
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/dagaza/Qube/releases/download/v1.0.0/Qube-1.0.0-Setup.exe
+    InstallerSha256: <sha256>
+    InstallerSwitches:
+      Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+      SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
+ManifestType: singleton
+ManifestVersion: 1.6.0

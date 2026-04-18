@@ -35,6 +35,12 @@ data/**/*
 # Keep project-level JSON configs, ignore deep model/metadata JSONs
 models/**/*.json
 
+# --- Build & Packaging ---
+dist/
+build/
+*.egg-info/
+installer/output/
+
 # --- IDE, OS & Tools ---
 .vscode/
 .idea/
