@@ -201,7 +201,6 @@ QPushButton[class~="BrandDangerButton"]:disabled {
 }
 .NavButton:checked {
     background-color: #e2e8f0;
-    font-weight: bold;
 }
 
 /* --- 5. LISTS --- */
