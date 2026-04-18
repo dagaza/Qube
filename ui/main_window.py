@@ -489,14 +489,19 @@ class MainWindow(QMainWindow):
 
         # Top Icons
         self.nav_chat = create_nav_btn('fa5s.comment-alt', 0)
+        self.nav_chat.setObjectName("NavChat")
         self.nav_chat.setChecked(True)
         # Highlight the first one active by default
         self.nav_chat.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa'))
 
         self.nav_library = create_nav_btn('fa5s.book', 1)
+        self.nav_library.setObjectName("NavLibrary")
         self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22)
+        self.nav_memory.setObjectName("NavMemory")
         self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3)
+        self.nav_telemetry.setObjectName("NavTelemetry")
         self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20)
+        self.nav_models.setObjectName("NavModels")
 
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -507,15 +512,17 @@ class MainWindow(QMainWindow):
 
         # Bottom Controls
         self.nav_theme = QPushButton()
+        self.nav_theme.setObjectName("NavThemeToggle")
         self.nav_theme.setProperty("class", "NavButton")
         self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
         self.nav_theme.setIconSize(QSize(20, 20))
-        self.nav_theme.clicked.connect(self._toggle_theme) 
+        self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20)
+        self.nav_settings.setObjectName("NavSettings")
         layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # --- 🔑 THE PRESTIGE MINI-TELEMETRY BLOCK ---

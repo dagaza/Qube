@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 os.environ["QUBE_LLM_DEBUG"] = "1"
 
+from core.__version__ import __version__
+
 from PyQt6 import QtCore
 from core.qube_tooltip import QubeApplication, qube_tooltip_set_theme
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
@@ -488,7 +490,7 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         import ctypes
 
-        myappid = "dagaza.qube.app.1.0"
+        myappid = f"dagaza.qube.app.{__version__}"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # 1. PyQt6 high DPI handling

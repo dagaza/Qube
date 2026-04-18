@@ -1,0 +1,128 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------------
+  # 1. TEST — run pytest (unit + UI) on Windows
+  # -------------------------------------------------------------------
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # -------------------------------------------------------------------
+  # 2. BUILD — PyInstaller → smoke test → Inno Setup → hash
+  # -------------------------------------------------------------------
+  build:
+    needs: test
+    runs-on: windows-latest
+    outputs:
+      installer_hash: ${{ steps.hash.outputs.sha256 }}
+      installer_name: ${{ steps.hash.outputs.filename }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: pyinstaller qube.spec --noconfirm
+
+      - name: Smoke test — verify EXE launches
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath "dist\Qube\Qube.exe" -PassThru
+          Start-Sleep -Seconds 10
+          if ($proc.HasExited) {
+            Write-Error "App crashed on launch (exit code: $($proc.ExitCode))"
+            exit 1
+          }
+          Write-Host "Smoke test passed — process alive after 10 s"
+          Stop-Process -Id $proc.Id -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: iscc installer\qube.iss
+
+      - name: Test silent install
+        shell: pwsh
+        run: |
+          $setup = Get-Item "installer\output\Qube-*-Setup.exe"
+          Start-Process -Wait -FilePath $setup.FullName `
+            -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
+          $installed = Join-Path $env:LOCALAPPDATA "Programs\Qube\Qube.exe"
+          if (-not (Test-Path $installed)) {
+            Write-Error "Silent install failed — $installed not found"
+            exit 1
+          }
+          Write-Host "Silent install verified at $installed"
+
+      - name: Compute SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $file = Get-Item "installer\output\Qube-*-Setup.exe"
+          $hash = (Get-FileHash $file -Algorithm SHA256).Hash
+          "sha256=$hash"    >> $env:GITHUB_OUTPUT
+          "filename=$($file.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: installer/output/Qube-*-Setup.exe
+
+  # -------------------------------------------------------------------
+  # 3. RELEASE — attach installer to a GitHub Release
+  # -------------------------------------------------------------------
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Qube-*-Setup.exe
+          body: |
+            ## Qube ${{ github.ref_name }}
+
+            **SHA256:** `${{ needs.build.outputs.installer_hash }}`
+
+            ### Install via WinGet
+            ```
+            winget install -e --id dagaza.Qube
+            ```
+
+            ### Manual install
+            Download `${{ needs.build.outputs.installer_name }}` below.
+            Silent install: `Qube-*-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
