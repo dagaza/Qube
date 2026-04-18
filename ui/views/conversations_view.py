@@ -977,6 +977,9 @@ class ConversationsView(QWidget):
         self._reader_hover_wrapper: MessageWrapper | None = None
         self._transcript_alignment: str = ALIGN_JUSTIFY
         self._agent_typing_wrapper: MessageWrapper | None = None
+        self._agent_md_coalesce_timer = QTimer(self)
+        self._agent_md_coalesce_timer.setSingleShot(True)
+        self._agent_md_coalesce_timer.timeout.connect(self._flush_coalesced_agent_markdown)
 
         self._setup_ui()
         self._start_new_chat()
@@ -1129,6 +1132,12 @@ class ConversationsView(QWidget):
             return ""
         fg, _ = self._user_bubble_label_colors(is_dark)
         code_bg = self._user_bubble_frame_bg(is_dark)
+        _hdr = (
+            "h1 { font-size: 1.35em; font-weight: 700; margin-top: 0.45em; margin-bottom: 0.2em; }"
+            "h2 { font-size: 1.2em; font-weight: 600; margin-top: 0.4em; margin-bottom: 0.18em; }"
+            "h3 { font-size: 1.1em; font-weight: 600; margin-top: 0.35em; margin-bottom: 0.15em; }"
+            "h4, h5, h6 { font-size: 1.05em; font-weight: 600; margin-top: 0.3em; margin-bottom: 0.12em; }"
+        )
         if is_dark:
             return (
                 f"body, p, span, div, li, ul, ol, dd, dt, "
@@ -1141,6 +1150,7 @@ class ConversationsView(QWidget):
                 f"table {{ border-color: #94a3b8; }}"
                 f"th, td {{ border-color: #94a3b8; border-width: 1px; border-style: solid; }}"
                 f"hr {{ border-color: #94a3b8; color: #94a3b8; }}"
+                + _hdr
             )
         return (
             f"body, p, span, div, li, ul, ol, dd, dt, "
@@ -1153,6 +1163,7 @@ class ConversationsView(QWidget):
             f"table {{ border-color: #475569; }}"
             f"th, td {{ border-color: #475569; border-width: 1px; border-style: solid; }}"
             f"hr {{ border-color: #475569; color: #475569; }}"
+            + _hdr
         )
 
     def _agent_markdown_stylesheet(self, is_dark: bool) -> str:
@@ -1749,6 +1760,7 @@ class ConversationsView(QWidget):
 
     def log_user_message(self, text: str, *, pending_assistant: bool = False) -> None:
         self._clear_placeholders()
+        self._flush_agent_markdown_coalesce_immediate()
         # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
         self._user_turn_id += 1
         self.current_agent_msg = None
@@ -1815,6 +1827,45 @@ class ConversationsView(QWidget):
         self.transcript_layout.removeWidget(w)
         w.deleteLater()
 
+    def _flush_agent_markdown_coalesce_immediate(self) -> None:
+        if getattr(self, "_agent_md_coalesce_timer", None) is not None:
+            self._agent_md_coalesce_timer.stop()
+        self._flush_coalesced_agent_markdown()
+
+    def _schedule_coalesced_agent_markdown(self) -> None:
+        self._agent_md_coalesce_timer.start(32)
+
+    def _flush_coalesced_agent_markdown(self) -> None:
+        cur = getattr(self, "current_agent_msg", None)
+        if cur is None:
+            return
+        buf = getattr(self, "_agent_text_buffer", "") or ""
+        is_dark = True
+        if self.window() and hasattr(self.window(), "_is_dark_theme"):
+            is_dark = self.window()._is_dark_theme
+        prepared = _prepare_stream_for_qt_citation_links(buf)
+        rich_text = _re_cite.sub(
+            r"\[\s*(\d+|[wW])\s*\]",
+            _markdown_cite_link_replacement,
+            prepared,
+        )
+        follow_stream_tail = self._is_transcript_scrolled_to_bottom()
+        try:
+            cur.set_agent_markdown(
+                rich_text,
+                is_dark=is_dark,
+                document_stylesheet=self._agent_markdown_stylesheet(is_dark),
+                line_height_percent=self._line_height_proportional_percent(),
+                justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
+            )
+        except RuntimeError:
+            return
+        cur.updateGeometry()
+        if follow_stream_tail:
+            self._scroll_to_bottom()
+        if self._focus_mode_enabled:
+            self._apply_reader_focus_opacity()
+
     def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
         self._hide_agent_typing_row()
         self._clear_placeholders()
@@ -1872,29 +1923,9 @@ class ConversationsView(QWidget):
 
         self._agent_text_buffer += token
 
-        # Strip model markdown around cites, then linkify plain [n]/[W] for Qt MarkdownText.
-        prepared = _prepare_stream_for_qt_citation_links(self._agent_text_buffer)
-        rich_text = _re_cite.sub(
-            r"\[\s*(\d+|[wW])\s*\]",
-            _markdown_cite_link_replacement,
-            prepared,
-        )
-
-        # Sticky scroll: capture "at bottom" before content grows, then scroll only if user was following the stream.
-        follow_stream_tail = self._is_transcript_scrolled_to_bottom()
-        self.current_agent_msg.set_agent_markdown(
-            rich_text,
-            is_dark=is_dark,
-            document_stylesheet=self._agent_markdown_stylesheet(is_dark),
-            line_height_percent=self._line_height_proportional_percent(),
-            justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
-        )
-
-        self.current_agent_msg.updateGeometry()
-        if follow_stream_tail:
-            self._scroll_to_bottom()
-        if self._focus_mode_enabled:
-            self._apply_reader_focus_opacity()
+        # Coalesce setMarkdown calls: Qt's GFM parser shows raw "| table |" lines until the separator
+        # row arrives during token streaming; reparsing on a short timer reduces visible markdown flashes.
+        self._schedule_coalesced_agent_markdown()
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -1922,6 +1953,9 @@ class ConversationsView(QWidget):
         self._reader_hover_wrapper = None
         self._clear_reader_focus_effects()
         self.placeholder_lbl = None
+        if hasattr(self, "_agent_md_coalesce_timer") and self._agent_md_coalesce_timer is not None:
+            self._agent_md_coalesce_timer.stop()
+        self._flush_coalesced_agent_markdown()
         self.current_agent_msg = None
         self._pending_citation_sources = None
         self._agent_text_buffer = ""
@@ -2234,6 +2268,7 @@ class ConversationsView(QWidget):
 
         # Reconcile stream chunks received while this session was not visible.
         self._flush_pending_stream_for_active_session()
+        self._flush_agent_markdown_coalesce_immediate()
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
@@ -2628,6 +2663,7 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
+        self._flush_agent_markdown_coalesce_immediate()
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
@@ -2656,6 +2692,7 @@ class ConversationsView(QWidget):
 
     def on_generation_stopped(self) -> None:
         logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")
+        self._flush_agent_markdown_coalesce_immediate()
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         self._awaiting_tts_end = False
