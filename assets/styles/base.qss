@@ -93,8 +93,8 @@ QToolTip {
     text-transform: uppercase;
 }
 
-/* --- 3. INPUTS (QLineEdit, QTextEdit) --- */
-QLineEdit, QTextEdit {
+/* --- 3. INPUTS (QLineEdit, QTextEdit, QPlainTextEdit) --- */
+QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput {
     background-color: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 8px;
@@ -102,7 +102,7 @@ QLineEdit, QTextEdit {
     selection-background-color: rgba(255, 255, 255, 0.15);
 }
 
-QLineEdit:focus, QTextEdit:focus {
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, #ChatTextInput:focus {
     background-color: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
@@ -625,6 +625,15 @@ QAbstractScrollArea::corner {
 #UserBubble QLabel {
     color: #11111b; 
     background-color: transparent;
+}
+
+#UserBubble #ChatUserBubble {
+    color: #11111b;
+    background-color: transparent;
+    /* Override global QPlainTextEdit padding/border — otherwise viewport is narrower than
+       width() and short user bubbles wrap mid-word (e.g. "te" / "st"). */
+    padding: 0px;
+    border: none;
 }
 
 /* Explicitly target the Agent text to guarantee it stays bright */

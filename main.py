@@ -421,6 +421,25 @@ class Qube:
         if hasattr(self.window, "model_manager_view"):
             self.window.model_manager_view.shutdown_hf_workers()
 
+        # 0b. Memory Manager — QThread is not stopped via closeEvent when the page is embedded in the stack
+        mm = getattr(self.window, "memory_manager_view", None)
+        if mm is not None:
+            mmw = getattr(mm, "worker", None)
+            if mmw is not None and hasattr(mmw, "isRunning") and mmw.isRunning():
+                if hasattr(mmw, "shutdown"):
+                    mmw.shutdown()
+                if not mmw.wait(5000):
+                    logger.warning(
+                        "[Shutdown] Memory manager worker did not exit within 5s."
+                    )
+
+        # 0c. Windows GPU polling (standard library thread, not QThread)
+        if hasattr(self, "gpu_monitor") and self.gpu_monitor is not None:
+            try:
+                self.gpu_monitor.cleanup()
+            except Exception:
+                pass
+
         # 1. Stop transient workers (Internet & Ingestion)
         if self.active_internet_worker and self.active_internet_worker.isRunning():
             self.active_internet_worker.stop()
@@ -480,7 +499,35 @@ class Qube:
                 logger.debug(f"Closing {name} connection...")
                 worker.close()
 
+        # 4. Last-chance: QThreads that ignore quit() while run() is busy (e.g. STT transcribing)
+        self._finalize_running_qthreads()
+
         logger.info("All threads safely terminated. Goodbye!")
+
+    def _finalize_running_qthreads(self) -> None:
+        """Wait or force-terminate Qt worker threads still running after cooperative shutdown."""
+        llm = getattr(self, "llm_worker", None)
+        if llm is not None and llm.isRunning():
+            if hasattr(llm, "cancel_generation"):
+                llm.cancel_generation()
+            if not llm.wait(10_000):
+                logger.warning("[Shutdown] LLM worker still running after 10s wait.")
+
+        stt = getattr(self, "stt_worker", None)
+        if stt is not None and stt.isRunning():
+            stt.requestInterruption()
+            if not stt.wait(10_000):
+                logger.warning("[Shutdown] STT worker still running; terminating thread.")
+                stt.terminate()
+                stt.wait(3000)
+
+        audio = getattr(self, "audio_worker", None)
+        if audio is not None and audio.isRunning():
+            if hasattr(audio, "stop"):
+                audio.stop()
+            if not audio.wait(8000):
+                logger.warning("[Shutdown] Audio worker still running; blocking until exit.")
+                audio.wait()
 
 
 if __name__ == "__main__":

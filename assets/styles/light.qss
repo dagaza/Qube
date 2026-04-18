@@ -93,7 +93,7 @@ QToolTip {
 }
 
 /* --- 3. INPUTS & TEXT AREAS --- */
-QLineEdit, QTextEdit, #DocumentPreviewArea {
+QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -101,7 +101,7 @@ QLineEdit, QTextEdit, #DocumentPreviewArea {
     selection-background-color: #e2e8f0;
 }
 
-QLineEdit:focus, QTextEdit:focus {
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, #ChatTextInput:focus {
     border: 1px solid #94a3b8;
     background-color: #ffffff;
 }
@@ -566,6 +566,15 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 #UserBubble QLabel {
     color: #ffffff; 
     background-color: transparent;
+}
+
+#UserBubble #ChatUserBubble {
+    color: #ffffff;
+    background-color: transparent;
+    /* Override global QPlainTextEdit padding/border — otherwise viewport is narrower than
+       width() and short user bubbles wrap mid-word (e.g. "te" / "st"). */
+    padding: 0px;
+    border: none;
 }
 
 /* Explicitly target the Agent text to guarantee it stays readable */

@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QListWidget,
     QScrollArea,
@@ -20,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import (
     QAction,
+    QTextDocument,
     QTextOption,
     QTextBlockFormat,
     QTextCursor,
@@ -30,7 +32,17 @@ from PyQt6.QtGui import (
     QPainter,
     QFont,
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl, QSize
+from PyQt6.QtCore import (
+    Qt,
+    QTimer,
+    QPropertyAnimation,
+    QEasingCurve,
+    QEvent,
+    QCoreApplication,
+    QUrl,
+    QSize,
+    pyqtSignal,
+)
 import math
 import qtawesome as qta
 import logging
@@ -62,7 +74,25 @@ _UNSET_SOURCES = object()
 LAYOUT_FULL_WIDTH = "full_width"
 LAYOUT_CENTERED_COLUMN = "centered_column"
 _CENTERED_COLUMN_MAX_WIDTH = 800
+_FULL_WIDTH_COLUMN_MAX_WIDTH = 1200
 _QWIDGETSIZE_MAX = (1 << 24) - 1
+
+
+def _user_bubble_max_width_for_wrapper(
+    wrapper_width: int, *, transcript_column_max: int
+) -> int:
+    """Cap user bubble width: min(fraction of row, transcript column minus gutter)."""
+    if wrapper_width <= 0:
+        return 160
+    return max(
+        160,
+        int(
+            min(
+                float(wrapper_width) * 0.88,
+                float(transcript_column_max) - 24.0,
+            )
+        ),
+    )
 _LAYOUT_ICON_WIDE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-wide.svg")
 )
@@ -320,43 +350,137 @@ def _maybe_dump_markdown_html_pipeline(raw_md: str, font, is_dark: bool) -> None
     sys.stderr.write(html if len(html) <= cap else html[:cap] + "\n...[truncated]...\n")
 
 
-class ChatLabel(QLabel):
-    """User bubble: QLabel with width hint. Assistant replies use AgentMessageLabel instead."""
+class ChatUserBubble(QPlainTextEdit):
+    """Read-only user message body: same wrap rules as the composer (long tokens break mid-word)."""
 
     def __init__(self, text="", parent=None):
-        super().__init__(text, parent)
-        self.setWordWrap(True)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self._cached_text = ""
-        self._cached_ideal_width = 0
+        super().__init__(parent)
+        self.setObjectName("ChatUserBubble")
+        self.setReadOnly(True)
+        self.setUndoRedoEnabled(False)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        self.setTabChangesFocus(False)
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        self.document().setDocumentMargin(2)
+        self.viewport().setAutoFillBackground(False)
+        opt = QTextOption()
+        opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        opt.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.document().setDefaultTextOption(opt)
+        self._height_timer = QTimer(self)
+        self._height_timer.setSingleShot(True)
+        self._height_timer.timeout.connect(self._sync_document_height)
+        self.document().contentsChanged.connect(self._schedule_height_sync)
+        self.setPlainText(text or "")
+        self._schedule_height_sync()
 
     def cleanup_before_destruction(self) -> None:
-        self._cached_text = ""
-        self._cached_ideal_width = 0
         try:
             self.clear()
         except RuntimeError:
             pass
 
-    def sizeHint(self):
-        from PyQt6.QtGui import QTextDocument
-        from PyQt6.QtCore import QSize, Qt
+    def _schedule_height_sync(self) -> None:
+        self._height_timer.start(0)
 
-        hint = super().sizeHint()
-        layout_key = self.text()
-        if layout_key != self._cached_text:
-            doc = QTextDocument()
-            doc.setDefaultFont(self.font())
-            if self.textFormat() == Qt.TextFormat.MarkdownText:
-                doc.setMarkdown(layout_key)
-            else:
-                doc.setPlainText(layout_key)
-            self._cached_ideal_width = int(doc.idealWidth()) + 15
-            self._cached_text = layout_key
-        return QSize(max(self._cached_ideal_width, hint.width()), hint.height())
+    def _effective_wrap_width(self) -> int:
+        vw = int(self.viewport().width())
+        if vw > 4:
+            return vw
+        p = self.parentWidget()
+        if isinstance(p, QWidget) and p.width() > 8:
+            lay = p.layout()
+            if isinstance(lay, QVBoxLayout):
+                m = lay.contentsMargins()
+                return max(40, p.width() - m.left() - m.right())
+            return max(40, p.width() - 8)
+        return 280
+
+    def natural_body_width(self) -> int:
+        """Unwrapped document width (longest line); used to shrink short user bubbles horizontally."""
+        fm = self.fontMetrics()
+        text = self.toPlainText()
+        line_adv = 0
+        for line in text.split("\n"):
+            line_adv = max(line_adv, fm.horizontalAdvance(line))
+
+        doc = self.document()
+        old_tw = float(doc.textWidth())
+        doc.setTextWidth(-1.0)
+        dl = doc.documentLayout()
+        if dl is not None and hasattr(dl, "invalidate"):
+            try:
+                dl.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        ideal = float(doc.idealWidth())
+        restore = old_tw if old_tw > 0 else float(max(1, self.viewport().width()))
+        doc.setTextWidth(restore)
+        if dl is not None and hasattr(dl, "invalidate"):
+            try:
+                dl.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        dm = int(math.ceil(float(doc.documentMargin()) * 2.0))
+        # QTextDocument.idealWidth() can be a few px under the painted run; prefer font metrics.
+        core = max(float(line_adv), ideal)
+        return max(40, int(math.ceil(core)) + dm + 8)
+
+    def _compute_content_height(self, wrap_w: int) -> int:
+        """Pixel height for plain text at wrap_w (viewport not always ready when layout runs)."""
+        w = max(1, int(wrap_w))
+        doc = self.document()
+        doc.setTextWidth(float(w))
+        lay = doc.documentLayout()
+        doc_h = float(lay.documentSize().height()) if lay is not None else 0.0
+        block_bottom = 0.0
+        b = doc.firstBlock()
+        while b.isValid():
+            g = self.blockBoundingGeometry(b)
+            if g.isValid():
+                block_bottom = max(block_bottom, float(g.bottom()))
+            b = b.next()
+        fm = self.fontMetrics()
+        ac = max(1.0, float(fm.averageCharWidth()))
+        n = len(self.toPlainText())
+        est_lines = max(1, int(math.ceil((float(n) * ac + float(w) - 1.0) / float(w))))
+        est_h = float(est_lines) * float(fm.lineSpacing())
+        content = max(doc_h, block_bottom, est_h, float(fm.lineSpacing()))
+        return int(math.ceil(content)) + 14
+
+    def minimumSizeHint(self) -> QSize:
+        eff = max(40, self._effective_wrap_width())
+        nat = self.natural_body_width()
+        ww = min(eff, max(40, nat))
+        h = self._compute_content_height(ww)
+        return QSize(ww, min(h, 32000))
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSizeHint()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self._schedule_height_sync()
+
+    def _sync_document_height(self) -> None:
+        w = max(1, self._effective_wrap_width())
+        self.document().setTextWidth(float(w))
+        lay = self.document().documentLayout()
+        if lay is not None and hasattr(lay, "invalidate"):
+            try:
+                lay.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        h = self._compute_content_height(w)
+        h = max(h, self.fontMetrics().height() + 14)
+        if self.height() != h:
+            self.setFixedHeight(h)
         self.updateGeometry()
 
     def contextMenuEvent(self, event):
@@ -368,16 +492,61 @@ class ChatLabel(QLabel):
             view._apply_menu_theme(menu, is_dark)
 
         def _copy():
-            if self.hasSelectedText():
-                QApplication.clipboard().setText(self.selectedText())
-            elif self.text():
-                QApplication.clipboard().setText(self.text())
+            cur = self.textCursor()
+            if cur.hasSelection():
+                QApplication.clipboard().setText(cur.selectedText())
+            elif self.toPlainText():
+                QApplication.clipboard().setText(self.toPlainText())
 
         copy_act = QAction("Copy", self)
         copy_act.triggered.connect(_copy)
-        copy_act.setEnabled(bool(self.text()))
+        copy_act.setEnabled(bool(self.toPlainText()))
         menu.addAction(copy_act)
         menu.exec(event.globalPos())
+
+
+class UserBubbleFrame(QFrame):
+    """Pins user bubble body width: up to the row cap, but shrinks to unwrapped text when shorter."""
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        lbl = self.findChild(ChatUserBubble)
+        if lbl is None:
+            return
+        lay = self.layout()
+        ml = mr = 16
+        if isinstance(lay, QVBoxLayout):
+            m = lay.contentsMargins()
+            ml, mr = m.left(), m.right()
+        pw = self.parentWidget()
+        cap_w = int(self.maximumWidth())
+        view = _parent_conversations_view(lbl)
+        col = (
+            view.transcript_column_max_width()
+            if view is not None
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        if cap_w >= _QWIDGETSIZE_MAX - 4096:
+            ww = (
+                pw.width()
+                if isinstance(pw, MessageWrapper) and pw.width() > 0
+                else max(1, self.width())
+            )
+            cap_w = _user_bubble_max_width_for_wrapper(
+                ww, transcript_column_max=col
+            )
+        inner_max = max(40, cap_w - ml - mr)
+        natural = lbl.natural_body_width()
+        body_w = min(inner_max, max(40, natural))
+        frame_w = body_w + ml + mr
+        if self.width() != frame_w:
+            self.setFixedWidth(frame_w)
+        if lbl.width() != body_w or lbl.maximumWidth() != body_w:
+            lbl.setFixedWidth(body_w)
+            lbl.setMaximumWidth(body_w)
+            lbl._schedule_height_sync()
+            lbl.updateGeometry()
+            self.updateGeometry()
 
 
 class AgentMessageLabel(QTextBrowser):
@@ -609,13 +778,27 @@ class MessageWrapper(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         if self.is_user:
             layout.addStretch(1)
-            layout.addWidget(bubble, 0, Qt.AlignmentFlag.AlignRight)
+            layout.addWidget(bubble, 0)
         else:
             layout.addWidget(bubble, 1)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.is_user and self.bubble is not None and self.width() > 0:
+            view = _parent_conversations_view(self)
+            col = (
+                view.transcript_column_max_width()
+                if view is not None
+                else _CENTERED_COLUMN_MAX_WIDTH
+            )
+            cap = _user_bubble_max_width_for_wrapper(
+                self.width(), transcript_column_max=col
+            )
+            self.bubble.setMaximumWidth(cap)
+
     def cleanup_before_destruction(self) -> None:
         """Break references held by this row before Qt tears down the widget tree."""
-        for lbl in self.findChildren(ChatLabel):
+        for lbl in self.findChildren(ChatUserBubble):
             lbl.cleanup_before_destruction()
         for w in self.findChildren(AgentMessageLabel):
             w.cleanup_before_destruction()
@@ -635,7 +818,7 @@ class _ComposerRowHost(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addStretch(1)
-        layout.addWidget(inner, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(inner, 0)
         layout.addStretch(1)
 
     def resizeEvent(self, event):
@@ -643,6 +826,131 @@ class _ComposerRowHost(QWidget):
         w = min(self._max_w, max(1, self.width()))
         if self._inner.width() != w:
             self._inner.setFixedWidth(w)
+
+
+class ChatComposerEdit(QPlainTextEdit):
+    """Chat composer: Enter sends, Shift+Enter inserts a newline."""
+
+    submit_requested = pyqtSignal()
+    _MAX_VISIBLE_LINES = 7
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.setWordWrapMode(
+            QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere
+        )
+        self.setTabChangesFocus(False)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.document().setDocumentMargin(4)
+        self._height_coalesce = QTimer(self)
+        self._height_coalesce.setSingleShot(True)
+        self._height_coalesce.timeout.connect(self._sync_height_to_content)
+        self.textChanged.connect(self._schedule_height_sync)
+        self._schedule_height_sync()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        vw = max(1, int(self.viewport().width()))
+        self.document().setTextWidth(float(vw))
+        if event.oldSize().width() != event.size().width():
+            self._schedule_height_sync()
+
+    def _schedule_height_sync(self) -> None:
+        # Document layout updates after the current event; measure on the next tick
+        # so documentSize() reflects new lines and wrapping at the current width.
+        self._height_coalesce.start(0)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+                super().keyPressEvent(event)
+                return
+            event.accept()
+            self.submit_requested.emit()
+            return
+        super().keyPressEvent(event)
+
+    def _line_step_px(self) -> int:
+        """One text line in px (prefer font height so ~7 lines match visible rows)."""
+        fm = self.fontMetrics()
+        return max(1, fm.height(), int(round(fm.lineSpacing())))
+
+    def _chrome_height(self) -> int:
+        m = self.contentsMargins()
+        dm = float(self.document().documentMargin())
+        return int(
+            math.ceil(
+                m.top()
+                + m.bottom()
+                + self.frameWidth() * 2
+                + 2.0 * dm
+                + 6
+            )
+        )
+
+    def _min_height(self) -> int:
+        return self._line_step_px() + self._chrome_height()
+
+    def _max_height(self) -> int:
+        return self._line_step_px() * self._MAX_VISIBLE_LINES + self._chrome_height()
+
+    def _block_stack_bottom(self, vw: int) -> float:
+        doc = self.document()
+        doc.setTextWidth(float(vw))
+        bottom = 0.0
+        block = doc.firstBlock()
+        while block.isValid():
+            rect = self.blockBoundingGeometry(block)
+            bottom = max(bottom, float(rect.bottom()))
+            block = block.next()
+        return bottom
+
+    def _measured_body_height(self, vw: int) -> float:
+        """Body height independent of current widget height (avoids layout/height feedback loops)."""
+        doc = self.document()
+        doc.setTextWidth(float(vw))
+        layout = doc.documentLayout()
+        lay_h = float(layout.documentSize().height()) if layout is not None else 0.0
+        ds = doc.size()
+        ds_h = float(ds.height()) if ds.height() > 0 else 0.0
+        block_h = self._block_stack_bottom(vw)
+        text = self.toPlainText()
+        step = float(self._line_step_px())
+        explicit_lines = max(1, text.count("\n") + 1) if text else 1
+        explicit_h = float(explicit_lines) * step
+        return max(step, lay_h, ds_h, block_h, explicit_h)
+
+    def _sync_height_to_content(self) -> None:
+        if self.document().documentLayout() is None:
+            return
+        vw = int(self.viewport().width())
+        if vw <= 0:
+            outer = self.width() - 2 * self.frameWidth()
+            vw = outer
+        if vw <= 0:
+            h0 = self._min_height()
+            if self.height() != h0:
+                self.setFixedHeight(h0)
+                self.updateGeometry()
+            return
+        doc_h = self._measured_body_height(vw)
+        want = int(math.ceil(doc_h)) + self._chrome_height()
+        lo, hi = self._min_height(), self._max_height()
+        h = max(lo, min(want, hi))
+        if self.height() == h:
+            return
+        self.setFixedHeight(h)
+        self.updateGeometry()
+        vw2 = max(1, int(self.viewport().width()))
+        self.document().setTextWidth(float(vw2))
 
 
 class ConversationsView(QWidget):
@@ -687,8 +995,27 @@ class ConversationsView(QWidget):
     def layout_mode(self) -> str:
         return self._layout_mode
 
+    def transcript_column_max_width(self) -> int:
+        """Effective transcript column cap: 800 or 1200 per mode, never wider than the scroll viewport.
+
+        The scroll viewport is the chat stage reading area only (global right tools pane is outside
+        this widget); clamping prevents bubbles from laying out wider than visible space.
+        """
+        nominal = (
+            _FULL_WIDTH_COLUMN_MAX_WIDTH
+            if self._layout_mode == LAYOUT_FULL_WIDTH
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        if hasattr(self, "scroll_area"):
+            vp = self.scroll_area.viewport()
+            if vp is not None:
+                vw = int(vp.width())
+                if vw > 0:
+                    return min(nominal, max(160, vw))
+        return nominal
+
     def set_layout_mode(self, mode: str) -> None:
-        """Switch the chat transcript between FULL_WIDTH and CENTERED_COLUMN layout.
+        """Switch transcript column between 800px (centered) and 1200px (wide).
 
         This only reconfigures container-level constraints and scroll-area
         alignment — individual message widgets and QTextDocument rendering
@@ -703,19 +1030,22 @@ class ConversationsView(QWidget):
         self._apply_layout_mode()
 
     def _apply_layout_mode(self) -> None:
-        if self._layout_mode == LAYOUT_CENTERED_COLUMN:
-            self.transcript_container.setMaximumWidth(_CENTERED_COLUMN_MAX_WIDTH)
-            self.scroll_area.setAlignment(
-                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
-            )
-        else:
-            self.transcript_container.setMaximumWidth(_QWIDGETSIZE_MAX)
-            self.scroll_area.setAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-            )
+        self._sync_transcript_column_width_cap()
+        self.scroll_area.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        )
         self.transcript_layout.invalidate()
         self.transcript_container.updateGeometry()
         self._refresh_layout_mode_button()
+
+    def _sync_transcript_column_width_cap(self) -> None:
+        if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
+            return
+        cap = self.transcript_column_max_width()
+        if self.transcript_container.maximumWidth() != cap:
+            self.transcript_container.setMaximumWidth(cap)
+            self.transcript_layout.invalidate()
+            self.transcript_container.updateGeometry()
 
     def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
         pixmap = QPixmap(svg_path)
@@ -750,14 +1080,14 @@ class ConversationsView(QWidget):
                     _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Centered column")
+            btn.setToolTip(f"Layout mode: Narrow column ({_CENTERED_COLUMN_MAX_WIDTH}px)")
         else:
             btn.setIcon(
                 self._make_tinted_svg_icon(
                     _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Full width")
+            btn.setToolTip(f"Layout mode: Wide column ({_FULL_WIDTH_COLUMN_MAX_WIDTH}px)")
         btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
         btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         btn.setStyleSheet(
@@ -854,7 +1184,7 @@ class ConversationsView(QWidget):
             return "#cbd5e1" if is_dark else "#475569"
         return "#6c7086"
 
-    def _style_user_bubble(self, bubble: QFrame, lbl: ChatLabel) -> None:
+    def _style_user_bubble(self, bubble: QFrame, lbl: ChatUserBubble) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         pt = self._scaled_chat_font_pt()
         fg, _ = self._user_bubble_label_colors(is_dark)
@@ -862,20 +1192,21 @@ class ConversationsView(QWidget):
         f = lbl.font()
         f.setPointSizeF(pt)
         lbl.setFont(f)
-        lbl._cached_text = ""
-        lbl._cached_ideal_width = 0
-        if self._transcript_alignment == ALIGN_JUSTIFY:
-            lbl.setAlignment(
-                Qt.AlignmentFlag.AlignJustify | Qt.AlignmentFlag.AlignTop
-            )
-        else:
-            lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lbl.document().setDefaultFont(f)
+        opt = QTextOption()
+        opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        opt.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lbl.document().setDefaultTextOption(opt)
         lbl.setStyleSheet(
-            f"background: transparent; border: none; font-size: {pt:.1f}pt; color: {fg};"
+            f"background: transparent; border: none; padding: 0px; "
+            f"font-size: {pt:.1f}pt; color: {fg};"
         )
         bubble.setStyleSheet(
             f"background-color: {bg}; border-radius: 18px;"
         )
+        lbl.document().setTextWidth(float(max(1, lbl._effective_wrap_width())))
+        lbl._schedule_height_sync()
+        lbl.updateGeometry()
 
     def _style_agent_message_shell(self, agent: AgentMessageLabel) -> None:
         pt = self._scaled_chat_font_pt()
@@ -973,7 +1304,7 @@ class ConversationsView(QWidget):
         for w in self._iter_transcript_widgets():
             if isinstance(w, MessageWrapper):
                 if w.is_user and w.bubble is not None:
-                    lbl = w.bubble.findChild(ChatLabel)
+                    lbl = w.bubble.findChild(ChatUserBubble)
                     if lbl is not None:
                         self._style_user_bubble(w.bubble, lbl)
                 else:
@@ -1327,9 +1658,9 @@ class ConversationsView(QWidget):
         )
         self._refresh_readability_toolbar(is_dark=True)
         self._apply_layout_mode()
-        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.scroll_area, stretch=1)
 
-        # Bottom stack: fixed cap = centered transcript column width; not tied to layout toggle.
+        # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
         self.chat_bottom_container = QWidget()
         self.chat_bottom_container.setObjectName("ChatBottomContainer")
         bottom_stack_layout = QVBoxLayout(self.chat_bottom_container)
@@ -1367,9 +1698,10 @@ class ConversationsView(QWidget):
         input_layout.setContentsMargins(10, 5, 5, 5)
         input_layout.setSpacing(8)
 
-        self.text_input = QLineEdit()
+        self.text_input = ChatComposerEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
         self.text_input.setObjectName("ChatTextInput")
+        self.text_input.setToolTip("Enter to send. Shift+Enter adds a line break.")
         
         self.send_btn = QPushButton()
         self.send_btn.setIcon(qta.icon('fa5s.paper-plane'))
@@ -1407,7 +1739,7 @@ class ConversationsView(QWidget):
         layout.addWidget(self._composer_row_host)
 
         self.send_btn.clicked.connect(self._handle_send_or_stop)
-        self.text_input.returnPressed.connect(self._handle_text_submit)
+        self.text_input.submit_requested.connect(self._handle_text_submit)
         
         return frame
 
@@ -1421,15 +1753,16 @@ class ConversationsView(QWidget):
         self._user_turn_id += 1
         self.current_agent_msg = None
 
-        bubble = QFrame()
-        # 🔑 FIX 2: Allow bubble to expand horizontally, minimum vertically
-        bubble.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        bubble = UserBubbleFrame()
+        bubble.setObjectName("UserBubble")
+        # Preferred width: short prompts shrink to content; cap still from MessageWrapper.
+        bubble.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         bubble.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setContentsMargins(16, 12, 16, 12)
 
-        lbl = ChatLabel(text)
+        lbl = ChatUserBubble(text)
         lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._style_user_bubble(bubble, lbl)
 
@@ -1574,7 +1907,7 @@ class ConversationsView(QWidget):
         if isinstance(row, MessageWrapper):
             row.cleanup_before_destruction()
         else:
-            for lbl in row.findChildren(ChatLabel):
+            for lbl in row.findChildren(ChatUserBubble):
                 lbl.cleanup_before_destruction()
             for w in row.findChildren(AgentMessageLabel):
                 w.cleanup_before_destruction()
@@ -1617,8 +1950,9 @@ class ConversationsView(QWidget):
         if self._is_stop_mode():
             self._request_stop()
             return
-        text = self.text_input.text().strip()
-        if not text: return
+        text = self.text_input.toPlainText().strip()
+        if not text:
+            return
         self.text_input.clear()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
@@ -2108,7 +2442,11 @@ class ConversationsView(QWidget):
         self.refresh_think_toggle()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_history_list_surface(is_dark)
-    
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_transcript_column_width_cap()
+
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
         if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
