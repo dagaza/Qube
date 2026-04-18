@@ -495,7 +495,6 @@ class MainWindow(QMainWindow):
 
         self.nav_library = create_nav_btn('fa5s.book', 1)
         self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22)
-        self.nav_memory.setToolTip("Memory Manager")
         self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3)
         self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20)
 
@@ -634,7 +633,7 @@ class MainWindow(QMainWindow):
             "application startup time depending on the model size and your hardware."
         )
         _silence_cutoff_tip = (
-            "The amount of silence (in seconds) the app waits before deciding you have finished "
+            "How many seconds the assistant waits before deciding you have finished "
             "speaking. Lower values make the app respond faster, but it might interrupt you if "
             "you pause to think."
         )
@@ -679,14 +678,14 @@ class MainWindow(QMainWindow):
 
         self.audio_extra_controls = QWidget()
         extra_layout = QVBoxLayout(self.audio_extra_controls)
-        extra_layout.setContentsMargins(10, 4, 0, 4)
+        extra_layout.setContentsMargins(0, 4, 0, 4)
         extra_layout.setSpacing(_TOOLS_INNER_V_SPACING)
 
         def create_mirrored_row(label_text, spinner, tooltip_text=None):
             row = QHBoxLayout()
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
-            lbl.setMinimumWidth(100)
+            lbl.setMinimumWidth(0)
             if tooltip_text:
                 lbl.setToolTip("")
                 info_icon = QLabel()
@@ -695,11 +694,18 @@ class MainWindow(QMainWindow):
                 info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             spinner.setFixedWidth(90)
             spinner.setProperty("class", "ToolsPaneInput")
-            row.addWidget(lbl)
+            # Stretch on label only: extra width goes to the text so labels truncate less.
+            # Icon + spinner live in a tight inner row so outer layout spacing does not sit between them.
+            row.addWidget(lbl, 1)
             if tooltip_text:
-                row.addWidget(info_icon)
-            row.addStretch()
-            row.addWidget(spinner)
+                icon_input = QHBoxLayout()
+                icon_input.setContentsMargins(0, 0, 0, 0)
+                icon_input.setSpacing(2)
+                icon_input.addWidget(info_icon, 0)
+                icon_input.addWidget(spinner, 0)
+                row.addLayout(icon_input, 0)
+            else:
+                row.addWidget(spinner, 0)
             return row
 
         self.toolbar_timeout_spin = NoScrollDoubleSpinBox()
@@ -711,16 +717,17 @@ class MainWindow(QMainWindow):
         self.toolbar_threshold_spin.setRange(1, 100)
         self.toolbar_threshold_spin.setSuffix("%")
         _vad_threshold_tip = (
-            "VAD Threshold controls when normal speech is considered loud enough to keep "
-            "recording/transcription active. This is separate from Wakeword Sensitivity."
+            "Acts as a background noise filter which controls when normal speech is considered loud enough to keep "
+            "recording/transcription active. Lower values protect against false positives."
         )
         self.toolbar_threshold_spin.setToolTip(_vad_threshold_tip)
         self.toolbar_wakeword_sensitivity_spin = NoScrollSpinBox()
         self.toolbar_wakeword_sensitivity_spin.setRange(10, 95)
         self.toolbar_wakeword_sensitivity_spin.setSuffix("%")
         _wakeword_sensitivity_tip = (
-            "Wakeword Sensitivity controls the wakeword detection threshold for trigger words. "
-            "This is separate from VAD Threshold, which controls normal speech activity during recording."
+            "Controls how easily the assistant responds to your calling its name. "
+            "Lower values make the assistant more responsive to calling its name, but may increase false positives. "
+            "Best kept at around 50% for a balance of responsiveness and accuracy."
         )
         self.toolbar_wakeword_sensitivity_spin.setToolTip(_wakeword_sensitivity_tip)
 
@@ -734,14 +741,14 @@ class MainWindow(QMainWindow):
         )
         extra_layout.addLayout(
             create_mirrored_row(
-                "VAD Threshold",
+                "Noise Suppression",
                 self.toolbar_threshold_spin,
                 tooltip_text=_vad_threshold_tip,
             )
         )
         extra_layout.addLayout(
             create_mirrored_row(
-                "Wakeword Sensitivity",
+                "Trigger Threshold",
                 self.toolbar_wakeword_sensitivity_spin,
                 tooltip_text=_wakeword_sensitivity_tip,
             )
@@ -771,15 +778,19 @@ class MainWindow(QMainWindow):
             row = QHBoxLayout()
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
+            lbl.setMinimumWidth(0)
             info_icon = QLabel()
             info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
             info_icon.setToolTip(tooltip_text)
             info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
-            row.addWidget(lbl)
-            row.addWidget(info_icon)
-            row.addStretch()
             spinner.setFixedWidth(90)
-            row.addWidget(spinner)
+            icon_input = QHBoxLayout()
+            icon_input.setContentsMargins(0, 0, 0, 0)
+            icon_input.setSpacing(2)
+            icon_input.addWidget(info_icon, 0)
+            icon_input.addWidget(spinner, 0)
+            row.addWidget(lbl, 1)
+            row.addLayout(icon_input, 0)
             return row
 
         # --- 3. GENERATION PARAMETERS ---
@@ -1079,6 +1090,10 @@ class MainWindow(QMainWindow):
                 self._apply_native_model_selector_text_state(False)
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
+            if hasattr(self, "settings_view") and hasattr(
+                self.settings_view, "sync_active_native_model_label"
+            ):
+                self.settings_view.sync_active_native_model_label()
 
     def _set_native_model_progress_loading(self, loading: bool) -> None:
         if not hasattr(self, "toolbar_native_model_progress"):

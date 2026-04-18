@@ -74,6 +74,8 @@ class QubeToolTipController(QObject):
         self._hide_timer = QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self.hide_tip)
+        self._refine_seq: int = 0
+        self._refine_anchor_pos = QPoint()
         self._is_dark = True
 
     def set_dark_theme(self, is_dark: bool) -> None:
@@ -146,16 +148,31 @@ class QubeToolTipController(QObject):
         layout.addWidget(self._label)
         self._apply_shell_style()
 
-    def show_tip(self, _anchor: QWidget, global_pos: QPoint, text: str) -> None:
-        self._ensure_popup()
-        assert self._popup is not None and self._label is not None
-        self._anchor_ref = weakref.ref(_anchor)
-        self._hide_timer.stop()
-        self._label.setText(text)
+    def _reset_label_vertical_constraints(self) -> None:
+        if self._label is None:
+            return
+        self._label.setMinimumHeight(0)
+        self._label.setMaximumHeight(16777215)
+
+    def _size_tip_to_content(self) -> QSize:
+        assert self._popup is not None and self._label is not None and self._shell is not None
+        self._reset_label_vertical_constraints()
+        self._label.ensurePolished()
+        tw = self._label.maximumWidth()
+        hfw = self._label.heightForWidth(tw)
+        if hfw > 0:
+            self._label.setFixedHeight(hfw)
+        shell_layout = self._shell.layout()
+        if shell_layout is not None:
+            shell_layout.activate()
         self._popup.adjustSize()
+        sz = self._popup.sizeHint()
+        self._popup.resize(sz)
+        return sz
+
+    def _place_tip(self, help_global_pos: QPoint, sz: QSize) -> QPoint:
         offset = QPoint(12, 18)
-        p = global_pos + offset
-        sz: QSize = self._popup.sizeHint()
+        p = help_global_pos + offset
         screen = QApplication.screenAt(p) or QApplication.primaryScreen()
         geo = screen.availableGeometry() if screen else None
         if geo is not None:
@@ -163,16 +180,40 @@ class QubeToolTipController(QObject):
             if x + sz.width() > geo.right():
                 x = max(geo.left(), geo.right() - sz.width())
             if y + sz.height() > geo.bottom():
-                y = max(geo.top(), global_pos.y() - sz.height() - 8)
+                y = max(geo.top(), help_global_pos.y() - sz.height() - 8)
             p = QPoint(x, y)
-        self._popup.move(p)
+        return p
+
+    def _refine_tip_if_still_current(self, token: int) -> None:
+        if token != self._refine_seq:
+            return
+        if self._popup is None or self._label is None or not self._popup.isVisible():
+            return
+        sz = self._size_tip_to_content()
+        self._popup.move(self._place_tip(self._refine_anchor_pos, sz))
+
+    def show_tip(self, _anchor: QWidget, global_pos: QPoint, text: str) -> None:
+        self._ensure_popup()
+        assert self._popup is not None and self._label is not None
+        self._anchor_ref = weakref.ref(_anchor)
+        self._hide_timer.stop()
+        self._refine_seq += 1
+        refine_token = self._refine_seq
+        self._refine_anchor_pos = QPoint(global_pos)
+
+        self._label.setText(text)
+        sz = self._size_tip_to_content()
+        self._popup.move(self._place_tip(global_pos, sz))
         self._popup.show()
         self._popup.raise_()
         self._hide_timer.start(15_000)
+        QTimer.singleShot(0, lambda t=refine_token: self._refine_tip_if_still_current(t))
 
     def hide_tip(self) -> None:
         self._hide_timer.stop()
+        self._refine_seq += 1
         self._anchor_ref = None
+        self._reset_label_vertical_constraints()
         if self._popup is not None:
             self._popup.hide()
 

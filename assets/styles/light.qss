@@ -193,6 +193,14 @@ QPushButton[class~="BrandDangerButton"]:disabled {
     border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
+/* Match base.qss nav hit area so icon buttons do not jump when switching themes. */
+.NavButton {
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    padding: 10px;
+}
+
 .WindowControlButton, .IconButton, .NavButton {
     background-color: transparent; border: none;
 }

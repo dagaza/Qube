@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtGui import QShowEvent
 
 from core.audio_utils import get_input_devices, get_output_devices
 from core.network import is_port_open
@@ -95,6 +96,10 @@ class SettingsView(QWidget):
         self._sync_active_native_model_label()
         self._refresh_local_gguf_list()
         self._wakeword_testbed_dialog = None
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._sync_active_native_model_label()
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
@@ -231,7 +236,12 @@ class SettingsView(QWidget):
         self.wakeword_test_lab_btn = QPushButton("Open Wakeword Test Lab")
         apply_brand_primary(self.wakeword_test_lab_btn)
         self.wakeword_test_lab_btn.clicked.connect(self._open_wakeword_test_lab)
-        ai_form.addRow("", self.wakeword_test_lab_btn)
+        wakeword_lab_row = QWidget()
+        wakeword_lab_layout = QHBoxLayout(wakeword_lab_row)
+        wakeword_lab_layout.setContentsMargins(0, 0, 0, 0)
+        wakeword_lab_layout.addWidget(self.wakeword_test_lab_btn, 0)
+        wakeword_lab_layout.addStretch(1)
+        ai_form.addRow("", wakeword_lab_row)
         ai_form.addRow("AI Engine", self.engine_selector)
         ai_form.addRow("External Provider", self.provider_selector)
 
@@ -583,6 +593,7 @@ class SettingsView(QWidget):
         m = str(mode).lower().strip()
         self.provider_selector.setEnabled(m == "external")
         self._apply_settings_menu_button_chevron_state(self.provider_selector)
+        self._sync_active_native_model_label()
 
     def _sync_wakeword_catalog(self, trigger: str = "manual") -> None:
         _ = trigger
@@ -642,9 +653,38 @@ class SettingsView(QWidget):
         self.models_dir_label.setText(get_llm_models_dir())
 
     def _sync_active_native_model_label(self) -> None:
+        """Show the native model actually loaded in-process (telemetry), not only QSettings path."""
+        if not hasattr(self, "active_native_model_lbl"):
+            return
+        mode = get_engine_mode()
         p = get_internal_model_path()
-        name = os.path.basename(p) if p else "(none)"
-        self.active_native_model_lbl.setText(name)
+        path_name = os.path.basename(p) if p else ""
+
+        if mode != "internal":
+            if path_name:
+                self.active_native_model_lbl.setText(f"{path_name} (inactive — external mode)")
+            else:
+                self.active_native_model_lbl.setText("(none — external mode)")
+            return
+
+        mw = self.window()
+        ne = getattr(mw, "_native_engine", None) if mw else None
+        snap = ne.get_model_reasoning_telemetry() if ne else None
+        loaded = bool((snap or {}).get("loaded"))
+        loaded_name = str((snap or {}).get("model_basename") or "").strip()
+
+        if loaded and loaded_name:
+            self.active_native_model_lbl.setText(loaded_name)
+            return
+
+        if path_name:
+            self.active_native_model_lbl.setText(f"{path_name} (not loaded)")
+        else:
+            self.active_native_model_lbl.setText("(none)")
+
+    def sync_active_native_model_label(self) -> None:
+        """Public hook for MainWindow when the toolbar/native load state changes."""
+        self._sync_active_native_model_label()
 
     def _on_gpu_layers_slider_changed(self, v: int) -> None:
         self.gpu_layers_value_lbl.setText(str(int(v)))
