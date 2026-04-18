@@ -479,8 +479,9 @@ class MainWindow(QMainWindow):
         def create_nav_btn(icon_name, index=None, size=24):
             btn = QPushButton()
             # Initial color is a muted gray; _route_view handles the active blue
-            btn.setIcon(qta.icon(icon_name, color='#64748b')) 
+            btn.setIcon(qta.icon(icon_name, color='#64748b'))
             btn.setIconSize(QSize(size, size))
+            btn.setFixedSize(44, 44)
             btn.setCheckable(True)
             btn.setProperty("class", "NavButton")
             if index is not None:
@@ -510,7 +511,8 @@ class MainWindow(QMainWindow):
         self.nav_theme.setProperty("class", "NavButton")
         self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
         self.nav_theme.setIconSize(QSize(20, 20))
-        self.nav_theme.clicked.connect(self._toggle_theme) 
+        self.nav_theme.setFixedSize(44, 44)
+        self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
