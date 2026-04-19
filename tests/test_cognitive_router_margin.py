@@ -535,5 +535,111 @@ class LLMWorkerTier2CentroidContractTests(unittest.TestCase):
         self._assert_is_none_guarded("web_centroid", "set_web_centroid")
 
 
+class LLMWorkerTier3FeedbackContractTests(unittest.TestCase):
+    """Static check that ``workers/llm_worker.py`` wires the Tier 3
+    feedback emission correctly:
+
+    * imports ``RouteFeedbackEvent`` from ``mcp.router_lane_stats``,
+    * builds and emits the event via ``cognitive_router.observe_feedback(...)``,
+    * places the emission AFTER the post-retrieval downgrade block
+      so ``success`` reflects the genuine post-gate state,
+    * skips drift / ``none`` routes,
+    * does NOT introduce a new embedding / centroid build call inside
+      the feedback path.
+
+    Source-grep style (mirrors ``LLMWorkerTier2CentroidContractTests``)
+    so we don't pull in Qt at test collection.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = os.path.join(ROOT, "workers", "llm_worker.py")
+        with open(path, "r", encoding="utf-8") as f:
+            cls.src = f.read()
+
+    # ---- imports + emission --------------------------------------
+    def test_route_feedback_event_is_imported(self) -> None:
+        self.assertRegex(
+            self.src,
+            r"from\s+mcp\.router_lane_stats\s+import\s+[^\n]*RouteFeedbackEvent",
+            "llm_worker must import RouteFeedbackEvent from mcp.router_lane_stats.",
+        )
+
+    def test_observe_feedback_is_called(self) -> None:
+        self.assertIn(
+            "cognitive_router.observe_feedback(", self.src,
+            "llm_worker must emit feedback via "
+            "cognitive_router.observe_feedback(...).",
+        )
+
+    def test_route_feedback_event_is_constructed(self) -> None:
+        self.assertIn(
+            "RouteFeedbackEvent(", self.src,
+            "llm_worker must construct a RouteFeedbackEvent before "
+            "emitting it to the router.",
+        )
+
+    # ---- ordering: AFTER post-retrieval downgrade ---------------
+    def test_feedback_emitted_after_post_retrieval_downgrade(self) -> None:
+        """The ``observe_feedback(`` call MUST appear AFTER the line
+        that sets ``execution_route = "NONE"`` so the success signal
+        reflects the genuine post-gate state."""
+        downgrade_marker = 'execution_route = "NONE"'
+        feedback_marker  = "cognitive_router.observe_feedback("
+        i_dg  = self.src.find(downgrade_marker)
+        i_fb  = self.src.find(feedback_marker)
+        self.assertGreater(i_dg, -1, "post-retrieval downgrade marker not found.")
+        self.assertGreater(i_fb, -1, "observe_feedback marker not found.")
+        self.assertGreater(
+            i_fb, i_dg,
+            "observe_feedback(...) must be placed AFTER the "
+            'execution_route = "NONE" downgrade line.',
+        )
+
+    # ---- guards: drift + none ------------------------------------
+    def test_feedback_skipped_for_drift(self) -> None:
+        """The feedback emission must guard against drift turns. Two
+        forms are accepted: explicit ``not is_drift`` or
+        ``decision.get("drift")`` checked False."""
+        self.assertTrue(
+            re.search(r"not\s+is_drift", self.src) is not None
+            or re.search(r'decision\.get\(\s*[\'"]drift[\'"]\s*\)', self.src) is not None,
+            "Feedback emission must skip turns where drift was active.",
+        )
+
+    def test_feedback_skipped_for_none_route(self) -> None:
+        """An explicit comparison against the ``"none"`` route lane
+        must appear in the feedback emission block."""
+        self.assertTrue(
+            re.search(r'original_route\s*!=\s*[\'"]none[\'"]', self.src) is not None,
+            "Feedback emission must skip turns where the original "
+            'route was "none" (no retrieval was attempted).',
+        )
+
+    # ---- safety: no new embedder calls in the feedback path ------
+    def test_no_new_embedder_call_in_feedback_block(self) -> None:
+        """No ``embedder.encode(`` or ``build_centroid(`` call should
+        appear between the start of the Tier-3 feedback comment block
+        and the closing of the try/except. This pins the
+        'no embedding recomputation per turn' constraint statically.
+        """
+        start_marker = "TIER 3: emit RouteFeedbackEvent"
+        end_marker   = "[Tier3 Feedback] Failed to emit"
+        i_start = self.src.find(start_marker)
+        i_end   = self.src.find(end_marker)
+        self.assertGreater(i_start, -1, "Tier-3 feedback block start marker not found.")
+        self.assertGreater(i_end,   i_start,
+                           "Tier-3 feedback block end marker not found AFTER its start.")
+        block = self.src[i_start:i_end]
+        self.assertNotIn(
+            "embedder.encode(", block,
+            "Feedback emission MUST NOT recompute embeddings.",
+        )
+        self.assertNotIn(
+            "build_centroid(", block,
+            "Feedback emission MUST NOT build centroids.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

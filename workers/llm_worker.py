@@ -47,6 +47,7 @@ from workers.intent_router import EmbeddingCache
 from mcp.cognitive_router import CognitiveRouterV4
 from mcp.router_telemetry import RouterTelemetryBrain
 from mcp.router_self_tuner import AdaptiveRouterSelfTunerV2
+from mcp.router_lane_stats import RouteFeedbackEvent
 
 logger = logging.getLogger("Qube.LLM")
 
@@ -1161,6 +1162,77 @@ class LLMWorker(QThread):
             if execution_route in ("WEB", "INTERNET"):
                 self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
+
+        # ============================================================
+        # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
+        # router's bounded adaptive calibration layer.
+        # ------------------------------------------------------------
+        # MUST run AFTER the post-retrieval downgrade above so the
+        # ``success`` signal reflects the genuine post-gate state
+        # — exactly what Tier 1's downgrade itself trusts.
+        #
+        # Skipped when:
+        #   * ``USE_COGNITIVE_ROUTER`` is False (no router instance),
+        #   * ``decision["drift"]`` is True (retrieval was suppressed
+        #     for an unrelated reason; signal is not informative),
+        #   * the original routed lane was ``none`` (no retrieval was
+        #     attempted, so there is nothing to calibrate against).
+        #
+        # ``per_lane_hits`` uses the same channel counts the existing
+        # ``router_tuner.observe(...)`` block reads, plus a deterministic
+        # ``web_hits`` derived from ``all_ui_sources`` (web items the
+        # UI actually received this turn). For ``hybrid`` the registry
+        # credits each retrieval lane independently from this dict, so
+        # a hybrid where only RAG returned data correctly credits RAG
+        # with success and MEMORY with failure.
+        #
+        # Wrapped in try/except: a calibration-record failure must
+        # NEVER crash a user-facing turn. Mirrors the existing
+        # try/except around ``router_telemetry_updated.emit(...)``.
+        # ============================================================
+        if (
+            self.USE_COGNITIVE_ROUTER
+            and hasattr(self, 'cognitive_router')
+            and isinstance(decision, dict)
+        ):
+            original_route = str(decision.get("route") or "none").lower()
+            is_drift = bool(decision.get("drift", False))
+            if not is_drift and original_route != "none":
+                try:
+                    memory_hits = len(mem_result.get("memory_sources", []))
+                    rag_hits   = len(rag_result.get("sources", []))
+                    web_hits   = sum(
+                        1
+                        for s in all_ui_sources
+                        if isinstance(s, dict) and s.get("type") == "web"
+                    )
+
+                    per_lane_hits = {
+                        "memory": memory_hits,
+                        "rag":    rag_hits,
+                        "web":    web_hits,
+                    }
+
+                    if original_route == "hybrid":
+                        success_flag = (memory_hits > 0) or (rag_hits > 0)
+                    elif original_route in ("memory", "rag", "web"):
+                        success_flag = per_lane_hits[original_route] > 0
+                    else:
+                        success_flag = False
+
+                    feedback_event = RouteFeedbackEvent(
+                        route=original_route,
+                        top_intent=str(decision.get("top_intent") or original_route),
+                        top_source=str(decision.get("top_intent_source") or "substring"),
+                        confidence_margin=float(decision.get("confidence_margin") or 0.0),
+                        latency_ms=float(latency_ms),
+                        success=bool(success_flag),
+                        drift=False,
+                        per_lane_hits=per_lane_hits,
+                    )
+                    self.cognitive_router.observe_feedback(feedback_event)
+                except Exception as e:
+                    logger.warning(f"[Tier3 Feedback] Failed to emit RouteFeedbackEvent: {e}")
 
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)

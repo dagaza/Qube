@@ -4,6 +4,29 @@ from collections import deque, defaultdict
 import numpy as np
 
 from core.memory_filters import detect_recall_intent
+from mcp.router_lane_stats import (
+    LANE_BIAS_DAMPING,
+    LANE_BIAS_RAW_CLAMP,
+    LaneStatsRegistry,
+    RouteFeedbackEvent,
+)
+from mcp.routing_stability_tracker import (
+    RoutingStabilityTracker,
+    _DORMANT_DIAGNOSTIC,
+)
+from mcp.routing_policy_engine import (
+    POLICY_ACCEPT,
+    POLICY_NO_ACTION,
+    RoutingPolicyDecision,
+    RoutingPolicyEngine,
+    RoutingPolicyInputs,
+)
+from mcp.routing_arbitration_layer import (
+    INTERPRETATION_PASSTHROUGH,
+    RoutingArbitrationDecision,
+    RoutingArbitrationInputs,
+    RoutingArbitrationLayer,
+)
 
 logger = logging.getLogger("Qube.CognitiveRouterV4")
 
@@ -52,6 +75,18 @@ _WEB_TRIGGERS: tuple[str, ...] = (
 # ============================================================
 MIN_CONFIDENCE_FLOOR = 0.30
 AMBIGUITY_MARGIN     = 0.10
+
+# Tier 3 decision-boundary band: damped lane bias from
+# ``LaneStatsRegistry.adaptive_offset`` is applied to the per-lane
+# dynamic thresholds ONLY when the post-fusion ``top_score`` lies in
+# ``[MIN_CONFIDENCE_FLOOR, HIGH_CONFIDENCE_CEILING]``. Outside this
+# band Tier 3 contributes exactly zero, so:
+#   - clearly weak queries (top_score below the floor) are not
+#     rescued by reliability-driven nudges,
+#   - clearly strong embedding hits (top_score above the ceiling)
+#     are never overpowered by Tier 3 — preserving the "embedding
+#     dominance when strong" invariant.
+HIGH_CONFIDENCE_CEILING = 0.75
 
 
 class CognitiveRouterV4:
@@ -129,6 +164,46 @@ class CognitiveRouterV4:
         self.memory_centroid: np.ndarray | None = None
         self.rag_centroid:    np.ndarray | None = None
         self.web_centroid:    np.ndarray | None = None
+
+        # Tier 3: bounded, observable feedback-driven calibration.
+        # The registry holds per-lane reliability stats and exposes a
+        # pure-read ``adaptive_offset(lane)`` consumed by
+        # ``_compute_dynamic_thresholds``. Until any lane accumulates
+        # ``MIN_OBSERVATIONS`` feedbacks the offset is identically
+        # 0.0 — Tier 1 + Tier 2 behavior is bit-identical to today.
+        # Feedback is fed in via ``observe_feedback(event)`` from
+        # ``LLMWorker`` once per turn (after the post-retrieval
+        # downgrade), so this object is the single Tier 3 state
+        # container on the router.
+        self.lane_stats = LaneStatsRegistry()
+
+        # Tier 4 (RSL, v1 — observe-only): a bounded, embedding-gated
+        # cluster bookkeeper that observes routing decisions across
+        # semantically similar queries and surfaces stability
+        # diagnostics in the decision dict. It does NOT modify the
+        # ``route`` field in v1; override semantics are deferred to
+        # a follow-up tier. State is in-memory and ephemeral per
+        # worker restart. See ``mcp/routing_stability_tracker.py``.
+        self.stability_tracker = RoutingStabilityTracker()
+
+        # Tier 5 (RCPL, v1 — observability-only): a pure, stateless
+        # policy synthesis engine that consumes Tier 2/3/4 signals
+        # already produced earlier in ``route()`` and emits a
+        # ``tier5_policy`` recommendation. v1 NEVER modifies the
+        # ``route`` field. Engine is total over all inputs and
+        # degrades to ``no_action`` on any unexpected exception.
+        # See ``mcp/routing_policy_engine.py``.
+        self.policy_engine = RoutingPolicyEngine()
+
+        # Tier 6 (RAL, v1 — observability-only): a pure, stateless
+        # arbitration layer that consumes Tier 2/3/4/5 signals
+        # already produced earlier in ``route()`` and emits a
+        # ``tier6_conflict_flags`` list plus a ``tier6_interpretation``
+        # enum. v1 NEVER modifies the ``route`` field. Layer is
+        # total over all inputs and degrades to a passthrough
+        # sentinel on any unexpected exception.
+        # See ``mcp/routing_arbitration_layer.py``.
+        self.arbitration_layer = RoutingArbitrationLayer()
 
     # ============================================================
     # PUBLIC ENTRY
@@ -211,6 +286,71 @@ class CognitiveRouterV4:
         rag_score_source    = "embedding" if rag_score_embedding    > rag_score    else "substring"
         web_score_source    = "embedding" if web_score_embedding    > web_score    else "substring"
 
+        # ----------------------------------------------------------
+        # Tier 2 / Tier 3 prerequisite: derive top-intent metrics
+        # BEFORE the per-lane threshold gates so the Tier 3 band-gate
+        # can decide whether to apply a damped lane bias to the
+        # thresholds. Recall is included alongside the retrieval
+        # intents because ``recall_active`` promotes a query to the
+        # recall hybrid path.
+        #
+        # ``top_intent`` / ``top_score`` / ``confidence_margin`` /
+        # ``top_intent_source`` are all consumed unchanged by the
+        # existing Tier 2 confidence + ambiguity layer further below
+        # — they're just computed earlier now.
+        # ----------------------------------------------------------
+        _intent_scores = {
+            "memory": memory_score_final,
+            "rag":    rag_score_final,
+            "web":    web_score_final,
+            "recall": recall_score,
+        }
+        top_intent = max(_intent_scores, key=_intent_scores.get)
+        top_score = _intent_scores[top_intent]
+        _ranked = sorted(_intent_scores.values(), reverse=True)
+        second_best_score = _ranked[1] if len(_ranked) > 1 else 0.0
+        confidence_margin = top_score - second_best_score
+        top_intent_source = {
+            "memory": memory_score_source,
+            "rag":    rag_score_source,
+            "web":    web_score_source,
+            "recall": "substring",
+        }[top_intent]
+
+        # ----------------------------------------------------------
+        # Tier 3: damped, band-gated lane bias on the dynamic
+        # thresholds. The ``adaptive_offset`` raw signal lives in
+        # ``[-LANE_BIAS_RAW_CLAMP, +LANE_BIAS_RAW_CLAMP]``; here it
+        # is multiplied by ``LANE_BIAS_DAMPING`` and applied ONLY
+        # when ``top_score`` lies in the decision-boundary band.
+        #
+        # Effective max influence per lane is therefore:
+        #   |applied bias| <= LANE_BIAS_RAW_CLAMP * LANE_BIAS_DAMPING
+        # which matches the per-lane ``[lo, hi]`` clamp expectation.
+        #
+        # ``top_score`` here is the post-fusion score (max of substring
+        # and embedding per lane); the Tier 2 confidence + ambiguity
+        # layer below reads the SAME ``top_score`` value.
+        # ----------------------------------------------------------
+        tier3_band_active = (MIN_CONFIDENCE_FLOOR <= top_score <= HIGH_CONFIDENCE_CEILING)
+        if tier3_band_active:
+            memory_lane_bias = self.lane_stats.adaptive_offset("memory") * LANE_BIAS_DAMPING
+            rag_lane_bias    = self.lane_stats.adaptive_offset("rag")    * LANE_BIAS_DAMPING
+            web_lane_bias    = self.lane_stats.adaptive_offset("web")    * LANE_BIAS_DAMPING
+            self.dynamic_memory_threshold   = self._clamp_lane_threshold(
+                "memory", self.dynamic_memory_threshold + memory_lane_bias
+            )
+            self.dynamic_rag_threshold      = self._clamp_lane_threshold(
+                "rag", self.dynamic_rag_threshold + rag_lane_bias
+            )
+            self.dynamic_internet_threshold = self._clamp_lane_threshold(
+                "web", self.dynamic_internet_threshold + web_lane_bias
+            )
+        else:
+            memory_lane_bias = 0.0
+            rag_lane_bias    = 0.0
+            web_lane_bias    = 0.0
+
         # Apply dynamic thresholds against the FUSED score so semantic
         # recall can light up a lane that the substring triggers miss.
         memory_enabled = memory_score_final > self.dynamic_memory_threshold
@@ -282,37 +422,13 @@ class CognitiveRouterV4:
             or self.web_centroid is not None
         )
 
-        # Identify the strongest intent across the four scored lanes.
-        # ``recall_score`` belongs alongside the retrieval intents
-        # because ``recall_active`` is what promotes a query to the
-        # recall hybrid path.
-        _intent_scores = {
-            "memory": memory_score_final,
-            "rag":    rag_score_final,
-            "web":    web_score_final,
-            "recall": recall_score,
-        }
-        top_intent = max(_intent_scores, key=_intent_scores.get)
-        top_score = _intent_scores[top_intent]
-        _ranked = sorted(_intent_scores.values(), reverse=True)
-        second_best_score = _ranked[1] if len(_ranked) > 1 else 0.0
-        confidence_margin = top_score - second_best_score
-
-        # Identify which signal owned the top lane's final score.
-        # Computed UNCONDITIONALLY (not gated by ``any_embedding_centroid``)
-        # so the decision dict always carries ``top_intent_source`` —
-        # invaluable for analyzing how often embeddings vs substrings
-        # dominate when tuning ``MIN_CONFIDENCE_FLOOR`` later. Recall
-        # is treated as ``substring`` here because the recall path is
-        # gated separately by ``recall_threshold`` and the chat-margin
-        # rule, not by the Tier-2 floor.
-        top_intent_source = {
-            "memory": memory_score_source,
-            "rag":    rag_score_source,
-            "web":    web_score_source,
-            "recall": "substring",
-        }[top_intent]
-
+        # NOTE: ``top_intent`` / ``top_score`` / ``second_best_score``
+        # / ``confidence_margin`` / ``top_intent_source`` are computed
+        # earlier (right after fusion) so the Tier 3 band-gate can
+        # consume ``top_score`` BEFORE the per-lane gates. The Tier 2
+        # confidence + ambiguity layer below reuses those same values
+        # unchanged; the routing semantics are identical to the
+        # previous arrangement.
         if any_embedding_centroid:
             # ---- Confidence floor downgrade --------------------
             # The floor's stated purpose is to FILTER EMBEDDING
@@ -381,6 +497,134 @@ class CognitiveRouterV4:
                     )
                     route = "hybrid"
 
+        # ----------------------------------------------------------
+        # Tier 4: routing stability tracker (observe-only, v1).
+        #
+        # Hooks in AFTER the Tier 2 confidence + ambiguity layer has
+        # finalized ``route``, so the diagnostic reflects the actual
+        # outgoing decision. v1 is strictly observability — the
+        # ``route`` field is NEVER modified by this block. Override
+        # semantics are deferred to a follow-up tier.
+        #
+        # Defense-in-depth: ``observe(...)`` is already total over
+        # all inputs, but we wrap it in try/except so even an
+        # unforeseen numpy edge case can't kill a user-facing turn.
+        # ----------------------------------------------------------
+        try:
+            tier4_diag = self.stability_tracker.observe(intent_vector, route)
+        except Exception as exc:  # pragma: no cover - defensive only
+            logger.warning("[RouterV4] tier4 observe raised: %r — degrading to dormant.", exc)
+            tier4_diag = _DORMANT_DIAGNOSTIC
+        if tier4_diag.is_oscillating:
+            logger.info(
+                "[RouterV4] tier4 oscillation cluster_id=%s size=%d dominant=%s freq=%.2f current=%s",
+                tier4_diag.cluster_id, tier4_diag.cluster_size,
+                tier4_diag.dominant_route, tier4_diag.dominant_frequency, route,
+            )
+
+        # ----------------------------------------------------------
+        # Tier 5: routing policy engine (observability-only, v1).
+        #
+        # Pure, stateless synthesis layer over Tier 2/3/4 signals
+        # already in scope. Emits a ``tier5_policy`` recommendation
+        # but NEVER modifies the ``route`` field in v1. Defense-in-
+        # depth: ``evaluate(...)`` is internally total over all
+        # inputs, but we still wrap it in try/except so even a
+        # misbehaving engine cannot kill a user-facing turn.
+        # ----------------------------------------------------------
+        try:
+            _intent_scores_for_policy = {
+                "rag":    rag_score_final,
+                "memory": memory_score_final,
+                "web":    web_score_final,
+                "recall": recall_score,
+                "chat":   chat_score,
+            }
+            _ranked_for_policy = sorted(
+                _intent_scores_for_policy.items(),
+                key=lambda kv: kv[1], reverse=True,
+            )
+            _second_intent_for_policy = (
+                _ranked_for_policy[1][0] if len(_ranked_for_policy) > 1 else None
+            )
+            tier5_inputs = RoutingPolicyInputs(
+                confidence_margin=confidence_margin,
+                top_intent=top_intent,
+                top_score=top_score,
+                second_best_score=second_best_score,
+                second_best_intent=_second_intent_for_policy,
+                tier2_active=any_embedding_centroid,
+                memory_lane_bias=memory_lane_bias,
+                rag_lane_bias=rag_lane_bias,
+                web_lane_bias=web_lane_bias,
+                tier3_band_active=tier3_band_active,
+                tier4_active=tier4_diag.active,
+                tier4_cluster_size=tier4_diag.cluster_size,
+                tier4_cluster_dominant_frequency=tier4_diag.dominant_frequency,
+                tier4_cluster_oscillating=tier4_diag.is_oscillating,
+            )
+            tier5_decision = self.policy_engine.evaluate(tier5_inputs)
+            tier5_active = True
+        except Exception as exc:  # pragma: no cover - defensive only
+            logger.warning(
+                "[RouterV4] tier5 evaluate raised: %r — degrading to no_action.", exc,
+            )
+            tier5_decision = RoutingPolicyDecision(POLICY_NO_ACTION, None, {})
+            tier5_active = False
+
+        if (
+            tier5_decision.policy != POLICY_ACCEPT
+            and tier5_decision.policy != POLICY_NO_ACTION
+        ):
+            logger.info(
+                "[Tier5Policy] policy=%s reason=%s confidence_margin=%.3f oscillation=%.3f",
+                tier5_decision.policy, tier5_decision.reason,
+                confidence_margin,
+                tier5_decision.inputs_snapshot.get("oscillation_index", 0.0),
+            )
+
+        # ----------------------------------------------------------
+        # 8. TIER 6 (RAL v1, observability-only) — arbitration
+        # ----------------------------------------------------------
+        # Pure, side-effect-free conflict-resolution layer. Reads
+        # the Tier 5 output plus the same Tier 2/3/4 signals Tier 5
+        # used and surfaces a list of cross-tier conflict flags +
+        # an interpretation enum. NEVER touches the ``route`` field
+        # in v1; pinned by ``Tier6RouteFieldNeverModified``.
+        try:
+            tier6_inputs = RoutingArbitrationInputs(
+                confidence_margin=confidence_margin,
+                top_intent=top_intent,
+                memory_lane_bias=memory_lane_bias,
+                rag_lane_bias=rag_lane_bias,
+                web_lane_bias=web_lane_bias,
+                tier4_active=tier4_diag.active,
+                tier4_cluster_dominant_frequency=tier4_diag.dominant_frequency,
+                tier4_cluster_oscillating=tier4_diag.is_oscillating,
+                tier5_policy=tier5_decision.policy,
+                tier5_policy_reason=tier5_decision.reason,
+            )
+            tier6_decision = self.arbitration_layer.evaluate(tier6_inputs)
+            tier6_active = True
+        except Exception as exc:  # pragma: no cover - defensive only
+            logger.warning(
+                "[RouterV4] tier6 evaluate raised: %r — degrading to passthrough.",
+                exc,
+            )
+            tier6_decision = RoutingArbitrationDecision(
+                (), INTERPRETATION_PASSTHROUGH, {},
+            )
+            tier6_active = False
+
+        if tier6_decision.conflict_flags:
+            logger.info(
+                "[Tier6RAL] conflict=%s interpretation=%s stability=%.3f policy=%s",
+                ",".join(tier6_decision.conflict_flags),
+                tier6_decision.interpretation,
+                tier6_decision.inputs_snapshot.get("stability_score", 0.0),
+                tier5_decision.policy,
+            )
+
         decision = {
             "route": route,
             "drift": drift,
@@ -416,6 +660,67 @@ class CognitiveRouterV4:
             "min_confidence_floor":   MIN_CONFIDENCE_FLOOR,
             "ambiguity_margin":       AMBIGUITY_MARGIN,
             "tier2_active":           any_embedding_centroid,
+            # Tier 3 additive observability fields. The ``*_lane_bias``
+            # values are the APPLIED bias for this turn (zero when
+            # ``tier3_band_active`` is False, ``adaptive_offset(lane) *
+            # LANE_BIAS_DAMPING`` when True). Effective max magnitude
+            # is therefore ``LANE_BIAS_RAW_CLAMP * LANE_BIAS_DAMPING``
+            # (== 0.03). The ``*_lane_success_rate`` /
+            # ``*_embedding_trust`` / ``*_substring_trust`` keys are
+            # observability-only diagnostics from ``LaneStatsRegistry``
+            # and never feed back into routing decisions.
+            "memory_lane_bias":              memory_lane_bias,
+            "rag_lane_bias":                 rag_lane_bias,
+            "web_lane_bias":                 web_lane_bias,
+            "memory_lane_success_rate":      self.lane_stats.recent_success_rate("memory"),
+            "rag_lane_success_rate":         self.lane_stats.recent_success_rate("rag"),
+            "web_lane_success_rate":         self.lane_stats.recent_success_rate("web"),
+            "memory_embedding_trust":        self.lane_stats.embedding_trust("memory"),
+            "rag_embedding_trust":           self.lane_stats.embedding_trust("rag"),
+            "web_embedding_trust":           self.lane_stats.embedding_trust("web"),
+            "memory_substring_trust":        self.lane_stats.substring_trust("memory"),
+            "rag_substring_trust":           self.lane_stats.substring_trust("rag"),
+            "web_substring_trust":           self.lane_stats.substring_trust("web"),
+            "tier3_active":                  self.lane_stats.tier3_active(),
+            "tier3_band_active":             tier3_band_active,
+            "tier3_high_confidence_ceiling": HIGH_CONFIDENCE_CEILING,
+            "tier3_damping":                 LANE_BIAS_DAMPING,
+            # Tier 4 additive observability fields (RSL v1, observe-only).
+            # All keys are NEW; nothing existing is renamed or removed.
+            # ``tier4_active`` is the canonical "did the tracker actually
+            # run this turn?" signal — False when ``intent_vector`` is
+            # absent or unusable. The remaining fields carry sentinel
+            # values in that case.
+            "tier4_active":                       tier4_diag.active,
+            "tier4_cluster_id":                   tier4_diag.cluster_id,
+            "tier4_cluster_size":                 tier4_diag.cluster_size,
+            "tier4_cluster_dominant_route":       tier4_diag.dominant_route,
+            "tier4_cluster_dominant_frequency":   tier4_diag.dominant_frequency,
+            "tier4_cluster_oscillating":          tier4_diag.is_oscillating,
+            "tier4_route_consistent_with_cluster": tier4_diag.route_consistent_with_cluster,
+            "tier4_total_clusters":               len(self.stability_tracker.clusters),
+            # Tier 5 additive observability fields (RCPL v1, observability-only).
+            # All keys are NEW; nothing existing is renamed or removed.
+            # ``tier5_active`` is False ONLY on the failure path
+            # (engine raised); ``accept`` and any rule-fired policy
+            # still report ``tier5_active=True``.
+            "tier5_active":         tier5_active,
+            "tier5_policy":         tier5_decision.policy,
+            "tier5_policy_reason":  tier5_decision.reason,
+            "tier5_policy_inputs":  tier5_decision.inputs_snapshot,
+            # Tier 6 additive observability fields (RAL v1, observability-only).
+            # All keys are NEW; nothing existing is renamed or removed.
+            # ``tier6_active`` is False ONLY on the failure path (layer
+            # raised); ``stable`` and any rule-fired interpretation
+            # still report ``tier6_active=True``. ``tier6_conflict_flags``
+            # is the (possibly empty) list of fired flags in
+            # ``CONFLICT_FLAGS_VALUES`` order — empty list means "no
+            # conflict". The route field is byte-identical with or
+            # without this hook (pinned by Tier6RouteFieldNeverModified).
+            "tier6_active":           tier6_active,
+            "tier6_conflict_flags":   list(tier6_decision.conflict_flags),
+            "tier6_interpretation":   tier6_decision.interpretation,
+            "tier6_inputs_snapshot":  tier6_decision.inputs_snapshot,
             "strategy": "adaptive_v4"
         }
 
@@ -649,6 +954,20 @@ class CognitiveRouterV4:
             return -0.03
         return 0.0
 
+    # Per-lane safe range for the dynamic threshold. Single source of
+    # truth shared by ``_compute_dynamic_thresholds`` and the Tier 3
+    # band-gate apply step in ``route()`` so the clamp values cannot
+    # drift apart between the two call sites.
+    _LANE_THRESHOLD_BOUNDS: dict = {
+        "rag":    (0.10, 0.85),
+        "memory": (0.10, 0.75),
+        "web":    (0.10, 0.90),
+    }
+
+    def _clamp_lane_threshold(self, lane: str, thr: float) -> float:
+        lo, hi = self._LANE_THRESHOLD_BOUNDS.get(lane, (0.0, 1.0))
+        return max(lo, min(hi, thr))
+
     def _compute_dynamic_thresholds(self, sensitivities: dict) -> tuple[float, float, float]:
         """Pure function of (base thresholds, rolling latency, sensitivity weights).
 
@@ -659,22 +978,47 @@ class CognitiveRouterV4:
         threshold (more eager retrieval); lower sensitivity (<1.0)
         raises it.
 
+        Tier 3 calibration is intentionally NOT folded into this
+        function. The lane-bias contribution is added in ``route()``
+        AFTER ``top_score`` is known, and ONLY when ``top_score`` sits
+        inside ``[MIN_CONFIDENCE_FLOOR, HIGH_CONFIDENCE_CEILING]``.
+        Keeping this function bias-free preserves the property that
+        ``_compute_dynamic_thresholds`` is a pure deterministic
+        derivation from base thresholds, sensitivity, and latency.
+
         Clamp lower bounds are intentionally below the base values so
         a high sensitivity can pull the effective threshold below the
         base, preserving adaptive headroom in both directions.
         """
         lat_offset = self._latency_threshold_offset()
 
-        def _derive(base: float, key: str, lo: float, hi: float) -> float:
+        def _derive(base: float, key: str, lane: str) -> float:
             s = float(sensitivities.get(key, 1.0))
             mult = max(0.5, min(1.6, 2.0 - s))
-            return max(lo, min(hi, base * mult + lat_offset))
+            return self._clamp_lane_threshold(lane, base * mult + lat_offset)
 
         return (
-            _derive(self.base_rag_threshold,      "rag_sensitivity",      0.10, 0.85),
-            _derive(self.base_memory_threshold,   "memory_sensitivity",   0.10, 0.75),
-            _derive(self.base_internet_threshold, "internet_sensitivity", 0.10, 0.90),
+            _derive(self.base_rag_threshold,      "rag_sensitivity",      "rag"),
+            _derive(self.base_memory_threshold,   "memory_sensitivity",   "memory"),
+            _derive(self.base_internet_threshold, "internet_sensitivity", "web"),
         )
+
+    # ============================================================
+    # TIER 3: feedback ingestion
+    # ============================================================
+
+    def observe_feedback(self, event: RouteFeedbackEvent) -> None:
+        """Tier 3: ingest one ``RouteFeedbackEvent`` from ``LLMWorker``.
+
+        Thin wrapper over ``self.lane_stats.update(event)`` so the
+        worker only knows about one router-side API. Defensive
+        try/except: a feedback failure must NEVER crash a user-facing
+        turn.
+        """
+        try:
+            self.lane_stats.update(event)
+        except Exception as e:
+            logger.warning(f"[RouterV4] observe_feedback failed: {e}")
 
     # ============================================================
     # DRIFT DETECTION
