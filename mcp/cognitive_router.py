@@ -625,6 +625,47 @@ class CognitiveRouterV4:
                 tier5_decision.policy,
             )
 
+        # ---- Decision trace (observability-only) ----
+        # Pure read-only explanation of WHY this ``route`` was selected.
+        # Classifies the priority-tree branch / Tier 2 post-tree modifier
+        # that fired, lists losing candidates with reasons, and surfaces
+        # the Tier 3/4/5/6 context. Zero impact on routing behavior —
+        # pinned by the null-trace random-walk control test.
+        trace = self._build_decision_trace(
+            route=route,
+            drift=drift,
+            recall_active=recall_active,
+            intent_vector=intent_vector,
+            complexity_score=complexity_score,
+            rag_penalty=rag_penalty,
+            memory_score_final=memory_score_final,
+            rag_score_final=rag_score_final,
+            web_score_final=web_score_final,
+            recall_score=recall_score,
+            memory_score_source=memory_score_source,
+            rag_score_source=rag_score_source,
+            web_score_source=web_score_source,
+            memory_enabled=memory_enabled,
+            rag_enabled=rag_enabled,
+            internet_enabled=internet_enabled,
+            any_embedding_centroid=any_embedding_centroid,
+            top_intent=top_intent,
+            top_intent_source=top_intent_source,
+            top_score=top_score,
+            second_best_score=second_best_score,
+            confidence_margin=confidence_margin,
+            memory_lane_bias=memory_lane_bias,
+            rag_lane_bias=rag_lane_bias,
+            web_lane_bias=web_lane_bias,
+            tier3_band_active=tier3_band_active,
+            tier4_diag=tier4_diag,
+            tier5_decision=tier5_decision,
+            tier5_active=tier5_active,
+            tier6_decision=tier6_decision,
+            tier6_active=tier6_active,
+        )
+        logger.debug("[RouterV4Trace] %s", trace)
+
         decision = {
             "route": route,
             "drift": drift,
@@ -721,6 +762,10 @@ class CognitiveRouterV4:
             "tier6_conflict_flags":   list(tier6_decision.conflict_flags),
             "tier6_interpretation":   tier6_decision.interpretation,
             "tier6_inputs_snapshot":  tier6_decision.inputs_snapshot,
+            # Decision trace (observability-only). Pure read-only
+            # explanation built from already-computed values; zero
+            # impact on routing behavior. See ``_build_decision_trace``.
+            "trace": trace,
             "strategy": "adaptive_v4"
         }
 
@@ -1019,6 +1064,304 @@ class CognitiveRouterV4:
             self.lane_stats.update(event)
         except Exception as e:
             logger.warning(f"[RouterV4] observe_feedback failed: {e}")
+
+    # ============================================================
+    # DECISION TRACE (OBSERVABILITY-ONLY)
+    # ============================================================
+    #
+    # A pure, read-only helper that classifies the routing decision
+    # produced by Tier 1-6 into a structured explanation dict. It
+    # never re-scores, never re-runs threshold logic, never mutates
+    # any field on ``self`` or on the caller's locals. The returned
+    # dict is splatted into ``decision["trace"]`` by ``route()``.
+    #
+    # Every numeric leaf is coerced to a plain Python ``float`` so
+    # the trace is JSON-safe; ``None`` is reserved for known-absent
+    # optionals (Tier 4 dormant cluster fields).
+
+    def _build_decision_trace(
+        self,
+        *,
+        route: str,
+        drift: bool,
+        recall_active: bool,
+        intent_vector,
+        complexity_score: float,
+        rag_penalty: float,
+        memory_score_final: float,
+        rag_score_final: float,
+        web_score_final: float,
+        recall_score: float,
+        memory_score_source: str,
+        rag_score_source: str,
+        web_score_source: str,
+        memory_enabled: bool,
+        rag_enabled: bool,
+        internet_enabled: bool,
+        any_embedding_centroid: bool,
+        top_intent: str,
+        top_intent_source: str,
+        top_score: float,
+        second_best_score: float,
+        confidence_margin: float,
+        memory_lane_bias: float,
+        rag_lane_bias: float,
+        web_lane_bias: float,
+        tier3_band_active: bool,
+        tier4_diag,
+        tier5_decision,
+        tier5_active: bool,
+        tier6_decision,
+        tier6_active: bool,
+    ) -> dict:
+        """Build ``decision["trace"]`` — observability-only.
+
+        Classification over already-computed state. See the plan
+        ``decision_trace_observability_layer`` for the winning_reason
+        and losing_candidates taxonomies.
+        """
+        # ---- Lane thresholds (post-Tier-3 band-gate) ----
+        # These are the exact numbers the gates used this turn:
+        # dynamic_*_threshold is already post-band-gate, and rag_penalty
+        # is added at the rag gate only.
+        lane_thresholds: dict[str, float] = {
+            "memory": float(self.dynamic_memory_threshold),
+            "rag":    float(self.dynamic_rag_threshold + rag_penalty),
+            "web":    float(self.dynamic_internet_threshold),
+            "recall": float(self.recall_threshold),
+        }
+        lane_scores_final: dict[str, float] = {
+            "memory": float(memory_score_final),
+            "rag":    float(rag_score_final),
+            "web":    float(web_score_final),
+            "recall": float(recall_score),
+        }
+        lane_sources: dict[str, str] = {
+            "memory": memory_score_source,
+            "rag":    rag_score_source,
+            "web":    web_score_source,
+            "recall": "substring",  # matches existing top_intent_source convention
+        }
+
+        # ---- Tier 2 post-tree modifier inference (section 2.4) ----
+        # Predicates over already-decided state. We read, never recompute.
+        complexity_forced = bool(complexity_score > 0.75)
+
+        # Floor fired iff the exact router predicate at lines ~456-462
+        # would be True given the final ``route``.
+        floor_applied = bool(
+            route == "none"
+            and any_embedding_centroid
+            and not recall_active
+            and top_intent_source == "embedding"
+            and top_score < MIN_CONFIDENCE_FLOOR
+            and top_score < lane_thresholds.get(top_intent, 0.0) + 0.05
+        )
+
+        # Ambiguity fired iff the router predicate at lines ~477-498
+        # would be True AND the resulting route is ``hybrid`` AND no
+        # earlier branch claimed the hybrid label.
+        _retrieval_pair = {"rag", "memory"}
+        _ranked_intents_pairs = sorted(
+            lane_scores_final.items(), key=lambda kv: kv[1], reverse=True,
+        )
+        _second_intent_name = (
+            _ranked_intents_pairs[1][0] if len(_ranked_intents_pairs) > 1 else None
+        )
+        ambiguity_applied = bool(
+            route == "hybrid"
+            and not complexity_forced
+            and not recall_active
+            and not (rag_enabled and memory_enabled)
+            and any_embedding_centroid
+            and confidence_margin < AMBIGUITY_MARGIN
+            and second_best_score >= MIN_CONFIDENCE_FLOOR
+            and top_intent in _retrieval_pair
+            and _second_intent_name in _retrieval_pair
+            and _second_intent_name != top_intent
+        )
+
+        # ---- winning_reason (section 2.1 + 2.2) ----
+        # Classification of which branch of the priority tree (or
+        # Tier 2 post-tree modifier) set the final ``route``.
+        if floor_applied:
+            winning_reason = "confidence_floor_downgrade_to_none"
+        elif ambiguity_applied:
+            winning_reason = "ambiguity_upgrade_to_hybrid"
+        elif route == "hybrid":
+            if complexity_forced:
+                winning_reason = "complexity_forced_hybrid"
+            elif recall_active:
+                winning_reason = "recall_override_hybrid"
+            elif rag_enabled and memory_enabled:
+                winning_reason = "dual_threshold_hybrid"
+            else:
+                # Defensive: should be unreachable given the tree, but
+                # a future edit to the tree should not crash the trace.
+                winning_reason = "hybrid_unknown"
+        elif route == "web":
+            winning_reason = "internet_enabled"
+        elif route == "rag":
+            winning_reason = "single_rag"
+        elif route == "memory":
+            winning_reason = "single_memory"
+        elif route == "none":
+            winning_reason = "no_lane_cleared_threshold"
+        else:
+            # Defensive: unknown route label.
+            winning_reason = "unknown_route"
+
+        # ---- winning_signal ----
+        # Maps the final route to a coherent (lane, score, threshold,
+        # source) tuple. For hybrid-via-recall, report the recall lane
+        # explicitly; otherwise, report the top_intent lane (it is the
+        # strongest semantic signal regardless of which branch fired).
+        if route == "hybrid" and recall_active and not (
+            complexity_forced or (rag_enabled and memory_enabled) or ambiguity_applied
+        ):
+            winning_lane = "recall"
+            winning_score = float(recall_score)
+            winning_threshold = float(self.recall_threshold)
+            winning_source = "substring"
+        elif route in ("memory", "rag", "web"):
+            winning_lane = route
+            winning_score = lane_scores_final[route]
+            winning_threshold = lane_thresholds[route]
+            winning_source = lane_sources[route]
+        elif route == "hybrid":
+            # complexity_forced / dual_threshold / ambiguity_upgrade:
+            # top_intent is the dominant lane signal.
+            winning_lane = "hybrid"
+            winning_score = float(top_score)
+            winning_threshold = float(lane_thresholds.get(top_intent, 0.0))
+            winning_source = top_intent_source
+        else:
+            # route == "none": report top_intent's numbers — it is
+            # still the best lane, just below the bar.
+            winning_lane = "none"
+            winning_score = float(top_score)
+            winning_threshold = float(lane_thresholds.get(top_intent, 0.0))
+            winning_source = top_intent_source
+
+        # ---- losing_candidates (section 2.3) ----
+        # Stable order: memory, rag, web, recall. Winner is excluded.
+        # In hybrid-fused cases (dual_threshold, ambiguity_upgrade),
+        # both memory and rag get reason="hybrid_fused" so the caller
+        # can see they are BOTH part of the decision.
+        hybrid_fused_lanes: set[str] = set()
+        if winning_reason in ("dual_threshold_hybrid", "ambiguity_upgrade_to_hybrid"):
+            hybrid_fused_lanes = {"memory", "rag"}
+
+        lane_enabled: dict[str, bool] = {
+            "memory": bool(memory_enabled),
+            "rag":    bool(rag_enabled),
+            "web":    bool(internet_enabled),
+            # Recall has its own two-gate predicate; "enabled" here
+            # means ``recall_active``.
+            "recall": bool(recall_active),
+        }
+
+        losing_candidates: list[dict] = []
+        for lane in ("memory", "rag", "web", "recall"):
+            # Skip the sole winner.
+            if lane == winning_lane:
+                continue
+
+            lane_score = lane_scores_final[lane]
+            lane_threshold = lane_thresholds[lane]
+
+            # Recall has its own below-threshold vs blocked-by-margin
+            # distinction.
+            if lane == "recall":
+                if recall_score >= self.recall_threshold and not recall_active:
+                    reason = "blocked_by_chat_margin"
+                else:
+                    reason = "below_threshold"
+            elif lane in hybrid_fused_lanes:
+                reason = "hybrid_fused"
+            elif floor_applied and lane == top_intent:
+                reason = "confidence_floor_downgraded_winner"
+            elif drift and lane in ("memory", "rag", "web"):
+                reason = "drift_suppressed"
+            elif not lane_enabled[lane]:
+                reason = "below_threshold"
+            else:
+                # Lane cleared its threshold but another lane was picked.
+                reason = "lower_score_than_winner"
+
+            losing_candidates.append({
+                "lane":      lane,
+                "score":     float(lane_score),
+                "threshold": float(lane_threshold),
+                "reason":    reason,
+            })
+
+        # ---- Tier 4 block ----
+        # tier4_diag is always a ClusterDiagnostic; its optional fields
+        # are already ``None`` when the tracker is dormant. Coerce
+        # numeric optionals to plain floats (leave ``None`` alone).
+        _cluster_freq = tier4_diag.dominant_frequency
+        tier4_block = {
+            "active":                     bool(tier4_diag.active),
+            "cluster_id":                 tier4_diag.cluster_id,
+            "cluster_size":               int(tier4_diag.cluster_size),
+            "cluster_dominant_route":     tier4_diag.dominant_route,
+            "cluster_dominant_frequency": (
+                float(_cluster_freq) if _cluster_freq is not None else None
+            ),
+            "cluster_oscillating":        bool(tier4_diag.is_oscillating),
+        }
+
+        # ---- Assemble ----
+        return {
+            "selected_route": str(route),
+            "winning_reason": winning_reason,
+            "winning_signal": {
+                "lane":      winning_lane,
+                "score":     float(winning_score),
+                "threshold": float(winning_threshold),
+                "source":    winning_source,
+            },
+            "losing_candidates": losing_candidates,
+            "confidence": {
+                "top_intent":        top_intent,
+                "top_intent_source": top_intent_source,
+                "top_score":         float(top_score),
+                "second_best_score": float(second_best_score),
+                "margin":            float(confidence_margin),
+                "floor":             float(MIN_CONFIDENCE_FLOOR),
+                "ambiguity_margin":  float(AMBIGUITY_MARGIN),
+                "floor_applied":     floor_applied,
+                "ambiguity_applied": ambiguity_applied,
+                "tier2_active":      bool(any_embedding_centroid),
+            },
+            "tier3": {
+                "band_active":             bool(tier3_band_active),
+                "high_confidence_ceiling": float(HIGH_CONFIDENCE_CEILING),
+                "damping":                 float(LANE_BIAS_DAMPING),
+                "lane_bias": {
+                    "memory": float(memory_lane_bias),
+                    "rag":    float(rag_lane_bias),
+                    "web":    float(web_lane_bias),
+                },
+            },
+            "tier4": tier4_block,
+            "tier5_6": {
+                "tier5_active":   bool(tier5_active),
+                "policy":         str(tier5_decision.policy),
+                "policy_reason":  tier5_decision.reason,
+                "tier6_active":   bool(tier6_active),
+                "conflicts":      list(tier6_decision.conflict_flags),
+                "interpretation": str(tier6_decision.interpretation),
+            },
+            "context": {
+                "drift":                 bool(drift),
+                "recall_active":         bool(recall_active),
+                "complexity_forced":     complexity_forced,
+                "rag_penalty":           float(rag_penalty),
+                "intent_vector_present": intent_vector is not None,
+            },
+        }
 
     # ============================================================
     # DRIFT DETECTION
