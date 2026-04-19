@@ -286,6 +286,52 @@ class LLMWorker(QThread):
         "How do I convert 32 degrees Fahrenheit to Celsius?",
     )
 
+    # Tier 2: curated phrase sets used to build the per-lane embedding
+    # centroids consumed by ``CognitiveRouterV4._score_*_intent_embedding``.
+    # Kept at ~10 short prompts each to mirror the recall/chat sets and
+    # keep the one-time embedding pass cheap. Each set deliberately uses
+    # vocabulary that the substring trigger lists DO NOT cover, so the
+    # ``max(substring, embedding)`` fusion adds genuine semantic recall
+    # rather than echoing the keyword list.
+    _MEMORY_INTENT_EXAMPLES = (
+        "what did I tell you about my work last week?",
+        "do you recall the name of my dog?",
+        "bring up what we agreed on yesterday",
+        "what are my dietary restrictions?",
+        "what timezone do I live in again?",
+        "what was the address I gave you?",
+        "show me the notes I shared earlier",
+        "what's the password hint I told you?",
+        "what's my usual sleep schedule?",
+        "remind me of my favorite movies list",
+    )
+
+    _RAG_INTENT_EXAMPLES = (
+        "summarize the attached PDF",
+        "what does the contract say about termination?",
+        "according to the report, what is the revenue?",
+        "in the document, find the section about safety",
+        "quote the relevant passage from the manual",
+        "what does the spec define for retry behavior?",
+        "based on the file I uploaded, who are the authors?",
+        "find the clause about confidentiality in the agreement",
+        "extract the conclusions from the paper",
+        "what does chapter three of the book cover?",
+    )
+
+    _WEB_INTENT_EXAMPLES = (
+        "search the internet for the latest iPhone release date",
+        "look up today's weather in Madrid",
+        "what's currently trending on Hacker News?",
+        "find recent news about the federal reserve",
+        "google the price of bitcoin right now",
+        "what's the live score of the soccer match?",
+        "look online for flight delays at JFK today",
+        "search for recent reviews of this restaurant",
+        "what is the current exchange rate for USD to EUR?",
+        "fetch the latest stock price of Tesla",
+    )
+
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
         corresponding memory rows.
@@ -386,6 +432,28 @@ class LLMWorker(QThread):
                     build_centroid(embedder, list(self._CHAT_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Chat centroid installed.")
+            # Tier 2: install the per-lane embedding centroids. Each
+            # is gated by ``is None`` so we never stomp a manually
+            # installed centroid (e.g. in tests) and so the build
+            # cost is paid exactly once per worker lifetime. Until at
+            # least one of these is installed, the router's confidence
+            # layer stays dormant via the ``any_embedding_centroid``
+            # gate in ``CognitiveRouterV4.route(...)``.
+            if self.cognitive_router.memory_centroid is None:
+                self.cognitive_router.set_memory_centroid(
+                    build_centroid(embedder, list(self._MEMORY_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Memory centroid installed.")
+            if self.cognitive_router.rag_centroid is None:
+                self.cognitive_router.set_rag_centroid(
+                    build_centroid(embedder, list(self._RAG_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] RAG centroid installed.")
+            if self.cognitive_router.web_centroid is None:
+                self.cognitive_router.set_web_centroid(
+                    build_centroid(embedder, list(self._WEB_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Web centroid installed.")
         except Exception:
             logger.exception("[LLM Worker] Failed to build router centroids")
 
