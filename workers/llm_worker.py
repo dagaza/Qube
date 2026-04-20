@@ -1,4 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal
+import dataclasses
 import requests
 import json
 import time
@@ -45,6 +46,7 @@ from mcp.memory_tool import memory_search
 from workers.intent_router import EmbeddingCache
 
 from mcp.cognitive_router import CognitiveRouterV4
+from mcp.routing_debug import RoutingDebugBuffer, build_record
 from mcp.router_telemetry import RouterTelemetryBrain
 from mcp.router_self_tuner import AdaptiveRouterSelfTunerV2
 from mcp.router_lane_stats import RouteFeedbackEvent
@@ -61,6 +63,7 @@ class LLMWorker(QThread):
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
+    routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
     # Phase B: turn-scoped enrichment context (session_id + rag chunk ids + message ids).
     # Emitted once per completed turn, before response_finished, so main.py can
     # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
@@ -107,6 +110,8 @@ class LLMWorker(QThread):
         self.cognitive_router = CognitiveRouterV4()
         self.telemetry = RouterTelemetryBrain()
         self.router_tuner = AdaptiveRouterSelfTunerV2()
+        self.routing_debug_buffer = RoutingDebugBuffer()
+        self._routing_debug_turn_seq = 0
 
         self.USE_COGNITIVE_ROUTER = True
         self.USE_ADAPTIVE_ROUTER = True
@@ -900,6 +905,20 @@ class LLMWorker(QThread):
         route_start = time.time()
 
         logger.info(f"[Router] route={execution_route}")
+
+        try:
+            self._routing_debug_turn_seq += 1
+            record = build_record(
+                query=self.prompt,
+                decision=decision,
+                session_id=self.session_id,
+                turn_id=self._routing_debug_turn_seq,
+                effective_route=execution_route.lower(),
+            )
+            self.routing_debug_buffer.append(record)
+            self.routing_debug_record_added.emit(dataclasses.asdict(record))
+        except Exception as e:
+            logger.warning("[RoutingDebug] failed to record turn: %s", e)
 
         # ============================================================
         # 2. TOOL EXECUTION

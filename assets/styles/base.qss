@@ -55,6 +55,43 @@ QToolTip {
     border: none;
 }
 
+/* Detached routing debug tool surface */
+#RoutingDebugWindow {
+    background-color: #1e1e2e;
+}
+#RoutingDebugSurface {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+#RoutingDebugLeftPane,
+#RoutingDebugDetailPane {
+    background-color: transparent;
+}
+#RoutingDebugRightScroll,
+#RoutingDebugViewport {
+    background-color: transparent;
+    border: none;
+}
+#RoutingDebugWindow QLabel,
+#RoutingDebugWindow QCheckBox,
+#RoutingDebugWindow QGroupBox {
+    color: #cdd6f4;
+}
+#RoutingDebugWindow #ViewTitle,
+#RoutingDebugWindow QLabel[class~="PageTitle"] {
+    color: #cdd6f4;
+}
+#RoutingDebugWindow QComboBoxPrivateContainer {
+    background-color: #1e1e2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+}
+#RoutingDebugSplitter::handle {
+    background-color: rgba(255, 255, 255, 0.08);
+    width: 1px;
+}
+
 /* Fix bottom left corner rounding for frameless window */
 #NavSidebar {
     border-bottom-left-radius: 12px;
