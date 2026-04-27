@@ -7,7 +7,10 @@ import logging
 from typing import Any, Optional
 
 from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
@@ -31,6 +34,15 @@ def _json_pretty(obj: Any) -> str:
     return json.dumps(obj, indent=2, default=str, ensure_ascii=False)
 
 
+def _make_label_selectable(lab: QLabel) -> None:
+    """Allow mouse/keyboard selection and copy for debug text."""
+    lab.setTextInteractionFlags(
+        Qt.TextInteractionFlag.TextSelectableByMouse
+        | Qt.TextInteractionFlag.TextSelectableByKeyboard
+    )
+    lab.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+
+
 class RoutingDebugView(QWidget):
     def __init__(self, workers: dict, gpu_monitor=None, native_engine=None, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -40,6 +52,16 @@ class RoutingDebugView(QWidget):
         self.setObjectName("RoutingDebugWindow")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._setup_ui()
+
+    @staticmethod
+    def _copy_list_selection(lw: QListWidget) -> None:
+        pairs = sorted(
+            ((lw.row(it), it.text()) for it in lw.selectedItems()),
+            key=lambda x: x[0],
+        )
+        if not pairs:
+            return
+        QApplication.clipboard().setText("\n".join(t for _, t in pairs))
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -57,6 +79,7 @@ class RoutingDebugView(QWidget):
         title = QLabel("Routing Debug")
         title.setObjectName("ViewTitle")
         title.setProperty("class", "PageTitle")
+        _make_label_selectable(title)
         surface_l.addWidget(title)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -68,7 +91,9 @@ class RoutingDebugView(QWidget):
         left_l.setContentsMargins(16, 8, 16, 8)
 
         filter_row = QHBoxLayout()
-        filter_row.addWidget(QLabel("Route:"))
+        _lbl_route_filt = QLabel("Route:")
+        _make_label_selectable(_lbl_route_filt)
+        filter_row.addWidget(_lbl_route_filt)
         self._route_filter = QComboBox()
         for label in ("All", "WEB", "RAG", "MEMORY", "HYBRID", "NONE"):
             self._route_filter.addItem(label)
@@ -77,8 +102,12 @@ class RoutingDebugView(QWidget):
         left_l.addLayout(filter_row)
 
         self._list = QListWidget()
+        self._list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._list.currentRowChanged.connect(self._on_row_changed)
         left_l.addWidget(self._list, 1)
+        _sc_list = QShortcut(QKeySequence.StandardKey.Copy, self._list)
+        _sc_list.setContext(Qt.ShortcutContext.WidgetShortcut)
+        _sc_list.activated.connect(lambda: self._copy_list_selection(self._list))
 
         right_scroll = QScrollArea()
         right_scroll.setObjectName("RoutingDebugRightScroll")
@@ -95,10 +124,13 @@ class RoutingDebugView(QWidget):
 
         self._hdr_route = QLabel("")
         self._hdr_route.setProperty("class", "PageTitle")
+        _make_label_selectable(self._hdr_route)
         self._hdr_summary = QLabel("")
         self._hdr_summary.setWordWrap(True)
+        _make_label_selectable(self._hdr_summary)
         self._hdr_query = QLabel("")
         self._hdr_query.setWordWrap(True)
+        _make_label_selectable(self._hdr_query)
         self._detail_layout.addWidget(self._hdr_route)
         self._detail_layout.addWidget(self._hdr_summary)
         self._detail_layout.addWidget(self._hdr_query)
@@ -108,7 +140,9 @@ class RoutingDebugView(QWidget):
         s_l = QVBoxLayout(self._gb_summary)
         self._lbl_winning_reason = QLabel("")
         self._lbl_winning_reason.setWordWrap(True)
+        _make_label_selectable(self._lbl_winning_reason)
         self._lbl_trace_level = QLabel("")
+        _make_label_selectable(self._lbl_trace_level)
         s_l.addWidget(self._lbl_winning_reason)
         s_l.addWidget(self._lbl_trace_level)
         self._detail_layout.addWidget(self._gb_summary)
@@ -117,24 +151,114 @@ class RoutingDebugView(QWidget):
         sig_l = QVBoxLayout(self._gb_signals)
         self._lbl_winning_signal = QLabel("")
         self._lbl_winning_signal.setWordWrap(True)
+        _make_label_selectable(self._lbl_winning_signal)
         sig_l.addWidget(self._lbl_winning_signal)
         self._losing_list = QListWidget()
+        self._losing_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._losing_list.setMaximumHeight(160)
         sig_l.addWidget(self._losing_list)
+        _sc_lose = QShortcut(QKeySequence.StandardKey.Copy, self._losing_list)
+        _sc_lose.setContext(Qt.ShortcutContext.WidgetShortcut)
+        _sc_lose.activated.connect(lambda: self._copy_list_selection(self._losing_list))
         self._detail_layout.addWidget(self._gb_signals)
 
         self._gb_mod = QGroupBox("System modifiers (Tier 3 / 5 / 6)")
         mod_l = QVBoxLayout(self._gb_mod)
         self._lbl_tier3 = QLabel("")
         self._lbl_tier3.setWordWrap(True)
+        _make_label_selectable(self._lbl_tier3)
         self._lbl_tier5 = QLabel("")
         self._lbl_tier5.setWordWrap(True)
+        _make_label_selectable(self._lbl_tier5)
         self._lbl_tier6 = QLabel("")
         self._lbl_tier6.setWordWrap(True)
+        _make_label_selectable(self._lbl_tier6)
         mod_l.addWidget(self._lbl_tier3)
         mod_l.addWidget(self._lbl_tier5)
         mod_l.addWidget(self._lbl_tier6)
         self._detail_layout.addWidget(self._gb_mod)
+
+        self._gb_model_router = QGroupBox("Model Router Decision")
+        self._gb_model_router.setVisible(False)
+        mr_l = QVBoxLayout(self._gb_model_router)
+        self._mr_selected = QLabel("")
+        self._mr_selected.setWordWrap(True)
+        _make_label_selectable(self._mr_selected)
+        self._mr_altern = QLabel("")
+        self._mr_altern.setWordWrap(True)
+        _make_label_selectable(self._mr_altern)
+        self._mr_conf = QLabel("")
+        self._mr_conf.setWordWrap(True)
+        _make_label_selectable(self._mr_conf)
+        self._mr_reasons = QLabel("")
+        self._mr_reasons.setWordWrap(True)
+        _make_label_selectable(self._mr_reasons)
+        self._mr_perf = QLabel("")
+        self._mr_perf.setWordWrap(True)
+        _make_label_selectable(self._mr_perf)
+        mr_l.addWidget(self._mr_selected)
+        mr_l.addWidget(self._mr_altern)
+        mr_l.addWidget(self._mr_conf)
+        mr_l.addWidget(self._mr_reasons)
+        mr_l.addWidget(self._mr_perf)
+        self._detail_layout.addWidget(self._gb_model_router)
+
+        self._gb_chat_contract = QGroupBox("Chat format lock")
+        self._gb_chat_contract.setVisible(False)
+        cc_l = QVBoxLayout(self._gb_chat_contract)
+        self._cc_model = QLabel("")
+        self._cc_model.setWordWrap(True)
+        _make_label_selectable(self._cc_model)
+        self._cc_format = QLabel("")
+        self._cc_format.setWordWrap(True)
+        _make_label_selectable(self._cc_format)
+        self._cc_source = QLabel("")
+        self._cc_source.setWordWrap(True)
+        _make_label_selectable(self._cc_source)
+        self._cc_locked = QLabel("")
+        self._cc_locked.setWordWrap(True)
+        _make_label_selectable(self._cc_locked)
+        self._cc_template_safety = QLabel("")
+        self._cc_template_safety.setWordWrap(True)
+        _make_label_selectable(self._cc_template_safety)
+        cc_l.addWidget(self._cc_model)
+        cc_l.addWidget(self._cc_format)
+        cc_l.addWidget(self._cc_source)
+        cc_l.addWidget(self._cc_locked)
+        cc_l.addWidget(self._cc_template_safety)
+        self._detail_layout.addWidget(self._gb_chat_contract)
+
+        self._gb_engine_input = QGroupBox("Engine input (ground truth)")
+        self._gb_engine_input.setCheckable(True)
+        self._gb_engine_input.setChecked(False)
+        self._gb_engine_input.setVisible(False)
+        ei_outer = QVBoxLayout(self._gb_engine_input)
+        self._ei_inner = QWidget()
+        ei_inner_l = QVBoxLayout(self._ei_inner)
+        ei_inner_l.setContentsMargins(0, 0, 0, 0)
+        self._ei_meta = QLabel("")
+        self._ei_meta.setWordWrap(True)
+        _make_label_selectable(self._ei_meta)
+        self._ei_stops = QLabel("")
+        self._ei_stops.setWordWrap(True)
+        _make_label_selectable(self._ei_stops)
+        self._ei_serialized = QPlainTextEdit()
+        self._ei_serialized.setReadOnly(True)
+        self._ei_serialized.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        self._ei_serialized.setMaximumHeight(280)
+        ei_mono = self._ei_serialized.font()
+        ei_mono.setFamily("monospace")
+        self._ei_serialized.setFont(ei_mono)
+        ei_inner_l.addWidget(self._ei_meta)
+        ei_inner_l.addWidget(self._ei_stops)
+        ei_inner_l.addWidget(self._ei_serialized)
+        ei_outer.addWidget(self._ei_inner)
+        self._ei_inner.setVisible(False)
+        self._gb_engine_input.toggled.connect(self._ei_inner.setVisible)
+        self._detail_layout.addWidget(self._gb_engine_input)
 
         self._gb_trace = QGroupBox("Full trace JSON")
         self._gb_trace.setCheckable(True)
@@ -142,6 +266,11 @@ class RoutingDebugView(QWidget):
         t_l = QVBoxLayout(self._gb_trace)
         self._trace_text = QPlainTextEdit()
         self._trace_text.setReadOnly(True)
+        self._trace_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
         self._trace_text.setMaximumHeight(280)
         monof = self._trace_text.font()
         monof.setFamily("monospace")
@@ -155,6 +284,11 @@ class RoutingDebugView(QWidget):
         self._detail_layout.addWidget(self._raw_toggle)
         self._decision_text = QPlainTextEdit()
         self._decision_text.setReadOnly(True)
+        self._decision_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
         self._decision_text.setMaximumHeight(320)
         self._decision_text.setFont(monof)
         self._decision_text.setVisible(False)
@@ -212,7 +346,15 @@ class RoutingDebugView(QWidget):
     def add_record(self, payload: dict) -> None:
         if not payload:
             return
-        self._records_newest_first.insert(0, payload)
+        tid = payload.get("turn_id")
+        if (
+            tid is not None
+            and self._records_newest_first
+            and self._records_newest_first[0].get("turn_id") == tid
+        ):
+            self._records_newest_first[0] = payload
+        else:
+            self._records_newest_first.insert(0, payload)
         cap = 100
         if len(self._records_newest_first) > cap:
             self._records_newest_first = self._records_newest_first[:cap]
@@ -276,6 +418,24 @@ class RoutingDebugView(QWidget):
         self._lbl_tier3.setText("")
         self._lbl_tier5.setText("")
         self._lbl_tier6.setText("")
+        self._gb_model_router.setVisible(False)
+        self._mr_selected.setText("")
+        self._mr_altern.setText("")
+        self._mr_conf.setText("")
+        self._mr_reasons.setText("")
+        self._mr_perf.setText("")
+        self._gb_chat_contract.setVisible(False)
+        self._cc_model.setText("")
+        self._cc_format.setText("")
+        self._cc_source.setText("")
+        self._cc_locked.setText("")
+        self._cc_template_safety.setText("")
+        self._gb_engine_input.setVisible(False)
+        self._gb_engine_input.setChecked(False)
+        self._ei_inner.setVisible(False)
+        self._ei_meta.setText("")
+        self._ei_stops.setText("")
+        self._ei_serialized.clear()
         self._trace_text.clear()
         self._decision_text.clear()
 
@@ -287,7 +447,12 @@ class RoutingDebugView(QWidget):
         if pre and str(pre).lower() != str(rec.get("route", "")).lower():
             eff_line += f"  (router pre-policy: {str(pre).upper()})"
         self._hdr_route.setText(eff_line)
-        self._hdr_summary.setText(rec.get("summary") or "")
+        summary0 = rec.get("summary") or ""
+        model_trace = (rec.get("trace") or {}).get("model_router") or {}
+        sel_m = str(model_trace.get("selected_model") or "").strip()
+        if sel_m:
+            summary0 = f"{summary0}\nRouting: {route} + MODEL({sel_m})"
+        self._hdr_summary.setText(summary0)
         self._hdr_query.setText(f'Query: {rec.get("query") or ""}')
 
         wr = trace.get("winning_reason", "—")
@@ -345,6 +510,128 @@ class RoutingDebugView(QWidget):
                 t56.get("interpretation"),
             )
         )
+
+        if sel_m:
+            self._gb_model_router.setVisible(True)
+            self._mr_selected.setText(f"Model selected: {sel_m}")
+            alts = model_trace.get("alternatives") or []
+            if isinstance(alts, list) and alts:
+                lines = "\n".join(f"- {a}" for a in alts if str(a).strip())
+                self._mr_altern.setText("Alternatives:\n" + lines)
+            else:
+                self._mr_altern.setText("Alternatives: (none listed)")
+            cf = model_trace.get("confidence")
+            try:
+                cf_s = f"{float(cf):.2f}" if cf is not None else "—"
+            except (TypeError, ValueError):
+                cf_s = "—"
+            self._mr_conf.setText(f"Confidence: {cf_s}")
+            rsns = model_trace.get("reasons") or []
+            if isinstance(rsns, list) and rsns:
+                rlines = "\n".join(f"- {r}" for r in rsns if str(r).strip())
+                self._mr_reasons.setText("Reasons:\n" + rlines)
+            else:
+                self._mr_reasons.setText("Reasons: —")
+            perf = model_trace.get("performance") or {}
+            if isinstance(perf, dict) and perf:
+                pq = perf.get("quality", "—")
+                pf = perf.get("failure_rate", "—")
+                plat = perf.get("latency_ms")
+                if plat is not None:
+                    try:
+                        plat_s = f"{float(plat):.1f}ms"
+                    except (TypeError, ValueError):
+                        plat_s = str(plat)
+                else:
+                    plat_s = "—"
+                self._mr_perf.setText(
+                    "Performance signals:\n"
+                    f"- quality: {pq}\n"
+                    f"- failure rate: {pf}\n"
+                    f"- latency: {plat_s}"
+                )
+            else:
+                self._mr_perf.setText("Performance signals: (no ledger data yet)")
+        else:
+            self._gb_model_router.setVisible(False)
+            self._mr_selected.setText("")
+            self._mr_altern.setText("")
+            self._mr_conf.setText("")
+            self._mr_reasons.setText("")
+            self._mr_perf.setText("")
+
+        cc_trace = trace.get("chat_contract") or {}
+        ts_blob = cc_trace.get("template_safety") if isinstance(cc_trace.get("template_safety"), dict) else {}
+        if isinstance(cc_trace, dict) and (
+            str(cc_trace.get("format") or "").strip()
+            or str(cc_trace.get("model") or "").strip()
+            or str(cc_trace.get("effective_chat_format") or "").strip()
+            or str(cc_trace.get("effective_template_source") or "").strip()
+            or ts_blob
+        ):
+            self._gb_chat_contract.setVisible(True)
+            self._cc_model.setText(f"Model: {cc_trace.get('model') or '—'}")
+            disp_fmt = cc_trace.get("effective_chat_format") or cc_trace.get("format")
+            disp_src = cc_trace.get("effective_template_source") or cc_trace.get("source")
+            self._cc_format.setText(f"Format: {disp_fmt or '—'}")
+            self._cc_source.setText(f"Source: {disp_src or '—'}")
+            locked_lines = f"Locked: {cc_trace.get('locked', '—')}"
+            if cc_trace.get("per_request_lock_skipped"):
+                locked_lines += "\nLock enforcement: skipped (unsafe template)"
+            self._cc_locked.setText(locked_lines)
+            if ts_blob:
+                unsafe = bool(ts_blob.get("unsafe"))
+                rs = ts_blob.get("reasons") or []
+                rlines = "\n".join(f"- {r}" for r in rs) if isinstance(rs, list) else str(rs)
+                self._cc_template_safety.setText(
+                    f"Template safety: unsafe={unsafe}\n{rlines}" if rlines else f"Template safety: unsafe={unsafe}"
+                )
+            else:
+                self._cc_template_safety.setText("")
+        else:
+            self._gb_chat_contract.setVisible(False)
+            self._cc_model.setText("")
+            self._cc_format.setText("")
+            self._cc_source.setText("")
+            self._cc_locked.setText("")
+            self._cc_template_safety.setText("")
+
+        ei_trace = trace.get("engine_input_trace") or {}
+        if isinstance(ei_trace, dict) and (
+            str(ei_trace.get("input_mode") or "").strip()
+            or ei_trace.get("serialized_input") is not None
+        ):
+            self._gb_engine_input.setVisible(True)
+            self._ei_meta.setText(
+                "chat_format: {cf}\ninput_mode: {im}\nsource: {src}\ntrace_id: {tid}".format(
+                    cf=ei_trace.get("chat_format") or "—",
+                    im=ei_trace.get("input_mode") or "—",
+                    src=ei_trace.get("source") or "—",
+                    tid=ei_trace.get("trace_id", "—"),
+                )
+            )
+            stops = ei_trace.get("stop_tokens") or []
+            if isinstance(stops, list) and stops:
+                st_preview = ", ".join(repr(s) for s in stops[:24])
+                if len(stops) > 24:
+                    st_preview += f" … (+{len(stops) - 24} more)"
+                self._ei_stops.setText(f"stop_tokens ({len(stops)}): {st_preview}")
+            else:
+                self._ei_stops.setText("stop_tokens: (none)")
+            notes = ei_trace.get("capture_notes")
+            body = ei_trace.get("serialized_input")
+            if body is None and notes:
+                body = f"(serialized_input unavailable)\n\n{notes}"
+            elif body is None:
+                body = "(serialized_input unavailable)"
+            elif notes:
+                body = f"{notes}\n\n{body}"
+            self._ei_serialized.setPlainText(str(body))
+        else:
+            self._gb_engine_input.setVisible(False)
+            self._ei_meta.setText("")
+            self._ei_stops.setText("")
+            self._ei_serialized.clear()
 
         self._trace_text.setPlainText(_json_pretty(trace))
         self._decision_text.setPlainText(_json_pretty(rec.get("decision") or {}))

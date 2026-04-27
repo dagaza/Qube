@@ -5,18 +5,35 @@ from __future__ import annotations
 import copy
 import dataclasses
 import json
+import os
 import threading
+import logging
 import unittest
 from typing import Any
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from mcp.cognitive_router import AMBIGUITY_MARGIN, MIN_CONFIDENCE_FLOOR
 from mcp.routing_debug import (
     MAX_RECORDS,
     RoutingDebugBuffer,
     RoutingDebugRecord,
+    build_chat_contract_trace,
+    build_engine_input_trace,
+    build_model_router_trace,
     build_record,
     build_route_summary,
+    routing_debug_log_enabled,
+    routing_debug_log_redact_query,
+    routing_debug_log_verbose,
+    serialize_record_for_log,
     synthesize_trace_stub,
+)
+from core.routing_debug_sink import (
+    ROUTING_DEBUG_LOGGER_NAME,
+    attach_routing_debug_file_sink,
+    detach_routing_debug_file_sink_for_tests,
 )
 
 
@@ -290,9 +307,351 @@ class BuildRecordTests(unittest.TestCase):
         self.assertEqual(d, before)
 
 
+class RoutingDebugSerializeForLogTests(unittest.TestCase):
+    def _record(self) -> RoutingDebugRecord:
+        trace = _base_trace()
+        trace["model_router"] = {"selected_model": "m.gguf"}
+        trace["chat_contract"] = {"format": "chatml"}
+        trace["engine_input_trace"] = {"trace_id": 42}
+        return RoutingDebugRecord(
+            timestamp=123.0,
+            session_id="s1",
+            turn_id=9,
+            query="who is john?",
+            route="hybrid",
+            route_pre_policy="memory",
+            strategy="adaptive_v4",
+            trace_level="full",
+            top_intent="memory",
+            top_score=0.77,
+            summary="HYBRID",
+            trace=trace,
+            decision={"route": "hybrid", "trace": trace},
+        )
+
+    def test_compact_schema_and_optional_blocks(self) -> None:
+        payload = serialize_record_for_log(self._record(), verbose=False, redact_query=False)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["session_id"], "s1")
+        self.assertIn("tier3_lane_bias", payload)
+        self.assertIn("model_router", payload)
+        self.assertIn("chat_contract", payload)
+        self.assertIn("engine_input_trace", payload)
+        self.assertNotIn("trace", payload)
+        self.assertNotIn("decision", payload)
+
+    def test_verbose_includes_full_payloads(self) -> None:
+        payload = serialize_record_for_log(self._record(), verbose=True, redact_query=False)
+        self.assertIn("trace", payload)
+        self.assertIn("decision", payload)
+
+    def test_redacted_query(self) -> None:
+        payload = serialize_record_for_log(self._record(), verbose=False, redact_query=True)
+        self.assertTrue(str(payload["query"]).startswith("[redacted sha256:"))
+        self.assertNotEqual(payload["query"], "who is john?")
+
+
+class RoutingDebugEnvFlagsTests(unittest.TestCase):
+    @patch.dict(os.environ, {}, clear=True)
+    def test_flags_default_off(self) -> None:
+        self.assertFalse(routing_debug_log_enabled())
+        self.assertFalse(routing_debug_log_verbose())
+        self.assertFalse(routing_debug_log_redact_query())
+
+    @patch.dict(
+        os.environ,
+        {
+            "QUBE_ROUTING_DEBUG_LOG": "1",
+            "QUBE_ROUTING_DEBUG_LOG_VERBOSE": "true",
+            "QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY": "yes",
+        },
+        clear=True,
+    )
+    def test_flags_parse_on_values(self) -> None:
+        self.assertTrue(routing_debug_log_enabled())
+        self.assertTrue(routing_debug_log_verbose())
+        self.assertTrue(routing_debug_log_redact_query())
+
+
+class RoutingDebugSinkTests(unittest.TestCase):
+    def tearDown(self) -> None:
+        detach_routing_debug_file_sink_for_tests()
+        lg = logging.getLogger(ROUTING_DEBUG_LOGGER_NAME)
+        lg.propagate = True
+
+    def test_sink_writes_file(self) -> None:
+        with TemporaryDirectory() as td:
+            path = Path(td) / "routing_debug.log"
+            attach_routing_debug_file_sink(log_path=path, max_bytes=2048, backup_count=1)
+            lg = logging.getLogger(ROUTING_DEBUG_LOGGER_NAME)
+            lg.setLevel(logging.INFO)
+            lg.propagate = False
+            lg.info('{"schema_version":1,"route":"hybrid"}')
+            for h in lg.handlers:
+                try:
+                    h.flush()
+                except Exception:
+                    pass
+            self.assertTrue(path.is_file())
+            text = path.read_text(encoding="utf-8", errors="replace")
+            self.assertIn('"route":"hybrid"', text)
+
+
 class MaxRecordsConstantTests(unittest.TestCase):
     def test_max_records(self) -> None:
         self.assertEqual(MAX_RECORDS, 100)
+
+
+class ModelRouterTraceTests(unittest.TestCase):
+    def test_build_model_router_trace_none_without_engine(self) -> None:
+        self.assertIsNone(build_model_router_trace(None))
+
+    def test_build_model_router_trace_shape(self) -> None:
+        class _Eng:
+            def get_model_reasoning_telemetry(self) -> dict[str, Any]:
+                return {
+                    "router_selected_model": "mistral.gguf",
+                    "router_confidence": 0.87,
+                    "router_task": "coding",
+                    "router_scores": {"mistral.gguf": 2.1, "phi.gguf": 1.0},
+                    "router_reasoning": ["matched_task=coding", "runner_up=phi"],
+                    "model_basename": "mistral.gguf",
+                    "model_name": "mistral",
+                }
+
+        mr = build_model_router_trace(_Eng())
+        assert mr is not None
+        self.assertEqual(mr["selected_model"], "mistral.gguf")
+        self.assertEqual(mr["confidence"], 0.87)
+        self.assertIn("phi.gguf", mr["alternatives"])
+        self.assertTrue(any("coding" in x for x in mr["reasons"]))
+        self.assertIn("signals", mr)
+        self.assertIn("performance", mr)
+
+    def test_backward_compat_no_model_router_until_merged(self) -> None:
+        buf = RoutingDebugBuffer()
+        buf.append(
+            RoutingDebugRecord(
+                timestamp=1.0,
+                session_id=None,
+                turn_id=1,
+                query="q",
+                route="none",
+                route_pre_policy="none",
+                strategy="adaptive_v4",
+                trace_level="full",
+                top_intent=None,
+                top_score=None,
+                summary="s",
+                trace=_base_trace(),
+                decision={"route": "none", "strategy": "adaptive_v4", "trace": _base_trace()},
+            )
+        )
+        self.assertIsNone(buf.merge_model_router_into_latest(None))
+        self.assertNotIn("model_router", buf.snapshot()[-1].trace)
+
+    def test_merge_model_router_into_latest(self) -> None:
+        buf = RoutingDebugBuffer()
+        self.assertIsNone(buf.merge_model_router_into_latest(None))
+        rec0 = RoutingDebugRecord(
+            timestamp=1.0,
+            session_id="s",
+            turn_id=7,
+            query="q",
+            route="chat",
+            route_pre_policy="chat",
+            strategy="adaptive_v4",
+            trace_level="full",
+            top_intent=None,
+            top_score=None,
+            summary="sum",
+            trace={"winning_reason": "x"},
+            decision={},
+        )
+        buf.append(rec0)
+        patch = {
+            "selected_model": "m.gguf",
+            "alternatives": ["a.gguf"],
+            "reasons": ["r1"],
+            "signals": {},
+            "performance": {},
+            "confidence": 0.5,
+        }
+        out = buf.merge_model_router_into_latest(patch)
+        assert out is not None
+        snap = buf.snapshot()
+        self.assertEqual(snap[-1].trace.get("model_router"), patch)
+        self.assertEqual(snap[-1].turn_id, 7)
+
+
+class ChatContractTraceTests(unittest.TestCase):
+    def test_build_chat_contract_trace_none_without_engine(self) -> None:
+        self.assertIsNone(build_chat_contract_trace(None))
+
+    def test_build_chat_contract_trace_shape(self) -> None:
+        class _Eng:
+            def get_model_reasoning_telemetry(self) -> dict[str, Any]:
+                return {
+                    "chat_contract": {
+                        "model": "m.gguf",
+                        "format": "chatml",
+                        "source": "fallback",
+                        "locked": True,
+                    }
+                }
+
+        cc = build_chat_contract_trace(_Eng())
+        assert cc is not None
+        self.assertEqual(cc["format"], "chatml")
+        self.assertEqual(cc["model"], "m.gguf")
+        self.assertTrue(cc["locked"])
+
+    def test_build_chat_contract_trace_includes_template_safety_only(self) -> None:
+        class _Eng:
+            def get_model_reasoning_telemetry(self) -> dict[str, Any]:
+                return {
+                    "chat_contract": {
+                        "template_safety": {"unsafe": True, "reasons": ["contains <|channel|>"]},
+                    }
+                }
+
+        cc = build_chat_contract_trace(_Eng())
+        assert cc is not None
+        self.assertEqual(cc.get("template_safety", {}).get("unsafe"), True)
+
+    def test_merge_chat_contract_into_latest(self) -> None:
+        buf = RoutingDebugBuffer()
+        self.assertIsNone(buf.merge_chat_contract_into_latest(None))
+        rec0 = RoutingDebugRecord(
+            timestamp=1.0,
+            session_id="s",
+            turn_id=3,
+            query="q",
+            route="chat",
+            route_pre_policy="chat",
+            strategy="adaptive_v4",
+            trace_level="full",
+            top_intent=None,
+            top_score=None,
+            summary="sum",
+            trace={"winning_reason": "x"},
+            decision={},
+        )
+        buf.append(rec0)
+        patch = {"model": "x.gguf", "format": "mistral-instruct", "source": "gguf", "locked": True}
+        out = buf.merge_chat_contract_into_latest(patch)
+        assert out is not None
+        snap = buf.snapshot()
+        self.assertEqual(snap[-1].trace.get("chat_contract"), patch)
+        self.assertEqual(snap[-1].turn_id, 3)
+
+    def test_merge_model_router_then_chat_contract_preserves_both(self) -> None:
+        buf = RoutingDebugBuffer()
+        buf.append(
+            RoutingDebugRecord(
+                timestamp=1.0,
+                session_id=None,
+                turn_id=9,
+                query="q",
+                route="none",
+                route_pre_policy="none",
+                strategy="adaptive_v4",
+                trace_level="full",
+                top_intent=None,
+                top_score=None,
+                summary="s",
+                trace=_base_trace(),
+                decision={},
+            )
+        )
+        mr = {
+            "selected_model": "a.gguf",
+            "alternatives": [],
+            "reasons": [],
+            "signals": {},
+            "performance": {},
+            "confidence": 0.1,
+        }
+        cc = {"model": "a.gguf", "format": "chatml", "source": "fallback", "locked": True}
+        buf.merge_model_router_into_latest(mr)
+        buf.merge_chat_contract_into_latest(cc)
+        last = buf.snapshot()[-1].trace
+        self.assertEqual(last.get("model_router"), mr)
+        self.assertEqual(last.get("chat_contract"), cc)
+
+
+class EngineInputTraceRoutingTests(unittest.TestCase):
+    def tearDown(self) -> None:
+        from core.engine_input_trace import EngineInputTracer
+
+        EngineInputTracer._instance = None  # type: ignore[attr-defined]
+
+    @patch.dict(os.environ, {"QUBE_ENGINE_INPUT_TRACE": "0"})
+    def test_build_engine_input_trace_none_when_flag_off(self) -> None:
+        self.assertIsNone(build_engine_input_trace(None))
+
+    @patch.dict(os.environ, {"QUBE_ENGINE_INPUT_TRACE": "1"})
+    def test_build_engine_input_trace_shape(self) -> None:
+        from core.engine_input_trace import EngineInputTrace, EngineInputTracer
+
+        EngineInputTracer().log(
+            EngineInputTrace(
+                model_name="x.gguf",
+                timestamp=42.0,
+                input_mode="completion",
+                messages=[{"role": "user", "content": "hi"}],
+                prompt="formatted",
+                serialized_input="formatted",
+                chat_format="chatml",
+                stop_tokens=["</s>"],
+                source="llama_cpp_completion",
+                capture_notes="prompt_contract_mode=messages",
+            )
+        )
+        d = build_engine_input_trace(object())
+        assert d is not None
+        self.assertEqual(d["source"], "llama_cpp_completion")
+        self.assertEqual(d["serialized_input"], "formatted")
+        self.assertEqual(d["chat_format"], "chatml")
+        self.assertEqual(d["input_mode"], "completion")
+
+    def test_merge_engine_input_into_latest(self) -> None:
+        buf = RoutingDebugBuffer()
+        self.assertIsNone(buf.merge_engine_input_into_latest(None))
+        rec0 = RoutingDebugRecord(
+            timestamp=1.0,
+            session_id="s",
+            turn_id=3,
+            query="q",
+            route="chat",
+            route_pre_policy="chat",
+            strategy="adaptive_v4",
+            trace_level="full",
+            top_intent=None,
+            top_score=None,
+            summary="sum",
+            trace={"winning_reason": "x"},
+            decision={},
+        )
+        buf.append(rec0)
+        patch_ei = {
+            "trace_id": 1,
+            "model_name": "m.gguf",
+            "timestamp": 99.0,
+            "input_mode": "completion",
+            "messages": [],
+            "prompt": "abc",
+            "serialized_input": "abc",
+            "chat_format": "chatml",
+            "stop_tokens": [],
+            "source": "llama_cpp_completion",
+            "capture_notes": None,
+        }
+        out = buf.merge_engine_input_into_latest(patch_ei)
+        assert out is not None
+        snap = buf.snapshot()
+        self.assertEqual(snap[-1].trace.get("engine_input_trace"), patch_ei)
+        self.assertEqual(snap[-1].turn_id, 3)
 
 
 if __name__ == "__main__":

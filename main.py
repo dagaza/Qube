@@ -29,7 +29,7 @@ from workers.internet_worker import InternetWorker
 
 import logging
 
-from core.logging_bootstrap import init_llm_debug_logging
+from core.logging_bootstrap import init_llm_debug_logging, init_routing_debug_logging
 from core.boot_args import parse_boot_args
 
 # --- QUBE TERMINAL LOGGER SETUP ---
@@ -41,6 +41,8 @@ logging.basicConfig(
 
 # LLM introspection (Qube.NativeLLM.Debug) -> logs/llm_debug.log only; not the terminal
 init_llm_debug_logging()
+# Routing explainability (Qube.RoutingDebug) -> logs/routing_debug.log only; not the terminal
+init_routing_debug_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
@@ -225,8 +227,8 @@ class Qube:
             session_id,
             len(text or ""),
         )
-        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.on_llm_response_finished(session_id)
+        if hasattr(self, "window") and hasattr(self.window, "conversations_view"):
+            self.window.conversations_view.on_llm_response_finished(session_id, text or "")
         if hasattr(self, 'enrichment_worker'):
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx.get("session_id") == session_id:

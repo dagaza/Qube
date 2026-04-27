@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import os
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from core.engine_input_trace import (
+    EngineInputTracer,
+    engine_input_trace_enabled,
+    engine_input_trace_to_public_dict,
+)
 from mcp.cognitive_router import AMBIGUITY_MARGIN, MIN_CONFIDENCE_FLOOR
 
 MAX_RECORDS: int = 100
+ROUTING_DEBUG_SCHEMA_VERSION: int = 1
 
 
 @dataclass
@@ -29,6 +37,106 @@ class RoutingDebugRecord:
     summary: str
     trace: dict[str, Any]
     decision: dict[str, Any] = field(repr=False)
+
+
+def routing_debug_log_enabled() -> bool:
+    return str(os.getenv("QUBE_ROUTING_DEBUG_LOG", "0")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def routing_debug_log_verbose() -> bool:
+    return str(os.getenv("QUBE_ROUTING_DEBUG_LOG_VERBOSE", "0")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def routing_debug_log_redact_query() -> bool:
+    return str(os.getenv("QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY", "0")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _safe_list(v: Any) -> list[Any]:
+    return v if isinstance(v, list) else []
+
+
+def _safe_dict(v: Any) -> dict[str, Any]:
+    return v if isinstance(v, dict) else {}
+
+
+def _redact_query(query: str) -> str:
+    q = str(query or "")
+    digest = hashlib.sha256(q.encode("utf-8", errors="replace")).hexdigest()[:12]
+    return f"[redacted sha256:{digest}]"
+
+
+def serialize_record_for_log(
+    record: RoutingDebugRecord,
+    *,
+    verbose: bool = False,
+    redact_query: bool = False,
+) -> dict[str, Any]:
+    """
+    Stable JSONL payload for persisted routing-debug telemetry.
+    """
+    trace = _safe_dict(record.trace)
+    confidence = _safe_dict(trace.get("confidence"))
+    tier3 = _safe_dict(trace.get("tier3"))
+    lane_bias = _safe_dict(tier3.get("lane_bias"))
+    tier56 = _safe_dict(trace.get("tier5_6"))
+    query = _redact_query(record.query) if redact_query else record.query
+
+    payload: dict[str, Any] = {
+        "schema_version": ROUTING_DEBUG_SCHEMA_VERSION,
+        "ts": float(record.timestamp),
+        "session_id": record.session_id,
+        "turn_id": record.turn_id,
+        "query": query,
+        "route": record.route,
+        "route_pre_policy": record.route_pre_policy,
+        "strategy": record.strategy,
+        "trace_level": record.trace_level,
+        "top_intent": record.top_intent,
+        "top_score": record.top_score,
+        "summary": record.summary,
+        "tier2_active": bool(confidence.get("tier2_active", False)),
+        "tier3_band_active": bool(tier3.get("band_active", False)),
+        "tier3_lane_bias": {
+            "memory": float(lane_bias.get("memory") or 0.0),
+            "rag": float(lane_bias.get("rag") or 0.0),
+            "web": float(lane_bias.get("web") or 0.0),
+        },
+        "tier5_policy": tier56.get("policy"),
+        "tier5_reason": tier56.get("policy_reason"),
+        "tier6_conflicts": _safe_list(tier56.get("conflicts")),
+        "tier6_interpretation": tier56.get("interpretation"),
+    }
+
+    model_router = trace.get("model_router")
+    if isinstance(model_router, dict):
+        payload["model_router"] = copy.deepcopy(model_router)
+    chat_contract = trace.get("chat_contract")
+    if isinstance(chat_contract, dict):
+        payload["chat_contract"] = copy.deepcopy(chat_contract)
+    engine_input = trace.get("engine_input_trace")
+    if isinstance(engine_input, dict):
+        payload["engine_input_trace"] = copy.deepcopy(engine_input)
+
+    if verbose:
+        payload["trace"] = copy.deepcopy(record.trace)
+        payload["decision"] = copy.deepcopy(record.decision)
+
+    return payload
 
 
 class RoutingDebugBuffer:
@@ -55,6 +163,96 @@ class RoutingDebugBuffer:
         with self._lock:
             self._deque.clear()
 
+    def merge_model_router_into_latest(
+        self, model_router: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach optional trace['model_router'] to the newest record (post-native inference)."""
+        if not model_router:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_trace = dict(last.trace)
+            new_trace["model_router"] = copy.deepcopy(model_router)
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=last.route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=last.decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
+    def merge_chat_contract_into_latest(
+        self, chat_contract: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach optional trace['chat_contract'] to the newest record (post-native inference)."""
+        if not chat_contract:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_trace = dict(last.trace)
+            new_trace["chat_contract"] = copy.deepcopy(chat_contract)
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=last.route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=last.decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
+    def merge_engine_input_into_latest(
+        self, engine_input: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach optional trace['engine_input_trace'] to the newest record (post-native inference)."""
+        if not engine_input:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_trace = dict(last.trace)
+            new_trace["engine_input_trace"] = copy.deepcopy(engine_input)
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=last.route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=last.decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
 
 def _coerce_float(v: Any) -> Optional[float]:
     if v is None:
@@ -80,6 +278,130 @@ def _infer_second_retrieval_intent(trace: dict[str, Any], top_intent: str) -> st
         if ln != top_intent:
             return ln
     return "runner-up"
+
+
+def build_model_router_trace(native_engine: Any) -> Optional[dict[str, Any]]:
+    """
+    Read-only snapshot for routing debug UI (optional trace['model_router']).
+
+    Returns None when native engine is unavailable or no router decision was recorded.
+    """
+    if native_engine is None or not hasattr(native_engine, "get_model_reasoning_telemetry"):
+        return None
+    try:
+        tel = native_engine.get_model_reasoning_telemetry() or {}
+    except Exception:
+        return None
+    selected = tel.get("router_selected_model")
+    if selected is None or not str(selected).strip():
+        return None
+    selected_str = str(selected).strip()
+    conf = _coerce_float(tel.get("router_confidence"))
+    if conf is None:
+        conf = 0.0
+    conf = max(0.0, min(1.0, float(conf)))
+
+    scores_raw = tel.get("router_scores") or {}
+    scores: dict[str, float] = {}
+    if isinstance(scores_raw, dict):
+        for k, v in scores_raw.items():
+            fv = _coerce_float(v)
+            if fv is not None:
+                scores[str(k)] = fv
+
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    alternatives: list[str] = []
+    for name, _sc in ranked:
+        if name == selected_str:
+            continue
+        alternatives.append(name)
+        if len(alternatives) >= 5:
+            break
+
+    reasons: list[str] = []
+    rr = tel.get("router_reasoning")
+    if isinstance(rr, list):
+        reasons.extend(str(x) for x in rr if str(x).strip())
+    elif rr is not None:
+        reasons.append(str(rr))
+    task = tel.get("router_task")
+    if task and not any(str(task) in x for x in reasons):
+        reasons.insert(0, f"matched_task={task}")
+
+    loaded_bn = str(tel.get("model_basename") or "").strip()
+    model_name = str(tel.get("model_name") or "").strip()
+    signals: dict[str, Any] = {
+        "router_task": tel.get("router_task"),
+        "router_scores": dict(scores),
+        "model_basename": loaded_bn or None,
+        "model_name": model_name or None,
+        "selected_aligned_with_loaded": bool(loaded_bn and selected_str == loaded_bn),
+    }
+
+    performance: dict[str, Any] = {}
+    try:
+        from core.model_performance_store import ModelPerformanceStore
+
+        store = ModelPerformanceStore()
+        perf = store.get(selected_str)
+        if perf is None and model_name:
+            perf = store.get(model_name)
+        if perf is None and loaded_bn:
+            perf = store.get(loaded_bn)
+        if perf is not None:
+            performance = {
+                "quality": round(float(perf.avg_response_quality), 4),
+                "failure_rate": round(float(perf.structural_failure_rate), 4),
+                "latency_ms": round(float(perf.avg_latency) * 1000.0, 2),
+                "total_requests": int(perf.total_requests),
+            }
+    except Exception:
+        pass
+
+    return {
+        "selected_model": selected_str,
+        "alternatives": alternatives,
+        "reasons": reasons,
+        "signals": signals,
+        "performance": performance,
+        "confidence": round(float(conf), 4),
+    }
+
+
+def build_chat_contract_trace(native_engine: Any) -> Optional[dict[str, Any]]:
+    """
+    Read-only snapshot for routing debug UI (optional trace['chat_contract']).
+    """
+    if native_engine is None or not hasattr(native_engine, "get_model_reasoning_telemetry"):
+        return None
+    try:
+        tel = native_engine.get_model_reasoning_telemetry() or {}
+    except Exception:
+        return None
+    blob = tel.get("chat_contract")
+    if not isinstance(blob, dict):
+        return None
+    has_lock = bool(str(blob.get("format") or "").strip() or str(blob.get("model") or "").strip())
+    has_safety = isinstance(blob.get("template_safety"), dict)
+    if not has_lock and not has_safety:
+        return None
+    return copy.deepcopy(blob)
+
+
+def build_engine_input_trace(native_engine: Any) -> Optional[dict[str, Any]]:
+    """
+    Read-only snapshot for routing debug UI (optional trace['engine_input_trace']).
+
+    ``native_engine`` is reserved for future correlation; the last trace is read from
+    ``EngineInputTracer`` when ``QUBE_ENGINE_INPUT_TRACE`` is enabled.
+    """
+    _ = native_engine
+    if not engine_input_trace_enabled():
+        return None
+    last = EngineInputTracer().get_last()
+    if last is None:
+        return None
+    return copy.deepcopy(engine_input_trace_to_public_dict(last))
 
 
 def synthesize_trace_stub(decision: dict[str, Any]) -> dict[str, Any]:
