@@ -2655,7 +2655,9 @@ class ConversationsView(QWidget):
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
 
-    def on_llm_response_finished(self, session_id: str) -> None:
+    def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
+        from core.output_artifact_strip import strip_harmony_oss_artifacts
+
         sid = str(session_id or "")
         if sid:
             self._pending_stream_tokens_by_session.pop(sid, None)
@@ -2663,6 +2665,16 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
+        if final_text:
+            cleaned = strip_harmony_oss_artifacts(final_text)
+            cur = getattr(self, "current_agent_msg", None)
+            if cleaned and cur is None:
+                self.log_agent_token(cleaned)
+            elif cleaned:
+                # The finished worker text is the sanitized source of truth.
+                # Replace the active bubble instead of appending/reconciling around leaked prefix text.
+                self._agent_text_buffer = cleaned
+                self._schedule_coalesced_agent_markdown()
         self._flush_agent_markdown_coalesce_immediate()
         self._hide_agent_typing_row()
         self._llm_in_progress = False

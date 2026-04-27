@@ -29,7 +29,8 @@ from workers.internet_worker import InternetWorker
 
 import logging
 
-from core.logging_bootstrap import init_llm_debug_logging
+from core.logging_bootstrap import init_llm_debug_logging, init_routing_debug_logging
+from core.boot_args import parse_boot_args
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -40,13 +41,15 @@ logging.basicConfig(
 
 # LLM introspection (Qube.NativeLLM.Debug) -> logs/llm_debug.log only; not the terminal
 init_llm_debug_logging()
+# Routing explainability (Qube.RoutingDebug) -> logs/routing_debug.log only; not the terminal
+init_routing_debug_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
 logger.info("Terminal logging initialized. Booting sequence started.")
 
 class Qube:
-    def __init__(self):
+    def __init__(self, enable_routing_debug_tool: bool = False):
         # -- 1. Shared services ------------------------------------------
         self.embedder = EmbeddingModel()
         self.store    = DocumentStore()
@@ -111,6 +114,7 @@ class Qube:
             workers=workers,
             gpu_monitor=self.gpu_monitor,
             native_engine=self.native_llama_engine,
+            enable_routing_debug_tool=enable_routing_debug_tool,
         )
 
         # -- 6. Wire signals ---------------------------------------------
@@ -202,6 +206,9 @@ class Qube:
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
+        if hasattr(self.llm_worker, 'routing_debug_record_added') and hasattr(w, 'routing_debug_tool_view'):
+            if w.routing_debug_tool_view is not None:
+                self.llm_worker.routing_debug_record_added.connect(w.routing_debug_tool_view.add_record)
 
     def _on_enrichment_context_ready(self, payload: dict) -> None:
         """Cache the turn-scoped enrichment context emitted by LLMWorker.
@@ -220,8 +227,8 @@ class Qube:
             session_id,
             len(text or ""),
         )
-        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.on_llm_response_finished(session_id)
+        if hasattr(self, "window") and hasattr(self.window, "conversations_view"):
+            self.window.conversations_view.on_llm_response_finished(session_id, text or "")
         if hasattr(self, 'enrichment_worker'):
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx.get("session_id") == session_id:
@@ -531,6 +538,7 @@ class Qube:
 
 
 if __name__ == "__main__":
+    args = parse_boot_args()
     # Optional: The Windows Taskbar App ID fix we discussed
     if sys.platform == "win32":
         import ctypes
@@ -594,7 +602,7 @@ if __name__ == "__main__":
         logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
 
     # 4. Boot the Qube Assistant
-    qube = Qube()
+    qube = Qube(enable_routing_debug_tool=bool(args.routing_debug))
     qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
     app.aboutToQuit.connect(qube._graceful_shutdown)
     qube.show()

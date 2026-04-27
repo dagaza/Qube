@@ -12,8 +12,11 @@ from __future__ import annotations
 import re
 
 # If the buffer matches this, we may be in a meta preface — wait for a natural break or cap.
+# Some GGUFs wrap the command in quotes/markdown, so tolerate light decoration before the phrase.
+_LEADING_DECORATION = r"[\s\"'`*_~]*"
 _META_LEAD = re.compile(
-    r"(?is)^\s*(?:"
+    r"(?is)^" + _LEADING_DECORATION + r"(?:"
+    r"provide\s+final\s+answer\b|"
     r"provide\s+(?:a|an|the)?\s*(?:concise\s+|clear\s+|brief\s+|direct\s+)?(?:answer|explanation|response|summary|overview)\b|"
     r"provide\s+(?:a|an|the)?\s+direct\b|"
     r"we\s+(?:should|need\s+to|must|will)\s+|"
@@ -25,9 +28,14 @@ _META_LEAD = re.compile(
     r")"
 )
 
+# File-search / planning line: "[The user refers to ...]." (not [1] citations).
+_USER_REF_LINE = re.compile(r"(?is)^\s*\[The user[^\]]{0,500}\]\s*\.?\s*")
+
 # Applied at most once to the leading buffered segment.
 _STRIP_ONCE = re.compile(
-    r"(?is)^\s*(?:"
+    r"(?is)^" + _LEADING_DECORATION + r"(?:"
+    r"provide\s+final\s+answer\b\s*[.!?:\-–—]*[\s\"'`*_~]*"
+    r"|"
     r"provide\s+(?:a|an|the)?\s*(?:concise\s+|clear\s+|brief\s+|direct\s+)?(?:answer|explanation|response|summary|overview)\b"
     r"[^.!?\n]{0,220}[.!?:\-–—]?\s*"
     r"|provide\s+(?:a|an|the)?\s+direct\b[^.!?\n]{0,120}[.!?:\-–—]?\s*"
@@ -41,7 +49,16 @@ _STRIP_ONCE = re.compile(
 )
 
 # Meta phrases we target almost always start with these letters (English).
-_RISKY_FIRST = frozenset("pPwWlLtThHiI")
+# '[' covers "[The user ...]" and similar bracketed openers; quote/markdown chars
+# cover models that wrap meta commands as display text.
+_RISKY_FIRST = frozenset("pPwWlLtThHiI[\"'`*_~")
+_PARTIAL_META_PREFIXES = (
+    "provide final answer",
+    "provide brief explanation",
+    "provide brief answer",
+    "provide concise answer",
+    "provide concise explanation",
+)
 
 
 class LeadingMetaInstructionStripper:
@@ -65,7 +82,8 @@ class LeadingMetaInstructionStripper:
         if self._done:
             return ""
         self._done = True
-        out = _STRIP_ONCE.sub("", self._buf, count=1)
+        b = _USER_REF_LINE.sub("", self._buf, count=1)
+        out = _STRIP_ONCE.sub("", b, count=1)
         self._buf = ""
         return out
 
@@ -77,6 +95,17 @@ class LeadingMetaInstructionStripper:
         t = b.lstrip()
         if not t:
             return ""
+
+        # Bracketed "[The user ...]" preface: strip once the closing ] is available.
+        if t.startswith("["):
+            m = _USER_REF_LINE.match(b)
+            if m and "]" in b:
+                rest = b[m.end() :]
+                self._buf = rest
+                self._done = True
+                if not (rest or "").strip():
+                    return ""
+                return _STRIP_ONCE.sub("", rest, count=1)
 
         # Fast path: common answer starters — never our meta patterns
         if t[0] not in _RISKY_FIRST and len(b) >= 1:
@@ -92,6 +121,9 @@ class LeadingMetaInstructionStripper:
                 out = _STRIP_ONCE.sub("", b, count=1)
                 self._buf = ""
                 return out
+            return ""
+
+        if _could_be_partial_meta_prefix(t):
             return ""
 
         # Risky first letter but not (yet) a meta lead — release after a short horizon
@@ -113,3 +145,10 @@ def _natural_break(s: str) -> bool:
     if "\n\n" in s:
         return True
     return bool(re.search(r".{12,}[.!?](?:\s+|[\r\n])", s))
+
+
+def _could_be_partial_meta_prefix(text: str) -> bool:
+    candidate = re.sub(r"\s+", " ", text.lstrip("\"'`*_~ \t\r\n").lower()).strip()
+    if not candidate:
+        return True
+    return any(prefix.startswith(candidate) for prefix in _PARTIAL_META_PREFIXES)

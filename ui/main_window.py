@@ -94,7 +94,13 @@ class MainWindow(QMainWindow):
     All distinct screens are hosted within the QStackedWidget (Main Stage).
     """
 
-    def __init__(self, workers: dict, gpu_monitor, native_engine=None):
+    def __init__(
+        self,
+        workers: dict,
+        gpu_monitor,
+        native_engine=None,
+        enable_routing_debug_tool: bool = False,
+    ):
         super().__init__()
         self._project_root = Path(__file__).resolve().parent.parent
         # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
@@ -119,6 +125,9 @@ class MainWindow(QMainWindow):
         self._llm_worker   = workers.get("llm")
         self._gpu_monitor  = gpu_monitor
         self._native_engine = native_engine
+        self._enable_routing_debug_tool = bool(enable_routing_debug_tool)
+        self.routing_debug_tool_view = None
+        self._force_app_exit = False
         self._pending_native_model_path: str | None = None
         self._native_model_loading: bool = False
         self._native_model_loaded_success: bool = False
@@ -226,7 +235,7 @@ class MainWindow(QMainWindow):
         self.main_stage.addWidget(self.memory_manager_view)  # Index 2
         self.main_stage.addWidget(self.telemetry_view)       # Index 3
         self.main_stage.addWidget(self.model_manager_view)   # Index 4
-        self.main_stage.addWidget(self.settings_view)          # Index 5
+        self.main_stage.addWidget(self.settings_view)        # Index 5
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
         
@@ -302,6 +311,22 @@ class MainWindow(QMainWindow):
                 self.refresh_toolbar_native_model_dropdown
             )
         QTimer.singleShot(0, self.refresh_toolbar_native_model_dropdown)
+        if self._enable_routing_debug_tool:
+            self._setup_routing_debug_tool_window()
+
+    def _setup_routing_debug_tool_window(self) -> None:
+        from ui.views.routing_debug_view import RoutingDebugView
+
+        self.routing_debug_tool_view = RoutingDebugView(
+            self.workers,
+            self._gpu_monitor,
+            native_engine=self._native_engine,
+            parent=self,
+        )
+        self.routing_debug_tool_view.setWindowFlag(Qt.WindowType.Window, True)
+        self.routing_debug_tool_view.setWindowTitle("Qube - Routing Debug")
+        self.routing_debug_tool_view.resize(1200, 800)
+        self.routing_debug_tool_view.show()
 
     def _sync_toolbar_auto_load_model_toggle(self, checked: bool) -> None:
         t = self.toolbar_auto_load_model_toggle
@@ -479,8 +504,9 @@ class MainWindow(QMainWindow):
         def create_nav_btn(icon_name, index=None, size=24):
             btn = QPushButton()
             # Initial color is a muted gray; _route_view handles the active blue
-            btn.setIcon(qta.icon(icon_name, color='#64748b')) 
+            btn.setIcon(qta.icon(icon_name, color='#64748b'))
             btn.setIconSize(QSize(size, size))
+            btn.setFixedSize(44, 44)
             btn.setCheckable(True)
             btn.setProperty("class", "NavButton")
             if index is not None:
@@ -510,7 +536,8 @@ class MainWindow(QMainWindow):
         self.nav_theme.setProperty("class", "NavButton")
         self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
         self.nav_theme.setIconSize(QSize(20, 20))
-        self.nav_theme.clicked.connect(self._toggle_theme) 
+        self.nav_theme.setFixedSize(44, 44)
+        self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -1440,7 +1467,7 @@ class MainWindow(QMainWindow):
         show_action = QAction("Open Workspace", self)
         show_action.triggered.connect(self._restore_workspace_from_tray)
         quit_action = QAction("Exit Qube", self)
-        quit_action.triggered.connect(QApplication.quit)
+        quit_action.triggered.connect(self._request_app_exit)
 
         tray_menu.addAction(show_action)
         tray_menu.addSeparator()
@@ -1448,6 +1475,12 @@ class MainWindow(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.activated.connect(self._on_tray_icon_activated)
         self.tray_icon.show()
+
+    def _request_app_exit(self) -> None:
+        """Force a real app exit instead of hide-to-tray."""
+        self._force_app_exit = True
+        self.tray_icon.hide()
+        self.close()
 
     def _start_timers(self) -> None:
         # Repurposed telemetry timer for the new Mini-Telemetry block
@@ -1501,10 +1534,12 @@ class MainWindow(QMainWindow):
             self._toggle_maximize()
 
     def closeEvent(self, event):
-        if self.tray_icon.isVisible():
+        if self.tray_icon.isVisible() and not self._force_app_exit:
             self.hide()
             event.ignore() 
         else:
+            if self.routing_debug_tool_view is not None:
+                self.routing_debug_tool_view.close()
             event.accept()
 
     # ------------------------------------------------------------------ #

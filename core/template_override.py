@@ -49,4 +49,21 @@ def detect_template_override(model_name: str, tokenizer_info: dict[str, Any]) ->
             enforce_assistant_anchor=True,
         )
 
+    # OpenAI gpt-oss / Harmony: EOS is <|return|>. Do not add <|end|> as a stop here — it can
+    # appear between internal sections and would truncate the completion mid-turn until we
+    # support multi-segment streaming.
+    if "gpt-oss" in name or ("gpt" in name and "oss" in name):
+        return TemplateOverride(
+            template_type="oss_harmony",
+            force_prefix="",
+            extra_stops=[
+                "<|return|>",
+                "\nWe need to",
+                " We need to",
+                "\nWe should",
+                " We should",
+            ],
+            enforce_assistant_anchor=False,
+        )
+
     return None

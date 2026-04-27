@@ -57,6 +57,43 @@ QToolTip {
     border-left: 1px solid #e2e8f0; 
 }
 
+/* Detached routing debug tool surface */
+#RoutingDebugWindow {
+    background-color: #f1f5f9;
+}
+#RoutingDebugSurface {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+}
+#RoutingDebugLeftPane,
+#RoutingDebugDetailPane {
+    background-color: transparent;
+}
+#RoutingDebugRightScroll,
+#RoutingDebugViewport {
+    background-color: transparent;
+    border: none;
+}
+#RoutingDebugWindow QLabel,
+#RoutingDebugWindow QCheckBox,
+#RoutingDebugWindow QGroupBox {
+    color: #1e293b;
+}
+#RoutingDebugWindow #ViewTitle,
+#RoutingDebugWindow QLabel[class~="PageTitle"] {
+    color: #89b4fa;
+}
+#RoutingDebugWindow QComboBoxPrivateContainer {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+#RoutingDebugSplitter::handle {
+    background-color: #e2e8f0;
+    width: 1px;
+}
+
 #LibraryPreviewStage, #ChatStage, #SettingsScrollArea {
     background-color: #ffffff;
 }
@@ -209,7 +246,6 @@ QPushButton[class~="BrandDangerButton"]:disabled {
 }
 .NavButton:checked {
     background-color: #e2e8f0;
-    font-weight: bold;
 }
 
 /* --- 5. LISTS --- */

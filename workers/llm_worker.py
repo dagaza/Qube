@@ -1,4 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal
+import dataclasses
 import requests
 import json
 import time
@@ -23,6 +24,7 @@ from core.app_settings import (
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
 from core.stream_repetition_guard import StreamRepetitionGuard
+from core.output_artifact_strip import strip_harmony_oss_artifacts
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
@@ -45,11 +47,23 @@ from mcp.memory_tool import memory_search
 from workers.intent_router import EmbeddingCache
 
 from mcp.cognitive_router import CognitiveRouterV4
+from mcp.routing_debug import (
+    RoutingDebugBuffer,
+    build_chat_contract_trace,
+    build_engine_input_trace,
+    build_model_router_trace,
+    build_record,
+    routing_debug_log_enabled,
+    routing_debug_log_redact_query,
+    routing_debug_log_verbose,
+    serialize_record_for_log,
+)
 from mcp.router_telemetry import RouterTelemetryBrain
 from mcp.router_self_tuner import AdaptiveRouterSelfTunerV2
 from mcp.router_lane_stats import RouteFeedbackEvent
 
 logger = logging.getLogger("Qube.LLM")
+routing_persist_logger = logging.getLogger("Qube.RoutingDebug")
 
 
 class LLMWorker(QThread):
@@ -61,6 +75,7 @@ class LLMWorker(QThread):
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
+    routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
     # Phase B: turn-scoped enrichment context (session_id + rag chunk ids + message ids).
     # Emitted once per completed turn, before response_finished, so main.py can
     # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
@@ -107,6 +122,9 @@ class LLMWorker(QThread):
         self.cognitive_router = CognitiveRouterV4()
         self.telemetry = RouterTelemetryBrain()
         self.router_tuner = AdaptiveRouterSelfTunerV2()
+        self.routing_debug_buffer = RoutingDebugBuffer()
+        self._routing_debug_turn_seq = 0
+        self._last_persisted_routing_turn_id: int | None = None
 
         self.USE_COGNITIVE_ROUTER = True
         self.USE_ADAPTIVE_ROUTER = True
@@ -660,6 +678,7 @@ class LLMWorker(QThread):
                 self.enrichment_context_ready.emit(enrichment_payload)
             except Exception:
                 logger.exception("[LLM] failed to emit enrichment context")
+            final_text_out = strip_harmony_oss_artifacts(final_text_out or "")
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -900,6 +919,20 @@ class LLMWorker(QThread):
         route_start = time.time()
 
         logger.info(f"[Router] route={execution_route}")
+
+        try:
+            self._routing_debug_turn_seq += 1
+            record = build_record(
+                query=self.prompt,
+                decision=decision,
+                session_id=self.session_id,
+                turn_id=self._routing_debug_turn_seq,
+                effective_route=execution_route.lower(),
+            )
+            self.routing_debug_buffer.append(record)
+            self.routing_debug_record_added.emit(dataclasses.asdict(record))
+        except Exception as e:
+            logger.warning("[RoutingDebug] failed to record turn: %s", e)
 
         # ============================================================
         # 2. TOOL EXECUTION
@@ -1246,7 +1279,7 @@ class LLMWorker(QThread):
         # ============================================================
         system_prompt = (
             "You are Qube, a highly capable offline AI assistant. "
-            "Be concise and accurate."
+            "Answer naturally and accurately."
         )
 
         if explicit_remember_active:
@@ -1278,7 +1311,7 @@ class LLMWorker(QThread):
                 )
                 system_prompt = (
                     "You are Qube, a highly capable offline AI assistant. "
-                    "Be concise and accurate."
+                    "Answer naturally and accurately."
                 )
                 system_prompt += NO_SOURCES_SYSTEM_SUFFIX
             else:
@@ -1310,7 +1343,7 @@ class LLMWorker(QThread):
                 "Do not state that you are offline or cannot browse the internet. "
                 "CRITICAL: Respond directly to the user in a natural, conversational tone. "
                 "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
-                "Output ONLY your final answer. "
+                "Write only the user-facing response. "
                 "Cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
                 "no URL in parentheses after [W], and no backticks around [W]. "
                 "Use [W] at most once at the end of each sentence that relies on the web results, "
@@ -1322,20 +1355,19 @@ class LLMWorker(QThread):
         if getattr(self, "engine_mode", "external") == "internal":
             if self._is_internal_nvidia_family():
                 system_prompt += (
-                    " Respond directly with the final answer and avoid meta preambles. "
-                    "Perform any reasoning internally and do not expose chain-of-thought. "
+                    " Start directly with the answer content in natural language. "
+                    "Do not narrate instructions, planning notes, request analysis, or hidden reasoning. "
+                    "Write only what the user should see. "
                     "Prioritize clarity and completeness. "
                     "Use short answers for simple questions, but give fuller explanations when the user asks to explain, compare, or summarize."
                 )
             else:
                 system_prompt += (
-                    " Respond directly with the final answer, starting immediately with the answer content. "
-                    "Do not include any preamble, planning, or meta commentary. "
+                    " Start directly with the answer content in natural language. "
+                    "Do not include preamble, planning, or meta commentary. "
                     "Do not restate or analyze the user's request. "
-                    "Do not include phrases such as \"Provide an answer\", \"We need to\", \"We should\", "
-                    "\"Step 1\", or similar instructional language. "
-                    "Perform any reasoning internally and only output the final result. "
-                    "Keep the response natural, concise, and focused."
+                    "Write only what the user should see. "
+                    "Keep the response natural and focused."
                 )
 
         messages = [{"role": "system", "content": system_prompt}] + history
@@ -1445,6 +1477,9 @@ class LLMWorker(QThread):
                     except json.JSONDecodeError:
                         continue
 
+            if final_text:
+                final_text = strip_harmony_oss_artifacts(final_text)
+
             if current_sentence.strip():
                 clean = self.clean_text_for_tts(current_sentence)
                 if clean:
@@ -1473,6 +1508,7 @@ class LLMWorker(QThread):
         finally:
             self._close_active_stream()
 
+        self._persist_latest_routing_debug_record()
         return final_text
 
     def _max_tokens_native_completion(self) -> int:
@@ -1484,7 +1520,12 @@ class LLMWorker(QThread):
         return min(4096, max(256, ctx // 2))
 
     def _stream_via_native(self, messages: list[dict], all_ui_sources: list) -> str:
-        """Stream tokens from NativeLlamaEngine (llama-cpp-python) on a dedicated thread."""
+        """Stream native output after a small leading-meta/thinking gate.
+
+        The first few chunks may contain "Provide final answer" / thinking tags; filters may
+        briefly buffer those openers, but once real answer text starts, UI and TTS both stream
+        the same cleaned fragments normally.
+        """
         token_queue: queue.Queue = queue.Queue()
         done_event = threading.Event()
         self._native_engine.enqueue_generation(
@@ -1495,45 +1536,50 @@ class LLMWorker(QThread):
             done_event,
         )
 
-        policy = self._native_engine.get_execution_policy()
-        strip_thinking = policy.strip_thinking_output
-        show_thinking = not strip_thinking
         cot_filter = RedactedThinkingStreamFilter()
-        meta_disp = LeadingMetaInstructionStripper()
-        meta_tts = LeadingMetaInstructionStripper()
+        meta_filter = LeadingMetaInstructionStripper()
         repetition_guard = StreamRepetitionGuard()
         current_sentence = ""
         final_text = ""
+        raw_parts: list[str] = []
+        native_end_text = ""
         start = time.time()
         first_token = False
         stream_wall_start = time.time()
 
-        def _emit_filtered(display_fragment: str, tts_fragment: str) -> None:
+        def _sanitize_complete_native_text(raw_text: str) -> str:
+            if not raw_text:
+                return ""
+            complete_cot = RedactedThinkingStreamFilter()
+            complete_meta = LeadingMetaInstructionStripper()
+            cleaned = complete_cot.feed(raw_text)
+            cleaned += complete_cot.flush()
+            cleaned = complete_meta.feed(cleaned) + complete_meta.flush()
+            return strip_harmony_oss_artifacts(cleaned).strip()
+
+        def _emit_filtered(fragment: str) -> None:
             nonlocal current_sentence, final_text, first_token
-            if not display_fragment and not tts_fragment:
+            if not fragment:
                 return
-            if display_fragment and not first_token:
+            fragment = strip_harmony_oss_artifacts(fragment)
+            if not fragment:
+                return
+            if not first_token:
                 self.ttft_latency.emit((time.time() - start) * 1000)
                 first_token = True
-            current_sentence += tts_fragment
-            final_text += display_fragment
-            if display_fragment:
-                self.token_streamed.emit(self.session_id or "", display_fragment)
-            if tts_fragment and any(p in tts_fragment for p in ".!?"):
-                clean = self.clean_text_for_tts(current_sentence)
-                if clean:
-                    if not bool(getattr(self, "_cancel_requested", False)):
-                        self.sentence_ready.emit(clean, self.session_id)
+            final_text += fragment
+            self.token_streamed.emit(self.session_id or "", fragment)
+            current_sentence += fragment
+            if any(p in fragment for p in ".!?"):
+                spoken = self.clean_text_for_tts(current_sentence)
+                if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                    self.sentence_ready.emit(spoken, self.session_id)
                 current_sentence = ""
 
         def _flush_tail() -> None:
-            cot_tail = cot_filter.flush()
-            if show_thinking:
-                _emit_filtered(meta_disp.flush(), meta_tts.feed(cot_tail))
-                _emit_filtered("", meta_tts.flush())
-            else:
-                _emit_filtered(meta_disp.feed(cot_tail), meta_tts.feed(cot_tail))
-                _emit_filtered(meta_disp.flush(), meta_tts.flush())
+            tail = cot_filter.flush()
+            tail = meta_filter.feed(tail) + meta_filter.flush()
+            _emit_filtered(tail)
 
         saw_end = False
         while True:
@@ -1552,15 +1598,11 @@ class LLMWorker(QThread):
 
             if kind == "delta":
                 raw = data
-                if show_thinking:
-                    disp = meta_disp.feed(raw)
-                    tts_piece = meta_tts.feed(cot_filter.feed(raw))
-                else:
-                    stripped = cot_filter.feed(raw)
-                    disp = meta_disp.feed(stripped)
-                    tts_piece = meta_tts.feed(stripped)
-                _emit_filtered(disp, tts_piece)
-                if disp and repetition_guard.observe(disp):
+                raw_text = str(raw or "")
+                raw_parts.append(raw_text)
+                clean_piece = meta_filter.feed(cot_filter.feed(raw_text))
+                _emit_filtered(clean_piece)
+                if clean_piece and repetition_guard.observe(clean_piece):
                     logger.error(
                         "[LLM] Native stream degeneration detected (%s); cancelling.",
                         repetition_guard.trip_reason,
@@ -1581,6 +1623,7 @@ class LLMWorker(QThread):
                     if spoken:
                         self.sentence_ready.emit(spoken, self.session_id)
             elif kind == "end":
+                native_end_text = str(data or "")
                 _flush_tail()
                 saw_end = True
                 break
@@ -1589,10 +1632,33 @@ class LLMWorker(QThread):
             _flush_tail()
 
         if current_sentence.strip():
-            clean = self.clean_text_for_tts(current_sentence)
-            if clean:
-                if not bool(getattr(self, "_cancel_requested", False)):
-                    self.sentence_ready.emit(clean, self.session_id)
+            spoken = self.clean_text_for_tts(current_sentence)
+            if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                self.sentence_ready.emit(spoken, self.session_id)
+            current_sentence = ""
+
+        emitted_text = strip_harmony_oss_artifacts(final_text).strip()
+        raw_complete_text = native_end_text or "".join(raw_parts)
+        authoritative_text = (
+            _sanitize_complete_native_text(raw_complete_text)
+            if raw_complete_text
+            else emitted_text
+        )
+        if authoritative_text and authoritative_text != emitted_text:
+            if emitted_text and authoritative_text.startswith(emitted_text):
+                _emit_filtered(authoritative_text[len(emitted_text) :])
+            elif not emitted_text or not emitted_text.strip():
+                _emit_filtered(authoritative_text)
+            else:
+                # The UI will reconcile the bubble on response_finished; emitting here prevents
+                # "spoken but never printed" when native deltas only carried a meta preface.
+                _emit_filtered("\n" + authoritative_text)
+        if current_sentence.strip():
+            spoken = self.clean_text_for_tts(current_sentence)
+            if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                self.sentence_ready.emit(spoken, self.session_id)
+            current_sentence = ""
+        final_text = authoritative_text or emitted_text
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
@@ -1600,6 +1666,23 @@ class LLMWorker(QThread):
                 self.session_id, "assistant", final_text, sources_json=src_payload
             )
             self._record_memory_citations(final_text, all_ui_sources)
+
+        try:
+            mr_trace = build_model_router_trace(self._native_engine)
+            updated = self.routing_debug_buffer.merge_model_router_into_latest(mr_trace)
+            cc_trace = build_chat_contract_trace(self._native_engine)
+            updated_cc = self.routing_debug_buffer.merge_chat_contract_into_latest(cc_trace)
+            ei_trace = build_engine_input_trace(self._native_engine)
+            updated_ei = self.routing_debug_buffer.merge_engine_input_into_latest(ei_trace)
+            merged = updated_ei or updated_cc or updated
+            if merged is not None:
+                self.routing_debug_record_added.emit(dataclasses.asdict(merged))
+                self._persist_routing_debug_record(merged)
+            else:
+                self._persist_latest_routing_debug_record()
+        except Exception as e:
+            logger.debug("[RoutingDebug] native post-trace merge failed: %s", e)
+            self._persist_latest_routing_debug_record()
 
         self._successfully_finished = True
         return final_text
@@ -1650,6 +1733,39 @@ class LLMWorker(QThread):
             except Exception:
                 pass
             self._active_stream_response = None
+
+    def _persist_routing_debug_record(self, record) -> None:
+        """
+        Persist one compact JSONL routing-debug event (single final write per turn).
+        Never raises.
+        """
+        if record is None:
+            return
+        if not routing_debug_log_enabled():
+            return
+        turn_id = getattr(record, "turn_id", None)
+        if turn_id is not None and self._last_persisted_routing_turn_id == turn_id:
+            return
+        try:
+            payload = serialize_record_for_log(
+                record,
+                verbose=routing_debug_log_verbose(),
+                redact_query=routing_debug_log_redact_query(),
+            )
+            routing_persist_logger.info(
+                json.dumps(payload, ensure_ascii=False, default=str)
+            )
+            if turn_id is not None:
+                self._last_persisted_routing_turn_id = int(turn_id)
+        except Exception as e:
+            logger.debug("[RoutingDebug] file persist failed: %s", e)
+
+    def _persist_latest_routing_debug_record(self) -> None:
+        try:
+            latest = self.routing_debug_buffer.latest()
+        except Exception:
+            latest = None
+        self._persist_routing_debug_record(latest)
 
     def cancel_generation(self):
         """Best-effort cancel: unblocks streaming reads; run() still finishes via finally."""

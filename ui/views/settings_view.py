@@ -87,19 +87,27 @@ class SettingsView(QWidget):
         self.audio_worker = workers.get("audio")
         self.tts_worker = workers.get("tts")
         self.llm_worker = workers.get("llm")
+        self._template_override_reload_pending = False
+        self._auto_reset_reload_pending = False
 
         self._setup_ui()
         self.engine_mode_changed.connect(self._sync_ai_provider_enabled_for_inference)
+        self.engine_mode_changed.connect(lambda _mode: self._sync_native_chat_template_label())
+        native_engine = self.workers.get("native_engine")
+        if native_engine is not None and hasattr(native_engine, "load_finished"):
+            native_engine.load_finished.connect(self._on_native_model_load_finished)
         self._populate_hardware_selectors()
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._sync_models_dir_label()
         self._sync_active_native_model_label()
+        self._sync_native_chat_template_label()
         self._refresh_local_gguf_list()
         self._wakeword_testbed_dialog = None
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_active_native_model_label()
+        self._sync_native_chat_template_label()
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
@@ -324,7 +332,7 @@ class SettingsView(QWidget):
         self.native_chat_format_selector.setMaximumWidth(350)
         self.native_chat_format_selector.setMenu(QMenu(self.native_chat_format_selector))
         self.native_chat_format_selector.setToolTip("The specific conversational format this AI model was trained on. If the native engine is hallucinating or talking to itself, changing this to match the model's family (e.g., Llama 3, ChatML) usually fixes it.")
-        _chat_format_items = [
+        self._native_chat_format_items = [
             ("Auto (GGUF / library default)", "auto"),
             ("GGUF Jinja (tokenizer.chat_template)", "jinja"),
             ("ChatML", "chatml"),
@@ -334,12 +342,23 @@ class SettingsView(QWidget):
         ]
         self._build_prestige_menu(
             self.native_chat_format_selector,
-            _chat_format_items,
+            self._native_chat_format_items,
             self._on_native_chat_format_changed,
         )
-        _fmt = get_internal_native_chat_format()
-        _fmt_label = next((label for label, data in _chat_format_items if data == _fmt), _chat_format_items[0][0])
-        self.native_chat_format_selector.setText(_fmt_label)
+        self.native_chat_format_reset_btn = QPushButton("Reset")
+        self.native_chat_format_reset_btn.setToolTip(
+            "Reset to automatic template selection for the currently loaded model."
+        )
+        self.native_chat_format_reset_btn.clicked.connect(
+            self._on_reset_native_chat_format_clicked
+        )
+        chat_template_row = QWidget()
+        chat_template_row_layout = QHBoxLayout(chat_template_row)
+        chat_template_row_layout.setContentsMargins(0, 0, 0, 0)
+        chat_template_row_layout.setSpacing(8)
+        chat_template_row_layout.addWidget(self.native_chat_format_selector, stretch=1)
+        chat_template_row_layout.addWidget(self.native_chat_format_reset_btn)
+        self._sync_native_chat_template_label()
 
         self.models_dir_label = QLabel()
         self.models_dir_label.setWordWrap(True)
@@ -367,7 +386,7 @@ class SettingsView(QWidget):
 
         native_form.addRow("GPU offload layers", gpu_layers_row)
         native_form.addRow("CPU thread pool", cpu_threads_row)
-        native_form.addRow("Chat template (internal)", self.native_chat_format_selector)
+        native_form.addRow("Chat template (internal)", chat_template_row)
         native_form.addRow("Model storage", self.models_dir_label)
         native_form.addRow("On this device", local_row)
         native_form.addRow("Active model", self.active_native_model_lbl)
@@ -700,8 +719,95 @@ class SettingsView(QWidget):
     def _on_native_chat_format_changed(self, mode: str) -> None:
         if mode is not None:
             set_internal_native_chat_format(str(mode))
+        self._sync_native_chat_template_label()
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", "external") == "internal":
+            self._template_override_reload_pending = (
+                str(mode or "").strip().lower() != "auto"
+            )
+            llm.refresh_native_model_from_settings()
+
+    def _on_native_model_load_finished(self, ok: bool, _message: str) -> None:
+        _ = ok
+        if self._template_override_reload_pending:
+            # Completion belongs to a user-requested manual template override reload.
+            self._template_override_reload_pending = False
+            self._sync_active_native_model_label()
+            self._sync_native_chat_template_label()
+            return
+
+        if self._auto_reset_reload_pending:
+            # Completion belongs to reset->reload sequence.
+            self._auto_reset_reload_pending = False
+            self._sync_active_native_model_label()
+            self._sync_native_chat_template_label()
+            return
+
+        if get_internal_native_chat_format() != "auto":
+            # Any normal model load clears persistent forcing and returns to auto template selection.
+            set_internal_native_chat_format("auto")
+            llm = self.workers.get("llm")
+            mw = self.window()
+            ne = getattr(mw, "_native_engine", None) if mw else self.workers.get("native_engine")
+            snap = ne.get_model_reasoning_telemetry() if ne else None
+            loaded = bool((snap or {}).get("loaded"))
+            if llm and getattr(llm, "engine_mode", "external") == "internal" and loaded:
+                self._auto_reset_reload_pending = True
+                llm.refresh_native_model_from_settings()
+        self._sync_active_native_model_label()
+        self._sync_native_chat_template_label()
+
+    def _saved_native_chat_format_label(self, mode: str) -> str:
+        items = getattr(self, "_native_chat_format_items", None) or []
+        if not items:
+            return "Auto (GGUF / library default)"
+        return next((label for label, data in items if data == mode), items[0][0])
+
+    def _effective_chat_format_label(self, chat_format: str | None) -> str:
+        cf = str(chat_format or "").strip().lower()
+        mapping = {
+            "chat_template.default": "GGUF Jinja (tokenizer.chat_template)",
+            "chatml": "ChatML",
+            "llama-3": "Llama 3 Instruct",
+            "mistral-instruct": "Mistral / Mixtral Instruct",
+            "llama-2": "Llama 2 Chat",
+        }
+        return mapping.get(cf, str(chat_format or "").strip())
+
+    def _sync_native_chat_template_label(self) -> None:
+        if not hasattr(self, "native_chat_format_selector"):
+            return
+        preferred_mode = get_internal_native_chat_format()
+        preferred_label = self._saved_native_chat_format_label(preferred_mode)
+
+        mode = get_engine_mode()
+        mw = self.window()
+        ne = getattr(mw, "_native_engine", None) if mw else self.workers.get("native_engine")
+        snap = ne.get_model_reasoning_telemetry() if ne else None
+        loaded = bool((snap or {}).get("loaded"))
+        active_cf = (
+            ((snap or {}).get("chat_contract") or {}).get("effective_chat_format")
+            or (snap or {}).get("prompt_contract_chat_format")
+            or ""
+        )
+        active_label = self._effective_chat_format_label(active_cf)
+
+        if mode == "internal" and loaded and active_label:
+            self.native_chat_format_selector.setText(f"{preferred_label} (active: {active_label})")
+        else:
+            self.native_chat_format_selector.setText(preferred_label)
+        if hasattr(self, "native_chat_format_reset_btn"):
+            self.native_chat_format_reset_btn.setEnabled(preferred_mode != "auto")
+
+    def _on_reset_native_chat_format_clicked(self) -> None:
+        if get_internal_native_chat_format() == "auto":
+            self._sync_native_chat_template_label()
+            return
+        set_internal_native_chat_format("auto")
+        self._sync_native_chat_template_label()
+        llm = self.workers.get("llm")
+        if llm and getattr(llm, "engine_mode", "external") == "internal":
+            self._auto_reset_reload_pending = True
             llm.refresh_native_model_from_settings()
 
     def _on_native_gpu_layers_changed(self, v: int) -> None:
