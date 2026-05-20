@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from PyQt6.QtGui import QShowEvent
 
 from core.audio_utils import get_input_devices, get_output_devices
+from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.network import is_port_open
 from core.app_settings import (
     get_enable_memory_enrichment,
@@ -823,12 +824,15 @@ class SettingsView(QWidget):
         root = Path(get_llm_models_dir())
         if not root.is_dir():
             return
-        for p in sorted(root.glob("*.gguf")):
-            if is_secondary_gguf_shard(str(p)):
-                continue
+        for p in sorted(
+            (fp for fp in root.glob("*.gguf") if not is_secondary_gguf_shard(str(fp))),
+            key=local_gguf_sort_key,
+        ):
             resolved_primary = str(p.resolve())
             shard_paths: list[str] = [resolved_primary]
-            display_name = p.name
+            display_name = format_local_gguf_display(
+                str(p), models_dir=root
+            ).menu_label
             shard_info = parse_gguf_shard_info(str(p))
             if shard_info is not None:
                 expected = expected_gguf_shard_filenames(str(p))
@@ -839,9 +843,6 @@ class SettingsView(QWidget):
                         found_paths.append(str(part.resolve()))
                 if found_paths:
                     shard_paths = found_paths
-                total = int(shard_info.get("total", len(shard_paths)))
-                bundle_name = f"{Path(str(shard_info['prefix'])).name}.gguf"
-                display_name = f"{bundle_name} ({len(shard_paths)}/{total} shards)"
             item = QListWidgetItem(display_name)
             item.setData(Qt.ItemDataRole.UserRole, resolved_primary)
             item.setData(LOCAL_GGUF_SHARD_PATHS_ROLE, shard_paths)

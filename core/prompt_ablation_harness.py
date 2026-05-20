@@ -9,6 +9,7 @@ from __future__ import annotations
 import itertools
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -300,6 +301,8 @@ def _stream_completion_text(
     max_tokens: int,
     temperature: float,
     seed: int,
+    completion_timeout_sec: float | None = None,
+    stop_event: Any = None,
 ) -> str:
     """Accumulate streaming create_completion (prompt-string path; isolated from chat handler)."""
     kwargs: Dict[str, Any] = {
@@ -318,11 +321,24 @@ def _stream_completion_text(
     except TypeError:
         stream = llama.create_completion(**kwargs)
     parts: List[str] = []
+    t0 = time.monotonic()
     for chunk in stream:
+        if stop_event is not None and getattr(stop_event, "is_set", lambda: False)():
+            logger.warning("[LLM-ABLATION] completion cancelled (stop requested)")
+            break
+        if completion_timeout_sec is not None and (time.monotonic() - t0) > completion_timeout_sec:
+            logger.warning(
+                "[LLM-ABLATION] completion timed out after %.1fs",
+                completion_timeout_sec,
+            )
+            break
         ch = chunk.get("choices", [{}])[0]
         txt = ch.get("text") or ""
         if txt:
             parts.append(txt)
+        finish = ch.get("finish_reason")
+        if finish in ("stop", "length"):
+            break
     return "".join(parts)
 
 
@@ -344,6 +360,8 @@ def run_ablation_test(
     temperature: float = 0.7,
     seed: int = 42,
     model_name: Optional[str] = None,
+    completion_timeout_sec: float | None = None,
+    stop_event: Any = None,
 ) -> AblationReport:
     """
     Run each scenario once via ``llama.create_completion`` on the constructed prompt string.
@@ -362,6 +380,9 @@ def run_ablation_test(
     }
 
     for sc in scenarios:
+        if stop_event is not None and getattr(stop_event, "is_set", lambda: False)():
+            logger.warning("[LLM-ABLATION] aborted before scenario=%s (stop requested)", sc.name)
+            break
         bundle = _build_bundle_for_scenario(
             sc,
             llama,
@@ -379,6 +400,8 @@ def run_ablation_test(
             max_tokens=max_tokens,
             temperature=temperature,
             seed=seed,
+            completion_timeout_sec=completion_timeout_sec,
+            stop_event=stop_event,
         )
         ft, f20 = _first_token_and_20(text)
         h_rt, h_we, h_lets, h_meta, leakage = _analyze_leakage(text)

@@ -76,11 +76,11 @@
       "gguf_repo": "unsloth/Qwen3.6-27B-GGUF"
     },
     {
-      "id": "glm-4.7-flash-uncensored",
-      "title": "GLM 4.7 Flash Uncensored",
-      "description": "Uncensored fine-tune of GLM 4.7 Flash. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
+      "id": "glm-4.7-flash",
+      "title": "GLM 4.7 Flash",
+      "description": "GLM 4.7 Flash (community GGUF).",
       "publisher": "zai-org",
-      "gguf_repo": "DavidAU/GLM-4.7-Flash-Uncensored-Heretic-NEO-CODE-Imatrix-MAX-GGUF"
+      "gguf_repo": "unsloth/GLM-4.7-Flash-GGUF"
     },
     {
       "id": "gemma-4-31b-it",

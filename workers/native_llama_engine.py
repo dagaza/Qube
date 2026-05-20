@@ -20,6 +20,19 @@ from PyQt6.QtCore import QThread, pyqtSignal
 logger = logging.getLogger("Qube.NativeLLM")
 _debug_logger = logging.getLogger("Qube.NativeLLM.Debug")
 
+
+class _StopEventUnion:
+    """True when any wrapped threading.Event is set (for ablation cancel)."""
+
+    __slots__ = ("_events",)
+
+    def __init__(self, *events: threading.Event) -> None:
+        self._events = events
+
+    def is_set(self) -> bool:
+        return any(e.is_set() for e in self._events)
+
+
 try:
     from llama_cpp import Llama
 except ImportError:  # pragma: no cover
@@ -96,7 +109,7 @@ from core.model_reasoning_profile import (
     detect_model_reasoning_profile,
 )
 from core.model_override_store import get_override
-from core.prompt_ablation_harness import run_ablation_test
+from core.prompt_ablation_harness import SCENARIO_BASELINE, run_ablation_test
 from core.prompt_integrity_validator import (
     compute_parity_score,
     load_lm_studio_reference_from_env,
@@ -132,6 +145,7 @@ class NativeLlamaEngine(QThread):
         super().__init__()
         self._cmd_queue: queue.Queue = queue.Queue()
         self._stop = threading.Event()
+        self._cancel_behavior_profile = threading.Event()
         self._llama: Any = None
         self._model_path: Optional[str] = None
         self._n_gpu_layers: int = 0
@@ -173,6 +187,16 @@ class NativeLlamaEngine(QThread):
 
     def request_cancel_generation(self) -> None:
         self._cancel_generation = True
+
+    def _purge_pending_profile_ops(self) -> None:
+        """Drop queued behavior profiling so user-facing generate is not blocked."""
+        try:
+            with self._cmd_queue.mutex:
+                self._cmd_queue.queue = queue.deque(
+                    c for c in self._cmd_queue.queue if c.get("op") != "profile_behavior"
+                )
+        except Exception:
+            pass
 
     def get_execution_policy(self) -> ExecutionPolicy:
         """
@@ -291,7 +315,9 @@ class NativeLlamaEngine(QThread):
         try:
             with self._cmd_queue.mutex:
                 self._cmd_queue.queue = queue.deque(
-                    c for c in self._cmd_queue.queue if c.get("op") != "load"
+                    c
+                    for c in self._cmd_queue.queue
+                    if c.get("op") not in ("load", "profile_behavior")
                 )
         except Exception:
             pass
@@ -316,6 +342,8 @@ class NativeLlamaEngine(QThread):
         token_queue: queue.Queue,
         done_event: threading.Event,
     ) -> None:
+        self._cancel_behavior_profile.set()
+        self._purge_pending_profile_ops()
         self._cmd_queue.put(
             {
                 "op": "generate",
@@ -336,6 +364,7 @@ class NativeLlamaEngine(QThread):
         done_event: threading.Event,
     ) -> None:
         """Non-streaming completion for LLMWorker.generate() helpers (same thread as other ops)."""
+        self._purge_pending_profile_ops()
         self._cmd_queue.put(
             {
                 "op": "chat_once",
@@ -366,6 +395,8 @@ class NativeLlamaEngine(QThread):
                 self._do_load(cmd)
             elif op == "unload":
                 self._do_unload()
+            elif op == "profile_behavior":
+                self._do_profile_behavior()
             elif op == "generate":
                 self._do_generate(cmd)
             elif op == "chat_once":
@@ -433,56 +464,6 @@ class NativeLlamaEngine(QThread):
                 )
             pol = self.get_execution_policy()
             _debug_logger.info("[LLM-DEBUG] execution_policy=%s", pol)
-
-            self._model_behavior_profile = None
-            self._model_behavior_override = None
-            self._behavior_override_material = False
-            if self._llama is not None:
-                try:
-                    mname = (
-                        self._model_reasoning_profile.model_name
-                        if self._model_reasoning_profile
-                        else ""
-                    ) or os.path.basename(path)
-                    if get_override(mname) is not None:
-                        _debug_logger.info(
-                            "[LLM-SELF-HEAL] skip ablation — persisted override for model=%s",
-                            mname,
-                        )
-                        ablation = None
-                    else:
-                        ablation = run_ablation_test(
-                            self._llama,
-                            messages=[{"role": "user", "content": "Hello"}],
-                            model_profile=self._model_reasoning_profile,
-                            execution_policy=pol,
-                            max_tokens=32,
-                            temperature=0.0,
-                            seed=42,
-                            model_name=mname,
-                        )
-                    behavior_profile = classify_model_behavior(
-                        ablation_report=ablation,
-                        ground_truth_trace=None,
-                        causality_report=None,
-                        model_name=mname,
-                    )
-                    override = resolve_behavior_override(behavior_profile)
-                    self._model_behavior_profile = behavior_profile
-                    self._model_behavior_override = override
-                    self._behavior_override_material = override_materially_changes_policy(
-                        pol, override
-                    )
-                    _debug_logger.info(
-                        behavior_profile_log_event(
-                            model=mname,
-                            profile=behavior_profile,
-                            override=override,
-                            override_active=self._behavior_override_material,
-                        )
-                    )
-                except Exception as e:
-                    logger.debug("[Native] model behavior profiling skipped: %s", e)
 
             self.execution_policy = self.get_execution_policy()
             try:
@@ -559,6 +540,9 @@ class NativeLlamaEngine(QThread):
                 logger.debug("[ModelRouter] upsert_profile_from_loaded_model failed: %s", e)
             self.load_finished.emit(True, os.path.basename(path))
             self.status_update.emit(f"Native model ready: {os.path.basename(path)}")
+            # Behavior profiling runs on a separate queued op so chat/generate is not
+            # blocked behind load-time ablation (Gemma 4 can hang in diagnostic completions).
+            self._cmd_queue.put({"op": "profile_behavior"})
         except Exception as e:
             logger.exception("[Native] Load failed: %s", e)
             self._llama = None
@@ -573,6 +557,70 @@ class NativeLlamaEngine(QThread):
             self._chat_contract = None
             self.load_finished.emit(False, str(e))
             self.status_update.emit("Native engine load failed")
+
+    def _do_profile_behavior(self) -> None:
+        """Load-time model behavior profiling (ablation); must not run inside _do_load."""
+        if self._llama is None:
+            return
+        if self._cancel_behavior_profile.is_set():
+            return
+        path = self._model_path or ""
+        pol = self.get_execution_policy()
+        stop_union = _StopEventUnion(self._stop, self._cancel_behavior_profile)
+        self._model_behavior_profile = None
+        self._model_behavior_override = None
+        self._behavior_override_material = False
+        try:
+            mname = (
+                self._model_reasoning_profile.model_name
+                if self._model_reasoning_profile
+                else ""
+            ) or os.path.basename(path)
+            if get_override(mname) is not None:
+                _debug_logger.info(
+                    "[LLM-SELF-HEAL] skip ablation — persisted override for model=%s",
+                    mname,
+                )
+                ablation = None
+            else:
+                ablation = run_ablation_test(
+                    self._llama,
+                    messages=[{"role": "user", "content": "Hello"}],
+                    model_profile=self._model_reasoning_profile,
+                    execution_policy=pol,
+                    scenarios=(SCENARIO_BASELINE,),
+                    max_tokens=32,
+                    temperature=0.0,
+                    seed=42,
+                    model_name=mname,
+                    completion_timeout_sec=90.0,
+                    stop_event=stop_union,
+                )
+            behavior_profile = classify_model_behavior(
+                ablation_report=ablation,
+                ground_truth_trace=None,
+                causality_report=None,
+                model_name=mname,
+            )
+            override = resolve_behavior_override(behavior_profile)
+            self._model_behavior_profile = behavior_profile
+            self._model_behavior_override = override
+            self._behavior_override_material = override_materially_changes_policy(
+                pol, override
+            )
+            _debug_logger.info(
+                behavior_profile_log_event(
+                    model=mname,
+                    profile=behavior_profile,
+                    override=override,
+                    override_active=self._behavior_override_material,
+                )
+            )
+            self.execution_policy = self.get_execution_policy()
+        except Exception as e:
+            logger.debug("[Native] model behavior profiling skipped: %s", e)
+        finally:
+            self._cancel_behavior_profile.clear()
 
     def _do_unload(self) -> None:
         self._chat_contract = None
@@ -1086,7 +1134,9 @@ class NativeLlamaEngine(QThread):
             return
 
         self._cancel_generation = False
+        self._cancel_behavior_profile.clear()
         started_at = time.perf_counter()
+        stream_t0 = time.monotonic()
         final_text = ""
         live_trace: Optional[LiveStreamTokenTrace] = None
         gt_capture_ids: list[int] = []
@@ -1146,6 +1196,9 @@ class NativeLlamaEngine(QThread):
                 for chunk in stream:
                     if self._cancel_generation:
                         break
+                    if (time.monotonic() - stream_t0) > 600.0:
+                        logger.warning("[Native] generate stream wall timeout (600s)")
+                        break
                     try:
                         ch0 = chunk.get("choices", [{}])[0]
                         delta = ch0.get("text") or ""
@@ -1158,6 +1211,8 @@ class NativeLlamaEngine(QThread):
                     if delta:
                         final_text += delta
                         token_queue.put(("delta", delta))
+                    if finish_reason in ("stop", "length"):
+                        break
 
             if token_trace_enabled() and gt_capture_ids:
                 self._gt_token_ids = list(gt_capture_ids)

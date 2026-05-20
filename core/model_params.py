@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
+
+
+_PARAMS_B_IN_NAME_RE = re.compile(
+    r"(?:^|[-_.])(\d+(?:\.\d+)?)[Bb](?:[-_.]|$)",
+)
 
 
 def parse_params_b_from_label(label: str) -> float | None:
@@ -12,6 +18,27 @@ def parse_params_b_from_label(label: str) -> float | None:
     if not s or s == "UNKNOWN":
         return None
     m = re.match(r"^(\d+(?:\.\d+)?)B$", s)
+    if m:
+        return float(m.group(1))
+    return None
+
+
+def parse_params_b_from_filename(name: str) -> float | None:
+    """Best-effort parameter count (billions) from a local .gguf filename."""
+    from core.app_settings import parse_gguf_shard_info
+
+    basename = Path(str(name or "")).name
+    stem = basename[:-5] if basename.lower().endswith(".gguf") else basename
+
+    shard = parse_gguf_shard_info(basename)
+    if shard is not None:
+        stem = str(shard.get("prefix") or stem)
+
+    matches = [float(m) for m in _PARAMS_B_IN_NAME_RE.findall(stem)]
+    if matches:
+        return max(matches)
+
+    m = re.search(r"\b(\d+(?:\.\d+)?)[Bb]\b", stem)
     if m:
         return float(m.group(1))
     return None

@@ -37,6 +37,7 @@ from core.app_settings import (
     set_auto_load_last_model_on_startup,
     set_internal_model_path,
 )
+from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.qube_tooltip import qube_tooltip_set_theme
 import logging
 
@@ -1037,6 +1038,7 @@ class MainWindow(QMainWindow):
                 self._set_native_model_progress_loading(False)
                 btn.setEnabled(False)
                 btn.setText("Managed by External Server")
+                btn.setToolTip("")
                 self._apply_native_model_selector_text_state(False)
                 btn.setMenu(None)
                 return
@@ -1046,7 +1048,7 @@ class MainWindow(QMainWindow):
             try:
                 ggufs = sorted(
                     (p for p in models_dir.glob("*.gguf") if not is_secondary_gguf_shard(str(p))),
-                    key=lambda p: p.name.lower(),
+                    key=local_gguf_sort_key,
                 )
             except OSError:
                 ggufs = []
@@ -1062,11 +1064,16 @@ class MainWindow(QMainWindow):
                 self._native_model_loaded_success = False
                 self._set_native_model_progress_loading(False)
                 btn.setText("Select AI Model")
+                btn.setToolTip("")
                 self._apply_native_model_selector_text_state(False)
                 btn.setMenu(None)
                 return
 
-            list_cap = max(100, self.tools_content.width() - 48)
+            def _elide_button_label(path: str) -> str:
+                display = format_local_gguf_display(path, models_dir=models_dir)
+                return fm.elidedText(
+                    display.button_label, Qt.TextElideMode.ElideMiddle, cap_btn
+                )
 
             def on_pick(path: str) -> None:
                 path = resolve_internal_model_path(path)
@@ -1080,23 +1087,38 @@ class MainWindow(QMainWindow):
                     self._native_model_loaded_success = False
                     self._set_native_model_progress_loading(True)
                     self._apply_native_model_selector_text_state(False)
+                    pick_display = format_local_gguf_display(path, models_dir=models_dir)
                     btn.setText(
-                        fm.elidedText(Path(path).name, Qt.TextElideMode.ElideMiddle, cap_btn)
+                        fm.elidedText(
+                            pick_display.button_label,
+                            Qt.TextElideMode.ElideMiddle,
+                            cap_btn,
+                        )
                     )
+                    btn.setToolTip(pick_display.tooltip)
                     self._llm_worker.refresh_native_model_from_settings()
                 # Keep optimistic label; final state is resolved by load_finished.
 
             items = []
             for p in ggufs:
                 abs_p = str(p.resolve())
-                disp = fm.elidedText(p.name, Qt.TextElideMode.ElideMiddle, list_cap)
-                items.append((disp, abs_p))
+                display = format_local_gguf_display(str(p), models_dir=models_dir)
+                items.append((display.menu_label, abs_p))
 
-            self._build_prestige_menu(btn, items, on_pick)
+            self._build_prestige_menu(
+                btn,
+                items,
+                on_pick,
+                menu_width="fit_content",
+                min_menu_width=280,
+            )
 
             if self._native_model_loading and self._pending_native_model_path:
-                pending_name = Path(self._pending_native_model_path).name
-                btn.setText(fm.elidedText(pending_name, Qt.TextElideMode.ElideMiddle, cap_btn))
+                btn.setText(_elide_button_label(self._pending_native_model_path))
+                pending_display = format_local_gguf_display(
+                    self._pending_native_model_path, models_dir=models_dir
+                )
+                btn.setToolTip(pending_display.tooltip)
                 self._apply_native_model_selector_text_state(False)
                 return
 
@@ -1108,12 +1130,21 @@ class MainWindow(QMainWindow):
                 matched = next((p for p in ggufs if p.name == loaded_name), None)
 
             if loaded and matched is not None:
-                btn.setText(
-                    fm.elidedText(matched.name, Qt.TextElideMode.ElideMiddle, cap_btn)
+                loaded_display = format_local_gguf_display(
+                    str(matched), models_dir=models_dir
                 )
+                btn.setText(
+                    fm.elidedText(
+                        loaded_display.button_label,
+                        Qt.TextElideMode.ElideMiddle,
+                        cap_btn,
+                    )
+                )
+                btn.setToolTip(loaded_display.tooltip)
                 self._apply_native_model_selector_text_state(self._native_model_loaded_success)
             else:
                 btn.setText(fm.elidedText("Select AI Model", Qt.TextElideMode.ElideMiddle, cap_btn))
+                btn.setToolTip("")
                 self._apply_native_model_selector_text_state(False)
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
@@ -1191,10 +1222,20 @@ class MainWindow(QMainWindow):
         self.refresh_toolbar_native_model_dropdown()
 
     # --- PRESTIGE MENU LOGIC ---
-    def _build_prestige_menu(self, button, items, callback):
+    def _build_prestige_menu(
+        self,
+        button,
+        items,
+        callback,
+        *,
+        menu_width: str = "match_button",
+        min_menu_width: int = 220,
+    ):
         """Builds a palette-forced QMenu with a dynamic, scrollable list."""
         from PyQt6.QtWidgets import QMenu, QWidgetAction, QListWidget, QListWidgetItem
         from PyQt6.QtCore import Qt
+
+        fit_content = menu_width == "fit_content"
 
         menu = QMenu(button)
         menu.setObjectName("PrestigeMenu")
@@ -1227,6 +1268,15 @@ class MainWindow(QMainWindow):
         # --- BUG 1 FIX: Just-In-Time Sizing ---
         # This recalculates the exact width a millisecond before the popup opens.
         def sync_dropdown_width():
+            if fit_content:
+                content_w = list_widget.sizeHintForColumn(0) + 40
+                cap = 480
+                if main_win:
+                    cap = min(480, int(main_win.width() * 0.45))
+                w = min(cap, max(button.width() - 8, content_w, min_menu_width))
+                list_widget.setFixedWidth(w)
+                return
+
             # button.width() gets the actual drawn size.
             # We subtract 8px to account for the 4px CSS padding on each side of the QMenu.
             w = button.width() - 8
