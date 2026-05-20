@@ -17,10 +17,14 @@ from core.app_settings import (
     get_internal_model_path,
     get_internal_n_gpu_layers,
     get_internal_n_threads,
+    get_internal_prompt_layout_override,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
 )
+from core.prompt_blocks import build_prompt_blocks
+from core.prompt_renderers import render_messages
+from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
 from core.stream_repetition_guard import StreamRepetitionGuard
@@ -32,12 +36,6 @@ from core.memory_filters import (
     detect_narrative_intent,
     is_assistant_failure_message,
     is_thin_content,
-    RECALL_FUSION_SYSTEM_SUFFIX,
-    FILE_SEARCH_SYSTEM_SUFFIX,
-    NARRATIVE_RECALL_SYSTEM_SUFFIX,
-    CITATION_DISCIPLINE_SUFFIX,
-    GROUNDED_ANSWER_SYSTEM_SUFFIX,
-    NO_SOURCES_SYSTEM_SUFFIX,
 )
 from core.memory_usage_recorder import get_memory_usage_recorder
 
@@ -171,6 +169,34 @@ class LLMWorker(QThread):
             return ("nemotron" in ident) or ("nvidia" in ident)
         except Exception:
             return False
+
+    def _resolve_turn_prompt_layout(self) -> PromptLayoutResolution:
+        """
+        Resolved layout for this turn (PR1: observability only; messages unchanged).
+        Internal engine uses load-time resolution from native telemetry when available.
+        """
+        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+            try:
+                snap = self._native_engine.get_model_reasoning_telemetry() or {}
+                layout = snap.get("prompt_layout")
+                source = snap.get("prompt_layout_source")
+                if layout and source:
+                    return PromptLayoutResolution(
+                        layout=layout,  # type: ignore[arg-type]
+                        source=str(source),
+                        degraded=bool(snap.get("prompt_layout_degraded")),
+                        evidence=str(snap.get("prompt_layout_evidence") or "")[:240],
+                    )
+            except Exception:
+                pass
+        path = resolve_internal_model_path(get_internal_model_path() or "")
+        basename = os.path.basename(path) if path else ""
+        return resolve_prompt_layout(
+            model_id=basename,
+            model_display_name=basename,
+            model_path=path,
+            settings_override=get_internal_prompt_layout_override(),
+        )
 
     def _flush_server_kv_hint(self) -> None:
         """
@@ -1277,114 +1303,43 @@ class LLMWorker(QThread):
         # ============================================================
         # 3. PROMPT BUILD
         # ============================================================
-        system_prompt = (
-            "You are Qube, a highly capable offline AI assistant. "
-            "Answer naturally and accurately."
+        pl_res = self._resolve_turn_prompt_layout()
+        logger.info(
+            "[PromptLayout] turn layout=%s source=%s degraded=%s route=%s",
+            pl_res.layout,
+            pl_res.source,
+            pl_res.degraded,
+            execution_route,
         )
 
-        if explicit_remember_active:
-            # Write-intent turn: acknowledge briefly, don't retrieve, don't cite.
-            quoted_fact = (explicit_remember_body or "").strip()
-            system_prompt = (
-                "You are Qube. The user has just asked you to remember a fact for future reference. "
-                "Acknowledge briefly — one short sentence — that you've made a note of it, "
-                "and optionally paraphrase the fact naturally. "
-                "Do NOT use bracket tokens like [1], [2], or [W]. "
-                "Do NOT cite sources. "
-                "Do NOT say you cannot remember things; Qube persists long-term memories automatically."
-            )
-            if quoted_fact:
-                system_prompt += f" The fact to acknowledge is: \"{quoted_fact}\"."
-        elif execution_route in ["RAG", "HYBRID", "MEMORY"]:
-            # v6.1: if retrieval ran but nothing survived filtering
-            # (proper-noun gate, semantic floor, soft L2 gate, empty
-            # tables) we flip into the "no sources" mode. Without this,
-            # the normal "you MUST cite your sources" instruction below
-            # pushes a small LLM into fabricating a plausible-sounding
-            # answer and inventing a citation (see: the "Dr. Evelyn
-            # Vogel" confabulation against a Cornelia memory).
-            if not all_ui_sources:
-                logger.info(
-                    "[LLM Worker] No sources survived retrieval filtering; "
-                    "switching to NO_SOURCES system prompt (route=%s).",
-                    execution_route,
-                )
-                system_prompt = (
-                    "You are Qube, a highly capable offline AI assistant. "
-                    "Answer naturally and accurately."
-                )
-                system_prompt += NO_SOURCES_SYSTEM_SUFFIX
-            else:
-                system_prompt += (
-                    " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
-                    "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
-                    "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
-                )
-                system_prompt += RECALL_FUSION_SYSTEM_SUFFIX
-                system_prompt += CITATION_DISCIPLINE_SUFFIX
-                system_prompt += GROUNDED_ANSWER_SYSTEM_SUFFIX
-                # File-search turns get an extra steering block so the model
-                # answers strictly from numbered document sources (and says
-                # so plainly when nothing matches) — never from stored
-                # memories that happen to surface.
-                if file_search_active:
-                    system_prompt += FILE_SEARCH_SYSTEM_SUFFIX
-                # T3.2: narrative / recap turns prefer the EPISODE-labelled
-                # memory sources over atomic facts. memory_tool tags those
-                # sources inline so the LLM can see the [EPISODE] label.
-                if narrative_active:
-                    system_prompt += NARRATIVE_RECALL_SYSTEM_SUFFIX
-
-        # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
-        elif execution_route in ["WEB", "INTERNET"]:
-            system_prompt = (
-                "You are Qube. You have just been provided with real-time, live web search results. "
-                "You MUST use the TOOLS context provided below to answer the user's query. "
-                "Do not state that you are offline or cannot browse the internet. "
-                "CRITICAL: Respond directly to the user in a natural, conversational tone. "
-                "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
-                "Write only the user-facing response. "
-                "Cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
-                "no URL in parentheses after [W], and no backticks around [W]. "
-                "Use [W] at most once at the end of each sentence that relies on the web results, "
-                "and never output [W] two or more times in a row."
-            )
-            system_prompt += CITATION_DISCIPLINE_SUFFIX
-
-        # Native llama.cpp path: behavioral alignment (LM Studio often adds server-side polish).
-        if getattr(self, "engine_mode", "external") == "internal":
-            if self._is_internal_nvidia_family():
-                system_prompt += (
-                    " Start directly with the answer content in natural language. "
-                    "Do not narrate instructions, planning notes, request analysis, or hidden reasoning. "
-                    "Write only what the user should see. "
-                    "Prioritize clarity and completeness. "
-                    "Use short answers for simple questions, but give fuller explanations when the user asks to explain, compare, or summarize."
-                )
-            else:
-                system_prompt += (
-                    " Start directly with the answer content in natural language. "
-                    "Do not include preamble, planning, or meta commentary. "
-                    "Do not restate or analyze the user's request. "
-                    "Write only what the user should see. "
-                    "Keep the response natural and focused."
-                )
-
-        messages = [{"role": "system", "content": system_prompt}] + history
-
-        # 🔑 Inject retrieval in the same order as all_ui_sources / citation ids
-        if retrieval_prompt_body and messages and messages[-1]["role"] == "user":
-            original_query = messages[-1]["content"]
-
-            messages[-1]["content"] = (
-                f"=== SYSTEM RETRIEVED CONTEXT ===\n"
-                f"Use the following numbered sources to answer the query. "
-                f"In the prose of your reply, cite with plain tokens [1], [2], or [W] only (no markdown links).\n\n"
-                f"{retrieval_prompt_body}\n"
-                f"================================\n\n"
-                f"USER QUERY:\n{original_query}"
+        prompt_blocks = build_prompt_blocks(
+            execution_route=execution_route,
+            explicit_remember_active=explicit_remember_active,
+            explicit_remember_body=explicit_remember_body or "",
+            file_search_active=file_search_active,
+            narrative_active=narrative_active,
+            has_retrieval_sources=bool(all_ui_sources),
+            engine_mode=getattr(self, "engine_mode", "external"),
+            internal_nvidia_family=self._is_internal_nvidia_family(),
+            retrieval_context=retrieval_prompt_body,
+            conversation_history=history,
+        )
+        if prompt_blocks.no_sources_mode:
+            logger.info(
+                "[LLM Worker] No sources survived retrieval filtering; "
+                "switching to NO_SOURCES system prompt (route=%s).",
+                execution_route,
             )
 
+        messages = render_messages(prompt_blocks, pl_res.layout)
+        roles = [str(m.get("role", "")) for m in messages]
+        logger.info(
+            "[PromptLayout] rendered layout=%s roles=%s has_system=%s",
+            pl_res.layout,
+            roles,
+            "system" in roles,
+        )
+        if retrieval_prompt_body and messages and messages[-1].get("role") == "user":
             logger.debug("Successfully injected unified retrieval context into the final prompt.")
 
         # ============================================================

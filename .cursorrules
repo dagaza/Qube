@@ -90,6 +90,10 @@ Qube/
 │   ├── prompt_ablation_harness.py # NON-PRODUCTION: diagnostic ablation scenarios (prompt/stop variants, leakage heuristics, AblationReport); run_ablation_test uses create_completion(prompt=...) — not the app chat path; infer_override_from_ablation + store_override → ~/.qube/model_overrides.json; [LLM-SELF-HEAL].
 │   ├── prompt_contract.py  # Prompt-shape contract guards used by prompt construction/validation paths.
 │   ├── prompt_integrity_validator.py # Prompt structure checks, LM Studio parity scoring, QUBE_LLM_REFERENCE_JSON / first_sampler_token_ids (validation only); attaches model_reasoning_profile_detected + execution_mode (resolved policy mode) to validation JSON (metadata).
+│   ├── prompt_blocks.py # PromptBlocks + build_prompt_blocks + compose_system_prompt (PR2 normalization).
+│   ├── prompt_renderers.py # render_messages(system_ok|short_system|flatten_user); PR3 LLMWorker + adaptive_retry Alpaca fallback.
+│   ├── prompt_layout.py # PromptLayout (system_ok | short_system | flatten_user) + resolve_prompt_layout (curated/family/settings/store; PR1 telemetry only).
+│   ├── prompt_layout_store.py # ~/.qube/prompt_layout_overrides.json per-model layout overrides.
 │   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; template_override + model_override_store layers; [LLM-TEMPLATE] / [LLM-TEMPLATE-OVERRIDE] / [LLM-SELF-HEAL-APPLY] / [LLM-PROMPT-ROUTER]; validation/log prefetch (chat path unchanged).
 │   ├── output_artifact_strip.py # Post-generation cleanup of non-user-facing artifacts before UI/TTS.
 │   ├── output_validation.py # Final response validation/sanitization gates before emit to UI workers.

@@ -40,11 +40,13 @@ except ImportError:  # pragma: no cover
 
 from core.app_settings import (
     get_engine_mode,
+    get_internal_prompt_layout_override,
     get_native_reasoning_display_user_override,
     llama_chat_format_kwarg,
     missing_gguf_shards,
     resolve_internal_model_path,
 )
+from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.execution_policy import ExecutionPolicy, resolve_execution_policy
 from core.native_llama_chat import normalize_chat_messages
 from core.native_llama_inference import native_chat_completion_kwargs
@@ -172,6 +174,7 @@ class NativeLlamaEngine(QThread):
         self._router_profile_key: Optional[str] = None
         self._performance_store = ModelPerformanceStore()
         self._chat_contract: Optional[ChatContract] = None
+        self._prompt_layout_resolution: Optional[PromptLayoutResolution] = None
         self._last_template_safety: Optional[dict[str, Any]] = None
         # True when unsafe template caused per-request ChatContract lock to be skipped.
         self._last_chat_contract_lock_skipped: bool = False
@@ -253,6 +256,17 @@ class NativeLlamaEngine(QThread):
             "prompt_contract_template_source": getattr(pc, "template_source", None) if pc else None,
             "prompt_contract_confidence": getattr(pc, "confidence", None) if pc else None,
         }
+        plr = self._prompt_layout_resolution
+        if plr is not None:
+            out["prompt_layout"] = plr.layout
+            out["prompt_layout_source"] = plr.source
+            out["prompt_layout_degraded"] = bool(plr.degraded)
+            out["prompt_layout_evidence"] = (plr.evidence or "")[:240]
+        else:
+            out["prompt_layout"] = None
+            out["prompt_layout_source"] = None
+            out["prompt_layout_degraded"] = None
+            out["prompt_layout_evidence"] = None
         rd = self._last_router_decision
         if rd is not None:
             out["router_selected_model"] = rd.selected_model
@@ -517,6 +531,37 @@ class NativeLlamaEngine(QThread):
                 logger.warning("[ChatContract] bind failed: %s", e)
                 self._chat_contract = None
 
+            reg_name = (
+                (self._model_reasoning_profile.model_name if self._model_reasoning_profile else "")
+                or ""
+            ).strip() or os.path.basename(path)
+            try:
+                self._prompt_layout_resolution = resolve_prompt_layout(
+                    model_id=reg_name,
+                    model_display_name=reg_name,
+                    model_path=path,
+                    settings_override=get_internal_prompt_layout_override(),
+                )
+                plr = self._prompt_layout_resolution
+                logger.info(
+                    "[PromptLayout] layout=%s source=%s degraded=%s evidence=%s model=%s",
+                    plr.layout,
+                    plr.source,
+                    plr.degraded,
+                    plr.evidence,
+                    reg_name,
+                )
+                _debug_logger.info(
+                    "[LLM-DEBUG] prompt_layout=%s prompt_layout_source=%s "
+                    "prompt_layout_degraded=%s",
+                    plr.layout,
+                    plr.source,
+                    plr.degraded,
+                )
+            except Exception as e:
+                logger.warning("[PromptLayout] resolve failed: %s", e)
+                self._prompt_layout_resolution = None
+
             logger.info(
                 "[Native] Loaded %s (n_gpu_layers=%s, n_ctx=%s, n_threads=%s, chat_format=%s)",
                 path,
@@ -525,10 +570,6 @@ class NativeLlamaEngine(QThread):
                 n_threads,
                 getattr(self._llama, "chat_format", "?"),
             )
-            reg_name = (
-                (self._model_reasoning_profile.model_name if self._model_reasoning_profile else "")
-                or ""
-            ).strip() or os.path.basename(path)
             self._router_profile_key = reg_name
             try:
                 upsert_profile_from_loaded_model(
@@ -550,6 +591,7 @@ class NativeLlamaEngine(QThread):
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
+            self._prompt_layout_resolution = None
             self._model_behavior_profile = None
             self._model_behavior_override = None
             self._behavior_override_material = False
@@ -656,6 +698,7 @@ class NativeLlamaEngine(QThread):
         self._model_behavior_override = None
         self._behavior_override_material = False
         self._router_profile_key = None
+        self._prompt_layout_resolution = None
         gc.collect()
         self.status_update.emit("Native model unloaded")
         logger.info("[Native] Model unloaded")

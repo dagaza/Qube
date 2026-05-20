@@ -17,6 +17,7 @@ _KEY_INTERNAL_MODEL_PATH = "internal_model_path"
 _KEY_INTERNAL_N_GPU_LAYERS = "internal_n_gpu_layers"
 _KEY_INTERNAL_N_THREADS = "internal_n_threads"
 _KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
+_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE = "internal_prompt_layout_override"
 _KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
 _KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
@@ -321,6 +322,25 @@ def set_internal_native_chat_format(mode: str) -> None:
     m = str(mode or "auto").strip().lower()
     allowed = ("auto", "jinja", "chatml", "llama-3", "mistral", "llama-2")
     s.setValue(_KEY_INTERNAL_NATIVE_CHAT_FORMAT, m if m in allowed else "auto")
+    s.sync()
+
+
+def get_internal_prompt_layout_override() -> str:
+    """
+    Global prompt layout override for internal engine turns.
+    Values: auto | system_ok | short_system | flatten_user (case-insensitive).
+    """
+    v = _settings().value(_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE, "auto", type=str)
+    s = str(v or "auto").strip().lower()
+    allowed = ("auto", "system_ok", "short_system", "flatten_user")
+    return s if s in allowed else "auto"
+
+
+def set_internal_prompt_layout_override(mode: str) -> None:
+    s = _settings()
+    m = str(mode or "auto").strip().lower()
+    allowed = ("auto", "system_ok", "short_system", "flatten_user")
+    s.setValue(_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE, m if m in allowed else "auto")
     s.sync()
 
 

@@ -5,22 +5,12 @@ from typing import Any
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.output_validation import OutputValidationResult, validate_output
 from core.prompt_contract import PromptContract, assert_prompt_contract, stops_for_format
+from core.prompt_renderers import openai_messages_to_alpaca_prompt
 
 
 def simple_instruction_format(messages: list[dict]) -> str:
-    """Conservative rendered fallback for unknown template behavior."""
-    user_parts: list[str] = []
-    for m in messages or []:
-        if not isinstance(m, dict):
-            continue
-        role = str(m.get("role", "user")).strip().lower()
-        content = str(m.get("content") or "").strip()
-        if not content:
-            continue
-        if role == "user":
-            user_parts.append(content)
-    body = "\n\n".join(user_parts).strip()
-    return f"### Instruction:\n{body}\n\n### Response:\n"
+    """Conservative Alpaca rendered fallback (shared with PR3 flatten retry path)."""
+    return openai_messages_to_alpaca_prompt(messages)
 
 
 def _execute_contract_once(model: Any, contract: PromptContract, messages: list[dict]) -> str:

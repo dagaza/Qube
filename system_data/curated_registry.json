@@ -92,5 +92,54 @@
         "stt": true
       }
     }
-  ]
+  ],
+  "prompt_layout": {
+    "exact": {
+      "mistral-7b-instruct-v0.3": "flatten_user",
+      "mistral-7b-instruct-v0.2": "flatten_user",
+      "mistral-7b-instruct-v0.1": "flatten_user"
+    },
+    "patterns": [
+      {
+        "match": "mistral-7b-instruct-v0",
+        "type": "prefix",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "mistral-instruct-v0",
+        "type": "contains",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "alpaca",
+        "type": "contains",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "vicuna",
+        "type": "contains",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "wizard",
+        "type": "contains",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "guanaco",
+        "type": "contains",
+        "layout": "flatten_user"
+      },
+      {
+        "match": "orca-mini",
+        "type": "contains",
+        "layout": "short_system"
+      },
+      {
+        "match": "tinyllama",
+        "type": "contains",
+        "layout": "short_system"
+      }
+    ]
+  }
 }
