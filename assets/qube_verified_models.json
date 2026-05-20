@@ -13,7 +13,7 @@
       "title": "Phi-4 Mini Instruct",
       "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",
       "publisher": "microsoft",
-      "gguf_repo": "microsoft/Phi-4-mini-instruct-gguf"
+      "gguf_repo": "unsloth/Phi-4-mini-instruct-GGUF"
     },
     {
       "id": "mistral-7b-instruct-v0-3",
@@ -24,24 +24,17 @@
     },
     {
       "id": "llama-3.1-8b-instruct",
-      "title": "Llama 3.1 8B Instruct",
-      "description": "Meta Llama 3.1 8B Instruct (community GGUF).",
+      "title": "Llama 3.1 8B Instruct - Uncensored",
+      "description": "Uncensored fine-tune of Meta Llama 3.1 8B Instruct. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
       "publisher": "meta-llama",
-      "gguf_repo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
-    },
-    {
-      "id": "llama-3-8b-uncensored",
-      "title": "Llama 3 8B Uncensored",
-      "description": "Uncensored fine-tune of Meta Llama 3 8B. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
-      "publisher": "meta-llama",
-      "gguf_repo": "mradermacher/Meta-Llama-3-8B-Instruct-Uncensored-GGUF"
+      "gguf_repo": "bartowski/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF"
     },
     {
       "id": "granite-4.1-8b",
       "title": "IBM Granite 4.1 8B",
       "description": "Enterprise-grade Apache-2.0 licensed model optimized heavily for structured data, local RAG pipelines, and code triaging.",
       "publisher": "ibm",
-      "gguf_repo": "bartowski/granite-4.1-8b-instruct-GGUF"
+      "gguf_repo": "bartowski/ibm-granite_granite-4.1-8b-GGUF"
     },
     {
       "id": "gpt-oss-20b",
@@ -49,6 +42,13 @@
       "description": "OpenAI's open-weights MoE model (community GGUF). Extreme speed.",
       "publisher": "openai",
       "gguf_repo": "unsloth/gpt-oss-20b-GGUF"
+    },
+    {
+      "id": "gpt-oss-20b-uncensored",
+      "title": "GPT-OSS 20B Uncensored",
+      "description": "Uncensored fine-tune of OpenAI's open-weights MoE model. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
+      "publisher": "openai",
+      "gguf_repo": "DavidAU/OpenAi-GPT-oss-20b-HERETIC-uncensored-NEO-Imatrix-gguf"
     },
     {
       "id": "mistral-small-24b-instruct",
@@ -76,11 +76,11 @@
       "gguf_repo": "unsloth/Qwen3.6-27B-GGUF"
     },
     {
-      "id": "glm-4.7-flash",
-      "title": "GLM 4.7 Flash",
-      "description": "Highly rated 30B-class model optimized specifically for terminal commands, tool execution, and frontend UI design.",
+      "id": "glm-4.7-flash-uncensored",
+      "title": "GLM 4.7 Flash Uncensored",
+      "description": "Uncensored fine-tune of GLM 4.7 Flash. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
       "publisher": "zai-org",
-      "gguf_repo": "bartowski/glm-4.7-flash-GGUF"
+      "gguf_repo": "DavidAU/GLM-4.7-Flash-Uncensored-Heretic-NEO-CODE-Imatrix-MAX-GGUF"
     },
     {
       "id": "gemma-4-31b-it",
@@ -94,7 +94,7 @@
       "title": "Gemma 4 31B Uncensored (JANG)",
       "description": "Abliterated version of Gemma 4 31B. Corporate guardrails removed for completely unrestricted creative writing.",
       "publisher": "google",
-      "gguf_repo": "bartowski/Gemma-4-31B-JANG_4M-CRACK-GGUF"
+      "gguf_repo": "douyamv/Gemma-4-31B-JANG_4M-CRACK-GGUF"
     },
     {
       "id": "qwen-3.6-35b-a3b",

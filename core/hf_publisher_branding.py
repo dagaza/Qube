@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import time
 from pathlib import Path
 from threading import Lock
 from urllib.error import HTTPError, URLError
@@ -54,6 +56,48 @@ def _owner_from_repo_id(repo_id: str) -> str:
     if "/" not in rid:
         return ""
     return rid.split("/", 1)[0].strip().lower()
+
+
+def owner_from_repo_id(repo_id: str) -> str:
+    """Public alias for repo namespace owner (segment before ``/``)."""
+    return _owner_from_repo_id(repo_id)
+
+
+def _humanize_owner(owner: str) -> str:
+    o = str(owner or "").strip().lower()
+    if not o:
+        return ""
+    known = {
+        "unsloth": "Unsloth",
+        "bartowski": "Bartowski",
+        "davidau": "DavidAU",
+        "mradermacher": "Mradermacher",
+        "lmstudio-community": "LM Studio Community",
+    }
+    if o in known:
+        return known[o]
+    parts = [p for p in re.split(r"[-_]+", o) if p]
+    if not parts:
+        return o
+    return " ".join(p[:1].upper() + p[1:] if len(p) > 1 else p.upper() for p in parts)
+
+
+def _avatar_url_from_payload(data: dict[str, Any] | None) -> str:
+    if not isinstance(data, dict):
+        return ""
+    for key in ("avatarUrl", "avatar_url", "avatar", "picture"):
+        v = data.get(key)
+        if isinstance(v, str) and v.strip().lower().startswith("http"):
+            return v.strip()
+    return ""
+
+
+def _hf_logo_asset_path() -> str:
+    root = _project_root()
+    for rel in ("assets/logos/hf-logo.svg", "assets/icons/hf-logo.svg"):
+        if (root / rel).is_file():
+            return f"/{rel}"
+    return "/assets/logos/hf-logo.svg"
 
 
 def _norm_card_data(model: dict[str, Any]) -> dict[str, Any]:
@@ -150,8 +194,11 @@ class HuggingFaceBrandingResolver:
         self._timeout_s = float(timeout_s)
         self._model_cache: dict[str, dict[str, Any] | None] = {}
         self._org_cache: dict[str, dict[str, Any] | None] = {}
+        self._user_cache: dict[str, dict[str, Any] | None] = {}
+        self._variant_cache: dict[str, dict[str, Any] | None] = {}
         self._lock = Lock()
         self._enabled = str(os.getenv("QUBE_HF_OFFICIAL_BRANDING", "1")).strip().lower() not in {"0", "false", "no"}
+        self._avatar_cache_dir = Path.home() / ".qube" / "avatar_cache"
 
     def _fetch_json(self, url: str) -> dict[str, Any] | None:
         req = Request(url=url, headers={"User-Agent": "Qube-Desktop/1.0"})
@@ -181,6 +228,18 @@ class HuggingFaceBrandingResolver:
         data = self._fetch_json(f"{HF_API_BASE}/models/{rid}")
         with self._lock:
             self._model_cache[rid] = data
+        return data
+
+    def get_user_metadata(self, owner: str) -> dict[str, Any] | None:
+        owner_l = str(owner or "").strip().lower()
+        if not owner_l:
+            return None
+        with self._lock:
+            if owner_l in self._user_cache:
+                return self._user_cache[owner_l]
+        data = self._fetch_json(f"{HF_API_BASE}/users/{owner_l}")
+        with self._lock:
+            self._user_cache[owner_l] = data
         return data
 
     def get_org_metadata(self, owner: str) -> dict[str, Any] | None:
@@ -226,4 +285,80 @@ class HuggingFaceBrandingResolver:
             else:
                 logger.debug("HF branding rejected (%s): missing logo or policy mismatch.", repo_id)
         return branding
+
+    def _cache_avatar_file(self, owner: str, avatar_url: str) -> Path | None:
+        owner_l = str(owner or "").strip().lower()
+        url = str(avatar_url or "").strip()
+        if not owner_l or not url:
+            return None
+        try:
+            self._avatar_cache_dir.mkdir(parents=True, exist_ok=True)
+            ext = ".png"
+            if ".jpg" in url.lower() or ".jpeg" in url.lower():
+                ext = ".jpg"
+            elif ".svg" in url.lower():
+                ext = ".svg"
+            dest = self._avatar_cache_dir / f"{owner_l}{ext}"
+            if dest.is_file() and (time.time() - dest.stat().st_mtime) < 7 * 86400:
+                return dest
+            req = Request(url=url, headers={"User-Agent": "Qube-Desktop/1.0"})
+            with urlopen(req, timeout=self._timeout_s) as resp:
+                raw = resp.read()
+            if not raw:
+                return None
+            dest.write_bytes(raw)
+            return dest
+        except Exception as e:
+            logger.debug("HF avatar cache failed for %s: %s", owner_l, e)
+            return None
+
+    def resolve_variant_branding(self, repo_id: str) -> dict[str, Any] | None:
+        """
+        Branding for the GGUF repo publisher (community quantizer), not the official allowlist.
+        Uses HF org/user API for display name + avatar when available; falls back to HF logo asset.
+        """
+        rid = str(repo_id or "").strip()
+        if not rid:
+            return None
+        with self._lock:
+            if rid in self._variant_cache:
+                cached = self._variant_cache[rid]
+                return dict(cached) if isinstance(cached, dict) else None
+
+        owner = _owner_from_repo_id(rid)
+        if not owner:
+            return None
+
+        org_data = self.get_org_metadata(owner)
+        user_data = None
+        if not org_data:
+            user_data = self.get_user_metadata(owner)
+        payload = org_data if isinstance(org_data, dict) and org_data else user_data
+        payload = payload if isinstance(payload, dict) else {}
+
+        name = ""
+        for key in ("fullname", "fullName", "name", "displayName"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                name = v.strip()
+                break
+        if not name:
+            name = _humanize_owner(owner)
+
+        logo = _hf_logo_asset_path()
+        avatar_url = _avatar_url_from_payload(payload)
+        cached_path = self._cache_avatar_file(owner, avatar_url) if avatar_url else None
+        if cached_path is not None:
+            logo = str(cached_path)
+
+        result = {
+            "name": name,
+            "logo": logo,
+            "owner": owner,
+            "official": False,
+            "variant": True,
+        }
+        with self._lock:
+            self._variant_cache[rid] = result
+        return dict(result)
 

@@ -100,6 +100,10 @@ Qube/
 │   ├── tooltip_wrap.py     # Tooltip text wrapping/format helper used by the app-owned tooltip pipeline.
 │   ├── richtext_styles.py  # App-wide link palette / rich text helpers.
 │   ├── qube_tooltip.py     # Custom app-owned tooltip pipeline (QubeApplication notify interception + transparent host/rounded shell) for consistent cross-theme rendering on frameless Linux.
+│   ├── gguf_quant.py # GGUF quant token parsing (K/IQ families) for Model Manager recommendations.
+│   ├── memory_budget_profile.py # Soft memory experience labels for Model Manager downloads (no binary VRAM fail).
+│   ├── model_params.py # Shared HF params-B inference for metadata and quant recommendation context.
+│   ├── quant_recommendation.py # Model Manager quant band heuristics, tool-calling score modifier, badges/rationales.
 │   ├── qube_verified_models.py # Model Manager Qube Verified list: load/seed assets/qube_verified_models.json → ~/.qube/qube_verified_models.json.
 │   ├── wakeword_manager.py # Wakeword configuration/runtime control coordinator for audio workers/UI.
 │   ├── wakeword_testbed.py # Wakeword test-lab orchestration/state helpers for diagnostics UI.
@@ -191,6 +195,9 @@ Qube/
 │   ├── test_rag_relevance_gate.py
 │   ├── test_model_capability_system.py
 │   ├── test_qube_verified_models.py
+│   ├── test_gguf_quant.py
+│   ├── test_quant_recommendation.py
+│   ├── test_memory_budget_profile.py
 │   └── test_boot_args.py
 ├── Readme.md               # Project overview and setup.
 ├── requirements.txt        # Python dependency manifest.
