@@ -23,6 +23,7 @@ Qube/
 │   ├── fonts /             # Custom Inter font families.
 │   ├── icons/              # App UI icons (chevrons/layout controls; keep backward-compat fallbacks where used).
 │   ├── logos/              # Brand/publisher logos and app logo assets used by window/top bar + Model Manager branding.
+│   ├── qube_verified_models.json # Model Manager "Qube Verified" seed list ({repo_id, title}); copied to ~/.qube on first use.
 │   ├── sounds/             # (Planned / not yet created) Notification chimes or UI sound effects.
 │   ├── styles/             # base.qss (dark), light.qss — includes #SettingsMenuButton and :disabled states for locked Prestige dropdowns.
 │   └── screenshots/        # Screenshots of the app for Github
@@ -99,6 +100,7 @@ Qube/
 │   ├── tooltip_wrap.py     # Tooltip text wrapping/format helper used by the app-owned tooltip pipeline.
 │   ├── richtext_styles.py  # App-wide link palette / rich text helpers.
 │   ├── qube_tooltip.py     # Custom app-owned tooltip pipeline (QubeApplication notify interception + transparent host/rounded shell) for consistent cross-theme rendering on frameless Linux.
+│   ├── qube_verified_models.py # Model Manager Qube Verified list: load/seed assets/qube_verified_models.json → ~/.qube/qube_verified_models.json.
 │   ├── wakeword_manager.py # Wakeword configuration/runtime control coordinator for audio workers/UI.
 │   ├── wakeword_testbed.py # Wakeword test-lab orchestration/state helpers for diagnostics UI.
 │   ├── system_capabilities_store.py # Isolated system SQLite + JSON artifacts under ~/.qube/system_data (capabilities.db with ground_truth_capabilities table, curated_registry.json, learned_capabilities.json, missed_models.json); survives user DB/LanceDB resets.
@@ -188,6 +190,7 @@ Qube/
 │   ├── test_narrative_routing.py
 │   ├── test_rag_relevance_gate.py
 │   ├── test_model_capability_system.py
+│   ├── test_qube_verified_models.py
 │   └── test_boot_args.py
 ├── Readme.md               # Project overview and setup.
 ├── requirements.txt        # Python dependency manifest.

@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "models": [
+    {
+      "id": "gemma-4-e4b-it",
+      "title": "Gemma 4 4B Instruct",
+      "description": "Google Gemma 4 ultra-efficient 4B model (community GGUF). Ideal for laptops.",
+      "publisher": "google",
+      "gguf_repo": "unsloth/gemma-4-E4B-it-GGUF"
+    },
+    {
+      "id": "phi-4-mini-instruct",
+      "title": "Phi-4 Mini Instruct",
+      "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",
+      "publisher": "microsoft",
+      "gguf_repo": "microsoft/Phi-4-mini-instruct-gguf"
+    },
+    {
+      "id": "mistral-7b-instruct-v0-3",
+      "title": "Mistral 7B Instruct",
+      "description": "Mistral 7B Instruct v0.3 (community GGUF).",
+      "publisher": "mistralai",
+      "gguf_repo": "bartowski/Mistral-7B-Instruct-v0.3-GGUF"
+    },
+    {
+      "id": "llama-3.1-8b-instruct",
+      "title": "Llama 3.1 8B Instruct",
+      "description": "Meta Llama 3.1 8B Instruct (community GGUF).",
+      "publisher": "meta-llama",
+      "gguf_repo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
+    },
+    {
+      "id": "llama-3-8b-uncensored",
+      "title": "Llama 3 8B Uncensored",
+      "description": "Uncensored fine-tune of Meta Llama 3 8B. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
+      "publisher": "meta-llama",
+      "gguf_repo": "mradermacher/Meta-Llama-3-8B-Instruct-Uncensored-GGUF"
+    },
+    {
+      "id": "granite-4.1-8b",
+      "title": "IBM Granite 4.1 8B",
+      "description": "Enterprise-grade Apache-2.0 licensed model optimized heavily for structured data, local RAG pipelines, and code triaging.",
+      "publisher": "ibm",
+      "gguf_repo": "bartowski/granite-4.1-8b-instruct-GGUF"
+    },
+    {
+      "id": "gpt-oss-20b",
+      "title": "GPT-OSS 20B",
+      "description": "OpenAI's open-weights MoE model (community GGUF). Extreme speed.",
+      "publisher": "openai",
+      "gguf_repo": "unsloth/gpt-oss-20b-GGUF"
+    },
+    {
+      "id": "mistral-small-24b-instruct",
+      "title": "Mistral Small 24B Instruct",
+      "description": "Mistral Small 24B architecture, tailored heavily for tool use and structured data (community GGUF).",
+      "publisher": "mistralai",
+      "gguf_repo": "bartowski/Mistral-Small-24B-Instruct-2501-GGUF"
+    },
+    {
+      "id": "gemma-4-26b-a4b-it",
+      "title": "Gemma 4 26B A4B",
+      "description": "Instruction-tuned Gemma 4 MoE (community GGUF).",
+      "publisher": "google",
+      "gguf_repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
+      "gguf_repos": [
+        "unsloth/gemma-4-26B-A4B-it-GGUF",
+        "bartowski/google_gemma-4-26B-A4B-it-GGUF"
+      ]
+    },
+    {
+      "id": "qwen-3.6-27b-instruct",
+      "title": "Qwen 3.6 27B Instruct",
+      "description": "Alibaba Qwen 3.6 27B Dense Model (community GGUF).",
+      "publisher": "qwen",
+      "gguf_repo": "unsloth/Qwen3.6-27B-GGUF"
+    },
+    {
+      "id": "glm-4.7-flash",
+      "title": "GLM 4.7 Flash",
+      "description": "Highly rated 30B-class model optimized specifically for terminal commands, tool execution, and frontend UI design.",
+      "publisher": "zai-org",
+      "gguf_repo": "bartowski/glm-4.7-flash-GGUF"
+    },
+    {
+      "id": "gemma-4-31b-it",
+      "title": "Gemma 4 31B Instruct",
+      "description": "Google's flagship dense Gemma 4 model (community GGUF).",
+      "publisher": "google",
+      "gguf_repo": "unsloth/gemma-4-31B-it-GGUF"
+    },
+    {
+      "id": "gemma-4-31b-jang-uncensored",
+      "title": "Gemma 4 31B Uncensored (JANG)",
+      "description": "Abliterated version of Gemma 4 31B. Corporate guardrails removed for completely unrestricted creative writing.",
+      "publisher": "google",
+      "gguf_repo": "bartowski/Gemma-4-31B-JANG_4M-CRACK-GGUF"
+    },
+    {
+      "id": "qwen-3.6-35b-a3b",
+      "title": "Qwen 3.6 35B MoE",
+      "description": "Alibaba Qwen 3.6 Mixture of Experts (community GGUF). Top overall efficiency.",
+      "publisher": "qwen",
+      "gguf_repo": "unsloth/Qwen3.6-35B-A3B-GGUF"
+    },
+    {
+      "id": "llama-3.3-70b-instruct",
+      "title": "Llama 3.3 70B Instruct",
+      "description": "Meta Llama 3.3 70B Instruct (community GGUF). For high-end hardware.",
+      "publisher": "meta-llama",
+      "gguf_repo": "unsloth/Llama-3.3-70B-Instruct-GGUF"
+    }
+  ]
+}
+

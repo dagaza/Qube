@@ -41,6 +41,7 @@ from core.app_settings import (
     resolve_internal_model_path,
     set_internal_model_path,
 )
+from core.qube_verified_models import branding_for_entry, load_qube_verified_models
 from core.gpu_layers_cap import detect_gpu_vram_bytes
 from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
 from core.hf_publisher_branding import HuggingFaceBrandingResolver
@@ -71,36 +72,15 @@ HUB_ROW_CAPS_ROLE = int(Qt.ItemDataRole.UserRole) + 3
 HUB_ROW_UPDATED_ROLE = int(Qt.ItemDataRole.UserRole) + 4
 HUB_ROW_VERIFIED_ROLE = int(Qt.ItemDataRole.UserRole) + 5
 HUB_ROW_BRANDING_ROLE = int(Qt.ItemDataRole.UserRole) + 6
+HUB_ROW_DOWNLOAD_REPO_ROLE = int(Qt.ItemDataRole.UserRole) + 7
+HUB_ROW_CATALOG_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 8
+HUB_ROW_GGUF_REPOS_ROLE = int(Qt.ItemDataRole.UserRole) + 9
+HUB_ROW_IS_CATALOG_ROLE = int(Qt.ItemDataRole.UserRole) + 10
 HUB_SEARCH_PAGE_SIZE = 20
 
 
 def _model_manager_project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
-
-
-# Curated GGUF collections — safe starting points for new users.
-QUBE_VERIFIED_MODELS: list[dict[str, str]] = [
-    {
-        "repo_id": "google/gemma-4-26B-A4B",
-        "title": "Gemma 4 26B A4B",
-    },
-    {
-        "repo_id": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
-        "title": "Llama 3.1 8B Instruct",
-    },
-    {
-        "repo_id": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
-        "title": "Mistral 7B Instruct",
-    },
-    {
-        "repo_id": "microsoft/Phi-3-mini-4k-instruct-gguf",
-        "title": "Phi-3 Mini 4K Instruct",
-    },
-    {
-        "repo_id": "Qwen/Qwen2.5-7B-Instruct-GGUF",
-        "title": "Qwen 2.5 7B Instruct",
-    },
-]
 
 
 def _hub_file_combo_list_qss(is_dark: bool) -> str:
@@ -433,6 +413,8 @@ class ModelManagerView(QWidget):
         self._search_seq = 0
         self._detail_seq = 0
         self._current_repo_id = ""
+        self._catalog_gguf_repos: tuple[str, ...] = ()
+        self._catalog_gguf_repo_index: int = 0
         self._last_readme_markdown: str | None = None
         # Strong refs to QThread instances that are still running after we replace them — never
         # drop the last reference while isRunning() or Qt aborts with "Destroyed while still running".
@@ -731,14 +713,39 @@ class ModelManagerView(QWidget):
         detail_header_l = QHBoxLayout(detail_header_row)
         detail_header_l.setContentsMargins(0, 0, 0, 0)
         detail_header_l.setSpacing(8)
-        self.detail_title = QLabel("Select a model")
+        title_info_row = QWidget(parent=detail_header_row)
+        title_info_row.setObjectName("ModelManagerDetailTitleRow")
+        title_info_l = QHBoxLayout(title_info_row)
+        title_info_l.setContentsMargins(0, 0, 0, 0)
+        title_info_l.setSpacing(4)
+        self.detail_title = QLabel("Select a model", parent=title_info_row)
         self.detail_title.setWordWrap(True)
         f = self.detail_title.font()
         f.setBold(True)
         f.setPointSize(18)
         self.detail_title.setFont(f)
-        detail_header_l.addWidget(self.detail_title, stretch=1)
-        self.detail_source_btn = QPushButton()
+        title_info_l.addWidget(self.detail_title, stretch=0)
+        self.detail_info_btn = QPushButton(parent=title_info_row)
+        self.detail_info_btn.setObjectName("ModelManagerDetailInfoButton")
+        self.detail_info_btn.setProperty("class", "IconButton")
+        self.detail_info_btn.setFixedSize(24, 24)
+        self.detail_info_btn.setIcon(qta.icon("fa5s.info-circle", color="#94a3b8"))
+        self.detail_info_btn.setIconSize(QSize(16, 16))
+        self.detail_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.detail_info_btn.setVisible(False)
+        self.detail_info_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        title_info_l.addWidget(
+            self.detail_info_btn,
+            stretch=0,
+            alignment=Qt.AlignmentFlag.AlignTop,
+        )
+        detail_header_l.addWidget(
+            title_info_row,
+            stretch=0,
+            alignment=Qt.AlignmentFlag.AlignTop,
+        )
+        detail_header_l.addStretch(1)
+        self.detail_source_btn = QPushButton(parent=detail_header_row)
         self.detail_source_btn.setObjectName("ModelManagerSourceButton")
         self.detail_source_btn.setProperty("class", "IconButton")
         self.detail_source_btn.setToolTip("Open source repository on Hugging Face")
@@ -748,9 +755,6 @@ class ModelManagerView(QWidget):
         self.detail_source_btn.clicked.connect(self._open_current_repo_source)
         detail_header_l.addWidget(self.detail_source_btn, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
-        self.detail_subtitle = QLabel("", parent=right)
-        self.detail_subtitle.setWordWrap(True)
-        self.detail_subtitle.hide()
         self.detail_branding_row = QWidget(parent=right)
         detail_branding_l = QHBoxLayout(self.detail_branding_row)
         detail_branding_l.setContentsMargins(0, 0, 0, 0)
@@ -1503,11 +1507,10 @@ class ModelManagerView(QWidget):
         """Secondary text — matches muted sidebar copy in Chat / Library."""
         muted = "#94a3b8" if is_dark else "#64748b"
         hint_style = f"color: {muted}; font-size: 11px;"
-        sub_style = f"color: {muted}; font-size: 12px;"
         if hasattr(self, "hub_list_hint"):
             self.hub_list_hint.setStyleSheet(hint_style)
-        if hasattr(self, "detail_subtitle"):
-            self.detail_subtitle.setStyleSheet(sub_style)
+        if hasattr(self, "detail_info_btn"):
+            self.detail_info_btn.setIcon(qta.icon("fa5s.info-circle", color=muted))
         if hasattr(self, "hub_model_list"):
             for i in range(self.hub_model_list.count()):
                 item = self.hub_model_list.item(i)
@@ -1535,16 +1538,29 @@ class ModelManagerView(QWidget):
         updated_at: str = "",
         verified: bool = False,
         branding: dict | None = None,
+        catalog_id: str = "",
+        gguf_repos: list[str] | None = None,
+        is_catalog: bool = False,
     ) -> None:
         """One Hub row as a dense card with avatar, chips, and metadata."""
+        download_repo = str(repo_id or "").strip()
+        repos_list = [str(r).strip() for r in (gguf_repos or []) if str(r).strip()]
+        if download_repo and download_repo not in repos_list:
+            repos_list.insert(0, download_repo)
+        if not repos_list and download_repo:
+            repos_list = [download_repo]
         item = QListWidgetItem()
-        item.setData(HUB_ROW_REPO_ROLE, repo_id)
+        item.setData(HUB_ROW_REPO_ROLE, download_repo)
+        item.setData(HUB_ROW_DOWNLOAD_REPO_ROLE, download_repo)
         item.setData(HUB_ROW_TITLE_ROLE, title)
-        item.setData(HUB_ROW_DESC_ROLE, description or repo_id)
+        item.setData(HUB_ROW_DESC_ROLE, description or download_repo)
         item.setData(HUB_ROW_CAPS_ROLE, list(capabilities or []))
         item.setData(HUB_ROW_UPDATED_ROLE, updated_at or "")
         item.setData(HUB_ROW_VERIFIED_ROLE, bool(verified))
         item.setData(HUB_ROW_BRANDING_ROLE, dict(branding or {}))
+        item.setData(HUB_ROW_CATALOG_ID_ROLE, str(catalog_id or "").strip())
+        item.setData(HUB_ROW_GGUF_REPOS_ROLE, repos_list)
+        item.setData(HUB_ROW_IS_CATALOG_ROLE, bool(is_catalog))
 
         row = QWidget()
         row.setObjectName("HistoryRowWidget")
@@ -1819,26 +1835,31 @@ class ModelManagerView(QWidget):
         self._search_visible_count = 0
         if hasattr(self, "hub_load_more_btn"):
             self.hub_load_more_btn.setVisible(False)
+        verified_models = load_qube_verified_models()
+        self._verified_models = verified_models
         self.hub_model_list.blockSignals(True)
         self.hub_model_list.clear()
-        for entry in QUBE_VERIFIED_MODELS:
-            rid = str(entry["repo_id"])
-            title = str(entry["title"])
-            description = rid
-            branding = self._branding_resolver.resolve_for_model(rid, preloaded_model={"id": rid})
+        for entry in verified_models:
+            download_repo = entry.gguf_repo
+            title = entry.title
+            description = entry.description or download_repo
+            branding = branding_for_entry(entry, resolver=self._branding_resolver)
             resolved_caps = self._resolve_row_capabilities(
-                repo_id=rid,
+                repo_id=download_repo,
                 title=title,
                 description=description,
             )
             self._append_hub_model_row(
                 title,
-                rid,
+                download_repo,
                 description=description,
                 capabilities=resolved_caps,
                 updated_at="",
                 verified=True,
                 branding=branding,
+                catalog_id=entry.catalog_id,
+                gguf_repos=list(entry.gguf_repos),
+                is_catalog=entry.is_catalog_card,
             )
         self.hub_model_list.blockSignals(False)
         self.hub_list_hint.setText("Qube Verified — curated GGUF models")
@@ -1849,8 +1870,8 @@ class ModelManagerView(QWidget):
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
     def _start_curated_metadata_refresh(self) -> None:
-        self._curated_meta_queue = [str(e.get("repo_id", "")).strip() for e in QUBE_VERIFIED_MODELS]
-        self._curated_meta_queue = [r for r in self._curated_meta_queue if r]
+        verified = getattr(self, "_verified_models", None) or load_qube_verified_models()
+        self._curated_meta_queue = [e.gguf_repo for e in verified if e.gguf_repo]
         self._start_next_curated_meta_worker()
 
     def _start_next_curated_meta_worker(self) -> None:
@@ -2026,43 +2047,102 @@ class ModelManagerView(QWidget):
         self.hub_list_hint.setText("Search failed — try different keywords.")
         self._show_error("Hub search failed", msg)
 
-    def _on_hub_selection_changed(
-        self, current: QListWidgetItem | None, _previous: QListWidgetItem | None
+    def _model_description_tooltip_text(
+        self,
+        description: str,
+        download_repo: str,
+        *,
+        is_catalog: bool,
+    ) -> str:
+        desc = str(description or "").strip()
+        repo_s = str(download_repo or "").strip()
+        if desc and desc == repo_s:
+            desc = ""
+        if is_catalog and desc and repo_s:
+            return f"{desc}\n\nGGUF source: {repo_s}"
+        if desc:
+            return desc
+        if repo_s:
+            return f"GGUF source: {repo_s}"
+        return ""
+
+    def _apply_detail_description_info(
+        self,
+        description: str,
+        download_repo: str,
+        *,
+        is_catalog: bool,
     ) -> None:
-        if not current:
-            self._clear_detail_pane()
+        if not hasattr(self, "detail_info_btn"):
             return
-        repo = current.data(HUB_ROW_REPO_ROLE)
-        title = current.data(HUB_ROW_TITLE_ROLE) or repo
-        if not repo:
-            return
-        self._detail_seq += 1
-        seq = self._detail_seq
-        self._current_repo_id = str(repo)
-        self.detail_title.setText(str(title))
-        self.detail_subtitle.setText(str(repo))
-        if hasattr(self, "detail_source_btn"):
-            self.detail_source_btn.setVisible(True)
-        self._apply_detail_branding(dict(current.data(HUB_ROW_BRANDING_ROLE) or {}))
+        tip = self._model_description_tooltip_text(
+            description, download_repo, is_catalog=is_catalog
+        )
+        if tip:
+            self.detail_info_btn.setToolTip(tip)
+            self.detail_info_btn.setVisible(True)
+        else:
+            self.detail_info_btn.setToolTip("")
+            self.detail_info_btn.setVisible(False)
+
+    def _sync_catalog_gguf_repos_from_item(self, current: QListWidgetItem) -> None:
+        raw = current.data(HUB_ROW_GGUF_REPOS_ROLE)
+        repos: list[str] = []
+        if isinstance(raw, (list, tuple)):
+            repos = [str(r).strip() for r in raw if str(r).strip()]
+        download = str(
+            current.data(HUB_ROW_DOWNLOAD_REPO_ROLE) or current.data(HUB_ROW_REPO_ROLE) or ""
+        ).strip()
+        if download and download not in repos:
+            repos.insert(0, download)
+        if not repos and download:
+            repos = [download]
+        self._catalog_gguf_repos = tuple(repos)
+        self._catalog_gguf_repo_index = 0
+
+    def _try_next_catalog_gguf_repo(self, seq: int) -> bool:
+        """When primary gguf_repo has no files, try the next entry in gguf_repos."""
+        repos = getattr(self, "_catalog_gguf_repos", ())
+        idx = getattr(self, "_catalog_gguf_repo_index", 0)
+        if idx + 1 >= len(repos):
+            return False
+        next_idx = idx + 1
+        next_repo = str(repos[next_idx]).strip()
+        if not next_repo:
+            return False
+        self._catalog_gguf_repo_index = next_idx
+        self._current_repo_id = next_repo
+        current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
+        if current is not None:
+            current.setData(HUB_ROW_REPO_ROLE, next_repo)
+            current.setData(HUB_ROW_DOWNLOAD_REPO_ROLE, next_repo)
+            desc = str(current.data(HUB_ROW_DESC_ROLE) or "")
+            self._apply_detail_description_info(
+                desc,
+                next_repo,
+                is_catalog=bool(current.data(HUB_ROW_IS_CATALOG_ROLE)),
+            )
+        logger.info("Catalog GGUF fallback: trying alternate repo %s", next_repo)
+        self._reload_hub_detail_workers(next_repo, seq)
+        return True
+
+    def _reload_hub_detail_workers(self, repo: str, seq: int) -> None:
+        """Restart README, metadata, and file-list workers for ``repo``."""
         self.readme_browser.clear()
         self.readme_browser.setPlainText("Loading README…")
         self._last_readme_markdown = None
-
         self.hf_file_combo.blockSignals(True)
         self.hf_file_combo.clear()
         self.hf_file_combo.addItem("Loading file list…")
         self.hf_file_combo.blockSignals(False)
-        self._set_download_status_text("")
         if hasattr(self, "hub_quant_hint_lbl"):
-            self.hub_quant_hint_lbl.setText("Loading available quantizations…")
-
+            self.hub_quant_hint_lbl.setText("Fetching .gguf file list…")
         self._retire_hf_thread(self._readme_worker)
         self._readme_worker = None
         self._retire_hf_thread(self._list_worker)
         self._list_worker = None
         self._retire_hf_thread(self._meta_worker)
         self._meta_worker = None
-
         self._readme_worker = HfReadmeWorker(str(repo))
         self._readme_worker.finished_ok.connect(
             lambda r, t, s=seq: self._apply_readme_if_current(r, t, s)
@@ -2071,7 +2151,6 @@ class ModelManagerView(QWidget):
             lambda r, err, s=seq: self._apply_readme_failed_if_current(r, err, s)
         )
         self._readme_worker.start()
-
         self._reset_hub_metadata_labels()
         self._set_meta_hint("Loading model metadata…")
         self._meta_worker = HfModelMetaWorker(str(repo))
@@ -2082,8 +2161,36 @@ class ModelManagerView(QWidget):
             lambda r, err, s=seq: self._apply_meta_failed_if_current(r, err, s)
         )
         self._meta_worker.start()
-
         self._start_list_worker_for_repo(str(repo), seq)
+
+    def _on_hub_selection_changed(
+        self, current: QListWidgetItem | None, _previous: QListWidgetItem | None
+    ) -> None:
+        if not current:
+            self._clear_detail_pane()
+            return
+        repo = current.data(HUB_ROW_DOWNLOAD_REPO_ROLE) or current.data(HUB_ROW_REPO_ROLE)
+        title = current.data(HUB_ROW_TITLE_ROLE) or repo
+        if not repo:
+            return
+        self._detail_seq += 1
+        seq = self._detail_seq
+        download_repo = str(repo)
+        self._current_repo_id = download_repo
+        self._sync_catalog_gguf_repos_from_item(current)
+        self.detail_title.setText(str(title))
+        is_catalog = bool(current.data(HUB_ROW_IS_CATALOG_ROLE))
+        desc = str(current.data(HUB_ROW_DESC_ROLE) or "")
+        self._apply_detail_description_info(
+            desc,
+            download_repo,
+            is_catalog=is_catalog,
+        )
+        if hasattr(self, "detail_source_btn"):
+            self.detail_source_btn.setVisible(True)
+        self._apply_detail_branding(dict(current.data(HUB_ROW_BRANDING_ROLE) or {}))
+        self._set_download_status_text("")
+        self._reload_hub_detail_workers(download_repo, seq)
 
     def _clear_detail_pane(self) -> None:
         self._retire_hf_thread(self._readme_worker)
@@ -2093,9 +2200,11 @@ class ModelManagerView(QWidget):
         self._retire_hf_thread(self._meta_worker)
         self._meta_worker = None
         self._current_repo_id = ""
+        self._catalog_gguf_repos = ()
+        self._catalog_gguf_repo_index = 0
         self._last_readme_markdown = None
         self.detail_title.setText("Select a model")
-        self.detail_subtitle.setText("")
+        self._apply_detail_description_info("", "", is_catalog=False)
         if hasattr(self, "detail_source_btn"):
             self.detail_source_btn.setVisible(False)
         self._apply_detail_branding(None)
@@ -2271,6 +2380,8 @@ class ModelManagerView(QWidget):
             )
         )
         if not normalized:
+            if self._try_next_catalog_gguf_repo(seq):
+                return
             self.hf_file_combo.addItem("(No .gguf files in this repository)")
             if hasattr(self, "hub_quant_hint_lbl"):
                 self.hub_quant_hint_lbl.setText("No .gguf files found for this repository.")
@@ -2326,6 +2437,8 @@ class ModelManagerView(QWidget):
 
     def _on_hf_list_failed(self, msg: str, seq: int) -> None:
         if seq != self._detail_seq:
+            return
+        if self._try_next_catalog_gguf_repo(seq):
             return
         self.hf_file_combo.blockSignals(True)
         self.hf_file_combo.clear()

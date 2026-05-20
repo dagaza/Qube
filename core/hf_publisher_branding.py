@@ -16,6 +16,7 @@ logger = logging.getLogger("Qube.HFBranding")
 HF_API_BASE = "https://huggingface.co/api"
 
 # Central allowlist of trusted official model publishers.
+# Keys are lowercase Hub org ids and catalog ``publisher`` values (see assets/logos/).
 TRUSTED_PUBLISHERS: dict[str, dict[str, str]] = {
     "google": {"name": "Google", "logo": "Google.svg"},
     "openai": {"name": "OpenAI", "logo": "openai.svg"},
@@ -24,12 +25,17 @@ TRUSTED_PUBLISHERS: dict[str, dict[str, str]] = {
     "mistralai": {"name": "Mistral", "logo": "mistral.svg"},
     "anthropic": {"name": "Anthropic", "logo": "anthropic.svg"},
     "ai2": {"name": "AI2", "logo": "Ai2.svg"},
+    "deepseek-ai": {"name": "DeepSeek", "logo": "deepseek.svg"},
     "xai": {"name": "xAI", "logo": "grok.svg"},
+    "grok": {"name": "xAI", "logo": "grok.svg"},
     "ibm": {"name": "IBM", "logo": "ibm.svg"},
+    "ibm-granite": {"name": "IBM", "logo": "ibm.svg"},
     "moonshotai": {"name": "Kimi", "logo": "kimi.svg"},
+    "kimi": {"name": "Kimi", "logo": "kimi.svg"},
     "qwen": {"name": "Qwen", "logo": "qwen.png"},
     "nvidia": {"name": "NVIDIA", "logo": "nvidia.svg"},
     "runwayml": {"name": "Runway", "logo": "runway.svg"},
+    "runway": {"name": "Runway", "logo": "runway.svg"},
     "zai-org": {"name": "Z.ai", "logo": "zai.svg"},
     "rnj": {"name": "RNJ", "logo": "rnj.svg"},
 }
