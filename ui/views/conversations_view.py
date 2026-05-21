@@ -55,9 +55,18 @@ import re as _re_cite
 
 from core.citation_normalize import normalize_labeled_citation_tokens
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_folder_list import (
+    FOLDER_ROW_MARGIN_LEFT,
+    ROW_KIND_SESSION,
+    SIDEBAR_ROW_KIND_ROLE,
+    SIDEBAR_ROW_PAYLOAD_ROLE,
+    SidebarFolderListController,
+    add_new_folder_header_button,
+)
 from ui.components.source_viewer import SourcePreviewer
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
@@ -983,6 +992,9 @@ class ConversationsView(QWidget):
         self._agent_md_coalesce_timer.setSingleShot(True)
         self._agent_md_coalesce_timer.timeout.connect(self._flush_coalesced_agent_markdown)
 
+        self._active_folder_id: str | None = None
+        self._folder_controller: SidebarFolderListController | None = None
+
         self._setup_ui()
         self._start_new_chat()
 
@@ -1508,7 +1520,7 @@ class ConversationsView(QWidget):
 
     def _build_history_pane(self) -> QFrame:
         frame = QFrame()
-        frame.setFixedWidth(280)
+        frame.setFixedWidth(LEFT_NAV_LIST_SIDEBAR_WIDTH)
         frame.setObjectName("HistorySidebar")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 20, 15, 20)
@@ -1529,6 +1541,13 @@ class ConversationsView(QWidget):
         header_layout.addWidget(self.list_title)
         
         header_layout.addStretch()
+        self.new_folder_btn = add_new_folder_header_button(
+            header_layout,
+            before_widget=self.new_chat_btn,
+            on_new_folder=lambda: self._folder_controller.prompt_create_folder()
+            if self._folder_controller
+            else None,
+        )
         header_layout.addWidget(self.new_chat_btn)
         layout.addLayout(header_layout)
 
@@ -1546,13 +1565,26 @@ class ConversationsView(QWidget):
         layout.addWidget(self.history_list)
 
         self.new_chat_btn.clicked.connect(self._start_new_chat)
-        self.history_list.itemClicked.connect(self._load_selected_chat)
+        self.history_list.itemClicked.connect(self._on_history_item_clicked)
         self.history_list.itemSelectionChanged.connect(self._update_row_colors)
 
-        # 🔑 NEW: Wire up the scrollbar for infinite scrolling
-        self.history_offset = 0
-        self.is_loading_history = False
-        self.history_list.verticalScrollBar().valueChanged.connect(self._on_history_scroll)
+        self._active_folder_id = self.db.get_main_conversation_folder_id()
+        self._folder_controller = SidebarFolderListController(
+            scope="conversation",
+            list_widget=self.history_list,
+            db=self.db,
+            parent=self,
+            append_item_row=self._append_history_session_row,
+            apply_menu_theme=self._apply_menu_theme,
+            get_is_dark=lambda: getattr(self.window(), "_is_dark_theme", True),
+            on_reload=self._reload_history_sidebar,
+            on_active_folder_changed=self._set_active_folder_id,
+        )
+        self.sort_btn = self._folder_controller.setup_sort_header_button(
+            header_layout, before_widget=self.new_chat_btn
+        )
+
+        self.history_list.itemDoubleClicked.connect(self._on_history_item_double_clicked)
 
         return frame
 
@@ -2003,7 +2035,10 @@ class ConversationsView(QWidget):
             if recent_sessions:
                 self.active_session_id = recent_sessions[0]['id']
             else:
-                self.active_session_id = self.db.create_session("Text Conversation")
+                folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+                self.active_session_id = self.db.create_session(
+                    "Text Conversation", folder_id=folder_id
+                )
 
         if self.llm:
             force_web = bool(hasattr(self, "web_btn") and self.web_btn.isChecked())
@@ -2027,11 +2062,22 @@ class ConversationsView(QWidget):
         self._history_search_timer.stop()
         self._history_search_timer.start(280)
 
+    def _set_active_folder_id(self, folder_id: str) -> None:
+        self._active_folder_id = folder_id
+
+    def _on_history_item_clicked(self, item) -> None:
+        if self._folder_controller and self._folder_controller.handle_item_clicked(item):
+            return
+        self._load_selected_chat(item)
+
+    def _on_history_item_double_clicked(self, item) -> None:
+        if self._folder_controller:
+            self._folder_controller.handle_item_double_clicked(item)
+
     def _reload_history_sidebar(self) -> None:
-        """Rebuild sidebar: full-text search when the search box is non-empty, else paged recent list."""
-        self.history_list.clear()
-        self.history_offset = 0
-        self.is_loading_history = False
+        """Rebuild sidebar: search → flat list; else folder-grouped browse."""
+        if not self._folder_controller:
+            return
         q = self.search_bar.text().strip() if getattr(self, "search_bar", None) else ""
         if q:
             try:
@@ -2039,15 +2085,12 @@ class ConversationsView(QWidget):
             except Exception as e:
                 logger.exception("Sidebar history search failed: %s", e)
                 sessions = []
-            for session in sessions:
-                self._append_history_session_row(session)
-            self.history_offset = 10**9
-            self.is_loading_history = False
+            self._folder_controller.reload_search_mode(sessions)
         else:
-            self._load_history_batch()
+            self._folder_controller.reload_browse_mode()
         self._update_row_colors()
 
-    def _append_history_session_row(self, session: dict) -> None:
+    def _append_history_session_row(self, session: dict, indent_left: int = FOLDER_ROW_MARGIN_LEFT) -> None:
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import QSize
         import qtawesome as qta
@@ -2061,13 +2104,15 @@ class ConversationsView(QWidget):
 
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, session["id"])
+        item.setData(SIDEBAR_ROW_KIND_ROLE, ROW_KIND_SESSION)
+        item.setData(SIDEBAR_ROW_PAYLOAD_ROLE, session)
 
         row_widget = QWidget()
         row_widget.setObjectName("HistoryRowWidget")
         row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(10, 0, 10, 0)
+        row_layout.setContentsMargins(indent_left, 0, 10, 0)
         row_layout.setSpacing(10)
 
         title_lbl = QLabel(session["title"])
@@ -2087,6 +2132,8 @@ class ConversationsView(QWidget):
         menu = QMenu(opts_btn)
         if hasattr(self, "_apply_menu_theme"):
             self._apply_menu_theme(menu, is_dark)
+        if self._folder_controller:
+            self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
             qta.icon("fa5s.edit", color="#89b4fa"), "Rename Chat"
@@ -2096,6 +2143,17 @@ class ConversationsView(QWidget):
                 s_id, old_t
             )
         )
+
+        if self._folder_controller:
+            session_folder_id = session.get("folder_id") or self.db.get_main_conversation_folder_id()
+            self._folder_controller.build_move_submenu_for_item(
+                menu,
+                session_folder_id,
+                lambda folder_id, s_id=session["id"]: self._move_session_to_folder(
+                    s_id, folder_id
+                ),
+            )
+
         menu.addSeparator()
 
         delete_action = menu.addAction(
@@ -2114,57 +2172,18 @@ class ConversationsView(QWidget):
         self.history_list.addItem(item)
         self.history_list.setItemWidget(item, row_widget)
 
-    def _refresh_history_list(self):
-        """Resets offset, runs cleanup, updates count, rebuilds list (respects search box)."""
-        self.history_offset = 0
-        self.is_loading_history = False
+    def _move_session_to_folder(self, session_id: str, folder_id: str) -> None:
+        if self.db.move_session_to_folder(session_id, folder_id):
+            self._refresh_history_list()
 
-        # Silent garbage collection for empty sessions
+    def _refresh_history_list(self):
+        """Runs cleanup, updates count, rebuilds list (respects search box)."""
         current_active = getattr(self, "active_session_id", None)
         if hasattr(self.db, "cleanup_empty_sessions"):
             self.db.cleanup_empty_sessions(current_active)
 
-        # Session total (sidebar title stays "CONVERSATIONS"; count reserved for telemetry)
         self._session_count = self.db.get_session_count()
-
         self._reload_history_sidebar()
-
-    def _on_history_scroll(self, value):
-        """Triggered every time the user scrolls."""
-        bar = self.history_list.verticalScrollBar()
-        # If the scrollbar hits the absolute maximum, load the next batch!
-        if value == bar.maximum():
-            self._load_history_batch()
-
-    def _load_history_batch(self):
-        """Fetches the next chunk of history and appends it to the list."""
-        if getattr(self, "search_bar", None) and self.search_bar.text().strip():
-            self.is_loading_history = False
-            return
-        if getattr(self, "is_loading_history", False):
-            return
-
-        self.is_loading_history = True
-        
-        # 🔑 THE FIX: Pass both the limit AND the current offset to the DB
-        # Note: If your DB doesn't support 'offset' yet, we'll need to update it!
-        try:
-            sessions = self.db.get_recent_sessions(limit=20, offset=self.history_offset)
-        except TypeError:
-            # Fallback just in case you haven't updated the DB manager yet
-            sessions = self.db.get_recent_sessions(limit=20)
-            if self.history_offset > 0:
-                sessions = [] # Prevent infinite looping of the same 20 items
-
-        if not sessions:
-            self.is_loading_history = False
-            return
-
-        for session in sessions:
-            self._append_history_session_row(session)
-
-        self.history_offset += 20
-        self.is_loading_history = False
 
     def _update_row_colors(self):
         """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
@@ -2226,7 +2245,10 @@ class ConversationsView(QWidget):
                 logger.error("CRITICAL: DB Manager missing 'rename_session' method.")
 
     def _start_new_chat(self):
-        self.active_session_id = self.db.create_session("New Conversation")
+        folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+        self.active_session_id = self.db.create_session(
+            "New Conversation", folder_id=folder_id
+        )
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
@@ -2317,11 +2339,12 @@ class ConversationsView(QWidget):
 
     def refresh_menu_themes(self, is_dark: bool):
         """Updates all existing kebab menus in the history list."""
+        if self._folder_controller:
+            self._folder_controller.refresh_menu_themes(is_dark)
         for i in range(self.history_list.count()):
             item = self.history_list.item(i)
             widget = self.history_list.itemWidget(item)
             if widget:
-                # Find the button and its menu
                 btn = widget.findChild(QPushButton, "HistoryOptionsBtn")
                 if btn and btn.menu():
                     self._apply_menu_theme(btn.menu(), is_dark)
@@ -2416,6 +2439,18 @@ class ConversationsView(QWidget):
         if hasattr(self, 'new_chat_btn'):
             self.new_chat_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
             self.new_chat_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "new_folder_btn"):
+            self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
+            self.new_folder_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "sort_btn"):
+            self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
+            self.sort_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)

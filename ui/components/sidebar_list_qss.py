@@ -15,6 +15,11 @@ _ROW_TITLE_STYLE = (
     "font-size: 13px; font-weight: 500; color: {color};"
 )
 
+_FOLDER_TITLE_STYLE = (
+    "background: transparent; border: none; "
+    "font-size: 13px; font-weight: 700; color: {color};"
+)
+
 
 def apply_sidebar_row_title_colors(
     list_widget: QListWidget | None,
@@ -22,7 +27,7 @@ def apply_sidebar_row_title_colors(
     is_dark: bool,
     label_object_name: str = "HistoryRowTitle",
 ) -> None:
-    """Set HistoryRowTitle label color from selection + theme (reliable with setItemWidget)."""
+    """Set row label colors from selection + theme (reliable with setItemWidget)."""
     if list_widget is None:
         return
     if is_dark:
@@ -37,8 +42,11 @@ def apply_sidebar_row_title_colors(
         row = list_widget.itemWidget(item)
         if row is None:
             continue
-        lbl = row.findChild(QLabel, label_object_name)
-        if lbl is None:
-            continue
         color = selected if item.isSelected() else normal
-        lbl.setStyleSheet(_ROW_TITLE_STYLE.format(color=color))
+        for obj_name, template in (
+            (label_object_name, _ROW_TITLE_STYLE),
+            ("HistoryFolderTitle", _FOLDER_TITLE_STYLE),
+        ):
+            lbl = row.findChild(QLabel, obj_name)
+            if lbl is not None:
+                lbl.setStyleSheet(template.format(color=color))

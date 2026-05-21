@@ -18,12 +18,20 @@ class IngestionWorker(QThread):
     ingestion_complete = pyqtSignal(int)    
     error_occurred = pyqtSignal(str)        
 
-    def __init__(self, file_paths: list[Path], embedder: EmbeddingModel, store: DocumentStore, db_manager):
+    def __init__(
+        self,
+        file_paths: list[Path],
+        embedder: EmbeddingModel,
+        store: DocumentStore,
+        db_manager,
+        folder_id: str | None = None,
+    ):
         super().__init__()
         self.file_paths = file_paths
         self.embedder = embedder
         self.store = store
         self.db = db_manager
+        self.folder_id = folder_id
 
     def run(self):
         total_chunks = 0
@@ -91,7 +99,9 @@ class IngestionWorker(QThread):
                 self.store.add_chunks(records)
                 
                 # Write metadata to SQLite for the UI Library Tab
-                self.db.add_document_metadata(source, file_size_kb, len(chunks))
+                self.db.add_document_metadata(
+                    source, file_size_kb, len(chunks), folder_id=self.folder_id
+                )
                 
                 total_chunks += len(records)
                 logger.info(f"Indexed {source}: {len(records)} chunks saved to LanceDB, metadata logged to SQLite.")

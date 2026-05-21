@@ -27,6 +27,7 @@ Qube/
 │   ├── styles/             # base.qss / light.qss — global widgets; #SettingsMenuButton includes :disabled for locked Prestige “dropdowns.”
 │   └── screenshots/        # Screenshots of the app for Github
 ├── ui/                     # Presentation Layer (Dumb Components)
+│   ├── sidebar_dimensions.py # Shared LEFT_NAV_LIST_SIDEBAR_WIDTH for Conversations / Library / Model Manager list panes (364 px).
 │   ├── main_window.py      # Frameless window, sidebar, stacked views, global right toolbar (LOCAL LLM dropdown, voice, params), Prestige QMenu builders, theme toggle; passes native_engine into TelemetryView for capability telemetry.
 │   ├── components/         # Reusable custom UI components.
 │   │   ├── memory_debug.py # Live UI debug panel exposing internal ranking math (semantic distance, confidence, strength, and final score) of the memory retrieval pipeline

@@ -29,9 +29,18 @@ from PyQt6.QtGui import (
 )
 import qtawesome as qta
 from pathlib import Path
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_folder_list import (
+    FOLDER_ROW_MARGIN_LEFT,
+    ROW_KIND_DOCUMENT,
+    SIDEBAR_ROW_KIND_ROLE,
+    SIDEBAR_ROW_PAYLOAD_ROLE,
+    SidebarFolderListController,
+    add_new_folder_header_button,
+)
 import logging
 
 logger = logging.getLogger("Qube.UI.Library")
@@ -104,7 +113,7 @@ class _LibraryTranscriptWidthHost(QWidget):
 
 
 class LibraryView(QWidget):
-    ingest_requested = pyqtSignal(list)
+    ingest_requested = pyqtSignal(list, str)
 
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -125,6 +134,9 @@ class LibraryView(QWidget):
         self._high_contrast_enabled: bool = False
         self._layout_mode: str = LAYOUT_CENTERED_COLUMN
         self._transcript_alignment: str = ALIGN_JUSTIFY
+
+        self._active_folder_id: str | None = None
+        self._folder_controller: SidebarFolderListController | None = None
 
         self._setup_ui()
         self.refresh_library_list()
@@ -153,7 +165,7 @@ class LibraryView(QWidget):
 
     def _build_list_pane(self) -> QFrame:
         frame = QFrame()
-        frame.setFixedWidth(280)
+        frame.setFixedWidth(LEFT_NAV_LIST_SIDEBAR_WIDTH)
         frame.setObjectName("LibrarySidebar") 
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 20, 15, 20)
@@ -173,6 +185,13 @@ class LibraryView(QWidget):
         
         header_layout.addWidget(self.list_title)
         header_layout.addStretch()
+        self.new_folder_btn = add_new_folder_header_button(
+            header_layout,
+            before_widget=self.add_btn,
+            on_new_folder=lambda: self._folder_controller.prompt_create_folder()
+            if self._folder_controller
+            else None,
+        )
         header_layout.addWidget(self.add_btn)
         
         layout.addLayout(header_layout)
@@ -199,13 +218,27 @@ class LibraryView(QWidget):
         # Document List
         self.doc_list = QListWidget()
         self.doc_list.setObjectName("LibraryDocList")
-        self.doc_list.itemClicked.connect(self._on_document_selected)
+        self.doc_list.itemClicked.connect(self._on_library_item_clicked)
         self.doc_list.itemSelectionChanged.connect(self._update_row_colors)
-        
-        # 🔑 NEW: Wire up the scrollbar for infinite scrolling
-        self.library_offset = 0
-        self.is_loading_library = False
-        self.doc_list.verticalScrollBar().valueChanged.connect(self._on_library_scroll)
+
+        self._active_folder_id = self.db.get_main_library_folder_id()
+        self._folder_controller = SidebarFolderListController(
+            scope="library",
+            list_widget=self.doc_list,
+            db=self.db,
+            parent=self,
+            append_item_row=self._append_library_doc_row,
+            apply_menu_theme=self._apply_menu_theme,
+            get_is_dark=lambda: getattr(self.window(), "_is_dark_theme", True),
+            on_reload=self._reload_library_sidebar,
+            on_active_folder_changed=self._set_active_folder_id,
+            on_after_folder_delete=self._purge_deleted_library_files,
+        )
+        self.sort_btn = self._folder_controller.setup_sort_header_button(
+            header_layout, before_widget=self.add_btn
+        )
+
+        self.doc_list.itemDoubleClicked.connect(self._on_library_item_double_clicked)
 
         layout.addWidget(self.doc_list)
 
@@ -711,32 +744,48 @@ class LibraryView(QWidget):
             QMenu::item:selected {{ background-color: {hover}; color: {fg}; }}
         """)
 
+    def _set_active_folder_id(self, folder_id: str) -> None:
+        self._active_folder_id = folder_id
+
+    def _purge_deleted_library_files(self, filenames: list[str]) -> None:
+        if not self.store:
+            return
+        for name in filenames:
+            try:
+                self.store.delete_document(name)
+            except Exception as e:
+                logger.exception("Failed to purge LanceDB document %s: %s", name, e)
+        if self.active_filename in filenames:
+            self.active_filename = None
+            self.doc_title.setText("No Document Selected")
+            self.doc_stats.setText("")
+            self.text_preview.setHtml(
+                "<center><h3>Document deleted.</h3></center>"
+            )
+            self._apply_library_preview_readability()
+
     def refresh_library_list(self):
-        """Resets offset and rebuilds the list (respects search box)."""
-        self.library_offset = 0
-        self.is_loading_library = False
-
-        # Document total (sidebar title stays "Library"; count reserved for telemetry)
+        """Rebuild the list (respects search box)."""
         self._document_count = self.db.get_document_count()
-
         self._reload_library_sidebar()
 
-    def _on_library_scroll(self, value):
-        """Triggered every time the user scrolls."""
-        bar = self.doc_list.verticalScrollBar()
-        # If the scrollbar hits the absolute maximum, load the next batch
-        if value == bar.maximum():
-            self._load_library_batch()
+    def _on_library_item_clicked(self, item) -> None:
+        if self._folder_controller and self._folder_controller.handle_item_clicked(item):
+            return
+        self._on_document_selected(item)
+
+    def _on_library_item_double_clicked(self, item) -> None:
+        if self._folder_controller:
+            self._folder_controller.handle_item_double_clicked(item)
 
     def _on_library_search_changed(self, _text: str) -> None:
         self._library_search_timer.stop()
         self._library_search_timer.start(280)
 
     def _reload_library_sidebar(self) -> None:
-        """Rebuild sidebar: filename + indexed text search when non-empty, else paged recent list."""
-        self.doc_list.clear()
-        self.library_offset = 0
-        self.is_loading_library = False
+        """Rebuild sidebar: search → flat list; else folder-grouped browse."""
+        if not self._folder_controller:
+            return
         q = self.search_bar.text().strip() if getattr(self, "search_bar", None) else ""
         if q:
             content_hits: set[str] = set()
@@ -752,15 +801,12 @@ class LibraryView(QWidget):
             except Exception as e:
                 logger.exception("Library sidebar DB search failed: %s", e)
                 docs = []
-            for doc in docs:
-                self._append_library_doc_row(doc)
-            self.library_offset = 10**9
-            self.is_loading_library = False
+            self._folder_controller.reload_search_mode(docs)
         else:
-            self._load_library_batch()
+            self._folder_controller.reload_browse_mode()
         self._update_row_colors()
 
-    def _append_library_doc_row(self, doc: dict) -> None:
+    def _append_library_doc_row(self, doc: dict, indent_left: int = FOLDER_ROW_MARGIN_LEFT) -> None:
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import QSize
         import qtawesome as qta
@@ -773,14 +819,16 @@ class LibraryView(QWidget):
         icon_color = "#6c7086" if is_dark else "#64748b"
 
         item = QListWidgetItem()
-        item.setData(Qt.ItemDataRole.UserRole, doc)
+        item.setData(Qt.ItemDataRole.UserRole, doc["filename"])
+        item.setData(SIDEBAR_ROW_KIND_ROLE, ROW_KIND_DOCUMENT)
+        item.setData(SIDEBAR_ROW_PAYLOAD_ROLE, doc)
 
         row = QWidget()
         row.setObjectName("HistoryRowWidget")
         row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         lay = QHBoxLayout(row)
-        lay.setContentsMargins(10, 0, 10, 0)
+        lay.setContentsMargins(indent_left, 0, 10, 0)
         lay.setSpacing(10)
 
         item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
@@ -801,6 +849,8 @@ class LibraryView(QWidget):
         menu = QMenu(btn)
         if hasattr(self, "_apply_menu_theme"):
             self._apply_menu_theme(menu, is_dark)
+        if self._folder_controller:
+            self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
             qta.icon("fa5s.edit", color="#89b4fa"), "Rename Document"
@@ -808,6 +858,16 @@ class LibraryView(QWidget):
         rename_action.triggered.connect(
             lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
         )
+
+        if self._folder_controller:
+            doc_folder_id = doc.get("folder_id") or self.db.get_main_library_folder_id()
+            self._folder_controller.build_move_submenu_for_item(
+                menu,
+                doc_folder_id,
+                lambda folder_id, fname=doc["filename"]: self._move_document_to_folder(
+                    fname, folder_id
+                ),
+            )
 
         menu.addSeparator()
 
@@ -828,32 +888,9 @@ class LibraryView(QWidget):
         self.doc_list.addItem(item)
         self.doc_list.setItemWidget(item, row)
 
-    def _load_library_batch(self):
-        """Fetches the next chunk of documents and appends it to the list."""
-        if getattr(self, "search_bar", None) and self.search_bar.text().strip():
-            self.is_loading_library = False
-            return
-        if getattr(self, "is_loading_library", False):
-            return
-
-        self.is_loading_library = True
-
-        try:
-            docs = self.db.get_library_documents(limit=20, offset=self.library_offset)
-        except TypeError:
-            docs = self.db.get_library_documents()
-            if self.library_offset > 0:
-                docs = []
-
-        if not docs:
-            self.is_loading_library = False
-            return
-
-        for doc in docs:
-            self._append_library_doc_row(doc)
-
-        self.library_offset += 20
-        self.is_loading_library = False
+    def _move_document_to_folder(self, filename: str, folder_id: str) -> None:
+        if self.db.move_document_to_folder(filename, folder_id):
+            self.refresh_library_list()
 
     def _update_row_colors(self):
         """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
@@ -908,7 +945,9 @@ class LibraryView(QWidget):
             self.refresh_library_list()
 
     def _on_document_selected(self, item):
-        doc_data = item.data(Qt.ItemDataRole.UserRole)
+        doc_data = item.data(SIDEBAR_ROW_PAYLOAD_ROLE)
+        if not isinstance(doc_data, dict):
+            doc_data = {"filename": item.data(Qt.ItemDataRole.UserRole)}
         self.active_filename = doc_data['filename']
         
         self.doc_title.setText(self.active_filename)
@@ -972,9 +1011,9 @@ class LibraryView(QWidget):
         # REMOVED: self.add_btn.setText(...)
         
         logger.info(f"Emitting {len(paths)} files to main pipeline for ingestion.")
-        # 🔑 Reset the flag right before starting a new job
         self._had_ingestion_error = False
-        self.ingest_requested.emit(paths)
+        folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
+        self.ingest_requested.emit(paths, folder_id)
 
     # --- UI Receivers for Worker Progress ---
     def update_ingestion_progress(self, percent: int):
@@ -1009,6 +1048,17 @@ class LibraryView(QWidget):
             dialog = PrestigeDialog(self, "No Data Added", msg, is_dark)
             dialog.exec()
 
+    def refresh_menu_themes(self, is_dark: bool) -> None:
+        if self._folder_controller:
+            self._folder_controller.refresh_menu_themes(is_dark)
+        for i in range(self.doc_list.count()):
+            item = self.doc_list.item(i)
+            widget = self.doc_list.itemWidget(item)
+            if widget:
+                btn = widget.findChild(QPushButton, "HistoryOptionsBtn")
+                if btn and btn.menu():
+                    self._apply_menu_theme(btn.menu(), is_dark)
+
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the color of the Add Document button."""
         import qtawesome as qta
@@ -1022,6 +1072,18 @@ class LibraryView(QWidget):
         if hasattr(self, 'add_btn'):
             self.add_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
             self.add_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "new_folder_btn"):
+            self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
+            self.new_folder_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "sort_btn"):
+            self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
+            self.sort_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)

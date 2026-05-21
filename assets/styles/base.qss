@@ -747,8 +747,32 @@ QLabel#AgentMessage {
     color: #ffffff !important;
 }
 
-/* Model Manager hub rows: fixed font metrics (must match light.qss) — no theme layout shift.
-   No line-height: QFontMetrics-based row sizing must match QLabel line spacing. */
+#HistoryList::item QLabel#HistoryFolderTitle,
+#LibraryDocList::item QLabel#HistoryFolderTitle {
+    background-color: transparent !important;
+    font-size: 13px;
+    font-weight: 700;
+    color: #cdd6f4 !important;
+}
+
+#HistoryList::item:selected QLabel#HistoryFolderTitle,
+#LibraryDocList::item:selected QLabel#HistoryFolderTitle {
+    color: #ffffff !important;
+}
+
+#HistoryFolderChevronBtn {
+    background: transparent;
+    border: none;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+}
+
+#HistoryFolderChevronBtn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
 #ModelHubList QLabel#HubModelRowTitle {
     font-size: 13px;
     font-weight: 500;

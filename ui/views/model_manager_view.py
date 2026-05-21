@@ -57,6 +57,7 @@ from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_read
 from core.hf_publisher_branding import HuggingFaceBrandingResolver, owner_from_repo_id
 from core.model_capability_service import ModelCapabilityService
 from core.richtext_styles import markdown_document_stylesheet
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.brand_buttons import (
     apply_brand_primary,
@@ -74,7 +75,6 @@ HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
 HUB_FILE_COMBO_BYTES_ROLE = int(Qt.ItemDataRole.UserRole) + 43
 HUB_FILE_COMBO_SHARD_ENTRIES_ROLE = int(Qt.ItemDataRole.UserRole) + 44
 HUB_FILE_COMBO_REC_ROLE = int(Qt.ItemDataRole.UserRole) + 45
-MODEL_MANAGER_LEFT_SIDEBAR_WIDTH = 364  # 280 * 1.30
 MODEL_MANAGER_CONTENT_WIDTH_SCALE = 1.2
 HUB_ROW_REPO_ROLE = int(Qt.ItemDataRole.UserRole)
 HUB_ROW_TITLE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
@@ -727,7 +727,7 @@ class ModelManagerView(QWidget):
 
         # Left: same sidebar shell as Conversations / Library (QSS + HistoryRowWidget pattern)
         left = QFrame()
-        left.setFixedWidth(MODEL_MANAGER_LEFT_SIDEBAR_WIDTH)
+        left.setFixedWidth(LEFT_NAV_LIST_SIDEBAR_WIDTH)
         left.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         left.setObjectName("ModelManagerSidebar")
         left_l = QVBoxLayout(left)
@@ -753,7 +753,7 @@ class ModelManagerView(QWidget):
 
         self.hub_model_list = QListWidget()
         self.hub_model_list.setObjectName("ModelHubList")
-        # Parent frame is 280px with horizontal margins; min width 280 here forced horizontal
+        # Parent frame matches LEFT_NAV_LIST_SIDEBAR_WIDTH; min width matching that here forced horizontal
         # overflow and list items bleeding under the right panel.
         self.hub_model_list.setMinimumWidth(0)
         self.hub_model_list.setSizePolicy(

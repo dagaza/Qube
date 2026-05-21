@@ -242,9 +242,13 @@ class Qube:
     def _handle_voice_prompt(self, text: str):
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
         if not session_id:
-            session_id = self.db_manager.create_session("Voice Chat")
-            self.window.conversations_view.active_session_id = session_id
-            self.window.conversations_view._refresh_history_list()
+            conv_view = self.window.conversations_view
+            folder_id = getattr(conv_view, "_active_folder_id", None)
+            if not folder_id:
+                folder_id = self.db_manager.get_main_conversation_folder_id()
+            session_id = self.db_manager.create_session("Voice Chat", folder_id=folder_id)
+            conv_view.active_session_id = session_id
+            conv_view._refresh_history_list()
 
         # 🔑 FIX: Lock the UI while processing a voice command
         self.window.conversations_view.set_input_enabled(False)
@@ -351,20 +355,23 @@ class Qube:
             logger.warning(f"Found {len(missing_from_ui)} ghost files in LanceDB. Healing UI registry...")
             for source in missing_from_ui:
                 # Add a dummy record to SQLite so the UI can see it and delete it if needed
-                self.db_manager.add_document_metadata(source, file_size_kb=0, chunk_count=0)
+                self.db_manager.add_document_metadata(
+                    source, file_size_kb=0, chunk_count=0,
+                    folder_id=self.db_manager.get_main_library_folder_id(),
+                )
                 
             logger.info("Database synchronization complete.")
 
-    def _start_ingestion(self, file_paths: list):
+    def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         self.window.update_status("Ingesting Documents...")
         
-        # Instantiate the worker with the required dependencies
         self.ingestion_worker = IngestionWorker(
             file_paths, 
             self.embedder, 
             self.store, 
-            self.db_manager
+            self.db_manager,
+            folder_id=folder_id,
         )
         
         # Wire the worker's progress signals back to the Library UI

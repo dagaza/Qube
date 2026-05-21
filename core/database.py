@@ -7,6 +7,9 @@ import logging
 
 logger = logging.getLogger("Qube.Database")
 
+_MAIN_FOLDER_NAME = "Main"
+
+
 class DatabaseManager:
     def __init__(self, db_path: str = "qube_data.db"):
         self.db_path = Path(db_path)
@@ -103,6 +106,28 @@ class DatabaseManager:
                             (str(uuid.uuid4()), trigger)
                         )
                     logger.info("Seeded default RAG triggers into database.")
+
+                # 8. Sidebar folder tables (Conversations + Library)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS conversation_folders (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        is_collapsed INTEGER NOT NULL DEFAULT 0,
+                        is_system INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS library_folders (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        is_collapsed INTEGER NOT NULL DEFAULT 0,
+                        is_system INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
                 
                 conn.commit()
                 logger.info("Database initialized successfully.")
@@ -113,8 +138,369 @@ class DatabaseManager:
                     logger.info("Added messages.sources_json column.")
                 except sqlite3.OperationalError:
                     pass
+
+                for alter_sql in (
+                    "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
+                    "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
+                ):
+                    try:
+                        cursor.execute(alter_sql)
+                        conn.commit()
+                    except sqlite3.OperationalError:
+                        pass
+
+                self._ensure_main_folders_and_backfill(conn)
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
+
+    def _ensure_main_folders_and_backfill(self, conn: sqlite3.Connection) -> None:
+        """Seed Main folders when missing and backfill NULL folder_id on legacy rows."""
+        cursor = conn.cursor()
+        conv_main = self._ensure_main_folder_row(
+            conn, "conversation_folders", _MAIN_FOLDER_NAME
+        )
+        lib_main = self._ensure_main_folder_row(
+            conn, "library_folders", _MAIN_FOLDER_NAME
+        )
+        cursor.execute(
+            "UPDATE sessions SET folder_id = ? WHERE folder_id IS NULL",
+            (conv_main,),
+        )
+        cursor.execute(
+            "UPDATE documents SET folder_id = ? WHERE folder_id IS NULL",
+            (lib_main,),
+        )
+        conn.commit()
+
+    def _ensure_main_folder_row(
+        self, conn: sqlite3.Connection, table: str, name: str
+    ) -> str:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT id FROM {table} WHERE is_system = 1 LIMIT 1")
+        row = cursor.fetchone()
+        if row:
+            return row[0]
+        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        if cursor.fetchone()[0] == 0:
+            folder_id = str(uuid.uuid4())
+            cursor.execute(
+                f"""
+                INSERT INTO {table}
+                    (id, name, sort_order, is_collapsed, is_system)
+                VALUES (?, ?, 0, 0, 1)
+                """,
+                (folder_id, name),
+            )
+            conn.commit()
+            return folder_id
+        cursor.execute(
+            f"SELECT id FROM {table} ORDER BY sort_order, created_at LIMIT 1"
+        )
+        fallback = cursor.fetchone()
+        return fallback[0] if fallback else str(uuid.uuid4())
+
+    def _folder_row_to_dict(self, row: sqlite3.Row) -> dict:
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "sort_order": row["sort_order"],
+            "is_collapsed": bool(row["is_collapsed"]),
+            "is_system": bool(row["is_system"]),
+            "created_at": row["created_at"],
+        }
+
+    def get_main_conversation_folder_id(self) -> str:
+        with self._get_connection() as conn:
+            return self._ensure_main_folder_row(
+                conn, "conversation_folders", _MAIN_FOLDER_NAME
+            )
+
+    def get_main_library_folder_id(self) -> str:
+        with self._get_connection() as conn:
+            return self._ensure_main_folder_row(
+                conn, "library_folders", _MAIN_FOLDER_NAME
+            )
+
+    def list_conversation_folders(self) -> list[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                FROM conversation_folders
+                ORDER BY sort_order ASC, created_at ASC
+                """
+            )
+            return [self._folder_row_to_dict(row) for row in cursor.fetchall()]
+
+    def list_library_folders(self) -> list[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                FROM library_folders
+                ORDER BY sort_order ASC, created_at ASC
+                """
+            )
+            return [self._folder_row_to_dict(row) for row in cursor.fetchall()]
+
+    def create_conversation_folder(self, name: str) -> str | None:
+        clean = (name or "").strip()
+        if not clean:
+            return None
+        folder_id = str(uuid.uuid4())
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM conversation_folders"
+            ).fetchone()
+            sort_order = int(row[0]) if row else 0
+            conn.execute(
+                """
+                INSERT INTO conversation_folders
+                    (id, name, sort_order, is_collapsed, is_system)
+                VALUES (?, ?, ?, 0, 0)
+                """,
+                (folder_id, clean, sort_order),
+            )
+            conn.commit()
+        return folder_id
+
+    def create_library_folder(self, name: str) -> str | None:
+        clean = (name or "").strip()
+        if not clean:
+            return None
+        folder_id = str(uuid.uuid4())
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM library_folders"
+            ).fetchone()
+            sort_order = int(row[0]) if row else 0
+            conn.execute(
+                """
+                INSERT INTO library_folders
+                    (id, name, sort_order, is_collapsed, is_system)
+                VALUES (?, ?, ?, 0, 0)
+                """,
+                (folder_id, clean, sort_order),
+            )
+            conn.commit()
+        return folder_id
+
+    def rename_conversation_folder(self, folder_id: str, name: str) -> bool:
+        clean = (name or "").strip()
+        if not clean:
+            return False
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE conversation_folders SET name = ? WHERE id = ?",
+                    (clean, folder_id),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error("Failed to rename conversation folder %s: %s", folder_id, e)
+            return False
+
+    def rename_library_folder(self, folder_id: str, name: str) -> bool:
+        clean = (name or "").strip()
+        if not clean:
+            return False
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE library_folders SET name = ? WHERE id = ?",
+                    (clean, folder_id),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error("Failed to rename library folder %s: %s", folder_id, e)
+            return False
+
+    def set_conversation_folder_collapsed(self, folder_id: str, collapsed: bool) -> bool:
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE conversation_folders SET is_collapsed = ? WHERE id = ?",
+                    (1 if collapsed else 0, folder_id),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                "Failed to set conversation folder collapsed %s: %s", folder_id, e
+            )
+            return False
+
+    def set_library_folder_collapsed(self, folder_id: str, collapsed: bool) -> bool:
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    "UPDATE library_folders SET is_collapsed = ? WHERE id = ?",
+                    (1 if collapsed else 0, folder_id),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                "Failed to set library folder collapsed %s: %s", folder_id, e
+            )
+            return False
+
+    def delete_conversation_folder(self, folder_id: str) -> bool:
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT is_system FROM conversation_folders WHERE id = ?",
+                    (folder_id,),
+                ).fetchone()
+                if row is None:
+                    return False
+                if row["is_system"]:
+                    return False
+                conn.execute("DELETE FROM sessions WHERE folder_id = ?", (folder_id,))
+                conn.execute(
+                    "DELETE FROM conversation_folders WHERE id = ?", (folder_id,)
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error("Failed to delete conversation folder %s: %s", folder_id, e)
+            return False
+
+    def delete_library_folder(self, folder_id: str) -> tuple[bool, list[str]]:
+        """Delete folder and return (success, list of filenames removed from SQLite)."""
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT is_system FROM library_folders WHERE id = ?",
+                    (folder_id,),
+                ).fetchone()
+                if row is None:
+                    return False, []
+                if row["is_system"]:
+                    return False, []
+                cursor = conn.execute(
+                    "SELECT filename FROM documents WHERE folder_id = ?",
+                    (folder_id,),
+                )
+                filenames = [r["filename"] for r in cursor.fetchall()]
+                conn.execute("DELETE FROM documents WHERE folder_id = ?", (folder_id,))
+                conn.execute("DELETE FROM library_folders WHERE id = ?", (folder_id,))
+                conn.commit()
+            return True, filenames
+        except Exception as e:
+            logger.error("Failed to delete library folder %s: %s", folder_id, e)
+            return False, []
+
+    def move_session_to_folder(self, session_id: str, folder_id: str) -> bool:
+        try:
+            with self._get_connection() as conn:
+                exists = conn.execute(
+                    "SELECT 1 FROM conversation_folders WHERE id = ?",
+                    (folder_id,),
+                ).fetchone()
+                if not exists:
+                    return False
+                conn.execute(
+                    "UPDATE sessions SET folder_id = ? WHERE id = ?",
+                    (folder_id, session_id),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                "Failed to move session %s to folder %s: %s", session_id, folder_id, e
+            )
+            return False
+
+    def move_document_to_folder(self, filename: str, folder_id: str) -> bool:
+        try:
+            with self._get_connection() as conn:
+                exists = conn.execute(
+                    "SELECT 1 FROM library_folders WHERE id = ?",
+                    (folder_id,),
+                ).fetchone()
+                if not exists:
+                    return False
+                conn.execute(
+                    "UPDATE documents SET folder_id = ? WHERE filename = ?",
+                    (folder_id, filename),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                "Failed to move document %s to folder %s: %s", filename, folder_id, e
+            )
+            return False
+
+    def get_sessions_for_sidebar_by_folder(self) -> tuple[list[dict], dict[str, list[dict]]]:
+        with self._get_connection() as conn:
+            main_id = self._ensure_main_folder_row(
+                conn, "conversation_folders", _MAIN_FOLDER_NAME
+            )
+            folders = [
+                self._folder_row_to_dict(row)
+                for row in conn.execute(
+                    """
+                    SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                    FROM conversation_folders
+                    ORDER BY sort_order ASC, created_at ASC
+                    """
+                ).fetchall()
+            ]
+            grouped: dict[str, list[dict]] = {f["id"]: [] for f in folders}
+            cursor = conn.execute(
+                """
+                SELECT id, title, updated_at, folder_id
+                FROM sessions
+                ORDER BY updated_at DESC
+                """
+            )
+            for row in cursor.fetchall():
+                fid = row["folder_id"] or main_id
+                if fid not in grouped:
+                    grouped[fid] = []
+                grouped[fid].append(dict(row))
+            return folders, grouped
+
+    def get_documents_for_sidebar_by_folder(self) -> tuple[list[dict], dict[str, list[dict]]]:
+        with self._get_connection() as conn:
+            main_id = self._ensure_main_folder_row(
+                conn, "library_folders", _MAIN_FOLDER_NAME
+            )
+            folders = [
+                self._folder_row_to_dict(row)
+                for row in conn.execute(
+                    """
+                    SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                    FROM library_folders
+                    ORDER BY sort_order ASC, created_at ASC
+                    """
+                ).fetchall()
+            ]
+            grouped: dict[str, list[dict]] = {f["id"]: [] for f in folders}
+            cursor = conn.execute(
+                "SELECT * FROM documents ORDER BY ingested_at DESC"
+            )
+            for row in cursor.fetchall():
+                doc = dict(row)
+                fid = doc.get("folder_id") or main_id
+                if fid not in grouped:
+                    grouped[fid] = []
+                grouped[fid].append(doc)
+            return folders, grouped
+
+    def get_session_folder_id(self, session_id: str) -> str | None:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT folder_id FROM sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return row["folder_id"] or self.get_main_conversation_folder_id()
 
     # ... [Keep your existing methods: cleanup_empty_sessions, get_session_count, etc.] ...
     def cleanup_empty_sessions(self, active_session_id: str = None):
@@ -149,12 +535,15 @@ class DatabaseManager:
         except Exception:
             return 0
 
-    def create_session(self, title: str = "New Chat") -> str:
+    def create_session(
+        self, title: str = "New Chat", folder_id: str | None = None
+    ) -> str:
         session_id = str(uuid.uuid4())
+        fid = folder_id or self.get_main_conversation_folder_id()
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO sessions (id, title) VALUES (?, ?)", 
-                (session_id, title)
+                "INSERT INTO sessions (id, title, folder_id) VALUES (?, ?, ?)",
+                (session_id, title, fid),
             )
             conn.commit()
         return session_id
@@ -232,8 +621,11 @@ class DatabaseManager:
     def get_recent_sessions(self, limit: int = 20, offset: int = 0) -> list[dict]:
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT id, title, updated_at FROM sessions ORDER BY updated_at DESC LIMIT ? OFFSET ?",
-                (limit, offset)
+                """
+                SELECT id, title, updated_at, folder_id
+                FROM sessions ORDER BY updated_at DESC LIMIT ? OFFSET ?
+                """,
+                (limit, offset),
             )
             return [dict(row) for row in cursor.fetchall()]
 
@@ -246,11 +638,15 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT id, title, updated_at FROM sessions
-                WHERE instr(lower(title), ?) > 0
+                SELECT s.id, s.title, s.updated_at, s.folder_id, cf.name AS folder_name
+                FROM sessions s
+                LEFT JOIN conversation_folders cf ON cf.id = s.folder_id
+                WHERE instr(lower(s.title), ?) > 0
                 UNION
-                SELECT s.id, s.title, s.updated_at FROM sessions s
+                SELECT s.id, s.title, s.updated_at, s.folder_id, cf.name AS folder_name
+                FROM sessions s
                 INNER JOIN messages m ON m.session_id = s.id
+                LEFT JOIN conversation_folders cf ON cf.id = s.folder_id
                 WHERE instr(lower(m.content), ?) > 0
                 ORDER BY updated_at DESC
                 LIMIT ?
@@ -259,12 +655,22 @@ class DatabaseManager:
             )
             return [dict(row) for row in cursor.fetchall()]
         
-    def add_document_metadata(self, filename: str, file_size_kb: float, chunk_count: int):
+    def add_document_metadata(
+        self,
+        filename: str,
+        file_size_kb: float,
+        chunk_count: int,
+        folder_id: str | None = None,
+    ):
         doc_id = str(uuid.uuid4())
+        fid = folder_id or self.get_main_library_folder_id()
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO documents (id, filename, file_size_kb, chunk_count) VALUES (?, ?, ?, ?)",
-                (doc_id, filename, file_size_kb, chunk_count)
+                """
+                INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (doc_id, filename, file_size_kb, chunk_count, fid),
             )
             conn.commit()
 
@@ -292,9 +698,11 @@ class DatabaseManager:
                 ph = ",".join("?" * len(names))
                 cursor = conn.execute(
                     f"""
-                    SELECT * FROM documents
-                    WHERE instr(lower(filename), ?) > 0 OR filename IN ({ph})
-                    ORDER BY ingested_at DESC
+                    SELECT d.*, lf.name AS folder_name
+                    FROM documents d
+                    LEFT JOIN library_folders lf ON lf.id = d.folder_id
+                    WHERE instr(lower(d.filename), ?) > 0 OR d.filename IN ({ph})
+                    ORDER BY d.ingested_at DESC
                     LIMIT ?
                     """,
                     (q, *names, limit),
@@ -302,9 +710,11 @@ class DatabaseManager:
             elif q:
                 cursor = conn.execute(
                     """
-                    SELECT * FROM documents
-                    WHERE instr(lower(filename), ?) > 0
-                    ORDER BY ingested_at DESC
+                    SELECT d.*, lf.name AS folder_name
+                    FROM documents d
+                    LEFT JOIN library_folders lf ON lf.id = d.folder_id
+                    WHERE instr(lower(d.filename), ?) > 0
+                    ORDER BY d.ingested_at DESC
                     LIMIT ?
                     """,
                     (q, limit),
@@ -313,9 +723,11 @@ class DatabaseManager:
                 ph = ",".join("?" * len(names))
                 cursor = conn.execute(
                     f"""
-                    SELECT * FROM documents
-                    WHERE filename IN ({ph})
-                    ORDER BY ingested_at DESC
+                    SELECT d.*, lf.name AS folder_name
+                    FROM documents d
+                    LEFT JOIN library_folders lf ON lf.id = d.folder_id
+                    WHERE d.filename IN ({ph})
+                    ORDER BY d.ingested_at DESC
                     LIMIT ?
                     """,
                     (*names, limit),
