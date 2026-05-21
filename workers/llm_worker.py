@@ -565,6 +565,10 @@ class LLMWorker(QThread):
         n_before = len(capped)
         limit = max(2, min(100, int(getattr(self, "max_history_messages", 10))))
         windowed = capped[-limit:] if len(capped) > limit else capped
+        # Jinja/Mistral chat templates expect a user turn before assistant; dropping the
+        # leading user when windowing leaves assistant-first history and breaks reconstruction.
+        while windowed and windowed[0].get("role") == "assistant":
+            windowed = windowed[1:]
 
         if n_before > len(windowed):
             logger.info(
@@ -1094,27 +1098,53 @@ class LLMWorker(QThread):
                         self._mark_skip_enrichment("web_tool_failure")
 
             if web_results:
+                web_items: list[dict] = []
                 if isinstance(web_results, list):
-                    web_results = "\n\n".join([str(item) for item in web_results])
+                    web_items = [r for r in web_results if isinstance(r, dict)]
                 else:
-                    web_results = str(web_results)
+                    web_items = [
+                        {
+                            "title": "Live Web Search",
+                            "snippet": str(web_results),
+                        }
+                    ]
 
-                web_context = web_results[:self.RAG_BUDGET]
-                
-                all_ui_sources.append({
-                    "id": "W", 
-                    "filename": "Live Web Search", 
-                    "content": web_context, 
-                    "type": "web"
-                })
-                
-                # 🔑 Append Web results to tool_context
+                web_context_parts: list[str] = []
+                for item in web_items:
+                    title = str(item.get("title") or "").strip()
+                    snippet = str(item.get("snippet") or "").strip()
+                    if title or snippet:
+                        web_context_parts.append(
+                            f"{title}\n{snippet}".strip() if title and snippet else (title or snippet)
+                        )
+                web_context = "\n\n".join(web_context_parts)[: self.RAG_BUDGET]
+
+                single_web = len(web_items) == 1
+                for idx, item in enumerate(web_items, start=1):
+                    title = str(item.get("title") or "").strip() or f"Web result {idx}"
+                    snippet = str(item.get("snippet") or "").strip()
+                    src: dict = {
+                        "filename": title,
+                        "content": snippet,
+                        "type": "web",
+                    }
+                    url = str(item.get("url") or "").strip()
+                    if url.startswith(("http://", "https://")):
+                        src["url"] = url
+                    if single_web and execution_route in ("WEB", "INTERNET"):
+                        src["id"] = "W"
+                    all_ui_sources.append(src)
+
                 if tool_context:
                     tool_context = f"{tool_context}\n\n[W] WEB SEARCH RESULTS:\n{web_context}"
                 else:
                     tool_context = f"[W] WEB SEARCH RESULTS:\n{web_context}"
-                    
-                logger.info(f"[LLM Worker] Web search integrated ({len(web_context)} chars)")
+
+                logger.info(
+                    "[LLM Worker] Web search integrated (%d sources, %d chars)",
+                    len(web_items),
+                    len(web_context),
+                )
 
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)

@@ -34,6 +34,23 @@ _MALFORMED_CONTROL = re.compile(
 )
 # Channel scaffold tail after an otherwise complete answer.
 _CHANNEL_TAIL = re.compile(r"(?is)\n+\s*<\|?channel\|?>.*$")
+# Mistral instruct markers leaked when prompt anchor was wrong or the model continues the template.
+_MISTRAL_INST_MARKERS = re.compile(r"\s*\[/?INST\]\s*")
+_MISTRAL_EOS_TAIL = re.compile(r"\s*</s>\s*$")
+
+
+def strip_mistral_instruct_artifacts(text: str) -> str:
+    """Remove Mistral template markers without altering inter-token spacing.
+
+    Must preserve leading/trailing spaces on each fragment — streaming passes one
+    delta at a time to TTS; a global ``strip()`` merges words (``Yes`` + `` world`` → ``Yesworld``).
+    """
+    if not text:
+        return text
+    if "[INST]" not in text and "[/INST]" not in text and "</s>" not in text:
+        return text
+    t = _MISTRAL_INST_MARKERS.sub(" ", text)
+    return _MISTRAL_EOS_TAIL.sub("", t)
 
 
 def strip_harmony_oss_artifacts(text: str) -> str:
@@ -47,4 +64,4 @@ def strip_harmony_oss_artifacts(text: str) -> str:
     t = _META_COMMAND_PREFIX.sub("", t, count=1)
     t = _SCRATCHPAD_TAIL.sub("", t, count=1)
     t = _TRAILING_NOISE.sub("", t)
-    return t
+    return strip_mistral_instruct_artifacts(t)

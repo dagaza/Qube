@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
@@ -37,7 +38,38 @@ _ASSISTANT_ANCHOR_SUFFIXES: tuple[str, ...] = (
     "<|assistant|>",
     "<|im_start|>assistant",
     "[INST]",
+    "[/INST]",
 )
+
+_MISTRAL_CLOSE_INST_RE = re.compile(r"\[/INST\]\s*$")
+
+
+def _prompt_has_generation_anchor(prompt: str, template_type: str) -> bool:
+    """True when the formatted prompt already opens the assistant generation slot."""
+    p = (prompt or "").strip()
+    if not p:
+        return False
+    tt = (template_type or "fallback").lower()
+    if tt == "mistral":
+        return bool(_MISTRAL_CLOSE_INST_RE.search(p)) or p.endswith("[INST]")
+    return p.endswith(_ASSISTANT_ANCHOR_SUFFIXES)
+
+
+def _maybe_append_assistant_anchor(
+    prompt: str,
+    template_type: str,
+) -> tuple[str, bool]:
+    """
+    Append a template-safe generation anchor only when missing.
+
+    Mistral instruct prompts must end at [/INST]; never append Phi-style <|assistant|>.
+    """
+    if _prompt_has_generation_anchor(prompt, template_type):
+        return prompt, False
+    tt = (template_type or "fallback").lower()
+    if tt == "mistral":
+        return prompt, False
+    return (prompt or "") + "\n<|assistant|>\n", True
 
 
 def _insert_before_last_anchor(prompt: str, anchor: str, text: str) -> str:
@@ -73,10 +105,8 @@ def _apply_template_override(bundle: "RenderPromptBundle", override: TemplateOve
     bundle.stop_tokens = list(merged)
     p = bundle.prompt
     if override.enforce_assistant_anchor:
-        s = (p or "").strip()
-        if not s.endswith(_ASSISTANT_ANCHOR_SUFFIXES):
-            p = (p or "") + "\n<|assistant|>\n"
-            bundle.prompt = p
+        p, _ = _maybe_append_assistant_anchor(p or "", override.template_type)
+        bundle.prompt = p
     if override.force_prefix:
         bundle.prompt = bundle.prompt + override.force_prefix
 
@@ -251,9 +281,9 @@ def build_prompt_bundle(
             )
             bundle.stop_tokens = list(merged_learned)
         if learned.enforce_assistant_anchor:
-            s = (bundle.prompt or "").strip()
-            if not s.endswith(_ASSISTANT_ANCHOR_SUFFIXES):
-                bundle.prompt = (bundle.prompt or "") + "\n<|assistant|>\n"
+            bundle.prompt, _ = _maybe_append_assistant_anchor(
+                bundle.prompt or "", template_type
+            )
         logger.info(
             "[LLM-SELF-HEAL-APPLY] model=%s stops=%d anchor=%s",
             learned.model_name,

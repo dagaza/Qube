@@ -36,8 +36,9 @@ _WEB_PERSONA = (
     "CRITICAL: Respond directly to the user in a natural, conversational tone. "
     "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
     "Write only the user-facing response. "
-    "Cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
-    "no URL in parentheses after [W], and no backticks around [W]. "
+    "Cite web sources using only the plain id from the SOURCE blocks (e.g. [W] or [1])—"
+    "never labels like [W: Live Web Search], no Markdown hyperlink syntax, "
+    "no URL in parentheses after the citation token, and no backticks around citations. "
     "Use [W] at most once at the end of each sentence that relies on the web results, "
     "and never output [W] two or more times in a row."
 )

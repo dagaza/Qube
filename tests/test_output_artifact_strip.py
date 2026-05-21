@@ -61,3 +61,23 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         out = strip_harmony_oss_artifacts(raw)
         self.assertNotIn("channel", out.lower())
         self.assertIn("Answer", out)
+
+    def test_strips_mistral_inst_markers(self) -> None:
+        raw = "[/INST] Soak brown rice for 30 minutes. </s>"
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertNotIn("[INST]", out)
+        self.assertNotIn("[/INST]", out)
+        self.assertNotIn("</s>", out)
+        self.assertIn("Soak brown rice", out)
+
+    def test_stream_fragments_keep_boundary_spaces(self) -> None:
+        """Regression: per-delta strip must not strip() or words glue together in TTS."""
+        from core.output_artifact_strip import strip_mistral_instruct_artifacts
+
+        self.assertEqual(strip_mistral_instruct_artifacts(" world"), " world")
+        self.assertEqual(strip_mistral_instruct_artifacts("Yes"), "Yes")
+        combined = "".join(
+            strip_harmony_oss_artifacts(p)
+            for p in ("Yes", ",", " soaking", " brown", " rice", " helps.")
+        )
+        self.assertEqual(combined, "Yes, soaking brown rice helps.")

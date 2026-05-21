@@ -53,6 +53,7 @@ import weakref
 import re
 import re as _re_cite
 
+from core.citation_normalize import normalize_labeled_citation_tokens
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
@@ -210,6 +211,7 @@ def _prepare_stream_for_qt_citation_links(raw: str) -> str:
         return raw
     s = unicodedata.normalize("NFKC", raw)
     s = s.replace("\uff3b", "[").replace("\uff3d", "]")
+    s = normalize_labeled_citation_tokens(s)
     # Model-authored markdown links for citations → plain [n] / [W]
     s = _re_cite.sub(
         r"\[(\d+|[wW])\]\([^\)]*\)",
@@ -2614,7 +2616,13 @@ class ConversationsView(QWidget):
             return
 
     def open_source_preview(self, source_dict):
-        """Opens the Prestige-styled SourcePreviewer (see ui/components/prestige_dialog.py)."""
+        """Opens web URLs in the browser; other sources use the in-app preview dialog."""
+        url = str((source_dict or {}).get("url") or "").strip()
+        if url.startswith(("http://", "https://")):
+            import webbrowser
+
+            webbrowser.open(url)
+            return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         viewer = SourcePreviewer(
             source_dict.get("filename", "Source"),
