@@ -586,7 +586,12 @@ class AgentMessageLabel(QTextBrowser):
         self.setTabChangesFocus(False)
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # ClickFocus so mouse selection + Ctrl+C copies from this bubble, not the composer.
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.document().setDocumentMargin(4)
         self.viewport().setAutoFillBackground(False)
@@ -2039,10 +2044,6 @@ class ConversationsView(QWidget):
                 QSizePolicy.Policy.Preferred,
             )
             self.current_agent_msg._assistant_turn_id = self._user_turn_id
-            self.current_agent_msg.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextBrowserInteraction |
-                Qt.TextInteractionFlag.LinksAccessibleByMouse
-            )
             self.current_agent_msg.attach_citation_handling(self)
             self._style_agent_message_shell(self.current_agent_msg)
 
