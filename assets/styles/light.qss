@@ -716,7 +716,7 @@ QLabel#AgentMessage {
     color: #1e293b !important;
 }
 
-#HistoryOptionsBtn, #LibraryOptionsBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn {
     background: transparent;
     border: none;
     padding: 0px;
@@ -724,7 +724,7 @@ QLabel#AgentMessage {
     min-height: 0px;
 }
 
-#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
 }

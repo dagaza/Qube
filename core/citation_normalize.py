@@ -65,3 +65,25 @@ def normalize_labeled_citation_tokens(text: str) -> str:
     t = _W_LABELED_CITE.sub("[W]", t)
     t = _NUM_LABELED_CITE.sub(r"[\1]", t)
     return normalize_combined_numeric_citations(t)
+
+
+QUBE_CITATION_HREF_PREFIX = "https://qube.invalid/cite/"
+
+
+def _plain_citation_token(token: str) -> str:
+    return "[W]" if str(token).lower() == "w" else f"[{token}]"
+
+
+def markdown_for_external_clipboard(
+    md: str, *, href_prefix: str = QUBE_CITATION_HREF_PREFIX
+) -> str:
+    """Strip Qt-only citation link markup so pasted markdown stays Obsidian-friendly."""
+    if not md:
+        return ""
+    esc = re.escape(href_prefix)
+    out = re.sub(
+        rf"\[\[(\d+|[wW])\]\]\(<{esc}\1>\)",
+        lambda m: _plain_citation_token(m.group(1)),
+        md.strip(),
+    )
+    return out

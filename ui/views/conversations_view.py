@@ -55,7 +55,10 @@ import re
 import re as _re_cite
 from pathlib import Path
 
-from core.citation_normalize import normalize_labeled_citation_tokens
+from core.citation_normalize import (
+    markdown_for_external_clipboard,
+    normalize_labeled_citation_tokens,
+)
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
 from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
@@ -73,6 +76,12 @@ from ui.components.sidebar_folder_list import (
     add_new_folder_header_button,
 )
 from ui.components.source_viewer import SourcePreviewer
+from ui.components.text_document_height import (
+    font_descender_inset,
+    measure_markdown_body_height,
+    measure_wrapped_body_height,
+    text_edit_chrome_vertical_px,
+)
 from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
@@ -449,27 +458,28 @@ class ChatUserBubble(QPlainTextEdit):
         core = max(float(line_adv), ideal)
         return max(40, int(math.ceil(core)) + dm + 8)
 
+    def _block_stack_bottom_px(self) -> float:
+        """QPlainTextEdit block geometry (can differ slightly from layout.blockBoundingRect)."""
+        bottom = 0.0
+        block = self.document().firstBlock()
+        while block.isValid():
+            geom = self.blockBoundingGeometry(block)
+            if geom.isValid():
+                bottom = max(bottom, float(geom.bottom()))
+            block = block.next()
+        return bottom
+
     def _compute_content_height(self, wrap_w: int) -> int:
         """Pixel height for plain text at wrap_w (viewport not always ready when layout runs)."""
-        w = max(1, int(wrap_w))
         doc = self.document()
-        doc.setTextWidth(float(w))
-        lay = doc.documentLayout()
-        doc_h = float(lay.documentSize().height()) if lay is not None else 0.0
-        block_bottom = 0.0
-        b = doc.firstBlock()
-        while b.isValid():
-            g = self.blockBoundingGeometry(b)
-            if g.isValid():
-                block_bottom = max(block_bottom, float(g.bottom()))
-            b = b.next()
         fm = self.fontMetrics()
-        ac = max(1.0, float(fm.averageCharWidth()))
-        n = len(self.toPlainText())
-        est_lines = max(1, int(math.ceil((float(n) * ac + float(w) - 1.0) / float(w))))
-        est_h = float(est_lines) * float(fm.lineSpacing())
-        content = max(doc_h, block_bottom, est_h, float(fm.lineSpacing()))
-        return int(math.ceil(content)) + 14
+        body = measure_wrapped_body_height(
+            doc,
+            wrap_w,
+            min_body_px=float(fm.lineSpacing()),
+            block_bottom_px=self._block_stack_bottom_px(),
+        )
+        return int(math.ceil(body)) + font_descender_inset(fm)
 
     def minimumSizeHint(self) -> QSize:
         eff = max(40, self._effective_wrap_width())
@@ -495,7 +505,6 @@ class ChatUserBubble(QPlainTextEdit):
             except (RuntimeError, AttributeError):
                 pass
         h = self._compute_content_height(w)
-        h = max(h, self.fontMetrics().height() + 14)
         if self.height() != h:
             self.setFixedHeight(h)
         self.updateGeometry()
@@ -593,7 +602,7 @@ class AgentMessageLabel(QTextBrowser):
             | Qt.TextInteractionFlag.LinksAccessibleByMouse
         )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.document().setDocumentMargin(4)
+        self.document().setDocumentMargin(2)
         self.viewport().setAutoFillBackground(False)
 
         self._citation_sources: list = []
@@ -604,6 +613,13 @@ class AgentMessageLabel(QTextBrowser):
         self._doc_layout_connected = False
         self._fixed_h = 0
         self._syncing_height = False
+        self._computing_doc_height = False
+        self._streaming_markdown = False
+        self._suppress_doc_size_sync = False
+        self._stream_peak_h = 0
+        self._height_coalesce = QTimer(self)
+        self._height_coalesce.setSingleShot(True)
+        self._height_coalesce.timeout.connect(self._sync_fixed_height)
 
         doc_layout = self.document().documentLayout()
         if doc_layout is not None and hasattr(doc_layout, "documentSizeChanged"):
@@ -624,11 +640,61 @@ class AgentMessageLabel(QTextBrowser):
         cur = QTextCursor(doc)
         cur.beginEditBlock()
         block = doc.firstBlock()
+        last_block = doc.lastBlock()
         while block.isValid():
             cur.setPosition(block.position())
             cur.mergeBlockFormat(fmt)
+            if block == last_block:
+                tail = QTextBlockFormat()
+                tail.setBottomMargin(0.0)
+                cur.mergeBlockFormat(tail)
             block = block.next()
         cur.endEditBlock()
+
+    def _effective_content_width(self) -> int:
+        """Wrap width for layout; fall back to transcript column when viewport is not ready."""
+        vw = int(self.viewport().width())
+        if vw > 4:
+            return vw
+        outer = int(self.width())
+        if outer > 8:
+            return max(1, self._content_width_from_outer_width(outer))
+        view = _parent_conversations_view(self)
+        col = (
+            view.transcript_column_max_width()
+            if view is not None
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        return max(40, int(col) - 32)
+
+    def _ensure_document_text_width(self) -> None:
+        self.document().setTextWidth(float(max(1, self._effective_content_width())))
+
+    def _reset_document_viewport_top(self) -> None:
+        """QTextBrowser auto-scrolls to the caret on append; pin document origin at y=0."""
+        bar = self.verticalScrollBar()
+        if bar is not None:
+            bar.setValue(0)
+        cur = self.textCursor()
+        cur.movePosition(QTextCursor.MoveOperation.Start)
+        self.setTextCursor(cur)
+
+    def _apply_agent_document_content(
+        self,
+        doc,
+        safe_markdown: str,
+        *,
+        line_height_percent: int | None,
+        justify_transcript: bool,
+    ) -> None:
+        doc.setMarkdown(safe_markdown)
+        pct = (
+            line_height_percent
+            if line_height_percent is not None
+            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
+        )
+        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
+        self._reset_document_viewport_top()
 
     def set_agent_markdown(
         self,
@@ -638,8 +704,21 @@ class AgentMessageLabel(QTextBrowser):
         document_stylesheet: str | None = None,
         line_height_percent: int | None = None,
         justify_transcript: bool = False,
+        streaming: bool = False,
     ) -> None:
         self._agent_is_dark = is_dark
+        self._streaming_markdown = streaming
+        if streaming:
+            self.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Minimum,
+            )
+        else:
+            self.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Preferred,
+            )
+            self._stream_peak_h = 0
         self._md_layout_source = markdown or ""
         safe = _qt_safe_markdown(self._md_layout_source)
         doc = self.document()
@@ -649,17 +728,26 @@ class AgentMessageLabel(QTextBrowser):
             if document_stylesheet is not None
             else _markdown_ui_stylesheet(is_dark)
         )
-        doc.setTextWidth(self.viewport().width())
-        doc.setMarkdown(safe)
-        pct = (
-            line_height_percent
-            if line_height_percent is not None
-            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
-        )
-        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
-        _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
+        self._ensure_document_text_width()
+        self._suppress_doc_size_sync = True
+        try:
+            self._apply_agent_document_content(
+                doc,
+                safe,
+                line_height_percent=line_height_percent,
+                justify_transcript=justify_transcript,
+            )
+        finally:
+            self._suppress_doc_size_sync = False
+        if not streaming:
+            _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
         self._sync_fixed_height()
+        if streaming:
+            self._schedule_height_sync()
         self.updateGeometry()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.updateGeometry()
 
     def attach_citation_handling(self, conversations_view):
         self._conversations_view_ref = (
@@ -685,6 +773,7 @@ class AgentMessageLabel(QTextBrowser):
         self._conversations_view_ref = None
         self._citation_sources = []
         self._md_layout_source = ""
+        self._stream_peak_h = 0
         if self._doc_layout_connected:
             try:
                 self.document().documentLayout().documentSizeChanged.disconnect(
@@ -699,29 +788,62 @@ class AgentMessageLabel(QTextBrowser):
             pass
 
     def sizeHint(self):
+        if self._streaming_markdown and self._fixed_h > 0:
+            return QSize(max(self.width(), 1), self._fixed_h)
         return super().sizeHint()
 
     def heightForWidth(self, w: int) -> int:
+        if self._streaming_markdown:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            if w <= 0:
+                return super().heightForWidth(w)
         if w <= 0:
             return super().heightForWidth(w)
+        if self._computing_doc_height:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            return max(int(self.fontMetrics().lineSpacing()) + 8, 24)
         return self._compute_doc_height(w)
 
     def hasHeightForWidth(self) -> bool:
-        return True
+        return not self._streaming_markdown
+
+    def _schedule_height_sync(self) -> None:
+        self._height_coalesce.start(0)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.document().setTextWidth(self.viewport().width())
-        self._sync_fixed_height()
+        self._ensure_document_text_width()
+        if self._streaming_markdown:
+            self._reset_document_viewport_top()
+        self._schedule_height_sync()
         self.updateGeometry()
 
     def _compute_doc_height(self, width: int) -> int:
-        doc = self.document()
-        content_w = self._content_width_from_outer_width(width)
-        doc.setTextWidth(max(content_w, 1))
-        doc_layout = doc.documentLayout()
-        doc_h = doc_layout.documentSize().height() if doc_layout is not None else doc.size().height()
-        return int(math.ceil(doc_h + self._non_document_vertical_space()))
+        if self._computing_doc_height:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            return max(int(self.fontMetrics().lineSpacing()) + 8, 24)
+        self._computing_doc_height = True
+        try:
+            doc = self.document()
+            content_w = self._effective_content_width()
+            if content_w <= 1 and width > 1:
+                content_w = self._content_width_from_outer_width(width)
+            fm = self.fontMetrics()
+            body = measure_markdown_body_height(
+                doc,
+                content_w,
+                min_body_px=float(fm.lineSpacing()),
+                bottom_inset_px=font_descender_inset(
+                    fm, safety_px=2 if self._streaming_markdown else 1
+                ),
+                streaming=self._streaming_markdown,
+            )
+            return int(math.ceil(body)) + self._viewport_chrome_vertical_px()
+        finally:
+            self._computing_doc_height = False
 
     def _content_width_from_outer_width(self, outer_width: int) -> int:
         cm = self.contentsMargins()
@@ -737,21 +859,22 @@ class AgentMessageLabel(QTextBrowser):
         )
         return max(1, available)
 
-    def _non_document_vertical_space(self) -> int:
+    def _viewport_chrome_vertical_px(self) -> int:
+        """Widget chrome only — descender inset lives in the markdown body measurement."""
         cm = self.contentsMargins()
         vm = self.viewportMargins()
-        frame = self.frameWidth() * 2
-        return (
-            frame
-            + cm.top()
-            + cm.bottom()
-            + vm.top()
-            + vm.bottom()
-            + 2  # conservative safety pad for final line descenders
+        return text_edit_chrome_vertical_px(
+            frame_width=self.frameWidth(),
+            contents_top=cm.top(),
+            contents_bottom=cm.bottom(),
+            viewport_top=vm.top(),
+            viewport_bottom=vm.bottom(),
         )
 
     def _on_document_size_changed(self, _size) -> None:
-        self._sync_fixed_height()
+        if self._suppress_doc_size_sync or self._streaming_markdown:
+            return
+        self._schedule_height_sync()
 
     def _sync_fixed_height(self) -> None:
         if self._syncing_height:
@@ -760,7 +883,16 @@ class AgentMessageLabel(QTextBrowser):
         try:
             w = max(self.width(), 1)
             h = self._compute_doc_height(w)
-            if h != self._fixed_h:
+            if self._streaming_markdown:
+                h = max(h, self._fixed_h, self._stream_peak_h)
+                self._stream_peak_h = h
+                self._fixed_h = h
+                self.setMinimumHeight(h)
+                self.setMaximumHeight(_QWIDGETSIZE_MAX)
+                self._reset_document_viewport_top()
+            else:
+                self.setMinimumHeight(0)
+                self.setMaximumHeight(_QWIDGETSIZE_MAX)
                 self._fixed_h = h
                 self.setFixedHeight(h)
         finally:
@@ -785,6 +917,20 @@ class AgentMessageLabel(QTextBrowser):
         menu.addAction(sel_act)
 
         menu.exec(event.globalPos())
+
+    def plain_text_for_clipboard(self) -> str:
+        """Rendered plain text for one-click copy (falls back to markdown source)."""
+        text = self.toPlainText().strip()
+        if text:
+            return text
+        return markdown_for_external_clipboard(self._md_layout_source or "")
+
+    def markdown_for_clipboard(self) -> str:
+        """Original markdown syntax for export (Obsidian, etc.), without Qt cite links."""
+        src = (self._md_layout_source or "").strip()
+        if src:
+            return markdown_for_external_clipboard(src)
+        return self.plain_text_for_clipboard()
 
 
 class MessageWrapper(QWidget):
@@ -1351,6 +1497,82 @@ class ConversationsView(QWidget):
             f"font-size: {pt:.1f}pt; background: transparent; border: none;"
         )
 
+    def _style_agent_copy_button(self, btn: QPushButton, is_dark: bool) -> None:
+        icon_color = "#a6adc8" if is_dark else "#64748b"
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        btn.setIcon(qta.icon("fa5s.copy", color=icon_color))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(
+            f"""
+            QPushButton::menu-indicator {{ image: none; width: 0px; }}
+            QPushButton {{ background: transparent; border: none; border-radius: 4px; padding: 4px; }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+            """
+        )
+
+    def _copy_agent_message_to_clipboard(
+        self, agent: AgentMessageLabel, *, as_markdown: bool = False
+    ) -> None:
+        text = (
+            agent.markdown_for_clipboard()
+            if as_markdown
+            else agent.plain_text_for_clipboard()
+        )
+        if not text:
+            return
+        QApplication.clipboard().setText(text)
+
+    def _build_agent_copy_menu(
+        self, agent: AgentMessageLabel, is_dark: bool
+    ) -> QMenu:
+        menu = QMenu()
+        menu.setObjectName("PrestigeMenu")
+        self._apply_menu_theme(menu, is_dark)
+        plain_act = menu.addAction("Copy as plain text")
+        plain_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._copy_agent_message_to_clipboard(
+                lbl, as_markdown=False
+            )
+        )
+        md_act = menu.addAction("Copy as Markdown")
+        md_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._copy_agent_message_to_clipboard(
+                lbl, as_markdown=True
+            )
+        )
+        return menu
+
+    def _add_agent_copy_button(self, container_layout: QVBoxLayout, agent: AgentMessageLabel) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        copy_row = QHBoxLayout()
+        copy_row.setContentsMargins(0, 0, 0, 0)
+        copy_row.setSpacing(0)
+
+        copy_btn = QPushButton()
+        copy_btn.setObjectName("AgentMessageCopyBtn")
+        copy_btn.setFixedSize(28, 28)
+        copy_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        copy_btn.setToolTip("Copy as plain text or Markdown")
+        self._style_agent_copy_button(copy_btn, is_dark)
+        copy_menu = self._build_agent_copy_menu(agent, is_dark)
+        copy_btn.setMenu(copy_menu)
+
+        copy_row.addWidget(copy_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        copy_row.addStretch(1)
+        container_layout.addLayout(copy_row)
+
+    def _refresh_agent_copy_buttons(self, is_dark: bool) -> None:
+        for w in self._iter_transcript_widgets():
+            if not isinstance(w, MessageWrapper) or w.is_user:
+                continue
+            btn = w.findChild(QPushButton, "AgentMessageCopyBtn")
+            if btn is not None:
+                self._style_agent_copy_button(btn, is_dark)
+                menu = btn.menu()
+                if menu is not None:
+                    self._apply_menu_theme(menu, is_dark)
+
     def _iter_transcript_widgets(self):
         if not hasattr(self, "transcript_layout"):
             return
@@ -1905,7 +2127,7 @@ class ConversationsView(QWidget):
 
     def log_user_message(self, text: str, *, pending_assistant: bool = False) -> None:
         self._clear_placeholders()
-        self._flush_agent_markdown_coalesce_immediate()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
         self._user_turn_id += 1
         self.current_agent_msg = None
@@ -1972,15 +2194,15 @@ class ConversationsView(QWidget):
         self.transcript_layout.removeWidget(w)
         w.deleteLater()
 
-    def _flush_agent_markdown_coalesce_immediate(self) -> None:
+    def _flush_agent_markdown_coalesce_immediate(self, *, finalize: bool = False) -> None:
         if getattr(self, "_agent_md_coalesce_timer", None) is not None:
             self._agent_md_coalesce_timer.stop()
-        self._flush_coalesced_agent_markdown()
+        self._flush_coalesced_agent_markdown(finalize=finalize)
 
     def _schedule_coalesced_agent_markdown(self) -> None:
-        self._agent_md_coalesce_timer.start(32)
+        self._agent_md_coalesce_timer.start(48)
 
-    def _flush_coalesced_agent_markdown(self) -> None:
+    def _flush_coalesced_agent_markdown(self, *, finalize: bool = False) -> None:
         cur = getattr(self, "current_agent_msg", None)
         if cur is None:
             return
@@ -1995,6 +2217,7 @@ class ConversationsView(QWidget):
             prepared,
         )
         follow_stream_tail = self._is_transcript_scrolled_to_bottom()
+        streaming = bool(getattr(self, "_llm_in_progress", False)) and not finalize
         try:
             cur.set_agent_markdown(
                 rich_text,
@@ -2002,6 +2225,7 @@ class ConversationsView(QWidget):
                 document_stylesheet=self._agent_markdown_stylesheet(is_dark),
                 line_height_percent=self._line_height_proportional_percent(),
                 justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
+                streaming=streaming,
             )
         except RuntimeError:
             return
@@ -2036,7 +2260,7 @@ class ConversationsView(QWidget):
             )
             
             container_layout = QVBoxLayout(self.agent_msg_container)
-            container_layout.setContentsMargins(0, 0, 0, 2)
+            container_layout.setContentsMargins(0, 0, 0, 0)
 
             self.current_agent_msg = AgentMessageLabel()
             self.current_agent_msg.setSizePolicy(
@@ -2054,6 +2278,7 @@ class ConversationsView(QWidget):
                 self._attach_pending_citation_sources(self.current_agent_msg)
 
             container_layout.addWidget(self.current_agent_msg)
+            self._add_agent_copy_button(container_layout, self.current_agent_msg)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self._register_reader_focus_tracking(wrapper)
@@ -2451,7 +2676,7 @@ class ConversationsView(QWidget):
 
         # Reconcile stream chunks received while this session was not visible.
         self._flush_pending_stream_for_active_session()
-        self._flush_agent_markdown_coalesce_immediate()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
@@ -2605,6 +2830,7 @@ class ConversationsView(QWidget):
         if tw is not None:
             for ind in tw.findChildren(TypingIndicatorWidget):
                 ind.set_dark_theme(is_dark)
+        self._refresh_agent_copy_buttons(is_dark)
 
     def _apply_history_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
@@ -2843,7 +3069,7 @@ class ConversationsView(QWidget):
                 # Replace the active bubble instead of appending/reconciling around leaked prefix text.
                 self._agent_text_buffer = cleaned
                 self._schedule_coalesced_agent_markdown()
-        self._flush_agent_markdown_coalesce_immediate()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
@@ -2872,7 +3098,7 @@ class ConversationsView(QWidget):
 
     def on_generation_stopped(self) -> None:
         logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")
-        self._flush_agent_markdown_coalesce_immediate()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         self._awaiting_tts_end = False
