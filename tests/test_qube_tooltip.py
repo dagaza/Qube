@@ -1,6 +1,13 @@
 import unittest
 
-from core.qube_tooltip import _TOOLTIP_MAX_WIDTH_PX, _tooltip_label_width_px
+from core.qube_tooltip import (
+    _TOOLTIP_MAX_WIDTH_PX,
+    _tooltip_label_width_px,
+    _tooltip_text_height,
+    _tooltip_widget_and_text,
+    QubeToolTipController,
+)
+from PyQt6.QtWidgets import QApplication, QLabel, QSpinBox
 
 
 class TestTooltipLabelWidth(unittest.TestCase):
@@ -12,6 +19,61 @@ class TestTooltipLabelWidth(unittest.TestCase):
 
     def test_zero_width_clamps_to_one(self) -> None:
         self.assertEqual(_tooltip_label_width_px(0), 1)
+
+
+class TestTooltipContentSize(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        from PyQt6.QtWidgets import QApplication
+
+        cls._app = QApplication.instance() or QApplication([])
+
+    def test_long_paragraph_height_exceeds_single_line(self) -> None:
+        ctrl = QubeToolTipController.instance()
+        ctrl._ensure_popup()
+        assert ctrl._label is not None
+        long_text = " ".join(["word"] * 80)
+        size = ctrl._label_content_size(long_text)
+        self.assertEqual(size.width(), _TOOLTIP_MAX_WIDTH_PX)
+        self.assertGreater(size.height(), ctrl._label.fontMetrics().height() * 2)
+
+    def test_multiline_text_height_grows(self) -> None:
+        ctrl = QubeToolTipController.instance()
+        ctrl._ensure_popup()
+        assert ctrl._label is not None
+        one_line = ctrl._label_content_size("Short tip.")
+        many_lines = ctrl._label_content_size("\n".join(["Line of text"] * 6))
+        self.assertGreater(many_lines.height(), one_line.height())
+
+    def test_spinbox_line_edit_inherits_parent_tooltip(self) -> None:
+        spin = QSpinBox()
+        tip = (
+            "Acts as a background noise filter which controls when normal speech is "
+            "considered loud enough to keep recording/transcription active."
+        )
+        spin.setToolTip(tip)
+        line_edit = spin.findChild(type(spin.lineEdit())) if spin.lineEdit() else None
+        self.assertIsNotNone(line_edit)
+        anchor, resolved = _tooltip_widget_and_text(line_edit)  # type: ignore[arg-type]
+        self.assertEqual(resolved, tip)
+        self.assertIs(anchor, spin)
+
+    def test_vad_tip_height_fits_wrapped_body(self) -> None:
+        ctrl = QubeToolTipController.instance()
+        ctrl._ensure_popup()
+        assert ctrl._label is not None
+        tip = (
+            "Acts as a background noise filter which controls when normal speech is considered "
+            "loud enough to keep recording/transcription active. Lower values protect against "
+            "false positives."
+        )
+        size = ctrl._label_content_size(tip)
+        self.assertEqual(size.width(), _TOOLTIP_MAX_WIDTH_PX)
+        self.assertGreaterEqual(
+            size.height(),
+            _tooltip_text_height(tip, ctrl._label, _TOOLTIP_MAX_WIDTH_PX),
+        )
+        self.assertGreater(size.height(), ctrl._label.fontMetrics().height() * 2)
 
 
 if __name__ == "__main__":

@@ -210,6 +210,7 @@ class LibraryView(QWidget):
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search titles or indexed text…")
         self.search_bar.setObjectName("LibrarySearchBar")
+        self.search_bar.setToolTip("Search by document title or indexed text")
         layout.addWidget(self.search_bar)
         self._library_search_timer = QTimer(self)
         self._library_search_timer.setSingleShot(True)
@@ -835,6 +836,7 @@ class LibraryView(QWidget):
             "QPushButton { border: none; background: transparent; padding: 0px; }"
         )
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn.setToolTip("Document actions")
 
         menu = QMenu(btn)
         if hasattr(self, "_apply_menu_theme"):

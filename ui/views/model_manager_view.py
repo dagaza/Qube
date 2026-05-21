@@ -744,11 +744,17 @@ class ModelManagerView(QWidget):
         self.hub_search_edit = QLineEdit()
         self.hub_search_edit.setObjectName("HubModelSearchBar")
         self.hub_search_edit.setPlaceholderText("Search GGUF models on the Hub…")
+        self.hub_search_edit.setToolTip(
+            "Search Hugging Face for GGUF models, or filter the Qube Verified list."
+        )
         self.hub_search_edit.textChanged.connect(self._schedule_hub_search)
         left_l.addWidget(self.hub_search_edit)
 
         self.hub_list_hint = QLabel("Qube Verified — curated GGUF models")
         self.hub_list_hint.setWordWrap(True)
+        self.hub_list_hint.setToolTip(
+            "Curated models tested for Qube. Clear the search box to browse this list."
+        )
         left_l.addWidget(self.hub_list_hint)
 
         self.hub_model_list = QListWidget()
@@ -763,12 +769,16 @@ class ModelManagerView(QWidget):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         self.hub_model_list.setResizeMode(QListView.ResizeMode.Adjust)
+        self.hub_model_list.setToolTip(
+            "Select a model repository to view details and download options."
+        )
         self.hub_model_list.currentItemChanged.connect(self._on_hub_selection_changed)
         self.hub_model_list.itemSelectionChanged.connect(self._update_hub_row_colors)
         left_l.addWidget(self.hub_model_list, stretch=1)
         self.hub_model_list.viewport().installEventFilter(self)
         self.hub_load_more_btn = QPushButton("Load More")
         apply_brand_primary(self.hub_load_more_btn)
+        self.hub_load_more_btn.setToolTip("Load more models from Hugging Face")
         self.hub_load_more_btn.setVisible(False)
         self.hub_load_more_btn.clicked.connect(self._load_more_hub_search_results)
         left_l.addWidget(self.hub_load_more_btn)
@@ -1000,6 +1010,9 @@ class ModelManagerView(QWidget):
         files_row.setSpacing(8)
         self.hf_file_combo = HubFileComboBox(self, parent=files_row_host)
         self.hf_file_combo.setObjectName("HubFileComboBox")
+        self.hf_file_combo.setToolTip(
+            "Choose a GGUF quantization variant to download or load."
+        )
         self.hf_file_combo.setMinimumWidth(self._scaled_content_width(160))
         self.hf_file_combo.setMinimumHeight(34)
         _combo_pol = self.hf_file_combo.sizePolicy()
@@ -1021,6 +1034,7 @@ class ModelManagerView(QWidget):
 
         self.download_btn = QPushButton("Download")
         apply_brand_primary(self.download_btn, icon_name="fa5s.download")
+        self.download_btn.setToolTip("Download the selected model file")
         self.download_btn.clicked.connect(self._start_download)
         self.download_btn.setMinimumWidth(self._scaled_content_width(108))
         self.download_btn.setMinimumHeight(34)
@@ -1048,6 +1062,9 @@ class ModelManagerView(QWidget):
         system_row.setSpacing(0)
         self.system_chip_lbl = QLabel("System: --", parent=system_row_host)
         self.system_chip_lbl.setProperty("class", "Chip outlined")
+        self.system_chip_lbl.setToolTip(
+            "Whether this model variant fits your GPU memory and CPU configuration."
+        )
         self._configure_wrapping_label(self.system_chip_lbl)
         self._set_system_match_style("unknown")
         system_row.addWidget(self.system_chip_lbl)
@@ -1586,6 +1603,15 @@ class ModelManagerView(QWidget):
             return False
         return str(snap.get("model_basename") or "").strip() == p.name
 
+    def _sync_download_button_tooltip(self) -> None:
+        if getattr(self, "_download_ui_cancel_mode", False):
+            tip = "Stop the current download"
+        elif getattr(self, "_download_ui_load_mode", False):
+            tip = "Load the selected model into the native engine"
+        else:
+            tip = "Download the selected model file from Hugging Face"
+        self.download_btn.setToolTip(tip)
+
     def _set_download_button_download_mode(self) -> None:
         try:
             self.download_btn.clicked.disconnect()
@@ -1597,6 +1623,7 @@ class ModelManagerView(QWidget):
         self._apply_download_action_button_style(mode="download")
         self.download_btn.clicked.connect(self._start_download)
         self._update_download_button_label()
+        self._sync_download_button_tooltip()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self.refresh_button_themes(is_dark)
 
@@ -1611,6 +1638,7 @@ class ModelManagerView(QWidget):
         self._apply_download_action_button_style(mode="load")
         self.download_btn.setEnabled(bool(enabled))
         self.download_btn.clicked.connect(self._load_selected_model)
+        self._sync_download_button_tooltip()
 
     def _apply_download_action_button_style(self, mode: str) -> None:
         """Apply the brand style + matching icon for the current mode.
@@ -2979,6 +3007,8 @@ class ModelManagerView(QWidget):
             self.download_btn.clicked.connect(self._cancel_download)
         else:
             self._set_download_button_download_mode()
+            return
+        self._sync_download_button_tooltip()
 
     def _restore_download_idle_ui(self) -> None:
         self._download_ui_cancel_mode = False

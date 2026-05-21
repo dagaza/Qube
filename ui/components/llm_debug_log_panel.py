@@ -60,9 +60,11 @@ class LLMDebugLogPanel(QFrame):
 
         row = QHBoxLayout()
         self._btn = QPushButton("Refresh")
+        self._btn.setToolTip("Reload the latest lines from logs/llm_debug.log")
         self._btn.clicked.connect(self._refresh)
         row.addWidget(self._btn)
         self._live = QCheckBox("Live tail (2s)")
+        self._live.setToolTip("Automatically refresh the log every 2 seconds")
         self._live.toggled.connect(self._on_live_toggled)
         row.addWidget(self._live)
         row.addStretch()

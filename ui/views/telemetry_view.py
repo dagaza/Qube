@@ -139,10 +139,19 @@ class TelemetryView(QWidget):
         header_layout = QHBoxLayout()
         header = QLabel("System Load Timeline (%)")
         header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Rolling 60-second chart of processor, memory, and GPU utilization."
+        )
 
-        cpu_item, self.live_cpu_lbl = self._create_legend_item("CPU: 0%", "#10b981")
-        ram_item, self.live_ram_lbl = self._create_legend_item("RAM: 0%", "#3b82f6")
-        gpu_item, self.live_gpu_lbl = self._create_legend_item("GPU: 0%", "#8b5cf6")
+        cpu_item, self.live_cpu_lbl = self._create_legend_item(
+            "CPU: 0%", "#10b981", "Processor utilization across all cores."
+        )
+        ram_item, self.live_ram_lbl = self._create_legend_item(
+            "RAM: 0%", "#3b82f6", "System memory currently in use."
+        )
+        gpu_item, self.live_gpu_lbl = self._create_legend_item(
+            "GPU: 0%", "#8b5cf6", "Graphics processor compute utilization."
+        )
 
         header_layout.addWidget(header)
         header_layout.addStretch()
@@ -159,6 +168,7 @@ class TelemetryView(QWidget):
         self.plot_widget.showGrid(x=False, y=True, alpha=0.2)
         self.plot_widget.setMinimumHeight(220)
         self.plot_widget.setMenuEnabled(False)
+        self.plot_widget.setToolTip("Live system load over the last 60 seconds.")
         self.plot_widget.setMouseEnabled(x=False, y=False)
         self.plot_widget.getViewBox().setMouseEnabled(x=False, y=False)
         self.plot_widget.getViewBox().setMouseMode(self.plot_widget.getViewBox().PanMode)
@@ -189,6 +199,9 @@ class TelemetryView(QWidget):
 
         header = QLabel("Pipeline Latency")
         header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "End-to-end timing for speech-to-text, first LLM token, and text-to-speech."
+        )
         layout.addWidget(header)
 
         stt_layout, self.stt_val = self._make_metric_row(
@@ -228,6 +241,9 @@ class TelemetryView(QWidget):
 
         header = QLabel("Native LLM — Model capability")
         header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Capability profile of the currently loaded native model, including reasoning support."
+        )
         layout.addWidget(header)
 
         model_row, self._cap_model_val = self._make_metric_row(
@@ -274,6 +290,9 @@ class TelemetryView(QWidget):
 
         header = QLabel("Router Intelligence")
         header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Live cognitive routing stats: which tools fire, retrieval latency, and tuner weights."
+        )
         layout.addWidget(header)
 
         routes_row, self.route_val = self._make_metric_row(
@@ -337,6 +356,8 @@ class TelemetryView(QWidget):
         title_row.setSpacing(6)
         title_lbl = QLabel(title)
         title_lbl.setProperty("class", "MetricTitle")
+        if tooltip_text:
+            title_lbl.setToolTip(tooltip_text)
         title_row.addWidget(title_lbl)
         if tooltip_text:
             title_row.addWidget(self._make_metric_info_button(tooltip_text))
@@ -350,6 +371,8 @@ class TelemetryView(QWidget):
         val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # Match value size to field label scale (non-oversized).
         val_lbl.setProperty("class", "MetricTitle")
+        if tooltip_text:
+            val_lbl.setToolTip(tooltip_text)
         row.addLayout(vbox)
         row.addStretch()
         row.addWidget(val_lbl)
@@ -368,7 +391,7 @@ class TelemetryView(QWidget):
     # ============================================================
     # LEGEND CREATOR
     # ============================================================
-    def _create_legend_item(self, initial_text, color):
+    def _create_legend_item(self, initial_text, color, tooltip_text=""):
         from PyQt6.QtWidgets import QWidget
         container = QWidget()
         layout = QHBoxLayout(container)
@@ -387,6 +410,9 @@ class TelemetryView(QWidget):
             font-size: 13px;
             opacity: 1.0;
         """)
+        if tooltip_text:
+            lbl.setToolTip(tooltip_text)
+            container.setToolTip(tooltip_text)
 
         layout.addWidget(pill)
         layout.addWidget(lbl)
