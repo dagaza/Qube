@@ -102,6 +102,7 @@ class SidebarFolderListController:
     on_reload: Callable[[], None]
     on_active_folder_changed: Callable[[str], None]
     on_after_folder_delete: Callable[[list[str]], None] | None = None
+    on_export_folder: Callable[[str, str], None] | None = None
     sort_mode: SortMode = "date"
     _managed_menus: list[QMenu] = field(default_factory=list)
     _header_menus: list[QMenu] = field(default_factory=list)
@@ -340,6 +341,15 @@ class SidebarFolderListController:
                 f_id, old
             )
         )
+        if self.on_export_folder and self.scope == "conversation":
+            export_action = menu.addAction(
+                qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+            )
+            export_action.triggered.connect(
+                lambda _checked=False, f_id=folder_id, name=folder["name"]: self.on_export_folder(
+                    f_id, name
+                )
+            )
         if not folder.get("is_system"):
             menu.addSeparator()
             delete_action = menu.addAction(

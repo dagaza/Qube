@@ -502,6 +502,30 @@ class DatabaseManager:
                 return None
             return row["folder_id"] or self.get_main_conversation_folder_id()
 
+    def get_session(self, session_id: str) -> dict | None:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, title, created_at, updated_at, folder_id
+                FROM sessions WHERE id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def list_sessions_in_folder(self, folder_id: str) -> list[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, title, created_at, updated_at, folder_id
+                FROM sessions
+                WHERE folder_id = ?
+                ORDER BY updated_at DESC
+                """,
+                (folder_id,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
     # ... [Keep your existing methods: cleanup_empty_sessions, get_session_count, etc.] ...
     def cleanup_empty_sessions(self, active_session_id: str = None):
         try:

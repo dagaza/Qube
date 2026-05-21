@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QTextBrowser,
     QMenu,
     QGraphicsOpacityEffect,
+    QFileDialog,
 )
 from PyQt6.QtGui import (
     QAction,
@@ -52,10 +53,13 @@ import unicodedata
 import weakref
 import re
 import re as _re_cite
+from pathlib import Path
 
 from core.citation_normalize import normalize_labeled_citation_tokens
+from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
@@ -1579,6 +1583,7 @@ class ConversationsView(QWidget):
             get_is_dark=lambda: getattr(self.window(), "_is_dark_theme", True),
             on_reload=self._reload_history_sidebar,
             on_active_folder_changed=self._set_active_folder_id,
+            on_export_folder=self._trigger_export_folder,
         )
         self.sort_btn = self._folder_controller.setup_sort_header_button(
             header_layout, before_widget=self.new_chat_btn
@@ -2154,6 +2159,15 @@ class ConversationsView(QWidget):
                 ),
             )
 
+        export_action = menu.addAction(
+            qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+        )
+        export_action.triggered.connect(
+            lambda _, s_id=session["id"], title=session["title"]: self._trigger_export_chat(
+                s_id, title
+            )
+        )
+
         menu.addSeparator()
 
         delete_action = menu.addAction(
@@ -2175,6 +2189,40 @@ class ConversationsView(QWidget):
     def _move_session_to_folder(self, session_id: str, folder_id: str) -> None:
         if self.db.move_session_to_folder(session_id, folder_id):
             self._refresh_history_list()
+
+    def _trigger_export_chat(self, session_id: str, title: str) -> None:
+        default_name = f"{sanitize_export_filename(title)}.md"
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Conversation",
+            default_name,
+            "Markdown (*.md)",
+        )
+        if not dest:
+            return
+        try:
+            if export_conversation_markdown(self.db, session_id, Path(dest)):
+                logger.info("Exported conversation %s to %s", session_id, dest)
+            else:
+                logger.warning("Export failed: session %s not found", session_id)
+        except OSError as e:
+            logger.exception("Failed to export conversation %s: %s", session_id, e)
+
+    def _trigger_export_folder(self, folder_id: str, folder_name: str) -> None:
+        default_name = f"{sanitize_export_filename(folder_name)}.zip"
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Folder",
+            default_name,
+            "ZIP archive (*.zip)",
+        )
+        if not dest:
+            return
+        try:
+            count = export_folder_zip(self.db, folder_id, Path(dest))
+            logger.info("Exported %d conversation(s) from folder %s to %s", count, folder_id, dest)
+        except OSError as e:
+            logger.exception("Failed to export folder %s: %s", folder_id, e)
 
     def _refresh_history_list(self):
         """Runs cleanup, updates count, rebuilds list (respects search box)."""
@@ -2299,43 +2347,7 @@ class ConversationsView(QWidget):
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
-        from PyQt6.QtGui import QPalette, QColor
-        # THIS IS THE MAGIC LINE TO KILL THE GHOST SQUARE
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        palette = QPalette()
-        if is_dark:
-            bg, fg, sel_bg, sel_fg = "#1e1e2e", "#cdd6f4", "#313244", "#cdd6f4"
-            border, hover = "rgba(255, 255, 255, 0.1)", "#313244"
-        else:
-            bg, fg, sel_bg, sel_fg = "#ffffff", "#1e293b", "#f1f5f9", "#0f172a"
-            border, hover = "#cbd5e1", "#f1f5f9"
-
-        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
-            palette.setColor(role, QColor(bg))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(fg))
-        palette.setColor(QPalette.ColorRole.Text, QColor(fg))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(sel_bg))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(sel_fg))
-
-        menu.setPalette(palette)
-        menu.setStyleSheet(f"""
-            QMenu {{ 
-                background-color: {bg}; 
-                color: {fg}; 
-                border: 1px solid {border}; 
-                border-radius: 12px; 
-                padding: 5px; 
-            }}
-            QMenu::item {{ 
-                background-color: transparent; 
-                padding: 8px 25px; 
-                border-radius: 8px; 
-            }}
-            QMenu::item:selected {{ 
-                background-color: {hover}; 
-                color: {sel_fg}; 
-            }}
-        """)
+        apply_prestige_kebab_menu_theme(menu, is_dark)
 
     def refresh_menu_themes(self, is_dark: bool):
         """Updates all existing kebab menus in the history list."""

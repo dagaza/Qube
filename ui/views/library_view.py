@@ -30,6 +30,7 @@ from PyQt6.QtGui import (
 import qtawesome as qta
 from pathlib import Path
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
@@ -731,18 +732,7 @@ class LibraryView(QWidget):
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance with Prestige rounding and colors."""
-        
-        # THIS IS THE MAGIC LINE TO KILL THE GHOST SQUARE
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-
-        bg, fg, hover = ("#1e1e2e", "#cdd6f4", "#313244") if is_dark else ("#ffffff", "#1e293b", "#f1f5f9")
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-
-        menu.setStyleSheet(f"""
-            QMenu {{ background-color: {bg}; color: {fg}; border: 1px solid {border}; border-radius: 12px; padding: 5px; }}
-            QMenu::item {{ background-color: transparent; padding: 8px 25px; border-radius: 8px; }}
-            QMenu::item:selected {{ background-color: {hover}; color: {fg}; }}
-        """)
+        apply_prestige_kebab_menu_theme(menu, is_dark)
 
     def _set_active_folder_id(self, folder_id: str) -> None:
         self._active_folder_id = folder_id
