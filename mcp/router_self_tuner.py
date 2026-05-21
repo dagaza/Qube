@@ -18,6 +18,11 @@ class AdaptiveRouterSelfTunerV2:
         self.hybrid_sensitivity = 1.0
         self.memory_sensitivity = 1.0
         self.rag_sensitivity = 1.0
+        # Rides at 1.0 by default. No _adjust rule consumes it yet —
+        # the field exists so CognitiveRouterV4 has a real source for
+        # its ``weights.get("internet_sensitivity", 1.0)`` read instead
+        # of always falling back to the default.
+        self.internet_sensitivity = 1.0
 
         # --- Guardrails ---
         self.min_sensitivity = 0.4
@@ -82,6 +87,7 @@ class AdaptiveRouterSelfTunerV2:
         self.hybrid_sensitivity = self._clamp(self.hybrid_sensitivity)
         self.memory_sensitivity = self._clamp(self.memory_sensitivity)
         self.rag_sensitivity = self._clamp(self.rag_sensitivity)
+        self.internet_sensitivity = self._clamp(self.internet_sensitivity)
 
     def _clamp(self, v):
         return max(self.min_sensitivity, min(self.max_sensitivity, v))
@@ -90,10 +96,18 @@ class AdaptiveRouterSelfTunerV2:
     # EXTERNAL API (used by router)
     # ============================================================
     def get_weights(self):
+        # Keys MUST match the names CognitiveRouterV4.route() reads
+        # via ``weights.get("rag_sensitivity" / "memory_sensitivity"
+        # / "internet_sensitivity", 1.0)``. Renaming on either side
+        # is enforced by tests/test_router_tuner_router_contract.py.
+        # ``hybrid_sensitivity`` is informational (the router does
+        # not consume it; HYBRID is derived from rag_enabled and
+        # memory_enabled).
         return {
-            "hybrid": self.hybrid_sensitivity,
-            "memory": self.memory_sensitivity,
-            "rag": self.rag_sensitivity,
+            "rag_sensitivity":      self.rag_sensitivity,
+            "memory_sensitivity":   self.memory_sensitivity,
+            "internet_sensitivity": self.internet_sensitivity,
+            "hybrid_sensitivity":   self.hybrid_sensitivity,
         }
 
     def debug(self):
@@ -101,5 +115,6 @@ class AdaptiveRouterSelfTunerV2:
             "hybrid_sensitivity": self.hybrid_sensitivity,
             "memory_sensitivity": self.memory_sensitivity,
             "rag_sensitivity": self.rag_sensitivity,
+            "internet_sensitivity": self.internet_sensitivity,
             "samples": len(self.history),
         }

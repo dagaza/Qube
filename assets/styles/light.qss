@@ -57,6 +57,43 @@ QToolTip {
     border-left: 1px solid #e2e8f0; 
 }
 
+/* Detached routing debug tool surface */
+#RoutingDebugWindow {
+    background-color: #f1f5f9;
+}
+#RoutingDebugSurface {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+}
+#RoutingDebugLeftPane,
+#RoutingDebugDetailPane {
+    background-color: transparent;
+}
+#RoutingDebugRightScroll,
+#RoutingDebugViewport {
+    background-color: transparent;
+    border: none;
+}
+#RoutingDebugWindow QLabel,
+#RoutingDebugWindow QCheckBox,
+#RoutingDebugWindow QGroupBox {
+    color: #1e293b;
+}
+#RoutingDebugWindow #ViewTitle,
+#RoutingDebugWindow QLabel[class~="PageTitle"] {
+    color: #89b4fa;
+}
+#RoutingDebugWindow QComboBoxPrivateContainer {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+#RoutingDebugSplitter::handle {
+    background-color: #e2e8f0;
+    width: 1px;
+}
+
 #LibraryPreviewStage, #ChatStage, #SettingsScrollArea {
     background-color: #ffffff;
 }
@@ -93,7 +130,7 @@ QToolTip {
 }
 
 /* --- 3. INPUTS & TEXT AREAS --- */
-QLineEdit, QTextEdit, #DocumentPreviewArea {
+QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -101,7 +138,7 @@ QLineEdit, QTextEdit, #DocumentPreviewArea {
     selection-background-color: #e2e8f0;
 }
 
-QLineEdit:focus, QTextEdit:focus {
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, #ChatTextInput:focus {
     border: 1px solid #94a3b8;
     background-color: #ffffff;
 }
@@ -209,7 +246,6 @@ QPushButton[class~="BrandDangerButton"]:disabled {
 }
 .NavButton:checked {
     background-color: #e2e8f0;
-    font-weight: bold;
 }
 
 /* --- 5. LISTS --- */
@@ -568,6 +604,15 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
     background-color: transparent;
 }
 
+#UserBubble #ChatUserBubble {
+    color: #ffffff;
+    background-color: transparent;
+    /* Override global QPlainTextEdit padding/border — otherwise viewport is narrower than
+       width() and short user bubbles wrap mid-word (e.g. "te" / "st"). */
+    padding: 0px;
+    border: none;
+}
+
 /* Explicitly target the Agent text to guarantee it stays readable */
 QLabel#AgentHeader {
     color: #3b82f6; /* Bright blue for the QUBE header */
@@ -635,6 +680,27 @@ QLabel#AgentMessage {
     color: #1e293b !important;
 }
 
+#HistoryList::item QLabel#HistoryFolderTitle,
+#LibraryDocList::item QLabel#HistoryFolderTitle {
+    background-color: transparent !important;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b !important;
+}
+
+#HistoryFolderChevronBtn {
+    background: transparent;
+    border: none;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+}
+
+#HistoryFolderChevronBtn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
 /* Model Manager hub rows: same font metrics as base.qss (size, weight). No line-height — matches QFontMetrics sizing. */
 #ModelHubList QLabel#HubModelRowTitle {
     font-size: 13px;
@@ -650,7 +716,7 @@ QLabel#AgentMessage {
     color: #1e293b !important;
 }
 
-#HistoryOptionsBtn, #LibraryOptionsBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn {
     background: transparent;
     border: none;
     padding: 0px;
@@ -658,7 +724,7 @@ QLabel#AgentMessage {
     min-height: 0px;
 }
 
-#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
 }

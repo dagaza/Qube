@@ -1,4 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal
+import dataclasses
 import requests
 import json
 import time
@@ -16,13 +17,18 @@ from core.app_settings import (
     get_internal_model_path,
     get_internal_n_gpu_layers,
     get_internal_n_threads,
+    get_internal_prompt_layout_override,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
 )
+from core.prompt_blocks import build_prompt_blocks
+from core.prompt_renderers import render_messages
+from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
 from core.stream_repetition_guard import StreamRepetitionGuard
+from core.output_artifact_strip import strip_harmony_oss_artifacts
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
@@ -30,14 +36,13 @@ from core.memory_filters import (
     detect_narrative_intent,
     is_assistant_failure_message,
     is_thin_content,
-    RECALL_FUSION_SYSTEM_SUFFIX,
-    FILE_SEARCH_SYSTEM_SUFFIX,
-    NARRATIVE_RECALL_SYSTEM_SUFFIX,
-    CITATION_DISCIPLINE_SUFFIX,
-    GROUNDED_ANSWER_SYSTEM_SUFFIX,
-    NO_SOURCES_SYSTEM_SUFFIX,
 )
 from core.memory_usage_recorder import get_memory_usage_recorder
+from core.composer_attachments import (
+    attachment_summary,
+    build_referenced_conversation_context,
+    resolve_attachment_routing,
+)
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -45,10 +50,23 @@ from mcp.memory_tool import memory_search
 from workers.intent_router import EmbeddingCache
 
 from mcp.cognitive_router import CognitiveRouterV4
+from mcp.routing_debug import (
+    RoutingDebugBuffer,
+    build_chat_contract_trace,
+    build_engine_input_trace,
+    build_model_router_trace,
+    build_record,
+    routing_debug_log_enabled,
+    routing_debug_log_redact_query,
+    routing_debug_log_verbose,
+    serialize_record_for_log,
+)
 from mcp.router_telemetry import RouterTelemetryBrain
 from mcp.router_self_tuner import AdaptiveRouterSelfTunerV2
+from mcp.router_lane_stats import RouteFeedbackEvent
 
 logger = logging.getLogger("Qube.LLM")
+routing_persist_logger = logging.getLogger("Qube.RoutingDebug")
 
 
 class LLMWorker(QThread):
@@ -60,6 +78,7 @@ class LLMWorker(QThread):
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
+    routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
     # Phase B: turn-scoped enrichment context (session_id + rag chunk ids + message ids).
     # Emitted once per completed turn, before response_finished, so main.py can
     # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
@@ -106,6 +125,9 @@ class LLMWorker(QThread):
         self.cognitive_router = CognitiveRouterV4()
         self.telemetry = RouterTelemetryBrain()
         self.router_tuner = AdaptiveRouterSelfTunerV2()
+        self.routing_debug_buffer = RoutingDebugBuffer()
+        self._routing_debug_turn_seq = 0
+        self._last_persisted_routing_turn_id: int | None = None
 
         self.USE_COGNITIVE_ROUTER = True
         self.USE_ADAPTIVE_ROUTER = True
@@ -152,6 +174,34 @@ class LLMWorker(QThread):
             return ("nemotron" in ident) or ("nvidia" in ident)
         except Exception:
             return False
+
+    def _resolve_turn_prompt_layout(self) -> PromptLayoutResolution:
+        """
+        Resolved layout for this turn (PR1: observability only; messages unchanged).
+        Internal engine uses load-time resolution from native telemetry when available.
+        """
+        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+            try:
+                snap = self._native_engine.get_model_reasoning_telemetry() or {}
+                layout = snap.get("prompt_layout")
+                source = snap.get("prompt_layout_source")
+                if layout and source:
+                    return PromptLayoutResolution(
+                        layout=layout,  # type: ignore[arg-type]
+                        source=str(source),
+                        degraded=bool(snap.get("prompt_layout_degraded")),
+                        evidence=str(snap.get("prompt_layout_evidence") or "")[:240],
+                    )
+            except Exception:
+                pass
+        path = resolve_internal_model_path(get_internal_model_path() or "")
+        basename = os.path.basename(path) if path else ""
+        return resolve_prompt_layout(
+            model_id=basename,
+            model_display_name=basename,
+            model_path=path,
+            settings_override=get_internal_prompt_layout_override(),
+        )
 
     def _flush_server_kv_hint(self) -> None:
         """
@@ -286,6 +336,52 @@ class LLMWorker(QThread):
         "How do I convert 32 degrees Fahrenheit to Celsius?",
     )
 
+    # Tier 2: curated phrase sets used to build the per-lane embedding
+    # centroids consumed by ``CognitiveRouterV4._score_*_intent_embedding``.
+    # Kept at ~10 short prompts each to mirror the recall/chat sets and
+    # keep the one-time embedding pass cheap. Each set deliberately uses
+    # vocabulary that the substring trigger lists DO NOT cover, so the
+    # ``max(substring, embedding)`` fusion adds genuine semantic recall
+    # rather than echoing the keyword list.
+    _MEMORY_INTENT_EXAMPLES = (
+        "what did I tell you about my work last week?",
+        "do you recall the name of my dog?",
+        "bring up what we agreed on yesterday",
+        "what are my dietary restrictions?",
+        "what timezone do I live in again?",
+        "what was the address I gave you?",
+        "show me the notes I shared earlier",
+        "what's the password hint I told you?",
+        "what's my usual sleep schedule?",
+        "remind me of my favorite movies list",
+    )
+
+    _RAG_INTENT_EXAMPLES = (
+        "summarize the attached PDF",
+        "what does the contract say about termination?",
+        "according to the report, what is the revenue?",
+        "in the document, find the section about safety",
+        "quote the relevant passage from the manual",
+        "what does the spec define for retry behavior?",
+        "based on the file I uploaded, who are the authors?",
+        "find the clause about confidentiality in the agreement",
+        "extract the conclusions from the paper",
+        "what does chapter three of the book cover?",
+    )
+
+    _WEB_INTENT_EXAMPLES = (
+        "search the internet for the latest iPhone release date",
+        "look up today's weather in Madrid",
+        "what's currently trending on Hacker News?",
+        "find recent news about the federal reserve",
+        "google the price of bitcoin right now",
+        "what's the live score of the soccer match?",
+        "look online for flight delays at JFK today",
+        "search for recent reviews of this restaurant",
+        "what is the current exchange rate for USD to EUR?",
+        "fetch the latest stock price of Tesla",
+    )
+
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
         corresponding memory rows.
@@ -386,6 +482,28 @@ class LLMWorker(QThread):
                     build_centroid(embedder, list(self._CHAT_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Chat centroid installed.")
+            # Tier 2: install the per-lane embedding centroids. Each
+            # is gated by ``is None`` so we never stomp a manually
+            # installed centroid (e.g. in tests) and so the build
+            # cost is paid exactly once per worker lifetime. Until at
+            # least one of these is installed, the router's confidence
+            # layer stays dormant via the ``any_embedding_centroid``
+            # gate in ``CognitiveRouterV4.route(...)``.
+            if self.cognitive_router.memory_centroid is None:
+                self.cognitive_router.set_memory_centroid(
+                    build_centroid(embedder, list(self._MEMORY_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Memory centroid installed.")
+            if self.cognitive_router.rag_centroid is None:
+                self.cognitive_router.set_rag_centroid(
+                    build_centroid(embedder, list(self._RAG_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] RAG centroid installed.")
+            if self.cognitive_router.web_centroid is None:
+                self.cognitive_router.set_web_centroid(
+                    build_centroid(embedder, list(self._WEB_INTENT_EXAMPLES))
+                )
+                logger.info("[LLM Worker] Web centroid installed.")
         except Exception:
             logger.exception("[LLM Worker] Failed to build router centroids")
 
@@ -424,7 +542,8 @@ class LLMWorker(QThread):
             ):
                 name = f"{name} (short memory stub; prefer documents for detail)"
 
-            parts.append(f"--- SOURCE {sid}: {name} ---\n{body}")
+            cite_tag = f"[{sid}]" if sid is not None else "[?]"
+            parts.append(f"--- {cite_tag}: {name} ---\n{body}")
         return "\n\n".join(parts)
 
     def _bound_session_history(self, history: list[dict]) -> list[dict]:
@@ -452,6 +571,10 @@ class LLMWorker(QThread):
         n_before = len(capped)
         limit = max(2, min(100, int(getattr(self, "max_history_messages", 10))))
         windowed = capped[-limit:] if len(capped) > limit else capped
+        # Jinja/Mistral chat templates expect a user turn before assistant; dropping the
+        # leading user when windowing leaves assistant-first history and breaks reconstruction.
+        while windowed and windowed[0].get("role") == "assistant":
+            windowed = windowed[1:]
 
         if n_before > len(windowed):
             logger.info(
@@ -486,7 +609,14 @@ class LLMWorker(QThread):
         return cleaned
 
     # ============================================================
-    def generate_response(self, text: str, session_id: str):
+    def generate_response(
+        self,
+        text: str,
+        session_id: str,
+        *,
+        attachments: list | None = None,
+        persist_content: str | None = None,
+    ):
         """Sets the parameters and starts the thread work."""
         if self.isRunning():
             logger.warning(
@@ -495,7 +625,9 @@ class LLMWorker(QThread):
             )
             return
 
-        self.prompt = text
+        self.prompt = (text or "").strip()
+        self._persist_content = (persist_content or self.prompt).strip()
+        self._turn_attachments = list(attachments or [])
         self.session_id = session_id
         self.start() # This automatically triggers the run() method
 
@@ -591,6 +723,7 @@ class LLMWorker(QThread):
                 self.enrichment_context_ready.emit(enrichment_payload)
             except Exception:
                 logger.exception("[LLM] failed to emit enrichment context")
+            final_text_out = strip_harmony_oss_artifacts(final_text_out or "")
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -607,8 +740,9 @@ class LLMWorker(QThread):
         self._reset_turn_enrichment_flags()
 
         if self.session_id:
+            user_content = getattr(self, "_persist_content", None) or self.prompt
             self._turn_last_user_msg_id = self.db.add_message(
-                self.session_id, "user", self.prompt
+                self.session_id, "user", user_content
             )
 
         self._ensure_cross_session_server_flush()
@@ -675,6 +809,67 @@ class LLMWorker(QThread):
         )
 
         # ============================================================
+        # 0.55 COMPOSER @-MENTION ATTACHMENTS
+        # ------------------------------------------------------------
+        # User-picked Files / Conversations / Tools override NLP routing.
+        # ============================================================
+        turn_attachments = list(getattr(self, "_turn_attachments", []) or [])
+        if turn_attachments:
+            logger.info(
+                "[LLM Worker] Composer attachments: %s",
+                attachment_summary(turn_attachments),
+            )
+        attachment_patch = None
+        if not explicit_remember_active and turn_attachments:
+            attachment_patch = resolve_attachment_routing(turn_attachments)
+
+        attachment_file_active = False
+        attachment_conversation_active = False
+        self._turn_source_filter = None
+        self._turn_attachment_context = ""
+        self._composer_internet_requested = False
+
+        if attachment_patch:
+            if attachment_patch.get("attachment_file"):
+                attachment_file_active = True
+                self._turn_source_filter = attachment_patch.get("source_filter")
+            if attachment_patch.get("attachment_conversation"):
+                attachment_conversation_active = True
+                ref_sid = attachment_patch.get("referenced_session_id")
+                if ref_sid:
+                    self._turn_attachment_context = build_referenced_conversation_context(
+                        ref_sid, self.db
+                    )
+                    if not (self._turn_attachment_context or "").strip():
+                        logger.warning(
+                            "[LLM Worker] Conversation @-ref: no transcript loaded "
+                            "for session_id=%s",
+                            ref_sid,
+                        )
+                    else:
+                        logger.info(
+                            "[LLM Worker] Conversation @-ref: loaded transcript "
+                            "for session_id=%s (%d chars)",
+                            ref_sid,
+                            len(self._turn_attachment_context),
+                        )
+                    self._mark_skip_enrichment("composer_conversation_ref")
+            if attachment_patch.get("attachment_tool") == "internet":
+                self._composer_internet_requested = True
+                # Explicit @internet must behave like the toolbar Web toggle:
+                # force a web search for this turn (not gated on Settings).
+                force_web = True
+                if attachment_patch.get("route") != "web":
+                    attachment_patch = dict(attachment_patch)
+                    attachment_patch["route"] = "web"
+                    attachment_patch["strategy"] = "attachment_tool_internet"
+                logger.info(
+                    "[LLM Worker] Composer @internet: forcing WEB search for this turn"
+                )
+
+        scoped_library_active = file_search_active or attachment_file_active
+
+        # ============================================================
         # 0.6 T3.2: NARRATIVE / RECAP OVERRIDE
         # ------------------------------------------------------------
         # Narrative recap queries ("what have we been working on?",
@@ -686,7 +881,8 @@ class LLMWorker(QThread):
         # ============================================================
         narrative_active = (
             not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_conversation_active
             and detect_narrative_intent(self.prompt)
         )
 
@@ -706,6 +902,19 @@ class LLMWorker(QThread):
                 "strategy": "explicit_remember",
                 "explicit_remember": True,
             }
+        elif attachment_patch:
+            decision = {
+                k: v
+                for k, v in attachment_patch.items()
+                if k not in ("source_filter", "referenced_session_id")
+            }
+            if attachment_patch.get("rag_query") is None and "rag_query" not in decision:
+                decision["rag_query"] = self.prompt
+            logger.info(
+                "[LLM Worker] Composer attachment routing: route=%s strategy=%s",
+                decision.get("route"),
+                decision.get("strategy"),
+            )
         elif file_search_active:
             logger.info(
                 "[LLM Worker] Explicit file-search intent detected; forcing RAG, skipping memory/web."
@@ -755,7 +964,8 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         if (
             not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_patch
             and detect_recall_intent(clean_prompt)
             and execution_route in ("NONE", "MEMORY", "RAG")
         ):
@@ -764,7 +974,7 @@ class LLMWorker(QThread):
             decision["recall_fusion"] = True
 
         # custom triggers override
-        if not explicit_remember_active and not file_search_active and self.mcp_auto_enabled:
+        if not explicit_remember_active and not scoped_library_active and self.mcp_auto_enabled:
             if any(t in clean_prompt for t in self.cached_custom_triggers):
                 execution_route = "RAG"
                 decision["rag_query"] = self.prompt
@@ -774,7 +984,7 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         # Skipped on explicit-remember (write turn) and explicit file-search
         # (the user scoped this turn to the local library).
-        if not explicit_remember_active and not file_search_active:
+        if not explicit_remember_active and not scoped_library_active:
             # Manual trigger: user text contains known web commands
             web_triggers = ["search the internet", "who won", "current news", "weather"]
             manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
@@ -832,11 +1042,27 @@ class LLMWorker(QThread):
 
         logger.info(f"[Router] route={execution_route}")
 
+        try:
+            self._routing_debug_turn_seq += 1
+            record = build_record(
+                query=self.prompt,
+                decision=decision,
+                session_id=self.session_id,
+                turn_id=self._routing_debug_turn_seq,
+                effective_route=execution_route.lower(),
+            )
+            self.routing_debug_buffer.append(record)
+            self.routing_debug_record_added.emit(dataclasses.asdict(record))
+        except Exception as e:
+            logger.warning("[RoutingDebug] failed to record turn: %s", e)
+
         # ============================================================
         # 2. TOOL EXECUTION
         # ============================================================
         memory_context = ""
         tool_context = ""
+        if getattr(self, "_turn_attachment_context", ""):
+            tool_context = self._turn_attachment_context.strip() + "\n\n"
         all_ui_sources = []
 
         # 🔑 THE FIX: Initialize these dictionaries so telemetry doesn't crash
@@ -882,7 +1108,9 @@ class LLMWorker(QThread):
         elif (
             execution_route == "NONE"
             and not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_conversation_active
+            and not getattr(self, "_composer_internet_requested", False)
         ):
             # T3.4 §3.3 "default every turn (even CHAT)": on a plain chat
             # turn (router picked ``none``) run a cheap preferences-only
@@ -915,7 +1143,8 @@ class LLMWorker(QThread):
             rag_result = rag_search(
                 decision.get("rag_query") or self.prompt,
                 query_vector,
-                self.store
+                self.store,
+                source_filter=getattr(self, "_turn_source_filter", None),
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")
@@ -966,27 +1195,58 @@ class LLMWorker(QThread):
                         self._mark_skip_enrichment("web_tool_failure")
 
             if web_results:
+                web_items: list[dict] = []
                 if isinstance(web_results, list):
-                    web_results = "\n\n".join([str(item) for item in web_results])
+                    web_items = [r for r in web_results if isinstance(r, dict)]
                 else:
-                    web_results = str(web_results)
+                    web_items = [
+                        {
+                            "title": "Live Web Search",
+                            "snippet": str(web_results),
+                        }
+                    ]
 
-                web_context = web_results[:self.RAG_BUDGET]
-                
-                all_ui_sources.append({
-                    "id": "W", 
-                    "filename": "Live Web Search", 
-                    "content": web_context, 
-                    "type": "web"
-                })
-                
-                # 🔑 Append Web results to tool_context
+                web_context_parts: list[str] = []
+                for item in web_items:
+                    title = str(item.get("title") or "").strip()
+                    snippet = str(item.get("snippet") or "").strip()
+                    if title or snippet:
+                        web_context_parts.append(
+                            f"{title}\n{snippet}".strip() if title and snippet else (title or snippet)
+                        )
+                web_context = "\n\n".join(web_context_parts)[: self.RAG_BUDGET]
+
+                single_web = len(web_items) == 1
+                for idx, item in enumerate(web_items, start=1):
+                    title = str(item.get("title") or "").strip() or f"Web result {idx}"
+                    snippet = str(item.get("snippet") or "").strip()
+                    src: dict = {
+                        "filename": title,
+                        "content": snippet,
+                        "type": "web",
+                    }
+                    url = str(item.get("url") or "").strip()
+                    if url.startswith(("http://", "https://")):
+                        src["url"] = url
+                    if single_web and execution_route in ("WEB", "INTERNET"):
+                        src["id"] = "W"
+                    all_ui_sources.append(src)
+
+                web_hdr = (
+                    "[W] WEB SEARCH RESULTS"
+                    if single_web and execution_route in ("WEB", "INTERNET")
+                    else "WEB SEARCH RESULTS"
+                )
                 if tool_context:
-                    tool_context = f"{tool_context}\n\n[W] WEB SEARCH RESULTS:\n{web_context}"
+                    tool_context = f"{tool_context}\n\n{web_hdr}:\n{web_context}"
                 else:
-                    tool_context = f"[W] WEB SEARCH RESULTS:\n{web_context}"
-                    
-                logger.info(f"[LLM Worker] Web search integrated ({len(web_context)} chars)")
+                    tool_context = f"{web_hdr}:\n{web_context}"
+
+                logger.info(
+                    "[LLM Worker] Web search integrated (%d sources, %d chars)",
+                    len(web_items),
+                    len(web_context),
+                )
 
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)
@@ -1084,6 +1344,7 @@ class LLMWorker(QThread):
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
+            and not getattr(self, "_composer_internet_requested", False)
         ):
             logger.info(
                 "[LLM Worker] All retrieval channels empty after relevance "
@@ -1093,126 +1354,178 @@ class LLMWorker(QThread):
             if execution_route in ("WEB", "INTERNET"):
                 self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
+        elif (
+            getattr(self, "_composer_internet_requested", False)
+            and execution_route in ("WEB", "INTERNET")
+            and not all_ui_sources
+        ):
+            logger.warning(
+                "[LLM Worker] Composer @internet: web search returned no "
+                "sources; keeping WEB route with empty-results guidance."
+            )
+            self._mark_skip_enrichment("web_route_no_sources")
+            tool_context += (
+                "\n[WEB SEARCH: No live results were returned for this query. "
+                "Tell the user you could not retrieve web results right now. "
+                "Do NOT invent facts or emit [W] citations without sources.]\n"
+            )
+
+        # ============================================================
+        # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
+        # router's bounded adaptive calibration layer.
+        # ------------------------------------------------------------
+        # MUST run AFTER the post-retrieval downgrade above so the
+        # ``success`` signal reflects the genuine post-gate state
+        # — exactly what Tier 1's downgrade itself trusts.
+        #
+        # Skipped when:
+        #   * ``USE_COGNITIVE_ROUTER`` is False (no router instance),
+        #   * ``decision["drift"]`` is True (retrieval was suppressed
+        #     for an unrelated reason; signal is not informative),
+        #   * the original routed lane was ``none`` (no retrieval was
+        #     attempted, so there is nothing to calibrate against).
+        #
+        # ``per_lane_hits`` uses the same channel counts the existing
+        # ``router_tuner.observe(...)`` block reads, plus a deterministic
+        # ``web_hits`` derived from ``all_ui_sources`` (web items the
+        # UI actually received this turn). For ``hybrid`` the registry
+        # credits each retrieval lane independently from this dict, so
+        # a hybrid where only RAG returned data correctly credits RAG
+        # with success and MEMORY with failure.
+        #
+        # Wrapped in try/except: a calibration-record failure must
+        # NEVER crash a user-facing turn. Mirrors the existing
+        # try/except around ``router_telemetry_updated.emit(...)``.
+        # ============================================================
+        if (
+            self.USE_COGNITIVE_ROUTER
+            and hasattr(self, 'cognitive_router')
+            and isinstance(decision, dict)
+        ):
+            original_route = str(decision.get("route") or "none").lower()
+            is_drift = bool(decision.get("drift", False))
+            if not is_drift and original_route != "none":
+                try:
+                    memory_hits = len(mem_result.get("memory_sources", []))
+                    rag_hits   = len(rag_result.get("sources", []))
+                    web_hits   = sum(
+                        1
+                        for s in all_ui_sources
+                        if isinstance(s, dict) and s.get("type") == "web"
+                    )
+
+                    per_lane_hits = {
+                        "memory": memory_hits,
+                        "rag":    rag_hits,
+                        "web":    web_hits,
+                    }
+
+                    if original_route == "hybrid":
+                        success_flag = (memory_hits > 0) or (rag_hits > 0)
+                    elif original_route in ("memory", "rag", "web"):
+                        success_flag = per_lane_hits[original_route] > 0
+                    else:
+                        success_flag = False
+
+                    feedback_event = RouteFeedbackEvent(
+                        route=original_route,
+                        top_intent=str(decision.get("top_intent") or original_route),
+                        top_source=str(decision.get("top_intent_source") or "substring"),
+                        confidence_margin=float(decision.get("confidence_margin") or 0.0),
+                        latency_ms=float(latency_ms),
+                        success=bool(success_flag),
+                        drift=False,
+                        per_lane_hits=per_lane_hits,
+                    )
+                    self.cognitive_router.observe_feedback(feedback_event)
+                except Exception as e:
+                    logger.warning(f"[Tier3 Feedback] Failed to emit RouteFeedbackEvent: {e}")
 
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
         retrieval_prompt_body = self._format_sources_for_llm_prompt(all_ui_sources)
+        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
+        if attachment_ctx:
+            if retrieval_prompt_body:
+                retrieval_prompt_body = (
+                    f"{attachment_ctx}\n\n{retrieval_prompt_body}"
+                )
+            else:
+                retrieval_prompt_body = attachment_ctx
+            logger.info(
+                "[LLM Worker] Injected composer attachment context (%d chars)",
+                len(attachment_ctx),
+            )
+        if (
+            getattr(self, "_composer_internet_requested", False)
+            and not all_ui_sources
+            and tool_context.strip()
+        ):
+            retrieval_prompt_body = tool_context.strip()
+            logger.info(
+                "[LLM Worker] Composer @internet: injected web guidance (%d chars)",
+                len(retrieval_prompt_body),
+            )
         if retrieval_prompt_body:
             retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
+
+        # Conversation @-ref: do not send unrelated prior turns from *this* session.
+        # Otherwise the model answers from current-thread noise instead of the transcript.
+        prompt_history = history
+        if attachment_conversation_active:
+            question = (self.prompt or "").strip()
+            if not question:
+                question = "What is the attached conversation about?"
+            prompt_history = [{"role": "user", "content": question}]
+            if len(history) > 1:
+                logger.info(
+                    "[LLM Worker] Conversation @-ref: isolated prompt turn "
+                    "(omitted %d other messages from active session)",
+                    len(history) - 1,
+                )
 
         # ============================================================
         # 3. PROMPT BUILD
         # ============================================================
-        system_prompt = (
-            "You are Qube, a highly capable offline AI assistant. "
-            "Be concise and accurate."
+        pl_res = self._resolve_turn_prompt_layout()
+        logger.info(
+            "[PromptLayout] turn layout=%s source=%s degraded=%s route=%s",
+            pl_res.layout,
+            pl_res.source,
+            pl_res.degraded,
+            execution_route,
         )
 
-        if explicit_remember_active:
-            # Write-intent turn: acknowledge briefly, don't retrieve, don't cite.
-            quoted_fact = (explicit_remember_body or "").strip()
-            system_prompt = (
-                "You are Qube. The user has just asked you to remember a fact for future reference. "
-                "Acknowledge briefly — one short sentence — that you've made a note of it, "
-                "and optionally paraphrase the fact naturally. "
-                "Do NOT use bracket tokens like [1], [2], or [W]. "
-                "Do NOT cite sources. "
-                "Do NOT say you cannot remember things; Qube persists long-term memories automatically."
-            )
-            if quoted_fact:
-                system_prompt += f" The fact to acknowledge is: \"{quoted_fact}\"."
-        elif execution_route in ["RAG", "HYBRID", "MEMORY"]:
-            # v6.1: if retrieval ran but nothing survived filtering
-            # (proper-noun gate, semantic floor, soft L2 gate, empty
-            # tables) we flip into the "no sources" mode. Without this,
-            # the normal "you MUST cite your sources" instruction below
-            # pushes a small LLM into fabricating a plausible-sounding
-            # answer and inventing a citation (see: the "Dr. Evelyn
-            # Vogel" confabulation against a Cornelia memory).
-            if not all_ui_sources:
-                logger.info(
-                    "[LLM Worker] No sources survived retrieval filtering; "
-                    "switching to NO_SOURCES system prompt (route=%s).",
-                    execution_route,
-                )
-                system_prompt = (
-                    "You are Qube, a highly capable offline AI assistant. "
-                    "Be concise and accurate."
-                )
-                system_prompt += NO_SOURCES_SYSTEM_SUFFIX
-            else:
-                system_prompt += (
-                    " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
-                    "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
-                    "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
-                )
-                system_prompt += RECALL_FUSION_SYSTEM_SUFFIX
-                system_prompt += CITATION_DISCIPLINE_SUFFIX
-                system_prompt += GROUNDED_ANSWER_SYSTEM_SUFFIX
-                # File-search turns get an extra steering block so the model
-                # answers strictly from numbered document sources (and says
-                # so plainly when nothing matches) — never from stored
-                # memories that happen to surface.
-                if file_search_active:
-                    system_prompt += FILE_SEARCH_SYSTEM_SUFFIX
-                # T3.2: narrative / recap turns prefer the EPISODE-labelled
-                # memory sources over atomic facts. memory_tool tags those
-                # sources inline so the LLM can see the [EPISODE] label.
-                if narrative_active:
-                    system_prompt += NARRATIVE_RECALL_SYSTEM_SUFFIX
-
-        # 🔑 THE FIX: Make the LLM hide its scratchpad and just talk normally!
-        elif execution_route in ["WEB", "INTERNET"]:
-            system_prompt = (
-                "You are Qube. You have just been provided with real-time, live web search results. "
-                "You MUST use the TOOLS context provided below to answer the user's query. "
-                "Do not state that you are offline or cannot browse the internet. "
-                "CRITICAL: Respond directly to the user in a natural, conversational tone. "
-                "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
-                "Output ONLY your final answer. "
-                "Cite the web sources inline using a plain [W] token only—no Markdown hyperlink syntax, "
-                "no URL in parentheses after [W], and no backticks around [W]. "
-                "Use [W] at most once at the end of each sentence that relies on the web results, "
-                "and never output [W] two or more times in a row."
-            )
-            system_prompt += CITATION_DISCIPLINE_SUFFIX
-
-        # Native llama.cpp path: behavioral alignment (LM Studio often adds server-side polish).
-        if getattr(self, "engine_mode", "external") == "internal":
-            if self._is_internal_nvidia_family():
-                system_prompt += (
-                    " Respond directly with the final answer and avoid meta preambles. "
-                    "Perform any reasoning internally and do not expose chain-of-thought. "
-                    "Prioritize clarity and completeness. "
-                    "Use short answers for simple questions, but give fuller explanations when the user asks to explain, compare, or summarize."
-                )
-            else:
-                system_prompt += (
-                    " Respond directly with the final answer, starting immediately with the answer content. "
-                    "Do not include any preamble, planning, or meta commentary. "
-                    "Do not restate or analyze the user's request. "
-                    "Do not include phrases such as \"Provide an answer\", \"We need to\", \"We should\", "
-                    "\"Step 1\", or similar instructional language. "
-                    "Perform any reasoning internally and only output the final result. "
-                    "Keep the response natural, concise, and focused."
-                )
-
-        messages = [{"role": "system", "content": system_prompt}] + history
-
-        # 🔑 Inject retrieval in the same order as all_ui_sources / citation ids
-        if retrieval_prompt_body and messages and messages[-1]["role"] == "user":
-            original_query = messages[-1]["content"]
-
-            messages[-1]["content"] = (
-                f"=== SYSTEM RETRIEVED CONTEXT ===\n"
-                f"Use the following numbered sources to answer the query. "
-                f"In the prose of your reply, cite with plain tokens [1], [2], or [W] only (no markdown links).\n\n"
-                f"{retrieval_prompt_body}\n"
-                f"================================\n\n"
-                f"USER QUERY:\n{original_query}"
+        prompt_blocks = build_prompt_blocks(
+            execution_route=execution_route,
+            explicit_remember_active=explicit_remember_active,
+            explicit_remember_body=explicit_remember_body or "",
+            file_search_active=file_search_active,
+            narrative_active=narrative_active,
+            has_retrieval_sources=bool(all_ui_sources),
+            engine_mode=getattr(self, "engine_mode", "external"),
+            internal_nvidia_family=self._is_internal_nvidia_family(),
+            retrieval_context=retrieval_prompt_body,
+            conversation_history=prompt_history,
+            composer_conversation_ref=attachment_conversation_active,
+        )
+        if prompt_blocks.no_sources_mode:
+            logger.info(
+                "[LLM Worker] No sources survived retrieval filtering; "
+                "switching to NO_SOURCES system prompt (route=%s).",
+                execution_route,
             )
 
+        messages = render_messages(prompt_blocks, pl_res.layout)
+        roles = [str(m.get("role", "")) for m in messages]
+        logger.info(
+            "[PromptLayout] rendered layout=%s roles=%s has_system=%s",
+            pl_res.layout,
+            roles,
+            "system" in roles,
+        )
+        if retrieval_prompt_body and messages and messages[-1].get("role") == "user":
             logger.debug("Successfully injected unified retrieval context into the final prompt.")
 
         # ============================================================
@@ -1305,6 +1618,9 @@ class LLMWorker(QThread):
                     except json.JSONDecodeError:
                         continue
 
+            if final_text:
+                final_text = strip_harmony_oss_artifacts(final_text)
+
             if current_sentence.strip():
                 clean = self.clean_text_for_tts(current_sentence)
                 if clean:
@@ -1333,6 +1649,7 @@ class LLMWorker(QThread):
         finally:
             self._close_active_stream()
 
+        self._persist_latest_routing_debug_record()
         return final_text
 
     def _max_tokens_native_completion(self) -> int:
@@ -1344,7 +1661,12 @@ class LLMWorker(QThread):
         return min(4096, max(256, ctx // 2))
 
     def _stream_via_native(self, messages: list[dict], all_ui_sources: list) -> str:
-        """Stream tokens from NativeLlamaEngine (llama-cpp-python) on a dedicated thread."""
+        """Stream native output after a small leading-meta/thinking gate.
+
+        The first few chunks may contain "Provide final answer" / thinking tags; filters may
+        briefly buffer those openers, but once real answer text starts, UI and TTS both stream
+        the same cleaned fragments normally.
+        """
         token_queue: queue.Queue = queue.Queue()
         done_event = threading.Event()
         self._native_engine.enqueue_generation(
@@ -1355,45 +1677,50 @@ class LLMWorker(QThread):
             done_event,
         )
 
-        policy = self._native_engine.get_execution_policy()
-        strip_thinking = policy.strip_thinking_output
-        show_thinking = not strip_thinking
         cot_filter = RedactedThinkingStreamFilter()
-        meta_disp = LeadingMetaInstructionStripper()
-        meta_tts = LeadingMetaInstructionStripper()
+        meta_filter = LeadingMetaInstructionStripper()
         repetition_guard = StreamRepetitionGuard()
         current_sentence = ""
         final_text = ""
+        raw_parts: list[str] = []
+        native_end_text = ""
         start = time.time()
         first_token = False
         stream_wall_start = time.time()
 
-        def _emit_filtered(display_fragment: str, tts_fragment: str) -> None:
+        def _sanitize_complete_native_text(raw_text: str) -> str:
+            if not raw_text:
+                return ""
+            complete_cot = RedactedThinkingStreamFilter()
+            complete_meta = LeadingMetaInstructionStripper()
+            cleaned = complete_cot.feed(raw_text)
+            cleaned += complete_cot.flush()
+            cleaned = complete_meta.feed(cleaned) + complete_meta.flush()
+            return strip_harmony_oss_artifacts(cleaned).strip()
+
+        def _emit_filtered(fragment: str) -> None:
             nonlocal current_sentence, final_text, first_token
-            if not display_fragment and not tts_fragment:
+            if not fragment:
                 return
-            if display_fragment and not first_token:
+            fragment = strip_harmony_oss_artifacts(fragment)
+            if not fragment:
+                return
+            if not first_token:
                 self.ttft_latency.emit((time.time() - start) * 1000)
                 first_token = True
-            current_sentence += tts_fragment
-            final_text += display_fragment
-            if display_fragment:
-                self.token_streamed.emit(self.session_id or "", display_fragment)
-            if tts_fragment and any(p in tts_fragment for p in ".!?"):
-                clean = self.clean_text_for_tts(current_sentence)
-                if clean:
-                    if not bool(getattr(self, "_cancel_requested", False)):
-                        self.sentence_ready.emit(clean, self.session_id)
+            final_text += fragment
+            self.token_streamed.emit(self.session_id or "", fragment)
+            current_sentence += fragment
+            if any(p in fragment for p in ".!?"):
+                spoken = self.clean_text_for_tts(current_sentence)
+                if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                    self.sentence_ready.emit(spoken, self.session_id)
                 current_sentence = ""
 
         def _flush_tail() -> None:
-            cot_tail = cot_filter.flush()
-            if show_thinking:
-                _emit_filtered(meta_disp.flush(), meta_tts.feed(cot_tail))
-                _emit_filtered("", meta_tts.flush())
-            else:
-                _emit_filtered(meta_disp.feed(cot_tail), meta_tts.feed(cot_tail))
-                _emit_filtered(meta_disp.flush(), meta_tts.flush())
+            tail = cot_filter.flush()
+            tail = meta_filter.feed(tail) + meta_filter.flush()
+            _emit_filtered(tail)
 
         saw_end = False
         while True:
@@ -1412,15 +1739,11 @@ class LLMWorker(QThread):
 
             if kind == "delta":
                 raw = data
-                if show_thinking:
-                    disp = meta_disp.feed(raw)
-                    tts_piece = meta_tts.feed(cot_filter.feed(raw))
-                else:
-                    stripped = cot_filter.feed(raw)
-                    disp = meta_disp.feed(stripped)
-                    tts_piece = meta_tts.feed(stripped)
-                _emit_filtered(disp, tts_piece)
-                if disp and repetition_guard.observe(disp):
+                raw_text = str(raw or "")
+                raw_parts.append(raw_text)
+                clean_piece = meta_filter.feed(cot_filter.feed(raw_text))
+                _emit_filtered(clean_piece)
+                if clean_piece and repetition_guard.observe(clean_piece):
                     logger.error(
                         "[LLM] Native stream degeneration detected (%s); cancelling.",
                         repetition_guard.trip_reason,
@@ -1441,6 +1764,7 @@ class LLMWorker(QThread):
                     if spoken:
                         self.sentence_ready.emit(spoken, self.session_id)
             elif kind == "end":
+                native_end_text = str(data or "")
                 _flush_tail()
                 saw_end = True
                 break
@@ -1449,10 +1773,33 @@ class LLMWorker(QThread):
             _flush_tail()
 
         if current_sentence.strip():
-            clean = self.clean_text_for_tts(current_sentence)
-            if clean:
-                if not bool(getattr(self, "_cancel_requested", False)):
-                    self.sentence_ready.emit(clean, self.session_id)
+            spoken = self.clean_text_for_tts(current_sentence)
+            if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                self.sentence_ready.emit(spoken, self.session_id)
+            current_sentence = ""
+
+        emitted_text = strip_harmony_oss_artifacts(final_text).strip()
+        raw_complete_text = native_end_text or "".join(raw_parts)
+        authoritative_text = (
+            _sanitize_complete_native_text(raw_complete_text)
+            if raw_complete_text
+            else emitted_text
+        )
+        if authoritative_text and authoritative_text != emitted_text:
+            if emitted_text and authoritative_text.startswith(emitted_text):
+                _emit_filtered(authoritative_text[len(emitted_text) :])
+            elif not emitted_text or not emitted_text.strip():
+                _emit_filtered(authoritative_text)
+            else:
+                # The UI will reconcile the bubble on response_finished; emitting here prevents
+                # "spoken but never printed" when native deltas only carried a meta preface.
+                _emit_filtered("\n" + authoritative_text)
+        if current_sentence.strip():
+            spoken = self.clean_text_for_tts(current_sentence)
+            if spoken and not bool(getattr(self, "_cancel_requested", False)):
+                self.sentence_ready.emit(spoken, self.session_id)
+            current_sentence = ""
+        final_text = authoritative_text or emitted_text
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
@@ -1460,6 +1807,23 @@ class LLMWorker(QThread):
                 self.session_id, "assistant", final_text, sources_json=src_payload
             )
             self._record_memory_citations(final_text, all_ui_sources)
+
+        try:
+            mr_trace = build_model_router_trace(self._native_engine)
+            updated = self.routing_debug_buffer.merge_model_router_into_latest(mr_trace)
+            cc_trace = build_chat_contract_trace(self._native_engine)
+            updated_cc = self.routing_debug_buffer.merge_chat_contract_into_latest(cc_trace)
+            ei_trace = build_engine_input_trace(self._native_engine)
+            updated_ei = self.routing_debug_buffer.merge_engine_input_into_latest(ei_trace)
+            merged = updated_ei or updated_cc or updated
+            if merged is not None:
+                self.routing_debug_record_added.emit(dataclasses.asdict(merged))
+                self._persist_routing_debug_record(merged)
+            else:
+                self._persist_latest_routing_debug_record()
+        except Exception as e:
+            logger.debug("[RoutingDebug] native post-trace merge failed: %s", e)
+            self._persist_latest_routing_debug_record()
 
         self._successfully_finished = True
         return final_text
@@ -1510,6 +1874,39 @@ class LLMWorker(QThread):
             except Exception:
                 pass
             self._active_stream_response = None
+
+    def _persist_routing_debug_record(self, record) -> None:
+        """
+        Persist one compact JSONL routing-debug event (single final write per turn).
+        Never raises.
+        """
+        if record is None:
+            return
+        if not routing_debug_log_enabled():
+            return
+        turn_id = getattr(record, "turn_id", None)
+        if turn_id is not None and self._last_persisted_routing_turn_id == turn_id:
+            return
+        try:
+            payload = serialize_record_for_log(
+                record,
+                verbose=routing_debug_log_verbose(),
+                redact_query=routing_debug_log_redact_query(),
+            )
+            routing_persist_logger.info(
+                json.dumps(payload, ensure_ascii=False, default=str)
+            )
+            if turn_id is not None:
+                self._last_persisted_routing_turn_id = int(turn_id)
+        except Exception as e:
+            logger.debug("[RoutingDebug] file persist failed: %s", e)
+
+    def _persist_latest_routing_debug_record(self) -> None:
+        try:
+            latest = self.routing_debug_buffer.latest()
+        except Exception:
+            latest = None
+        self._persist_routing_debug_record(latest)
 
     def cancel_generation(self):
         """Best-effort cancel: unblocks streaming reads; run() still finishes via finally."""

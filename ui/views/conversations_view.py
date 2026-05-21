@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QListWidget,
     QScrollArea,
@@ -17,9 +18,11 @@ from PyQt6.QtWidgets import (
     QTextBrowser,
     QMenu,
     QGraphicsOpacityEffect,
+    QFileDialog,
 )
 from PyQt6.QtGui import (
     QAction,
+    QTextDocument,
     QTextOption,
     QTextBlockFormat,
     QTextCursor,
@@ -30,7 +33,17 @@ from PyQt6.QtGui import (
     QPainter,
     QFont,
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QCoreApplication, QUrl, QSize
+from PyQt6.QtCore import (
+    Qt,
+    QTimer,
+    QPropertyAnimation,
+    QEasingCurve,
+    QEvent,
+    QCoreApplication,
+    QUrl,
+    QSize,
+    pyqtSignal,
+)
 import math
 import qtawesome as qta
 import logging
@@ -40,12 +53,36 @@ import unicodedata
 import weakref
 import re
 import re as _re_cite
+from pathlib import Path
 
+from core.citation_normalize import (
+    markdown_for_external_clipboard,
+    normalize_labeled_citation_tokens,
+)
+from core.composer_attachments import format_token, parse_attachments, validate_file_token
+from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_folder_list import (
+    FOLDER_ROW_MARGIN_LEFT,
+    ROW_KIND_SESSION,
+    SIDEBAR_ROW_KIND_ROLE,
+    SIDEBAR_ROW_PAYLOAD_ROLE,
+    SidebarFolderListController,
+    add_new_folder_header_button,
+)
 from ui.components.source_viewer import SourcePreviewer
+from ui.components.text_document_height import (
+    font_descender_inset,
+    measure_markdown_body_height,
+    measure_wrapped_body_height,
+    text_edit_chrome_vertical_px,
+)
+from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
 
@@ -62,7 +99,25 @@ _UNSET_SOURCES = object()
 LAYOUT_FULL_WIDTH = "full_width"
 LAYOUT_CENTERED_COLUMN = "centered_column"
 _CENTERED_COLUMN_MAX_WIDTH = 800
+_FULL_WIDTH_COLUMN_MAX_WIDTH = 1200
 _QWIDGETSIZE_MAX = (1 << 24) - 1
+
+
+def _user_bubble_max_width_for_wrapper(
+    wrapper_width: int, *, transcript_column_max: int
+) -> int:
+    """Cap user bubble width: min(fraction of row, transcript column minus gutter)."""
+    if wrapper_width <= 0:
+        return 160
+    return max(
+        160,
+        int(
+            min(
+                float(wrapper_width) * 0.88,
+                float(transcript_column_max) - 24.0,
+            )
+        ),
+    )
 _LAYOUT_ICON_WIDE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-wide.svg")
 )
@@ -180,6 +235,7 @@ def _prepare_stream_for_qt_citation_links(raw: str) -> str:
         return raw
     s = unicodedata.normalize("NFKC", raw)
     s = s.replace("\uff3b", "[").replace("\uff3d", "]")
+    s = normalize_labeled_citation_tokens(s)
     # Model-authored markdown links for citations → plain [n] / [W]
     s = _re_cite.sub(
         r"\[(\d+|[wW])\]\([^\)]*\)",
@@ -320,43 +376,137 @@ def _maybe_dump_markdown_html_pipeline(raw_md: str, font, is_dark: bool) -> None
     sys.stderr.write(html if len(html) <= cap else html[:cap] + "\n...[truncated]...\n")
 
 
-class ChatLabel(QLabel):
-    """User bubble: QLabel with width hint. Assistant replies use AgentMessageLabel instead."""
+class ChatUserBubble(QPlainTextEdit):
+    """Read-only user message body: same wrap rules as the composer (long tokens break mid-word)."""
 
     def __init__(self, text="", parent=None):
-        super().__init__(text, parent)
-        self.setWordWrap(True)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self._cached_text = ""
-        self._cached_ideal_width = 0
+        super().__init__(parent)
+        self.setObjectName("ChatUserBubble")
+        self.setReadOnly(True)
+        self.setUndoRedoEnabled(False)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        self.setTabChangesFocus(False)
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        self.document().setDocumentMargin(2)
+        self.viewport().setAutoFillBackground(False)
+        opt = QTextOption()
+        opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        opt.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.document().setDefaultTextOption(opt)
+        self._height_timer = QTimer(self)
+        self._height_timer.setSingleShot(True)
+        self._height_timer.timeout.connect(self._sync_document_height)
+        self.document().contentsChanged.connect(self._schedule_height_sync)
+        self.setPlainText(text or "")
+        self._schedule_height_sync()
 
     def cleanup_before_destruction(self) -> None:
-        self._cached_text = ""
-        self._cached_ideal_width = 0
         try:
             self.clear()
         except RuntimeError:
             pass
 
-    def sizeHint(self):
-        from PyQt6.QtGui import QTextDocument
-        from PyQt6.QtCore import QSize, Qt
+    def _schedule_height_sync(self) -> None:
+        self._height_timer.start(0)
 
-        hint = super().sizeHint()
-        layout_key = self.text()
-        if layout_key != self._cached_text:
-            doc = QTextDocument()
-            doc.setDefaultFont(self.font())
-            if self.textFormat() == Qt.TextFormat.MarkdownText:
-                doc.setMarkdown(layout_key)
-            else:
-                doc.setPlainText(layout_key)
-            self._cached_ideal_width = int(doc.idealWidth()) + 15
-            self._cached_text = layout_key
-        return QSize(max(self._cached_ideal_width, hint.width()), hint.height())
+    def _effective_wrap_width(self) -> int:
+        vw = int(self.viewport().width())
+        if vw > 4:
+            return vw
+        p = self.parentWidget()
+        if isinstance(p, QWidget) and p.width() > 8:
+            lay = p.layout()
+            if isinstance(lay, QVBoxLayout):
+                m = lay.contentsMargins()
+                return max(40, p.width() - m.left() - m.right())
+            return max(40, p.width() - 8)
+        return 280
+
+    def natural_body_width(self) -> int:
+        """Unwrapped document width (longest line); used to shrink short user bubbles horizontally."""
+        fm = self.fontMetrics()
+        text = self.toPlainText()
+        line_adv = 0
+        for line in text.split("\n"):
+            line_adv = max(line_adv, fm.horizontalAdvance(line))
+
+        doc = self.document()
+        old_tw = float(doc.textWidth())
+        doc.setTextWidth(-1.0)
+        dl = doc.documentLayout()
+        if dl is not None and hasattr(dl, "invalidate"):
+            try:
+                dl.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        ideal = float(doc.idealWidth())
+        restore = old_tw if old_tw > 0 else float(max(1, self.viewport().width()))
+        doc.setTextWidth(restore)
+        if dl is not None and hasattr(dl, "invalidate"):
+            try:
+                dl.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        dm = int(math.ceil(float(doc.documentMargin()) * 2.0))
+        # QTextDocument.idealWidth() can be a few px under the painted run; prefer font metrics.
+        core = max(float(line_adv), ideal)
+        return max(40, int(math.ceil(core)) + dm + 8)
+
+    def _block_stack_bottom_px(self) -> float:
+        """QPlainTextEdit block geometry (can differ slightly from layout.blockBoundingRect)."""
+        bottom = 0.0
+        block = self.document().firstBlock()
+        while block.isValid():
+            geom = self.blockBoundingGeometry(block)
+            if geom.isValid():
+                bottom = max(bottom, float(geom.bottom()))
+            block = block.next()
+        return bottom
+
+    def _compute_content_height(self, wrap_w: int) -> int:
+        """Pixel height for plain text at wrap_w (viewport not always ready when layout runs)."""
+        doc = self.document()
+        fm = self.fontMetrics()
+        body = measure_wrapped_body_height(
+            doc,
+            wrap_w,
+            min_body_px=float(fm.lineSpacing()),
+            block_bottom_px=self._block_stack_bottom_px(),
+        )
+        return int(math.ceil(body)) + font_descender_inset(fm)
+
+    def minimumSizeHint(self) -> QSize:
+        eff = max(40, self._effective_wrap_width())
+        nat = self.natural_body_width()
+        ww = min(eff, max(40, nat))
+        h = self._compute_content_height(ww)
+        return QSize(ww, min(h, 32000))
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSizeHint()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self._schedule_height_sync()
+
+    def _sync_document_height(self) -> None:
+        w = max(1, self._effective_wrap_width())
+        self.document().setTextWidth(float(w))
+        lay = self.document().documentLayout()
+        if lay is not None and hasattr(lay, "invalidate"):
+            try:
+                lay.invalidate()
+            except (RuntimeError, AttributeError):
+                pass
+        h = self._compute_content_height(w)
+        if self.height() != h:
+            self.setFixedHeight(h)
         self.updateGeometry()
 
     def contextMenuEvent(self, event):
@@ -368,16 +518,61 @@ class ChatLabel(QLabel):
             view._apply_menu_theme(menu, is_dark)
 
         def _copy():
-            if self.hasSelectedText():
-                QApplication.clipboard().setText(self.selectedText())
-            elif self.text():
-                QApplication.clipboard().setText(self.text())
+            cur = self.textCursor()
+            if cur.hasSelection():
+                QApplication.clipboard().setText(cur.selectedText())
+            elif self.toPlainText():
+                QApplication.clipboard().setText(self.toPlainText())
 
         copy_act = QAction("Copy", self)
         copy_act.triggered.connect(_copy)
-        copy_act.setEnabled(bool(self.text()))
+        copy_act.setEnabled(bool(self.toPlainText()))
         menu.addAction(copy_act)
         menu.exec(event.globalPos())
+
+
+class UserBubbleFrame(QFrame):
+    """Pins user bubble body width: up to the row cap, but shrinks to unwrapped text when shorter."""
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        lbl = self.findChild(ChatUserBubble)
+        if lbl is None:
+            return
+        lay = self.layout()
+        ml = mr = 16
+        if isinstance(lay, QVBoxLayout):
+            m = lay.contentsMargins()
+            ml, mr = m.left(), m.right()
+        pw = self.parentWidget()
+        cap_w = int(self.maximumWidth())
+        view = _parent_conversations_view(lbl)
+        col = (
+            view.transcript_column_max_width()
+            if view is not None
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        if cap_w >= _QWIDGETSIZE_MAX - 4096:
+            ww = (
+                pw.width()
+                if isinstance(pw, MessageWrapper) and pw.width() > 0
+                else max(1, self.width())
+            )
+            cap_w = _user_bubble_max_width_for_wrapper(
+                ww, transcript_column_max=col
+            )
+        inner_max = max(40, cap_w - ml - mr)
+        natural = lbl.natural_body_width()
+        body_w = min(inner_max, max(40, natural))
+        frame_w = body_w + ml + mr
+        if self.width() != frame_w:
+            self.setFixedWidth(frame_w)
+        if lbl.width() != body_w or lbl.maximumWidth() != body_w:
+            lbl.setFixedWidth(body_w)
+            lbl.setMaximumWidth(body_w)
+            lbl._schedule_height_sync()
+            lbl.updateGeometry()
+            self.updateGeometry()
 
 
 class AgentMessageLabel(QTextBrowser):
@@ -400,9 +595,14 @@ class AgentMessageLabel(QTextBrowser):
         self.setTabChangesFocus(False)
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # ClickFocus so mouse selection + Ctrl+C copies from this bubble, not the composer.
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.document().setDocumentMargin(4)
+        self.document().setDocumentMargin(2)
         self.viewport().setAutoFillBackground(False)
 
         self._citation_sources: list = []
@@ -413,6 +613,13 @@ class AgentMessageLabel(QTextBrowser):
         self._doc_layout_connected = False
         self._fixed_h = 0
         self._syncing_height = False
+        self._computing_doc_height = False
+        self._streaming_markdown = False
+        self._suppress_doc_size_sync = False
+        self._stream_peak_h = 0
+        self._height_coalesce = QTimer(self)
+        self._height_coalesce.setSingleShot(True)
+        self._height_coalesce.timeout.connect(self._sync_fixed_height)
 
         doc_layout = self.document().documentLayout()
         if doc_layout is not None and hasattr(doc_layout, "documentSizeChanged"):
@@ -433,11 +640,61 @@ class AgentMessageLabel(QTextBrowser):
         cur = QTextCursor(doc)
         cur.beginEditBlock()
         block = doc.firstBlock()
+        last_block = doc.lastBlock()
         while block.isValid():
             cur.setPosition(block.position())
             cur.mergeBlockFormat(fmt)
+            if block == last_block:
+                tail = QTextBlockFormat()
+                tail.setBottomMargin(0.0)
+                cur.mergeBlockFormat(tail)
             block = block.next()
         cur.endEditBlock()
+
+    def _effective_content_width(self) -> int:
+        """Wrap width for layout; fall back to transcript column when viewport is not ready."""
+        vw = int(self.viewport().width())
+        if vw > 4:
+            return vw
+        outer = int(self.width())
+        if outer > 8:
+            return max(1, self._content_width_from_outer_width(outer))
+        view = _parent_conversations_view(self)
+        col = (
+            view.transcript_column_max_width()
+            if view is not None
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        return max(40, int(col) - 32)
+
+    def _ensure_document_text_width(self) -> None:
+        self.document().setTextWidth(float(max(1, self._effective_content_width())))
+
+    def _reset_document_viewport_top(self) -> None:
+        """QTextBrowser auto-scrolls to the caret on append; pin document origin at y=0."""
+        bar = self.verticalScrollBar()
+        if bar is not None:
+            bar.setValue(0)
+        cur = self.textCursor()
+        cur.movePosition(QTextCursor.MoveOperation.Start)
+        self.setTextCursor(cur)
+
+    def _apply_agent_document_content(
+        self,
+        doc,
+        safe_markdown: str,
+        *,
+        line_height_percent: int | None,
+        justify_transcript: bool,
+    ) -> None:
+        doc.setMarkdown(safe_markdown)
+        pct = (
+            line_height_percent
+            if line_height_percent is not None
+            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
+        )
+        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
+        self._reset_document_viewport_top()
 
     def set_agent_markdown(
         self,
@@ -447,8 +704,21 @@ class AgentMessageLabel(QTextBrowser):
         document_stylesheet: str | None = None,
         line_height_percent: int | None = None,
         justify_transcript: bool = False,
+        streaming: bool = False,
     ) -> None:
         self._agent_is_dark = is_dark
+        self._streaming_markdown = streaming
+        if streaming:
+            self.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Minimum,
+            )
+        else:
+            self.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Preferred,
+            )
+            self._stream_peak_h = 0
         self._md_layout_source = markdown or ""
         safe = _qt_safe_markdown(self._md_layout_source)
         doc = self.document()
@@ -458,17 +728,26 @@ class AgentMessageLabel(QTextBrowser):
             if document_stylesheet is not None
             else _markdown_ui_stylesheet(is_dark)
         )
-        doc.setTextWidth(self.viewport().width())
-        doc.setMarkdown(safe)
-        pct = (
-            line_height_percent
-            if line_height_percent is not None
-            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
-        )
-        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
-        _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
+        self._ensure_document_text_width()
+        self._suppress_doc_size_sync = True
+        try:
+            self._apply_agent_document_content(
+                doc,
+                safe,
+                line_height_percent=line_height_percent,
+                justify_transcript=justify_transcript,
+            )
+        finally:
+            self._suppress_doc_size_sync = False
+        if not streaming:
+            _maybe_dump_markdown_html_pipeline(self._md_layout_source, self.font(), is_dark)
         self._sync_fixed_height()
+        if streaming:
+            self._schedule_height_sync()
         self.updateGeometry()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.updateGeometry()
 
     def attach_citation_handling(self, conversations_view):
         self._conversations_view_ref = (
@@ -494,6 +773,7 @@ class AgentMessageLabel(QTextBrowser):
         self._conversations_view_ref = None
         self._citation_sources = []
         self._md_layout_source = ""
+        self._stream_peak_h = 0
         if self._doc_layout_connected:
             try:
                 self.document().documentLayout().documentSizeChanged.disconnect(
@@ -508,29 +788,62 @@ class AgentMessageLabel(QTextBrowser):
             pass
 
     def sizeHint(self):
+        if self._streaming_markdown and self._fixed_h > 0:
+            return QSize(max(self.width(), 1), self._fixed_h)
         return super().sizeHint()
 
     def heightForWidth(self, w: int) -> int:
+        if self._streaming_markdown:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            if w <= 0:
+                return super().heightForWidth(w)
         if w <= 0:
             return super().heightForWidth(w)
+        if self._computing_doc_height:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            return max(int(self.fontMetrics().lineSpacing()) + 8, 24)
         return self._compute_doc_height(w)
 
     def hasHeightForWidth(self) -> bool:
-        return True
+        return not self._streaming_markdown
+
+    def _schedule_height_sync(self) -> None:
+        self._height_coalesce.start(0)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.document().setTextWidth(self.viewport().width())
-        self._sync_fixed_height()
+        self._ensure_document_text_width()
+        if self._streaming_markdown:
+            self._reset_document_viewport_top()
+        self._schedule_height_sync()
         self.updateGeometry()
 
     def _compute_doc_height(self, width: int) -> int:
-        doc = self.document()
-        content_w = self._content_width_from_outer_width(width)
-        doc.setTextWidth(max(content_w, 1))
-        doc_layout = doc.documentLayout()
-        doc_h = doc_layout.documentSize().height() if doc_layout is not None else doc.size().height()
-        return int(math.ceil(doc_h + self._non_document_vertical_space()))
+        if self._computing_doc_height:
+            if self._fixed_h > 0:
+                return self._fixed_h
+            return max(int(self.fontMetrics().lineSpacing()) + 8, 24)
+        self._computing_doc_height = True
+        try:
+            doc = self.document()
+            content_w = self._effective_content_width()
+            if content_w <= 1 and width > 1:
+                content_w = self._content_width_from_outer_width(width)
+            fm = self.fontMetrics()
+            body = measure_markdown_body_height(
+                doc,
+                content_w,
+                min_body_px=float(fm.lineSpacing()),
+                bottom_inset_px=font_descender_inset(
+                    fm, safety_px=2 if self._streaming_markdown else 1
+                ),
+                streaming=self._streaming_markdown,
+            )
+            return int(math.ceil(body)) + self._viewport_chrome_vertical_px()
+        finally:
+            self._computing_doc_height = False
 
     def _content_width_from_outer_width(self, outer_width: int) -> int:
         cm = self.contentsMargins()
@@ -546,21 +859,22 @@ class AgentMessageLabel(QTextBrowser):
         )
         return max(1, available)
 
-    def _non_document_vertical_space(self) -> int:
+    def _viewport_chrome_vertical_px(self) -> int:
+        """Widget chrome only — descender inset lives in the markdown body measurement."""
         cm = self.contentsMargins()
         vm = self.viewportMargins()
-        frame = self.frameWidth() * 2
-        return (
-            frame
-            + cm.top()
-            + cm.bottom()
-            + vm.top()
-            + vm.bottom()
-            + 2  # conservative safety pad for final line descenders
+        return text_edit_chrome_vertical_px(
+            frame_width=self.frameWidth(),
+            contents_top=cm.top(),
+            contents_bottom=cm.bottom(),
+            viewport_top=vm.top(),
+            viewport_bottom=vm.bottom(),
         )
 
     def _on_document_size_changed(self, _size) -> None:
-        self._sync_fixed_height()
+        if self._suppress_doc_size_sync or self._streaming_markdown:
+            return
+        self._schedule_height_sync()
 
     def _sync_fixed_height(self) -> None:
         if self._syncing_height:
@@ -569,7 +883,16 @@ class AgentMessageLabel(QTextBrowser):
         try:
             w = max(self.width(), 1)
             h = self._compute_doc_height(w)
-            if h != self._fixed_h:
+            if self._streaming_markdown:
+                h = max(h, self._fixed_h, self._stream_peak_h)
+                self._stream_peak_h = h
+                self._fixed_h = h
+                self.setMinimumHeight(h)
+                self.setMaximumHeight(_QWIDGETSIZE_MAX)
+                self._reset_document_viewport_top()
+            else:
+                self.setMinimumHeight(0)
+                self.setMaximumHeight(_QWIDGETSIZE_MAX)
                 self._fixed_h = h
                 self.setFixedHeight(h)
         finally:
@@ -595,6 +918,20 @@ class AgentMessageLabel(QTextBrowser):
 
         menu.exec(event.globalPos())
 
+    def plain_text_for_clipboard(self) -> str:
+        """Rendered plain text for one-click copy (falls back to markdown source)."""
+        text = self.toPlainText().strip()
+        if text:
+            return text
+        return markdown_for_external_clipboard(self._md_layout_source or "")
+
+    def markdown_for_clipboard(self) -> str:
+        """Original markdown syntax for export (Obsidian, etc.), without Qt cite links."""
+        src = (self._md_layout_source or "").strip()
+        if src:
+            return markdown_for_external_clipboard(src)
+        return self.plain_text_for_clipboard()
+
 
 class MessageWrapper(QWidget):
     """An autonomous layout row that takes full width and safely manages bubble expansion."""
@@ -609,13 +946,27 @@ class MessageWrapper(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         if self.is_user:
             layout.addStretch(1)
-            layout.addWidget(bubble, 0, Qt.AlignmentFlag.AlignRight)
+            layout.addWidget(bubble, 0)
         else:
             layout.addWidget(bubble, 1)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.is_user and self.bubble is not None and self.width() > 0:
+            view = _parent_conversations_view(self)
+            col = (
+                view.transcript_column_max_width()
+                if view is not None
+                else _CENTERED_COLUMN_MAX_WIDTH
+            )
+            cap = _user_bubble_max_width_for_wrapper(
+                self.width(), transcript_column_max=col
+            )
+            self.bubble.setMaximumWidth(cap)
+
     def cleanup_before_destruction(self) -> None:
         """Break references held by this row before Qt tears down the widget tree."""
-        for lbl in self.findChildren(ChatLabel):
+        for lbl in self.findChildren(ChatUserBubble):
             lbl.cleanup_before_destruction()
         for w in self.findChildren(AgentMessageLabel):
             w.cleanup_before_destruction()
@@ -635,7 +986,7 @@ class _ComposerRowHost(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addStretch(1)
-        layout.addWidget(inner, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(inner, 0)
         layout.addStretch(1)
 
     def resizeEvent(self, event):
@@ -643,6 +994,229 @@ class _ComposerRowHost(QWidget):
         w = min(self._max_w, max(1, self.width()))
         if self._inner.width() != w:
             self._inner.setFixedWidth(w)
+
+
+_MENTION_QUERY_RE = re.compile(r"@([^\s@\[]*)$")
+
+
+class ChatComposerEdit(QPlainTextEdit):
+    """Chat composer: Enter sends, Shift+Enter inserts a newline; @ opens mention picker."""
+
+    submit_requested = pyqtSignal()
+    _MAX_VISIBLE_LINES = 7
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.setWordWrapMode(
+            QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere
+        )
+        self.setTabChangesFocus(False)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.document().setDocumentMargin(4)
+        self._height_coalesce = QTimer(self)
+        self._height_coalesce.setSingleShot(True)
+        self._height_coalesce.timeout.connect(self._sync_height_to_content)
+        self.textChanged.connect(self._schedule_height_sync)
+        self.textChanged.connect(self._on_text_changed_mention)
+        self._schedule_height_sync()
+        self._mention_host = None
+        self._mention_popup: ComposerMentionPopup | None = None
+        self._mention_start_pos = -1
+
+    def bind_mention_host(self, host) -> None:
+        """Attach ConversationsView (or compatible) for db/session/store context."""
+        self._mention_host = host
+        if self._mention_popup is None:
+            self._mention_popup = ComposerMentionPopup(self)
+            self._mention_popup.item_selected.connect(self._insert_mention_token)
+            self._mention_popup.dismissed.connect(self._on_mention_dismissed)
+        self._sync_mention_context()
+        win = self.window()
+        is_dark = getattr(win, "_is_dark_theme", True) if win else True
+        self._mention_popup.apply_theme(is_dark)
+
+    def _sync_mention_context(self) -> None:
+        if not self._mention_popup or not self._mention_host:
+            return
+        db = getattr(self._mention_host, "db", None)
+        store = None
+        llm = getattr(self._mention_host, "llm", None)
+        if llm is not None:
+            store = getattr(llm, "store", None)
+        sid = getattr(self._mention_host, "active_session_id", None)
+        self._mention_popup.set_context(db=db, store=store, active_session_id=sid)
+
+    def apply_mention_theme(self, is_dark: bool) -> None:
+        if self._mention_popup:
+            self._mention_popup.apply_theme(is_dark)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        vw = max(1, int(self.viewport().width()))
+        self.document().setTextWidth(float(vw))
+        if event.oldSize().width() != event.size().width():
+            self._schedule_height_sync()
+
+    def _schedule_height_sync(self) -> None:
+        # Document layout updates after the current event; measure on the next tick
+        # so documentSize() reflects new lines and wrapping at the current width.
+        self._height_coalesce.start(0)
+
+    def _mention_global_pos(self) -> object:
+        rect = self.cursorRect()
+        return self.mapToGlobal(rect.bottomLeft())
+
+    def _active_mention_query(self) -> tuple[int, str] | None:
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()[:pos]
+        match = _MENTION_QUERY_RE.search(text)
+        if not match:
+            return None
+        start = match.start()
+        if start > 0 and not text[start - 1].isspace():
+            return None
+        return start, match.group(1)
+
+    def _on_text_changed_mention(self) -> None:
+        if not self._mention_popup:
+            return
+        active = self._active_mention_query()
+        if active is None:
+            self._mention_popup.close_mention()
+            self._mention_start_pos = -1
+            return
+        start, query = active
+        self._mention_start_pos = start
+        self._sync_mention_context()
+        gpos = self._mention_global_pos()
+        if not self._mention_popup.isVisible() or self._mention_popup._mode is None:
+            self._mention_popup.show_root(gpos)
+        else:
+            self._mention_popup._filter.setText(query)
+            self._mention_popup._run_search()
+            if not self._mention_popup.isVisible():
+                self._mention_popup.show()
+                self._mention_popup._filter.setFocus()
+
+    def _insert_mention_token(self, attachment) -> None:
+        if attachment.kind == "file" and not validate_file_token(attachment.id):
+            return
+        token = format_token(attachment)
+        cursor = self.textCursor()
+        text = self.toPlainText()
+        if self._mention_start_pos >= 0:
+            start = self._mention_start_pos
+            end = min(cursor.position(), len(text))
+            while end < len(text) and text[end] not in (" ", "\n"):
+                end += 1
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.removeSelectedText()
+        cursor.insertText(token + " ")
+        self.setTextCursor(cursor)
+        self._mention_start_pos = -1
+        if self._mention_popup:
+            self._mention_popup.hide()
+
+    def _on_mention_dismissed(self) -> None:
+        self._mention_start_pos = -1
+        self.setFocus()
+
+    def keyPressEvent(self, event):
+        if self._mention_popup and self._mention_popup.isVisible():
+            if self._mention_popup.handle_key(event):
+                return
+        key = event.key()
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+                super().keyPressEvent(event)
+                return
+            event.accept()
+            self.submit_requested.emit()
+            return
+        super().keyPressEvent(event)
+
+    def _line_step_px(self) -> int:
+        """One text line in px (prefer font height so ~7 lines match visible rows)."""
+        fm = self.fontMetrics()
+        return max(1, fm.height(), int(round(fm.lineSpacing())))
+
+    def _chrome_height(self) -> int:
+        m = self.contentsMargins()
+        dm = float(self.document().documentMargin())
+        return int(
+            math.ceil(
+                m.top()
+                + m.bottom()
+                + self.frameWidth() * 2
+                + 2.0 * dm
+                + 6
+            )
+        )
+
+    def _min_height(self) -> int:
+        return self._line_step_px() + self._chrome_height()
+
+    def _max_height(self) -> int:
+        return self._line_step_px() * self._MAX_VISIBLE_LINES + self._chrome_height()
+
+    def _block_stack_bottom(self, vw: int) -> float:
+        doc = self.document()
+        doc.setTextWidth(float(vw))
+        bottom = 0.0
+        block = doc.firstBlock()
+        while block.isValid():
+            rect = self.blockBoundingGeometry(block)
+            bottom = max(bottom, float(rect.bottom()))
+            block = block.next()
+        return bottom
+
+    def _measured_body_height(self, vw: int) -> float:
+        """Body height independent of current widget height (avoids layout/height feedback loops)."""
+        doc = self.document()
+        doc.setTextWidth(float(vw))
+        layout = doc.documentLayout()
+        lay_h = float(layout.documentSize().height()) if layout is not None else 0.0
+        ds = doc.size()
+        ds_h = float(ds.height()) if ds.height() > 0 else 0.0
+        block_h = self._block_stack_bottom(vw)
+        text = self.toPlainText()
+        step = float(self._line_step_px())
+        explicit_lines = max(1, text.count("\n") + 1) if text else 1
+        explicit_h = float(explicit_lines) * step
+        return max(step, lay_h, ds_h, block_h, explicit_h)
+
+    def _sync_height_to_content(self) -> None:
+        if self.document().documentLayout() is None:
+            return
+        vw = int(self.viewport().width())
+        if vw <= 0:
+            outer = self.width() - 2 * self.frameWidth()
+            vw = outer
+        if vw <= 0:
+            h0 = self._min_height()
+            if self.height() != h0:
+                self.setFixedHeight(h0)
+                self.updateGeometry()
+            return
+        doc_h = self._measured_body_height(vw)
+        want = int(math.ceil(doc_h)) + self._chrome_height()
+        lo, hi = self._min_height(), self._max_height()
+        h = max(lo, min(want, hi))
+        if self.height() == h:
+            return
+        self.setFixedHeight(h)
+        self.updateGeometry()
+        vw2 = max(1, int(self.viewport().width()))
+        self.document().setTextWidth(float(vw2))
 
 
 class ConversationsView(QWidget):
@@ -669,6 +1243,12 @@ class ConversationsView(QWidget):
         self._reader_hover_wrapper: MessageWrapper | None = None
         self._transcript_alignment: str = ALIGN_JUSTIFY
         self._agent_typing_wrapper: MessageWrapper | None = None
+        self._agent_md_coalesce_timer = QTimer(self)
+        self._agent_md_coalesce_timer.setSingleShot(True)
+        self._agent_md_coalesce_timer.timeout.connect(self._flush_coalesced_agent_markdown)
+
+        self._active_folder_id: str | None = None
+        self._folder_controller: SidebarFolderListController | None = None
 
         self._setup_ui()
         self._start_new_chat()
@@ -687,8 +1267,27 @@ class ConversationsView(QWidget):
     def layout_mode(self) -> str:
         return self._layout_mode
 
+    def transcript_column_max_width(self) -> int:
+        """Effective transcript column cap: 800 or 1200 per mode, never wider than the scroll viewport.
+
+        The scroll viewport is the chat stage reading area only (global right tools pane is outside
+        this widget); clamping prevents bubbles from laying out wider than visible space.
+        """
+        nominal = (
+            _FULL_WIDTH_COLUMN_MAX_WIDTH
+            if self._layout_mode == LAYOUT_FULL_WIDTH
+            else _CENTERED_COLUMN_MAX_WIDTH
+        )
+        if hasattr(self, "scroll_area"):
+            vp = self.scroll_area.viewport()
+            if vp is not None:
+                vw = int(vp.width())
+                if vw > 0:
+                    return min(nominal, max(160, vw))
+        return nominal
+
     def set_layout_mode(self, mode: str) -> None:
-        """Switch the chat transcript between FULL_WIDTH and CENTERED_COLUMN layout.
+        """Switch transcript column between 800px (centered) and 1200px (wide).
 
         This only reconfigures container-level constraints and scroll-area
         alignment — individual message widgets and QTextDocument rendering
@@ -703,19 +1302,22 @@ class ConversationsView(QWidget):
         self._apply_layout_mode()
 
     def _apply_layout_mode(self) -> None:
-        if self._layout_mode == LAYOUT_CENTERED_COLUMN:
-            self.transcript_container.setMaximumWidth(_CENTERED_COLUMN_MAX_WIDTH)
-            self.scroll_area.setAlignment(
-                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
-            )
-        else:
-            self.transcript_container.setMaximumWidth(_QWIDGETSIZE_MAX)
-            self.scroll_area.setAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-            )
+        self._sync_transcript_column_width_cap()
+        self.scroll_area.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        )
         self.transcript_layout.invalidate()
         self.transcript_container.updateGeometry()
         self._refresh_layout_mode_button()
+
+    def _sync_transcript_column_width_cap(self) -> None:
+        if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
+            return
+        cap = self.transcript_column_max_width()
+        if self.transcript_container.maximumWidth() != cap:
+            self.transcript_container.setMaximumWidth(cap)
+            self.transcript_layout.invalidate()
+            self.transcript_container.updateGeometry()
 
     def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
         pixmap = QPixmap(svg_path)
@@ -750,14 +1352,14 @@ class ConversationsView(QWidget):
                     _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Centered column")
+            btn.setToolTip(f"Layout mode: Narrow column ({_CENTERED_COLUMN_MAX_WIDTH}px)")
         else:
             btn.setIcon(
                 self._make_tinted_svg_icon(
                     _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Full width")
+            btn.setToolTip(f"Layout mode: Wide column ({_FULL_WIDTH_COLUMN_MAX_WIDTH}px)")
         btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
         btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         btn.setStyleSheet(
@@ -799,6 +1401,12 @@ class ConversationsView(QWidget):
             return ""
         fg, _ = self._user_bubble_label_colors(is_dark)
         code_bg = self._user_bubble_frame_bg(is_dark)
+        _hdr = (
+            "h1 { font-size: 1.35em; font-weight: 700; margin-top: 0.45em; margin-bottom: 0.2em; }"
+            "h2 { font-size: 1.2em; font-weight: 600; margin-top: 0.4em; margin-bottom: 0.18em; }"
+            "h3 { font-size: 1.1em; font-weight: 600; margin-top: 0.35em; margin-bottom: 0.15em; }"
+            "h4, h5, h6 { font-size: 1.05em; font-weight: 600; margin-top: 0.3em; margin-bottom: 0.12em; }"
+        )
         if is_dark:
             return (
                 f"body, p, span, div, li, ul, ol, dd, dt, "
@@ -811,6 +1419,7 @@ class ConversationsView(QWidget):
                 f"table {{ border-color: #94a3b8; }}"
                 f"th, td {{ border-color: #94a3b8; border-width: 1px; border-style: solid; }}"
                 f"hr {{ border-color: #94a3b8; color: #94a3b8; }}"
+                + _hdr
             )
         return (
             f"body, p, span, div, li, ul, ol, dd, dt, "
@@ -823,6 +1432,7 @@ class ConversationsView(QWidget):
             f"table {{ border-color: #475569; }}"
             f"th, td {{ border-color: #475569; border-width: 1px; border-style: solid; }}"
             f"hr {{ border-color: #475569; color: #475569; }}"
+            + _hdr
         )
 
     def _agent_markdown_stylesheet(self, is_dark: bool) -> str:
@@ -854,7 +1464,7 @@ class ConversationsView(QWidget):
             return "#cbd5e1" if is_dark else "#475569"
         return "#6c7086"
 
-    def _style_user_bubble(self, bubble: QFrame, lbl: ChatLabel) -> None:
+    def _style_user_bubble(self, bubble: QFrame, lbl: ChatUserBubble) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         pt = self._scaled_chat_font_pt()
         fg, _ = self._user_bubble_label_colors(is_dark)
@@ -862,20 +1472,21 @@ class ConversationsView(QWidget):
         f = lbl.font()
         f.setPointSizeF(pt)
         lbl.setFont(f)
-        lbl._cached_text = ""
-        lbl._cached_ideal_width = 0
-        if self._transcript_alignment == ALIGN_JUSTIFY:
-            lbl.setAlignment(
-                Qt.AlignmentFlag.AlignJustify | Qt.AlignmentFlag.AlignTop
-            )
-        else:
-            lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lbl.document().setDefaultFont(f)
+        opt = QTextOption()
+        opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        opt.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lbl.document().setDefaultTextOption(opt)
         lbl.setStyleSheet(
-            f"background: transparent; border: none; font-size: {pt:.1f}pt; color: {fg};"
+            f"background: transparent; border: none; padding: 0px; "
+            f"font-size: {pt:.1f}pt; color: {fg};"
         )
         bubble.setStyleSheet(
             f"background-color: {bg}; border-radius: 18px;"
         )
+        lbl.document().setTextWidth(float(max(1, lbl._effective_wrap_width())))
+        lbl._schedule_height_sync()
+        lbl.updateGeometry()
 
     def _style_agent_message_shell(self, agent: AgentMessageLabel) -> None:
         pt = self._scaled_chat_font_pt()
@@ -885,6 +1496,82 @@ class ConversationsView(QWidget):
         agent.setStyleSheet(
             f"font-size: {pt:.1f}pt; background: transparent; border: none;"
         )
+
+    def _style_agent_copy_button(self, btn: QPushButton, is_dark: bool) -> None:
+        icon_color = "#a6adc8" if is_dark else "#64748b"
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        btn.setIcon(qta.icon("fa5s.copy", color=icon_color))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(
+            f"""
+            QPushButton::menu-indicator {{ image: none; width: 0px; }}
+            QPushButton {{ background: transparent; border: none; border-radius: 4px; padding: 4px; }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+            """
+        )
+
+    def _copy_agent_message_to_clipboard(
+        self, agent: AgentMessageLabel, *, as_markdown: bool = False
+    ) -> None:
+        text = (
+            agent.markdown_for_clipboard()
+            if as_markdown
+            else agent.plain_text_for_clipboard()
+        )
+        if not text:
+            return
+        QApplication.clipboard().setText(text)
+
+    def _build_agent_copy_menu(
+        self, agent: AgentMessageLabel, is_dark: bool
+    ) -> QMenu:
+        menu = QMenu()
+        menu.setObjectName("PrestigeMenu")
+        self._apply_menu_theme(menu, is_dark)
+        plain_act = menu.addAction("Copy as plain text")
+        plain_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._copy_agent_message_to_clipboard(
+                lbl, as_markdown=False
+            )
+        )
+        md_act = menu.addAction("Copy as Markdown")
+        md_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._copy_agent_message_to_clipboard(
+                lbl, as_markdown=True
+            )
+        )
+        return menu
+
+    def _add_agent_copy_button(self, container_layout: QVBoxLayout, agent: AgentMessageLabel) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        copy_row = QHBoxLayout()
+        copy_row.setContentsMargins(0, 0, 0, 0)
+        copy_row.setSpacing(0)
+
+        copy_btn = QPushButton()
+        copy_btn.setObjectName("AgentMessageCopyBtn")
+        copy_btn.setFixedSize(28, 28)
+        copy_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        copy_btn.setToolTip("Copy as plain text or Markdown")
+        self._style_agent_copy_button(copy_btn, is_dark)
+        copy_menu = self._build_agent_copy_menu(agent, is_dark)
+        copy_btn.setMenu(copy_menu)
+
+        copy_row.addWidget(copy_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        copy_row.addStretch(1)
+        container_layout.addLayout(copy_row)
+
+    def _refresh_agent_copy_buttons(self, is_dark: bool) -> None:
+        for w in self._iter_transcript_widgets():
+            if not isinstance(w, MessageWrapper) or w.is_user:
+                continue
+            btn = w.findChild(QPushButton, "AgentMessageCopyBtn")
+            if btn is not None:
+                self._style_agent_copy_button(btn, is_dark)
+                menu = btn.menu()
+                if menu is not None:
+                    self._apply_menu_theme(menu, is_dark)
 
     def _iter_transcript_widgets(self):
         if not hasattr(self, "transcript_layout"):
@@ -973,7 +1660,7 @@ class ConversationsView(QWidget):
         for w in self._iter_transcript_widgets():
             if isinstance(w, MessageWrapper):
                 if w.is_user and w.bubble is not None:
-                    lbl = w.bubble.findChild(ChatLabel)
+                    lbl = w.bubble.findChild(ChatUserBubble)
                     if lbl is not None:
                         self._style_user_bubble(w.bubble, lbl)
                 else:
@@ -1164,7 +1851,7 @@ class ConversationsView(QWidget):
 
     def _build_history_pane(self) -> QFrame:
         frame = QFrame()
-        frame.setFixedWidth(280)
+        frame.setFixedWidth(LEFT_NAV_LIST_SIDEBAR_WIDTH)
         frame.setObjectName("HistorySidebar")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(15, 20, 15, 20)
@@ -1185,6 +1872,13 @@ class ConversationsView(QWidget):
         header_layout.addWidget(self.list_title)
         
         header_layout.addStretch()
+        self.new_folder_btn = add_new_folder_header_button(
+            header_layout,
+            before_widget=self.new_chat_btn,
+            on_new_folder=lambda: self._folder_controller.prompt_create_folder()
+            if self._folder_controller
+            else None,
+        )
         header_layout.addWidget(self.new_chat_btn)
         layout.addLayout(header_layout)
 
@@ -1202,13 +1896,27 @@ class ConversationsView(QWidget):
         layout.addWidget(self.history_list)
 
         self.new_chat_btn.clicked.connect(self._start_new_chat)
-        self.history_list.itemClicked.connect(self._load_selected_chat)
+        self.history_list.itemClicked.connect(self._on_history_item_clicked)
         self.history_list.itemSelectionChanged.connect(self._update_row_colors)
 
-        # 🔑 NEW: Wire up the scrollbar for infinite scrolling
-        self.history_offset = 0
-        self.is_loading_history = False
-        self.history_list.verticalScrollBar().valueChanged.connect(self._on_history_scroll)
+        self._active_folder_id = self.db.get_main_conversation_folder_id()
+        self._folder_controller = SidebarFolderListController(
+            scope="conversation",
+            list_widget=self.history_list,
+            db=self.db,
+            parent=self,
+            append_item_row=self._append_history_session_row,
+            apply_menu_theme=self._apply_menu_theme,
+            get_is_dark=lambda: getattr(self.window(), "_is_dark_theme", True),
+            on_reload=self._reload_history_sidebar,
+            on_active_folder_changed=self._set_active_folder_id,
+            on_export_folder=self._trigger_export_folder,
+        )
+        self.sort_btn = self._folder_controller.setup_sort_header_button(
+            header_layout, before_widget=self.new_chat_btn
+        )
+
+        self.history_list.itemDoubleClicked.connect(self._on_history_item_double_clicked)
 
         return frame
 
@@ -1327,9 +2035,9 @@ class ConversationsView(QWidget):
         )
         self._refresh_readability_toolbar(is_dark=True)
         self._apply_layout_mode()
-        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.scroll_area, stretch=1)
 
-        # Bottom stack: fixed cap = centered transcript column width; not tied to layout toggle.
+        # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
         self.chat_bottom_container = QWidget()
         self.chat_bottom_container.setObjectName("ChatBottomContainer")
         bottom_stack_layout = QVBoxLayout(self.chat_bottom_container)
@@ -1367,9 +2075,10 @@ class ConversationsView(QWidget):
         input_layout.setContentsMargins(10, 5, 5, 5)
         input_layout.setSpacing(8)
 
-        self.text_input = QLineEdit()
+        self.text_input = ChatComposerEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
         self.text_input.setObjectName("ChatTextInput")
+        self.text_input.setToolTip("Enter to send. Shift+Enter adds a line break.")
         
         self.send_btn = QPushButton()
         self.send_btn.setIcon(qta.icon('fa5s.paper-plane'))
@@ -1407,8 +2116,9 @@ class ConversationsView(QWidget):
         layout.addWidget(self._composer_row_host)
 
         self.send_btn.clicked.connect(self._handle_send_or_stop)
-        self.text_input.returnPressed.connect(self._handle_text_submit)
-        
+        self.text_input.submit_requested.connect(self._handle_text_submit)
+        self.text_input.bind_mention_host(self)
+
         return frame
 
     # --------------------------------------------------------- #
@@ -1417,19 +2127,21 @@ class ConversationsView(QWidget):
 
     def log_user_message(self, text: str, *, pending_assistant: bool = False) -> None:
         self._clear_placeholders()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
         self._user_turn_id += 1
         self.current_agent_msg = None
 
-        bubble = QFrame()
-        # 🔑 FIX 2: Allow bubble to expand horizontally, minimum vertically
-        bubble.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        bubble = UserBubbleFrame()
+        bubble.setObjectName("UserBubble")
+        # Preferred width: short prompts shrink to content; cap still from MessageWrapper.
+        bubble.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         bubble.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setContentsMargins(16, 12, 16, 12)
 
-        lbl = ChatLabel(text)
+        lbl = ChatUserBubble(text)
         lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._style_user_bubble(bubble, lbl)
 
@@ -1482,6 +2194,47 @@ class ConversationsView(QWidget):
         self.transcript_layout.removeWidget(w)
         w.deleteLater()
 
+    def _flush_agent_markdown_coalesce_immediate(self, *, finalize: bool = False) -> None:
+        if getattr(self, "_agent_md_coalesce_timer", None) is not None:
+            self._agent_md_coalesce_timer.stop()
+        self._flush_coalesced_agent_markdown(finalize=finalize)
+
+    def _schedule_coalesced_agent_markdown(self) -> None:
+        self._agent_md_coalesce_timer.start(48)
+
+    def _flush_coalesced_agent_markdown(self, *, finalize: bool = False) -> None:
+        cur = getattr(self, "current_agent_msg", None)
+        if cur is None:
+            return
+        buf = getattr(self, "_agent_text_buffer", "") or ""
+        is_dark = True
+        if self.window() and hasattr(self.window(), "_is_dark_theme"):
+            is_dark = self.window()._is_dark_theme
+        prepared = _prepare_stream_for_qt_citation_links(buf)
+        rich_text = _re_cite.sub(
+            r"\[\s*(\d+|[wW])\s*\]",
+            _markdown_cite_link_replacement,
+            prepared,
+        )
+        follow_stream_tail = self._is_transcript_scrolled_to_bottom()
+        streaming = bool(getattr(self, "_llm_in_progress", False)) and not finalize
+        try:
+            cur.set_agent_markdown(
+                rich_text,
+                is_dark=is_dark,
+                document_stylesheet=self._agent_markdown_stylesheet(is_dark),
+                line_height_percent=self._line_height_proportional_percent(),
+                justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
+                streaming=streaming,
+            )
+        except RuntimeError:
+            return
+        cur.updateGeometry()
+        if follow_stream_tail:
+            self._scroll_to_bottom()
+        if self._focus_mode_enabled:
+            self._apply_reader_focus_opacity()
+
     def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
         self._hide_agent_typing_row()
         self._clear_placeholders()
@@ -1507,7 +2260,7 @@ class ConversationsView(QWidget):
             )
             
             container_layout = QVBoxLayout(self.agent_msg_container)
-            container_layout.setContentsMargins(0, 0, 0, 2)
+            container_layout.setContentsMargins(0, 0, 0, 0)
 
             self.current_agent_msg = AgentMessageLabel()
             self.current_agent_msg.setSizePolicy(
@@ -1515,10 +2268,6 @@ class ConversationsView(QWidget):
                 QSizePolicy.Policy.Preferred,
             )
             self.current_agent_msg._assistant_turn_id = self._user_turn_id
-            self.current_agent_msg.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextBrowserInteraction |
-                Qt.TextInteractionFlag.LinksAccessibleByMouse
-            )
             self.current_agent_msg.attach_citation_handling(self)
             self._style_agent_message_shell(self.current_agent_msg)
 
@@ -1529,6 +2278,7 @@ class ConversationsView(QWidget):
                 self._attach_pending_citation_sources(self.current_agent_msg)
 
             container_layout.addWidget(self.current_agent_msg)
+            self._add_agent_copy_button(container_layout, self.current_agent_msg)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self._register_reader_focus_tracking(wrapper)
@@ -1539,29 +2289,9 @@ class ConversationsView(QWidget):
 
         self._agent_text_buffer += token
 
-        # Strip model markdown around cites, then linkify plain [n]/[W] for Qt MarkdownText.
-        prepared = _prepare_stream_for_qt_citation_links(self._agent_text_buffer)
-        rich_text = _re_cite.sub(
-            r"\[\s*(\d+|[wW])\s*\]",
-            _markdown_cite_link_replacement,
-            prepared,
-        )
-
-        # Sticky scroll: capture "at bottom" before content grows, then scroll only if user was following the stream.
-        follow_stream_tail = self._is_transcript_scrolled_to_bottom()
-        self.current_agent_msg.set_agent_markdown(
-            rich_text,
-            is_dark=is_dark,
-            document_stylesheet=self._agent_markdown_stylesheet(is_dark),
-            line_height_percent=self._line_height_proportional_percent(),
-            justify_transcript=(self._transcript_alignment == ALIGN_JUSTIFY),
-        )
-
-        self.current_agent_msg.updateGeometry()
-        if follow_stream_tail:
-            self._scroll_to_bottom()
-        if self._focus_mode_enabled:
-            self._apply_reader_focus_opacity()
+        # Coalesce setMarkdown calls: Qt's GFM parser shows raw "| table |" lines until the separator
+        # row arrives during token streaming; reparsing on a short timer reduces visible markdown flashes.
+        self._schedule_coalesced_agent_markdown()
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -1574,7 +2304,7 @@ class ConversationsView(QWidget):
         if isinstance(row, MessageWrapper):
             row.cleanup_before_destruction()
         else:
-            for lbl in row.findChildren(ChatLabel):
+            for lbl in row.findChildren(ChatUserBubble):
                 lbl.cleanup_before_destruction()
             for w in row.findChildren(AgentMessageLabel):
                 w.cleanup_before_destruction()
@@ -1589,6 +2319,9 @@ class ConversationsView(QWidget):
         self._reader_hover_wrapper = None
         self._clear_reader_focus_effects()
         self.placeholder_lbl = None
+        if hasattr(self, "_agent_md_coalesce_timer") and self._agent_md_coalesce_timer is not None:
+            self._agent_md_coalesce_timer.stop()
+        self._flush_coalesced_agent_markdown()
         self.current_agent_msg = None
         self._pending_citation_sources = None
         self._agent_text_buffer = ""
@@ -1617,8 +2350,10 @@ class ConversationsView(QWidget):
         if self._is_stop_mode():
             self._request_stop()
             return
-        text = self.text_input.text().strip()
-        if not text: return
+        raw = self.text_input.toPlainText().strip()
+        if not raw:
+            return
+        clean, attachments = parse_attachments(raw)
         self.text_input.clear()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
@@ -1626,14 +2361,17 @@ class ConversationsView(QWidget):
         self.set_input_enabled(False)
         self._refresh_send_stop_button()
 
-        self.log_user_message(text, pending_assistant=True)
+        self.log_user_message(raw, pending_assistant=True)
 
         if not hasattr(self, 'active_session_id'):
             recent_sessions = self.db.get_recent_sessions(limit=1)
             if recent_sessions:
                 self.active_session_id = recent_sessions[0]['id']
             else:
-                self.active_session_id = self.db.create_session("Text Conversation")
+                folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+                self.active_session_id = self.db.create_session(
+                    "Text Conversation", folder_id=folder_id
+                )
 
         if self.llm:
             force_web = bool(hasattr(self, "web_btn") and self.web_btn.isChecked())
@@ -1642,7 +2380,13 @@ class ConversationsView(QWidget):
             if force_web:
                 # Applies to upcoming query only.
                 self.web_btn.setChecked(False)
-            self.llm.generate_response(text, self.active_session_id)
+            prompt = clean if clean else raw
+            self.llm.generate_response(
+                prompt,
+                self.active_session_id,
+                attachments=attachments,
+                persist_content=raw,
+            )
 
     def update_stt_latency(self, ms: float) -> None:
         self.stt_latency_lbl.setText(f"STT: {ms:.0f} ms")
@@ -1657,11 +2401,22 @@ class ConversationsView(QWidget):
         self._history_search_timer.stop()
         self._history_search_timer.start(280)
 
+    def _set_active_folder_id(self, folder_id: str) -> None:
+        self._active_folder_id = folder_id
+
+    def _on_history_item_clicked(self, item) -> None:
+        if self._folder_controller and self._folder_controller.handle_item_clicked(item):
+            return
+        self._load_selected_chat(item)
+
+    def _on_history_item_double_clicked(self, item) -> None:
+        if self._folder_controller:
+            self._folder_controller.handle_item_double_clicked(item)
+
     def _reload_history_sidebar(self) -> None:
-        """Rebuild sidebar: full-text search when the search box is non-empty, else paged recent list."""
-        self.history_list.clear()
-        self.history_offset = 0
-        self.is_loading_history = False
+        """Rebuild sidebar: search → flat list; else folder-grouped browse."""
+        if not self._folder_controller:
+            return
         q = self.search_bar.text().strip() if getattr(self, "search_bar", None) else ""
         if q:
             try:
@@ -1669,15 +2424,12 @@ class ConversationsView(QWidget):
             except Exception as e:
                 logger.exception("Sidebar history search failed: %s", e)
                 sessions = []
-            for session in sessions:
-                self._append_history_session_row(session)
-            self.history_offset = 10**9
-            self.is_loading_history = False
+            self._folder_controller.reload_search_mode(sessions)
         else:
-            self._load_history_batch()
+            self._folder_controller.reload_browse_mode()
         self._update_row_colors()
 
-    def _append_history_session_row(self, session: dict) -> None:
+    def _append_history_session_row(self, session: dict, indent_left: int = FOLDER_ROW_MARGIN_LEFT) -> None:
         from PyQt6.QtWidgets import QListWidgetItem, QWidget, QHBoxLayout, QLabel, QPushButton, QMenu
         from PyQt6.QtCore import QSize
         import qtawesome as qta
@@ -1691,13 +2443,15 @@ class ConversationsView(QWidget):
 
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, session["id"])
+        item.setData(SIDEBAR_ROW_KIND_ROLE, ROW_KIND_SESSION)
+        item.setData(SIDEBAR_ROW_PAYLOAD_ROLE, session)
 
         row_widget = QWidget()
         row_widget.setObjectName("HistoryRowWidget")
         row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(10, 0, 10, 0)
+        row_layout.setContentsMargins(indent_left, 0, 10, 0)
         row_layout.setSpacing(10)
 
         title_lbl = QLabel(session["title"])
@@ -1717,6 +2471,8 @@ class ConversationsView(QWidget):
         menu = QMenu(opts_btn)
         if hasattr(self, "_apply_menu_theme"):
             self._apply_menu_theme(menu, is_dark)
+        if self._folder_controller:
+            self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
             qta.icon("fa5s.edit", color="#89b4fa"), "Rename Chat"
@@ -1726,6 +2482,26 @@ class ConversationsView(QWidget):
                 s_id, old_t
             )
         )
+
+        if self._folder_controller:
+            session_folder_id = session.get("folder_id") or self.db.get_main_conversation_folder_id()
+            self._folder_controller.build_move_submenu_for_item(
+                menu,
+                session_folder_id,
+                lambda folder_id, s_id=session["id"]: self._move_session_to_folder(
+                    s_id, folder_id
+                ),
+            )
+
+        export_action = menu.addAction(
+            qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+        )
+        export_action.triggered.connect(
+            lambda _, s_id=session["id"], title=session["title"]: self._trigger_export_chat(
+                s_id, title
+            )
+        )
+
         menu.addSeparator()
 
         delete_action = menu.addAction(
@@ -1744,57 +2520,52 @@ class ConversationsView(QWidget):
         self.history_list.addItem(item)
         self.history_list.setItemWidget(item, row_widget)
 
-    def _refresh_history_list(self):
-        """Resets offset, runs cleanup, updates count, rebuilds list (respects search box)."""
-        self.history_offset = 0
-        self.is_loading_history = False
+    def _move_session_to_folder(self, session_id: str, folder_id: str) -> None:
+        if self.db.move_session_to_folder(session_id, folder_id):
+            self._refresh_history_list()
 
-        # Silent garbage collection for empty sessions
+    def _trigger_export_chat(self, session_id: str, title: str) -> None:
+        default_name = f"{sanitize_export_filename(title)}.md"
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Conversation",
+            default_name,
+            "Markdown (*.md)",
+        )
+        if not dest:
+            return
+        try:
+            if export_conversation_markdown(self.db, session_id, Path(dest)):
+                logger.info("Exported conversation %s to %s", session_id, dest)
+            else:
+                logger.warning("Export failed: session %s not found", session_id)
+        except OSError as e:
+            logger.exception("Failed to export conversation %s: %s", session_id, e)
+
+    def _trigger_export_folder(self, folder_id: str, folder_name: str) -> None:
+        default_name = f"{sanitize_export_filename(folder_name)}.zip"
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Folder",
+            default_name,
+            "ZIP archive (*.zip)",
+        )
+        if not dest:
+            return
+        try:
+            count = export_folder_zip(self.db, folder_id, Path(dest))
+            logger.info("Exported %d conversation(s) from folder %s to %s", count, folder_id, dest)
+        except OSError as e:
+            logger.exception("Failed to export folder %s: %s", folder_id, e)
+
+    def _refresh_history_list(self):
+        """Runs cleanup, updates count, rebuilds list (respects search box)."""
         current_active = getattr(self, "active_session_id", None)
         if hasattr(self.db, "cleanup_empty_sessions"):
             self.db.cleanup_empty_sessions(current_active)
 
-        # Session total (sidebar title stays "CONVERSATIONS"; count reserved for telemetry)
         self._session_count = self.db.get_session_count()
-
         self._reload_history_sidebar()
-
-    def _on_history_scroll(self, value):
-        """Triggered every time the user scrolls."""
-        bar = self.history_list.verticalScrollBar()
-        # If the scrollbar hits the absolute maximum, load the next batch!
-        if value == bar.maximum():
-            self._load_history_batch()
-
-    def _load_history_batch(self):
-        """Fetches the next chunk of history and appends it to the list."""
-        if getattr(self, "search_bar", None) and self.search_bar.text().strip():
-            self.is_loading_history = False
-            return
-        if getattr(self, "is_loading_history", False):
-            return
-
-        self.is_loading_history = True
-        
-        # 🔑 THE FIX: Pass both the limit AND the current offset to the DB
-        # Note: If your DB doesn't support 'offset' yet, we'll need to update it!
-        try:
-            sessions = self.db.get_recent_sessions(limit=20, offset=self.history_offset)
-        except TypeError:
-            # Fallback just in case you haven't updated the DB manager yet
-            sessions = self.db.get_recent_sessions(limit=20)
-            if self.history_offset > 0:
-                sessions = [] # Prevent infinite looping of the same 20 items
-
-        if not sessions:
-            self.is_loading_history = False
-            return
-
-        for session in sessions:
-            self._append_history_session_row(session)
-
-        self.history_offset += 20
-        self.is_loading_history = False
 
     def _update_row_colors(self):
         """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
@@ -1856,7 +2627,10 @@ class ConversationsView(QWidget):
                 logger.error("CRITICAL: DB Manager missing 'rename_session' method.")
 
     def _start_new_chat(self):
-        self.active_session_id = self.db.create_session("New Conversation")
+        folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+        self.active_session_id = self.db.create_session(
+            "New Conversation", folder_id=folder_id
+        )
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
@@ -1874,6 +2648,8 @@ class ConversationsView(QWidget):
         session_id = item.data(Qt.ItemDataRole.UserRole)
         self.active_session_id = session_id
         self._notify_llm_active_session_changed()
+        if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
+            self.text_input._sync_mention_context()
 
         self._clear_transcript()
         self._is_agent_typing = False
@@ -1900,57 +2676,23 @@ class ConversationsView(QWidget):
 
         # Reconcile stream chunks received while this session was not visible.
         self._flush_pending_stream_for_active_session()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
-        from PyQt6.QtGui import QPalette, QColor
-        # THIS IS THE MAGIC LINE TO KILL THE GHOST SQUARE
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        palette = QPalette()
-        if is_dark:
-            bg, fg, sel_bg, sel_fg = "#1e1e2e", "#cdd6f4", "#313244", "#cdd6f4"
-            border, hover = "rgba(255, 255, 255, 0.1)", "#313244"
-        else:
-            bg, fg, sel_bg, sel_fg = "#ffffff", "#1e293b", "#f1f5f9", "#0f172a"
-            border, hover = "#cbd5e1", "#f1f5f9"
-
-        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
-            palette.setColor(role, QColor(bg))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(fg))
-        palette.setColor(QPalette.ColorRole.Text, QColor(fg))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(sel_bg))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(sel_fg))
-
-        menu.setPalette(palette)
-        menu.setStyleSheet(f"""
-            QMenu {{ 
-                background-color: {bg}; 
-                color: {fg}; 
-                border: 1px solid {border}; 
-                border-radius: 12px; 
-                padding: 5px; 
-            }}
-            QMenu::item {{ 
-                background-color: transparent; 
-                padding: 8px 25px; 
-                border-radius: 8px; 
-            }}
-            QMenu::item:selected {{ 
-                background-color: {hover}; 
-                color: {sel_fg}; 
-            }}
-        """)
+        apply_prestige_kebab_menu_theme(menu, is_dark)
 
     def refresh_menu_themes(self, is_dark: bool):
         """Updates all existing kebab menus in the history list."""
+        if self._folder_controller:
+            self._folder_controller.refresh_menu_themes(is_dark)
         for i in range(self.history_list.count()):
             item = self.history_list.item(i)
             widget = self.history_list.itemWidget(item)
             if widget:
-                # Find the button and its menu
                 btn = widget.findChild(QPushButton, "HistoryOptionsBtn")
                 if btn and btn.menu():
                     self._apply_menu_theme(btn.menu(), is_dark)
@@ -2032,6 +2774,8 @@ class ConversationsView(QWidget):
         )
 
     def refresh_button_themes(self, is_dark: bool):
+        if hasattr(self, "text_input") and hasattr(self.text_input, "apply_mention_theme"):
+            self.text_input.apply_mention_theme(is_dark)
         """Dynamically updates the colors of the New Chat and Send buttons."""
         import qtawesome as qta
         
@@ -2045,6 +2789,18 @@ class ConversationsView(QWidget):
         if hasattr(self, 'new_chat_btn'):
             self.new_chat_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
             self.new_chat_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "new_folder_btn"):
+            self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
+            self.new_folder_btn.setStyleSheet(f"""
+                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
+                QPushButton:hover {{ background-color: {hover_bg}; }}
+            """)
+        if hasattr(self, "sort_btn"):
+            self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
+            self.sort_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
             """)
@@ -2074,6 +2830,7 @@ class ConversationsView(QWidget):
         if tw is not None:
             for ind in tw.findChildren(TypingIndicatorWidget):
                 ind.set_dark_theme(is_dark)
+        self._refresh_agent_copy_buttons(is_dark)
 
     def _apply_history_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
@@ -2108,7 +2865,11 @@ class ConversationsView(QWidget):
         self.refresh_think_toggle()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_history_list_surface(is_dark)
-    
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_transcript_column_width_cap()
+
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
         if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
@@ -2241,7 +3002,13 @@ class ConversationsView(QWidget):
             return
 
     def open_source_preview(self, source_dict):
-        """Opens the Prestige-styled SourcePreviewer (see ui/components/prestige_dialog.py)."""
+        """Opens web URLs in the browser; other sources use the in-app preview dialog."""
+        url = str((source_dict or {}).get("url") or "").strip()
+        if url.startswith(("http://", "https://")):
+            import webbrowser
+
+            webbrowser.open(url)
+            return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         viewer = SourcePreviewer(
             source_dict.get("filename", "Source"),
@@ -2282,7 +3049,9 @@ class ConversationsView(QWidget):
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
 
-    def on_llm_response_finished(self, session_id: str) -> None:
+    def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
+        from core.output_artifact_strip import strip_harmony_oss_artifacts
+
         sid = str(session_id or "")
         if sid:
             self._pending_stream_tokens_by_session.pop(sid, None)
@@ -2290,6 +3059,17 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
+        if final_text:
+            cleaned = strip_harmony_oss_artifacts(final_text)
+            cur = getattr(self, "current_agent_msg", None)
+            if cleaned and cur is None:
+                self.log_agent_token(cleaned)
+            elif cleaned:
+                # The finished worker text is the sanitized source of truth.
+                # Replace the active bubble instead of appending/reconciling around leaked prefix text.
+                self._agent_text_buffer = cleaned
+                self._schedule_coalesced_agent_markdown()
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
@@ -2318,6 +3098,7 @@ class ConversationsView(QWidget):
 
     def on_generation_stopped(self) -> None:
         logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False
         self._awaiting_tts_end = False

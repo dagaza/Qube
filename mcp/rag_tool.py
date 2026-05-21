@@ -32,7 +32,28 @@ MAX_CONTEXT_CHARS = 12000
 MIN_RAG_SEMANTIC_SCORE = 0.30
 
 
-def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k: int = 5) -> dict:
+def _escape_source_literal(source: str) -> str:
+    return (source or "").replace("'", "''")
+
+
+def _filter_results_by_source(results: list, source_filter: str) -> list:
+    if not source_filter:
+        return results
+    return [
+        doc
+        for doc in results
+        if (doc.get("source") or doc.get("filename") or "") == source_filter
+    ]
+
+
+def rag_search(
+    query: str,
+    query_vector: np.ndarray,
+    store: DocumentStore,
+    top_k: int = 5,
+    *,
+    source_filter: str | None = None,
+) -> dict:
     """
     RAG v2.3 — Contract-safe retrieval system.
 
@@ -44,7 +65,8 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
     - Strict RAM + context enforcement
     """
 
-    logger.info(f"[RAG v2.3] Query: {query}")
+    scope = f" source={source_filter!r}" if source_filter else ""
+    logger.info(f"[RAG v2.3] Query: {query}{scope}")
 
     try:
         # ============================================================
@@ -56,11 +78,20 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
 
         # --- VECTOR SEARCH (semantic channel) ---
         try:
-            vector_results = (
-                store.table.search(query_vector)
-                .limit(top_k * 2)
-                .to_list()
-            )
+            if source_filter:
+                esc = _escape_source_literal(source_filter)
+                vector_results = (
+                    store.table.search(query_vector)
+                    .where(f"source = '{esc}'")
+                    .limit(top_k * 2)
+                    .to_list()
+                )
+            else:
+                vector_results = (
+                    store.table.search(query_vector)
+                    .limit(top_k * 2)
+                    .to_list()
+                )
         except Exception as e:
             logger.error(f"[RAG] Vector search failed: {e}")
 
@@ -69,16 +100,53 @@ def rag_search(query: str, query_vector: np.ndarray, store: DocumentStore, top_k
             # NOTE:
             # Some setups require query_type="fts" to enable BM25.
             # If unsupported, this will safely fail and be ignored.
-            text_results = (
-                store.table.search(query, query_type="fts")
-                .limit(top_k * 2)
-                .to_list()
-            )
+            if source_filter:
+                esc = _escape_source_literal(source_filter)
+                text_results = (
+                    store.table.search(query, query_type="fts")
+                    .where(f"source = '{esc}'")
+                    .limit(top_k * 2)
+                    .to_list()
+                )
+            else:
+                text_results = (
+                    store.table.search(query, query_type="fts")
+                    .limit(top_k * 2)
+                    .to_list()
+                )
         except Exception as e:
             logger.debug(f"[RAG] FTS search unavailable: {e}")
 
+        vector_results = _filter_results_by_source(vector_results, source_filter or "")
+        text_results = _filter_results_by_source(text_results, source_filter or "")
+
         # If everything fails, return safely
         if not vector_results and not text_results:
+            if source_filter:
+                try:
+                    full_text = store.reconstruct_document(source_filter)
+                except Exception as e:
+                    logger.warning("[RAG] reconstruct_document failed for %s: %s", source_filter, e)
+                    full_text = ""
+                if full_text and full_text.strip():
+                    snippet = full_text.strip()[:MAX_CONTEXT_CHARS]
+                    logger.info(
+                        "[RAG] Using full-document fallback for scoped source %s (%d chars)",
+                        source_filter,
+                        len(snippet),
+                    )
+                    return {
+                        "llm_context": f"--- SOURCE 1: {source_filter} ---\n{snippet}",
+                        "sources": [
+                            {
+                                "id": 1,
+                                "filename": source_filter,
+                                "content": snippet[:2000],
+                                "type": "rag",
+                                "chunk_id": f"{source_filter}::0",
+                            }
+                        ],
+                    }
             logger.warning("[RAG] No retrieval results from any channel.")
             return {
                 "llm_context": "",

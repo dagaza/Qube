@@ -31,7 +31,8 @@ from workers.internet_worker import InternetWorker
 
 import logging
 
-from core.logging_bootstrap import init_llm_debug_logging
+from core.logging_bootstrap import init_llm_debug_logging, init_routing_debug_logging
+from core.boot_args import parse_boot_args
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -42,13 +43,15 @@ logging.basicConfig(
 
 # LLM introspection (Qube.NativeLLM.Debug) -> logs/llm_debug.log only; not the terminal
 init_llm_debug_logging()
+# Routing explainability (Qube.RoutingDebug) -> logs/routing_debug.log only; not the terminal
+init_routing_debug_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
 logger.info("Terminal logging initialized. Booting sequence started.")
 
 class Qube:
-    def __init__(self):
+    def __init__(self, enable_routing_debug_tool: bool = False):
         # -- 1. Shared services ------------------------------------------
         self.embedder = EmbeddingModel()
         self.store    = DocumentStore()
@@ -113,6 +116,7 @@ class Qube:
             workers=workers,
             gpu_monitor=self.gpu_monitor,
             native_engine=self.native_llama_engine,
+            enable_routing_debug_tool=enable_routing_debug_tool,
         )
 
         # -- 6. Wire signals ---------------------------------------------
@@ -204,6 +208,9 @@ class Qube:
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
+        if hasattr(self.llm_worker, 'routing_debug_record_added') and hasattr(w, 'routing_debug_tool_view'):
+            if w.routing_debug_tool_view is not None:
+                self.llm_worker.routing_debug_record_added.connect(w.routing_debug_tool_view.add_record)
 
     def _on_enrichment_context_ready(self, payload: dict) -> None:
         """Cache the turn-scoped enrichment context emitted by LLMWorker.
@@ -222,8 +229,8 @@ class Qube:
             session_id,
             len(text or ""),
         )
-        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.on_llm_response_finished(session_id)
+        if hasattr(self, "window") and hasattr(self.window, "conversations_view"):
+            self.window.conversations_view.on_llm_response_finished(session_id, text or "")
         if hasattr(self, 'enrichment_worker'):
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx.get("session_id") == session_id:
@@ -237,15 +244,28 @@ class Qube:
     def _handle_voice_prompt(self, text: str):
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
         if not session_id:
-            session_id = self.db_manager.create_session("Voice Chat")
-            self.window.conversations_view.active_session_id = session_id
-            self.window.conversations_view._refresh_history_list()
+            conv_view = self.window.conversations_view
+            folder_id = getattr(conv_view, "_active_folder_id", None)
+            if not folder_id:
+                folder_id = self.db_manager.get_main_conversation_folder_id()
+            session_id = self.db_manager.create_session("Voice Chat", folder_id=folder_id)
+            conv_view.active_session_id = session_id
+            conv_view._refresh_history_list()
 
         # 🔑 FIX: Lock the UI while processing a voice command
         self.window.conversations_view.set_input_enabled(False)
 
+        from core.composer_attachments import parse_attachments
+
         self.window.conversations_view.log_user_message(text, pending_assistant=True)
-        self.llm_worker.generate_response(text, session_id)
+        clean, attachments = parse_attachments(text)
+        prompt = clean if clean else text
+        self.llm_worker.generate_response(
+            prompt,
+            session_id,
+            attachments=attachments,
+            persist_content=text.strip(),
+        )
 
     def _handle_user_interruption(self):
         logger = logging.getLogger("Qube.Main")
@@ -346,20 +366,23 @@ class Qube:
             logger.warning(f"Found {len(missing_from_ui)} ghost files in LanceDB. Healing UI registry...")
             for source in missing_from_ui:
                 # Add a dummy record to SQLite so the UI can see it and delete it if needed
-                self.db_manager.add_document_metadata(source, file_size_kb=0, chunk_count=0)
+                self.db_manager.add_document_metadata(
+                    source, file_size_kb=0, chunk_count=0,
+                    folder_id=self.db_manager.get_main_library_folder_id(),
+                )
                 
             logger.info("Database synchronization complete.")
 
-    def _start_ingestion(self, file_paths: list):
+    def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         self.window.update_status("Ingesting Documents...")
         
-        # Instantiate the worker with the required dependencies
         self.ingestion_worker = IngestionWorker(
             file_paths, 
             self.embedder, 
             self.store, 
-            self.db_manager
+            self.db_manager,
+            folder_id=folder_id,
         )
         
         # Wire the worker's progress signals back to the Library UI
@@ -423,6 +446,25 @@ class Qube:
         if hasattr(self.window, "model_manager_view"):
             self.window.model_manager_view.shutdown_hf_workers()
 
+        # 0b. Memory Manager — QThread is not stopped via closeEvent when the page is embedded in the stack
+        mm = getattr(self.window, "memory_manager_view", None)
+        if mm is not None:
+            mmw = getattr(mm, "worker", None)
+            if mmw is not None and hasattr(mmw, "isRunning") and mmw.isRunning():
+                if hasattr(mmw, "shutdown"):
+                    mmw.shutdown()
+                if not mmw.wait(5000):
+                    logger.warning(
+                        "[Shutdown] Memory manager worker did not exit within 5s."
+                    )
+
+        # 0c. Windows GPU polling (standard library thread, not QThread)
+        if hasattr(self, "gpu_monitor") and self.gpu_monitor is not None:
+            try:
+                self.gpu_monitor.cleanup()
+            except Exception:
+                pass
+
         # 1. Stop transient workers (Internet & Ingestion)
         if self.active_internet_worker and self.active_internet_worker.isRunning():
             self.active_internet_worker.stop()
@@ -482,10 +524,39 @@ class Qube:
                 logger.debug(f"Closing {name} connection...")
                 worker.close()
 
+        # 4. Last-chance: QThreads that ignore quit() while run() is busy (e.g. STT transcribing)
+        self._finalize_running_qthreads()
+
         logger.info("All threads safely terminated. Goodbye!")
+
+    def _finalize_running_qthreads(self) -> None:
+        """Wait or force-terminate Qt worker threads still running after cooperative shutdown."""
+        llm = getattr(self, "llm_worker", None)
+        if llm is not None and llm.isRunning():
+            if hasattr(llm, "cancel_generation"):
+                llm.cancel_generation()
+            if not llm.wait(10_000):
+                logger.warning("[Shutdown] LLM worker still running after 10s wait.")
+
+        stt = getattr(self, "stt_worker", None)
+        if stt is not None and stt.isRunning():
+            stt.requestInterruption()
+            if not stt.wait(10_000):
+                logger.warning("[Shutdown] STT worker still running; terminating thread.")
+                stt.terminate()
+                stt.wait(3000)
+
+        audio = getattr(self, "audio_worker", None)
+        if audio is not None and audio.isRunning():
+            if hasattr(audio, "stop"):
+                audio.stop()
+            if not audio.wait(8000):
+                logger.warning("[Shutdown] Audio worker still running; blocking until exit.")
+                audio.wait()
 
 
 if __name__ == "__main__":
+    args = parse_boot_args()
     # Optional: The Windows Taskbar App ID fix we discussed
     if sys.platform == "win32":
         import ctypes
@@ -549,7 +620,7 @@ if __name__ == "__main__":
         logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
 
     # 4. Boot the Qube Assistant
-    qube = Qube()
+    qube = Qube(enable_routing_debug_tool=bool(args.routing_debug))
     qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
     app.aboutToQuit.connect(qube._graceful_shutdown)
     qube.show()

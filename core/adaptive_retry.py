@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+from typing import Any
+
+from core.native_prompt_bos import prepare_completion_prompt
+from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
+from core.output_validation import OutputValidationResult, validate_output
+from core.prompt_contract import PromptContract, assert_prompt_contract, stops_for_format
+from core.prompt_renderers import openai_messages_to_alpaca_prompt
+
+
+def simple_instruction_format(messages: list[dict]) -> str:
+    """Conservative Alpaca rendered fallback (shared with PR3 flatten retry path)."""
+    return openai_messages_to_alpaca_prompt(messages)
+
+
+def _execute_contract_once(model: Any, contract: PromptContract, messages: list[dict]) -> str:
+    exec_once = getattr(model, "execute_from_contract", None)
+    if callable(exec_once):
+        return str(exec_once(contract, messages) or "")
+
+    # Conservative fallback for direct llama objects in tests/utility scripts.
+    if contract.mode == "messages":
+        if contract.chat_format:
+            try:
+                model.chat_format = contract.chat_format
+            except Exception:
+                pass
+        prompt_txt, fmt_stop, _note = reconstruct_formatted_prompt(
+            model,
+            list(contract.messages or messages),
+            effective_chat_format=contract.chat_format,
+            suppress_gguf_metadata=(contract.template_source == "fallback_unsafe_gguf"),
+        )
+        if prompt_txt is None:
+            prompt_txt = ""
+        prompt_txt = prepare_completion_prompt(model, prompt_txt)
+        merged, _ = merge_stop_lists(list(contract.stop or []), fmt_stop)
+        r = model.create_completion(
+            prompt=prompt_txt,
+            temperature=0.2,
+            max_tokens=512,
+            stream=False,
+            echo=False,
+            stop=list(merged),
+        )
+        return str((r.get("choices") or [{}])[0].get("text") or "")
+
+    prompt_txt = prepare_completion_prompt(model, contract.prompt or "")
+    r = model.create_completion(
+        prompt=prompt_txt,
+        temperature=0.2,
+        max_tokens=512,
+        stream=False,
+        echo=False,
+        stop=list(contract.stop or []),
+    )
+    return str((r.get("choices") or [{}])[0].get("text") or "")
+
+
+def maybe_retry(
+    model: Any,
+    messages: list[dict],
+    contract: PromptContract,
+    output: str,
+    validation: OutputValidationResult,
+) -> tuple[str, PromptContract, bool]:
+    # Retry only for invalid medium/high with substantive format issues.
+    if validation.is_valid or validation.severity not in ("medium", "high"):
+        return output, contract, False
+
+    retry_worthy = (
+        validation.severity == "high"
+        or "template_leakage" in validation.issues
+        or "degeneration" in validation.issues
+        or "meta_preamble" in validation.issues
+        or "role_confusion" in validation.issues
+    )
+    if not retry_worthy:
+        return output, contract, False
+
+    retry_contract: PromptContract | None = None
+
+    # Case 1: GGUF template failed -> ChatML fallback.
+    if contract.template_source == "gguf":
+        retry_contract = PromptContract(
+            mode="messages",
+            chat_format="chatml",
+            prompt=None,
+            messages=list(contract.messages or messages),
+            stop=stops_for_format("chatml"),
+            template_source="fallback",
+            confidence="medium",
+        )
+    # Case 2: ChatML failed -> rendered instruction fallback.
+    elif (contract.chat_format or "").strip().lower() == "chatml":
+        retry_contract = PromptContract(
+            mode="rendered",
+            chat_format=None,
+            prompt=simple_instruction_format(messages),
+            messages=None,
+            stop=[],
+            template_source="fallback",
+            confidence="low",
+        )
+
+    if retry_contract is None:
+        return output, contract, False
+
+    assert_prompt_contract(retry_contract)
+    retried_output = _execute_contract_once(model, retry_contract, messages)
+    second = validate_output(retried_output, retry_contract)
+    if second.is_valid:
+        return retried_output, retry_contract, True
+    return output, contract, False

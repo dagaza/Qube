@@ -2,15 +2,16 @@
 Single place for native prompt *representation* (reconstruction + policy overlays + stop list for logs).
 
 Separates template structure (chat_format / Jinja) from execution policy (thinking overlays).
-Does not alter llama-cpp tokenizer or create_chat_completion message path — bundle is used for
-validation, logging, and trace prefetch unless inference is explicitly wired to it later.
+The native engine calls ``build_prompt_bundle`` and passes the resulting prompt string to
+``Llama.create_completion(prompt=...)`` (see ``NativeLlamaEngine``).
 """
 from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from core.execution_policy import ExecutionPolicy
 from core.native_llama_inference import native_chat_completion_kwargs
@@ -37,7 +38,46 @@ _ASSISTANT_ANCHOR_SUFFIXES: tuple[str, ...] = (
     "<|assistant|>",
     "<|im_start|>assistant",
     "[INST]",
+    "[/INST]",
 )
+
+_MISTRAL_CLOSE_INST_RE = re.compile(r"\[/INST\]\s*$")
+
+
+def _prompt_has_generation_anchor(prompt: str, template_type: str) -> bool:
+    """True when the formatted prompt already opens the assistant generation slot."""
+    p = (prompt or "").strip()
+    if not p:
+        return False
+    tt = (template_type or "fallback").lower()
+    if tt == "mistral":
+        return bool(_MISTRAL_CLOSE_INST_RE.search(p)) or p.endswith("[INST]")
+    return p.endswith(_ASSISTANT_ANCHOR_SUFFIXES)
+
+
+def _maybe_append_assistant_anchor(
+    prompt: str,
+    template_type: str,
+) -> tuple[str, bool]:
+    """
+    Append a template-safe generation anchor only when missing.
+
+    Mistral instruct prompts must end at [/INST]; never append Phi-style <|assistant|>.
+    """
+    if _prompt_has_generation_anchor(prompt, template_type):
+        return prompt, False
+    tt = (template_type or "fallback").lower()
+    if tt == "mistral":
+        return prompt, False
+    return (prompt or "") + "\n<|assistant|>\n", True
+
+
+def _insert_before_last_anchor(prompt: str, anchor: str, text: str) -> str:
+    p = prompt or ""
+    idx = p.rfind(anchor)
+    if idx < 0:
+        return p + "\n" + text
+    return p[:idx] + text.rstrip() + "\n" + p[idx:]
 
 
 def _llama_display_name(llama: Any) -> str:
@@ -65,10 +105,8 @@ def _apply_template_override(bundle: "RenderPromptBundle", override: TemplateOve
     bundle.stop_tokens = list(merged)
     p = bundle.prompt
     if override.enforce_assistant_anchor:
-        s = (p or "").strip()
-        if not s.endswith(_ASSISTANT_ANCHOR_SUFFIXES):
-            p = (p or "") + "\n<|assistant|>\n"
-            bundle.prompt = p
+        p, _ = _maybe_append_assistant_anchor(p or "", override.template_type)
+        bundle.prompt = p
     if override.force_prefix:
         bundle.prompt = bundle.prompt + override.force_prefix
 
@@ -128,7 +166,11 @@ def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: s
         return prompt
 
     if reasoning_mode == "disabled":
-        return (prompt or "") + "\nRespond with final answer only."
+        return _insert_before_last_anchor(
+            prompt or "",
+            "<|im_start|>assistant",
+            "Write only the user-facing response.",
+        )
 
     if reasoning_mode != "soft":
         return prompt
@@ -136,27 +178,33 @@ def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: s
     tt = (template_type or "fallback").lower()
 
     if tt == "chatml":
-        return (prompt or "") + (
-            "\nYou may use <redacted_thinking>...</redacted_thinking> internally. "
-            "Only output final answer."
+        return _insert_before_last_anchor(
+            prompt or "",
+            "<|im_start|>assistant",
+            "You may use <redacted_thinking>...</redacted_thinking> internally. "
+            "Write only the user-facing response outside those tags.",
         )
 
     if tt == "llama3":
-        return (prompt or "") + "\nUse hidden reasoning if needed. Only output final answer."
+        return _insert_before_last_anchor(
+            prompt or "",
+            "<|start_header_id|>assistant<|end_header_id|>",
+            "Keep any hidden reasoning private and write only the user-facing response.",
+        )
 
     if tt == "phi":
         p = prompt or ""
         if _PHI_ASSISTANT in p:
-            prefix = "Use hidden reasoning internally. Only output final answer."
+            prefix = "Keep hidden reasoning private. Write only the user-facing response."
             before, sep, after = p.rpartition(_PHI_ASSISTANT)
             if sep:
                 return before + prefix + _PHI_ASSISTANT + after
-        return (prompt or "") + "\nOnly output final answer."
+        return (prompt or "") + "\nWrite only the user-facing response."
 
     if tt == "mistral":
         return (prompt or "") + "\n(Use internal reasoning. Do not expose it.)"
 
-    return (prompt or "") + "\nOnly output final answer."
+    return (prompt or "") + "\nWrite only the user-facing response."
 
 
 def build_prompt_bundle(
@@ -164,14 +212,27 @@ def build_prompt_bundle(
     messages: list[dict],
     model_profile: Optional["ModelReasoningProfile"],
     execution_policy: ExecutionPolicy,
+    *,
+    effective_chat_format: Optional[str] = None,
+    suppress_gguf_metadata: bool = False,
+    prompt_contract_stops: Optional[Sequence[str]] = None,
 ) -> tuple[RenderPromptBundle, str, Any]:
     """
     Build RenderPromptBundle using existing reconstruct_formatted_prompt + policy overlays + stops.
 
     ``model_profile`` is used for learned override lookup; pass through from detection.
+    When called from the native engine, pass ``effective_chat_format`` and
+    ``suppress_gguf_metadata`` in lockstep with ``PromptContract`` + unsafe-template policy.
+    ``prompt_contract_stops`` (static family stops) are merged at the end so the bundle
+    matches ``PromptContract.stop``.
     """
     _cc_kw = native_chat_completion_kwargs(llama)
-    prompt_txt, fmt_stop, recon_note = reconstruct_formatted_prompt(llama, messages)
+    prompt_txt, fmt_stop, recon_note = reconstruct_formatted_prompt(
+        llama,
+        messages,
+        effective_chat_format=effective_chat_format,
+        suppress_gguf_metadata=suppress_gguf_metadata,
+    )
     template_type = infer_template_type(llama)
     reasoning_mode = resolve_reasoning_mode(execution_policy)
 
@@ -220,15 +281,20 @@ def build_prompt_bundle(
             )
             bundle.stop_tokens = list(merged_learned)
         if learned.enforce_assistant_anchor:
-            s = (bundle.prompt or "").strip()
-            if not s.endswith(_ASSISTANT_ANCHOR_SUFFIXES):
-                bundle.prompt = (bundle.prompt or "") + "\n<|assistant|>\n"
+            bundle.prompt, _ = _maybe_append_assistant_anchor(
+                bundle.prompt or "", template_type
+            )
         logger.info(
             "[LLM-SELF-HEAL-APPLY] model=%s stops=%d anchor=%s",
             learned.model_name,
             len(learned.extra_stop_tokens),
             learned.enforce_assistant_anchor,
         )
+    if prompt_contract_stops:
+        merged_cc, _ = merge_stop_lists(
+            bundle.stop_tokens, list(prompt_contract_stops)
+        )
+        bundle.stop_tokens = list(merged_cc)
     logger.info(
         "[LLM-PROMPT-ROUTER] template=%s reasoning=%s stop_count=%d",
         template_type,

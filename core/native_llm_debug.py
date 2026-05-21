@@ -14,7 +14,10 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from core.engine_input_trace import EngineInputTrace
 
 logger = logging.getLogger("Qube.NativeLLM.Debug")
 
@@ -61,25 +64,55 @@ def _eos_bos_strings(llama: Any) -> tuple[str, str]:
         return ("", "")
 
 
-def _resolve_jinja_template(llama: Any) -> Optional[str]:
+def _resolve_jinja_template(
+    llama: Any,
+    *,
+    effective_chat_format: Optional[str] = None,
+    suppress_gguf_metadata: bool = False,
+) -> Optional[str]:
+    """
+    Return embedded GGUF Jinja only when the effective format is a chat_template.* handler.
+
+    For named handlers (chatml, llama-2, …), return None so reconstruct uses built-in
+    formatters instead of metadata tokenizer.chat_template (which may be unsafe or wrong).
+
+    When ``suppress_gguf_metadata`` is True, never read GGUF metadata (unsafe / fallback contracts).
+    """
+    if suppress_gguf_metadata:
+        return None
+    cf = (
+        (effective_chat_format if effective_chat_format is not None else getattr(llama, "chat_format", None))
+        or ""
+    ).strip()
+    cfl = cf.lower()
+    if cfl != "chat_template.default" and not cfl.startswith("chat_template."):
+        return None
     md = getattr(llama, "metadata", None) or {}
-    cf = (getattr(llama, "chat_format", None) or "").strip()
-    if cf == "chat_template.default":
+    if cfl == "chat_template.default":
         return md.get("tokenizer.chat_template")
-    if cf.startswith("chat_template."):
-        sub = cf[len("chat_template.") :]
-        return md.get(f"tokenizer.chat_template.{sub}") or md.get("tokenizer.chat_template")
-    return md.get("tokenizer.chat_template")
+    sub = cfl[len("chat_template.") :]
+    return md.get(f"tokenizer.chat_template.{sub}") or md.get("tokenizer.chat_template")
 
 
 def _dict_messages(messages: list[dict]) -> list[dict[str, Any]]:
     return [{"role": m.get("role", "user"), "content": m.get("content") or ""} for m in messages]
 
 
-def reconstruct_formatted_prompt(llama: Any, messages: list[dict]) -> tuple[Optional[str], Any, str]:
+def reconstruct_formatted_prompt(
+    llama: Any,
+    messages: list[dict],
+    *,
+    effective_chat_format: Optional[str] = None,
+    suppress_gguf_metadata: bool = False,
+) -> tuple[Optional[str], Any, str]:
     """
     Best-effort same string the chat handler builds before tokenization.
     Returns (prompt_text, formatter_stop_field, notes).
+
+    ``effective_chat_format``: when set, drives formatter / GGUF resolution instead of
+    ``llama.chat_format`` alone (per-request PromptContract alignment).
+
+    ``suppress_gguf_metadata``: when True, never use embedded ``tokenizer.chat_template`` Jinja.
     """
     try:
         import llama_cpp.llama_chat_format as lcf
@@ -87,10 +120,18 @@ def reconstruct_formatted_prompt(llama: Any, messages: list[dict]) -> tuple[Opti
         return None, None, f"llama_cpp.llama_chat_format import failed: {e}"
 
     msgs = _dict_messages(messages)
-    cf = (getattr(llama, "chat_format", None) or "llama-2").strip()
+    if effective_chat_format is None:
+        cf = (getattr(llama, "chat_format", None) or "llama-2").strip()
+    else:
+        stripped = str(effective_chat_format).strip()
+        cf = stripped if stripped else (getattr(llama, "chat_format", None) or "llama-2").strip()
     notes: list[str] = []
 
-    tmpl = _resolve_jinja_template(llama)
+    tmpl = _resolve_jinja_template(
+        llama,
+        effective_chat_format=cf,
+        suppress_gguf_metadata=suppress_gguf_metadata,
+    )
     if tmpl:
         eos_t, bos_t = _eos_bos_strings(llama)
         eid = llama.token_eos()
@@ -114,7 +155,7 @@ def reconstruct_formatted_prompt(llama: Any, messages: list[dict]) -> tuple[Opti
         "llama-3": getattr(lcf, "format_llama3", None),
         "mistral-instruct": getattr(lcf, "format_mistral_instruct", None),
         "chatml": None,
-    }.get(cf)
+    }.get(cf.lower())
 
     if fmt_fn is not None and callable(fmt_fn):
         try:
@@ -124,7 +165,7 @@ def reconstruct_formatted_prompt(llama: Any, messages: list[dict]) -> tuple[Opti
         except Exception as e:
             notes.append(f"builtin_{cf}_failed: {e}")
 
-    if cf == "chatml":
+    if cf.lower() == "chatml":
         ct = getattr(lcf, "CHATML_CHAT_TEMPLATE", None)
         ce = getattr(lcf, "CHATML_EOS_TOKEN", "<|im_end|>")
         cb = getattr(lcf, "CHATML_BOS_TOKEN", " ")
@@ -252,8 +293,8 @@ def log_native_inference_request(
     max_tokens: int,
     stream: bool,
     native_cc_kw: dict[str, Any],
+    contract: Any = None,
     precomputed_prompt: Optional[str] = None,
-    precomputed_formatter_stop: Any = None,
     precomputed_merged_stops: Optional[list[str]] = None,
     precomputed_recon_note: str = "",
 ) -> None:
@@ -267,13 +308,12 @@ def log_native_inference_request(
 
     if precomputed_prompt is not None or precomputed_merged_stops is not None:
         prompt_txt = precomputed_prompt
-        fmt_stop = precomputed_formatter_stop
-        user_stops = native_cc_kw.get("stop")
         if precomputed_merged_stops is not None:
             merged = precomputed_merged_stops
             merge_expl = "precomputed_merged_stops_from_validation_hook"
         else:
-            merged, merge_expl = merge_stop_lists(user_stops, fmt_stop)
+            user_stops = native_cc_kw.get("stop")
+            merged, merge_expl = merge_stop_lists(user_stops, None)
         recon_note = precomputed_recon_note or "precomputed_from_validation_hook"
     else:
         prompt_txt, fmt_stop, recon_note = reconstruct_formatted_prompt(llama, messages)
@@ -287,6 +327,18 @@ def log_native_inference_request(
         datetime.now(timezone.utc).isoformat(),
     )
     logger.info("[LLM-DEBUG] model_file=%s chat_format=%s gguf_has_tokenizer.chat_template=%s", basename, cf, has_jinja)
+    if contract is not None:
+        try:
+            logger.info(
+                "[LLM-DEBUG] prompt_contract mode=%s template_source=%s confidence=%s chat_format=%s stop_count=%d",
+                getattr(contract, "mode", "?"),
+                getattr(contract, "template_source", "?"),
+                getattr(contract, "confidence", "?"),
+                getattr(contract, "chat_format", "?"),
+                len(getattr(contract, "stop", []) or []),
+            )
+        except Exception:
+            pass
     logger.info("[LLM-DEBUG] prompt_reconstruction=%s", recon_note)
     logger.info("[LLM-DEBUG] tokenizer_eos_string=%r tokenizer_bos_string=%r", eos_s, bos_s)
     logger.info("[LLM-DEBUG] messages(summary)=%s", _messages_summary(messages))
@@ -326,3 +378,30 @@ def log_native_inference_request(
         logger.warning("[LLM-DEBUG] prompt reconstruction failed — see prompt_reconstruction note above")
 
     logger.info("[LLM-DEBUG] === end native request ===")
+
+
+def log_engine_input_trace_ground_truth(trace: Optional["EngineInputTrace"]) -> None:
+    """
+    One-line + bounded preview of the last engine-input trace (post-inference).
+    Only emits when QUBE_LLM_DEBUG is on; full text lives in Routing Debug / tracer.
+    """
+    if trace is None or not llm_debug_enabled():
+        return
+    si = trace.serialized_input or ""
+    n = 200
+    if len(si) <= 2 * n:
+        preview = si
+    else:
+        preview = si[:n] + "\n...[truncated for log]...\n" + si[-n:]
+    logger.info(
+        "[LLM-DEBUG][engine_input] trace_id=%s source=%s input_mode=%s chat_format=%s "
+        "stop_count=%d preview:\n%s",
+        trace.trace_id,
+        trace.source,
+        trace.input_mode,
+        trace.chat_format,
+        len(trace.stop_tokens or []),
+        preview,
+    )
+    if trace.capture_notes:
+        logger.info("[LLM-DEBUG][engine_input] notes=%s", trace.capture_notes)

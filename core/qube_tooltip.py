@@ -12,7 +12,13 @@ from PyQt6.QtGui import QCursor, QHelpEvent
 from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QVBoxLayout, QWidget
 import weakref
 
-_TOOLTIP_TEXT_WIDTH_PX = 300
+# Long tooltips wrap at this cap; shorter strings shrink to content width.
+_TOOLTIP_MAX_WIDTH_PX = 300
+
+
+def _tooltip_label_width_px(natural_text_width: int) -> int:
+    """Clamp label width: compact for short tips, capped for multi-line copy."""
+    return min(max(int(natural_text_width), 1), _TOOLTIP_MAX_WIDTH_PX)
 
 _ET_TOOLTIP = int(QEvent.Type.ToolTip)
 _ET_HIDE = frozenset({
@@ -139,8 +145,6 @@ class QubeToolTipController(QObject):
         self._label = QLabel(self._shell)
         self._label.setObjectName("QubeToolTipLabel")
         self._label.setWordWrap(True)
-        self._label.setMinimumWidth(_TOOLTIP_TEXT_WIDTH_PX)
-        self._label.setMaximumWidth(_TOOLTIP_TEXT_WIDTH_PX)
         self._label.setTextFormat(Qt.TextFormat.PlainText)
         layout = QVBoxLayout(self._shell)
         layout.setContentsMargins(10, 6, 10, 6)
@@ -148,18 +152,29 @@ class QubeToolTipController(QObject):
         layout.addWidget(self._label)
         self._apply_shell_style()
 
-    def _reset_label_vertical_constraints(self) -> None:
+    def _reset_label_constraints(self) -> None:
         if self._label is None:
             return
+        self._label.setMinimumWidth(0)
+        self._label.setMaximumWidth(16777215)
         self._label.setMinimumHeight(0)
         self._label.setMaximumHeight(16777215)
 
+    def _natural_text_width(self) -> int:
+        assert self._label is not None
+        self._label.ensurePolished()
+        fm = self._label.fontMetrics()
+        lines = self._label.text().split("\n") or [""]
+        return max(fm.horizontalAdvance(line) for line in lines)
+
     def _size_tip_to_content(self) -> QSize:
         assert self._popup is not None and self._label is not None and self._shell is not None
-        self._reset_label_vertical_constraints()
+        self._reset_label_constraints()
         self._label.ensurePolished()
-        tw = self._label.maximumWidth()
-        hfw = self._label.heightForWidth(tw)
+        label_w = _tooltip_label_width_px(self._natural_text_width())
+        self._label.setMinimumWidth(label_w)
+        self._label.setMaximumWidth(label_w)
+        hfw = self._label.heightForWidth(label_w)
         if hfw > 0:
             self._label.setFixedHeight(hfw)
         shell_layout = self._shell.layout()
@@ -213,7 +228,7 @@ class QubeToolTipController(QObject):
         self._hide_timer.stop()
         self._refine_seq += 1
         self._anchor_ref = None
-        self._reset_label_vertical_constraints()
+        self._reset_label_constraints()
         if self._popup is not None:
             self._popup.hide()
 

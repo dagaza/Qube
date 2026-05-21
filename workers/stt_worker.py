@@ -22,6 +22,9 @@ class STTWorker(QThread):
         self.start() 
 
     def run(self):
+        if self.isInterruptionRequested():
+            self.status_update.emit("STT: cancelled")
+            return
         self.status_update.emit("Transcribing...")
         start_time = time.time() 
         audio_int16 = np.frombuffer(self.audio_data, np.int16)
