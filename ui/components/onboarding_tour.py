@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from PyQt6.QtCore import QPoint, QRect, QRectF, Qt, QTimer
-from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PyQt6.QtCore import QPoint, QRect, QRectF, Qt, QTimer, QObject, QEvent, pyqtSignal
+from PyQt6.QtGui import QColor, QKeyEvent, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -20,6 +21,7 @@ from PyQt6.QtWidgets import (
 StepPredicate = Callable[[QWidget], bool] | None
 StepCallback = Callable[[QWidget], None] | None
 TargetGetter = Callable[[QWidget], QWidget | None] | None
+BodyGetter = Callable[[QWidget], str] | None
 
 
 @dataclass
@@ -31,6 +33,7 @@ class OnboardingStep:
     on_enter: StepCallback = None
     predicate: StepPredicate = None
     predicate_hint: str = ""
+    body_getter: BodyGetter = None
 
 
 def _pad_rect(rect: QRect, margin: int) -> QRect:
@@ -93,6 +96,8 @@ class SpotlightOverlay(QWidget):
 
 
 class OnboardingCoachPanel(QFrame):
+    escape_pressed = pyqtSignal()
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("OnboardingCoachPanel")
@@ -134,6 +139,15 @@ class OnboardingCoachPanel(QFrame):
         layout.addWidget(self.hint_lbl)
         layout.addLayout(btn_row)
 
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            event.accept()
+            self.escape_pressed.emit()
+            return
+        super().keyPressEvent(event)
+
     def apply_theme(self, is_dark: bool) -> None:
         if is_dark:
             self.setStyleSheet(
@@ -165,6 +179,41 @@ class OnboardingCoachPanel(QFrame):
             )
 
 
+class _OnboardingKeyHandler(QObject):
+    """Captures Escape while a tour is active, regardless of focus widget."""
+
+    def __init__(self, tour: OnboardingTour) -> None:
+        super().__init__(tour._host)
+        self._tour = tour
+        self._app_filter_installed = False
+
+    def install(self) -> None:
+        self._tour._host.installEventFilter(self)
+        app = QApplication.instance()
+        if app is not None and not self._app_filter_installed:
+            app.installEventFilter(self)
+            self._app_filter_installed = True
+
+    def remove(self) -> None:
+        self._tour._host.removeEventFilter(self)
+        app = QApplication.instance()
+        if app is not None and self._app_filter_installed:
+            app.removeEventFilter(self)
+            self._app_filter_installed = False
+
+    def eventFilter(self, watched, event) -> bool:
+        if not self._tour.is_active or event.type() != QEvent.Type.KeyPress:
+            return False
+        if not isinstance(event, QKeyEvent) or event.key() != Qt.Key.Key_Escape:
+            return False
+        modal = QApplication.activeModalWidget()
+        if modal is not None:
+            return False
+        self._tour.skip()
+        event.accept()
+        return True
+
+
 class OnboardingTour:
     """Runs a linear sequence of spotlight coach-mark steps over a host window."""
 
@@ -185,7 +234,9 @@ class OnboardingTour:
         self._overlay.hide()
         self._panel = OnboardingCoachPanel(host)
         self._panel.hide()
+        self._key_handler = _OnboardingKeyHandler(self)
 
+        self._panel.escape_pressed.connect(self.skip)
         self._panel.skip_btn.clicked.connect(self.skip)
         self._panel.back_btn.clicked.connect(self.back)
         self._panel.next_btn.clicked.connect(self.next)
@@ -210,8 +261,11 @@ class OnboardingTour:
         self._overlay.raise_()
         self._panel.raise_()
         self._apply_theme()
+        self._key_handler.install()
         self._enter_step(self._index)
         self._refresh_timer.start()
+        self._host.activateWindow()
+        QTimer.singleShot(50, self._panel.setFocus)
 
     def skip(self) -> None:
         self.finish()
@@ -221,6 +275,7 @@ class OnboardingTour:
             return
         self._active = False
         self._refresh_timer.stop()
+        self._key_handler.remove()
         self._overlay.hide()
         self._panel.hide()
         if self._on_finished:
@@ -272,7 +327,8 @@ class OnboardingTour:
         total = len(self._steps)
         self._panel.step_lbl.setText(f"Step {self._index + 1} of {total}")
         self._panel.title_lbl.setText(step.title)
-        self._panel.body_lbl.setText(step.body)
+        body_text = step.body_getter(self._host) if step.body_getter else step.body
+        self._panel.body_lbl.setText(body_text)
 
         predicate_ok = step.predicate is None or step.predicate(self._host)
         if step.predicate and not predicate_ok and step.predicate_hint:

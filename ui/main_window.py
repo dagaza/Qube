@@ -27,6 +27,9 @@ from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.app_notifications import AppNotificationCenter
+from core.app_notification_types import AppNotificationRequest
+from core.app_restart import relaunch_and_quit, manual_restart_instructions
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
@@ -271,6 +274,10 @@ class MainWindow(QMainWindow):
 
         root_layout.addLayout(workspace_layout)
 
+        self.notification_center = AppNotificationCenter(self.main_container)
+        self.notification_center.action_triggered.connect(self._on_notification_action)
+        self.notification_center.apply_theme(self._is_dark_theme)
+
         # Resize Grip
         self.grip = QSizeGrip(self.main_container) 
         self.grip.setFixedSize(16, 16)
@@ -378,6 +385,8 @@ class MainWindow(QMainWindow):
             )
             # Ensure it stays on top of the sidebars
             self.grip.raise_()
+        if hasattr(self, "notification_center"):
+            self.notification_center.relayout()
         if hasattr(self, "_local_llm_tour"):
             self._local_llm_tour.refresh_layout()
 
@@ -1533,6 +1542,8 @@ class MainWindow(QMainWindow):
             self.telemetry_view, "refresh_after_theme_toggle"
         ):
             self.telemetry_view.refresh_after_theme_toggle()
+        if hasattr(self, "notification_center"):
+            self.notification_center.apply_theme(self._is_dark_theme)
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
@@ -1639,6 +1650,25 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # These methods receive signals from workers. Once we build the 
     # ConversationsView, we will forward these calls directly to it.
+
+    def show_app_notification(self, request: AppNotificationRequest) -> None:
+        """Show a bottom-right toast (updates, release notes, post-command actions)."""
+        if hasattr(self, "notification_center"):
+            self.notification_center.show_notification(request)
+
+    def _on_notification_action(self, action_id: str) -> None:
+        if action_id == "restart_app":
+            self.request_application_restart()
+
+    def request_application_restart(self) -> None:
+        self._force_app_exit = True
+        if not relaunch_and_quit():
+            PrestigeDialog(
+                self,
+                "Restart failed",
+                manual_restart_instructions(),
+                is_dark=self._is_dark_theme,
+            ).exec()
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""

@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 
 from core.app_settings import (
     get_llm_models_dir,
+    get_model_manager_hardware_suggestions,
     is_secondary_gguf_shard,
     missing_gguf_shards,
     parse_gguf_shard_info,
@@ -43,6 +44,12 @@ from core.app_settings import (
     set_internal_model_path,
 )
 from core.qube_verified_models import branding_for_entry, load_qube_verified_models
+from core.catalog_hardware_recommendation import (
+    CatalogFitLevel,
+    build_catalog_recommendation_plan,
+    sort_entries_by_hardware_fit,
+)
+from core.hardware_capability_profile import format_tier_detail
 from core.gguf_quant import parse_quant_from_gguf_path
 from core.memory_budget_profile import detect_memory_budget_profile, experience_for_download
 from core.quant_recommendation import (
@@ -87,6 +94,7 @@ HUB_ROW_DOWNLOAD_REPO_ROLE = int(Qt.ItemDataRole.UserRole) + 7
 HUB_ROW_CATALOG_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 8
 HUB_ROW_GGUF_REPOS_ROLE = int(Qt.ItemDataRole.UserRole) + 9
 HUB_ROW_IS_CATALOG_ROLE = int(Qt.ItemDataRole.UserRole) + 10
+HUB_ROW_HARDWARE_FIT_ROLE = int(Qt.ItemDataRole.UserRole) + 11
 HUB_SEARCH_PAGE_SIZE = 20
 
 
@@ -495,6 +503,8 @@ class ModelManagerView(QWidget):
         self._hub_meta_snapshot: dict | None = None
         self._search_models_cache: list[dict] = []
         self._search_visible_count: int = 0
+        self._catalog_hardware_plan = None
+        self._hardware_suggestions_enabled = get_model_manager_hardware_suggestions()
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
@@ -511,6 +521,11 @@ class ModelManagerView(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        enabled = get_model_manager_hardware_suggestions()
+        if enabled != self._hardware_suggestions_enabled:
+            self._hardware_suggestions_enabled = enabled
+            if not self.hub_search_edit.text().strip():
+                self._populate_editors_picks()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_list_surface(is_dark)
         self._apply_hub_metadata_styles(is_dark)
@@ -1875,6 +1890,7 @@ class ModelManagerView(QWidget):
         gguf_repos: list[str] | None = None,
         is_catalog: bool = False,
         catalog_publisher: str = "",
+        hardware_fit: str = "",
     ) -> None:
         """One Hub row as a dense card with avatar, chips, and metadata."""
         download_repo = str(repo_id or "").strip()
@@ -1899,6 +1915,7 @@ class ModelManagerView(QWidget):
         item.setData(HUB_ROW_CATALOG_ID_ROLE, str(catalog_id or "").strip())
         item.setData(HUB_ROW_GGUF_REPOS_ROLE, repos_list)
         item.setData(HUB_ROW_IS_CATALOG_ROLE, bool(is_catalog))
+        item.setData(HUB_ROW_HARDWARE_FIT_ROLE, str(hardware_fit or "").strip())
 
         row = QWidget()
         row.setObjectName("HistoryRowWidget")
@@ -1965,6 +1982,28 @@ class ModelManagerView(QWidget):
             )
             official_lbl.setToolTip(f"Official model by {publisher_name}" if publisher_name else "Official model")
             top_l.addWidget(official_lbl, stretch=0)
+
+        fit_label = str(hardware_fit or "").strip()
+        if fit_label:
+            fit_lbl = QLabel(fit_label)
+            fit_lbl.setObjectName("HubModelRowHardwareFitBadge")
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            if fit_label == "Good fit":
+                fit_fg = "#10b981"
+            else:
+                fit_fg = "#f59e0b" if is_dark else "#b45309"
+            fit_lbl.setStyleSheet(
+                f"QLabel {{ color: {fit_fg}; font-size: 10px; font-weight: 700; background: transparent; }}"
+            )
+            plan = getattr(self, "_catalog_hardware_plan", None)
+            tip = fit_label
+            if plan is not None:
+                for assessment in plan.assessments:
+                    if assessment.title == title and assessment.rationale:
+                        tip = assessment.rationale
+                        break
+            fit_lbl.setToolTip(tip)
+            top_l.addWidget(fit_lbl, stretch=0)
 
         top_l.addStretch(1)
 
@@ -2212,6 +2251,21 @@ class ModelManagerView(QWidget):
         self._search_timer.stop()
         self._search_timer.start(500)
 
+    def _hardware_fit_label_for_level(self, fit_level: CatalogFitLevel) -> str:
+        if fit_level == CatalogFitLevel.EXCELLENT:
+            return "Good fit"
+        if fit_level == CatalogFitLevel.GOOD:
+            return "Good fit"
+        if fit_level == CatalogFitLevel.MARGINAL:
+            return "May run slow"
+        return ""
+
+    def refresh_hardware_suggestions(self) -> None:
+        """Re-apply verified-list ordering when the Settings toggle changes."""
+        self._hardware_suggestions_enabled = get_model_manager_hardware_suggestions()
+        if not self.hub_search_edit.text().strip():
+            self._populate_editors_picks()
+
     def _populate_editors_picks(self) -> None:
         self._search_models_cache = []
         self._search_visible_count = 0
@@ -2219,9 +2273,19 @@ class ModelManagerView(QWidget):
             self.hub_load_more_btn.setVisible(False)
         verified_models = load_qube_verified_models()
         self._verified_models = verified_models
+        suggestions_enabled = get_model_manager_hardware_suggestions()
+        self._hardware_suggestions_enabled = suggestions_enabled
+        fit_by_id: dict[str, CatalogFitLevel] = {}
+        if suggestions_enabled:
+            self._catalog_hardware_plan = build_catalog_recommendation_plan(verified_models)
+            fit_by_id = {a.catalog_id: a.fit_level for a in self._catalog_hardware_plan.assessments}
+            sorted_models = sort_entries_by_hardware_fit(verified_models, self._catalog_hardware_plan)
+        else:
+            self._catalog_hardware_plan = None
+            sorted_models = verified_models
         self.hub_model_list.blockSignals(True)
         self.hub_model_list.clear()
-        for entry in verified_models:
+        for entry in sorted_models:
             download_repo = entry.gguf_repo
             title = entry.title
             description = entry.description or download_repo
@@ -2231,6 +2295,7 @@ class ModelManagerView(QWidget):
                 title=title,
                 description=description,
             )
+            fit_level = fit_by_id.get(entry.catalog_id, CatalogFitLevel.UNKNOWN)
             self._append_hub_model_row(
                 title,
                 download_repo,
@@ -2243,9 +2308,17 @@ class ModelManagerView(QWidget):
                 gguf_repos=list(entry.gguf_repos),
                 is_catalog=entry.is_catalog_card,
                 catalog_publisher=entry.publisher,
+                hardware_fit=self._hardware_fit_label_for_level(fit_level) if suggestions_enabled else "",
             )
         self.hub_model_list.blockSignals(False)
-        self.hub_list_hint.setText("Qube Verified — curated GGUF models")
+        if suggestions_enabled and self._catalog_hardware_plan is not None:
+            plan = self._catalog_hardware_plan
+            self.hub_list_hint.setText(plan.banner_text)
+            hint_tip = f"{plan.detail_text}\n\n{format_tier_detail(plan.profile)}"
+            self.hub_list_hint.setToolTip(hint_tip)
+        else:
+            self.hub_list_hint.setText("Qube Verified — curated GGUF models")
+            self.hub_list_hint.setToolTip("")
         self._start_curated_metadata_refresh()
         self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
         self._update_hub_row_colors()

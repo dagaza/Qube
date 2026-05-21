@@ -60,6 +60,7 @@ from core.citation_normalize import (
     normalize_labeled_citation_tokens,
 )
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
+from core.composer_commands import execute_composer_command
 from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
@@ -1036,6 +1037,7 @@ class ChatComposerEdit(QPlainTextEdit):
         if self._mention_popup is None:
             self._mention_popup = ComposerMentionPopup(self)
             self._mention_popup.item_selected.connect(self._insert_mention_token)
+            self._mention_popup.command_selected.connect(self._run_composer_command)
             self._mention_popup.dismissed.connect(self._on_mention_dismissed)
         self._sync_mention_context()
         win = self.window()
@@ -1126,11 +1128,60 @@ class ChatComposerEdit(QPlainTextEdit):
         if self._mention_popup:
             self._mention_popup.hide()
 
+    def _clear_mention_trigger(self) -> None:
+        cursor = self.textCursor()
+        text = self.toPlainText()
+        if self._mention_start_pos >= 0:
+            start = self._mention_start_pos
+            end = min(cursor.position(), len(text))
+            while end < len(text) and text[end] not in (" ", "\n"):
+                end += 1
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.removeSelectedText()
+            self.setTextCursor(cursor)
+        self._mention_start_pos = -1
+        if self._mention_popup:
+            self._mention_popup.hide()
+
+    def _run_composer_command(self, command) -> None:
+        self._clear_mention_trigger()
+        win = self.window()
+        result = execute_composer_command(command.id, window=win)
+        if win is None:
+            return
+        if result.dialog_message:
+            is_dark = getattr(win, "_is_dark_theme", True)
+            PrestigeDialog(
+                win,
+                result.dialog_title or ("Command complete" if result.ok else "Command failed"),
+                result.dialog_message,
+                is_dark=is_dark,
+            ).exec()
+        showed_notification = False
+        if result.ok and result.notification and hasattr(win, "show_app_notification"):
+            win.show_app_notification(result.notification)
+            showed_notification = True
+        elif not result.ok and not result.dialog_message:
+            is_dark = getattr(win, "_is_dark_theme", True)
+            PrestigeDialog(
+                win,
+                result.dialog_title or "Command failed",
+                "The command could not be completed.",
+                is_dark=is_dark,
+            ).exec()
+        if not showed_notification:
+            self.setFocus()
+
     def _on_mention_dismissed(self) -> None:
         self._mention_start_pos = -1
         self.setFocus()
 
     def keyPressEvent(self, event):
+        win = self.window()
+        nc = getattr(win, "notification_center", None)
+        if nc is not None and nc.handle_key(event):
+            return
         if self._mention_popup and self._mention_popup.isVisible():
             if self._mention_popup.handle_key(event):
                 return

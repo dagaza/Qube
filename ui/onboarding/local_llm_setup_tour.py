@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from core.app_settings import get_engine_mode, set_onboarding_local_llm_tour_completed
+from core.catalog_hardware_recommendation import build_tour_model_download_body
 from ui.components.onboarding_tour import OnboardingStep, OnboardingTour
 
 
@@ -31,6 +32,10 @@ def _show_tools_model_picker(host) -> None:
     _open_conversations(host)
     _ensure_tools_pane_visible(host)
     host.refresh_toolbar_native_model_dropdown()
+
+
+def _model_manager_step_body(_host) -> str:
+    return build_tour_model_download_body()
 
 
 def build_local_llm_setup_tour(host) -> OnboardingTour:
@@ -80,10 +85,8 @@ def build_local_llm_setup_tour(host) -> OnboardingTour:
         OnboardingStep(
             step_id="model_manager",
             title="Download models",
-            body=(
-                "Open Model Manager to browse Qube Verified models on Hugging Face, "
-                "download a .gguf, then return here and pick it from Select AI Model."
-            ),
+            body="",
+            body_getter=_model_manager_step_body,
             target_getter=lambda h: h.nav_models,
             on_enter=_open_model_manager,
         ),

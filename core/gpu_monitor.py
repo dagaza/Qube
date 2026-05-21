@@ -50,6 +50,7 @@ class GPUMonitor:
         elif sys.platform == 'win32':
             # Windows: Background thread using native typeperf utility
             self.backend = "windows_perf"
+            self._win_process = None
             print("[TELEMETRY] Windows Non-NVIDIA GPU detected. Starting telemetry thread.")
             self._stop_event = threading.Event()
             self._win_thread = threading.Thread(target=self._poll_windows_gpu, daemon=True)
@@ -58,14 +59,22 @@ class GPUMonitor:
     def _poll_windows_gpu(self):
         """Runs continuously in the background on Windows to prevent UI blocking."""
         cmd = ['typeperf', r'\GPU Engine(*engtype_3D)\Utilization Percentage', '-si', '1']
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         try:
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-            
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                creationflags=creationflags,
+            )
+            self._win_process = process
+
             while not self._stop_event.is_set():
                 line = process.stdout.readline()
                 if not line:
                     break
-                
+
                 if "," in line and not line.startswith('"(PDH-CSV 4.0)"'):
                     parts = line.strip().split(',')
                     try:
@@ -76,6 +85,14 @@ class GPUMonitor:
                         pass
         except Exception as e:
             print(f"[TELEMETRY] Windows GPU polling failed: {e}")
+        finally:
+            proc = getattr(self, "_win_process", None)
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.terminate()
+                except OSError:
+                    pass
+            self._win_process = None
 
     def get_load(self):
         """Returns the current GPU load as a float (0.0 to 100.0) in microseconds."""
@@ -102,3 +119,9 @@ class GPUMonitor:
         """Safely stops the background thread if the application closes."""
         if self.backend == "windows_perf":
             self._stop_event.set()
+            proc = getattr(self, "_win_process", None)
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.terminate()
+                except OSError:
+                    pass

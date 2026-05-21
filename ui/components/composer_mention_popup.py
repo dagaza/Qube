@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, QRect, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QPalette
+from PyQt6.QtCore import QPoint, QRect, QSize, Qt, QTimer, pyqtSignal, QEvent
+from PyQt6.QtGui import QColor, QKeyEvent, QPalette
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -18,11 +18,13 @@ from PyQt6.QtWidgets import (
 import qtawesome as qta
 
 from core.composer_attachments import COMPOSER_TOOLS, ComposerAttachment
+from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 
 _ROOT_ROWS = (
     ("file", "Files", "Reference a library document", "fa5s.file-alt"),
     ("conversation", "Conversations", "Reference another chat", "fa5s.comments"),
     ("tool", "Tools", "Internet, library, or memory", "fa5s.tools"),
+    ("command", "Commands", "App actions and guidance", "fa5s.terminal"),
 )
 
 _ROOT_ROW_HEIGHT = 56
@@ -33,6 +35,7 @@ class ComposerMentionPopup(QWidget):
     """Frameless popup: root categories or searchable drill-down list."""
 
     item_selected = pyqtSignal(object)  # ComposerAttachment
+    command_selected = pyqtSignal(object)  # ComposerCommand
     dismissed = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
@@ -73,6 +76,8 @@ class ComposerMentionPopup(QWidget):
         self._list.setUniformItemSizes(False)
         self._list.setSpacing(2)
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
+        self._filter.installEventFilter(self)
+        self._list.installEventFilter(self)
         layout.addWidget(self._list)
 
         self._search_debounce_ms = 280
@@ -158,6 +163,7 @@ class ComposerMentionPopup(QWidget):
         self._filter.hide()
         self._filter.clear()
         self._rebuild_visible_list()
+        self._select_first_actionable_row()
         self._position_at(self._anchor_global_pos)
         self.show()
         self._list.setFocus()
@@ -172,14 +178,26 @@ class ComposerMentionPopup(QWidget):
             "file": "Search documents…",
             "conversation": "Search conversations…",
             "tool": "Filter tools…",
+            "command": "Filter commands…",
         }
         self._filter.setPlaceholderText(placeholders.get(kind, "Filter…"))
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
         self._rebuild_visible_list()
+        self._select_first_actionable_row()
         anchor = self._anchor_global_pos or QPoint(global_pos)
         self._position_at(anchor)
         self.show()
         self._filter.setFocus()
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            self.isVisible()
+            and event.type() == QEvent.Type.KeyPress
+            and watched in (self._filter, self._list)
+        ):
+            if self._handle_navigation_key(event, from_filter=(watched is self._filter)):
+                return True
+        return super().eventFilter(watched, event)
 
     def _host_window_rect(self) -> QRect | None:
         """Global geometry of the Qube top-level window (not the whole screen).
@@ -247,6 +265,8 @@ class ComposerMentionPopup(QWidget):
             self._populate_conversations()
         elif self._mode == "tool":
             self._populate_tools()
+        elif self._mode == "command":
+            self._populate_commands()
 
     def _populate_root(self) -> None:
         sub_color = "#a6adc8" if self._is_dark else "#64748b"
@@ -374,6 +394,18 @@ class ComposerMentionPopup(QWidget):
             )
             self._list.addItem(row)
 
+    def _populate_commands(self) -> None:
+        q = self._filter.text().strip().lower()
+        for command in COMPOSER_COMMANDS:
+            if q and q not in command.label.lower() and q not in command.description.lower() and q not in command.id:
+                continue
+            text = f"{command.label} — {command.description}"
+            row = QListWidgetItem(text)
+            row.setData(Qt.ItemDataRole.UserRole, command)
+            self._list.addItem(row)
+        if self._list.count() == 0:
+            self._add_empty_row("No matching commands")
+
     def _add_empty_row(self, text: str) -> None:
         row = QListWidgetItem(text)
         row.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -397,39 +429,103 @@ class ComposerMentionPopup(QWidget):
                 anchor = parent._mention_global_pos()
             self.show_drill_down(kind, anchor, query=query)
             return
+        if isinstance(data, ComposerCommand):
+            self.command_selected.emit(data)
+            self.hide()
+            return
         if isinstance(data, ComposerAttachment):
             self.item_selected.emit(data)
             self.hide()
 
+    def _select_first_actionable_row(self) -> None:
+        for row in range(self._list.count()):
+            item = self._list.item(row)
+            if item is not None and item.flags() & Qt.ItemFlag.ItemIsEnabled:
+                self._list.setCurrentRow(row)
+                return
+
+    def _navigate_to_root(self) -> None:
+        anchor = self._anchor_global_pos
+        parent = self.parent()
+        if anchor is None and parent is not None and hasattr(parent, "_mention_global_pos"):
+            anchor = parent._mention_global_pos()
+        self.show_root(anchor)
+
+    def _activate_current_item(self) -> None:
+        cur = self._list.currentItem()
+        if cur is None and self._list.count() > 0:
+            self._select_first_actionable_row()
+            cur = self._list.currentItem()
+        if cur is None:
+            return
+        if not (cur.flags() & Qt.ItemFlag.ItemIsEnabled):
+            return
+        self._on_item_clicked(cur)
+
     def handle_key(self, event) -> bool:
-        """Return True if the key was consumed."""
+        """Return True if the key was consumed (composer still has focus)."""
         if not self.isVisible():
             return False
+        return self._handle_navigation_key(event, from_filter=False)
+
+    def _handle_navigation_key(self, event: QKeyEvent, *, from_filter: bool) -> bool:
         key = event.key()
+
+        if key == Qt.Key.Key_Backspace:
+            if self._mode is not None:
+                if from_filter:
+                    if self._filter.text():
+                        return False
+                    self._navigate_to_root()
+                    event.accept()
+                    return True
+                parent = self.parent()
+                query = ""
+                if parent is not None and hasattr(parent, "_active_mention_query"):
+                    active = parent._active_mention_query()
+                    if active:
+                        query = active[1]
+                if query or self._filter.text():
+                    return False
+                self._navigate_to_root()
+                event.accept()
+                return True
+            return False
+
         if key == Qt.Key.Key_Escape:
+            if self._mode is not None:
+                self._navigate_to_root()
+                event.accept()
+                return True
             self.hide()
             self.dismissed.emit()
             event.accept()
             return True
+
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Tab):
-            cur = self._list.currentItem()
-            if cur is None and self._list.count() > 0:
-                self._list.setCurrentRow(0)
-                cur = self._list.currentItem()
-            if cur:
-                self._on_item_clicked(cur)
+            self._activate_current_item()
             event.accept()
             return True
+
         if key == Qt.Key.Key_Up:
+            if from_filter:
+                self._list.setFocus(Qt.FocusReason.OtherFocusReason)
             row = max(0, self._list.currentRow() - 1)
             self._list.setCurrentRow(row)
             event.accept()
             return True
+
         if key == Qt.Key.Key_Down:
-            row = min(self._list.count() - 1, self._list.currentRow() + 1)
+            if from_filter:
+                self._list.setFocus(Qt.FocusReason.OtherFocusReason)
+            start = self._list.currentRow()
+            if start < 0 and self._list.count() > 0:
+                start = -1
+            row = min(self._list.count() - 1, start + 1)
             self._list.setCurrentRow(row)
             event.accept()
             return True
+
         return False
 
     def hideEvent(self, event):
