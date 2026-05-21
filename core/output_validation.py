@@ -14,6 +14,8 @@ _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*(User|Assistant)\s*:", re.I | re.M),
     # Harmony / OSS chat template scaffolding leaked into completion text
     re.compile(r"<\|channel\|>|<\|message\|>|<\|final\|>", re.I),
+    # Malformed partial tokens when a mismatched formatter (e.g. ChatML on Gemma Jinja) drifts
+    re.compile(r"<\|?channel\|?>|<\|?message\|?>|<\|?start\|?>|<\|?final\|?>", re.I),
     re.compile(
         r"<\|end\|>\s*<\|start\|>\s*assistant\s*<\|channel\|>\s*final\s*<\|message\|>",
         re.I,
@@ -54,12 +56,15 @@ def _role_confusion(text: str) -> bool:
 
 def _truncated_output(text: str) -> bool:
     t = (text or "").strip()
-    if len(t) < 10 or not _TOKENISH.search(t):
+    if not t or not _TOKENISH.search(t):
         return True
     if _STOP_ARTIFACT_END.search(t):
         return True
     if _ABRUPT_END.search(t):
         return True
+    # Short complete replies ("Hello", "Yes", "OK") are valid, not truncation.
+    if len(t) < 10:
+        return False
     return False
 
 

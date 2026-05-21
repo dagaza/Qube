@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.native_prompt_bos import prepare_completion_prompt
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.output_validation import OutputValidationResult, validate_output
 from core.prompt_contract import PromptContract, assert_prompt_contract, stops_for_format
@@ -33,6 +34,7 @@ def _execute_contract_once(model: Any, contract: PromptContract, messages: list[
         )
         if prompt_txt is None:
             prompt_txt = ""
+        prompt_txt = prepare_completion_prompt(model, prompt_txt)
         merged, _ = merge_stop_lists(list(contract.stop or []), fmt_stop)
         r = model.create_completion(
             prompt=prompt_txt,
@@ -44,8 +46,9 @@ def _execute_contract_once(model: Any, contract: PromptContract, messages: list[
         )
         return str((r.get("choices") or [{}])[0].get("text") or "")
 
+    prompt_txt = prepare_completion_prompt(model, contract.prompt or "")
     r = model.create_completion(
-        prompt=contract.prompt or "",
+        prompt=prompt_txt,
         temperature=0.2,
         max_tokens=512,
         stream=False,
@@ -62,18 +65,19 @@ def maybe_retry(
     output: str,
     validation: OutputValidationResult,
 ) -> tuple[str, PromptContract, bool]:
-    # Retry only for invalid medium/high.
+    # Retry only for invalid medium/high with substantive format issues.
     if validation.is_valid or validation.severity not in ("medium", "high"):
         return output, contract, False
-    if contract.template_source == "fallback":
-        allow = (
-            validation.severity == "high"
-            or "template_leakage" in validation.issues
-            or "degeneration" in validation.issues
-            or "meta_preamble" in validation.issues
-        )
-        if not allow:
-            return output, contract, False
+
+    retry_worthy = (
+        validation.severity == "high"
+        or "template_leakage" in validation.issues
+        or "degeneration" in validation.issues
+        or "meta_preamble" in validation.issues
+        or "role_confusion" in validation.issues
+    )
+    if not retry_worthy:
+        return output, contract, False
 
     retry_contract: PromptContract | None = None
 

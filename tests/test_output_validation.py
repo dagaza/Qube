@@ -44,6 +44,17 @@ class TestOutputValidation(unittest.TestCase):
         self.assertIn("template_leakage", res.issues)
         self.assertEqual(res.severity, "high")
 
+    def test_malformed_channel_token_is_template_leakage_high(self) -> None:
+        res = validate_output("Hello\n<|channel>thought <channel|>Hello", _contract())
+        self.assertFalse(res.is_valid)
+        self.assertIn("template_leakage", res.issues)
+        self.assertEqual(res.severity, "high")
+
+    def test_short_complete_answer_is_not_truncated(self) -> None:
+        res = validate_output("Hello", _contract())
+        self.assertTrue(res.is_valid)
+        self.assertNotIn("truncated_output", res.issues)
+
     def test_bracketed_meta_only_is_meta_preamble_high(self) -> None:
         res = validate_output(
             "[The user refers to a file mentioning Dr. Evelyn Vance.]",

@@ -50,3 +50,14 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         raw = "Provide final answer\nThe sky is blue because air scatters blue light."
         out = strip_harmony_oss_artifacts(raw)
         self.assertEqual(out, "The sky is blue because air scatters blue light.")
+
+    def test_strips_malformed_channel_tail_after_short_answer(self) -> None:
+        raw = "Hello\n<|channel>thought <channel|>Hello"
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertEqual(out, "Hello")
+
+    def test_strips_malformed_channel_fragment_inline(self) -> None:
+        raw = "Answer <channel|>thought tail"
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertNotIn("channel", out.lower())
+        self.assertIn("Answer", out)

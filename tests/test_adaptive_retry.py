@@ -97,6 +97,22 @@ class TestAdaptiveRetry(unittest.TestCase):
         self.assertEqual(out, "maybe fine")
         self.assertEqual(final_contract, c)
 
+    def test_gguf_truncated_only_does_not_retry_to_chatml(self) -> None:
+        model = _FakeModel(outputs=["<|channel> bad"])
+        c = _contract("gguf", "chat_template.default")
+        v = OutputValidationResult(is_valid=False, issues=["truncated_output"], severity="medium")
+        out, final_contract, used = maybe_retry(
+            model,
+            [{"role": "user", "content": 'Say exactly "Hello"'}],
+            c,
+            "Hello",
+            v,
+        )
+        self.assertFalse(used)
+        self.assertEqual(out, "Hello")
+        self.assertEqual(final_contract, c)
+        self.assertEqual(model.calls, [])
+
     def test_fallback_template_leakage_retries_to_rendered(self) -> None:
         model = _FakeModel(outputs=["Safe answer from rendered retry."])
         c = _contract("fallback", "chatml")

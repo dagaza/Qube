@@ -49,6 +49,7 @@ from core.app_settings import (
 from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.execution_policy import ExecutionPolicy, resolve_execution_policy
 from core.native_llama_chat import normalize_chat_messages
+from core.native_prompt_bos import prepare_completion_prompt
 from core.native_llama_inference import native_chat_completion_kwargs
 from core.native_llm_debug import (
     llama_eos_bos_strings,
@@ -1126,6 +1127,7 @@ class NativeLlamaEngine(QThread):
         assert self._llama is not None
         assert_prompt_contract(contract)
         prompt_str, merged_stops = self._completion_prompt_and_stops(contract, messages)
+        prompt_str = prepare_completion_prompt(self._llama, prompt_str)
         out = self._llama.create_completion(
             prompt=prompt_str,
             temperature=temperature,

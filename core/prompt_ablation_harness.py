@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from core.execution_policy import ExecutionPolicy
 from core.native_llama_inference import native_chat_completion_kwargs
+from core.native_prompt_bos import prepare_completion_prompt
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.model_override_store import LearnedOverride, store_override
 from core.prompt_template_router import (
@@ -305,6 +306,7 @@ def _stream_completion_text(
     stop_event: Any = None,
 ) -> str:
     """Accumulate streaming create_completion (prompt-string path; isolated from chat handler)."""
+    prompt = prepare_completion_prompt(llama, prompt)
     kwargs: Dict[str, Any] = {
         "prompt": prompt,
         "max_tokens": int(max_tokens),

@@ -28,6 +28,12 @@ _META_COMMAND_PREFIX = re.compile(
 )
 # Any remaining <|...|> control tokens (bounded label).
 _CONTROL_TOKEN = re.compile(r"<\|[^|\n]{1,56}\|>")
+# Partial / malformed Harmony tokens (ChatML-on-Jinja drift, broken delimiters).
+_MALFORMED_CONTROL = re.compile(
+    r"(?i)<\|?channel\|?>|<\|?message\|?>|<\|?start\|?>|<\|?final\|?>|<\|?end\|?>"
+)
+# Channel scaffold tail after an otherwise complete answer.
+_CHANNEL_TAIL = re.compile(r"(?is)\n+\s*<\|?channel\|?>.*$")
 
 
 def strip_harmony_oss_artifacts(text: str) -> str:
@@ -35,7 +41,9 @@ def strip_harmony_oss_artifacts(text: str) -> str:
         return text
     t = _INSTRUCTION_ECHO.sub("", text, count=1)
     t = _HARMONY_BRIDGE.sub("", t)
+    t = _CHANNEL_TAIL.sub("", t)
     t = _CONTROL_TOKEN.sub("", t)
+    t = _MALFORMED_CONTROL.sub("", t)
     t = _META_COMMAND_PREFIX.sub("", t, count=1)
     t = _SCRATCHPAD_TAIL.sub("", t, count=1)
     t = _TRAILING_NOISE.sub("", t)
