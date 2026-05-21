@@ -574,8 +574,9 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 
 #SettingsMenuButton:disabled {
     background-color: rgba(0, 0, 0, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(137, 180, 250, 0.35);
     color: #64748b;
+    font-style: italic;
 }
 
 QMenu#PrestigeMenu {

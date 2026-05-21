@@ -211,6 +211,7 @@ class SettingsView(QWidget):
 
         self.wakeword_selector = SelectorButton("Select Wakeword...", is_dark=is_dark)
         self.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
+        self.engine_selector.setObjectName("SettingsEngineSelector")
         self.provider_selector = SelectorButton("Select Provider...", is_dark=is_dark)
         self.voice_selector = SelectorButton("Select Voice...", is_dark=is_dark)
 
@@ -415,6 +416,36 @@ class SettingsView(QWidget):
         content_layout.addWidget(startup_widget)
         content_layout.addWidget(self._build_divider())
 
+        # --- HELP & GUIDANCE ---
+        content_layout.addWidget(
+            self._build_section_header("fa5s.route", "HELP & GUIDANCE")
+        )
+        help_widget = QWidget()
+        help_widget.setObjectName("SettingsFormContainer")
+        help_layout = QVBoxLayout(help_widget)
+        help_layout.setContentsMargins(15, 0, 15, 10)
+        help_layout.setSpacing(8)
+        help_hint = QLabel(
+            "Replay the guided tour for choosing Internal Engine and loading a local .gguf model."
+        )
+        help_hint.setWordWrap(True)
+        help_hint.setProperty("class", "ToolsPaneControl")
+        self.local_llm_tour_hint_lbl = help_hint
+        self.replay_local_llm_tour_btn = QPushButton("Replay Local LLM Setup Tour")
+        apply_brand_primary(self.replay_local_llm_tour_btn, icon_name="fa5s.play-circle")
+        self.replay_local_llm_tour_btn.setToolTip(
+            "Walk through Settings, AI Engine, Select AI Model, and Model Manager with "
+            "spotlight hints."
+        )
+        self.replay_local_llm_tour_btn.clicked.connect(self._on_replay_local_llm_tour_clicked)
+        help_layout.addWidget(help_hint)
+        help_layout.addWidget(
+            self.replay_local_llm_tour_btn,
+            alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+        content_layout.addWidget(help_widget)
+        content_layout.addWidget(self._build_divider())
+
         # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
         content_layout.addWidget(self._build_section_header("fa5s.memory", "MEMORY & PERFORMANCE"))
         perf_widget = QWidget()
@@ -561,6 +592,10 @@ class SettingsView(QWidget):
             self.auto_load_last_model_cb.setStyleSheet(style)
         if hasattr(self, 'mem_enrichment_label'):
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+        if hasattr(self, "local_llm_tour_hint_lbl"):
+            self.local_llm_tour_hint_lbl.setStyleSheet(
+                f"color: {text_color}; font-size: 13px;"
+            )
         
         # 🔑 Style the NLP Trigger input & list
         if hasattr(self, 'trigger_input'):
@@ -651,6 +686,19 @@ class SettingsView(QWidget):
 
     def _on_wakeword_selector_pressed(self) -> None:
         self._sync_wakeword_catalog(trigger="dropdown")
+
+    def _on_replay_local_llm_tour_clicked(self) -> None:
+        win = self.window()
+        if win is not None and hasattr(win, "start_local_llm_onboarding_tour"):
+            win.start_local_llm_onboarding_tour()
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Tour unavailable",
+            "The local LLM setup tour could not be started.",
+            is_dark=is_dark,
+        ).exec()
 
     def _open_wakeword_test_lab(self) -> None:
         if not self.audio_worker:
@@ -1327,8 +1375,8 @@ class SettingsView(QWidget):
             self._sync_wakeword_catalog(trigger="settings load")
 
         engine_modes = [
-            ("External Server (localhost)", "external"),
             ("Internal Engine (native)", "internal"),
+            ("External Server (localhost)", "external"),
         ]
         self._build_prestige_menu(
             self.engine_selector,

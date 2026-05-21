@@ -19,6 +19,7 @@ _KEY_INTERNAL_N_THREADS = "internal_n_threads"
 _KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
 _KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE = "internal_prompt_layout_override"
 _KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
+_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED = "onboarding_local_llm_tour_completed"
 _KEY_LLM_MODELS_DIR = "llm_models_dir"
 _KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
 _KEY_WAKEWORD_ACTIVE_ID = "wakeword_active_id"
@@ -55,15 +56,15 @@ def set_enable_memory_enrichment(enabled: bool) -> None:
 
 def get_engine_mode() -> str:
     """external = OpenAI-compatible localhost server; internal = llama-cpp-python in-process."""
-    v = _settings().value(_KEY_ENGINE_MODE, "external", type=str)
+    v = _settings().value(_KEY_ENGINE_MODE, "internal", type=str)
     s = str(v).lower().strip()
-    return s if s in ("external", "internal") else "external"
+    return s if s in ("external", "internal") else "internal"
 
 
 def set_engine_mode(mode: str) -> None:
     m = str(mode).lower().strip()
     if m not in ("external", "internal"):
-        m = "external"
+        m = "internal"
     s = _settings()
     s.setValue(_KEY_ENGINE_MODE, m)
     s.sync()
@@ -264,6 +265,19 @@ def get_auto_load_last_model_on_startup() -> bool:
     if isinstance(v, str):
         return v.lower() in ("true", "1", "yes")
     return bool(v)
+
+
+def get_onboarding_local_llm_tour_completed() -> bool:
+    v = _settings().value(_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED, False, type=bool)
+    if isinstance(v, str):
+        return v.lower() in ("true", "1", "yes")
+    return bool(v)
+
+
+def set_onboarding_local_llm_tour_completed(completed: bool) -> None:
+    s = _settings()
+    s.setValue(_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED, completed)
+    s.sync()
 
 
 def set_auto_load_last_model_on_startup(enabled: bool) -> None:
