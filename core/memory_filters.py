@@ -361,6 +361,16 @@ RECALL_FUSION_SYSTEM_SUFFIX: str = (
 # Discourages the model from injecting memory-derived facts into an
 # answer that the user explicitly scoped to document search.
 # ============================================================
+CONVERSATION_REF_SYSTEM_SUFFIX: str = (
+    " The user attached a DIFFERENT prior chat (see REFERENCED CONVERSATION below). "
+    "Ignore every other topic that might appear elsewhere in this request. "
+    "Answer ONLY from that transcript — not from general knowledge, not from "
+    "unrelated examples, and not from other conversations. "
+    "Do NOT use bracket citations like [1] or [W]. "
+    "If the transcript does not contain the answer, say so in one sentence."
+)
+
+
 FILE_SEARCH_SYSTEM_SUFFIX: str = (
     " The user has explicitly asked you to search their local files / "
     "documents / notes. Answer ONLY from the numbered document sources "
@@ -516,6 +526,7 @@ __all__ = [
     "derive_memory_tier",
     "MEMORY_TIERS",
     "RECALL_FUSION_SYSTEM_SUFFIX",
+    "CONVERSATION_REF_SYSTEM_SUFFIX",
     "FILE_SEARCH_SYSTEM_SUFFIX",
     "CITATION_DISCIPLINE_SUFFIX",
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",

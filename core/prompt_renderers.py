@@ -18,10 +18,24 @@ from core.prompt_layout import PromptLayout, normalize_prompt_layout
 _RETRIEVAL_WRAPPER_HEAD = (
     "=== SYSTEM RETRIEVED CONTEXT ===\n"
     "Use the following numbered sources to answer the query. "
-    "In the prose of your reply, cite with plain tokens [1], [2], or [W] only (no markdown links).\n\n"
+    "In the prose of your reply, cite with plain tokens [1], [2], or [W] only—one id per "
+    "bracket (never [1, 2, 3] combined), never [SOURCE 1] header echoes (no markdown links).\n\n"
 )
 
 _RETRIEVAL_WRAPPER_TAIL = "================================\n\nUSER QUERY:\n"
+
+_CONVERSATION_REF_HEAD = (
+    "=== REFERENCED CONVERSATION (this is a separate prior chat — "
+    "answer ONLY from the transcript below) ===\n"
+)
+_CONVERSATION_REF_TAIL = "=== END REFERENCED CONVERSATION ===\n\nUSER QUESTION:\n"
+
+
+def _wrap_conversation_ref(user_content: str, transcript_body: str) -> str:
+    body = (transcript_body or "").strip()
+    if not body:
+        return user_content
+    return f"{_CONVERSATION_REF_HEAD}{body}\n{_CONVERSATION_REF_TAIL}{user_content}"
 
 
 def _normalize_history(blocks: PromptBlocks) -> list[dict[str, Any]]:
@@ -63,7 +77,9 @@ def _short_persona(blocks: PromptBlocks) -> str:
     if blocks.execution_route in ("WEB", "INTERNET"):
         return (
             "You are Qube. Answer from the live web results in context. "
-            "Cite with plain [W] only; never reply with only a citation token."
+            "Cite web hits with [W] when only one block is tagged [W]; otherwise use "
+            "[1], [2], etc. matching the bracket ids in context. Never write [SOURCE N]. "
+            "Never reply with only a citation token."
         )
     return "You are Qube. Answer naturally and accurately."
 
@@ -103,7 +119,12 @@ def _build_flatten_last_user(blocks: PromptBlocks) -> str:
     parts = [f"[ASSISTANT INSTRUCTIONS]\n{_flatten_instruction_bullets(blocks)}"]
     body = (blocks.retrieval_context or "").strip()
     if body:
-        parts.append(f"[RETRIEVED CONTEXT]\n{body}")
+        label = (
+            "[REFERENCED CONVERSATION]"
+            if blocks.composer_conversation_ref
+            else "[RETRIEVED CONTEXT]"
+        )
+        parts.append(f"{label}\n{body}")
     parts.append(f"[USER QUESTION]\n{query}")
     return "\n\n".join(parts)
 
@@ -118,7 +139,10 @@ def render_system_ok_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
     body = (blocks.retrieval_context or "").strip()
     if body and messages and messages[-1].get("role") == "user":
         original = str(messages[-1].get("content") or "")
-        messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
+        if blocks.composer_conversation_ref:
+            messages[-1]["content"] = _wrap_conversation_ref(original, body)
+        else:
+            messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
     return messages
 
 
@@ -131,7 +155,10 @@ def render_short_system_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
     body = (blocks.retrieval_context or "").strip()
     if body and messages and messages[-1].get("role") == "user":
         original = str(messages[-1].get("content") or "")
-        messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
+        if blocks.composer_conversation_ref:
+            messages[-1]["content"] = _wrap_conversation_ref(original, body)
+        else:
+            messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
     return messages
 
 

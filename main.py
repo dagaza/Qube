@@ -253,8 +253,17 @@ class Qube:
         # 🔑 FIX: Lock the UI while processing a voice command
         self.window.conversations_view.set_input_enabled(False)
 
+        from core.composer_attachments import parse_attachments
+
         self.window.conversations_view.log_user_message(text, pending_assistant=True)
-        self.llm_worker.generate_response(text, session_id)
+        clean, attachments = parse_attachments(text)
+        prompt = clean if clean else text
+        self.llm_worker.generate_response(
+            prompt,
+            session_id,
+            attachments=attachments,
+            persist_content=text.strip(),
+        )
 
     def _handle_user_interruption(self):
         logger = logging.getLogger("Qube.Main")

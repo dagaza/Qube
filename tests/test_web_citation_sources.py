@@ -4,7 +4,11 @@ from __future__ import annotations
 import unittest
 
 from mcp.internet_tool import _decode_ddg_target_href, _strip_html_tags
-from core.citation_normalize import normalize_labeled_citation_tokens
+from core.citation_normalize import (
+    normalize_combined_numeric_citations,
+    normalize_labeled_citation_tokens,
+    normalize_source_echo_citation_tokens,
+)
 
 
 class TestWebCitationSources(unittest.TestCase):
@@ -31,6 +35,47 @@ class TestWebCitationSources(unittest.TestCase):
             normalize_labeled_citation_tokens(raw),
             "See detail [2].",
         )
+
+    def test_source_echo_multi_normalized(self) -> None:
+        raw = (
+            "The Knicks won 115-104 in overtime. [SOURCE 1, SOURCE 2]"
+        )
+        self.assertEqual(
+            normalize_source_echo_citation_tokens(raw),
+            "The Knicks won 115-104 in overtime. [1], [2]",
+        )
+
+    def test_source_echo_single_normalized(self) -> None:
+        raw = "Final score was 115-104 [SOURCE 1]."
+        self.assertEqual(
+            normalize_source_echo_citation_tokens(raw),
+            "Final score was 115-104 [1].",
+        )
+
+    def test_source_echo_via_labeled_pipeline(self) -> None:
+        raw = "Score 115-104 [SOURCE 1, SOURCE 2]."
+        self.assertEqual(
+            normalize_labeled_citation_tokens(raw),
+            "Score 115-104 [1], [2].",
+        )
+
+    def test_combined_numeric_citations_split(self) -> None:
+        raw = "Final score 115-104 in overtime. [1, 2, 3]"
+        self.assertEqual(
+            normalize_combined_numeric_citations(raw),
+            "Final score 115-104 in overtime. [1], [2], [3]",
+        )
+
+    def test_combined_numeric_via_full_pipeline(self) -> None:
+        raw = "Knicks won. [1, 2, 3]"
+        self.assertEqual(
+            normalize_labeled_citation_tokens(raw),
+            "Knicks won. [1], [2], [3]",
+        )
+
+    def test_single_numeric_unchanged(self) -> None:
+        raw = "See [1] for details."
+        self.assertEqual(normalize_combined_numeric_citations(raw), raw)
 
 
 if __name__ == "__main__":

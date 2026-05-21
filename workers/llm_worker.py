@@ -38,6 +38,11 @@ from core.memory_filters import (
     is_thin_content,
 )
 from core.memory_usage_recorder import get_memory_usage_recorder
+from core.composer_attachments import (
+    attachment_summary,
+    build_referenced_conversation_context,
+    resolve_attachment_routing,
+)
 
 from mcp.rag_tool import rag_search
 from mcp.internet_tool import search_internet
@@ -537,7 +542,8 @@ class LLMWorker(QThread):
             ):
                 name = f"{name} (short memory stub; prefer documents for detail)"
 
-            parts.append(f"--- SOURCE {sid}: {name} ---\n{body}")
+            cite_tag = f"[{sid}]" if sid is not None else "[?]"
+            parts.append(f"--- {cite_tag}: {name} ---\n{body}")
         return "\n\n".join(parts)
 
     def _bound_session_history(self, history: list[dict]) -> list[dict]:
@@ -603,7 +609,14 @@ class LLMWorker(QThread):
         return cleaned
 
     # ============================================================
-    def generate_response(self, text: str, session_id: str):
+    def generate_response(
+        self,
+        text: str,
+        session_id: str,
+        *,
+        attachments: list | None = None,
+        persist_content: str | None = None,
+    ):
         """Sets the parameters and starts the thread work."""
         if self.isRunning():
             logger.warning(
@@ -612,7 +625,9 @@ class LLMWorker(QThread):
             )
             return
 
-        self.prompt = text
+        self.prompt = (text or "").strip()
+        self._persist_content = (persist_content or self.prompt).strip()
+        self._turn_attachments = list(attachments or [])
         self.session_id = session_id
         self.start() # This automatically triggers the run() method
 
@@ -725,8 +740,9 @@ class LLMWorker(QThread):
         self._reset_turn_enrichment_flags()
 
         if self.session_id:
+            user_content = getattr(self, "_persist_content", None) or self.prompt
             self._turn_last_user_msg_id = self.db.add_message(
-                self.session_id, "user", self.prompt
+                self.session_id, "user", user_content
             )
 
         self._ensure_cross_session_server_flush()
@@ -793,6 +809,67 @@ class LLMWorker(QThread):
         )
 
         # ============================================================
+        # 0.55 COMPOSER @-MENTION ATTACHMENTS
+        # ------------------------------------------------------------
+        # User-picked Files / Conversations / Tools override NLP routing.
+        # ============================================================
+        turn_attachments = list(getattr(self, "_turn_attachments", []) or [])
+        if turn_attachments:
+            logger.info(
+                "[LLM Worker] Composer attachments: %s",
+                attachment_summary(turn_attachments),
+            )
+        attachment_patch = None
+        if not explicit_remember_active and turn_attachments:
+            attachment_patch = resolve_attachment_routing(turn_attachments)
+
+        attachment_file_active = False
+        attachment_conversation_active = False
+        self._turn_source_filter = None
+        self._turn_attachment_context = ""
+        self._composer_internet_requested = False
+
+        if attachment_patch:
+            if attachment_patch.get("attachment_file"):
+                attachment_file_active = True
+                self._turn_source_filter = attachment_patch.get("source_filter")
+            if attachment_patch.get("attachment_conversation"):
+                attachment_conversation_active = True
+                ref_sid = attachment_patch.get("referenced_session_id")
+                if ref_sid:
+                    self._turn_attachment_context = build_referenced_conversation_context(
+                        ref_sid, self.db
+                    )
+                    if not (self._turn_attachment_context or "").strip():
+                        logger.warning(
+                            "[LLM Worker] Conversation @-ref: no transcript loaded "
+                            "for session_id=%s",
+                            ref_sid,
+                        )
+                    else:
+                        logger.info(
+                            "[LLM Worker] Conversation @-ref: loaded transcript "
+                            "for session_id=%s (%d chars)",
+                            ref_sid,
+                            len(self._turn_attachment_context),
+                        )
+                    self._mark_skip_enrichment("composer_conversation_ref")
+            if attachment_patch.get("attachment_tool") == "internet":
+                self._composer_internet_requested = True
+                # Explicit @internet must behave like the toolbar Web toggle:
+                # force a web search for this turn (not gated on Settings).
+                force_web = True
+                if attachment_patch.get("route") != "web":
+                    attachment_patch = dict(attachment_patch)
+                    attachment_patch["route"] = "web"
+                    attachment_patch["strategy"] = "attachment_tool_internet"
+                logger.info(
+                    "[LLM Worker] Composer @internet: forcing WEB search for this turn"
+                )
+
+        scoped_library_active = file_search_active or attachment_file_active
+
+        # ============================================================
         # 0.6 T3.2: NARRATIVE / RECAP OVERRIDE
         # ------------------------------------------------------------
         # Narrative recap queries ("what have we been working on?",
@@ -804,7 +881,8 @@ class LLMWorker(QThread):
         # ============================================================
         narrative_active = (
             not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_conversation_active
             and detect_narrative_intent(self.prompt)
         )
 
@@ -824,6 +902,19 @@ class LLMWorker(QThread):
                 "strategy": "explicit_remember",
                 "explicit_remember": True,
             }
+        elif attachment_patch:
+            decision = {
+                k: v
+                for k, v in attachment_patch.items()
+                if k not in ("source_filter", "referenced_session_id")
+            }
+            if attachment_patch.get("rag_query") is None and "rag_query" not in decision:
+                decision["rag_query"] = self.prompt
+            logger.info(
+                "[LLM Worker] Composer attachment routing: route=%s strategy=%s",
+                decision.get("route"),
+                decision.get("strategy"),
+            )
         elif file_search_active:
             logger.info(
                 "[LLM Worker] Explicit file-search intent detected; forcing RAG, skipping memory/web."
@@ -873,7 +964,8 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         if (
             not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_patch
             and detect_recall_intent(clean_prompt)
             and execution_route in ("NONE", "MEMORY", "RAG")
         ):
@@ -882,7 +974,7 @@ class LLMWorker(QThread):
             decision["recall_fusion"] = True
 
         # custom triggers override
-        if not explicit_remember_active and not file_search_active and self.mcp_auto_enabled:
+        if not explicit_remember_active and not scoped_library_active and self.mcp_auto_enabled:
             if any(t in clean_prompt for t in self.cached_custom_triggers):
                 execution_route = "RAG"
                 decision["rag_query"] = self.prompt
@@ -892,7 +984,7 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         # Skipped on explicit-remember (write turn) and explicit file-search
         # (the user scoped this turn to the local library).
-        if not explicit_remember_active and not file_search_active:
+        if not explicit_remember_active and not scoped_library_active:
             # Manual trigger: user text contains known web commands
             web_triggers = ["search the internet", "who won", "current news", "weather"]
             manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
@@ -969,6 +1061,8 @@ class LLMWorker(QThread):
         # ============================================================
         memory_context = ""
         tool_context = ""
+        if getattr(self, "_turn_attachment_context", ""):
+            tool_context = self._turn_attachment_context.strip() + "\n\n"
         all_ui_sources = []
 
         # 🔑 THE FIX: Initialize these dictionaries so telemetry doesn't crash
@@ -1014,7 +1108,9 @@ class LLMWorker(QThread):
         elif (
             execution_route == "NONE"
             and not explicit_remember_active
-            and not file_search_active
+            and not scoped_library_active
+            and not attachment_conversation_active
+            and not getattr(self, "_composer_internet_requested", False)
         ):
             # T3.4 §3.3 "default every turn (even CHAT)": on a plain chat
             # turn (router picked ``none``) run a cheap preferences-only
@@ -1047,7 +1143,8 @@ class LLMWorker(QThread):
             rag_result = rag_search(
                 decision.get("rag_query") or self.prompt,
                 query_vector,
-                self.store
+                self.store,
+                source_filter=getattr(self, "_turn_source_filter", None),
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")
@@ -1135,10 +1232,15 @@ class LLMWorker(QThread):
                         src["id"] = "W"
                     all_ui_sources.append(src)
 
+                web_hdr = (
+                    "[W] WEB SEARCH RESULTS"
+                    if single_web and execution_route in ("WEB", "INTERNET")
+                    else "WEB SEARCH RESULTS"
+                )
                 if tool_context:
-                    tool_context = f"{tool_context}\n\n[W] WEB SEARCH RESULTS:\n{web_context}"
+                    tool_context = f"{tool_context}\n\n{web_hdr}:\n{web_context}"
                 else:
-                    tool_context = f"[W] WEB SEARCH RESULTS:\n{web_context}"
+                    tool_context = f"{web_hdr}:\n{web_context}"
 
                 logger.info(
                     "[LLM Worker] Web search integrated (%d sources, %d chars)",
@@ -1242,6 +1344,7 @@ class LLMWorker(QThread):
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
+            and not getattr(self, "_composer_internet_requested", False)
         ):
             logger.info(
                 "[LLM Worker] All retrieval channels empty after relevance "
@@ -1251,6 +1354,21 @@ class LLMWorker(QThread):
             if execution_route in ("WEB", "INTERNET"):
                 self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
+        elif (
+            getattr(self, "_composer_internet_requested", False)
+            and execution_route in ("WEB", "INTERNET")
+            and not all_ui_sources
+        ):
+            logger.warning(
+                "[LLM Worker] Composer @internet: web search returned no "
+                "sources; keeping WEB route with empty-results guidance."
+            )
+            self._mark_skip_enrichment("web_route_no_sources")
+            tool_context += (
+                "\n[WEB SEARCH: No live results were returned for this query. "
+                "Tell the user you could not retrieve web results right now. "
+                "Do NOT invent facts or emit [W] citations without sources.]\n"
+            )
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
@@ -1327,8 +1445,45 @@ class LLMWorker(QThread):
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
         retrieval_prompt_body = self._format_sources_for_llm_prompt(all_ui_sources)
+        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
+        if attachment_ctx:
+            if retrieval_prompt_body:
+                retrieval_prompt_body = (
+                    f"{attachment_ctx}\n\n{retrieval_prompt_body}"
+                )
+            else:
+                retrieval_prompt_body = attachment_ctx
+            logger.info(
+                "[LLM Worker] Injected composer attachment context (%d chars)",
+                len(attachment_ctx),
+            )
+        if (
+            getattr(self, "_composer_internet_requested", False)
+            and not all_ui_sources
+            and tool_context.strip()
+        ):
+            retrieval_prompt_body = tool_context.strip()
+            logger.info(
+                "[LLM Worker] Composer @internet: injected web guidance (%d chars)",
+                len(retrieval_prompt_body),
+            )
         if retrieval_prompt_body:
             retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
+
+        # Conversation @-ref: do not send unrelated prior turns from *this* session.
+        # Otherwise the model answers from current-thread noise instead of the transcript.
+        prompt_history = history
+        if attachment_conversation_active:
+            question = (self.prompt or "").strip()
+            if not question:
+                question = "What is the attached conversation about?"
+            prompt_history = [{"role": "user", "content": question}]
+            if len(history) > 1:
+                logger.info(
+                    "[LLM Worker] Conversation @-ref: isolated prompt turn "
+                    "(omitted %d other messages from active session)",
+                    len(history) - 1,
+                )
 
         # ============================================================
         # 3. PROMPT BUILD
@@ -1352,7 +1507,8 @@ class LLMWorker(QThread):
             engine_mode=getattr(self, "engine_mode", "external"),
             internal_nvidia_family=self._is_internal_nvidia_family(),
             retrieval_context=retrieval_prompt_body,
-            conversation_history=history,
+            conversation_history=prompt_history,
+            composer_conversation_ref=attachment_conversation_active,
         )
         if prompt_blocks.no_sources_mode:
             logger.info(

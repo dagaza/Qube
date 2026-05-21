@@ -11,6 +11,7 @@ from typing import Any
 
 from core.memory_filters import (
     CITATION_DISCIPLINE_SUFFIX,
+    CONVERSATION_REF_SYSTEM_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
     GROUNDED_ANSWER_SYSTEM_SUFFIX,
     NARRATIVE_RECALL_SYSTEM_SUFFIX,
@@ -25,7 +26,8 @@ _BASE_PERSONA = (
 
 _RETRIEVAL_CITE_MUST = (
     " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
-    "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
+    "Write citations as plain bracket tokens only—one id per bracket (e.g. [1] and [2], "
+    "never [1, 2, 3] in a single bracket)—do not wrap them in Markdown links, "
     "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
 )
 
@@ -36,9 +38,12 @@ _WEB_PERSONA = (
     "CRITICAL: Respond directly to the user in a natural, conversational tone. "
     "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
     "Write only the user-facing response. "
-    "Cite web sources using only the plain id from the SOURCE blocks (e.g. [W] or [1])—"
-    "never labels like [W: Live Web Search], no Markdown hyperlink syntax, "
+    "Cite web sources using only the bracket ids shown on each context block (e.g. [W] "
+    "when there is a single web hit, or [1] and [2] when multiple web hits are listed)—"
+    "never echo header words like SOURCE or [SOURCE 1], never labels like "
+    "[W: Live Web Search], no Markdown hyperlink syntax, "
     "no URL in parentheses after the citation token, and no backticks around citations. "
+    "Use separate brackets per source ([1], [2], or [W])—never combine ids like [1, 2, 3]. "
     "Use [W] at most once at the end of each sentence that relies on the web results, "
     "and never output [W] two or more times in a row."
 )
@@ -69,6 +74,7 @@ class PromptBlocks:
     conversation_history: list[dict[str, Any]] = field(default_factory=list)
     no_sources_mode: bool = False
     execution_route: str = ""
+    composer_conversation_ref: bool = False
 
 
 def build_prompt_blocks(
@@ -83,6 +89,7 @@ def build_prompt_blocks(
     internal_nvidia_family: bool = False,
     retrieval_context: str = "",
     conversation_history: list[dict[str, Any]] | None = None,
+    composer_conversation_ref: bool = False,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -123,6 +130,8 @@ def build_prompt_blocks(
     elif route in ("WEB", "INTERNET"):
         persona = _WEB_PERSONA
         suffixes.append(CITATION_DISCIPLINE_SUFFIX)
+    elif composer_conversation_ref and (retrieval_context or "").strip():
+        suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
 
     if str(engine_mode or "").lower() == "internal":
         suffixes.append(
@@ -136,6 +145,7 @@ def build_prompt_blocks(
         conversation_history=list(conversation_history or []),
         no_sources_mode=no_sources,
         execution_route=route,
+        composer_conversation_ref=bool(composer_conversation_ref),
     )
 
 

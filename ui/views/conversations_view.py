@@ -56,6 +56,7 @@ import re as _re_cite
 from pathlib import Path
 
 from core.citation_normalize import normalize_labeled_citation_tokens
+from core.composer_attachments import format_token, parse_attachments, validate_file_token
 from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
@@ -72,6 +73,7 @@ from ui.components.sidebar_folder_list import (
     add_new_folder_header_button,
 )
 from ui.components.source_viewer import SourcePreviewer
+from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
 
@@ -843,8 +845,11 @@ class _ComposerRowHost(QWidget):
             self._inner.setFixedWidth(w)
 
 
+_MENTION_QUERY_RE = re.compile(r"@([^\s@\[]*)$")
+
+
 class ChatComposerEdit(QPlainTextEdit):
-    """Chat composer: Enter sends, Shift+Enter inserts a newline."""
+    """Chat composer: Enter sends, Shift+Enter inserts a newline; @ opens mention picker."""
 
     submit_requested = pyqtSignal()
     _MAX_VISIBLE_LINES = 7
@@ -868,7 +873,38 @@ class ChatComposerEdit(QPlainTextEdit):
         self._height_coalesce.setSingleShot(True)
         self._height_coalesce.timeout.connect(self._sync_height_to_content)
         self.textChanged.connect(self._schedule_height_sync)
+        self.textChanged.connect(self._on_text_changed_mention)
         self._schedule_height_sync()
+        self._mention_host = None
+        self._mention_popup: ComposerMentionPopup | None = None
+        self._mention_start_pos = -1
+
+    def bind_mention_host(self, host) -> None:
+        """Attach ConversationsView (or compatible) for db/session/store context."""
+        self._mention_host = host
+        if self._mention_popup is None:
+            self._mention_popup = ComposerMentionPopup(self)
+            self._mention_popup.item_selected.connect(self._insert_mention_token)
+            self._mention_popup.dismissed.connect(self._on_mention_dismissed)
+        self._sync_mention_context()
+        win = self.window()
+        is_dark = getattr(win, "_is_dark_theme", True) if win else True
+        self._mention_popup.apply_theme(is_dark)
+
+    def _sync_mention_context(self) -> None:
+        if not self._mention_popup or not self._mention_host:
+            return
+        db = getattr(self._mention_host, "db", None)
+        store = None
+        llm = getattr(self._mention_host, "llm", None)
+        if llm is not None:
+            store = getattr(llm, "store", None)
+        sid = getattr(self._mention_host, "active_session_id", None)
+        self._mention_popup.set_context(db=db, store=store, active_session_id=sid)
+
+    def apply_mention_theme(self, is_dark: bool) -> None:
+        if self._mention_popup:
+            self._mention_popup.apply_theme(is_dark)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -882,7 +918,71 @@ class ChatComposerEdit(QPlainTextEdit):
         # so documentSize() reflects new lines and wrapping at the current width.
         self._height_coalesce.start(0)
 
+    def _mention_global_pos(self) -> object:
+        rect = self.cursorRect()
+        return self.mapToGlobal(rect.bottomLeft())
+
+    def _active_mention_query(self) -> tuple[int, str] | None:
+        cursor = self.textCursor()
+        pos = cursor.position()
+        text = self.toPlainText()[:pos]
+        match = _MENTION_QUERY_RE.search(text)
+        if not match:
+            return None
+        start = match.start()
+        if start > 0 and not text[start - 1].isspace():
+            return None
+        return start, match.group(1)
+
+    def _on_text_changed_mention(self) -> None:
+        if not self._mention_popup:
+            return
+        active = self._active_mention_query()
+        if active is None:
+            self._mention_popup.close_mention()
+            self._mention_start_pos = -1
+            return
+        start, query = active
+        self._mention_start_pos = start
+        self._sync_mention_context()
+        gpos = self._mention_global_pos()
+        if not self._mention_popup.isVisible() or self._mention_popup._mode is None:
+            self._mention_popup.show_root(gpos)
+        else:
+            self._mention_popup._filter.setText(query)
+            self._mention_popup._run_search()
+            if not self._mention_popup.isVisible():
+                self._mention_popup.show()
+                self._mention_popup._filter.setFocus()
+
+    def _insert_mention_token(self, attachment) -> None:
+        if attachment.kind == "file" and not validate_file_token(attachment.id):
+            return
+        token = format_token(attachment)
+        cursor = self.textCursor()
+        text = self.toPlainText()
+        if self._mention_start_pos >= 0:
+            start = self._mention_start_pos
+            end = min(cursor.position(), len(text))
+            while end < len(text) and text[end] not in (" ", "\n"):
+                end += 1
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.removeSelectedText()
+        cursor.insertText(token + " ")
+        self.setTextCursor(cursor)
+        self._mention_start_pos = -1
+        if self._mention_popup:
+            self._mention_popup.hide()
+
+    def _on_mention_dismissed(self) -> None:
+        self._mention_start_pos = -1
+        self.setFocus()
+
     def keyPressEvent(self, event):
+        if self._mention_popup and self._mention_popup.isVisible():
+            if self._mention_popup.handle_key(event):
+                return
         key = event.key()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
@@ -1790,7 +1890,8 @@ class ConversationsView(QWidget):
 
         self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.submit_requested.connect(self._handle_text_submit)
-        
+        self.text_input.bind_mention_host(self)
+
         return frame
 
     # --------------------------------------------------------- #
@@ -2023,9 +2124,10 @@ class ConversationsView(QWidget):
         if self._is_stop_mode():
             self._request_stop()
             return
-        text = self.text_input.toPlainText().strip()
-        if not text:
+        raw = self.text_input.toPlainText().strip()
+        if not raw:
             return
+        clean, attachments = parse_attachments(raw)
         self.text_input.clear()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
@@ -2033,7 +2135,7 @@ class ConversationsView(QWidget):
         self.set_input_enabled(False)
         self._refresh_send_stop_button()
 
-        self.log_user_message(text, pending_assistant=True)
+        self.log_user_message(raw, pending_assistant=True)
 
         if not hasattr(self, 'active_session_id'):
             recent_sessions = self.db.get_recent_sessions(limit=1)
@@ -2052,7 +2154,13 @@ class ConversationsView(QWidget):
             if force_web:
                 # Applies to upcoming query only.
                 self.web_btn.setChecked(False)
-            self.llm.generate_response(text, self.active_session_id)
+            prompt = clean if clean else raw
+            self.llm.generate_response(
+                prompt,
+                self.active_session_id,
+                attachments=attachments,
+                persist_content=raw,
+            )
 
     def update_stt_latency(self, ms: float) -> None:
         self.stt_latency_lbl.setText(f"STT: {ms:.0f} ms")
@@ -2314,6 +2422,8 @@ class ConversationsView(QWidget):
         session_id = item.data(Qt.ItemDataRole.UserRole)
         self.active_session_id = session_id
         self._notify_llm_active_session_changed()
+        if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
+            self.text_input._sync_mention_context()
 
         self._clear_transcript()
         self._is_agent_typing = False
@@ -2438,6 +2548,8 @@ class ConversationsView(QWidget):
         )
 
     def refresh_button_themes(self, is_dark: bool):
+        if hasattr(self, "text_input") and hasattr(self.text_input, "apply_mention_theme"):
+            self.text_input.apply_mention_theme(is_dark)
         """Dynamically updates the colors of the New Chat and Send buttons."""
         import qtawesome as qta
         
