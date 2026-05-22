@@ -9,18 +9,17 @@ logger = logging.getLogger("Qube.RAG.Embedder")
 
 # Hard cap on characters passed to llama.cpp embedding (token count must stay ≤ n_ctx / n_ubatch).
 # Dense code / CJK can inflate tokens; keep this conservative to avoid GGML_ASSERT on n_ubatch.
-MAX_EMBED_CHARS = 4000
+MAX_EMBED_CHARS = 2400
 
-_LLAMA_CTX = 8192
+# nomic-embed-text-v1.5 GGUF reports n_ctx_train≈2048; larger n_ctx breaks llama_context on many builds.
+_LLAMA_CTX = 2048
+_LLAMA_CTX_FALLBACKS = (2048, 1024, 512)
 
 
-def _llama_embed_kwargs() -> dict:
+def _llama_embed_kwargs(*, n_ctx: int | None = None) -> dict:
     """Shared context/batch sizing so n_ubatch >= max single-sequence tokens (llama.cpp requirement)."""
-    return {
-        "n_ctx": _LLAMA_CTX,
-        "n_batch": _LLAMA_CTX,
-        "n_ubatch": _LLAMA_CTX,
-    }
+    n = _LLAMA_CTX if n_ctx is None else int(n_ctx)
+    return {"n_ctx": n, "n_batch": n, "n_ubatch": n}
 
 
 def _truncate_for_embed(text: str) -> str:
@@ -35,26 +34,41 @@ def _truncate_for_embed(text: str) -> str:
 
 
 def _init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -> Llama:
-    """Construct Llama for embeddings; retries without n_ubatch if the binding is too old."""
-    base = dict(
-        model_path=model_path,
-        embedding=True,
-        **_llama_embed_kwargs(),
-        n_threads=physical_cores,
-        verbose=False,
-        n_gpu_layers=n_gpu_layers,
-    )
-    try:
-        return Llama(**base)
-    except TypeError as e:
-        err = str(e).lower()
-        if "n_ubatch" in err or "unexpected keyword" in err:
-            base.pop("n_ubatch", None)
-            logger.warning(
-                "Llama() has no n_ubatch; retrying (upgrade llama-cpp-python to match llama.cpp batch fixes)"
-            )
+    """Construct Llama for embeddings; retries smaller ``n_ctx`` and without ``n_ubatch`` if needed."""
+    last_error: Exception | None = None
+    for n_ctx in _LLAMA_CTX_FALLBACKS:
+        base = dict(
+            model_path=model_path,
+            embedding=True,
+            **_llama_embed_kwargs(n_ctx=n_ctx),
+            n_threads=physical_cores,
+            verbose=False,
+            n_gpu_layers=n_gpu_layers,
+        )
+        try:
             return Llama(**base)
-        raise
+        except TypeError as e:
+            err = str(e).lower()
+            if "n_ubatch" in err or "unexpected keyword" in err:
+                base.pop("n_ubatch", None)
+                logger.warning(
+                    "Llama() has no n_ubatch; retrying (upgrade llama-cpp-python to match llama.cpp batch fixes)"
+                )
+                try:
+                    return Llama(**base)
+                except Exception as retry_exc:
+                    last_error = retry_exc
+                    logger.warning("Embedder init failed at n_ctx=%s: %s", n_ctx, retry_exc)
+                    continue
+            raise
+        except Exception as e:
+            last_error = e
+            logger.warning("Embedder init failed at n_ctx=%s: %s", n_ctx, e)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Embedder init failed with no error detail")
 
 
 class EmbeddingModel:

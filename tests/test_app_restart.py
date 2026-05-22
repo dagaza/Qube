@@ -12,6 +12,7 @@ from core.app_restart import (
     manual_restart_instructions,
     restart_prompt_body,
     _resolve_gui_program,
+    _running_under_pyqt_inspect,
 )
 
 
@@ -67,6 +68,18 @@ class TestAppRestart(unittest.TestCase):
         with mock.patch.object(sys, "platform", "darwin"):
             body = restart_prompt_body()
         self.assertIn("Cmd+Q", body)
+
+    def test_detects_pyqt_inspect_argv(self) -> None:
+        pqi = r"C:\Python313\site-packages\PyQtInspect\pqi.py"
+        with mock.patch.object(sys, "argv", ["python", pqi, "--file", "main.py"]):
+            self.assertTrue(_running_under_pyqt_inspect())
+
+    def test_not_pyqt_inspect_for_plain_main(self) -> None:
+        mods = {k: v for k, v in sys.modules.items() if k != "PyQtInspect.pqi"}
+        with mock.patch.object(sys, "argv", ["python", "main.py"]), mock.patch.object(
+            sys, "modules", mods
+        ):
+            self.assertFalse(_running_under_pyqt_inspect())
 
 
 if __name__ == "__main__":
