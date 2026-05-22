@@ -17,6 +17,7 @@ from core.network import is_port_open
 from core.app_settings import (
     get_enable_memory_enrichment,
     set_enable_memory_enrichment,
+    DEFAULT_ENGINE_MODE,
     get_engine_mode,
     get_internal_model_path,
     expected_gguf_shard_filenames,
@@ -810,7 +811,7 @@ class SettingsView(QWidget):
         self.cpu_threads_value_lbl.setText(str(int(v)))
         set_internal_n_threads(int(v))
         llm = self.workers.get("llm")
-        if llm and getattr(llm, "engine_mode", "external") == "internal":
+        if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             llm.refresh_native_model_from_settings()
 
     def _on_native_chat_format_changed(self, mode: str) -> None:
@@ -818,7 +819,7 @@ class SettingsView(QWidget):
             set_internal_native_chat_format(str(mode))
         self._sync_native_chat_template_label()
         llm = self.workers.get("llm")
-        if llm and getattr(llm, "engine_mode", "external") == "internal":
+        if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self._template_override_reload_pending = (
                 str(mode or "").strip().lower() != "auto"
             )
@@ -848,7 +849,7 @@ class SettingsView(QWidget):
             ne = getattr(mw, "_native_engine", None) if mw else self.workers.get("native_engine")
             snap = ne.get_model_reasoning_telemetry() if ne else None
             loaded = bool((snap or {}).get("loaded"))
-            if llm and getattr(llm, "engine_mode", "external") == "internal" and loaded:
+            if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and loaded:
                 self._auto_reset_reload_pending = True
                 llm.refresh_native_model_from_settings()
         self._sync_active_native_model_label()
@@ -903,14 +904,14 @@ class SettingsView(QWidget):
         set_internal_native_chat_format("auto")
         self._sync_native_chat_template_label()
         llm = self.workers.get("llm")
-        if llm and getattr(llm, "engine_mode", "external") == "internal":
+        if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self._auto_reset_reload_pending = True
             llm.refresh_native_model_from_settings()
 
     def _on_native_gpu_layers_changed(self, v: int) -> None:
         set_internal_n_gpu_layers(int(v))
         llm = self.workers.get("llm")
-        if llm and getattr(llm, "engine_mode", "external") == "internal":
+        if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             llm.refresh_native_model_from_settings()
 
     def _refresh_local_gguf_list(self) -> None:

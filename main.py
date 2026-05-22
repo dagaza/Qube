@@ -20,6 +20,7 @@ from rag.store import DocumentStore
 from ui.main_window import MainWindow
 from core.database import DatabaseManager
 from core.app_settings import (
+    ensure_engine_mode_initialized,
     get_enable_memory_enrichment,
     get_engine_mode,
     get_auto_load_last_model_on_startup,
@@ -619,7 +620,8 @@ if __name__ == "__main__":
     else:
         logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
 
-    # 4. Boot the Qube Assistant
+    # 4. Boot the Qube Assistant (first launch defaults to Internal Engine)
+    ensure_engine_mode_initialized()
     qube = Qube(enable_routing_debug_tool=bool(args.routing_debug))
     qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
     app.aboutToQuit.connect(qube._graceful_shutdown)

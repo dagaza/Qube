@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Optional
 
+from core.app_settings import DEFAULT_ENGINE_MODE
+
 if TYPE_CHECKING:
     from core.model_reasoning_profile import ModelReasoningProfile
 
@@ -96,7 +98,7 @@ def resolve_execution_policy(
 
     user_think_enabled: None means “use model default” via resolve_user_think_enabled.
     """
-    em = str(engine_mode or "external").lower().strip()
+    em = str(engine_mode or DEFAULT_ENGINE_MODE).lower().strip()
     if em != "internal":
         return _policy_non_thinking()
 

@@ -98,13 +98,15 @@ class SpotlightOverlay(QWidget):
 class OnboardingCoachPanel(QFrame):
     escape_pressed = pyqtSignal()
 
+    _TEXT_LABEL_VERTICAL_PAD = 6
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("OnboardingCoachPanel")
         self.setMinimumWidth(320)
         self.setMaximumWidth(420)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 14)
+        layout.setContentsMargins(18, 18, 18, 16)
         layout.setSpacing(10)
 
         self.step_lbl = QLabel("")
@@ -115,9 +117,15 @@ class OnboardingCoachPanel(QFrame):
         self.body_lbl = QLabel("")
         self.body_lbl.setObjectName("OnboardingCoachBody")
         self.body_lbl.setWordWrap(True)
+        self.body_lbl.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum
+        )
         self.hint_lbl = QLabel("")
         self.hint_lbl.setObjectName("OnboardingCoachHint")
         self.hint_lbl.setWordWrap(True)
+        self.hint_lbl.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum
+        )
         self.hint_lbl.hide()
 
         btn_row = QHBoxLayout()
@@ -140,6 +148,36 @@ class OnboardingCoachPanel(QFrame):
         layout.addLayout(btn_row)
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def _content_inner_width(self) -> int:
+        lay = self.layout()
+        if lay is None:
+            return self.maximumWidth() - 36
+        m = lay.contentsMargins()
+        return max(200, self.maximumWidth() - m.left() - m.right())
+
+    def _label_wrapped_height(self, lbl: QLabel, content_w: int) -> int:
+        if not lbl.text().strip():
+            return 0
+        h = lbl.heightForWidth(content_w)
+        if h > 0:
+            return h
+        flags = int(Qt.TextFlag.TextWordWrap)
+        rect = lbl.fontMetrics().boundingRect(
+            0, 0, content_w, 10_000, flags, lbl.text()
+        )
+        return max(rect.height(), lbl.fontMetrics().lineSpacing())
+
+    def recalculate_content_size(self) -> None:
+        """Size word-wrapped labels before adjustSize (Qt under-measures wrapped QLabel)."""
+        content_w = self._content_inner_width()
+        pad = self._TEXT_LABEL_VERTICAL_PAD
+        for lbl in (self.title_lbl, self.body_lbl, self.hint_lbl):
+            if lbl.isHidden() or not lbl.text().strip():
+                lbl.setMinimumHeight(0)
+                continue
+            lbl.setMinimumHeight(self._label_wrapped_height(lbl, content_w) + pad)
+        self.adjustSize()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
@@ -342,13 +380,13 @@ class OnboardingTour:
         self._panel.next_btn.setText(
             "Finish" if self._index >= total - 1 else "Next"
         )
+        self._panel.recalculate_content_size()
         self._position_panel(_global_widget_rect(target) if target else QRect())
         self._panel.raise_()
 
     def _position_panel(self, target_global: QRect) -> None:
         margin = 16
         panel = self._panel
-        panel.adjustSize()
         pw, ph = panel.width(), panel.height()
         host_rect = self._host.rect()
 

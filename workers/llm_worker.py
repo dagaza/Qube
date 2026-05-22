@@ -13,6 +13,7 @@ import threading
 from urllib.parse import urlparse
 
 from core.app_settings import (
+    DEFAULT_ENGINE_MODE,
     get_engine_mode,
     get_internal_model_path,
     get_internal_n_gpu_layers,
@@ -158,11 +159,11 @@ class LLMWorker(QThread):
             return False
 
     def _uses_external_http(self) -> bool:
-        return getattr(self, "engine_mode", "external") != "internal"
+        return getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal"
 
     def _is_internal_nvidia_family(self) -> bool:
         """Best-effort detection for Nemotron/NVIDIA models loaded in native engine."""
-        if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
             return False
         try:
             snap = self._native_engine.get_model_reasoning_telemetry() or {}
@@ -180,7 +181,7 @@ class LLMWorker(QThread):
         Resolved layout for this turn (PR1: observability only; messages unchanged).
         Internal engine uses load-time resolution from native telemetry when available.
         """
-        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             try:
                 snap = self._native_engine.get_model_reasoning_telemetry() or {}
                 layout = snap.get("prompt_layout")
@@ -633,7 +634,7 @@ class LLMWorker(QThread):
 
     # ============================================================
     def generate(self, prompt: str) -> str:
-        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             out: list = []
             ev = threading.Event()
             self._native_engine.enqueue_simple_completion(
@@ -1504,7 +1505,7 @@ class LLMWorker(QThread):
             file_search_active=file_search_active,
             narrative_active=narrative_active,
             has_retrieval_sources=bool(all_ui_sources),
-            engine_mode=getattr(self, "engine_mode", "external"),
+            engine_mode=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE),
             internal_nvidia_family=self._is_internal_nvidia_family(),
             retrieval_context=retrieval_prompt_body,
             conversation_history=prompt_history,
@@ -1535,7 +1536,7 @@ class LLMWorker(QThread):
 
         final_text = ""
 
-        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             final_text = self._stream_via_native(messages, all_ui_sources)
             return final_text
 
@@ -1841,7 +1842,7 @@ class LLMWorker(QThread):
     def set_context_window(self, val: int):
         self.context_window = val
         logger.debug(f"Context Window updated to {val}")
-        if getattr(self, "engine_mode", "external") == "internal":
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self.refresh_native_model_from_settings()
 
     def set_max_history_messages(self, val: int):
@@ -1917,7 +1918,7 @@ class LLMWorker(QThread):
         )
         self._cancel_requested = True
         self._close_active_stream()
-        if getattr(self, "engine_mode", "external") == "internal" and self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             self._native_engine.request_cancel_generation()
 
     def set_engine_mode(self, mode: str) -> None:
@@ -1938,7 +1939,7 @@ class LLMWorker(QThread):
 
     def refresh_native_model_from_settings(self) -> None:
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
-        if getattr(self, "engine_mode", "external") != "internal" or not self._native_engine:
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
             return
         if self.isRunning():
             self.cancel_generation()
@@ -1969,7 +1970,7 @@ class LLMWorker(QThread):
     def reload_model(self):
         """External: status only; Internal: reload .gguf with current settings."""
         logger.info("Model reload triggered by UI.")
-        if getattr(self, "engine_mode", "external") == "internal":
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self.refresh_native_model_from_settings()
         else:
             self.status_update.emit("Model Context Updated")

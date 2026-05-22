@@ -13,6 +13,7 @@ _ORG = "Dagaza"
 _APP = "Qube"
 _KEY_ENABLE_MEMORY_ENRICHMENT = "enable_memory_enrichment"
 _KEY_ENGINE_MODE = "engine_mode"  # "external" | "internal"
+DEFAULT_ENGINE_MODE = "internal"
 _KEY_INTERNAL_MODEL_PATH = "internal_model_path"
 _KEY_INTERNAL_N_GPU_LAYERS = "internal_n_gpu_layers"
 _KEY_INTERNAL_N_THREADS = "internal_n_threads"
@@ -57,18 +58,27 @@ def set_enable_memory_enrichment(enabled: bool) -> None:
 
 def get_engine_mode() -> str:
     """external = OpenAI-compatible localhost server; internal = llama-cpp-python in-process."""
-    v = _settings().value(_KEY_ENGINE_MODE, "internal", type=str)
+    v = _settings().value(_KEY_ENGINE_MODE, DEFAULT_ENGINE_MODE, type=str)
     s = str(v).lower().strip()
-    return s if s in ("external", "internal") else "internal"
+    return s if s in ("external", "internal") else DEFAULT_ENGINE_MODE
 
 
 def set_engine_mode(mode: str) -> None:
     m = str(mode).lower().strip()
     if m not in ("external", "internal"):
-        m = "internal"
+        m = DEFAULT_ENGINE_MODE
     s = _settings()
     s.setValue(_KEY_ENGINE_MODE, m)
     s.sync()
+
+
+def ensure_engine_mode_initialized() -> str:
+    """Persist default engine mode on first launch (native / internal)."""
+    s = _settings()
+    if s.contains(_KEY_ENGINE_MODE):
+        return get_engine_mode()
+    set_engine_mode(DEFAULT_ENGINE_MODE)
+    return DEFAULT_ENGINE_MODE
 
 
 def get_internal_model_path() -> str:

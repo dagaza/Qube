@@ -85,7 +85,7 @@ def build_prompt_blocks(
     file_search_active: bool = False,
     narrative_active: bool = False,
     has_retrieval_sources: bool = False,
-    engine_mode: str = "external",
+    engine_mode: str = "internal",
     internal_nvidia_family: bool = False,
     retrieval_context: str = "",
     conversation_history: list[dict[str, Any]] | None = None,
