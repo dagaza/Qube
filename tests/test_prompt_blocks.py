@@ -38,12 +38,13 @@ def _legacy_compose(
     if explicit_remember_active:
         quoted = (explicit_remember_body or "").strip()
         system_prompt = (
-            "You are Qube. The user has just asked you to remember a fact for future reference. "
+            "The user has just asked you to remember a fact for future reference. "
             "Acknowledge briefly — one short sentence — that you've made a note of it, "
             "and optionally paraphrase the fact naturally. "
             "Do NOT use bracket tokens like [1], [2], or [W]. "
             "Do NOT cite sources. "
-            "Do NOT say you cannot remember things; Qube persists long-term memories automatically."
+            "Do NOT say you cannot remember things; durable facts are persisted "
+            "automatically for future turns."
         )
         if quoted:
             system_prompt += f' The fact to acknowledge is: "{quoted}".'
@@ -57,7 +58,8 @@ def _legacy_compose(
         else:
             system_prompt += (
                 " You MUST cite your sources inline using brackets and the ID, like [1] or [2]. "
-                "Write citations as plain bracket tokens only—do not wrap them in Markdown links, "
+                "Write citations as plain bracket tokens only—one id per bracket (e.g. [1] and [2], "
+                "never [1, 2, 3] in a single bracket)—do not wrap them in Markdown links, "
                 "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
             )
             system_prompt += RECALL_FUSION_SYSTEM_SUFFIX
@@ -69,7 +71,7 @@ def _legacy_compose(
                 system_prompt += NARRATIVE_RECALL_SYSTEM_SUFFIX
     elif route in ("WEB", "INTERNET"):
         system_prompt = (
-            "You are Qube. You have just been provided with real-time, live web search results. "
+            "Real-time live web search results have been provided for this turn. "
             "You MUST use the TOOLS context provided below to answer the user's query. "
             "Do not state that you are offline or cannot browse the internet. "
             "CRITICAL: Respond directly to the user in a natural, conversational tone. "
@@ -80,6 +82,7 @@ def _legacy_compose(
             "never echo header words like SOURCE or [SOURCE 1], never labels like "
             "[W: Live Web Search], no Markdown hyperlink syntax, "
             "no URL in parentheses after the citation token, and no backticks around citations. "
+            "Use separate brackets per source ([1], [2], or [W])—never combine ids like [1, 2, 3]. "
             "Use [W] at most once at the end of each sentence that relies on the web results, "
             "and never output [W] two or more times in a row."
         )
@@ -124,6 +127,7 @@ class TestPromptBlocks(unittest.TestCase):
             execution_route="MEMORY",
             explicit_remember_active=False,
             has_retrieval_sources=False,
+            engine_mode="external",
         )
         self.assertTrue(blocks.no_sources_mode)
         self.assertIn(NO_SOURCES_SYSTEM_SUFFIX, compose_system_prompt(blocks))
@@ -133,6 +137,7 @@ class TestPromptBlocks(unittest.TestCase):
                 execution_route="MEMORY",
                 explicit_remember_active=False,
                 has_retrieval_sources=False,
+                engine_mode="external",
             ),
         )
 
@@ -143,6 +148,7 @@ class TestPromptBlocks(unittest.TestCase):
             has_retrieval_sources=True,
             narrative_active=True,
             file_search_active=True,
+            engine_mode="external",
         )
         sys_p = compose_system_prompt(blocks)
         self.assertIn(NARRATIVE_RECALL_SYSTEM_SUFFIX, sys_p)
@@ -156,6 +162,7 @@ class TestPromptBlocks(unittest.TestCase):
                 has_retrieval_sources=True,
                 narrative_active=True,
                 file_search_active=True,
+                engine_mode="external",
             ),
         )
 
@@ -163,11 +170,16 @@ class TestPromptBlocks(unittest.TestCase):
         blocks = build_prompt_blocks(
             execution_route="WEB",
             explicit_remember_active=False,
+            engine_mode="external",
         )
         self.assertIn(CITATION_DISCIPLINE_SUFFIX, compose_system_prompt(blocks))
         self.assertEqual(
             compose_system_prompt(blocks),
-            _legacy_compose(execution_route="WEB", explicit_remember_active=False),
+            _legacy_compose(
+                execution_route="WEB",
+                explicit_remember_active=False,
+                engine_mode="external",
+            ),
         )
 
     def test_parity_explicit_remember(self) -> None:
@@ -175,6 +187,7 @@ class TestPromptBlocks(unittest.TestCase):
             execution_route="MEMORY",
             explicit_remember_active=True,
             explicit_remember_body="My dog is named Rex",
+            engine_mode="external",
         )
         self.assertIn("Rex", compose_system_prompt(blocks))
         self.assertEqual(
@@ -183,6 +196,7 @@ class TestPromptBlocks(unittest.TestCase):
                 execution_route="MEMORY",
                 explicit_remember_active=True,
                 explicit_remember_body="My dog is named Rex",
+                engine_mode="external",
             ),
         )
 
@@ -203,7 +217,33 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertIn("[1] SOURCE: doc", messages[-1]["content"])
         self.assertIn("USER QUERY:\nWhat is X?", messages[-1]["content"])
 
-    def test_render_skips_wrapper_without_context(self) -> None:
+    def test_explicit_remember_avoids_brand_persona(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=True,
+            explicit_remember_body="Favorite color is green",
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertNotIn("You are Qube", sys_p)
+        self.assertIn("persisted automatically", sys_p)
+
+    def test_web_route_avoids_brand_persona(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertNotIn("You are Qube", sys_p)
+        self.assertIn("Real-time live web search results", sys_p)
+
+    def test_base_chat_keeps_brand_persona(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn("You are Qube, a highly capable offline AI assistant.", sys_p)
+
         blocks = build_prompt_blocks(
             execution_route="NONE",
             explicit_remember_active=False,

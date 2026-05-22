@@ -31,8 +31,12 @@ _RETRIEVAL_CITE_MUST = (
     "do not add URLs in parentheses after the token, and do not put them inside code fences or backticks."
 )
 
+_EXPLICIT_REMEMBER_PERSONA_HEAD = (
+    "The user has just asked you to remember a fact for future reference."
+)
+
 _WEB_PERSONA = (
-    "You are Qube. You have just been provided with real-time, live web search results. "
+    "Real-time live web search results have been provided for this turn. "
     "You MUST use the TOOLS context provided below to answer the user's query. "
     "Do not state that you are offline or cannot browse the internet. "
     "CRITICAL: Respond directly to the user in a natural, conversational tone. "
@@ -77,6 +81,11 @@ class PromptBlocks:
     composer_conversation_ref: bool = False
 
 
+def is_explicit_remember_persona(persona: str) -> bool:
+    """True when ``persona`` is the explicit-remember acknowledgement block."""
+    return (persona or "").startswith(_EXPLICIT_REMEMBER_PERSONA_HEAD)
+
+
 def build_prompt_blocks(
     *,
     execution_route: str,
@@ -104,12 +113,13 @@ def build_prompt_blocks(
     if explicit_remember_active:
         quoted = (explicit_remember_body or "").strip()
         persona = (
-            "You are Qube. The user has just asked you to remember a fact for future reference. "
+            "The user has just asked you to remember a fact for future reference. "
             "Acknowledge briefly — one short sentence — that you've made a note of it, "
             "and optionally paraphrase the fact naturally. "
             "Do NOT use bracket tokens like [1], [2], or [W]. "
             "Do NOT cite sources. "
-            "Do NOT say you cannot remember things; Qube persists long-term memories automatically."
+            "Do NOT say you cannot remember things; durable facts are persisted "
+            "automatically for future turns."
         )
         if quoted:
             persona += f' The fact to acknowledge is: "{quoted}".'

@@ -12,6 +12,7 @@ from core.memory_filters import RECALL_FUSION_SYSTEM_SUFFIX
 from core.prompt_blocks import (
     PromptBlocks,
     compose_system_prompt,
+    is_explicit_remember_persona,
 )
 from core.prompt_layout import PromptLayout, normalize_prompt_layout
 
@@ -71,17 +72,21 @@ def _wrap_retrieval_legacy(user_content: str, retrieval_body: str) -> str:
     return f"{_RETRIEVAL_WRAPPER_HEAD}{body}\n{_RETRIEVAL_WRAPPER_TAIL}{user_content}"
 
 
+def _short_web_persona() -> str:
+    return (
+        "Use the live web results in context to answer the user's query. "
+        "Cite web hits with [W] when only one block is tagged [W]; otherwise use "
+        "[1], [2], etc. matching the bracket ids in context. Never write [SOURCE N]. "
+        "Never reply with only a citation token."
+    )
+
+
 def _short_persona(blocks: PromptBlocks) -> str:
-    if (blocks.persona or "").startswith("You are Qube. The user has just asked"):
+    if is_explicit_remember_persona(blocks.persona):
         return blocks.persona
     if blocks.execution_route in ("WEB", "INTERNET"):
-        return (
-            "You are Qube. Answer from the live web results in context. "
-            "Cite web hits with [W] when only one block is tagged [W]; otherwise use "
-            "[1], [2], etc. matching the bracket ids in context. Never write [SOURCE N]. "
-            "Never reply with only a citation token."
-        )
-    return "You are Qube. Answer naturally and accurately."
+        return _short_web_persona()
+    return (blocks.persona or "").strip() or "Answer naturally and accurately."
 
 
 def _suffixes_for_compact_layout(blocks: PromptBlocks) -> list[str]:
@@ -103,10 +108,12 @@ def _compact_system_prompt(blocks: PromptBlocks) -> str:
 
 def _flatten_instruction_bullets(blocks: PromptBlocks) -> str:
     lines: list[str] = []
-    if (blocks.persona or "").startswith("You are Qube. The user has just asked"):
+    if is_explicit_remember_persona(blocks.persona):
         lines.append(blocks.persona.strip())
+    elif blocks.execution_route in ("WEB", "INTERNET"):
+        lines.append(_short_web_persona())
     else:
-        lines.append("You are Qube. Answer for the user in natural language.")
+        lines.append((blocks.persona or "").strip() or "Answer for the user in natural language.")
     for suf in _suffixes_for_compact_layout(blocks):
         chunk = " ".join(str(suf).split())
         if chunk:
