@@ -27,10 +27,14 @@ from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.app_notifications import AppNotificationCenter
+from core.app_notification_types import AppNotificationRequest
+from core.app_restart import relaunch_and_quit, manual_restart_instructions
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
     get_internal_model_path,
+    get_onboarding_local_llm_tour_completed,
     is_secondary_gguf_shard,
     get_llm_models_dir,
     resolve_internal_model_path,
@@ -39,6 +43,7 @@ from core.app_settings import (
 )
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.qube_tooltip import qube_tooltip_set_theme
+from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
 
 logger = logging.getLogger("Qube.UI")
@@ -151,6 +156,29 @@ class MainWindow(QMainWindow):
         # We wait until the UI is setup so we can access conversations_view
         self._setup_titling_connections()
 
+        self._local_llm_tour = build_local_llm_setup_tour(self)
+        self.settings_view.engine_mode_changed.connect(
+            lambda _mode: self._local_llm_tour.refresh_layout()
+        )
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not getattr(self, "_onboarding_start_scheduled", False):
+            self._onboarding_start_scheduled = True
+            QTimer.singleShot(900, self._maybe_start_local_llm_onboarding)
+
+    def _maybe_start_local_llm_onboarding(self) -> None:
+        if get_onboarding_local_llm_tour_completed():
+            return
+        if not hasattr(self, "_local_llm_tour") or self._local_llm_tour.is_active:
+            return
+        self._local_llm_tour.start()
+
+    def start_local_llm_onboarding_tour(self) -> None:
+        """Public entry to replay the local LLM setup tour."""
+        if hasattr(self, "_local_llm_tour"):
+            self._local_llm_tour.start()
+
     def _resolve_logo_asset(self, name: str) -> Path | None:
         """Resolve logo paths across new and legacy asset directories."""
         for rel in (Path("assets/logos") / name, Path("assets/icons") / name, Path("assets") / name):
@@ -245,6 +273,10 @@ class MainWindow(QMainWindow):
         workspace_layout.addWidget(self.global_tools)
 
         root_layout.addLayout(workspace_layout)
+
+        self.notification_center = AppNotificationCenter(self.main_container)
+        self.notification_center.action_triggered.connect(self._on_notification_action)
+        self.notification_center.apply_theme(self._is_dark_theme)
 
         # Resize Grip
         self.grip = QSizeGrip(self.main_container) 
@@ -353,6 +385,10 @@ class MainWindow(QMainWindow):
             )
             # Ensure it stays on top of the sidebars
             self.grip.raise_()
+        if hasattr(self, "notification_center"):
+            self.notification_center.relayout()
+        if hasattr(self, "_local_llm_tour"):
+            self._local_llm_tour.refresh_layout()
 
     def _build_top_bar(self) -> QFrame:
         bar = QFrame()
@@ -1071,9 +1107,12 @@ class MainWindow(QMainWindow):
                 self._native_model_loaded_success = False
                 self._set_native_model_progress_loading(False)
                 btn.setEnabled(False)
-                btn.setText("Managed by External Server")
-                btn.setToolTip("")
-                self._apply_native_model_selector_text_state(False)
+                btn.setText("Inactive — External Server")
+                btn.setToolTip(
+                    "Local model selection is disabled while AI Engine is set to External Server. "
+                    "Open Settings → AI Engine → Internal Engine (native) to use on-device .gguf models."
+                )
+                self._apply_native_model_selector_text_state(False, inactive=True)
                 btn.setMenu(None)
                 return
 
@@ -1224,15 +1263,20 @@ class MainWindow(QMainWindow):
                 """
             )
 
-    def _apply_native_model_selector_text_state(self, success: bool) -> None:
+    def _apply_native_model_selector_text_state(
+        self, success: bool, *, inactive: bool = False
+    ) -> None:
         if not hasattr(self, "toolbar_native_model_selector"):
             return
-        if success:
-            self.toolbar_native_model_selector.setStyleSheet(
-                "color: #10b981; font-weight: 600;"
+        btn = self.toolbar_native_model_selector
+        if inactive:
+            btn.setStyleSheet(
+                "color: #64748b; font-style: italic;"
             )
+        elif success:
+            btn.setStyleSheet("color: #10b981; font-weight: 600;")
         else:
-            self.toolbar_native_model_selector.setStyleSheet("")
+            btn.setStyleSheet("")
 
     def _on_native_model_load_finished_ui(self, ok: bool, message: str) -> None:
         if self._native_model_loading and self._pending_native_model_path:
@@ -1527,6 +1571,8 @@ class MainWindow(QMainWindow):
             self.telemetry_view, "refresh_after_theme_toggle"
         ):
             self.telemetry_view.refresh_after_theme_toggle()
+        if hasattr(self, "notification_center"):
+            self.notification_center.apply_theme(self._is_dark_theme)
     # ------------------------------------------------------------------ #
     #  TIMERS & TRAY                                                     #
     # ------------------------------------------------------------------ #
@@ -1633,6 +1679,25 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # These methods receive signals from workers. Once we build the 
     # ConversationsView, we will forward these calls directly to it.
+
+    def show_app_notification(self, request: AppNotificationRequest) -> None:
+        """Show a bottom-right toast (updates, release notes, post-command actions)."""
+        if hasattr(self, "notification_center"):
+            self.notification_center.show_notification(request)
+
+    def _on_notification_action(self, action_id: str) -> None:
+        if action_id == "restart_app":
+            self.request_application_restart()
+
+    def request_application_restart(self) -> None:
+        self._force_app_exit = True
+        if not relaunch_and_quit():
+            PrestigeDialog(
+                self,
+                "Restart failed",
+                manual_restart_instructions(),
+                is_dark=self._is_dark_theme,
+            ).exec()
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""

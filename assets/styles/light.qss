@@ -585,8 +585,9 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 
 #SettingsMenuButton:disabled {
     background-color: #f1f5f9 !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px dashed #cbd5e1 !important;
     color: #94a3b8 !important;
+    font-style: italic;
 }
 /* --- CHAT BUBBLES --- */
 #ChatTranscriptContainer {
