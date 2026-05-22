@@ -1867,6 +1867,7 @@ class ConversationsView(QWidget):
         self.new_chat_btn = QPushButton()
         self.new_chat_btn.setIcon(qta.icon('fa5s.plus'))
         self.new_chat_btn.setProperty("class", "IconButton")
+        self.new_chat_btn.setToolTip("New conversation")
         
         # --- THE FIX: Make sure you add 'self.list_title' to the layout here ---
         header_layout.addWidget(self.list_title)
@@ -1885,6 +1886,7 @@ class ConversationsView(QWidget):
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search titles or messages…")
         self.search_bar.setObjectName("HistorySearch")
+        self.search_bar.setToolTip("Search by conversation title or message text")
         layout.addWidget(self.search_bar)
         self._history_search_timer = QTimer(self)
         self._history_search_timer.setSingleShot(True)
@@ -2055,6 +2057,7 @@ class ConversationsView(QWidget):
         self.web_btn.setProperty("class", "ThinkToggleButton")
         self.web_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.web_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.web_btn.setToolTip("Search the web for the next message")
         self.web_btn.toggled.connect(self._apply_action_toggle_styles)
 
         self.think_btn = QPushButton("Think")
@@ -2062,6 +2065,7 @@ class ConversationsView(QWidget):
         self.think_btn.setProperty("class", "ThinkToggleButton")
         self.think_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.think_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.think_btn.setToolTip("Show the model's reasoning process in responses")
         self.think_btn.toggled.connect(self._on_think_toggled)
 
         action_layout.addWidget(self.web_btn)
@@ -2084,6 +2088,7 @@ class ConversationsView(QWidget):
         self.send_btn.setIcon(qta.icon('fa5s.paper-plane'))
         self.send_btn.setFixedSize(35, 35)
         self.send_btn.setProperty("class", "SendButton")
+        self.send_btn.setToolTip("Send message")
 
         input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
@@ -2467,6 +2472,7 @@ class ConversationsView(QWidget):
             "QPushButton::menu-indicator { image: none; width: 0px; } "
             "QPushButton { border: none; background: transparent; padding: 0px; }"
         )
+        opts_btn.setToolTip("Conversation actions")
 
         menu = QMenu(opts_btn)
         if hasattr(self, "_apply_menu_theme"):
@@ -2812,6 +2818,9 @@ class ConversationsView(QWidget):
             if self._is_stop_mode() and not is_dark:
                 send_icon_color = "#dc2626"
             self.send_btn.setIcon(qta.icon(icon_name, color=send_icon_color))
+            self.send_btn.setToolTip(
+                "Stop response" if self._is_stop_mode() else "Send message"
+            )
             self.send_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}

@@ -410,6 +410,7 @@ class _MemoryRowCard(QFrame):
         self.edit_btn = QPushButton("Edit")
         self.edit_btn.setObjectName("MemoryRowEditButton")
         self.edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.edit_btn.setToolTip("Edit this memory")
         self.edit_btn.clicked.connect(lambda: self.edit_requested.emit(self.row_id))
         actions.addWidget(self.edit_btn)
 
@@ -418,12 +419,16 @@ class _MemoryRowCard(QFrame):
         )
         self.flag_btn.setObjectName("MemoryRowFlagButton")
         self.flag_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.flag_btn.setToolTip(
+            "Remove review flag" if self.payload.get("flagged_for_review") else "Flag for review"
+        )
         self.flag_btn.clicked.connect(self._on_flag_clicked)
         actions.addWidget(self.flag_btn)
 
         self.delete_btn = QPushButton("Delete")
         apply_brand_danger(self.delete_btn, icon_name="fa5s.trash")
         self.delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.delete_btn.setToolTip("Delete this memory")
         self.delete_btn.clicked.connect(lambda: self.delete_requested.emit(self.row_id))
         actions.addWidget(self.delete_btn)
 
@@ -709,11 +714,13 @@ class MemoryManagerView(QWidget):
         # more robust cut than the free-form ``category`` label.
         self.tier_selector = SelectorButton("All tiers", is_dark=is_dark)
         self.tier_selector.setMaximumWidth(200)
+        self.tier_selector.setToolTip("Filter memories by tier (preference, knowledge, episode, context)")
         self._build_tier_menu()
         filter_row.addWidget(self.tier_selector)
 
         self.category_selector = SelectorButton("All categories", is_dark=is_dark)
         self.category_selector.setMaximumWidth(220)
+        self.category_selector.setToolTip("Filter memories by category")
         self._build_category_menu()
         filter_row.addWidget(self.category_selector)
 
@@ -721,17 +728,20 @@ class MemoryManagerView(QWidget):
         self.flagged_btn.setCheckable(True)
         self.flagged_btn.setObjectName("MemoryFlaggedToggle")
         self.flagged_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.flagged_btn.setToolTip("Show only memories flagged for review")
         self.flagged_btn.toggled.connect(self._on_flagged_toggled)
         filter_row.addWidget(self.flagged_btn)
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("MemorySearchInput")
         self.search_input.setPlaceholderText("Search memory text…")
+        self.search_input.setToolTip("Search memory text")
         self.search_input.textChanged.connect(self._on_search_changed)
         filter_row.addWidget(self.search_input, 1)
 
         self.bulk_delete_btn = QPushButton("Delete all visible")
         apply_brand_danger(self.bulk_delete_btn, icon_name="fa5s.trash-alt")
+        self.bulk_delete_btn.setToolTip("Delete all memories currently shown in the list")
         self.bulk_delete_btn.clicked.connect(self._on_bulk_delete_clicked)
         filter_row.addWidget(self.bulk_delete_btn)
 

@@ -97,12 +97,18 @@ class RoutingDebugView(QWidget):
         self._route_filter = QComboBox()
         for label in ("All", "WEB", "RAG", "MEMORY", "HYBRID", "NONE"):
             self._route_filter.addItem(label)
+        self._route_filter.setToolTip(
+            "Filter the routing history by the final route chosen for each turn."
+        )
         self._route_filter.currentIndexChanged.connect(self._on_filter_changed)
         filter_row.addWidget(self._route_filter, 1)
         left_l.addLayout(filter_row)
 
         self._list = QListWidget()
         self._list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self._list.setToolTip(
+            "Recent routing decisions, newest first. Select a turn to inspect details."
+        )
         self._list.currentRowChanged.connect(self._on_row_changed)
         left_l.addWidget(self._list, 1)
         _sc_list = QShortcut(QKeySequence.StandardKey.Copy, self._list)
@@ -280,6 +286,9 @@ class RoutingDebugView(QWidget):
 
         self._raw_toggle = QCheckBox("Show raw decision data")
         self._raw_toggle.setChecked(False)
+        self._raw_toggle.setToolTip(
+            "Show the full JSON decision payload for the selected routing turn."
+        )
         self._raw_toggle.toggled.connect(self._on_raw_toggled)
         self._detail_layout.addWidget(self._raw_toggle)
         self._decision_text = QPlainTextEdit()

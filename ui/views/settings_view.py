@@ -157,6 +157,12 @@ class SettingsView(QWidget):
         for btn in [self.mic_selector, self.device_selector]:
             btn.setMaximumWidth(350)
             btn.setMenu(QMenu(btn))
+        self.mic_selector.setToolTip(
+            "Microphone used for voice input and wakeword detection."
+        )
+        self.device_selector.setToolTip(
+            "Speaker or headset used for text-to-speech playback."
+        )
 
         self.timeout_spinner = NoScrollDoubleSpinBox()
         self.timeout_spinner.setFixedWidth(90)
@@ -220,6 +226,14 @@ class SettingsView(QWidget):
         for btn in [self.engine_selector, self.provider_selector, self.voice_selector]:
             btn.setMaximumWidth(250)
             btn.setMenu(QMenu(btn))
+        self.engine_selector.setToolTip(
+            "Internal runs downloaded .gguf models on this device. "
+            "External connects to LM Studio or Ollama."
+        )
+        self.provider_selector.setToolTip(
+            "OpenAI-compatible server to use when External inference is selected."
+        )
+        self.voice_selector.setToolTip("Default text-to-speech voice for spoken responses.")
         self.wakeword_selector.setToolTip(
             "Always run Wakeword Testbed after selecting a wakeword. "
             "Both Community and Recommended wakewords can perform differently "
@@ -244,6 +258,9 @@ class SettingsView(QWidget):
         ai_form.addRow("Active Wakeword", wakeword_row)
         self.wakeword_test_lab_btn = QPushButton("Open Wakeword Test Lab")
         apply_brand_primary(self.wakeword_test_lab_btn)
+        self.wakeword_test_lab_btn.setToolTip(
+            "Test wakeword detection with your microphone before relying on it in conversation."
+        )
         self.wakeword_test_lab_btn.clicked.connect(self._open_wakeword_test_lab)
         wakeword_lab_row = QWidget()
         wakeword_lab_layout = QHBoxLayout(wakeword_lab_row)
@@ -368,6 +385,9 @@ class SettingsView(QWidget):
         self.local_gguf_list = QListWidget()
         self.local_gguf_list.setMinimumHeight(100)
         self.local_gguf_list.setMaximumHeight(160)
+        self.local_gguf_list.setToolTip(
+            "Downloaded .gguf models on this device. Select one, then click Use selected."
+        )
         local_row.addWidget(self.local_gguf_list, stretch=1)
         local_btn_col = QVBoxLayout()
         local_btn_col.setSpacing(8)
@@ -426,6 +446,12 @@ class SettingsView(QWidget):
         self.memory_enrichment_toggle = PrestigeToggle()
         self.mem_enrichment_label = QLabel("Enable Memory Enrichment (Requires more RAM)")
         self.mem_enrichment_label.setWordWrap(True)
+        _mem_enrichment_tip = (
+            "Enriches retrieved memories with extra context for better recall. "
+            "Uses more RAM when enabled."
+        )
+        self.memory_enrichment_toggle.setToolTip(_mem_enrichment_tip)
+        self.mem_enrichment_label.setToolTip(_mem_enrichment_tip)
         mem_row = QWidget()
         mem_row_layout = QHBoxLayout(mem_row)
         mem_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -999,6 +1025,10 @@ class SettingsView(QWidget):
         # 🔑 NEW: Master Checkbox
         self.auto_activator_cb = QCheckBox("Enable NLP Auto-Activator")
         self.auto_activator_cb.setChecked(True)
+        self.auto_activator_cb.setToolTip(
+            "When enabled, custom trigger phrases can search your Knowledge Base for a single turn, "
+            "even if the master RAG switch is off. Add magic words below."
+        )
         self.auto_activator_cb.toggled.connect(self.auto_activator_toggle.emit)
         layout.addWidget(self.auto_activator_cb)
         
@@ -1006,11 +1036,15 @@ class SettingsView(QWidget):
         input_row = QHBoxLayout()
         self.trigger_input = QLineEdit()
         self.trigger_input.setPlaceholderText("e.g. 'search my notes for...'")
+        self.trigger_input.setToolTip(
+            "Type a phrase that should trigger a Knowledge Base search, then press Enter or +."
+        )
         self.trigger_input.returnPressed.connect(self._on_add_trigger)
         
         self.trigger_add_btn = QPushButton()
         self.trigger_add_btn.setFixedSize(36, 36)
         self.trigger_add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.trigger_add_btn.setToolTip("Add trigger phrase")
         
         # 🔑 FIX 1: Initialize the icon and CSS immediately upon creation
         is_dark = getattr(self.window(), '_is_dark_theme', True)
@@ -1068,6 +1102,7 @@ class SettingsView(QWidget):
             del_btn.setIcon(qta.icon('fa5s.trash-alt', color=icon_color))
             del_btn.setFixedSize(28, 28)
             del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            del_btn.setToolTip("Remove this trigger phrase")
             del_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 4px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}

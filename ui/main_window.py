@@ -417,6 +417,9 @@ class MainWindow(QMainWindow):
         self.rag_status_dot = QLabel("● RAG")
         self.rag_status_dot.setFixedWidth(60) 
         self.rag_status_dot.setObjectName("RagStatusDot")
+        self.rag_status_dot.setToolTip(
+            "Knowledge base status: gray = off, blue = ready, green = retrieving"
+        )
         self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
         center_layout.addWidget(self.rag_status_dot)
 
@@ -434,16 +437,19 @@ class MainWindow(QMainWindow):
         min_btn = QPushButton()
         min_btn.setIcon(qta.icon('fa5s.minus'))
         min_btn.setProperty("class", "WindowControlButton")
+        min_btn.setToolTip("Minimize window")
         min_btn.clicked.connect(self.showMinimized)
 
         self.max_btn = QPushButton()
         self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
         self.max_btn.setProperty("class", "WindowControlButton")
+        self.max_btn.setToolTip("Maximize window")
         self.max_btn.clicked.connect(self._toggle_maximize)
 
         close_btn = QPushButton()
         close_btn.setIcon(qta.icon('fa5s.times'))
         close_btn.setProperty("class", "WindowControlButton")
+        close_btn.setToolTip("Minimize to system tray")
         close_btn.clicked.connect(self.hide)
 
         win_layout.addStretch()
@@ -482,12 +488,14 @@ class MainWindow(QMainWindow):
             self.showNormal()
             # Update to 'Maximize' icon
             self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
+            self.max_btn.setToolTip("Maximize window")
             # Restore rounded corners
             self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
         else:
             self.showMaximized()
             # Update to 'Restore' icon
             self.max_btn.setIcon(qta.icon('fa5s.compress-arrows-alt'))
+            self.max_btn.setToolTip("Restore window")
             # Flatten corners for full-screen look
             self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
 
@@ -502,7 +510,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(25)
 
         # Helper to create consistent Nav Buttons
-        def create_nav_btn(icon_name, index=None, size=24):
+        def create_nav_btn(icon_name, index=None, size=24, tooltip=None):
             btn = QPushButton()
             # Initial color is a muted gray; _route_view handles the active blue
             btn.setIcon(qta.icon(icon_name, color='#64748b'))
@@ -510,24 +518,26 @@ class MainWindow(QMainWindow):
             btn.setFixedSize(44, 44)
             btn.setCheckable(True)
             btn.setProperty("class", "NavButton")
+            if tooltip:
+                btn.setToolTip(tooltip)
             if index is not None:
                 btn.clicked.connect(lambda: self._route_view(index, btn))
             return btn
 
         # Top Icons
-        self.nav_chat = create_nav_btn('fa5s.comment-alt', 0)
+        self.nav_chat = create_nav_btn('fa5s.comment-alt', 0, tooltip="Conversations")
         self.nav_chat.setObjectName("NavChat")
         self.nav_chat.setChecked(True)
         # Highlight the first one active by default
         self.nav_chat.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa'))
 
-        self.nav_library = create_nav_btn('fa5s.book', 1)
+        self.nav_library = create_nav_btn('fa5s.book', 1, tooltip="Library")
         self.nav_library.setObjectName("NavLibrary")
-        self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22)
+        self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22, tooltip="Memory Manager")
         self.nav_memory.setObjectName("NavMemory")
-        self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3)
+        self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3, tooltip="Telemetry")
         self.nav_telemetry.setObjectName("NavTelemetry")
-        self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20)
+        self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20, tooltip="Model Manager")
         self.nav_models.setObjectName("NavModels")
 
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -544,12 +554,13 @@ class MainWindow(QMainWindow):
         self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
         self.nav_theme.setIconSize(QSize(20, 20))
         self.nav_theme.setFixedSize(44, 44)
+        self.nav_theme.setToolTip("Switch to light theme")
         self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20)
+        self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20, tooltip="Settings")
         self.nav_settings.setObjectName("NavSettings")
         layout.addWidget(self.nav_settings, alignment=Qt.AlignmentFlag.AlignHCenter)
 
@@ -622,6 +633,7 @@ class MainWindow(QMainWindow):
         self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
         self.toggle_tools_btn.setStyleSheet("background: transparent; border: none;")
         self.toggle_tools_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_tools_btn.setToolTip("Hide tools panel")
         self.toggle_tools_btn.clicked.connect(self._toggle_tools_pane)
         
         handle_layout.addWidget(self.toggle_tools_btn)
@@ -652,6 +664,9 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_selector.setIcon(qta.icon("fa5s.chevron-down", color="#64748b"))
         self.toolbar_native_model_selector.setMenu(QMenu(self.toolbar_native_model_selector))
         self.toolbar_native_model_selector.setText("Select AI Model")
+        self.toolbar_native_model_selector.setToolTip(
+            "Choose and load a local AI model (.gguf)"
+        )
         self._apply_native_model_selector_text_state(False)
         self.toolbar_native_model_progress = QProgressBar()
         self.toolbar_native_model_progress.setObjectName("NativeModelLoadProgress")
@@ -706,6 +721,11 @@ class MainWindow(QMainWindow):
         self.voice_input_toggle.setChecked(True)
         mic_lbl = QLabel("Enable Voice Input")
         mic_lbl.setProperty("class", "ToolsPaneControl")
+        _voice_input_tip = (
+            "Listen for speech and wakeword. Turn off to pause microphone capture entirely."
+        )
+        self.voice_input_toggle.setToolTip(_voice_input_tip)
+        mic_lbl.setToolTip(_voice_input_tip)
         mic_row.addWidget(self.voice_input_toggle)
         mic_row.addWidget(mic_lbl)
         mic_row.addStretch()
@@ -796,6 +816,9 @@ class MainWindow(QMainWindow):
         self.voice_bypass_toggle.setChecked(True)
         tts_label = QLabel("Enable TTS Voice")
         tts_label.setProperty("class", "ToolsPaneControl")
+        _tts_tip = "Speak assistant responses aloud. Turn off to mute text-to-speech output."
+        self.voice_bypass_toggle.setToolTip(_tts_tip)
+        tts_label.setToolTip(_tts_tip)
         tts_row.addWidget(self.voice_bypass_toggle)
         tts_row.addWidget(tts_label)
         tts_row.addStretch()
@@ -806,6 +829,7 @@ class MainWindow(QMainWindow):
         self.global_voice_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.global_voice_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
         self.global_voice_selector.setMenu(QMenu(self.global_voice_selector))
+        self.global_voice_selector.setToolTip("Choose text-to-speech voice")
         audio_tts_layout.addWidget(self.global_voice_selector)
         main_layout.addLayout(audio_tts_layout)
 
@@ -818,6 +842,7 @@ class MainWindow(QMainWindow):
             info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
             info_icon.setToolTip(tooltip_text)
             info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
+            spinner.setToolTip(tooltip_text)
             spinner.setFixedWidth(90)
             icon_input = QHBoxLayout()
             icon_input.setContentsMargins(0, 0, 0, 0)
@@ -882,11 +907,11 @@ class MainWindow(QMainWindow):
             
             toggle = PrestigeToggle()
             toggle.setChecked(checked)
-            # Tooltip removed from the switch
+            toggle.setToolTip(tooltip_text)
             
             lbl = QLabel(label_text)
             lbl.setProperty("class", "ToolsPaneControl")
-            # Tooltip removed from the text
+            lbl.setToolTip(tooltip_text)
             
             row.addWidget(toggle)
             row.addWidget(lbl)
@@ -999,11 +1024,13 @@ class MainWindow(QMainWindow):
             self.content_anim.setEndValue(260)
             self.frame_anim.setEndValue(300)
             self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
+            self.toggle_tools_btn.setToolTip("Hide tools panel")
         else:
             # Collapse to just the button handle
             self.content_anim.setEndValue(0)
             self.frame_anim.setEndValue(40)
             self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-left', color='#89b4fa'))
+            self.toggle_tools_btn.setToolTip("Show tools panel")
 
         self.content_anim.start()
         self.frame_anim.start()
@@ -1430,6 +1457,7 @@ class MainWindow(QMainWindow):
                     app.setStyleSheet(f.read())
             
             self.nav_theme.setIcon(qta.icon('fa5s.sun', color='#d7827e'))
+            self.nav_theme.setToolTip("Switch to dark theme")
             self._is_dark_theme = False
             qube_tooltip_set_theme(False)
             logger.info("Theme switched to Light Mode.")
@@ -1441,6 +1469,7 @@ class MainWindow(QMainWindow):
                     app.setStyleSheet(f.read())
                     
             self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
+            self.nav_theme.setToolTip("Switch to light theme")
             self._is_dark_theme = True
             qube_tooltip_set_theme(True)
             logger.info("Theme switched to Dark Mode.")

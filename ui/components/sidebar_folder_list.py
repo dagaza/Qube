@@ -310,6 +310,7 @@ class SidebarFolderListController:
             "QPushButton::menu-indicator { image: none; width: 0px; } "
             "QPushButton { border: none; background: transparent; padding: 0px; }"
         )
+        chevron_btn.setToolTip("Expand or collapse folder")
 
         folder_id = folder["id"]
         chevron_btn.clicked.connect(
@@ -328,6 +329,7 @@ class SidebarFolderListController:
             "QPushButton::menu-indicator { image: none; width: 0px; } "
             "QPushButton { border: none; background: transparent; padding: 0px; }"
         )
+        opts_btn.setToolTip("Folder actions")
 
         menu = QMenu(opts_btn)
         self.apply_menu_theme(menu, is_dark)

@@ -101,6 +101,7 @@ class WakewordTestbedDialog(QDialog):
         self.header_close_btn.setObjectName("WakewordHeaderCloseButton")
         self.header_close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.header_close_btn.setFixedSize(30, 30)
+        self.header_close_btn.setToolTip("Close Wakeword Test Lab")
         header_row.addLayout(title_col, 1)
         header_row.addWidget(self.header_close_btn, 0, Qt.AlignmentFlag.AlignTop)
 
@@ -133,6 +134,9 @@ class WakewordTestbedDialog(QDialog):
         self.wakeword_selector = SelectorButton("Select Wakeword...", is_dark=self._is_dark)
         self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
         self.wakeword_selector.setFixedWidth(300)
+        self.wakeword_selector.setToolTip(
+            "Wakeword to test. Performance varies by voice, mic, and room noise."
+        )
         wakeword_row = QWidget()
         wakeword_row_layout = QHBoxLayout(wakeword_row)
         wakeword_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -143,6 +147,9 @@ class WakewordTestbedDialog(QDialog):
         guidance_layout.addSpacing(4)
         self.primary_btn = QPushButton("Start Guided Test")
         self.primary_btn.setObjectName("WakewordPrimaryButton")
+        self.primary_btn.setToolTip(
+            "Run a guided wakeword and false-positive check with your microphone."
+        )
         guidance_layout.addWidget(self.primary_btn, 0, Qt.AlignmentFlag.AlignLeft)
 
         self.alert_lbl = QLabel("")
@@ -242,10 +249,12 @@ class WakewordTestbedDialog(QDialog):
         self.apply_btn = QPushButton("Apply wakeword")
         self.apply_btn.setObjectName("WakewordApplyButton")
         self.apply_btn.setProperty("class", "PrimaryActionButton BrandSuccessButton")
+        self.apply_btn.setToolTip("Apply this wakeword and sensitivity to live detection")
         self.apply_btn.setVisible(False)
         self.retest_btn = QPushButton("Retest")
         self.retest_btn.setObjectName("WakewordRetestButton")
         apply_brand_primary(self.retest_btn)
+        self.retest_btn.setToolTip("Run the guided test again with the current settings")
         self.retest_btn.setVisible(False)
         results_btn_row.addWidget(self.apply_btn)
         results_btn_row.addWidget(self.retest_btn)
@@ -263,13 +272,19 @@ class WakewordTestbedDialog(QDialog):
         self.sensitivity_slider.setMinimum(10)
         self.sensitivity_slider.setMaximum(95)
         self.sensitivity_slider.setValue(50)
+        _sensitivity_tip = (
+            "Higher sensitivity catches softer wakeword speech but may increase false triggers."
+        )
+        self.sensitivity_slider.setToolTip(_sensitivity_tip)
         self.sensitivity_value_lbl = QLabel("50%")
         self.sensitivity_value_lbl.setObjectName("WakewordSensitivityValueLabel")
         self.sensitivity_value_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.sensitivity_value_lbl.setToolTip(_sensitivity_tip)
         self.sensitivity_help_lbl = QLabel(
             "Higher sensitivity catches softer wakeword speech but may increase false triggers."
         )
         self.sensitivity_help_lbl.setWordWrap(True)
+        self.sensitivity_help_lbl.setToolTip(_sensitivity_tip)
         self.sensitivity_lock_lbl = QLabel("")
         self.sensitivity_lock_lbl.setObjectName("WakewordAdvancedLockHint")
         self.sensitivity_lock_lbl.setWordWrap(True)
