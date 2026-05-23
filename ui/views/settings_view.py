@@ -8,12 +8,16 @@ from PyQt6.QtWidgets import (
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher
 from PyQt6.QtGui import QShowEvent
 
 from core.audio_utils import get_input_devices, get_output_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.network import is_port_open
+from core.settings_store import (
+    default_user_settings_path,
+    get_settings_store,
+)
 from core.app_settings import (
     get_enable_memory_enrichment,
     set_enable_memory_enrichment,
@@ -50,6 +54,7 @@ from ui.components.brand_buttons import (
 from ui.components.wakeword_testbed_dialog import WakewordTestbedDialog
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.settings_json_editor_dialog import SettingsJsonEditorDialog
 from ui.components.selector_button import SelectorButton
 
 
@@ -83,6 +88,7 @@ class SettingsView(QWidget):
     auto_load_last_model_changed = pyqtSignal(bool)
     memory_enrichment_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
+    external_settings_reloaded = pyqtSignal(set)
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -107,11 +113,14 @@ class SettingsView(QWidget):
         self._sync_native_chat_template_label()
         self._refresh_local_gguf_list()
         self._wakeword_testbed_dialog = None
+        self._settings_json_dialog: SettingsJsonEditorDialog | None = None
+        self._setup_settings_file_watcher()
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
+        self._ensure_settings_file_watched()
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QMenu 
@@ -130,6 +139,29 @@ class SettingsView(QWidget):
         title.setObjectName("ViewTitle")
         title.setProperty("class", "PageTitle")
         main_layout.addWidget(title)
+
+        config_row = QWidget()
+        config_row_layout = QHBoxLayout(config_row)
+        config_row_layout.setContentsMargins(0, 0, 0, 8)
+        config_row_layout.setSpacing(12)
+        config_hint = QLabel(
+            f"Edit preferences in {default_user_settings_path()} (schema: assets/config/settings.schema.json)."
+        )
+        config_hint.setWordWrap(True)
+        config_hint.setProperty("class", "ToolsPaneControl")
+        self.open_settings_json_btn = QPushButton("Edit settings.json")
+        apply_brand_primary(self.open_settings_json_btn, icon_name="fa5s.code")
+        self.open_settings_json_btn.setToolTip(
+            "Open the built-in JSON editor for user settings. "
+            "Format, validate, and save — or reload when the file changes on disk."
+        )
+        self.open_settings_json_btn.clicked.connect(self._on_open_settings_json_clicked)
+        self.settings_file_status_lbl = QLabel("")
+        self.settings_file_status_lbl.setProperty("class", "ToolsPaneControl")
+        config_row_layout.addWidget(config_hint, stretch=1)
+        config_row_layout.addWidget(self.open_settings_json_btn)
+        main_layout.addWidget(config_row)
+        main_layout.addWidget(self.settings_file_status_lbl)
 
         # Scrollable Area
         scroll = QScrollArea()
@@ -1337,6 +1369,9 @@ class SettingsView(QWidget):
         if self._wakeword_testbed_dialog is not None:
             self._wakeword_testbed_dialog.refresh_theme(is_dark)
 
+        if self._settings_json_dialog is not None:
+            self._settings_json_dialog.refresh_theme(is_dark)
+
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
         callback(data)
@@ -1468,3 +1503,156 @@ class SettingsView(QWidget):
         self._build_prestige_menu(self.voice_selector, [(v, v) for v in voices], lambda v: self.tts_worker.set_voice(v) if self.tts_worker else None)
         self.voice_selector.setText(voices[0])
         if self.tts_worker: self.tts_worker.set_voice(voices[0])
+
+    def _setup_settings_file_watcher(self) -> None:
+        self._settings_reload_timer = QTimer(self)
+        self._settings_reload_timer.setSingleShot(True)
+        self._settings_reload_timer.setInterval(400)
+        self._settings_reload_timer.timeout.connect(self._reload_settings_from_disk)
+        self._settings_watcher = QFileSystemWatcher(self)
+        self._settings_watcher.fileChanged.connect(self._on_settings_file_changed)
+
+    def _ensure_settings_file_watched(self) -> None:
+        path = str(default_user_settings_path())
+        watched = set(self._settings_watcher.files())
+        if path not in watched:
+            if not default_user_settings_path().is_file():
+                get_settings_store().ensure_user_settings_file()
+            self._settings_watcher.addPath(path)
+        parent = str(default_user_settings_path().parent)
+        if parent not in self._settings_watcher.directories():
+            self._settings_watcher.addPath(parent)
+
+    def _on_settings_file_changed(self, _path: str) -> None:
+        if self._settings_json_dialog is not None and self._settings_json_dialog.isVisible():
+            return
+        self._settings_reload_timer.start()
+
+    def _on_open_settings_json_clicked(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if self._settings_json_dialog is None:
+            self._settings_json_dialog = SettingsJsonEditorDialog(self, is_dark=is_dark)
+            self._settings_json_dialog.settings_applied.connect(
+                self._on_settings_editor_applied
+            )
+        else:
+            self._settings_json_dialog.refresh_theme(is_dark)
+        self._settings_json_dialog.load_from_disk()
+        self._settings_json_dialog.show()
+        self._settings_json_dialog.raise_()
+        self._settings_json_dialog.activateWindow()
+        self.settings_file_status_lbl.setText("Editing settings.json in the built-in editor.")
+
+    def _on_settings_editor_applied(self, changed: set) -> None:
+        if not changed:
+            return
+        self._sync_ui_from_persisted_settings()
+        self.settings_file_status_lbl.setText(
+            f"Applied {len(changed)} setting(s) from settings.json."
+        )
+        self.external_settings_reloaded.emit(changed)
+
+    def _reload_settings_from_disk(self) -> None:
+        store = get_settings_store()
+        result = store.reload_if_disk_changed()
+        if result is None:
+            return
+        if not result.ok:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Invalid settings.json",
+                result.parse_error or "The file could not be parsed.",
+                is_dark=is_dark,
+            ).exec()
+            self.settings_file_status_lbl.setText("settings.json has errors — fix JSON and save again.")
+            return
+        if result.skipped_keys:
+            skipped = ", ".join(result.skipped_keys[:5])
+            if len(result.skipped_keys) > 5:
+                skipped += ", …"
+            logger.info("Ignored unknown settings keys: %s", skipped)
+        if not result.changed_keys:
+            return
+        self._sync_ui_from_persisted_settings()
+        self.settings_file_status_lbl.setText(
+            f"Reloaded {len(result.changed_keys)} setting(s) from settings.json."
+        )
+        self.external_settings_reloaded.emit(set(result.changed_keys))
+
+    def _sync_ui_from_persisted_settings(self) -> None:
+        engine_modes = [
+            ("Internal Engine (native)", "internal"),
+            ("External Server (localhost)", "external"),
+        ]
+        em = get_engine_mode()
+        engine_label = next((lbl for lbl, m in engine_modes if m == em), engine_modes[0][0])
+        self.engine_selector.blockSignals(True)
+        self.engine_selector.setText(engine_label)
+        self.engine_selector.blockSignals(False)
+
+        self.memory_enrichment_toggle.blockSignals(True)
+        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
+        self.memory_enrichment_toggle.blockSignals(False)
+
+        self.auto_load_last_model_cb.blockSignals(True)
+        checked = get_auto_load_last_model_on_startup()
+        self.auto_load_last_model_cb.setChecked(checked)
+        self.auto_load_last_model_cb.blockSignals(False)
+        self.auto_load_last_model_changed.emit(checked)
+
+        self.model_manager_hardware_suggestions_cb.blockSignals(True)
+        self.model_manager_hardware_suggestions_cb.setChecked(
+            get_model_manager_hardware_suggestions()
+        )
+        self.model_manager_hardware_suggestions_cb.blockSignals(False)
+
+        gpu_val = get_internal_n_gpu_layers()
+        self.gpu_layers_slider.blockSignals(True)
+        self.gpu_layers_slider.setValue(gpu_val)
+        self.gpu_layers_slider.blockSignals(False)
+        self.gpu_layers_value_lbl.setText(str(gpu_val))
+
+        cpu_val = get_internal_n_threads()
+        self.cpu_threads_slider.blockSignals(True)
+        self.cpu_threads_slider.setValue(cpu_val)
+        self.cpu_threads_slider.blockSignals(False)
+        self.cpu_threads_value_lbl.setText(str(cpu_val))
+
+        preferred = get_internal_native_chat_format()
+        label = next(
+            (lbl for lbl, mode in self._native_chat_format_items if mode == preferred),
+            self._native_chat_format_items[0][0],
+        )
+        self.native_chat_format_selector.blockSignals(True)
+        self.native_chat_format_selector.setText(label)
+        self.native_chat_format_selector.blockSignals(False)
+        self._sync_native_chat_template_label()
+
+        self._sync_models_dir_label()
+        self._sync_active_native_model_label()
+        self._refresh_local_gguf_list()
+        self._sync_ai_provider_enabled_for_inference(em)
+
+        saved_input = get_audio_input_device_index()
+        if saved_input is not None:
+            mics = get_input_devices()
+            for idx, name in mics:
+                if idx == saved_input:
+                    self.mic_selector.setText(name)
+                    if self.audio_worker:
+                        self.audio_worker.set_input_device(idx)
+                    break
+
+        saved_output = get_audio_output_device_index()
+        if saved_output is not None:
+            outputs = get_output_devices()
+            for idx, name in outputs:
+                if idx == saved_output:
+                    self.device_selector.setText(name)
+                    if self.tts_worker:
+                        self.tts_worker.set_device(idx)
+                    break
+
+        if self.audio_worker:
+            self._sync_wakeword_catalog(trigger="settings reload")

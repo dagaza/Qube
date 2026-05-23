@@ -25,6 +25,18 @@ from core.app_settings import (
     get_engine_mode,
     get_auto_load_last_model_on_startup,
     get_internal_model_path,
+    get_audio_input_device_index,
+    get_audio_output_device_index,
+    KEY_AUDIO_INPUT_DEVICE,
+    KEY_AUDIO_OUTPUT_DEVICE,
+    KEY_ENGINE_MODE,
+    KEY_MEMORY_ENRICHMENT,
+    KEY_NATIVE_CHAT_FORMAT,
+    KEY_NATIVE_CPU_THREADS,
+    KEY_NATIVE_GPU_LAYERS,
+    KEY_NATIVE_MODEL_PATH,
+    KEY_WAKEWORD_ACTIVE_ID,
+    KEY_WAKEWORD_THRESHOLDS,
 )
 from workers.enrichment_worker import EnrichmentWorker
 from workers.memory_reflection_worker import MemoryReflectionWorker
@@ -164,6 +176,12 @@ class Qube:
             self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
             self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
+        if hasattr(self.window, 'settings_view') and hasattr(
+            self.window.settings_view, 'external_settings_reloaded'
+        ):
+            self.window.settings_view.external_settings_reloaded.connect(
+                self._on_external_settings_reloaded
+            )
         self.native_llama_engine.load_finished.connect(self._on_native_model_load_finished)
         if (
             hasattr(self.window, "model_manager_view")
@@ -416,6 +434,36 @@ class Qube:
             ):
                 self.llm_worker.refresh_native_model_from_settings()
         self._refresh_conversations_think_toggle()
+
+    def _on_external_settings_reloaded(self, changed: set) -> None:
+        """Apply worker/runtime updates after settings.json was edited externally."""
+        if KEY_MEMORY_ENRICHMENT in changed and hasattr(self, "enrichment_worker"):
+            self.enrichment_worker.set_enabled(get_enable_memory_enrichment())
+        if KEY_ENGINE_MODE in changed:
+            self._on_engine_mode_changed(get_engine_mode())
+            return
+        native_keys = {
+            KEY_NATIVE_MODEL_PATH,
+            KEY_NATIVE_GPU_LAYERS,
+            KEY_NATIVE_CPU_THREADS,
+            KEY_NATIVE_CHAT_FORMAT,
+        }
+        if native_keys & changed and get_engine_mode() == "internal" and hasattr(self, "llm_worker"):
+            self.llm_worker.refresh_native_model_from_settings()
+        if KEY_AUDIO_INPUT_DEVICE in changed and hasattr(self, "audio_worker"):
+            idx = get_audio_input_device_index()
+            if idx is not None:
+                self.audio_worker.set_input_device(idx)
+        if KEY_AUDIO_OUTPUT_DEVICE in changed and hasattr(self, "tts_worker"):
+            idx = get_audio_output_device_index()
+            if idx is not None:
+                self.tts_worker.set_device(idx)
+        if (KEY_WAKEWORD_ACTIVE_ID in changed or KEY_WAKEWORD_THRESHOLDS in changed) and hasattr(
+            self, "audio_worker"
+        ):
+            sv = getattr(self.window, "settings_view", None)
+            if sv is not None and hasattr(sv, "_sync_wakeword_catalog"):
+                sv._sync_wakeword_catalog(trigger="external settings")
 
     def _on_native_model_load_finished(self, ok: bool, message: str) -> None:
         """Update Think toggle when internal GGUF load completes."""

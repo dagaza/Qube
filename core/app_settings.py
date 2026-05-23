@@ -1,64 +1,61 @@
 """
-Application preferences persisted with QSettings (native on Qt; no DB migration).
+Application preferences persisted in ``~/.qube/settings.json``.
 
-Call getters/setters only after QApplication exists (e.g. from UI code).
+Dotted keys and defaults are defined in ``assets/config/settings.schema.json``.
+Legacy Qt ``QSettings`` values are imported once on first run (see
+``core.settings_store``).
+
+Call getters/setters only after QApplication exists when migration from
+QSettings may still run (e.g. first launch before the user file exists).
 """
 import os
 import re
-import json
 
-from PyQt6.QtCore import QSettings
+from core.settings_store import get_settings_store
 
-_ORG = "Dagaza"
-_APP = "Qube"
-_KEY_ENABLE_MEMORY_ENRICHMENT = "enable_memory_enrichment"
-_KEY_ENGINE_MODE = "engine_mode"  # "external" | "internal"
-DEFAULT_ENGINE_MODE = "internal"
-_KEY_INTERNAL_MODEL_PATH = "internal_model_path"
-_KEY_INTERNAL_N_GPU_LAYERS = "internal_n_gpu_layers"
-_KEY_INTERNAL_N_THREADS = "internal_n_threads"
-_KEY_INTERNAL_NATIVE_CHAT_FORMAT = "internal_native_chat_format"
-_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE = "internal_prompt_layout_override"
-_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP = "auto_load_last_model_on_startup"
-_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED = "onboarding_local_llm_tour_completed"
-_KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "model_manager_hardware_suggestions"
-_KEY_LLM_MODELS_DIR = "llm_models_dir"
-_KEY_NATIVE_REASONING_DISPLAY = "native_reasoning_display_enabled"
-_KEY_WAKEWORD_ACTIVE_ID = "wakeword_active_id"
-_KEY_WAKEWORD_THRESHOLDS_JSON = "wakeword_thresholds_json"
-_KEY_AUDIO_INPUT_DEVICE_INDEX = "audio_input_device_index"
-_KEY_AUDIO_OUTPUT_DEVICE_INDEX = "audio_output_device_index"
 _SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\.gguf$", re.IGNORECASE)
 
+# Dotted setting keys (schema in assets/config/settings.schema.json)
+KEY_MEMORY_ENRICHMENT = "qube.memory.enrichment"
+KEY_ENGINE_MODE = "qube.engine.mode"
+DEFAULT_ENGINE_MODE = "internal"
+KEY_NATIVE_MODEL_PATH = "qube.native.modelPath"
+KEY_NATIVE_GPU_LAYERS = "qube.native.gpuLayers"
+KEY_NATIVE_CPU_THREADS = "qube.native.cpuThreads"
+KEY_NATIVE_CHAT_FORMAT = "qube.native.chatFormat"
+KEY_NATIVE_PROMPT_LAYOUT = "qube.native.promptLayout"
+KEY_NATIVE_AUTO_LOAD_ON_STARTUP = "qube.native.autoLoadOnStartup"
+KEY_ONBOARDING_LOCAL_LLM_TOUR = "qube.onboarding.localLlmTourCompleted"
+KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "qube.modelManager.hardwareSuggestions"
+KEY_MODELS_DIRECTORY = "qube.models.directory"
+KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
+KEY_WAKEWORD_ACTIVE_ID = "qube.wakeword.activeId"
+KEY_WAKEWORD_THRESHOLDS = "qube.wakeword.thresholds"
+KEY_AUDIO_INPUT_DEVICE = "qube.audio.inputDeviceIndex"
+KEY_AUDIO_OUTPUT_DEVICE = "qube.audio.outputDeviceIndex"
 
-def _settings() -> QSettings:
-    return QSettings(_ORG, _APP)
+
+def _store():
+    return get_settings_store()
 
 
 def default_llm_models_dir() -> str:
     """Directory for downloaded / native .gguf models (under app cwd)."""
-    import os
-
     return os.path.join(os.getcwd(), "models", "llm")
 
 
 def get_enable_memory_enrichment() -> bool:
     """When True, memory enrichment may run (higher RAM use). Default True."""
-    v = _settings().value(_KEY_ENABLE_MEMORY_ENRICHMENT, True, type=bool)
-    if isinstance(v, str):
-        return v.lower() in ("true", "1", "yes")
-    return bool(v)
+    return bool(_store().get(KEY_MEMORY_ENRICHMENT, True))
 
 
 def set_enable_memory_enrichment(enabled: bool) -> None:
-    s = _settings()
-    s.setValue(_KEY_ENABLE_MEMORY_ENRICHMENT, enabled)
-    s.sync()
+    _store().set(KEY_MEMORY_ENRICHMENT, enabled)
 
 
 def get_engine_mode() -> str:
     """external = OpenAI-compatible localhost server; internal = llama-cpp-python in-process."""
-    v = _settings().value(_KEY_ENGINE_MODE, DEFAULT_ENGINE_MODE, type=str)
+    v = _store().get(KEY_ENGINE_MODE, DEFAULT_ENGINE_MODE)
     s = str(v).lower().strip()
     return s if s in ("external", "internal") else DEFAULT_ENGINE_MODE
 
@@ -67,29 +64,25 @@ def set_engine_mode(mode: str) -> None:
     m = str(mode).lower().strip()
     if m not in ("external", "internal"):
         m = DEFAULT_ENGINE_MODE
-    s = _settings()
-    s.setValue(_KEY_ENGINE_MODE, m)
-    s.sync()
+    _store().set(KEY_ENGINE_MODE, m)
 
 
 def ensure_engine_mode_initialized() -> str:
     """Persist default engine mode on first launch (native / internal)."""
-    s = _settings()
-    if s.contains(_KEY_ENGINE_MODE):
+    store = _store()
+    if store.contains(KEY_ENGINE_MODE):
         return get_engine_mode()
-    set_engine_mode(DEFAULT_ENGINE_MODE)
+    store.set(KEY_ENGINE_MODE, DEFAULT_ENGINE_MODE, force=True)
     return DEFAULT_ENGINE_MODE
 
 
 def get_internal_model_path() -> str:
-    v = _settings().value(_KEY_INTERNAL_MODEL_PATH, "", type=str)
+    v = _store().get(KEY_NATIVE_MODEL_PATH, "")
     return resolve_internal_model_path(str(v or ""))
 
 
 def set_internal_model_path(path: str) -> None:
-    s = _settings()
-    s.setValue(_KEY_INTERNAL_MODEL_PATH, resolve_internal_model_path(str(path or "")))
-    s.sync()
+    _store().set(KEY_NATIVE_MODEL_PATH, resolve_internal_model_path(str(path or "")))
 
 
 def is_secondary_gguf_shard(path: str) -> bool:
@@ -193,8 +186,8 @@ def resolve_internal_model_path(path: str) -> str:
 
 
 def get_internal_n_gpu_layers() -> int:
-    s = _settings()
-    if not s.contains(_KEY_INTERNAL_N_GPU_LAYERS):
+    store = _store()
+    if not store.contains(KEY_NATIVE_GPU_LAYERS):
         try:
             from core.gpu_layers_cap import default_internal_n_gpu_layers_suggested
 
@@ -202,11 +195,19 @@ def get_internal_n_gpu_layers() -> int:
         except Exception:
             raw = 0
     else:
-        v = s.value(_KEY_INTERNAL_N_GPU_LAYERS, 0, type=int)
-        try:
-            raw = max(0, min(200, int(v)))
-        except (TypeError, ValueError):
-            raw = 0
+        v = store.get(KEY_NATIVE_GPU_LAYERS)
+        if v is None:
+            try:
+                from core.gpu_layers_cap import default_internal_n_gpu_layers_suggested
+
+                raw = default_internal_n_gpu_layers_suggested()
+            except Exception:
+                raw = 0
+        else:
+            try:
+                raw = max(0, min(200, int(v)))
+            except (TypeError, ValueError):
+                raw = 0
     try:
         from core.gpu_layers_cap import max_safe_n_gpu_layers
 
@@ -223,9 +224,7 @@ def set_internal_n_gpu_layers(n: int) -> None:
     except Exception:
         cap = 200
     val = max(0, min(int(n), cap, 200))
-    s = _settings()
-    s.setValue(_KEY_INTERNAL_N_GPU_LAYERS, val)
-    s.sync()
+    _store().set(KEY_NATIVE_GPU_LAYERS, val)
 
 
 def get_internal_n_threads() -> int:
@@ -233,10 +232,12 @@ def get_internal_n_threads() -> int:
     from core.cpu_threads import default_internal_n_threads, max_cpu_threads_for_ui
 
     cap = max_cpu_threads_for_ui()
-    s = _settings()
-    if not s.contains(_KEY_INTERNAL_N_THREADS):
+    store = _store()
+    if not store.contains(KEY_NATIVE_CPU_THREADS):
         return max(1, min(default_internal_n_threads(), cap))
-    v = s.value(_KEY_INTERNAL_N_THREADS, 1, type=int)
+    v = store.get(KEY_NATIVE_CPU_THREADS)
+    if v is None:
+        return max(1, min(default_internal_n_threads(), cap))
     try:
         raw = int(v)
     except (TypeError, ValueError):
@@ -249,15 +250,11 @@ def set_internal_n_threads(n: int) -> None:
 
     cap = max_cpu_threads_for_ui()
     val = max(1, min(int(n), cap))
-    s = _settings()
-    s.setValue(_KEY_INTERNAL_N_THREADS, val)
-    s.sync()
+    _store().set(KEY_NATIVE_CPU_THREADS, val)
 
 
 def get_llm_models_dir() -> str:
-    import os
-
-    v = _settings().value(_KEY_LLM_MODELS_DIR, "", type=str)
+    v = _store().get(KEY_MODELS_DIRECTORY, "")
     p = str(v or "").strip()
     if not p:
         p = default_llm_models_dir()
@@ -265,44 +262,29 @@ def get_llm_models_dir() -> str:
 
 
 def set_llm_models_dir(path: str) -> None:
-    s = _settings()
-    s.setValue(_KEY_LLM_MODELS_DIR, str(path or ""))
-    s.sync()
+    _store().set(KEY_MODELS_DIRECTORY, str(path or ""))
 
 
 def get_auto_load_last_model_on_startup() -> bool:
     """When True, auto-load the saved internal model path at startup / when entering internal mode."""
-    v = _settings().value(_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP, False, type=bool)
-    if isinstance(v, str):
-        return v.lower() in ("true", "1", "yes")
-    return bool(v)
+    return bool(_store().get(KEY_NATIVE_AUTO_LOAD_ON_STARTUP, False))
 
 
 def get_onboarding_local_llm_tour_completed() -> bool:
-    v = _settings().value(_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED, False, type=bool)
-    if isinstance(v, str):
-        return v.lower() in ("true", "1", "yes")
-    return bool(v)
+    return bool(_store().get(KEY_ONBOARDING_LOCAL_LLM_TOUR, False))
 
 
 def set_onboarding_local_llm_tour_completed(completed: bool) -> None:
-    s = _settings()
-    s.setValue(_KEY_ONBOARDING_LOCAL_LLM_TOUR_COMPLETED, completed)
-    s.sync()
+    _store().set(KEY_ONBOARDING_LOCAL_LLM_TOUR, completed)
 
 
 def get_model_manager_hardware_suggestions() -> bool:
     """When True, Model Manager ranks and badges Qube Verified models by detected hardware."""
-    v = _settings().value(_KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS, False, type=bool)
-    if isinstance(v, str):
-        return v.lower() in ("true", "1", "yes")
-    return bool(v)
+    return bool(_store().get(KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS, False))
 
 
 def set_model_manager_hardware_suggestions(enabled: bool) -> None:
-    s = _settings()
-    s.setValue(_KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS, bool(enabled))
-    s.sync()
+    _store().set(KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS, enabled)
 
 
 def reset_help_guidance_settings() -> None:
@@ -312,9 +294,7 @@ def reset_help_guidance_settings() -> None:
 
 
 def set_auto_load_last_model_on_startup(enabled: bool) -> None:
-    s = _settings()
-    s.setValue(_KEY_AUTO_LOAD_LAST_MODEL_ON_STARTUP, bool(enabled))
-    s.sync()
+    _store().set(KEY_NATIVE_AUTO_LOAD_ON_STARTUP, enabled)
 
 
 def get_internal_native_chat_format() -> str:
@@ -322,7 +302,7 @@ def get_internal_native_chat_format() -> str:
     UI / persistence token for internal llama.cpp chat template selection.
     Values: auto | jinja | chatml | llama-3 | mistral | llama-2 (case-insensitive).
     """
-    v = _settings().value(_KEY_INTERNAL_NATIVE_CHAT_FORMAT, "auto", type=str)
+    v = _store().get(KEY_NATIVE_CHAT_FORMAT, "auto")
     s = str(v or "auto").strip().lower()
     allowed = ("auto", "jinja", "chatml", "llama-3", "mistral", "llama-2")
     return s if s in allowed else "auto"
@@ -333,19 +313,17 @@ def get_native_reasoning_display_user_override() -> bool | None:
     None = user has not chosen; callers should combine with model telemetry defaults.
     True/False = persisted explicit preference for internal native chat.
     """
-    s = _settings()
-    if not s.contains(_KEY_NATIVE_REASONING_DISPLAY):
+    store = _store()
+    if not store.contains(KEY_NATIVE_REASONING_DISPLAY):
         return None
-    v = s.value(_KEY_NATIVE_REASONING_DISPLAY, False, type=bool)
-    if isinstance(v, str):
-        return v.lower() in ("true", "1", "yes")
+    v = store.get(KEY_NATIVE_REASONING_DISPLAY)
+    if v is None:
+        return None
     return bool(v)
 
 
 def set_native_reasoning_display_enabled(enabled: bool) -> None:
-    s = _settings()
-    s.setValue(_KEY_NATIVE_REASONING_DISPLAY, bool(enabled))
-    s.sync()
+    _store().set(KEY_NATIVE_REASONING_DISPLAY, bool(enabled))
 
 
 def effective_native_reasoning_display_enabled(
@@ -363,11 +341,9 @@ def effective_native_reasoning_display_enabled(
 
 
 def set_internal_native_chat_format(mode: str) -> None:
-    s = _settings()
     m = str(mode or "auto").strip().lower()
     allowed = ("auto", "jinja", "chatml", "llama-3", "mistral", "llama-2")
-    s.setValue(_KEY_INTERNAL_NATIVE_CHAT_FORMAT, m if m in allowed else "auto")
-    s.sync()
+    _store().set(KEY_NATIVE_CHAT_FORMAT, m if m in allowed else "auto")
 
 
 def get_internal_prompt_layout_override() -> str:
@@ -375,18 +351,16 @@ def get_internal_prompt_layout_override() -> str:
     Global prompt layout override for internal engine turns.
     Values: auto | system_ok | short_system | flatten_user (case-insensitive).
     """
-    v = _settings().value(_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE, "auto", type=str)
+    v = _store().get(KEY_NATIVE_PROMPT_LAYOUT, "auto")
     s = str(v or "auto").strip().lower()
     allowed = ("auto", "system_ok", "short_system", "flatten_user")
     return s if s in allowed else "auto"
 
 
 def set_internal_prompt_layout_override(mode: str) -> None:
-    s = _settings()
     m = str(mode or "auto").strip().lower()
     allowed = ("auto", "system_ok", "short_system", "flatten_user")
-    s.setValue(_KEY_INTERNAL_PROMPT_LAYOUT_OVERRIDE, m if m in allowed else "auto")
-    s.sync()
+    _store().set(KEY_NATIVE_PROMPT_LAYOUT, m if m in allowed else "auto")
 
 
 def llama_chat_format_kwarg() -> dict:
@@ -406,26 +380,19 @@ def llama_chat_format_kwarg() -> dict:
 
 
 def get_active_wakeword_id() -> str:
-    v = _settings().value(_KEY_WAKEWORD_ACTIVE_ID, "", type=str)
-    return str(v or "").strip()
+    return str(_store().get(KEY_WAKEWORD_ACTIVE_ID, "") or "").strip()
 
 
 def set_active_wakeword_id(wakeword_id: str) -> None:
-    s = _settings()
-    s.setValue(_KEY_WAKEWORD_ACTIVE_ID, str(wakeword_id or "").strip())
-    s.sync()
+    _store().set(KEY_WAKEWORD_ACTIVE_ID, str(wakeword_id or "").strip())
 
 
 def get_wakeword_threshold_overrides() -> dict[str, float]:
-    raw = _settings().value(_KEY_WAKEWORD_THRESHOLDS_JSON, "{}", type=str)
-    try:
-        parsed = json.loads(str(raw or "{}"))
-    except Exception:
+    raw = _store().get(KEY_WAKEWORD_THRESHOLDS, {})
+    if not isinstance(raw, dict):
         return {}
     out: dict[str, float] = {}
-    if not isinstance(parsed, dict):
-        return out
-    for key, val in parsed.items():
+    for key, val in raw.items():
         try:
             out[str(key)] = float(val)
         except Exception:
@@ -440,9 +407,7 @@ def set_wakeword_threshold_overrides(overrides: dict[str, float]) -> None:
             safe[str(key)] = float(val)
         except Exception:
             continue
-    s = _settings()
-    s.setValue(_KEY_WAKEWORD_THRESHOLDS_JSON, json.dumps(safe, sort_keys=True))
-    s.sync()
+    _store().set(KEY_WAKEWORD_THRESHOLDS, safe)
 
 
 def get_wakeword_threshold_override(wakeword_id: str) -> float | None:
@@ -460,38 +425,40 @@ def set_wakeword_threshold_override(wakeword_id: str, threshold: float) -> None:
 
 
 def get_audio_input_device_index() -> int | None:
-    s = _settings()
-    if not s.contains(_KEY_AUDIO_INPUT_DEVICE_INDEX):
+    if not _store().contains(KEY_AUDIO_INPUT_DEVICE):
+        return None
+    v = _store().get(KEY_AUDIO_INPUT_DEVICE)
+    if v is None:
         return None
     try:
-        return int(s.value(_KEY_AUDIO_INPUT_DEVICE_INDEX, -1, type=int))
+        return int(v)
     except Exception:
         return None
 
 
 def set_audio_input_device_index(index: int | None) -> None:
-    s = _settings()
+    store = _store()
     if index is None:
-        s.remove(_KEY_AUDIO_INPUT_DEVICE_INDEX)
+        store.remove(KEY_AUDIO_INPUT_DEVICE)
     else:
-        s.setValue(_KEY_AUDIO_INPUT_DEVICE_INDEX, int(index))
-    s.sync()
+        store.set(KEY_AUDIO_INPUT_DEVICE, int(index))
 
 
 def get_audio_output_device_index() -> int | None:
-    s = _settings()
-    if not s.contains(_KEY_AUDIO_OUTPUT_DEVICE_INDEX):
+    if not _store().contains(KEY_AUDIO_OUTPUT_DEVICE):
+        return None
+    v = _store().get(KEY_AUDIO_OUTPUT_DEVICE)
+    if v is None:
         return None
     try:
-        return int(s.value(_KEY_AUDIO_OUTPUT_DEVICE_INDEX, -1, type=int))
+        return int(v)
     except Exception:
         return None
 
 
 def set_audio_output_device_index(index: int | None) -> None:
-    s = _settings()
+    store = _store()
     if index is None:
-        s.remove(_KEY_AUDIO_OUTPUT_DEVICE_INDEX)
+        store.remove(KEY_AUDIO_OUTPUT_DEVICE)
     else:
-        s.setValue(_KEY_AUDIO_OUTPUT_DEVICE_INDEX, int(index))
-    s.sync()
+        store.set(KEY_AUDIO_OUTPUT_DEVICE, int(index))
