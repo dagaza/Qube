@@ -28,6 +28,15 @@ def platform_display_name() -> str:
     return sys.platform
 
 
+def _running_under_pyqt_inspect() -> bool:
+    """True when Qube was started through PyQtInspect (pqi.py wrapper)."""
+    for arg in sys.argv:
+        normalized = str(arg).replace("\\", "/")
+        if "PyQtInspect" in normalized or normalized.endswith("/pqi.py"):
+            return True
+    return "PyQtInspect.pqi" in sys.modules
+
+
 def build_relaunch_command() -> tuple[str, list[str], str]:
     """
     Build (program, args, working_directory) for relaunch.
@@ -70,7 +79,93 @@ def _resolve_gui_program(program: str) -> str:
     return program
 
 
+def _start_detached_windows_createprocess(program: str, args: list[str], workdir: str) -> bool:
+    """Launch directly via kernel32 CreateProcessW (no shell, no PyQtInspect hooks)."""
+    import ctypes
+    from ctypes import wintypes
+
+    CREATE_NO_WINDOW = 0x08000000
+    CREATE_UNICODE_ENVIRONMENT = 0x00000400
+    DETACHED_PROCESS = 0x00000008
+    STARTF_USESHOWWINDOW = 0x00000001
+    SW_HIDE = 0
+
+    class STARTUPINFO(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD),
+            ("lpReserved", wintypes.LPWSTR),
+            ("lpDesktop", wintypes.LPWSTR),
+            ("lpTitle", wintypes.LPWSTR),
+            ("dwX", wintypes.DWORD),
+            ("dwY", wintypes.DWORD),
+            ("dwXSize", wintypes.DWORD),
+            ("dwYSize", wintypes.DWORD),
+            ("dwXCountChars", wintypes.DWORD),
+            ("dwYCountChars", wintypes.DWORD),
+            ("dwFillAttribute", wintypes.DWORD),
+            ("dwFlags", wintypes.DWORD),
+            ("wShowWindow", wintypes.WORD),
+            ("cbReserved2", wintypes.WORD),
+            ("lpReserved2", ctypes.POINTER(wintypes.BYTE)),
+            ("hStdInput", wintypes.HANDLE),
+            ("hStdOutput", wintypes.HANDLE),
+            ("hStdError", wintypes.HANDLE),
+        ]
+
+    class PROCESS_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ("hProcess", wintypes.HANDLE),
+            ("hThread", wintypes.HANDLE),
+            ("dwProcessId", wintypes.DWORD),
+            ("dwThreadId", wintypes.DWORD),
+        ]
+
+    si = STARTUPINFO()
+    si.cb = ctypes.sizeof(STARTUPINFO)
+    si.dwFlags = STARTF_USESHOWWINDOW
+    si.wShowWindow = SW_HIDE
+    pi = PROCESS_INFORMATION()
+
+    cmdline = subprocess.list2cmdline([program, *args])
+    cmd_buf = ctypes.create_unicode_buffer(cmdline)
+
+    ok = ctypes.windll.kernel32.CreateProcessW(
+        program,
+        cmd_buf,
+        None,
+        None,
+        False,
+        CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT,
+        None,
+        workdir,
+        ctypes.byref(si),
+        ctypes.byref(pi),
+    )
+    if not ok:
+        logger.error("CreateProcessW relaunch failed: %s", ctypes.get_last_error())
+        return False
+    ctypes.windll.kernel32.CloseHandle(pi.hProcess)
+    ctypes.windll.kernel32.CloseHandle(pi.hThread)
+    return True
+
+
+def _start_detached_windows_bypass_debugger(program: str, args: list[str], workdir: str) -> bool:
+    """
+    Relaunch without PyQtInspect injecting pqi.py into the child process.
+
+    Uses kernel32 CreateProcessW directly so neither QProcess, subprocess, nor
+    PowerShell are involved (no console/shell flicker).
+    """
+    return _start_detached_windows_createprocess(program, args, workdir)
+
+
 def _start_detached_windows(program: str, args: list[str], workdir: str) -> bool:
+    if _running_under_pyqt_inspect():
+        logger.info(
+            "PyQtInspect detected — relaunching via CreateProcessW (debug session will end)"
+        )
+        return _start_detached_windows_bypass_debugger(program, args, workdir)
+
     ok = QProcess.startDetached(program, args, workdir)
     if ok:
         return True
