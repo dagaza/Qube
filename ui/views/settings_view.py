@@ -140,29 +140,6 @@ class SettingsView(QWidget):
         title.setProperty("class", "PageTitle")
         main_layout.addWidget(title)
 
-        config_row = QWidget()
-        config_row_layout = QHBoxLayout(config_row)
-        config_row_layout.setContentsMargins(0, 0, 0, 8)
-        config_row_layout.setSpacing(12)
-        config_hint = QLabel(
-            f"Edit preferences in {default_user_settings_path()} (schema: assets/config/settings.schema.json)."
-        )
-        config_hint.setWordWrap(True)
-        config_hint.setProperty("class", "ToolsPaneControl")
-        self.open_settings_json_btn = QPushButton("Edit settings.json")
-        apply_brand_primary(self.open_settings_json_btn, icon_name="fa5s.code")
-        self.open_settings_json_btn.setToolTip(
-            "Open the built-in JSON editor for user settings. "
-            "Format, validate, and save — or reload when the file changes on disk."
-        )
-        self.open_settings_json_btn.clicked.connect(self._on_open_settings_json_clicked)
-        self.settings_file_status_lbl = QLabel("")
-        self.settings_file_status_lbl.setProperty("class", "ToolsPaneControl")
-        config_row_layout.addWidget(config_hint, stretch=1)
-        config_row_layout.addWidget(self.open_settings_json_btn)
-        main_layout.addWidget(config_row)
-        main_layout.addWidget(self.settings_file_status_lbl)
-
         # Scrollable Area
         scroll = QScrollArea()
         scroll.setObjectName("SettingsScrollArea")
@@ -549,6 +526,41 @@ class SettingsView(QWidget):
         # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
         content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
         content_layout.addWidget(self._build_triggers_manager())
+        content_layout.addWidget(self._build_divider())
+
+        # --- JSON SETTINGS ---
+        content_layout.addWidget(
+            self._build_section_header("fa5s.file-code", "JSON SETTINGS")
+        )
+        json_settings_widget = QWidget()
+        json_settings_widget.setObjectName("SettingsFormContainer")
+        json_settings_layout = QVBoxLayout(json_settings_widget)
+        json_settings_layout.setContentsMargins(15, 0, 15, 10)
+        json_settings_layout.setSpacing(8)
+        self.settings_json_hint_lbl = QLabel(
+            f"Edit preferences in {default_user_settings_path()} "
+            "(schema: assets/config/settings.schema.json). "
+            "Use the built-in editor to format, validate, and save — "
+            "or reload when the file changes on disk."
+        )
+        self.settings_json_hint_lbl.setWordWrap(True)
+        self.settings_json_hint_lbl.setProperty("class", "ToolsPaneControl")
+        self.open_settings_json_btn = QPushButton("Edit settings.json")
+        apply_brand_primary(self.open_settings_json_btn, icon_name="fa5s.code")
+        self.open_settings_json_btn.setToolTip(
+            "Open the built-in JSON editor for user settings. "
+            "Format, validate, and save — or reload when the file changes on disk."
+        )
+        self.open_settings_json_btn.clicked.connect(self._on_open_settings_json_clicked)
+        self.settings_file_status_lbl = QLabel("")
+        self.settings_file_status_lbl.setProperty("class", "ToolsPaneControl")
+        json_settings_layout.addWidget(self.settings_json_hint_lbl)
+        json_settings_layout.addWidget(
+            self.open_settings_json_btn,
+            alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+        json_settings_layout.addWidget(self.settings_file_status_lbl)
+        content_layout.addWidget(json_settings_widget)
 
         content_layout.addStretch()
         scroll.setWidget(scroll_content)
@@ -669,6 +681,14 @@ class SettingsView(QWidget):
         if hasattr(self, "local_llm_tour_hint_lbl"):
             self.local_llm_tour_hint_lbl.setStyleSheet(
                 f"color: {text_color}; font-size: 13px;"
+            )
+        if hasattr(self, "settings_json_hint_lbl"):
+            self.settings_json_hint_lbl.setStyleSheet(
+                f"color: {text_color}; font-size: 13px;"
+            )
+        if hasattr(self, "settings_file_status_lbl"):
+            self.settings_file_status_lbl.setStyleSheet(
+                f"color: {text_color}; font-size: 12px;"
             )
         
         # 🔑 Style the NLP Trigger input & list
@@ -1347,6 +1367,7 @@ class SettingsView(QWidget):
             getattr(self, 'native_lib_icon_label', None),
             getattr(self, 'perf_icon_label', None),
             getattr(self, 'rag_icon_label', None),
+            getattr(self, 'json_settings_icon_label', None),
         ]:
             if icon_lbl:
                 name = icon_lbl.property("icon_name")
@@ -1407,6 +1428,8 @@ class SettingsView(QWidget):
             self.perf_icon_label = icon_label
         elif "TRIGGERS" in title_text:
             self.rag_icon_label = icon_label
+        elif "JSON SETTINGS" in title_text:
+            self.json_settings_icon_label = icon_label
         
         text_label = QLabel(title_text)
         text_label.setProperty("class", "SectionHeaderLabel")
