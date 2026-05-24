@@ -39,6 +39,10 @@ from core.memory_filters import (
     is_thin_content,
 )
 from core.memory_usage_recorder import get_memory_usage_recorder
+from core.rag_trigger_routing import (
+    apply_custom_rag_trigger_route,
+    matches_custom_rag_trigger,
+)
 from core.composer_attachments import (
     attachment_summary,
     build_referenced_conversation_context,
@@ -974,11 +978,16 @@ class LLMWorker(QThread):
             execution_route = "HYBRID"
             decision["recall_fusion"] = True
 
-        # custom triggers override
+        force_rag_via_trigger = False
+        # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.
         if not explicit_remember_active and not scoped_library_active and self.mcp_auto_enabled:
-            if any(t in clean_prompt for t in self.cached_custom_triggers):
-                execution_route = "RAG"
+            if matches_custom_rag_trigger(clean_prompt, self.cached_custom_triggers):
+                execution_route, force_rag_via_trigger = apply_custom_rag_trigger_route(
+                    execution_route,
+                    matched=True,
+                )
                 decision["rag_query"] = self.prompt
+                decision["custom_rag_trigger"] = True
 
         # ------------------------------------------------------------
         # INTERNET TRIGGER (manual + cognitive)
@@ -1140,7 +1149,9 @@ class LLMWorker(QThread):
             all_ui_sources.extend(mem_result.get("memory_sources", []))
 
         # ---- RAG ----
-        if execution_route in ["RAG", "HYBRID"] and self.mcp_rag_enabled:
+        if execution_route in ["RAG", "HYBRID"] and (
+            self.mcp_rag_enabled or force_rag_via_trigger
+        ):
             rag_result = rag_search(
                 decision.get("rag_query") or self.prompt,
                 query_vector,
@@ -1859,6 +1870,19 @@ class LLMWorker(QThread):
     def set_mcp_auto(self, enabled: bool):
         self.mcp_auto_enabled = enabled
         logger.debug(f"NLP Auto-Activator set to: {enabled}")
+
+    def refresh_rag_triggers(self) -> None:
+        """Reload custom NLP RAG trigger phrases from SQLite."""
+        try:
+            self.cached_custom_triggers = [
+                t.lower() for t in self.db.get_rag_triggers()
+            ]
+        except Exception:
+            self.cached_custom_triggers = []
+        logger.debug(
+            "Refreshed RAG trigger cache (%d phrases)",
+            len(self.cached_custom_triggers),
+        )
         
     def set_mcp_internet(self, enabled: bool):
         self.mcp_internet_enabled = enabled

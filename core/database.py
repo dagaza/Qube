@@ -821,12 +821,12 @@ class DatabaseManager:
                 return False
                 
             with self._get_connection() as conn:
-                conn.execute(
+                cur = conn.execute(
                     "INSERT OR IGNORE INTO rag_triggers (id, phrase) VALUES (?, ?)",
                     (str(uuid.uuid4()), clean_phrase)
                 )
                 conn.commit()
-                return True
+                return cur.rowcount > 0
         except Exception as e:
             logger.error(f"Failed to add RAG trigger '{phrase}': {e}")
             return False

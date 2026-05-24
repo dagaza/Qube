@@ -1243,19 +1243,23 @@ class SettingsView(QWidget):
             self.trigger_list.addItem(item)
             self.trigger_list.setItemWidget(item, row)
 
+    def _refresh_llm_rag_triggers(self) -> None:
+        if self.llm_worker is not None and hasattr(self.llm_worker, "refresh_rag_triggers"):
+            self.llm_worker.refresh_rag_triggers()
+
     def _on_add_trigger(self):
         text = self.trigger_input.text().strip()
         if text:
-            # Add to database
             success = self.db.add_rag_trigger(text)
             if success:
                 self.trigger_input.clear()
                 self._refresh_trigger_list()
-                
+                self._refresh_llm_rag_triggers()
+
     def _on_delete_trigger(self, phrase):
-        # Remove from database
         self.db.remove_rag_trigger(phrase)
         self._refresh_trigger_list()
+        self._refresh_llm_rag_triggers()
 
     def _on_memory_enrichment_toggled(self, checked: bool):
         set_enable_memory_enrichment(checked)
