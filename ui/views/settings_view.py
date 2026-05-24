@@ -538,6 +538,68 @@ class SettingsView(QWidget):
 
         content_layout.addWidget(notif_widget)
         content_layout.addWidget(self._build_divider())
+
+        # --- SECTION: DESKTOP COMPANION ---
+        content_layout.addWidget(self._build_section_header("fa5s.ghost", "DESKTOP COMPANION"))
+        companion_widget = QWidget()
+        companion_widget.setObjectName("SettingsFormContainer")
+        companion_layout = QVBoxLayout(companion_widget)
+        companion_layout.setContentsMargins(15, 0, 15, 10)
+        companion_layout.setSpacing(8)
+
+        from core import app_settings as _companion_settings
+        from core.platform.companion_capabilities import (
+            detect_companion_platform_tier,
+            tier_display_name,
+        )
+
+        tier = detect_companion_platform_tier()
+        tier_lbl = QLabel(f"Platform: {tier_display_name(tier)}")
+        tier_lbl.setWordWrap(True)
+        companion_layout.addWidget(tier_lbl)
+
+        self.companion_enabled_cb = QCheckBox("Enable desktop companion orb")
+        self.companion_enabled_cb.setChecked(_companion_settings.get_companion_enabled())
+        self.companion_enabled_cb.toggled.connect(self._on_companion_enabled_toggled)
+        companion_layout.addWidget(self.companion_enabled_cb)
+
+        self.companion_tray_hidden_cb = QCheckBox("Show when hidden to tray")
+        self.companion_tray_hidden_cb.setChecked(_companion_settings.get_companion_show_when_tray_hidden())
+        self.companion_tray_hidden_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_tray_hidden_cb)
+
+        self.companion_while_open_cb = QCheckBox("Show while main window is open")
+        self.companion_while_open_cb.setChecked(_companion_settings.get_companion_show_while_window_open())
+        self.companion_while_open_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_while_open_cb)
+
+        self.companion_auto_hide_cb = QCheckBox("Auto-hide when idle")
+        self.companion_auto_hide_cb.setChecked(_companion_settings.get_companion_auto_hide_idle())
+        self.companion_auto_hide_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_auto_hide_cb)
+
+        self.companion_caption_cb = QCheckBox("Show live caption chip")
+        self.companion_caption_cb.setChecked(_companion_settings.get_companion_show_caption())
+        self.companion_caption_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_caption_cb)
+
+        self.companion_fullscreen_cb = QCheckBox("Hide during fullscreen apps")
+        self.companion_fullscreen_cb.setChecked(_companion_settings.get_companion_suppress_on_fullscreen())
+        self.companion_fullscreen_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_fullscreen_cb)
+
+        self.companion_wayland_cb = QCheckBox("Try floating overlay on Wayland (experimental)")
+        self.companion_wayland_cb.setChecked(_companion_settings.get_companion_try_on_wayland())
+        self.companion_wayland_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_wayland_cb)
+
+        self.companion_dock_cb = QCheckBox("Use edge dock strip mode (better on Wayland)")
+        self.companion_dock_cb.setChecked(_companion_settings.get_companion_dock_mode())
+        self.companion_dock_cb.toggled.connect(self._on_companion_setting_changed)
+        companion_layout.addWidget(self.companion_dock_cb)
+
+        content_layout.addWidget(companion_widget)
+        content_layout.addWidget(self._build_divider())
         
         # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
         content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
@@ -1328,6 +1390,44 @@ class SettingsView(QWidget):
         win = self.window()
         if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
             win.tray_controller.sync_dnd_toggle()
+        if win is not None and hasattr(win, "_presence_service"):
+            win._presence_service.set_dnd(checked)
+            if hasattr(win, "_companion_controller") and win._companion_controller is not None:
+                win._companion_controller.on_settings_changed()
+
+    def _on_companion_enabled_toggled(self, checked: bool) -> None:
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.set_user_enabled(checked)
+        else:
+            from core.app_settings import set_companion_enabled
+
+            set_companion_enabled(checked)
+            self._on_companion_setting_changed()
+        if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
+            win.tray_controller.sync_companion_toggle()
+
+    def _on_companion_setting_changed(self, *_args) -> None:
+        from core import app_settings as _cs
+
+        if hasattr(self, "companion_tray_hidden_cb"):
+            _cs.set_companion_show_when_tray_hidden(self.companion_tray_hidden_cb.isChecked())
+        if hasattr(self, "companion_while_open_cb"):
+            _cs.set_companion_show_while_window_open(self.companion_while_open_cb.isChecked())
+        if hasattr(self, "companion_auto_hide_cb"):
+            _cs.set_companion_auto_hide_idle(self.companion_auto_hide_cb.isChecked())
+        if hasattr(self, "companion_caption_cb"):
+            _cs.set_companion_show_caption(self.companion_caption_cb.isChecked())
+        if hasattr(self, "companion_fullscreen_cb"):
+            _cs.set_companion_suppress_on_fullscreen(self.companion_fullscreen_cb.isChecked())
+        if hasattr(self, "companion_wayland_cb"):
+            _cs.set_companion_try_on_wayland(self.companion_wayland_cb.isChecked())
+        if hasattr(self, "companion_dock_cb"):
+            _cs.set_companion_dock_mode(self.companion_dock_cb.isChecked())
+
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.on_settings_changed()
 
     def _clear_notification_history(self) -> None:
         win = self.window()
@@ -1721,6 +1821,16 @@ class SettingsView(QWidget):
             self.notifications_memory_cb.blockSignals(True)
             self.notifications_memory_cb.setChecked(_ns.get_notifications_category_memory())
             self.notifications_memory_cb.blockSignals(False)
+
+        if hasattr(self, "companion_enabled_cb"):
+            from core import app_settings as _cs
+
+            self.companion_enabled_cb.blockSignals(True)
+            self.companion_enabled_cb.setChecked(_cs.get_companion_enabled())
+            self.companion_enabled_cb.blockSignals(False)
+            win = self.window()
+            if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
+                win.tray_controller.sync_companion_toggle()
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

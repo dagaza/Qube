@@ -1,6 +1,7 @@
 """Tests for assistant activity reducer."""
 
 from core.assistant_activity import AssistantActivity, AssistantActivityReducer
+from core.assistant_presence import AssistantPresenceService, AssistantPhase, phase_from_message
 
 
 def test_reducer_blocks_stray_idle_during_recording():
@@ -47,3 +48,22 @@ def test_reducer_voice_paused_forces_assistant_off():
     reducer.set_voice_paused(True)
     t = reducer.reduce("Idle")
     assert t.activity == AssistantActivity.ASSISTANT_OFF
+
+
+def test_presence_service_emits_phase_for_transcribing():
+    service = AssistantPresenceService()
+    service.reduce("Transcribing...")
+    snap = service.snapshot()
+    assert snap.activity == AssistantActivity.WORKING
+    assert snap.phase == AssistantPhase.STT
+
+
+def test_phase_from_message_thinking_is_llm():
+    phase = phase_from_message("Thinking...", AssistantActivity.WORKING, "thinking")
+    assert phase == AssistantPhase.LLM
+
+
+def test_presence_service_caption_roundtrip():
+    service = AssistantPresenceService()
+    service.set_caption_text("Hello world")
+    assert service.snapshot().caption_text == "Hello world"

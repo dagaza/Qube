@@ -38,6 +38,7 @@ class TrayController(QWidget):
     voice_input_toggled = pyqtSignal(bool)
     voice_output_toggled = pyqtSignal(bool)
     dnd_toggled = pyqtSignal(bool)
+    companion_toggled = pyqtSignal(bool)
     navigate_requested = pyqtSignal(str)  # action_id
 
     def __init__(
@@ -58,6 +59,7 @@ class TrayController(QWidget):
         self._voice_in_action: QAction | None = None
         self._voice_out_action: QAction | None = None
         self._dnd_action: QAction | None = None
+        self._companion_action: QAction | None = None
         self._recent_menu: QMenu | None = None
         self._voice_input_enabled = voice_input_enabled or (lambda: True)
         self._voice_output_enabled = voice_output_enabled or (lambda: True)
@@ -172,6 +174,19 @@ class TrayController(QWidget):
         self._recent_menu = notif_menu.addMenu("Recent")
         self.update_recent_notifications([])
 
+        companion_menu = menu.addMenu("Companion")
+        self._companion_action = QAction("Show desktop companion", self)
+        self._companion_action.setCheckable(True)
+        self._companion_action.setChecked(app_settings.get_companion_enabled())
+        self._companion_action.triggered.connect(self._on_companion_toggled)
+        companion_menu.addAction(self._companion_action)
+
+        companion_settings = QAction("Companion settings…", self)
+        companion_settings.triggered.connect(
+            lambda: self.navigate_requested.emit("open_settings")
+        )
+        companion_menu.addAction(companion_settings)
+
         menu.addSeparator()
 
         restart_action = QAction("Restart Qube", self)
@@ -220,9 +235,24 @@ class TrayController(QWidget):
             self._dnd_action.setChecked(app_settings.get_notifications_dnd())
             self._dnd_action.blockSignals(False)
 
+    def _on_companion_toggled(self, checked: bool) -> None:
+        app_settings.set_companion_enabled(checked)
+        self.companion_toggled.emit(checked)
+
+    def sync_companion_toggle(self) -> None:
+        if self._companion_action is not None:
+            self._companion_action.blockSignals(True)
+            self._companion_action.setChecked(app_settings.get_companion_enabled())
+            self._companion_action.blockSignals(False)
+
     def hide_tray(self) -> None:
         if self._tray_icon is not None:
             self._tray_icon.hide()
+
+    def show_tray(self) -> None:
+        """Ensure the tray icon is visible (e.g. after hide-to-tray from the panel close button)."""
+        if self._tray_icon is not None:
+            self._tray_icon.show()
 
     def _toggle_pulse(self) -> None:
         self._pulse_on = not self._pulse_on

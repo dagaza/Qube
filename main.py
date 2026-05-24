@@ -263,6 +263,8 @@ class Qube:
             self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
         if hasattr(self.tts_worker, 'tts_latency'):
             self.tts_worker.tts_latency.connect(w.update_tts_latency)
+        if hasattr(self.audio_worker, 'volume_update'):
+            self.audio_worker.volume_update.connect(w.on_audio_volume_update)
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
@@ -603,6 +605,9 @@ class Qube:
             except Exception:
                 pass
 
+        if hasattr(self.window, "_companion_controller") and self.window._companion_controller is not None:
+            self.window._companion_controller.shutdown()
+
         # 1. Stop transient workers (Internet & Ingestion)
         if self.active_internet_worker and self.active_internet_worker.isRunning():
             self.active_internet_worker.stop()
@@ -708,6 +713,7 @@ if __name__ == "__main__":
     )
 
     app = QubeApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     repo_root = Path(__file__).resolve().parent
     window_icon_path = repo_root / "assets" / "logos" / "qube_logo_256.png"
     if not window_icon_path.is_file():

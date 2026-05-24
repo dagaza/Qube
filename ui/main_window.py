@@ -30,11 +30,13 @@ from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
-from core.assistant_activity import AssistantActivityReducer
+from core.assistant_presence import AssistantPresenceService
+from core.companion_policy import companion_attention_mode
 from core.notification_service import NotificationService
 from core.notification_types import NotificationEvent
 from ui.os_notification_adapter import OsNotificationAdapter
 from ui.tray_controller import TrayController
+from ui.companion.companion_controller import CompanionController
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
@@ -142,11 +144,13 @@ class MainWindow(QMainWindow):
         self._pending_native_model_path: str | None = None
         self._native_model_loading: bool = False
         self._native_model_loaded_success: bool = False
-        self._activity_reducer = AssistantActivityReducer()
+        self._presence_service = AssistantPresenceService(self)
+        self._activity_reducer = self._presence_service
         self._notification_service = NotificationService(self)
         self._os_notification_adapter = OsNotificationAdapter()
         self.tray_controller: TrayController | None = None
         self.tray_icon = None  # legacy alias set by TrayController
+        self._companion_controller: CompanionController | None = None
 
         # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
         # We import it here or at the top of the file
@@ -160,6 +164,7 @@ class MainWindow(QMainWindow):
         if self._native_engine is not None:
             self._native_engine.load_finished.connect(self._on_native_model_load_finished_ui)
         self._setup_tray()
+        self._setup_companion()
         self._start_timers()
 
         # 🔑 4. Wire the AI Titling Logic
@@ -1585,12 +1590,16 @@ class MainWindow(QMainWindow):
             self.notification_center.apply_theme(self._is_dark_theme)
         if self.tray_controller is not None:
             self.tray_controller.apply_theme(self._is_dark_theme)
+        if self._companion_controller is not None:
+            self._companion_controller.apply_theme(self._is_dark_theme)
 
     def _setup_notification_service(self) -> None:
         self._notification_service.set_window_state_providers(
             visible=lambda: self.isVisible() and not self.isMinimized(),
             focused=lambda: self.isActiveWindow(),
             tts_playing=self._is_tts_playing,
+            companion_visible=self._is_companion_visible,
+            companion_attention=self._is_companion_attention,
         )
         self._notification_service.set_show_handlers(
             in_app=self._show_in_app_notification,
@@ -1603,6 +1612,14 @@ class MainWindow(QMainWindow):
         cv = getattr(self, "conversations_view", None)
         return bool(getattr(cv, "_tts_playing", False)) if cv is not None else False
 
+    def _is_companion_visible(self) -> bool:
+        if self._companion_controller is None:
+            return False
+        return self._companion_controller.is_visible_for_policy
+
+    def _is_companion_attention(self) -> bool:
+        return companion_attention_mode(self._presence_service.snapshot())
+
     def _show_in_app_notification(self, event: NotificationEvent) -> None:
         if hasattr(self, "notification_center"):
             self.notification_center.show_notification(event.to_app_request())
@@ -1612,6 +1629,8 @@ class MainWindow(QMainWindow):
             return
         items = [(e.title, e.body) for e in self._notification_service.history.recent(5)]
         self.tray_controller.update_recent_notifications(items)
+        if self._companion_controller is not None:
+            self._companion_controller.pulse_notification()
 
     def _on_notification_service_action(self, action_id: str, _event_id: str) -> None:
         self._on_notification_action(action_id)
@@ -1626,11 +1645,20 @@ class MainWindow(QMainWindow):
 
     def _restore_workspace_from_tray(self) -> None:
         """Show the main window after hide-to-tray or minimize; raise and focus."""
+        if self._force_app_exit:
+            return
+        if (
+            self._companion_controller is not None
+            and self._companion_controller.is_shutting_down
+        ):
+            return
         self.show()
         if self.isMinimized():
             self.showNormal()
         self.raise_()
         self.activateWindow()
+        if self._companion_controller is not None:
+            self._companion_controller.on_main_shown()
 
     def _setup_tray(self) -> None:
         self.tray_controller = TrayController(
@@ -1655,6 +1683,8 @@ class MainWindow(QMainWindow):
         self.tray_controller.voice_input_toggled.connect(self._on_tray_voice_input_toggled)
         self.tray_controller.voice_output_toggled.connect(self._on_tray_voice_output_toggled)
         self.tray_controller.navigate_requested.connect(self._on_tray_navigate)
+        self.tray_controller.dnd_toggled.connect(self._on_tray_dnd_toggled)
+        self.tray_controller.companion_toggled.connect(self._on_tray_companion_toggled)
 
         self._os_notification_adapter.set_tray_icon(self.tray_controller.tray_icon)
         self._setup_notification_service()
@@ -1665,6 +1695,36 @@ class MainWindow(QMainWindow):
             self.voice_bypass_toggle.toggled.connect(self._sync_tray_voice_toggles)
 
         self._sync_tray_presence()
+
+    def _setup_companion(self) -> None:
+        from core import app_settings as _app_settings
+
+        self._companion_controller = CompanionController(self._presence_service, self)
+        self._companion_controller.bind_main_window(self)
+        self._companion_controller.open_requested.connect(self._restore_workspace_from_tray)
+        self._companion_controller.navigate_settings_requested.connect(
+            lambda: self._on_notification_action("open_settings")
+        )
+        voice_out = (
+            self.voice_bypass_toggle.isChecked()
+            if hasattr(self, "voice_bypass_toggle")
+            else True
+        )
+        self._presence_service.set_voice_output_muted(not voice_out)
+        self._presence_service.set_dnd(_app_settings.get_notifications_dnd())
+
+    def _on_tray_dnd_toggled(self, enabled: bool) -> None:
+        self._presence_service.set_dnd(enabled)
+        if self._companion_controller is not None:
+            self._companion_controller.on_settings_changed()
+
+    def _on_tray_companion_toggled(self, enabled: bool) -> None:
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "companion_enabled_cb"):
+            self.settings_view.companion_enabled_cb.blockSignals(True)
+            self.settings_view.companion_enabled_cb.setChecked(enabled)
+            self.settings_view.companion_enabled_cb.blockSignals(False)
+        if self._companion_controller is not None:
+            self._companion_controller.set_user_enabled(enabled)
 
     def _on_tray_voice_input_toggled(self, enabled: bool) -> None:
         if hasattr(self, "voice_input_toggle"):
@@ -1683,6 +1743,7 @@ class MainWindow(QMainWindow):
             self.voice_bypass_toggle.blockSignals(False)
         if self._tts_worker is not None:
             self._tts_worker.set_mute(not enabled)
+        self._presence_service.set_voice_output_muted(not enabled)
 
     def _sync_tray_voice_toggles(self, *_args) -> None:
         if self.tray_controller is None:
@@ -1691,6 +1752,7 @@ class MainWindow(QMainWindow):
         voice_out = self.voice_bypass_toggle.isChecked() if hasattr(self, "voice_bypass_toggle") else True
         self.tray_controller.sync_voice_toggles(voice_in=voice_in, voice_out=voice_out)
         self._activity_reducer.set_voice_paused(not voice_in)
+        self._presence_service.set_voice_output_muted(not voice_out)
         self._sync_tray_presence()
 
     def _on_tray_navigate(self, action_id: str) -> None:
@@ -1707,16 +1769,29 @@ class MainWindow(QMainWindow):
             voice_paused=voice_paused,
         )
 
+    def _should_hide_to_tray(self) -> bool:
+        """True when close should minimize to tray instead of quitting."""
+        if self._force_app_exit:
+            return False
+        tc = self.tray_controller
+        return tc is not None and tc.available
+
     def _request_app_exit(self) -> None:
         """Force a real app exit instead of hide-to-tray."""
         self._force_app_exit = True
+        if self._companion_controller is not None:
+            self._companion_controller.shutdown()
         if hasattr(self, "_notification_service"):
             self._notification_service.shutdown()
         if self.tray_controller is not None:
             self.tray_controller.hide_tray()
         elif self.tray_icon is not None:
             self.tray_icon.hide()
-        self.close()
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+        else:
+            self.close()
 
     def _start_timers(self) -> None:
         # Repurposed telemetry timer for the new Mini-Telemetry block
@@ -1770,24 +1845,22 @@ class MainWindow(QMainWindow):
             self._toggle_maximize()
 
     def closeEvent(self, event):
-        tray_visible = (
-            self.tray_controller is not None
-            and self.tray_controller.available
-            and self.tray_controller.tray_icon is not None
-            and self.tray_controller.tray_icon.isVisible()
-        ) or (
-            self.tray_icon is not None
-            and hasattr(self.tray_icon, "isVisible")
-            and self.tray_icon.isVisible()
-        )
-        if tray_visible and not self._force_app_exit:
+        if self._should_hide_to_tray():
             self.hide()
+            if self.tray_controller is not None:
+                self.tray_controller.show_tray()
+            if self._companion_controller is not None:
+                self._companion_controller.on_main_hidden()
             event.ignore()
         else:
             if self.routing_debug_tool_view is not None:
                 self.routing_debug_tool_view.close()
             if hasattr(self, "_notification_service"):
                 self._notification_service.shutdown()
+            if self._companion_controller is not None:
+                self._companion_controller.shutdown()
+            if self.tray_controller is not None:
+                self.tray_controller.hide_tray()
             event.accept()
 
     # ------------------------------------------------------------------ #
@@ -1842,7 +1915,9 @@ class MainWindow(QMainWindow):
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""
-        transition = self._activity_reducer.reduce(message, force=force)
+        if self._force_app_exit:
+            return
+        transition = self._presence_service.reduce(message, force=force)
         if transition.blocked:
             return
 
@@ -1888,6 +1963,9 @@ class MainWindow(QMainWindow):
     def update_ttft_latency(self, ms: float) -> None:
         if hasattr(self, 'telemetry_view'):
             self.telemetry_view.update_ttft_latency(ms)
+
+    def on_audio_volume_update(self, level: float) -> None:
+        self._presence_service.set_audio_level(level)
 
     def update_tts_latency(self, ms: float) -> None:
         if hasattr(self, 'telemetry_view'):

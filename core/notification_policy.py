@@ -36,6 +36,8 @@ def plan_delivery(
     window_visible: bool,
     window_focused: bool,
     tts_playing: bool = False,
+    companion_visible: bool = False,
+    companion_attention: bool = False,
 ) -> NotificationDeliveryPlan:
     if not app_settings.get_notifications_enabled():
         return NotificationDeliveryPlan(False, False, False, "disabled")
@@ -58,6 +60,15 @@ def plan_delivery(
     if tts_playing and is_low_priority:
         return NotificationDeliveryPlan(False, False, False, "speaking_suppressed")
 
+    # Companion already conveys active assistant state — avoid duplicate OS alerts.
+    if (
+        companion_visible
+        and companion_attention
+        and is_low_priority
+        and event.category == "turn"
+    ):
+        return NotificationDeliveryPlan(False, False, False, "companion_suppressed")
+
     show_in_app = event.severity in (
         NotificationSeverity.WARNING,
         NotificationSeverity.ERROR,
@@ -68,6 +79,9 @@ def plan_delivery(
     os_when_hidden = app_settings.get_notifications_os_when_hidden()
     hidden = not window_visible or not window_focused
     show_os = hidden and os_when_hidden and event.severity != NotificationSeverity.INFO
+
+    if companion_visible and companion_attention and is_low_priority and event.category == "turn":
+        show_os = False
 
     if hidden and event.severity in (
         NotificationSeverity.SUCCESS,

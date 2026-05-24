@@ -149,5 +149,95 @@
     "type": "boolean",
     "default": true,
     "description": "App update and restart prompts."
+  },
+  "qube.companion.enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Show the floating desktop companion orb when Qube is tray-hidden."
+  },
+  "qube.companion.showWhenTrayHidden": {
+    "type": "boolean",
+    "default": true,
+    "description": "Show companion while the main window is hidden to the system tray."
+  },
+  "qube.companion.showWhileWindowOpen": {
+    "type": "boolean",
+    "default": false,
+    "description": "Keep companion visible even when the main window is open."
+  },
+  "qube.companion.autoHideIdle": {
+    "type": "boolean",
+    "default": true,
+    "description": "Fade companion when idle."
+  },
+  "qube.companion.idleFadeSec": {
+    "type": "integer",
+    "minimum": 2,
+    "maximum": 120,
+    "default": 8,
+    "description": "Seconds of idle listening before companion auto-fades."
+  },
+  "qube.companion.sizePx": {
+    "type": "integer",
+    "minimum": 48,
+    "maximum": 80,
+    "default": 56,
+    "description": "Companion orb diameter in pixels."
+  },
+  "qube.companion.showCaption": {
+    "type": "boolean",
+    "default": false,
+    "description": "Show a compact live caption chip below the orb."
+  },
+  "qube.companion.suppressOnFullscreen": {
+    "type": "boolean",
+    "default": true,
+    "description": "Hide companion when a fullscreen app is detected (non-active turns)."
+  },
+  "qube.companion.tryOnWayland": {
+    "type": "boolean",
+    "default": false,
+    "description": "Attempt floating overlay on Wayland (may be unreliable)."
+  },
+  "qube.companion.dockMode": {
+    "type": "boolean",
+    "default": false,
+    "description": "Use edge-docked strip mode instead of floating orb (better on Wayland)."
+  },
+  "qube.companion.reducedMotion": {
+    "type": ["boolean", "null"],
+    "default": null,
+    "description": "Override reduced motion; null follows system preference when detectable."
+  },
+  "qube.companion.position.x": {
+    "type": ["integer", "null"],
+    "default": null,
+    "description": "Saved companion X coordinate."
+  },
+  "qube.companion.position.y": {
+    "type": ["integer", "null"],
+    "default": null,
+    "description": "Saved companion Y coordinate."
+  },
+  "qube.companion.position.screen": {
+    "type": "string",
+    "default": "",
+    "description": "QScreen.name() when position was saved."
+  },
+  "qube.companion.position.normX": {
+    "type": ["number", "null"],
+    "default": null,
+    "description": "Normalized X (0-1) fallback when saved screen is missing."
+  },
+  "qube.companion.position.normY": {
+    "type": ["number", "null"],
+    "default": null,
+    "description": "Normalized Y (0-1) fallback when saved screen is missing."
+  },
+  "qube.companion.position.dockEdge": {
+    "type": "string",
+    "enum": ["none", "left", "right", "bottom"],
+    "default": "none",
+    "description": "Edge dock preference for companion placement."
   }
 }

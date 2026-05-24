@@ -46,6 +46,23 @@ KEY_NOTIFICATIONS_CATEGORY_TOOLS = "qube.notifications.categories.tools"
 KEY_NOTIFICATIONS_CATEGORY_BACKGROUND = "qube.notifications.categories.background"
 KEY_NOTIFICATIONS_CATEGORY_MEMORY = "qube.notifications.categories.memory"
 KEY_NOTIFICATIONS_CATEGORY_UPDATES = "qube.notifications.categories.updates"
+KEY_COMPANION_ENABLED = "qube.companion.enabled"
+KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN = "qube.companion.showWhenTrayHidden"
+KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN = "qube.companion.showWhileWindowOpen"
+KEY_COMPANION_AUTO_HIDE_IDLE = "qube.companion.autoHideIdle"
+KEY_COMPANION_IDLE_FADE_SEC = "qube.companion.idleFadeSec"
+KEY_COMPANION_SIZE_PX = "qube.companion.sizePx"
+KEY_COMPANION_SHOW_CAPTION = "qube.companion.showCaption"
+KEY_COMPANION_SUPPRESS_FULLSCREEN = "qube.companion.suppressOnFullscreen"
+KEY_COMPANION_TRY_ON_WAYLAND = "qube.companion.tryOnWayland"
+KEY_COMPANION_DOCK_MODE = "qube.companion.dockMode"
+KEY_COMPANION_REDUCED_MOTION = "qube.companion.reducedMotion"
+KEY_COMPANION_POS_X = "qube.companion.position.x"
+KEY_COMPANION_POS_Y = "qube.companion.position.y"
+KEY_COMPANION_POS_SCREEN = "qube.companion.position.screen"
+KEY_COMPANION_POS_NORM_X = "qube.companion.position.normX"
+KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
+KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
 
 
 def _store():
@@ -579,3 +596,149 @@ def get_notifications_category_updates() -> bool:
 
 def set_notifications_category_updates(enabled: bool) -> None:
     _store().set(KEY_NOTIFICATIONS_CATEGORY_UPDATES, bool(enabled))
+
+
+def get_companion_enabled() -> bool:
+    import os
+
+    if os.environ.get("QUBE_COMPANION", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    return bool(_store().get(KEY_COMPANION_ENABLED, False))
+
+
+def set_companion_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_ENABLED, bool(enabled))
+
+
+def get_companion_show_when_tray_hidden() -> bool:
+    return bool(_store().get(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, True))
+
+
+def set_companion_show_when_tray_hidden(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, bool(enabled))
+
+
+def get_companion_show_while_window_open() -> bool:
+    return bool(_store().get(KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN, False))
+
+
+def set_companion_show_while_window_open(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN, bool(enabled))
+
+
+def get_companion_auto_hide_idle() -> bool:
+    return bool(_store().get(KEY_COMPANION_AUTO_HIDE_IDLE, True))
+
+
+def set_companion_auto_hide_idle(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_AUTO_HIDE_IDLE, bool(enabled))
+
+
+def get_companion_idle_fade_sec() -> int:
+    try:
+        return max(2, min(120, int(_store().get(KEY_COMPANION_IDLE_FADE_SEC, 8))))
+    except (TypeError, ValueError):
+        return 8
+
+
+def set_companion_idle_fade_sec(seconds: int) -> None:
+    _store().set(KEY_COMPANION_IDLE_FADE_SEC, max(2, min(120, int(seconds))))
+
+
+def get_companion_size_px() -> int:
+    try:
+        return max(48, min(80, int(_store().get(KEY_COMPANION_SIZE_PX, 56))))
+    except (TypeError, ValueError):
+        return 56
+
+
+def set_companion_size_px(size: int) -> None:
+    _store().set(KEY_COMPANION_SIZE_PX, max(48, min(80, int(size))))
+
+
+def get_companion_show_caption() -> bool:
+    return bool(_store().get(KEY_COMPANION_SHOW_CAPTION, False))
+
+
+def set_companion_show_caption(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SHOW_CAPTION, bool(enabled))
+
+
+def get_companion_suppress_on_fullscreen() -> bool:
+    return bool(_store().get(KEY_COMPANION_SUPPRESS_FULLSCREEN, True))
+
+
+def set_companion_suppress_on_fullscreen(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SUPPRESS_FULLSCREEN, bool(enabled))
+
+
+def get_companion_try_on_wayland() -> bool:
+    return bool(_store().get(KEY_COMPANION_TRY_ON_WAYLAND, False))
+
+
+def set_companion_try_on_wayland(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_TRY_ON_WAYLAND, bool(enabled))
+
+
+def get_companion_dock_mode() -> bool:
+    return bool(_store().get(KEY_COMPANION_DOCK_MODE, False))
+
+
+def set_companion_dock_mode(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_DOCK_MODE, bool(enabled))
+
+
+def get_companion_reduced_motion() -> bool | None:
+    if not _store().contains(KEY_COMPANION_REDUCED_MOTION):
+        return None
+    v = _store().get(KEY_COMPANION_REDUCED_MOTION)
+    if v is None:
+        return None
+    return bool(v)
+
+
+def set_companion_reduced_motion(enabled: bool | None) -> None:
+    store = _store()
+    if enabled is None:
+        store.remove(KEY_COMPANION_REDUCED_MOTION)
+    else:
+        store.set(KEY_COMPANION_REDUCED_MOTION, bool(enabled))
+
+
+def get_companion_position() -> dict:
+    store = _store()
+    return {
+        "x": store.get(KEY_COMPANION_POS_X),
+        "y": store.get(KEY_COMPANION_POS_Y),
+        "screen": str(store.get(KEY_COMPANION_POS_SCREEN, "") or ""),
+        "norm_x": store.get(KEY_COMPANION_POS_NORM_X),
+        "norm_y": store.get(KEY_COMPANION_POS_NORM_Y),
+        "dock_edge": str(store.get(KEY_COMPANION_DOCK_EDGE, "none") or "none"),
+    }
+
+
+def set_companion_position(
+    *,
+    x: int | None = None,
+    y: int | None = None,
+    screen: str = "",
+    norm_x: float | None = None,
+    norm_y: float | None = None,
+    dock_edge: str | None = None,
+) -> None:
+    store = _store()
+    if x is not None:
+        store.set(KEY_COMPANION_POS_X, int(x))
+    if y is not None:
+        store.set(KEY_COMPANION_POS_Y, int(y))
+    if screen:
+        store.set(KEY_COMPANION_POS_SCREEN, str(screen))
+    if norm_x is not None:
+        store.set(KEY_COMPANION_POS_NORM_X, float(norm_x))
+    if norm_y is not None:
+        store.set(KEY_COMPANION_POS_NORM_Y, float(norm_y))
+    if dock_edge is not None:
+        edge = str(dock_edge).lower().strip()
+        if edge not in ("none", "left", "right", "bottom"):
+            edge = "none"
+        store.set(KEY_COMPANION_DOCK_EDGE, edge)

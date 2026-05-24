@@ -31,6 +31,8 @@ class NotificationService(QObject):
         self._window_visible_fn: Callable[[], bool] = lambda: True
         self._window_focused_fn: Callable[[], bool] = lambda: True
         self._tts_playing_fn: Callable[[], bool] = lambda: False
+        self._companion_visible_fn: Callable[[], bool] = lambda: False
+        self._companion_attention_fn: Callable[[], bool] = lambda: False
         self._show_in_app_fn: Callable[[NotificationEvent], None] | None = None
         self._show_os_fn: Callable[[NotificationEvent], None] | None = None
         self._flush_timer = QTimer(self)
@@ -44,11 +46,17 @@ class NotificationService(QObject):
         visible: Callable[[], bool],
         focused: Callable[[], bool],
         tts_playing: Callable[[], bool] | None = None,
+        companion_visible: Callable[[], bool] | None = None,
+        companion_attention: Callable[[], bool] | None = None,
     ) -> None:
         self._window_visible_fn = visible
         self._window_focused_fn = focused
         if tts_playing is not None:
             self._tts_playing_fn = tts_playing
+        if companion_visible is not None:
+            self._companion_visible_fn = companion_visible
+        if companion_attention is not None:
+            self._companion_attention_fn = companion_attention
 
     def set_show_handlers(
         self,
@@ -118,8 +126,19 @@ class NotificationService(QObject):
             window_visible=self._window_visible_fn(),
             window_focused=self._window_focused_fn(),
             tts_playing=self._tts_playing_fn(),
+            companion_visible=self._companion_visible_fn(),
+            companion_attention=self._companion_attention_fn(),
         )
-        if plan.reason in ("disabled", "category_off", "dnd", "focused_suppressed", "speaking_suppressed", "info_tray_only", "no_channel"):
+        if plan.reason in (
+            "disabled",
+            "category_off",
+            "dnd",
+            "focused_suppressed",
+            "speaking_suppressed",
+            "companion_suppressed",
+            "info_tray_only",
+            "no_channel",
+        ):
             logger.debug("Notification suppressed (%s): %s", plan.reason, event.title)
             return
 
