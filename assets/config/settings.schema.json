@@ -153,7 +153,7 @@
   "qube.companion.enabled": {
     "type": "boolean",
     "default": false,
-    "description": "Show the floating desktop companion orb when Qube is tray-hidden."
+    "description": "Show the floating desktop companion when Qube is tray-hidden."
   },
   "qube.companion.showWhenTrayHidden": {
     "type": "boolean",
@@ -186,8 +186,8 @@
   },
   "qube.companion.showCaption": {
     "type": "boolean",
-    "default": false,
-    "description": "Show a compact live caption chip below the orb."
+    "default": true,
+    "description": "Show the activity label (Listening, Thinking, Speaking, etc.) below the companion."
   },
   "qube.companion.suppressOnFullscreen": {
     "type": "boolean",
@@ -208,6 +208,12 @@
     "type": ["boolean", "null"],
     "default": null,
     "description": "Override reduced motion; null follows system preference when detectable."
+  },
+  "qube.companion.persona": {
+    "type": "string",
+    "default": "qube",
+    "enum": ["sphere", "qube"],
+    "description": "Companion visual persona (sphere or qube cube)."
   },
   "qube.companion.position.x": {
     "type": ["integer", "null"],

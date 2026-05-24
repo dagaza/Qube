@@ -63,6 +63,7 @@ KEY_COMPANION_POS_SCREEN = "qube.companion.position.screen"
 KEY_COMPANION_POS_NORM_X = "qube.companion.position.normX"
 KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
+KEY_COMPANION_PERSONA = "qube.companion.persona"
 
 
 def _store():
@@ -657,7 +658,7 @@ def set_companion_size_px(size: int) -> None:
 
 
 def get_companion_show_caption() -> bool:
-    return bool(_store().get(KEY_COMPANION_SHOW_CAPTION, False))
+    return bool(_store().get(KEY_COMPANION_SHOW_CAPTION, True))
 
 
 def set_companion_show_caption(enabled: bool) -> None:
@@ -703,6 +704,19 @@ def set_companion_reduced_motion(enabled: bool | None) -> None:
         store.remove(KEY_COMPANION_REDUCED_MOTION)
     else:
         store.set(KEY_COMPANION_REDUCED_MOTION, bool(enabled))
+
+
+def get_companion_persona() -> "CompanionPersonaId":
+    from core.companion_personas import DEFAULT_COMPANION_PERSONA, normalize_companion_persona
+
+    raw = _store().get(KEY_COMPANION_PERSONA, DEFAULT_COMPANION_PERSONA.value)
+    return normalize_companion_persona(str(raw) if raw is not None else None)
+
+
+def set_companion_persona(persona: str) -> None:
+    from core.companion_personas import normalize_companion_persona
+
+    _store().set(KEY_COMPANION_PERSONA, normalize_companion_persona(persona).value)
 
 
 def get_companion_position() -> dict:

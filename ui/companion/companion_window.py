@@ -1,4 +1,4 @@
-"""Floating desktop companion orb — frameless always-on-top presence window."""
+"""Floating desktop companion — frameless always-on-top presence window."""
 
 from __future__ import annotations
 
@@ -15,22 +15,16 @@ from PyQt6.QtGui import (
     QPen,
     QRadialGradient,
 )
-from PyQt6.QtWidgets import QApplication, QFrame, QMenu, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QMenu, QVBoxLayout, QWidget
 
 from core import app_settings
 from core.assistant_activity import AssistantActivity
 from core.assistant_presence import AssistantPresenceSnapshot
-
-_ORB_COLORS: dict[AssistantActivity, str] = {
-    AssistantActivity.ASSISTANT_OFF: "#64748b",
-    AssistantActivity.IDLE_LISTEN: "#89b4fa",
-    AssistantActivity.CAPTURING: "#f38ba8",
-    AssistantActivity.WORKING: "#74c7ec",
-    AssistantActivity.SPEAKING: "#a6e3a1",
-    AssistantActivity.NEEDS_ATTENTION: "#f9e2af",
-    AssistantActivity.ERROR: "#f38ba8",
-    AssistantActivity.BACKGROUND_BUSY: "#cba6f7",
-}
+from core.companion_personas import CompanionPersonaId, normalize_companion_persona
+from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
+from ui.companion.persona_context import CompanionPaintContext
+from ui.companion.personas.base import CompanionPersonaRenderer, get_persona_renderer
+from ui.companion.personas.colors import ACTIVITY_COLORS
 
 _CAPTION_MAX_CHARS = 42
 _DOCK_STRIP_HEIGHT = 24
@@ -38,7 +32,7 @@ _MAGNETIC_EDGE_PX = 12
 
 
 class CompanionWindow(QWidget):
-    """Small always-on-top translucent orb with optional caption chip."""
+    """Small always-on-top translucent companion with optional caption chip."""
 
     open_requested = pyqtSignal()
     hide_for_one_hour_requested = pyqtSignal()
@@ -60,15 +54,15 @@ class CompanionWindow(QWidget):
         self._orb_size = app_settings.get_companion_size_px()
         self._glow_opacity = 1.0
         self._idle_faded = False
-        self._reduced_motion = False
         self._dock_mode = False
-        self._pulse_phase = 0.0
         self._drag_offset: QPoint | None = None
-        self._notify_pulse = 0.0
-        self._volume_ring = 0.0
+
+        self._anim = CompanionAnimEngine()
+        self._persona_id = app_settings.get_companion_persona()
+        self._renderer: CompanionPersonaRenderer = get_persona_renderer(self._persona_id)
 
         self._anim_timer = QTimer(self)
-        self._anim_timer.setInterval(500 if self._reduced_motion else 33)
+        self._anim_timer.setInterval(33)
         self._anim_timer.timeout.connect(self._on_anim_tick)
 
         self._caption_frame = QFrame(self)
@@ -76,8 +70,10 @@ class CompanionWindow(QWidget):
         self._caption_frame.hide()
         caption_layout = QVBoxLayout(self._caption_frame)
         caption_layout.setContentsMargins(10, 4, 10, 4)
-        self._caption_label = QFrame()
+        self._caption_label = QLabel()
         self._caption_label.setObjectName("CompanionCaptionLabel")
+        self._caption_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._caption_label.setWordWrap(True)
         caption_layout.addWidget(self._caption_label)
 
         self.setAccessibleName("Qube assistant presence")
@@ -89,11 +85,23 @@ class CompanionWindow(QWidget):
         self._apply_caption_style()
         self.update()
 
+    def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
+        persona_id = normalize_companion_persona(persona_id)
+        if persona_id == self._persona_id:
+            self._resize_for_mode()
+            return
+        self._persona_id = persona_id
+        self._renderer = get_persona_renderer(persona_id)
+        self._resize_for_mode()
+        if not self._anim_timer.isActive():
+            self._anim_timer.start()
+        self.repaint()
+
     def set_reduced_motion(self, enabled: bool) -> None:
-        self._reduced_motion = enabled
+        self._anim.reduced_motion = enabled
         self._anim_timer.setInterval(500 if enabled else 33)
         if enabled:
-            self._pulse_phase = 0.0
+            self._anim.reset_motion()
         self.update()
 
     def set_dock_mode(self, enabled: bool) -> None:
@@ -111,28 +119,34 @@ class CompanionWindow(QWidget):
 
     def set_snapshot(self, snapshot: AssistantPresenceSnapshot) -> None:
         self._snapshot = snapshot
-        self._volume_ring = snapshot.audio_level
-        show_caption = app_settings.get_companion_show_caption() and bool(snapshot.caption_text)
-        if show_caption:
+        self._anim.set_snapshot(snapshot)
+        caption = snapshot.caption_text if app_settings.get_companion_show_caption() else None
+        if caption:
+            if len(caption) > _CAPTION_MAX_CHARS:
+                caption = caption[:_CAPTION_MAX_CHARS] + "…"
+            self._caption_label.setText(caption)
             self._caption_frame.show()
         else:
+            self._caption_label.clear()
             self._caption_frame.hide()
         self._resize_for_mode()
         self.update()
 
+    def set_speech_level(self, level: float) -> None:
+        self._anim.set_speech_level(level)
+
     def pulse_notification(self) -> None:
-        self._notify_pulse = 1.0
+        self._anim.pulse_notification()
         if not self._anim_timer.isActive():
             self._anim_timer.start()
         self.update()
 
     def orb_center_global(self) -> QPoint:
-        rect = self.rect()
         if self._dock_mode:
+            rect = self.rect()
             return self.mapToGlobal(QPoint(rect.width() // 2, _DOCK_STRIP_HEIGHT // 2))
-        margin = 8
-        radius = self._orb_size // 2
-        return self.mapToGlobal(QPoint(margin + radius, margin + radius))
+        cx, cy, _radius = self._body_geometry()
+        return self.mapToGlobal(QPoint(int(cx), int(cy)))
 
     def get_glow_opacity(self) -> float:
         return self._glow_opacity
@@ -142,6 +156,15 @@ class CompanionWindow(QWidget):
         self.update()
 
     glowOpacity = pyqtProperty(float, get_glow_opacity, set_glow_opacity)
+
+    def _activity(self) -> AssistantActivity:
+        return self._anim.activity()
+
+    def _colors(self) -> tuple[QColor, QColor]:
+        primary, secondary = ACTIVITY_COLORS.get(
+            self._activity(), ACTIVITY_COLORS[AssistantActivity.IDLE_LISTEN]
+        )
+        return QColor(primary), QColor(secondary)
 
     def _apply_caption_style(self) -> None:
         bg = "#1e1e2e" if self._is_dark else "#ffffff"
@@ -153,15 +176,20 @@ class CompanionWindow(QWidget):
             f"QFrame#CompanionCaptionLabel {{ background: transparent; color: {fg}; }}"
         )
 
+    def _visual_extent_px(self) -> int:
+        body_r = self._orb_size / 2
+        return int(math.ceil(self._renderer.visual_extent_px(body_r)))
+
+    def _body_square_side(self) -> int:
+        return self._visual_extent_px() * 2
+
     def _resize_for_mode(self) -> None:
         self._orb_size = app_settings.get_companion_size_px()
-        margin = 8
+        body_side = self._body_square_side()
         caption_h = 0
         caption_w = 0
-        if self._caption_frame.isVisible() and self._snapshot and self._snapshot.caption_text:
-            text = self._snapshot.caption_text[:_CAPTION_MAX_CHARS]
-            if len(self._snapshot.caption_text) > _CAPTION_MAX_CHARS:
-                text += "…"
+        if self._caption_frame.isVisible() and self._caption_label.text():
+            text = self._caption_label.text()
             fm = QFontMetrics(self.font())
             caption_w = min(280, fm.horizontalAdvance(text) + 24)
             caption_h = fm.height() + 12
@@ -172,19 +200,20 @@ class CompanionWindow(QWidget):
             self.setFixedSize(max(200, w // 4), _DOCK_STRIP_HEIGHT)
             return
 
-        total_w = max(self._orb_size + margin * 2, caption_w)
-        total_h = self._orb_size + margin * 2 + (caption_h + 6 if caption_h else 0)
+        total_w = max(body_side, caption_w)
+        total_h = body_side + (caption_h + 6 if caption_h else 0)
         self.setFixedSize(total_w, total_h)
         if caption_h:
             self._caption_frame.setGeometry(
                 (total_w - caption_w) // 2,
-                self._orb_size + margin * 2 + 4,
+                body_side + 4,
                 caption_w,
                 caption_h,
             )
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._resize_for_mode()
         if not self._anim_timer.isActive():
             self._anim_timer.start()
 
@@ -193,30 +222,44 @@ class CompanionWindow(QWidget):
         super().hideEvent(event)
 
     def _on_anim_tick(self) -> None:
-        activity = self._snapshot.activity if self._snapshot else AssistantActivity.IDLE_LISTEN
-        active = activity in (
-            AssistantActivity.CAPTURING,
-            AssistantActivity.WORKING,
-            AssistantActivity.SPEAKING,
-        )
-        if self._reduced_motion:
-            self._pulse_phase = 0.0
-        elif activity == AssistantActivity.IDLE_LISTEN and not self._idle_faded:
-            self._pulse_phase = (self._pulse_phase + 0.04) % (2 * math.pi)
-        elif activity == AssistantActivity.WORKING:
-            self._pulse_phase = (self._pulse_phase + 0.12) % (2 * math.pi)
-        elif activity == AssistantActivity.CAPTURING:
-            self._pulse_phase = (self._pulse_phase + 0.2) % (2 * math.pi)
-
-        if self._notify_pulse > 0:
-            self._notify_pulse = max(0.0, self._notify_pulse - 0.08)
-
-        if active or self._notify_pulse > 0 or (
-            activity == AssistantActivity.IDLE_LISTEN and not self._reduced_motion
-        ):
+        needs_repaint = self._anim.tick(FRAME_DT)
+        if needs_repaint or not self._anim.reduced_motion:
             self.update()
-        elif self._idle_faded and self._notify_pulse <= 0:
+        elif self._idle_faded:
             self._anim_timer.setInterval(500)
+
+    def _body_geometry(self) -> tuple[float, float, float]:
+        extent = float(self._visual_extent_px())
+        center_x = self.width() / 2
+        center_y = extent
+        radius = self._orb_size / 2
+        return center_x, center_y, radius
+
+    def _build_paint_context(self, opacity: float) -> CompanionPaintContext:
+        center_x, center_y, radius = self._body_geometry()
+        primary, secondary = self._colors()
+        return CompanionPaintContext(
+            activity=self._activity(),
+            phase=self._anim.phase(),
+            primary=primary,
+            secondary=secondary,
+            center_x=center_x,
+            center_y=center_y,
+            body_radius=radius,
+            breathe=self._anim.breathe_scale(),
+            float_offset_y=self._anim.float_offset_y(),
+            opacity=opacity,
+            anim_time=self._anim.anim_time,
+            rotation=self._anim.rotation,
+            reduced_motion=self._anim.reduced_motion,
+            is_dark=self._is_dark,
+            input_level=self._anim.input_level,
+            speech_level_smooth=self._anim.speech_level_smooth,
+            wave_bars=tuple(self._anim.wave_bars),
+            ripple_rings=tuple(self._anim.ripple_rings),
+            notify_pulse=self._anim.notify_pulse,
+            persona_blend=1.0,
+        )
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -224,89 +267,33 @@ class CompanionWindow(QWidget):
 
         if self._dock_mode:
             self._paint_dock_strip(painter)
+            painter.end()
             return
 
-        activity = self._snapshot.activity if self._snapshot else AssistantActivity.IDLE_LISTEN
-        color_hex = _ORB_COLORS.get(activity, "#89b4fa")
-        base = QColor(color_hex)
-        margin = 8
-        center = QPointF(margin + self._orb_size / 2, margin + self._orb_size / 2)
-        radius = self._orb_size / 2
-
         opacity = 0.35 if self._idle_faded else self._glow_opacity
-        if self._notify_pulse > 0:
-            opacity = min(1.0, opacity + self._notify_pulse * 0.4)
+        if self._anim.notify_pulse > 0:
+            opacity = min(1.0, opacity + self._anim.notify_pulse * 0.45)
 
-        breathe = 1.0
-        if not self._reduced_motion and activity == AssistantActivity.IDLE_LISTEN:
-            breathe = 1.0 + 0.04 * math.sin(self._pulse_phase)
+        ctx = self._build_paint_context(opacity)
+        self._renderer.paint(painter, ctx)
 
-        glow_radius = radius * 1.35 * breathe
-        gradient = QRadialGradient(center, glow_radius)
-        glow = QColor(base)
-        glow.setAlphaF(0.45 * opacity)
-        gradient.setColorAt(0.0, glow)
-        outer = QColor(base)
-        outer.setAlphaF(0.0)
-        gradient.setColorAt(1.0, outer)
-        painter.setBrush(QBrush(gradient))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center, glow_radius, glow_radius)
-
-        core = QColor(base)
-        core.setAlphaF(0.92 * opacity)
-        painter.setBrush(core)
-        painter.setPen(QPen(QColor(255, 255, 255, 40), 1))
-        painter.drawEllipse(center, radius * 0.72 * breathe, radius * 0.72 * breathe)
-
-        if activity == AssistantActivity.CAPTURING and self._volume_ring > 0.05:
-            ring = QColor(base)
-            ring.setAlphaF(0.6)
-            painter.setPen(QPen(ring, 2))
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            ring_r = radius * (0.85 + self._volume_ring * 0.2)
-            painter.drawEllipse(center, ring_r, ring_r)
-
-        if activity == AssistantActivity.WORKING and not self._reduced_motion:
-            painter.setPen(QPen(QColor(255, 255, 255, 120), 2))
-            arc_r = radius * 0.55
-            start = int(self._pulse_phase * 180 / math.pi * 16)
-            painter.drawArc(
-                int(center.x() - arc_r),
-                int(center.y() - arc_r),
-                int(arc_r * 2),
-                int(arc_r * 2),
-                start,
-                120 * 16,
-            )
-
-        if self._caption_frame.isVisible() and self._snapshot and self._snapshot.caption_text:
-            text = self._snapshot.caption_text[:_CAPTION_MAX_CHARS]
-            if len(self._snapshot.caption_text) > _CAPTION_MAX_CHARS:
-                text += "…"
-            painter.setPen(QColor("#cdd6f4" if self._is_dark else "#1e293b"))
-            font = QFont(self.font())
-            font.setPointSize(max(9, font.pointSize() - 1))
-            painter.setFont(font)
-            cap_rect = self._caption_frame.geometry()
-            painter.drawText(
-                cap_rect.adjusted(8, 0, -8, 0),
-                int(Qt.AlignmentFlag.AlignCenter),
-                text,
-            )
+        painter.end()
 
     def _paint_dock_strip(self, painter: QPainter) -> None:
-        activity = self._snapshot.activity if self._snapshot else AssistantActivity.IDLE_LISTEN
-        color_hex = _ORB_COLORS.get(activity, "#89b4fa")
-        base = QColor(color_hex)
+        primary, _secondary = self._colors()
         rect = QRectF(0, 0, self.width(), self.height())
         bg = QColor("#1e1e2e" if self._is_dark else "#ffffff")
         bg.setAlphaF(0.85 if not self._idle_faded else 0.35)
         painter.setBrush(bg)
-        painter.setPen(QPen(base, 2))
+        painter.setPen(QPen(primary, 2))
         painter.drawRoundedRect(rect, 6, 6)
-        dot = QRectF(8, (self.height() - 10) / 2, 10, 10)
-        painter.setBrush(base)
+        pulse = 1.0 + (0.15 * math.sin(self._anim.anim_time * 3) if not self._anim.reduced_motion else 0)
+        dot_r = 5 * pulse
+        dot = QRectF(8, (self.height() - dot_r * 2) / 2, dot_r * 2, dot_r * 2)
+        grad = QRadialGradient(dot.center(), dot_r)
+        grad.setColorAt(0, primary.lighter(115))
+        grad.setColorAt(1, primary)
+        painter.setBrush(QBrush(grad))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(dot)
 
@@ -328,9 +315,7 @@ class CompanionWindow(QWidget):
             if self._drag_offset is not None:
                 moved = (event.globalPosition().toPoint() - self._drag_offset) != self.pos()
                 self._drag_offset = None
-                if not moved:
-                    self.open_requested.emit()
-                else:
+                if moved:
                     self._snap_to_edge()
             event.accept()
 

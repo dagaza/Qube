@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
+    QRadioButton, QButtonGroup,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher
 from PyQt6.QtGui import QShowEvent
@@ -558,7 +559,7 @@ class SettingsView(QWidget):
         tier_lbl.setWordWrap(True)
         companion_layout.addWidget(tier_lbl)
 
-        self.companion_enabled_cb = QCheckBox("Enable desktop companion orb")
+        self.companion_enabled_cb = QCheckBox("Enable desktop companion")
         self.companion_enabled_cb.setChecked(_companion_settings.get_companion_enabled())
         self.companion_enabled_cb.toggled.connect(self._on_companion_enabled_toggled)
         companion_layout.addWidget(self.companion_enabled_cb)
@@ -578,7 +579,11 @@ class SettingsView(QWidget):
         self.companion_auto_hide_cb.toggled.connect(self._on_companion_setting_changed)
         companion_layout.addWidget(self.companion_auto_hide_cb)
 
-        self.companion_caption_cb = QCheckBox("Show live caption chip")
+        self.companion_caption_cb = QCheckBox("Show activity label under companion")
+        self.companion_caption_cb.setToolTip(
+            "When enabled, a short status chip appears below the companion "
+            "(Listening, Thinking, Speaking, etc.). Uncheck to show only the companion widget."
+        )
         self.companion_caption_cb.setChecked(_companion_settings.get_companion_show_caption())
         self.companion_caption_cb.toggled.connect(self._on_companion_setting_changed)
         companion_layout.addWidget(self.companion_caption_cb)
@@ -597,6 +602,56 @@ class SettingsView(QWidget):
         self.companion_dock_cb.setChecked(_companion_settings.get_companion_dock_mode())
         self.companion_dock_cb.toggled.connect(self._on_companion_setting_changed)
         companion_layout.addWidget(self.companion_dock_cb)
+
+        appearance_lbl = QLabel("Companion appearance")
+        appearance_lbl.setObjectName("SettingsSubsectionLabel")
+        companion_layout.addWidget(appearance_lbl)
+
+        from core.companion_personas import (
+            CompanionPersonaId,
+            PERSONA_DESCRIPTIONS,
+            PERSONA_LABELS,
+        )
+        from ui.companion.companion_preview import CompanionPreviewWidget
+
+        self.companion_preview = CompanionPreviewWidget()
+        is_dark = bool(getattr(self.window(), "_is_dark_theme", True))
+        self.companion_preview.apply_theme(is_dark)
+        companion_layout.addWidget(self.companion_preview)
+
+        persona_row = QHBoxLayout()
+        persona_row.setSpacing(16)
+        self.companion_persona_group = QButtonGroup(self)
+        current_persona = _companion_settings.get_companion_persona()
+        self.companion_persona_radios: dict[CompanionPersonaId, QRadioButton] = {}
+        for persona_id in (CompanionPersonaId.SPHERE, CompanionPersonaId.QUBE):
+            radio = QRadioButton(PERSONA_LABELS[persona_id])
+            radio.setToolTip(PERSONA_DESCRIPTIONS[persona_id])
+            radio.setProperty("companion_persona_id", persona_id.value)
+            radio.setChecked(persona_id == current_persona)
+            self.companion_persona_group.addButton(radio)
+            self.companion_persona_radios[persona_id] = radio
+            persona_row.addWidget(radio)
+        self.companion_persona_group.buttonToggled.connect(self._on_companion_persona_toggled)
+        persona_row.addStretch()
+        companion_layout.addLayout(persona_row)
+
+        demo_row = QHBoxLayout()
+        demo_row.setSpacing(8)
+        demo_lbl = QLabel("Preview state:")
+        demo_row.addWidget(demo_lbl)
+        self.companion_demo_combo = QComboBox()
+        self.companion_demo_combo.addItem("Idle", "idle")
+        self.companion_demo_combo.addItem("Thinking", "working")
+        self.companion_demo_combo.addItem("Listening", "capturing")
+        self.companion_demo_combo.addItem("Speaking", "speaking")
+        self.companion_demo_combo.currentIndexChanged.connect(self._on_companion_demo_changed)
+        demo_row.addWidget(self.companion_demo_combo)
+        demo_row.addStretch()
+        companion_layout.addLayout(demo_row)
+
+        self.companion_preview.set_persona(current_persona)
+        self._on_companion_demo_changed()
 
         content_layout.addWidget(companion_widget)
         content_layout.addWidget(self._build_divider())
@@ -709,6 +764,33 @@ class SettingsView(QWidget):
         color = active if button.isEnabled() else muted
         button.setIcon(qta.icon("fa5s.chevron-down", color=color))
 
+    def _iter_settings_checkboxes(self):
+        """All Settings-page QCheckBox widgets that share the Prestige indicator style."""
+        for name in (
+            "pin_audio_cb",
+            "auto_load_last_model_cb",
+            "auto_activator_cb",
+            "model_manager_hardware_suggestions_cb",
+            "notifications_enabled_cb",
+            "notifications_dnd_cb",
+            "notifications_suppress_focus_cb",
+            "notifications_os_hidden_cb",
+            "notifications_sound_cb",
+            "notifications_preview_cb",
+            "notifications_memory_cb",
+            "companion_enabled_cb",
+            "companion_tray_hidden_cb",
+            "companion_while_open_cb",
+            "companion_auto_hide_cb",
+            "companion_caption_cb",
+            "companion_fullscreen_cb",
+            "companion_wayland_cb",
+            "companion_dock_cb",
+        ):
+            cb = getattr(self, name, None)
+            if cb is not None:
+                yield cb
+
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
         border_color = "rgba(255, 255, 255, 0.15)" if is_dark else "#cbd5e1"
@@ -733,6 +815,8 @@ class SettingsView(QWidget):
                 color: {disabled_text};
                 border: 1px solid {disabled_border};
             }}
+        """
+        checkbox_style = f"""
             QCheckBox {{ color: {text_color}; font-size: 13px; }}
             QCheckBox:disabled {{ color: {disabled_text}; }}
             QCheckBox::indicator {{
@@ -793,10 +877,8 @@ class SettingsView(QWidget):
                 self.cpu_threads_value_lbl.setStyleSheet(
                     f"color: {text_color}; font-size: 13px; min-width: 44px;"
                 )
-        self.pin_audio_cb.setStyleSheet(style)
-        self.auto_activator_cb.setStyleSheet(style)
-        if hasattr(self, "auto_load_last_model_cb"):
-            self.auto_load_last_model_cb.setStyleSheet(style)
+        for cb in self._iter_settings_checkboxes():
+            cb.setStyleSheet(checkbox_style)
         if hasattr(self, 'mem_enrichment_label'):
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         if hasattr(self, "local_llm_tour_hint_lbl"):
@@ -1429,6 +1511,34 @@ class SettingsView(QWidget):
         if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
             win._companion_controller.on_settings_changed()
 
+    def _on_companion_persona_toggled(self, button, checked: bool) -> None:
+        if not checked:
+            return
+        from core import app_settings as _cs
+        from core.companion_personas import normalize_companion_persona
+
+        persona_id = normalize_companion_persona(button.property("companion_persona_id"))
+        _cs.set_companion_persona(persona_id.value)
+        if hasattr(self, "companion_preview"):
+            self.companion_preview.set_persona(persona_id)
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.on_settings_changed()
+
+    def _on_companion_demo_changed(self, *_args) -> None:
+        if not hasattr(self, "companion_preview"):
+            return
+        from core.assistant_activity import AssistantActivity
+
+        key = self.companion_demo_combo.currentData() or "idle"
+        mapping = {
+            "idle": AssistantActivity.IDLE_LISTEN,
+            "working": AssistantActivity.WORKING,
+            "capturing": AssistantActivity.CAPTURING,
+            "speaking": AssistantActivity.SPEAKING,
+        }
+        self.companion_preview.set_demo_activity(mapping.get(str(key), AssistantActivity.IDLE_LISTEN))
+
     def _clear_notification_history(self) -> None:
         win = self.window()
         if win is not None and hasattr(win, "notification_service"):
@@ -1571,6 +1681,9 @@ class SettingsView(QWidget):
 
         if self._settings_json_dialog is not None:
             self._settings_json_dialog.refresh_theme(is_dark)
+
+        if hasattr(self, "companion_preview"):
+            self.companion_preview.apply_theme(is_dark)
 
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
@@ -1831,6 +1944,17 @@ class SettingsView(QWidget):
             win = self.window()
             if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
                 win.tray_controller.sync_companion_toggle()
+
+        if hasattr(self, "companion_persona_radios"):
+            from core import app_settings as _cs
+
+            current = _cs.get_companion_persona()
+            for persona_id, radio in self.companion_persona_radios.items():
+                radio.blockSignals(True)
+                radio.setChecked(persona_id == current)
+                radio.blockSignals(False)
+            if hasattr(self, "companion_preview"):
+                self.companion_preview.set_persona(current)
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

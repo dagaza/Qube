@@ -3148,6 +3148,28 @@ class ConversationsView(QWidget):
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
 
+    def _will_play_tts_after_response(self) -> bool:
+        """Match main.py: voice output must be unmuted and the toolbar toggle on."""
+        if not self.tts or getattr(self.tts, "is_muted", False):
+            return False
+        win = self.window()
+        toggle = getattr(win, "voice_bypass_toggle", None)
+        if toggle is not None:
+            return bool(toggle.isChecked())
+        return False
+
+    def _restore_send_mode_if_idle(self) -> None:
+        if self._llm_in_progress:
+            return
+        self._awaiting_tts_end = False
+        self._tts_playing = False
+        self.set_input_enabled(True)
+        self._refresh_send_stop_button()
+
+    def on_turn_complete_idle(self) -> None:
+        """Status bubble returned to idle — release stop mode if generation is done."""
+        self._restore_send_mode_if_idle()
+
     def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
         from core.output_artifact_strip import strip_harmony_oss_artifacts
 
@@ -3171,13 +3193,13 @@ class ConversationsView(QWidget):
         self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False
-        tts_enabled = bool(self.tts and not getattr(self.tts, "is_muted", False))
-        self._awaiting_tts_end = tts_enabled
+        tts_expected = self._will_play_tts_after_response()
+        self._awaiting_tts_end = tts_expected
         logger.info(
             "[ChatUI] LLM finished; stop_mode transitions to await_tts=%s.",
-            tts_enabled,
+            tts_expected,
         )
-        if not tts_enabled:
+        if not tts_expected:
             self.set_input_enabled(True)
         self._refresh_send_stop_button()
 
@@ -3189,11 +3211,12 @@ class ConversationsView(QWidget):
 
     def on_tts_playback_finished(self) -> None:
         self._tts_playing = False
-        self._awaiting_tts_end = False
         logger.info("[ChatUI] TTS playback finished; restoring send mode if LLM is idle.")
-        if not self._llm_in_progress:
-            self.set_input_enabled(True)
-        self._refresh_send_stop_button()
+        self._restore_send_mode_if_idle()
+
+    def on_tts_turn_settled(self) -> None:
+        """End-of-turn sentinel processed (even when no audio was output)."""
+        self._restore_send_mode_if_idle()
 
     def on_generation_stopped(self) -> None:
         logger.info("[ChatUI] Stop acknowledged; clearing active generation/audio state.")

@@ -78,6 +78,7 @@ class CompanionController(QObject):
         self._window.apply_theme(is_dark)
         self._apply_reduced_motion()
         self._restore_position()
+        self._window.set_persona(app_settings.get_companion_persona())
         self._visibility_timer.start()
         self._idle_timer.start()
         if app_settings.get_companion_suppress_on_fullscreen():
@@ -98,6 +99,8 @@ class CompanionController(QObject):
         self._apply_reduced_motion()
         dock = app_settings.get_companion_dock_mode()
         self._window.set_dock_mode(dock)
+        self._window.set_persona(app_settings.get_companion_persona())
+        self._window.set_snapshot(self._presence.snapshot())
         self._refresh_visibility()
 
     def set_user_enabled(self, enabled: bool) -> None:
@@ -113,6 +116,12 @@ class CompanionController(QObject):
             return
         if self._window.isVisible():
             self._window.pulse_notification()
+
+    def set_speech_level(self, level: float) -> None:
+        if self._shutting_down:
+            return
+        self._presence.set_speech_level(level)
+        self._window.set_speech_level(level)
 
     def _snooze_one_hour(self) -> None:
         self._snooze_until = time.time() + _SNOOZE_ONE_HOUR_SEC

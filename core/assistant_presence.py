@@ -45,6 +45,7 @@ class AssistantPresenceSnapshot:
     attention_required: bool
     platform_tier: CompanionPlatformTier
     audio_level: float = 0.0
+    speech_level: float = 0.0
 
 
 def phase_from_message(message: str, activity: AssistantActivity, bubble_state: str) -> AssistantPhase | None:
@@ -79,6 +80,26 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
     return AssistantPhase.LLM
 
 
+def companion_status_caption(
+    activity: AssistantActivity,
+    phase: AssistantPhase | None,
+) -> str | None:
+    """Short companion chip text for the current assistant activity."""
+    if activity == AssistantActivity.CAPTURING:
+        return "Listening…"
+    if activity == AssistantActivity.WORKING:
+        if phase == AssistantPhase.STT:
+            return "Transcribing…"
+        if phase == AssistantPhase.MODEL_LOAD:
+            return "Loading model…"
+        if phase == AssistantPhase.ROUTING:
+            return "Searching…"
+        return "Thinking…"
+    if activity == AssistantActivity.SPEAKING:
+        return "Speaking…"
+    return None
+
+
 class AssistantPresenceService(QObject):
     """Priority-gated presence reducer with Qt signal for downstream UI."""
 
@@ -91,6 +112,7 @@ class AssistantPresenceService(QObject):
         self._dnd = False
         self._caption_text: str | None = None
         self._audio_level = 0.0
+        self._speech_level = 0.0
         self._last_snapshot: AssistantPresenceSnapshot | None = None
         self._platform_tier = detect_companion_platform_tier()
 
@@ -130,6 +152,9 @@ class AssistantPresenceService(QObject):
         self._audio_level = max(0.0, min(1.0, float(level)))
         if self.activity == AssistantActivity.CAPTURING:
             self._publish_from_current("")
+
+    def set_speech_level(self, level: float) -> None:
+        self._speech_level = max(0.0, min(1.0, float(level)))
 
     def refresh_platform_tier(self) -> None:
         self._platform_tier = detect_companion_platform_tier()
@@ -178,8 +203,8 @@ class AssistantPresenceService(QObject):
             AssistantActivity.ERROR,
         )
         caption = self._caption_text
-        if caption is None and activity == AssistantActivity.WORKING:
-            caption = transition.display_text.strip() or None
+        if caption is None:
+            caption = companion_status_caption(activity, phase)
 
         return AssistantPresenceSnapshot(
             activity=activity,
@@ -194,4 +219,5 @@ class AssistantPresenceService(QObject):
             attention_required=attention,
             platform_tier=self._platform_tier,
             audio_level=self._audio_level,
+            speech_level=self._speech_level,
         )

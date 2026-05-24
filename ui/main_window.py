@@ -1930,9 +1930,12 @@ class MainWindow(QMainWindow):
         self._sync_tray_presence()
 
         if hasattr(self, "conversations_view"):
-            self.conversations_view.set_input_enabled(
-                new_state in ("idle", "speaking", "needs_model")
-            )
+            if new_state == "idle":
+                self.conversations_view.on_turn_complete_idle()
+            else:
+                self.conversations_view.set_input_enabled(
+                    new_state in ("idle", "speaking", "needs_model")
+                )
 
         msg_upper = message.upper().strip()
         if "MIC ERROR" in msg_upper:
@@ -1966,6 +1969,10 @@ class MainWindow(QMainWindow):
 
     def on_audio_volume_update(self, level: float) -> None:
         self._presence_service.set_audio_level(level)
+
+    def on_tts_playback_level(self, level: float) -> None:
+        if self._companion_controller is not None:
+            self._companion_controller.set_speech_level(level)
 
     def update_tts_latency(self, ms: float) -> None:
         if hasattr(self, 'telemetry_view'):

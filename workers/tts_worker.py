@@ -12,6 +12,18 @@ logger = logging.getLogger("Qube.Audio")
 _END_OF_LLM_TURN = object()
 # Wake the consumer so run() can exit on app shutdown.
 _TTS_SHUTDOWN = object()
+_PLAYBACK_LEVEL_EMIT_INTERVAL_S = 0.04
+
+
+def _pcm_peak_level(pcm: bytes) -> float:
+    """Normalized 0–1 loudness from int16 PCM (companion visualizer)."""
+    if not pcm:
+        return 0.0
+    arr = np.frombuffer(pcm, dtype=np.int16)
+    if arr.size == 0:
+        return 0.0
+    rms = float(np.sqrt(np.mean(arr.astype(np.float32) ** 2))) / 32768.0
+    return min(1.0, rms * 2.8)
 
 
 def ensure_model_exists(model_path: str):
@@ -108,6 +120,8 @@ class TTSWorker(QThread):
     tts_latency = pyqtSignal(float) 
     playback_started = pyqtSignal(str)
     playback_finished = pyqtSignal()
+    turn_settled = pyqtSignal()
+    playback_level = pyqtSignal(float)
 
     def __init__(self, initial_model=""):
         super().__init__()
@@ -115,17 +129,23 @@ class TTSWorker(QThread):
         self.audio = pyaudio.PyAudio()
         self.pyaudio_instance = None
         self.stream = None
-        self.active_adapter = None 
+        self.active_adapter = None
         self.active_voice_name = "Default"
-        self.current_device_index = None 
+        self.current_device_index = None
+        self._last_playback_level_emit = 0.0
         
         # --- NEW: Voice Bypass Flag ---
         self.is_muted = False
+        self._playback_active = False
         
         if initial_model:
             self.load_voice(initial_model)
 
     # --- NEW: Mute Toggle Method ---
+    @property
+    def is_playing(self) -> bool:
+        return self._playback_active
+
     def set_mute(self, muted: bool):
         self.is_muted = muted
         logger.info("[TTS] Mute toggled -> %s", "ON" if muted else "OFF")
@@ -205,6 +225,13 @@ class TTSWorker(QThread):
         except Exception:
             pass
 
+    def _signal_playback_finished(self) -> None:
+        if not self._playback_active:
+            return
+        self._playback_active = False
+        self.playback_level.emit(0.0)
+        self.playback_finished.emit()
+
     def run(self):
         import pyaudio
         import time
@@ -217,12 +244,13 @@ class TTSWorker(QThread):
 
                 if item is _TTS_SHUTDOWN:
                     logger.info("[TTS] Shutdown sentinel received; exiting run loop.")
-                    self.playback_finished.emit()
+                    self._signal_playback_finished()
                     break
 
                 if item is _END_OF_LLM_TURN:
                     logger.debug("[TTS] End-of-turn sentinel received.")
-                    self.playback_finished.emit()
+                    self._signal_playback_finished()
+                    self.turn_settled.emit()
                     continue
 
                 self._interrupt_tts = False
@@ -274,20 +302,26 @@ class TTSWorker(QThread):
                             self.tts_latency.emit((time.time() - start_time) * 1000)
                             self.playback_started.emit(session_id)
                             first_chunk_played = True
+                            self._playback_active = True
 
                         CHUNK_SIZE = 4096
                         for i in range(0, len(pcm_data), CHUNK_SIZE):
                             if getattr(self, '_interrupt_tts', False):
                                 logger.debug("Micro-chunker caught interruption! Stopping playback.")
                                 break
-                            self.stream.write(pcm_data[i:i+CHUNK_SIZE])
+                            chunk = pcm_data[i:i + CHUNK_SIZE]
+                            now = time.time()
+                            if now - self._last_playback_level_emit >= _PLAYBACK_LEVEL_EMIT_INTERVAL_S:
+                                self.playback_level.emit(_pcm_peak_level(chunk))
+                                self._last_playback_level_emit = now
+                            self.stream.write(chunk)
 
                 except Exception as e:
                     self.status_update.emit(f"Audio Error: {e}")
 
         except Exception as e:
             logger.exception("[TTS] run loop failed: %s", e)
-            self.playback_finished.emit()
+            self._signal_playback_finished()
 
     def stop_playback(self):
         """Thread-safe kill switch. Empties queue and flags the loop to stop."""
@@ -302,6 +336,7 @@ class TTSWorker(QThread):
             dropped if dropped is not None else "unknown",
         )
         self._interrupt_tts = True
+        self.playback_level.emit(0.0)
 
         if hasattr(self, 'sentence_queue'):
             try:

@@ -203,6 +203,7 @@ class Qube:
         self.tts_worker.playback_finished.connect(self._handle_tts_finished)
         self.tts_worker.playback_started.connect(w.conversations_view.on_tts_playback_started)
         self.tts_worker.playback_finished.connect(w.conversations_view.on_tts_playback_finished)
+        self.tts_worker.turn_settled.connect(w.conversations_view.on_tts_turn_settled)
 
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
@@ -263,6 +264,8 @@ class Qube:
             self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
         if hasattr(self.tts_worker, 'tts_latency'):
             self.tts_worker.tts_latency.connect(w.update_tts_latency)
+        if hasattr(self.tts_worker, 'playback_level'):
+            self.tts_worker.playback_level.connect(w.on_tts_playback_level)
         if hasattr(self.audio_worker, 'volume_update'):
             self.audio_worker.volume_update.connect(w.on_audio_volume_update)
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
@@ -361,7 +364,7 @@ class Qube:
         
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
-        if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
+        if hasattr(self, 'tts_worker') and getattr(self.tts_worker, 'is_playing', False):
             self.tts_worker.stop_playback()
             
         if hasattr(self, 'window'):
@@ -384,7 +387,7 @@ class Qube:
             self.window.notification_service.cancel_turn_complete(session_id)
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
-        if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
+        if hasattr(self, 'tts_worker') and getattr(self.tts_worker, 'is_playing', False):
             self.tts_worker.stop_playback()
         if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
             self.window.conversations_view.on_generation_stopped()

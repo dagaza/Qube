@@ -1,7 +1,7 @@
 """Tests for assistant activity reducer."""
 
 from core.assistant_activity import AssistantActivity, AssistantActivityReducer
-from core.assistant_presence import AssistantPresenceService, AssistantPhase, phase_from_message
+from core.assistant_presence import AssistantPresenceService, AssistantPhase, companion_status_caption, phase_from_message
 
 
 def test_reducer_blocks_stray_idle_during_recording():
@@ -61,6 +61,19 @@ def test_presence_service_emits_phase_for_transcribing():
 def test_phase_from_message_thinking_is_llm():
     phase = phase_from_message("Thinking...", AssistantActivity.WORKING, "thinking")
     assert phase == AssistantPhase.LLM
+
+
+def test_companion_status_caption_maps_activity():
+    assert companion_status_caption(AssistantActivity.WORKING, AssistantPhase.LLM) == "Thinking…"
+    assert companion_status_caption(AssistantActivity.SPEAKING, AssistantPhase.TTS_STREAM) == "Speaking…"
+    assert companion_status_caption(AssistantActivity.CAPTURING, AssistantPhase.VAD_ACTIVE) == "Listening…"
+    assert companion_status_caption(AssistantActivity.IDLE_LISTEN, None) is None
+
+
+def test_presence_service_auto_caption_while_thinking():
+    service = AssistantPresenceService()
+    service.reduce("Thinking...")
+    assert service.snapshot().caption_text == "Thinking…"
 
 
 def test_presence_service_caption_roundtrip():

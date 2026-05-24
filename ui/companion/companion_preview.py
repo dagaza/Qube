@@ -1,0 +1,154 @@
+"""Live companion preview widget for Settings."""
+
+from __future__ import annotations
+
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget
+
+from core.assistant_activity import AssistantActivity
+from core.assistant_presence import AssistantPhase, AssistantPresenceSnapshot
+from core.companion_personas import CompanionPersonaId, DEFAULT_COMPANION_PERSONA, normalize_companion_persona
+from core.platform.companion_capabilities import CompanionPlatformTier
+from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
+from ui.companion.persona_context import CompanionPaintContext
+from ui.companion.personas.base import get_persona_renderer
+from ui.companion.personas.colors import ACTIVITY_COLORS
+
+_PREVIEW_DIMENSION = 280
+# Keep draw size stable so extra canvas space becomes visible margin (avoids scaling the cube up).
+_PREVIEW_BODY_RADIUS = 38.0
+
+
+def _demo_snapshot(
+    activity: AssistantActivity,
+    *,
+    phase: AssistantPhase | None = None,
+    audio_level: float = 0.0,
+    speech_level: float = 0.0,
+) -> AssistantPresenceSnapshot:
+    return AssistantPresenceSnapshot(
+        activity=activity,
+        phase=phase,
+        display_text="",
+        bubble_state="idle",
+        voice_input_paused=False,
+        voice_output_muted=False,
+        dnd=False,
+        background_busy=False,
+        caption_text=None,
+        attention_required=False,
+        platform_tier=CompanionPlatformTier.FULL,
+        audio_level=audio_level,
+        speech_level=speech_level,
+    )
+
+
+class CompanionPreviewWidget(QFrame):
+    """Animated preview of the selected companion persona."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("CompanionPreviewFrame")
+        self.setFixedSize(_PREVIEW_DIMENSION, _PREVIEW_DIMENSION)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+
+        self._is_dark = True
+        self._persona_id = DEFAULT_COMPANION_PERSONA
+        self._renderer = get_persona_renderer(self._persona_id)
+        self._demo_activity = AssistantActivity.IDLE_LISTEN
+        self._demo_phase: AssistantPhase | None = None
+
+        self._anim = CompanionAnimEngine()
+        self._anim.set_snapshot(_demo_snapshot(AssistantActivity.IDLE_LISTEN))
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(33)
+        self._timer.timeout.connect(self._on_tick)
+        self._timer.start()
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._timer.isActive():
+            self._timer.start()
+
+    def hideEvent(self, event) -> None:
+        self._timer.stop()
+        super().hideEvent(event)
+
+    def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
+        self.update()
+
+    def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
+        persona_id = normalize_companion_persona(persona_id)
+        if persona_id == self._persona_id:
+            return
+        self._persona_id = persona_id
+        self._renderer = get_persona_renderer(persona_id)
+        if not self._timer.isActive():
+            self._timer.start()
+        self.repaint()
+
+    def set_demo_activity(self, activity: AssistantActivity) -> None:
+        self._demo_activity = activity
+        phase = AssistantPhase.STT if activity == AssistantActivity.WORKING else None
+        self._demo_phase = phase
+        audio = 0.35 if activity == AssistantActivity.CAPTURING else 0.0
+        speech = 0.55 if activity == AssistantActivity.SPEAKING else 0.0
+        self._anim.set_snapshot(
+            _demo_snapshot(activity, phase=phase, audio_level=audio, speech_level=speech)
+        )
+        if activity == AssistantActivity.SPEAKING:
+            self._anim.set_speech_level(0.55)
+        self.update()
+
+    def _on_tick(self) -> None:
+        self._anim.tick(FRAME_DT)
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        bg = QColor("#11111b" if self._is_dark else "#f1f5f9")
+        border = QColor("#313244" if self._is_dark else "#cbd5e1")
+        painter.setPen(QPen(border, 1))
+        painter.setBrush(bg)
+        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 10, 10)
+
+        cx = self.width() / 2
+        cy = self.height() / 2
+        body_radius = _PREVIEW_BODY_RADIUS
+
+        primary_hex, secondary_hex = ACTIVITY_COLORS.get(
+            self._demo_activity, ACTIVITY_COLORS[AssistantActivity.IDLE_LISTEN]
+        )
+        ctx = CompanionPaintContext(
+            activity=self._demo_activity,
+            phase=self._demo_phase,
+            primary=QColor(primary_hex),
+            secondary=QColor(secondary_hex),
+            center_x=cx,
+            center_y=cy,
+            body_radius=body_radius,
+            breathe=self._anim.breathe_scale(),
+            float_offset_y=self._anim.float_offset_y(),
+            opacity=1.0,
+            anim_time=self._anim.anim_time,
+            rotation=self._anim.rotation,
+            reduced_motion=self._anim.reduced_motion,
+            is_dark=self._is_dark,
+            input_level=self._anim.input_level,
+            speech_level_smooth=self._anim.speech_level_smooth,
+            wave_bars=tuple(self._anim.wave_bars),
+            ripple_rings=tuple(self._anim.ripple_rings),
+            notify_pulse=self._anim.notify_pulse,
+            persona_blend=1.0,
+        )
+
+        self._renderer.paint(painter, ctx)
+        painter.end()
