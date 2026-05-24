@@ -112,6 +112,7 @@ class Qube:
             llm=self.llm_worker,
             store=self.store,
         )
+        self.memory_reflection_worker.set_enabled(get_enable_memory_enrichment())
         self.memory_reflection_worker.start()
 
         workers = {
@@ -174,6 +175,9 @@ class Qube:
             self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
             self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
+            self.window.settings_view.memory_enrichment_changed.connect(
+                self.memory_reflection_worker.set_enabled
+            )
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
             self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
         if hasattr(self.window, 'settings_view') and hasattr(
@@ -250,12 +254,13 @@ class Qube:
         )
         if hasattr(self, "window") and hasattr(self.window, "conversations_view"):
             self.window.conversations_view.on_llm_response_finished(session_id, text or "")
-        if hasattr(self, 'enrichment_worker'):
+        if hasattr(self, 'enrichment_worker') and get_enable_memory_enrichment():
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx.get("session_id") == session_id:
                 self.enrichment_worker.enqueue(ctx)
             else:
                 self.enrichment_worker.enqueue(session_id)
+        if hasattr(self, 'enrichment_worker'):
             self._pending_enrichment_context = None
         if hasattr(self, 'tts_worker'):
             self.tts_worker.enqueue_turn_complete(session_id)
@@ -437,8 +442,12 @@ class Qube:
 
     def _on_external_settings_reloaded(self, changed: set) -> None:
         """Apply worker/runtime updates after settings.json was edited externally."""
-        if KEY_MEMORY_ENRICHMENT in changed and hasattr(self, "enrichment_worker"):
-            self.enrichment_worker.set_enabled(get_enable_memory_enrichment())
+        if KEY_MEMORY_ENRICHMENT in changed:
+            enabled = get_enable_memory_enrichment()
+            if hasattr(self, "enrichment_worker"):
+                self.enrichment_worker.set_enabled(enabled)
+            if hasattr(self, "memory_reflection_worker"):
+                self.memory_reflection_worker.set_enabled(enabled)
         if KEY_ENGINE_MODE in changed:
             self._on_engine_mode_changed(get_engine_mode())
             return

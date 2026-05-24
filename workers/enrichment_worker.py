@@ -285,6 +285,9 @@ class EnrichmentWorker(QThread):
               bypass seed its knowledge fact.
             - ``skip_reason`` (str, optional): diagnostic only.
         """
+        if not self._is_enabled_read():
+            logger.debug("[Memory v6] enqueue ignored — enrichment disabled")
+            return
         if isinstance(session_id_or_payload, dict):
             payload = dict(session_id_or_payload)
             if not payload.get("session_id"):
@@ -296,10 +299,30 @@ class EnrichmentWorker(QThread):
             self.queue.put(str(session_id_or_payload))
 
     def set_enabled(self, enabled: bool) -> None:
-        """Toggle enrichment from the main thread; worker stays alive and idles when disabled."""
+        """Toggle enrichment from the main thread; worker stays alive when disabled."""
+        enabled = bool(enabled)
         with QMutexLocker(self._enabled_mutex):
-            self._is_enabled = bool(enabled)
-        logger.debug(f"[Memory v5.1] enrichment enabled={self._is_enabled}")
+            was_enabled = self._is_enabled
+            self._is_enabled = enabled
+        if was_enabled and not enabled:
+            dropped = self._drain_queue()
+            if dropped:
+                logger.info(
+                    "[Memory v6] enrichment disabled; dropped %d queued turn(s)",
+                    dropped,
+                )
+        logger.debug("[Memory v5.1] enrichment enabled=%s", self._is_enabled)
+
+    def _drain_queue(self) -> int:
+        """Drop all pending extraction jobs (non-blocking). Returns count dropped."""
+        dropped = 0
+        while True:
+            try:
+                self.queue.get_nowait()
+                dropped += 1
+            except Empty:
+                break
+        return dropped
 
     def _is_enabled_read(self) -> bool:
         with QMutexLocker(self._enabled_mutex):
@@ -335,42 +358,47 @@ class EnrichmentWorker(QThread):
         self._last_decay_sweep = time.time()
 
         while self.is_running:
-            if not self._is_enabled_read():
-                self.msleep(100)
-                continue
+            enabled = self._is_enabled_read()
+            item = None
             try:
-                try:
-                    item = self.queue.get(timeout=0.5)
-                except Empty:
-                    # Idle tick: run periodic Phase C maintenance.
+                if enabled:
+                    try:
+                        item = self.queue.get(timeout=0.5)
+                    except Empty:
+                        pass
+                else:
+                    self.msleep(500)
+
+                if item is not None:
+                    self.is_processing = True
+                    if isinstance(item, dict):
+                        # T3.3: honour the per-turn skip flag emitted by
+                        # LLMWorker. Maintenance (usage drain + decay sweep)
+                        # is cadence-driven and stays on its own timers via
+                        # the ``finally`` block below.
+                        if item.get("skip_enrichment"):
+                            logger.info(
+                                "[Memory v6] enrichment skipped for session=%s reason=%r",
+                                item.get("session_id"),
+                                item.get("skip_reason") or "unspecified",
+                            )
+                        else:
+                            self._process_turn(item)
+                    else:
+                        self._process_session(item)
+                else:
+                    # Idle tick — maintenance runs even when extraction is disabled.
                     self._maybe_drain_usage_recorder()
                     self._maybe_run_decay_sweep()
-                    continue
-
-                self.is_processing = True
-                if isinstance(item, dict):
-                    # T3.3: honour the per-turn skip flag emitted by
-                    # LLMWorker. Maintenance (usage drain + decay sweep)
-                    # is cadence-driven and stays on its own timers via
-                    # the ``finally`` block below.
-                    if item.get("skip_enrichment"):
-                        logger.info(
-                            "[Memory v6] enrichment skipped for session=%s reason=%r",
-                            item.get("session_id"),
-                            item.get("skip_reason") or "unspecified",
-                        )
-                    else:
-                        self._process_turn(item)
-                else:
-                    self._process_session(item)
 
             except Exception as e:
                 logger.error(f"[Memory v6] Loop error: {e}")
 
             finally:
                 self.is_processing = False
-                self._maybe_drain_usage_recorder()
-                self._maybe_run_decay_sweep()
+                if item is not None:
+                    self._maybe_drain_usage_recorder()
+                    self._maybe_run_decay_sweep()
 
     # ============================================================
     # PIPELINE

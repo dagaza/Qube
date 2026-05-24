@@ -8,7 +8,7 @@
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": true,
-    "description": "When enabled, memory enrichment may run (higher RAM use)."
+    "description": "When enabled, extracts memories from chat, summarises sessions, and runs periodic memory reflection (higher RAM/LLM use). Retrieval of existing memories is unaffected when off."
   },
   "qube.native.modelPath": {
     "type": "string",

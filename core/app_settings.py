@@ -45,7 +45,7 @@ def default_llm_models_dir() -> str:
 
 
 def get_enable_memory_enrichment() -> bool:
-    """When True, memory enrichment may run (higher RAM use). Default True."""
+    """When True, memory extraction and reflection may run (higher RAM use). Default True."""
     return bool(_store().get(KEY_MEMORY_ENRICHMENT, True))
 
 

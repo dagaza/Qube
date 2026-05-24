@@ -448,6 +448,46 @@ class SettingsView(QWidget):
         content_layout.addWidget(startup_widget)
         content_layout.addWidget(self._build_divider())
 
+        # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
+        content_layout.addWidget(self._build_section_header("fa5s.memory", "MEMORY & PERFORMANCE"))
+        perf_widget = QWidget()
+        perf_widget.setObjectName("SettingsFormContainer")
+        perf_form = QFormLayout(perf_widget)
+        perf_form.setSpacing(15)
+        perf_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.memory_enrichment_toggle = PrestigeToggle()
+        self.mem_enrichment_label = QLabel("Enable Memory Enrichment & Reflection (Requires more RAM)")
+        self.mem_enrichment_label.setWordWrap(True)
+        _mem_enrichment_tip = (
+            "When enabled, Qube extracts durable facts from chat, summarises sessions "
+            "into episodic memories, and runs a periodic LLM audit that flags suspicious "
+            "stored memories for review. Uses more RAM and background LLM time. "
+            "When disabled, existing memories and retrieval still work; usage counters "
+            "and decay maintenance for stored rows continue."
+        )
+        self.memory_enrichment_toggle.setToolTip(_mem_enrichment_tip)
+        self.mem_enrichment_label.setToolTip(_mem_enrichment_tip)
+        mem_row = QWidget()
+        mem_row_layout = QHBoxLayout(mem_row)
+        mem_row_layout.setContentsMargins(0, 0, 0, 0)
+        mem_row_layout.addWidget(self.memory_enrichment_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+        mem_row_layout.addWidget(self.mem_enrichment_label, stretch=1)
+
+        self.memory_enrichment_toggle.blockSignals(True)
+        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
+        self.memory_enrichment_toggle.blockSignals(False)
+        self.memory_enrichment_toggle.toggled.connect(self._on_memory_enrichment_toggled)
+
+        perf_form.addRow("", mem_row)
+        content_layout.addWidget(perf_widget)
+        content_layout.addWidget(self._build_divider())
+        
+        # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
+        content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
+        content_layout.addWidget(self._build_triggers_manager())
+        content_layout.addWidget(self._build_divider())
+
         # --- HELP & GUIDANCE ---
         content_layout.addWidget(
             self._build_section_header("fa5s.route", "HELP & GUIDANCE")
@@ -489,43 +529,6 @@ class SettingsView(QWidget):
             alignment=Qt.AlignmentFlag.AlignLeft,
         )
         content_layout.addWidget(help_widget)
-        content_layout.addWidget(self._build_divider())
-
-        # --- SECTION: MEMORY & PERFORMANCE (Low-end / RAM) ---
-        content_layout.addWidget(self._build_section_header("fa5s.memory", "MEMORY & PERFORMANCE"))
-        perf_widget = QWidget()
-        perf_widget.setObjectName("SettingsFormContainer")
-        perf_form = QFormLayout(perf_widget)
-        perf_form.setSpacing(15)
-        perf_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-        self.memory_enrichment_toggle = PrestigeToggle()
-        self.mem_enrichment_label = QLabel("Enable Memory Enrichment (Requires more RAM)")
-        self.mem_enrichment_label.setWordWrap(True)
-        _mem_enrichment_tip = (
-            "Enriches retrieved memories with extra context for better recall. "
-            "Uses more RAM when enabled."
-        )
-        self.memory_enrichment_toggle.setToolTip(_mem_enrichment_tip)
-        self.mem_enrichment_label.setToolTip(_mem_enrichment_tip)
-        mem_row = QWidget()
-        mem_row_layout = QHBoxLayout(mem_row)
-        mem_row_layout.setContentsMargins(0, 0, 0, 0)
-        mem_row_layout.addWidget(self.memory_enrichment_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
-        mem_row_layout.addWidget(self.mem_enrichment_label, stretch=1)
-
-        self.memory_enrichment_toggle.blockSignals(True)
-        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
-        self.memory_enrichment_toggle.blockSignals(False)
-        self.memory_enrichment_toggle.toggled.connect(self._on_memory_enrichment_toggled)
-
-        perf_form.addRow("", mem_row)
-        content_layout.addWidget(perf_widget)
-        content_layout.addWidget(self._build_divider())
-        
-        # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
-        content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
-        content_layout.addWidget(self._build_triggers_manager())
         content_layout.addWidget(self._build_divider())
 
         # --- JSON SETTINGS ---

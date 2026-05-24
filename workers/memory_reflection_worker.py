@@ -44,7 +44,7 @@ import re
 import time
 from typing import Optional
 
-from PyQt6.QtCore import QThread
+from PyQt6.QtCore import QThread, QMutex, QMutexLocker
 
 logger = logging.getLogger("Qube.MemoryReflectionWorker")
 
@@ -79,10 +79,26 @@ class MemoryReflectionWorker(QThread):
         self.llm = llm
         self.store = store
         self._running = True
+        self._enabled_mutex = QMutex()
+        self._is_enabled = True
         # Stagger the first cycle so we don't slam the LLM on app start.
         self._next_run_at = time.time() + random.uniform(60.0, 300.0)
 
     # ------------------------- public API -------------------------
+
+    def set_enabled(self, enabled: bool) -> None:
+        """Pause or resume periodic reflection (same master switch as enrichment)."""
+        enabled = bool(enabled)
+        with QMutexLocker(self._enabled_mutex):
+            was_enabled = self._is_enabled
+            self._is_enabled = enabled
+            if was_enabled and not enabled:
+                self._next_run_at = time.time() + REFLECT_INTERVAL_SEC
+        logger.debug("[MemoryReflection] enabled=%s", enabled)
+
+    def _is_enabled_read(self) -> bool:
+        with QMutexLocker(self._enabled_mutex):
+            return self._is_enabled
 
     def shutdown(self) -> None:
         self._running = False
@@ -93,7 +109,7 @@ class MemoryReflectionWorker(QThread):
         while self._running:
             try:
                 now = time.time()
-                if now >= self._next_run_at:
+                if now >= self._next_run_at and self._is_enabled_read():
                     self._run_cycle()
                     self._next_run_at = time.time() + REFLECT_INTERVAL_SEC
             except Exception as e:
