@@ -27,6 +27,7 @@ from core.app_settings import (
     get_internal_model_path,
     get_audio_input_device_index,
     get_audio_output_device_index,
+    get_notifications_show_preview,
     KEY_AUDIO_INPUT_DEVICE,
     KEY_AUDIO_OUTPUT_DEVICE,
     KEY_ENGINE_MODE,
@@ -37,6 +38,12 @@ from core.app_settings import (
     KEY_NATIVE_MODEL_PATH,
     KEY_WAKEWORD_ACTIVE_ID,
     KEY_WAKEWORD_THRESHOLDS,
+)
+from core.notification_types import (
+    enrichment_complete_event,
+    ingestion_complete_event,
+    stt_failed_event,
+    turn_complete_event,
 )
 from workers.enrichment_worker import EnrichmentWorker
 from workers.memory_reflection_worker import MemoryReflectionWorker
@@ -136,6 +143,7 @@ class Qube:
 
         # -- 6. Wire signals ---------------------------------------------
         self._connect_signals()
+        self._wire_notification_adapters()
         self._sync_databases()
 
         if (
@@ -152,9 +160,35 @@ class Qube:
         tts_path = os.path.join("models", "tts", "kokoro-v1.0.onnx")
         self.tts_worker.load_voice(tts_path)
 
+        self._pending_enrichment_context: dict = {}
+        self._pending_turn_session_id: str | None = None
+
     # ------------------------------------------------------------------ #
     #  Signal wiring                                                       #
     # ------------------------------------------------------------------ #
+
+    def _wire_notification_adapters(self) -> None:
+        """Translate worker lifecycle events into NotificationService emits."""
+        if hasattr(self.enrichment_worker, "extraction_finished"):
+            self.enrichment_worker.extraction_finished.connect(self._on_enrichment_finished)
+
+    def _on_enrichment_finished(self, session_id: str, facts_stored: int) -> None:
+        self.window.emit_notification(enrichment_complete_event(session_id, facts_stored))
+
+    def _notify_turn_complete_if_hidden(self, session_id: str, final_text: str) -> None:
+        preview = ""
+        if get_notifications_show_preview() and final_text:
+            preview = final_text.strip()[:120]
+        event = turn_complete_event(session_id=session_id, preview=preview)
+        tts_enabled = bool(
+            getattr(self.tts_worker, "is_muted", False) is False
+            and getattr(self.window, "voice_bypass_toggle", None)
+            and self.window.voice_bypass_toggle.isChecked()
+        )
+        if tts_enabled:
+            self.window.notification_service.queue_turn_complete(event, wait_for_tts=True)
+        else:
+            self.window.notification_service.emit(event)
 
     def _connect_signals(self):
         w = self.window
@@ -255,6 +289,7 @@ class Qube:
         )
         if hasattr(self, "window") and hasattr(self.window, "conversations_view"):
             self.window.conversations_view.on_llm_response_finished(session_id, text or "")
+        self._pending_turn_session_id = session_id
         if hasattr(self, 'enrichment_worker') and get_enable_memory_enrichment():
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx:
@@ -267,10 +302,28 @@ class Qube:
                 self.enrichment_worker.enqueue(session_id)
         if hasattr(self, 'enrichment_worker'):
             self._pending_enrichment_context = None
+        tts_will_play = bool(
+            hasattr(self, "tts_worker")
+            and not getattr(self.tts_worker, "is_muted", True)
+            and hasattr(self.window, "voice_bypass_toggle")
+            and self.window.voice_bypass_toggle.isChecked()
+        )
+        if not tts_will_play:
+            self._notify_turn_complete_if_hidden(session_id, text or "")
+            if getattr(self.audio_worker, "is_paused", False):
+                self.window.update_status("Voice Input Deactivated", force=True)
+            else:
+                self.window.update_status("Idle", force=True)
         if hasattr(self, 'tts_worker'):
             self.tts_worker.enqueue_turn_complete(session_id)
 
     def _handle_voice_prompt(self, text: str):
+        cleaned = (text or "").strip()
+        if not cleaned:
+            self.window.emit_notification(stt_failed_event())
+            self.window.update_status("Idle", force=True)
+            return
+
         session_id = getattr(self.window.conversations_view, 'active_session_id', None)
         if not session_id:
             conv_view = self.window.conversations_view
@@ -287,18 +340,22 @@ class Qube:
         from core.composer_attachments import parse_attachments
 
         self.window.conversations_view.log_user_message(text, pending_assistant=True)
-        clean, attachments = parse_attachments(text)
-        prompt = clean if clean else text
+        clean, attachments = parse_attachments(cleaned)
+        prompt = clean if clean else cleaned
         self.llm_worker.generate_response(
             prompt,
             session_id,
             attachments=attachments,
-            persist_content=text.strip(),
+            persist_content=cleaned.strip(),
         )
 
     def _handle_user_interruption(self):
         logger = logging.getLogger("Qube.Main")
         logger.info("User interruption detected! Slamming on the brakes.")
+
+        session_id = getattr(self, "_pending_turn_session_id", None)
+        if session_id:
+            self.window.notification_service.cancel_turn_complete(session_id)
         
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
@@ -320,6 +377,9 @@ class Qube:
     def stop_active_response(self):
         """Manual UI stop: immediately cancel LLM + TTS and unlock text input."""
         logger.info("[Main] Manual Stop requested from chat UI.")
+        session_id = getattr(self, "_pending_turn_session_id", None)
+        if session_id:
+            self.window.notification_service.cancel_turn_complete(session_id)
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
         if hasattr(self, 'tts_worker') and self.tts_worker.isRunning():
@@ -331,6 +391,10 @@ class Qube:
     
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""
+        session_id = getattr(self, "_pending_turn_session_id", None)
+        if session_id:
+            self.window.notification_service.flush_turn_complete(session_id)
+            self._pending_turn_session_id = None
         if hasattr(self, 'window'):
             # 1. Determine the correct safe state
             if getattr(self.audio_worker, 'is_paused', False):
@@ -339,9 +403,9 @@ class Qube:
                 safe_status = "Idle"
                 
             # 2. Update the internal window state
-            self.window.update_status(safe_status)
+            self.window.update_status(safe_status, force=True)
             
-            # 3. 🔑 THE FIX: Forcefully broadcast the safe status through the worker's 
+            # 3. Forcefully broadcast the safe status through the worker's
             # signal pipeline so the Top Bar and Input Box catch the update!
             if hasattr(self, 'tts_worker'):
                 self.tts_worker.status_update.emit(safe_status)
@@ -405,29 +469,40 @@ class Qube:
     def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         self.window.update_status("Ingesting Documents...")
-        
+        self.window._activity_reducer.set_background_busy(True)
+        self.window._sync_tray_presence()
+
         self.ingestion_worker = IngestionWorker(
-            file_paths, 
-            self.embedder, 
-            self.store, 
+            file_paths,
+            self.embedder,
+            self.store,
             self.db_manager,
             folder_id=folder_id,
         )
-        
+
         # Wire the worker's progress signals back to the Library UI
-        # 🔑 UPDATED NAMES HERE
         self.ingestion_worker.progress_update.connect(self.window.library_view.update_ingestion_progress)
         self.ingestion_worker.file_done.connect(self.window.update_status)
         self.ingestion_worker.ingestion_complete.connect(self.window.library_view.complete_ingestion)
-        
+        self.ingestion_worker.ingestion_complete.connect(self._on_ingestion_complete)
+
         # Route backend errors directly to the UI popup
         self.ingestion_worker.error_occurred.connect(self.window.library_view.show_error)
-        
+
         # Keep the terminal log as a backup
         self.ingestion_worker.error_occurred.connect(lambda err: logger.error(f"Ingestion Error: {err}"))
-        
+
         # Fire it up!
         self.ingestion_worker.start()
+
+    def _on_ingestion_complete(self, chunk_count: int) -> None:
+        file_count = len(getattr(self.ingestion_worker, "file_paths", []) or [])
+        if file_count <= 0 and chunk_count > 0:
+            file_count = 1
+        if file_count > 0:
+            self.window.emit_notification(ingestion_complete_event(file_count=file_count))
+        self.window._activity_reducer.set_background_busy(False)
+        self.window._sync_tray_presence()
 
     # ------------------------------------------------------------------ #
     #  UI State Handlers                                                   #

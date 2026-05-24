@@ -1696,6 +1696,7 @@ class LLMWorker(QThread):
         final_text = ""
         raw_parts: list[str] = []
         native_end_text = ""
+        native_load_error_text = ""
         start = time.time()
         first_token = False
         stream_wall_start = time.time()
@@ -1771,6 +1772,11 @@ class LLMWorker(QThread):
                 self.token_streamed.emit(self.session_id or "", f"\n\n*({data})*")
                 err_txt = str(data or "")
                 if "native model not loaded" in err_txt.lower():
+                    # Persist this as the assistant turn in SQLite so the next
+                    # user message does not leave back-to-back user roles in
+                    # chat history (breaks Mistral flatten_user prompts).
+                    native_load_error_text = err_txt.strip()
+                    self._mark_skip_enrichment("native_model_not_loaded")
                     self.status_update.emit("Load a Model")
                     spoken = self.clean_text_for_tts(err_txt)
                     if spoken:
@@ -1812,6 +1818,8 @@ class LLMWorker(QThread):
                 self.sentence_ready.emit(spoken, self.session_id)
             current_sentence = ""
         final_text = authoritative_text or emitted_text
+        if not final_text.strip() and native_load_error_text:
+            final_text = native_load_error_text
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None

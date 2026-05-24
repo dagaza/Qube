@@ -53,6 +53,8 @@ def execute_composer_command(command_id: str, *, window: Any | None = None) -> C
                 body=restart_prompt_body(purpose="run the setup tour immediately"),
                 action_label=restart_action_label(),
                 action_id="restart_app",
+                severity="warning",
+                category="update",
             ),
         )
     return ComposerCommandResult(

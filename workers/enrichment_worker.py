@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QThread, QMutex, QMutexLocker
+from PyQt6.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal
 import logging
 import time
 import numpy as np
@@ -58,6 +58,8 @@ class EnrichmentWorker(QThread):
       third-party / knowledge memories survive the subject filter.
     """
 
+    extraction_finished = pyqtSignal(str, int)  # session_id, facts_stored
+
     def __init__(self, llm, embedder, store, db):
         super().__init__()
 
@@ -69,6 +71,7 @@ class EnrichmentWorker(QThread):
         self.queue = Queue()
         self.is_running = True
         self.is_processing = False
+        self._last_facts_stored = 0
 
         self._enabled_mutex = QMutex()
         self._is_enabled = True
@@ -470,6 +473,9 @@ class EnrichmentWorker(QThread):
             rag_chunk_ids=rag_chunk_ids,
             mode=mode,
         )
+        stored = getattr(self, "_last_facts_stored", 0)
+        self.extraction_finished.emit(session_id, int(stored))
+        self._last_facts_stored = 0
 
     def _process_session(self, session_id: str):
         if not self._wait_for_chat_llm_idle():
@@ -556,6 +562,7 @@ class EnrichmentWorker(QThread):
                 )
 
         if not facts:
+            self._last_facts_stored = 0
             return
 
         source_message_ids: list = []
@@ -586,7 +593,7 @@ class EnrichmentWorker(QThread):
             "rag_chunk_ids": [str(c) for c in (rag_chunk_ids or []) if c],
             "conversation_text": conversation_text,
         }
-        self._store_facts(facts, turn_context=turn_context)
+        self._last_facts_stored = self._store_facts(facts, turn_context=turn_context)
 
         # T3.2: after the atomic-fact flush, opportunistically summarise
         # the session into a single ``episode`` row. Cadence + idle window
@@ -1136,7 +1143,7 @@ Conversation:
 
         return True, "ok"
 
-    def _store_facts(self, facts, turn_context: dict | None = None):
+    def _store_facts(self, facts, turn_context: dict | None = None) -> int:
         turn_context = turn_context or {}
         session_id = str(turn_context.get("session_id") or "")
         source_message_ids = list(turn_context.get("source_message_ids") or [])
@@ -1330,8 +1337,10 @@ Conversation:
             try:
                 self.store.table.add(records_to_add)
                 logger.info(f"[Memory v6] stored {len(records_to_add)} facts")
+                return len(records_to_add)
             except Exception as e:
                 logger.error(f"[Memory v6] write failed: {e}")
+        return 0
 
     # ============================================================
     # PHASE C: USAGE COUNTERS + DECAY MAINTENANCE

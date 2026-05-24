@@ -33,6 +33,19 @@ KEY_WAKEWORD_ACTIVE_ID = "qube.wakeword.activeId"
 KEY_WAKEWORD_THRESHOLDS = "qube.wakeword.thresholds"
 KEY_AUDIO_INPUT_DEVICE = "qube.audio.inputDeviceIndex"
 KEY_AUDIO_OUTPUT_DEVICE = "qube.audio.outputDeviceIndex"
+KEY_NOTIFICATIONS_ENABLED = "qube.notifications.enabled"
+KEY_NOTIFICATIONS_DND = "qube.notifications.dnd"
+KEY_NOTIFICATIONS_SUPPRESS_WHEN_FOCUSED = "qube.notifications.suppressWhenFocused"
+KEY_NOTIFICATIONS_SOUND_ENABLED = "qube.notifications.soundEnabled"
+KEY_NOTIFICATIONS_OS_WHEN_HIDDEN = "qube.notifications.osWhenHidden"
+KEY_NOTIFICATIONS_SHOW_PREVIEW = "qube.notifications.showPreview"
+KEY_NOTIFICATIONS_KEEP_HISTORY = "qube.notifications.keepHistory"
+KEY_NOTIFICATIONS_CATEGORY_VOICE = "qube.notifications.categories.voice"
+KEY_NOTIFICATIONS_CATEGORY_TURN = "qube.notifications.categories.turnComplete"
+KEY_NOTIFICATIONS_CATEGORY_TOOLS = "qube.notifications.categories.tools"
+KEY_NOTIFICATIONS_CATEGORY_BACKGROUND = "qube.notifications.categories.background"
+KEY_NOTIFICATIONS_CATEGORY_MEMORY = "qube.notifications.categories.memory"
+KEY_NOTIFICATIONS_CATEGORY_UPDATES = "qube.notifications.categories.updates"
 
 
 def _store():
@@ -462,3 +475,107 @@ def set_audio_output_device_index(index: int | None) -> None:
         store.remove(KEY_AUDIO_OUTPUT_DEVICE)
     else:
         store.set(KEY_AUDIO_OUTPUT_DEVICE, int(index))
+
+
+def get_notifications_enabled() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_ENABLED, True))
+
+
+def set_notifications_enabled(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_ENABLED, bool(enabled))
+
+
+def get_notifications_dnd() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_DND, False))
+
+
+def set_notifications_dnd(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_DND, bool(enabled))
+
+
+def get_notifications_suppress_when_focused() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_SUPPRESS_WHEN_FOCUSED, True))
+
+
+def set_notifications_suppress_when_focused(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_SUPPRESS_WHEN_FOCUSED, bool(enabled))
+
+
+def get_notifications_sound_enabled() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_SOUND_ENABLED, False))
+
+
+def set_notifications_sound_enabled(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_SOUND_ENABLED, bool(enabled))
+
+
+def get_notifications_os_when_hidden() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_OS_WHEN_HIDDEN, True))
+
+
+def set_notifications_os_when_hidden(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_OS_WHEN_HIDDEN, bool(enabled))
+
+
+def get_notifications_show_preview() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_SHOW_PREVIEW, False))
+
+
+def set_notifications_show_preview(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_SHOW_PREVIEW, bool(enabled))
+
+
+def get_notifications_keep_history() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_KEEP_HISTORY, True))
+
+
+def set_notifications_keep_history(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_KEEP_HISTORY, bool(enabled))
+
+
+def get_notifications_category_voice() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_VOICE, True))
+
+
+def set_notifications_category_voice(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_VOICE, bool(enabled))
+
+
+def get_notifications_category_turn_complete() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_TURN, True))
+
+
+def set_notifications_category_turn_complete(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_TURN, bool(enabled))
+
+
+def get_notifications_category_tools() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_TOOLS, True))
+
+
+def set_notifications_category_tools(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_TOOLS, bool(enabled))
+
+
+def get_notifications_category_background() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_BACKGROUND, True))
+
+
+def set_notifications_category_background(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_BACKGROUND, bool(enabled))
+
+
+def get_notifications_category_memory() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_MEMORY, False))
+
+
+def set_notifications_category_memory(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_MEMORY, bool(enabled))
+
+
+def get_notifications_category_updates() -> bool:
+    return bool(_store().get(KEY_NOTIFICATIONS_CATEGORY_UPDATES, True))
+
+
+def set_notifications_category_updates(enabled: bool) -> None:
+    _store().set(KEY_NOTIFICATIONS_CATEGORY_UPDATES, bool(enabled))

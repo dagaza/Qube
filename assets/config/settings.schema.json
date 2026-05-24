@@ -84,5 +84,70 @@
     "type": ["integer", "null"],
     "default": null,
     "description": "Preferred speaker device index; null uses the system default."
+  },
+  "qube.notifications.enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "Master switch for in-app and OS notifications."
+  },
+  "qube.notifications.dnd": {
+    "type": "boolean",
+    "default": false,
+    "description": "Do Not Disturb — suppress non-critical notifications."
+  },
+  "qube.notifications.suppressWhenFocused": {
+    "type": "boolean",
+    "default": true,
+    "description": "Suppress info/success toasts while the main window is focused."
+  },
+  "qube.notifications.soundEnabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Play alert sounds for error/critical notifications."
+  },
+  "qube.notifications.osWhenHidden": {
+    "type": "boolean",
+    "default": true,
+    "description": "Show OS notifications when the window is hidden or unfocused."
+  },
+  "qube.notifications.showPreview": {
+    "type": "boolean",
+    "default": false,
+    "description": "Include message preview text in turn-complete notifications."
+  },
+  "qube.notifications.keepHistory": {
+    "type": "boolean",
+    "default": true,
+    "description": "Persist recent notifications under ~/.qube/notification_history.json."
+  },
+  "qube.notifications.categories.voice": {
+    "type": "boolean",
+    "default": true,
+    "description": "Voice pipeline notifications (STT failures, mic errors)."
+  },
+  "qube.notifications.categories.turnComplete": {
+    "type": "boolean",
+    "default": true,
+    "description": "Notify when an assistant reply is ready while hidden."
+  },
+  "qube.notifications.categories.tools": {
+    "type": "boolean",
+    "default": true,
+    "description": "Tool failure and action-required notifications."
+  },
+  "qube.notifications.categories.background": {
+    "type": "boolean",
+    "default": true,
+    "description": "Background task completion (ingestion, etc.)."
+  },
+  "qube.notifications.categories.memory": {
+    "type": "boolean",
+    "default": false,
+    "description": "Memory extraction and summary notifications."
+  },
+  "qube.notifications.categories.updates": {
+    "type": "boolean",
+    "default": true,
+    "description": "App update and restart prompts."
   }
 }

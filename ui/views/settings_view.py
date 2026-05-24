@@ -482,6 +482,62 @@ class SettingsView(QWidget):
         perf_form.addRow("", mem_row)
         content_layout.addWidget(perf_widget)
         content_layout.addWidget(self._build_divider())
+
+        # --- SECTION: NOTIFICATIONS ---
+        content_layout.addWidget(self._build_section_header("fa5s.bell", "NOTIFICATIONS"))
+        notif_widget = QWidget()
+        notif_widget.setObjectName("SettingsFormContainer")
+        notif_layout = QVBoxLayout(notif_widget)
+        notif_layout.setContentsMargins(15, 0, 15, 10)
+        notif_layout.setSpacing(8)
+
+        from core import app_settings as _notif_settings
+
+        self.notifications_enabled_cb = QCheckBox("Enable notifications")
+        self.notifications_enabled_cb.setChecked(_notif_settings.get_notifications_enabled())
+        self.notifications_enabled_cb.toggled.connect(_notif_settings.set_notifications_enabled)
+        notif_layout.addWidget(self.notifications_enabled_cb)
+
+        self.notifications_dnd_cb = QCheckBox("Do Not Disturb (critical only)")
+        self.notifications_dnd_cb.setChecked(_notif_settings.get_notifications_dnd())
+        self.notifications_dnd_cb.toggled.connect(self._on_notifications_dnd_toggled)
+        notif_layout.addWidget(self.notifications_dnd_cb)
+
+        self.notifications_suppress_focus_cb = QCheckBox("Suppress info/success while app is focused")
+        self.notifications_suppress_focus_cb.setChecked(
+            _notif_settings.get_notifications_suppress_when_focused()
+        )
+        self.notifications_suppress_focus_cb.toggled.connect(
+            _notif_settings.set_notifications_suppress_when_focused
+        )
+        notif_layout.addWidget(self.notifications_suppress_focus_cb)
+
+        self.notifications_os_hidden_cb = QCheckBox("OS notifications when hidden")
+        self.notifications_os_hidden_cb.setChecked(_notif_settings.get_notifications_os_when_hidden())
+        self.notifications_os_hidden_cb.toggled.connect(_notif_settings.set_notifications_os_when_hidden)
+        notif_layout.addWidget(self.notifications_os_hidden_cb)
+
+        self.notifications_sound_cb = QCheckBox("Play alert sounds")
+        self.notifications_sound_cb.setChecked(_notif_settings.get_notifications_sound_enabled())
+        self.notifications_sound_cb.toggled.connect(_notif_settings.set_notifications_sound_enabled)
+        notif_layout.addWidget(self.notifications_sound_cb)
+
+        self.notifications_preview_cb = QCheckBox("Show message preview in notifications")
+        self.notifications_preview_cb.setChecked(_notif_settings.get_notifications_show_preview())
+        self.notifications_preview_cb.toggled.connect(_notif_settings.set_notifications_show_preview)
+        notif_layout.addWidget(self.notifications_preview_cb)
+
+        self.notifications_memory_cb = QCheckBox("Memory extraction notifications")
+        self.notifications_memory_cb.setChecked(_notif_settings.get_notifications_category_memory())
+        self.notifications_memory_cb.toggled.connect(_notif_settings.set_notifications_category_memory)
+        notif_layout.addWidget(self.notifications_memory_cb)
+
+        clear_history_btn = QPushButton("Clear notification history")
+        clear_history_btn.clicked.connect(self._clear_notification_history)
+        notif_layout.addWidget(clear_history_btn)
+
+        content_layout.addWidget(notif_widget)
+        content_layout.addWidget(self._build_divider())
         
         # --- 🔑 SECTION 3: NLP RAG TRIGGERS ---
         content_layout.addWidget(self._build_section_header("fa5s.bolt", "NLP RAG TRIGGERS"))
@@ -1265,6 +1321,22 @@ class SettingsView(QWidget):
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
 
+    def _on_notifications_dnd_toggled(self, checked: bool) -> None:
+        from core.app_settings import set_notifications_dnd
+
+        set_notifications_dnd(checked)
+        win = self.window()
+        if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
+            win.tray_controller.sync_dnd_toggle()
+
+    def _clear_notification_history(self) -> None:
+        win = self.window()
+        if win is not None and hasattr(win, "notification_service"):
+            win.notification_service.history.clear()
+            if hasattr(win, "tray_controller") and win.tray_controller is not None:
+                win.tray_controller.update_recent_notifications([])
+        self.settings_file_status_lbl.setText("Notification history cleared.")
+
     # --------------------------------------------------------- #
     #  THE PRESTIGE MENU LOGIC                                  #
     # --------------------------------------------------------- #
@@ -1624,6 +1696,31 @@ class SettingsView(QWidget):
         self.memory_enrichment_toggle.blockSignals(True)
         self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
         self.memory_enrichment_toggle.blockSignals(False)
+
+        if hasattr(self, "notifications_enabled_cb"):
+            from core import app_settings as _ns
+
+            self.notifications_enabled_cb.blockSignals(True)
+            self.notifications_enabled_cb.setChecked(_ns.get_notifications_enabled())
+            self.notifications_enabled_cb.blockSignals(False)
+            self.notifications_dnd_cb.blockSignals(True)
+            self.notifications_dnd_cb.setChecked(_ns.get_notifications_dnd())
+            self.notifications_dnd_cb.blockSignals(False)
+            self.notifications_suppress_focus_cb.blockSignals(True)
+            self.notifications_suppress_focus_cb.setChecked(_ns.get_notifications_suppress_when_focused())
+            self.notifications_suppress_focus_cb.blockSignals(False)
+            self.notifications_os_hidden_cb.blockSignals(True)
+            self.notifications_os_hidden_cb.setChecked(_ns.get_notifications_os_when_hidden())
+            self.notifications_os_hidden_cb.blockSignals(False)
+            self.notifications_sound_cb.blockSignals(True)
+            self.notifications_sound_cb.setChecked(_ns.get_notifications_sound_enabled())
+            self.notifications_sound_cb.blockSignals(False)
+            self.notifications_preview_cb.blockSignals(True)
+            self.notifications_preview_cb.setChecked(_ns.get_notifications_show_preview())
+            self.notifications_preview_cb.blockSignals(False)
+            self.notifications_memory_cb.blockSignals(True)
+            self.notifications_memory_cb.setChecked(_ns.get_notifications_category_memory())
+            self.notifications_memory_cb.blockSignals(False)
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

@@ -30,6 +30,11 @@ from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
+from core.assistant_activity import AssistantActivityReducer
+from core.notification_service import NotificationService
+from core.notification_types import NotificationEvent
+from ui.os_notification_adapter import OsNotificationAdapter
+from ui.tray_controller import TrayController
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
     get_engine_mode,
@@ -137,6 +142,11 @@ class MainWindow(QMainWindow):
         self._pending_native_model_path: str | None = None
         self._native_model_loading: bool = False
         self._native_model_loaded_success: bool = False
+        self._activity_reducer = AssistantActivityReducer()
+        self._notification_service = NotificationService(self)
+        self._os_notification_adapter = OsNotificationAdapter()
+        self.tray_controller: TrayController | None = None
+        self.tray_icon = None  # legacy alias set by TrayController
 
         # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
         # We import it here or at the top of the file
@@ -1573,9 +1583,46 @@ class MainWindow(QMainWindow):
             self.telemetry_view.refresh_after_theme_toggle()
         if hasattr(self, "notification_center"):
             self.notification_center.apply_theme(self._is_dark_theme)
-    # ------------------------------------------------------------------ #
-    #  TIMERS & TRAY                                                     #
-    # ------------------------------------------------------------------ #
+        if self.tray_controller is not None:
+            self.tray_controller.apply_theme(self._is_dark_theme)
+
+    def _setup_notification_service(self) -> None:
+        self._notification_service.set_window_state_providers(
+            visible=lambda: self.isVisible() and not self.isMinimized(),
+            focused=lambda: self.isActiveWindow(),
+            tts_playing=self._is_tts_playing,
+        )
+        self._notification_service.set_show_handlers(
+            in_app=self._show_in_app_notification,
+            os_notify=self._os_notification_adapter.show,
+        )
+        self._notification_service.action_triggered.connect(self._on_notification_service_action)
+        self._notification_service.notification_shown.connect(self._on_notification_shown)
+
+    def _is_tts_playing(self) -> bool:
+        cv = getattr(self, "conversations_view", None)
+        return bool(getattr(cv, "_tts_playing", False)) if cv is not None else False
+
+    def _show_in_app_notification(self, event: NotificationEvent) -> None:
+        if hasattr(self, "notification_center"):
+            self.notification_center.show_notification(event.to_app_request())
+
+    def _on_notification_shown(self, event: NotificationEvent) -> None:
+        if self.tray_controller is None:
+            return
+        items = [(e.title, e.body) for e in self._notification_service.history.recent(5)]
+        self.tray_controller.update_recent_notifications(items)
+
+    def _on_notification_service_action(self, action_id: str, _event_id: str) -> None:
+        self._on_notification_action(action_id)
+
+    def emit_notification(self, event: NotificationEvent) -> None:
+        """Public entry for workers/adapters to raise a notification."""
+        self._notification_service.emit(event)
+
+    @property
+    def notification_service(self) -> NotificationService:
+        return self._notification_service
 
     def _restore_workspace_from_tray(self) -> None:
         """Show the main window after hide-to-tray or minimize; raise and focus."""
@@ -1585,33 +1632,90 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
-    def _on_tray_icon_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        """Double-click tray icon → same as 'Open Workspace' (single-click stays for context menu)."""
-        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
-            self._restore_workspace_from_tray()
-
     def _setup_tray(self) -> None:
-        self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(qta.icon('fa5s.cube', color='#89b4fa'))
-        tray_menu = QMenu()
-        tray_menu.setStyleSheet("background-color: #1e1e2e; color: #cdd6f4;")
-        
-        show_action = QAction("Open Workspace", self)
-        show_action.triggered.connect(self._restore_workspace_from_tray)
-        quit_action = QAction("Exit Qube", self)
-        quit_action.triggered.connect(self._request_app_exit)
+        self.tray_controller = TrayController(
+            self,
+            voice_input_enabled=lambda: bool(
+                getattr(self, "voice_input_toggle", None)
+                and self.voice_input_toggle.isChecked()
+            ),
+            voice_output_enabled=lambda: bool(
+                getattr(self, "voice_bypass_toggle", None)
+                and self.voice_bypass_toggle.isChecked()
+            ),
+        )
+        self.tray_icon = self.tray_controller.tray_icon
+        if not self.tray_controller.available:
+            logger.warning("System tray unavailable — hide-to-tray disabled.")
+            return
 
-        tray_menu.addAction(show_action)
-        tray_menu.addSeparator()
-        tray_menu.addAction(quit_action)
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.activated.connect(self._on_tray_icon_activated)
-        self.tray_icon.show()
+        self.tray_controller.open_requested.connect(self._restore_workspace_from_tray)
+        self.tray_controller.exit_requested.connect(self._request_app_exit)
+        self.tray_controller.restart_requested.connect(self.request_application_restart)
+        self.tray_controller.voice_input_toggled.connect(self._on_tray_voice_input_toggled)
+        self.tray_controller.voice_output_toggled.connect(self._on_tray_voice_output_toggled)
+        self.tray_controller.navigate_requested.connect(self._on_tray_navigate)
+
+        self._os_notification_adapter.set_tray_icon(self.tray_controller.tray_icon)
+        self._setup_notification_service()
+
+        if hasattr(self, "voice_input_toggle"):
+            self.voice_input_toggle.toggled.connect(self._sync_tray_voice_toggles)
+        if hasattr(self, "voice_bypass_toggle"):
+            self.voice_bypass_toggle.toggled.connect(self._sync_tray_voice_toggles)
+
+        self._sync_tray_presence()
+
+    def _on_tray_voice_input_toggled(self, enabled: bool) -> None:
+        if hasattr(self, "voice_input_toggle"):
+            self.voice_input_toggle.blockSignals(True)
+            self.voice_input_toggle.setChecked(enabled)
+            self.voice_input_toggle.blockSignals(False)
+        if self._audio_worker is not None:
+            self._audio_worker.set_paused(not enabled)
+        self._activity_reducer.set_voice_paused(not enabled)
+        self._sync_tray_presence()
+
+    def _on_tray_voice_output_toggled(self, enabled: bool) -> None:
+        if hasattr(self, "voice_bypass_toggle"):
+            self.voice_bypass_toggle.blockSignals(True)
+            self.voice_bypass_toggle.setChecked(enabled)
+            self.voice_bypass_toggle.blockSignals(False)
+        if self._tts_worker is not None:
+            self._tts_worker.set_mute(not enabled)
+
+    def _sync_tray_voice_toggles(self, *_args) -> None:
+        if self.tray_controller is None:
+            return
+        voice_in = self.voice_input_toggle.isChecked() if hasattr(self, "voice_input_toggle") else True
+        voice_out = self.voice_bypass_toggle.isChecked() if hasattr(self, "voice_bypass_toggle") else True
+        self.tray_controller.sync_voice_toggles(voice_in=voice_in, voice_out=voice_out)
+        self._activity_reducer.set_voice_paused(not voice_in)
+        self._sync_tray_presence()
+
+    def _on_tray_navigate(self, action_id: str) -> None:
+        self._on_notification_action(action_id)
+
+    def _sync_tray_presence(self) -> None:
+        if self.tray_controller is None:
+            return
+        voice_paused = bool(
+            self._audio_worker and getattr(self._audio_worker, "is_paused", False)
+        )
+        self.tray_controller.set_activity(
+            self._activity_reducer.activity,
+            voice_paused=voice_paused,
+        )
 
     def _request_app_exit(self) -> None:
         """Force a real app exit instead of hide-to-tray."""
         self._force_app_exit = True
-        self.tray_icon.hide()
+        if hasattr(self, "_notification_service"):
+            self._notification_service.shutdown()
+        if self.tray_controller is not None:
+            self.tray_controller.hide_tray()
+        elif self.tray_icon is not None:
+            self.tray_icon.hide()
         self.close()
 
     def _start_timers(self) -> None:
@@ -1666,12 +1770,24 @@ class MainWindow(QMainWindow):
             self._toggle_maximize()
 
     def closeEvent(self, event):
-        if self.tray_icon.isVisible() and not self._force_app_exit:
+        tray_visible = (
+            self.tray_controller is not None
+            and self.tray_controller.available
+            and self.tray_controller.tray_icon is not None
+            and self.tray_controller.tray_icon.isVisible()
+        ) or (
+            self.tray_icon is not None
+            and hasattr(self.tray_icon, "isVisible")
+            and self.tray_icon.isVisible()
+        )
+        if tray_visible and not self._force_app_exit:
             self.hide()
-            event.ignore() 
+            event.ignore()
         else:
             if self.routing_debug_tool_view is not None:
                 self.routing_debug_tool_view.close()
+            if hasattr(self, "_notification_service"):
+                self._notification_service.shutdown()
             event.accept()
 
     # ------------------------------------------------------------------ #
@@ -1682,12 +1798,37 @@ class MainWindow(QMainWindow):
 
     def show_app_notification(self, request: AppNotificationRequest) -> None:
         """Show a bottom-right toast (updates, release notes, post-command actions)."""
-        if hasattr(self, "notification_center"):
-            self.notification_center.show_notification(request)
+        from core.notification_types import NotificationEvent, NotificationSeverity
+
+        event = NotificationEvent(
+            title=request.title,
+            body=request.body,
+            severity=NotificationSeverity(getattr(request, "severity", "info")),
+            category=getattr(request, "category", "update"),  # type: ignore[arg-type]
+            action_label=request.action_label,
+            action_id=request.action_id,
+            auto_dismiss_ms=request.auto_dismiss_ms,
+            event_id=getattr(request, "event_id", "") or "",
+        )
+        self._notification_service.emit(event)
 
     def _on_notification_action(self, action_id: str) -> None:
         if action_id == "restart_app":
             self.request_application_restart()
+        elif action_id == "open_main_window":
+            self._restore_workspace_from_tray()
+        elif action_id == "open_settings":
+            self._restore_workspace_from_tray()
+            self._route_view(5)
+        elif action_id == "open_models":
+            self._restore_workspace_from_tray()
+            self._route_view(4)
+        elif action_id == "open_library":
+            self._restore_workspace_from_tray()
+            self._route_view(1)
+        elif action_id == "open_memories":
+            self._restore_workspace_from_tray()
+            self._route_view(2)
 
     def request_application_restart(self) -> None:
         self._force_app_exit = True
@@ -1701,50 +1842,32 @@ class MainWindow(QMainWindow):
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""
-        msg_upper = message.upper().strip()
+        transition = self._activity_reducer.reduce(message, force=force)
+        if transition.blocked:
+            return
 
-        # 1. Determine the incoming state (TTS "Speaking" is separate from LLM "Thinking")
-        if any(k in msg_upper for k in ["RECORDING", "LISTENING"]):
-            new_state = "recording"
-        elif "SPEAKING" in msg_upper:
-            new_state = "speaking"
-        elif msg_upper == "LOAD A MODEL":
-            new_state = "needs_model"
-        elif any(k in msg_upper for k in ["THINKING", "GENERATING", "SYNTHESIZING", "TRANSCRIBING"]):
-            new_state = "thinking"
-        else:
-            new_state = "idle"
-
-        # 2. 🔑 THE PRIORITY GATE
-        # Get the current state from the UI property
-        current_state = self.status_bubble.property("state") or "idle"
-
-        # Block stray Idle only while the mic pipeline is actively in "recording" UI state.
-        # End-of-capture uses the trusted phrase "Voice capture idle" (see AudioListenerWorker).
-        # LLM/TTS completion must be able to return to Idle from "thinking" (e.g. errors with no speech).
-        if new_state == "idle" and current_state == "recording":
-            if not force and msg_upper != "VOICE CAPTURE IDLE":
-                return
-
-        # 3. Update the UI
-        if msg_upper == "VOICE CAPTURE IDLE":
-            display = " IDLE"
-        elif new_state == "needs_model":
-            display = "Load a Model"
-        else:
-            display = msg_upper
-        self.status_bubble.setText(f" {display}")
+        new_state = transition.bubble_state
+        self.status_bubble.setText(f" {transition.display_text}")
         self.status_bubble.setProperty("state", new_state)
-
-        # Force Style Refresh
         self.status_bubble.style().unpolish(self.status_bubble)
         self.status_bubble.style().polish(self.status_bubble)
 
-        # Lock input only for recording / LLM work; keep unlocked during TTS playback
-        if hasattr(self, 'conversations_view'):
+        self._sync_tray_presence()
+
+        if hasattr(self, "conversations_view"):
             self.conversations_view.set_input_enabled(
                 new_state in ("idle", "speaking", "needs_model")
             )
+
+        msg_upper = message.upper().strip()
+        if "MIC ERROR" in msg_upper:
+            from core.notification_types import mic_error_event
+
+            self.emit_notification(mic_error_event(detail=message))
+        elif new_state == "needs_model":
+            from core.notification_types import needs_model_event
+
+            self.emit_notification(needs_model_event())
 
     def update_rag_indicator(self, active: bool) -> None:
         """Called by the LLM Worker when actively retrieving documents."""
