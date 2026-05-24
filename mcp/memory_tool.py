@@ -178,11 +178,11 @@ _TIER_TO_SOURCE_PREFIX: dict[str, str] = {
     "knowledge": "qube_memory::knowledge::%",
     "episode": "qube_memory::episode::%",
     "context": "qube_memory::context::%",
-    # Pre-T3.4 rows used ``qube_memory::<category>`` directly. We honour
-    # them as legacy context so existing installs without a DB wipe still
-    # retrieve their memories, without structurally conflating them with
-    # the new explicit preference/knowledge namespaces.
-    "legacy_context": "qube_memory::%",
+    # Pre-T3.4 rows are migrated once to ``qube_memory::legacy::<category>``
+    # (see ``core.memory_source_migration``). Chat/context retrieval pulls
+    # this explicit namespace — never a catch-all ``qube_memory::%`` that
+    # would defeat tier isolation for knowledge/episode rows.
+    "legacy": "qube_memory::legacy::%",
 }
 
 
@@ -209,11 +209,8 @@ def _build_tier_where_clause(
     if include_episode:
         prefixes.append(_TIER_TO_SOURCE_PREFIX["episode"])
     if include_context:
-        # Legacy rows (pre-T3.4) land here too — they do not carry a
-        # tier segment in their source string and we want them visible
-        # alongside the new context tier until the store is wiped.
         prefixes.append(_TIER_TO_SOURCE_PREFIX["context"])
-        prefixes.append(_TIER_TO_SOURCE_PREFIX["legacy_context"])
+        prefixes.append(_TIER_TO_SOURCE_PREFIX["legacy"])
 
     if not prefixes:
         return "source LIKE 'qube_memory::%'"

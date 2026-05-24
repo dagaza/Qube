@@ -47,6 +47,15 @@ class DocumentStore:
             self.table = self.db.create_table(TABLE_NAME, schema=SCHEMA)
             print(f"✨ Created fresh '{TABLE_NAME}' table with {VECTOR_DIM} dimensions.")
 
+        # T3.4 legacy memory namespace: rewrite pre-tier ``qube_memory::<cat>``
+        # rows to ``qube_memory::legacy::<cat>`` so chat-turn retrieval can
+        # scope context without a catch-all ``qube_memory::%`` wildcard.
+        try:
+            from core.memory_source_migration import migrate_legacy_memory_sources
+            migrate_legacy_memory_sources(self)
+        except Exception as e:
+            logger.warning("Legacy memory source migration skipped: %s", e)
+
     def get_all_indexed_sources(self) -> list[str]:
         """Queries the LanceDB table for all unique document filenames."""
         try:

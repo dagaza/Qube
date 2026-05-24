@@ -114,7 +114,7 @@ class WhereClauseBuilderTests(unittest.TestCase):
         self.assertIn("qube_memory::episode::%", clause)
 
     def test_context_includes_legacy_prefix(self):
-        """Context pulls legacy ``qube_memory::<category>`` rows in too."""
+        """Context pulls migrated legacy rows via ``qube_memory::legacy::``."""
         clause = self._run(
             include_preference=False,
             include_knowledge=False,
@@ -122,9 +122,11 @@ class WhereClauseBuilderTests(unittest.TestCase):
             include_context=True,
         )
         self.assertIn("qube_memory::context::%", clause)
-        # Legacy wildcard must also be present so pre-T3.4 installs
-        # keep retrieving their existing rows.
-        self.assertIn("qube_memory::%", clause)
+        self.assertIn("qube_memory::legacy::%", clause)
+        self.assertNotIn("qube_memory::knowledge::%", clause)
+        self.assertNotIn("qube_memory::episode::%", clause)
+        # Catch-all wildcard must NOT appear — it defeats tier isolation.
+        self.assertNotIn("source LIKE 'qube_memory::%'", clause)
 
     # -------------------- combinations --------------------
 
@@ -133,8 +135,10 @@ class WhereClauseBuilderTests(unittest.TestCase):
         clause = self._run()  # defaults
         self.assertIn("preference::%", clause)
         self.assertIn("context::%", clause)
+        self.assertIn("legacy::%", clause)
         self.assertNotIn("knowledge::%", clause)
         self.assertNotIn("episode::%", clause)
+        self.assertNotIn("source LIKE 'qube_memory::%'", clause)
 
     def test_recall_memory_turn_adds_knowledge(self):
         clause = self._run(

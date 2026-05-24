@@ -122,6 +122,7 @@ class Qube:
             "tts":   self.tts_worker,
             "db": self.db_manager,
             "store": self.store,
+            "embedder": self.embedder,
             "native_engine": self.native_llama_engine,
         }
 
@@ -256,8 +257,12 @@ class Qube:
             self.window.conversations_view.on_llm_response_finished(session_id, text or "")
         if hasattr(self, 'enrichment_worker') and get_enable_memory_enrichment():
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
-            if ctx.get("session_id") == session_id:
-                self.enrichment_worker.enqueue(ctx)
+            if ctx:
+                # Keep skip flags, message ids, and rag_chunk_ids even when
+                # the cached session_id drifted (e.g. rapid session switch).
+                payload = dict(ctx)
+                payload["session_id"] = session_id
+                self.enrichment_worker.enqueue(payload)
             else:
                 self.enrichment_worker.enqueue(session_id)
         if hasattr(self, 'enrichment_worker'):

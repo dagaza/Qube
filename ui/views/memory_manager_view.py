@@ -92,18 +92,22 @@ _TIER_BADGE_TEXT: dict[str, str] = {
 def _tier_from_source(source: str) -> str:
     """Derive the structural tier from the LanceDB ``source`` string.
 
-    Accepts both the new ``qube_memory::<tier>::<category>`` form and the
-    legacy pre-T3.4 ``qube_memory::<category>`` form (falls back to
-    ``"context"``). Unknown tier tokens collapse to ``"context"`` too so
-    the UI never crashes on an unexpected source string.
+    Accepts ``qube_memory::<tier>::<category>`` (T3.4+) and the migrated
+    legacy namespace ``qube_memory::legacy::<category>``. Unnamespaced
+    pre-T3.4 ``qube_memory::<category>`` rows (should be migrated at
+    store init) also collapse to ``"context"``.
     """
     if not isinstance(source, str):
         return "context"
     parts = source.split("::")
     if len(parts) >= 3 and parts[0] == "qube_memory":
         tier = parts[1].strip().lower()
+        if tier == "legacy":
+            return "context"
         if tier in {"preference", "knowledge", "episode", "context"}:
             return tier
+    if len(parts) == 2 and parts[0] == "qube_memory":
+        return "context"
     return "context"
 
 # Cap how many memory rows we ever load into the UI in one pass — the
@@ -131,9 +135,10 @@ class MemoryManagerWorker(QThread):
     JOB_DELETE = "delete"
     JOB_UPDATE_PAYLOAD = "update_payload"
 
-    def __init__(self, store, parent=None) -> None:
+    def __init__(self, store, embedder=None, parent=None) -> None:
         super().__init__(parent)
         self.store = store
+        self.embedder = embedder
         self._queue: Queue = Queue()
         self._running = True
 
@@ -151,7 +156,14 @@ class MemoryManagerWorker(QThread):
         })
 
     def request_update_payload(
-        self, row_id: str, vector, source: str, chunk_id: int, payload: dict,
+        self,
+        row_id: str,
+        vector,
+        source: str,
+        chunk_id: int,
+        payload: dict,
+        *,
+        reembed: bool = False,
     ) -> None:
         self._queue.put({
             "kind": self.JOB_UPDATE_PAYLOAD,
@@ -160,6 +172,7 @@ class MemoryManagerWorker(QThread):
             "source": source,
             "chunk_id": chunk_id,
             "payload": payload,
+            "reembed": bool(reembed),
         })
 
     def shutdown(self) -> None:
@@ -271,12 +284,24 @@ class MemoryManagerWorker(QThread):
         rid = job.get("id")
         if not rid:
             return
+        payload = job.get("payload") or {}
+        vector = job.get("vector")
+        content = (payload.get("content") or "").strip()
+        if job.get("reembed") and self.embedder is not None and content:
+            try:
+                vector = self.embedder.embed_query(content)
+            except Exception as e:
+                logger.warning(
+                    "[MemoryManagerWorker] re-embed for %s failed: %s",
+                    rid,
+                    e,
+                )
         try:
             safe = str(rid).replace("'", "''")
             self.store.table.delete(f"id = '{safe}'")
             self.store.table.add([{
-                "text": json.dumps(job.get("payload") or {}),
-                "vector": job.get("vector"),
+                "text": json.dumps(payload),
+                "vector": vector,
                 "source": job.get("source") or "memory_manager",
                 "chunk_id": int(job.get("chunk_id") or 0),
             }])
@@ -611,6 +636,7 @@ class MemoryManagerView(QWidget):
         self.workers = workers
         self.db = db_manager
         self.store = workers.get("store") if isinstance(workers, dict) else None
+        self.embedder = workers.get("embedder") if isinstance(workers, dict) else None
 
         self._all_rows: list[dict] = []
         self._row_widgets: dict[str, _MemoryRowCard] = {}
@@ -625,7 +651,11 @@ class MemoryManagerView(QWidget):
         # view is shown several times during startup / theme reapply.
         self._last_refresh_ts: float = 0.0
 
-        self.worker = MemoryManagerWorker(self.store, parent=self)
+        self.worker = MemoryManagerWorker(
+            self.store,
+            embedder=self.embedder,
+            parent=self,
+        )
         self.worker.rows_loaded.connect(self._on_rows_loaded)
         self.worker.row_deleted.connect(self._on_row_deleted)
         self.worker.row_updated.connect(self._on_row_updated)
@@ -1020,6 +1050,7 @@ class MemoryManagerView(QWidget):
             source=item.get("source") or "memory_manager",
             chunk_id=int(item.get("chunk_id") or 0),
             payload=new_payload,
+            reembed=True,
         )
 
     # ------------------------------------------------------------------
