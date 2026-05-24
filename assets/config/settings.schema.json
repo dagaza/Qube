@@ -1,0 +1,88 @@
+{
+  "qube.engine.mode": {
+    "type": "string",
+    "enum": ["internal", "external"],
+    "default": "internal",
+    "description": "Inference backend: in-process GGUF (internal) or OpenAI-compatible localhost server (external)."
+  },
+  "qube.memory.enrichment": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, memory enrichment may run (higher RAM use)."
+  },
+  "qube.native.modelPath": {
+    "type": "string",
+    "default": "",
+    "description": "Path to the active internal .gguf model (shard 1 resolved automatically)."
+  },
+  "qube.native.gpuLayers": {
+    "type": ["integer", "null"],
+    "minimum": 0,
+    "maximum": 200,
+    "default": null,
+    "description": "GPU layers for llama.cpp; null uses a hardware-based suggestion on first use."
+  },
+  "qube.native.cpuThreads": {
+    "type": ["integer", "null"],
+    "minimum": 1,
+    "default": null,
+    "description": "Blas/ggml thread count; null uses a CPU-based default on first use."
+  },
+  "qube.native.chatFormat": {
+    "type": "string",
+    "enum": ["auto", "jinja", "chatml", "llama-3", "mistral", "llama-2"],
+    "default": "auto",
+    "description": "Chat template selection for the internal llama.cpp engine."
+  },
+  "qube.native.promptLayout": {
+    "type": "string",
+    "enum": ["auto", "system_ok", "short_system", "flatten_user"],
+    "default": "auto",
+    "description": "Global prompt layout override for internal engine turns."
+  },
+  "qube.native.autoLoadOnStartup": {
+    "type": "boolean",
+    "default": false,
+    "description": "Auto-load the saved internal model when entering internal mode or at startup."
+  },
+  "qube.native.reasoningDisplay": {
+    "type": ["boolean", "null"],
+    "default": null,
+    "description": "Show thinking tokens in native chat; null means use model telemetry defaults."
+  },
+  "qube.models.directory": {
+    "type": "string",
+    "default": "",
+    "description": "Directory for downloaded and native .gguf models; empty uses the app default models/llm folder."
+  },
+  "qube.modelManager.hardwareSuggestions": {
+    "type": "boolean",
+    "default": false,
+    "description": "Rank and badge Qube Verified models by detected hardware in Model Manager."
+  },
+  "qube.onboarding.localLlmTourCompleted": {
+    "type": "boolean",
+    "default": false,
+    "description": "Whether the first-run local LLM setup tour has been completed."
+  },
+  "qube.wakeword.activeId": {
+    "type": "string",
+    "default": "",
+    "description": "Identifier of the active openWakeWord model."
+  },
+  "qube.wakeword.thresholds": {
+    "type": "object",
+    "default": {},
+    "description": "Per-wakeword detection threshold overrides (wakeword id to float)."
+  },
+  "qube.audio.inputDeviceIndex": {
+    "type": ["integer", "null"],
+    "default": null,
+    "description": "Preferred microphone device index; null uses the system default."
+  },
+  "qube.audio.outputDeviceIndex": {
+    "type": ["integer", "null"],
+    "default": null,
+    "description": "Preferred speaker device index; null uses the system default."
+  }
+}
