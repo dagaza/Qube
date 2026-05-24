@@ -80,6 +80,16 @@ _PREVIEW_READER_FOCUS_DIM = 0.58
 ALIGN_LEFT = "align_left"
 ALIGN_JUSTIFY = "align_justify"
 
+# QLabel word-wrap breaks at spaces only; long underscore_joined filenames stay one token.
+_PREVIEW_TITLE_SOFT_BREAK = "\u200b"
+
+
+def _filename_title_for_label(text: str) -> str:
+    """Insert zero-width break opportunities after underscores so titles wrap in QLabel."""
+    if not text or "_" not in text:
+        return text
+    return text.replace("_", f"_{_PREVIEW_TITLE_SOFT_BREAK}")
+
 
 class _LibraryTranscriptWidthHost(QWidget):
     """Centers transcript; inner width = min(available, cap). QTextEdit stays inside inner only."""
@@ -439,17 +449,28 @@ class LibraryView(QWidget):
         self._apply_library_layout_mode()
 
     def _apply_library_layout_mode(self) -> None:
-        host = getattr(self, "_transcript_width_host", None)
-        if host is None:
-            return
         cap = (
             _CENTERED_COLUMN_MAX_WIDTH
             if self._layout_mode == LAYOUT_CENTERED_COLUMN
             else _QWIDGETSIZE_MAX
         )
-        host.set_max_width_cap(cap)
-        host.updateGeometry()
+        for host_attr in ("_transcript_width_host", "_preview_header_width_host"):
+            host = getattr(self, host_attr, None)
+            if host is not None:
+                host.set_max_width_cap(cap)
+                host.updateGeometry()
         self._refresh_layout_mode_button()
+
+    def _set_preview_doc_title(self, title: str) -> None:
+        """Show a filename in the preview header with wrap-friendly break points."""
+        if not hasattr(self, "doc_title"):
+            return
+        plain = (title or "").strip()
+        if plain and plain != "No Document Selected":
+            self.doc_title.setToolTip(plain)
+        else:
+            self.doc_title.setToolTip("")
+        self.doc_title.setText(_filename_title_for_label(plain or title))
 
     def _toggle_layout_mode(self) -> None:
         next_mode = (
@@ -749,6 +770,7 @@ class LibraryView(QWidget):
         if self.active_filename in filenames:
             self.active_filename = None
             self.doc_title.setText("No Document Selected")
+            self.doc_title.setToolTip("")
             self.doc_stats.setText("")
             self.text_preview.setHtml(
                 "<center><h3>Document deleted.</h3></center>"
@@ -909,7 +931,7 @@ class LibraryView(QWidget):
             # 3. Update UI if they renamed the currently open document
             if self.active_filename == old_filename:
                 self.active_filename = new_name
-                self.doc_title.setText(new_name)
+                self._set_preview_doc_title(new_name)
                 
             self.refresh_library_list()
 
@@ -930,6 +952,7 @@ class LibraryView(QWidget):
             if self.active_filename == filename:
                 self.active_filename = None
                 self.doc_title.setText("No Document Selected")
+                self.doc_title.setToolTip("")
                 self.doc_stats.setText("")
                 self.text_preview.setHtml("<center><h3>Document deleted.</h3></center>")
                 self._apply_library_preview_readability()
@@ -942,7 +965,7 @@ class LibraryView(QWidget):
             doc_data = {"filename": item.data(Qt.ItemDataRole.UserRole)}
         self.active_filename = doc_data['filename']
         
-        self.doc_title.setText(self.active_filename)
+        self._set_preview_doc_title(self.active_filename)
         self.doc_stats.setText(f"Size: {doc_data['file_size_kb']} KB | Chunks Indexed: {doc_data['chunk_count']}")
 
         self.text_preview.setHtml("<center><h3>Reconstructing document from vector space...</h3></center>")

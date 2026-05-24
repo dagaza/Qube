@@ -1334,7 +1334,10 @@ class ConversationsView(QWidget):
             if vp is not None:
                 vw = int(vp.width())
                 if vw > 0:
-                    return min(nominal, max(160, vw))
+                    # Never exceed the viewport — a 160px floor here caused the transcript
+                    # container to outgrow narrow layouts and bleed under the history sidebar
+                    # when the scroll area centered the oversized widget.
+                    return min(nominal, vw)
         return nominal
 
     def set_layout_mode(self, mode: str) -> None:
@@ -1354,19 +1357,36 @@ class ConversationsView(QWidget):
 
     def _apply_layout_mode(self) -> None:
         self._sync_transcript_column_width_cap()
-        self.scroll_area.setAlignment(
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
-        )
         self.transcript_layout.invalidate()
         self.transcript_container.updateGeometry()
         self._refresh_layout_mode_button()
+
+    def _sync_transcript_scroll_alignment(self) -> None:
+        """Center the column only when the viewport is wider than the cap; otherwise pin left."""
+        if not hasattr(self, "scroll_area"):
+            return
+        cap = self.transcript_column_max_width()
+        vw = 0
+        vp = self.scroll_area.viewport()
+        if vp is not None:
+            vw = int(vp.width())
+        h_align = (
+            Qt.AlignmentFlag.AlignHCenter
+            if vw > cap
+            else Qt.AlignmentFlag.AlignLeft
+        )
+        self.scroll_area.setAlignment(h_align | Qt.AlignmentFlag.AlignTop)
 
     def _sync_transcript_column_width_cap(self) -> None:
         if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
             return
         cap = self.transcript_column_max_width()
+        changed = False
         if self.transcript_container.maximumWidth() != cap:
             self.transcript_container.setMaximumWidth(cap)
+            changed = True
+        self._sync_transcript_scroll_alignment()
+        if changed:
             self.transcript_layout.invalidate()
             self.transcript_container.updateGeometry()
 
@@ -1514,6 +1534,15 @@ class ConversationsView(QWidget):
         if self._high_contrast_enabled:
             return "#cbd5e1" if is_dark else "#475569"
         return "#6c7086"
+
+    def _make_transcript_placeholder_label(self, text: str) -> QLabel:
+        """Empty-state label: wraps within the transcript column and never forces horizontal growth."""
+        lbl = QLabel(text)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setWordWrap(True)
+        lbl.setMinimumWidth(0)
+        lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        return lbl
 
     def _style_user_bubble(self, bubble: QFrame, lbl: ChatUserBubble) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -1886,8 +1915,11 @@ class ConversationsView(QWidget):
 
         self.chat_stage = self._build_chat_stage()
 
-        # Let chat stage expand naturally with main viewport.
-        self.chat_stage.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # Ignored horizontal policy: transcript placeholders must not widen the stage past
+        # the allocated cell (matches Library preview_stage — prevents bleed under sidebars).
+        self.chat_stage.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
 
         layout.addWidget(self.chat_stage, stretch=1) 
 
@@ -2066,11 +2098,13 @@ class ConversationsView(QWidget):
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.installEventFilter(self)
+        self.scroll_area.viewport().installEventFilter(self)
 
         # Container widget
         self.transcript_container = QWidget()
         self.transcript_container.setObjectName("ChatTranscriptContainer")
-        
+        self.transcript_container.setMinimumWidth(0)
+
         # 🔑 The line that was crashing is perfectly safe now
         self.transcript_container.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -2691,8 +2725,9 @@ class ConversationsView(QWidget):
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
-        self.placeholder_lbl = QLabel("New chat started. Type or speak a message after saying your wake word!")
-        self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.placeholder_lbl = self._make_transcript_placeholder_label(
+            "New chat started. Type or speak a message after saying your wake word!"
+        )
         self.transcript_layout.addWidget(self.placeholder_lbl)
         self._refresh_ancillary_transcript_labels()
 
@@ -2713,8 +2748,9 @@ class ConversationsView(QWidget):
 
         history = self.db.get_session_history(session_id)
         if not history:
-            self.placeholder_lbl = QLabel("Empty conversation.")
-            self.placeholder_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.placeholder_lbl = self._make_transcript_placeholder_label(
+                "Empty conversation."
+            )
             self.transcript_layout.addWidget(self.placeholder_lbl)
             self._flush_pending_stream_for_active_session()
             self._refresh_ancillary_transcript_labels()
@@ -2932,6 +2968,9 @@ class ConversationsView(QWidget):
 
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
+        if hasattr(self, "scroll_area") and event.type() == QEvent.Type.Resize:
+            if obj is self.scroll_area or obj is self.scroll_area.viewport():
+                self._sync_transcript_column_width_cap()
         if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
             et = event.type()
             if et == QEvent.Type.HoverEnter:
