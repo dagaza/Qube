@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Callable
 
 import qtawesome as qta
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
 
 from core import app_settings
@@ -16,21 +16,12 @@ from core.assistant_activity import (
     tray_tooltip_for_activity,
 )
 
-
-_ICON_COLORS: dict[AssistantActivity, str] = {
-    AssistantActivity.ASSISTANT_OFF: "#64748b",
-    AssistantActivity.IDLE_LISTEN: "#89b4fa",
-    AssistantActivity.CAPTURING: "#f38ba8",
-    AssistantActivity.WORKING: "#74c7ec",
-    AssistantActivity.SPEAKING: "#a6e3a1",
-    AssistantActivity.NEEDS_ATTENTION: "#f9e2af",
-    AssistantActivity.ERROR: "#f38ba8",
-    AssistantActivity.BACKGROUND_BUSY: "#cba6f7",
-}
+# Brand tray color — independent of companion idle color presets.
+_TRAY_ICON_COLOR = "#8b5cf6"
 
 
 class TrayController(QWidget):
-    """Owns QSystemTrayIcon state, menu, and animation ticks."""
+    """Owns QSystemTrayIcon state, menu, and activity glyph."""
 
     open_requested = pyqtSignal()
     exit_requested = pyqtSignal()
@@ -52,7 +43,6 @@ class TrayController(QWidget):
         self._is_dark = True
         self._activity = AssistantActivity.IDLE_LISTEN
         self._voice_paused = False
-        self._pulse_on = False
         self._tray_available = QSystemTrayIcon.isSystemTrayAvailable()
         self._tray_icon: QSystemTrayIcon | None = None
         self._status_action: QAction | None = None
@@ -64,18 +54,8 @@ class TrayController(QWidget):
         self._voice_input_enabled = voice_input_enabled or (lambda: True)
         self._voice_output_enabled = voice_output_enabled or (lambda: True)
 
-        self._anim_timer = QTimer(self)
-        self._anim_timer.setInterval(2000)
-        self._anim_timer.timeout.connect(self._toggle_pulse)
-        self._work_anim_timer = QTimer(self)
-        self._work_anim_timer.setInterval(700)
-        self._work_anim_timer.timeout.connect(self._toggle_work_pulse)
-        self._work_pulse_on = False
-
         if self._tray_available:
             self._build_tray()
-        else:
-            self._anim_timer.stop()
 
     @property
     def available(self) -> bool:
@@ -102,21 +82,6 @@ class TrayController(QWidget):
         self._activity = activity
         self._voice_paused = voice_paused
         self._refresh_presence()
-        if activity in (AssistantActivity.IDLE_LISTEN, AssistantActivity.BACKGROUND_BUSY):
-            self._work_anim_timer.stop()
-            self._work_pulse_on = False
-            if not self._anim_timer.isActive():
-                self._anim_timer.start()
-        elif activity == AssistantActivity.WORKING:
-            self._anim_timer.stop()
-            self._pulse_on = False
-            if not self._work_anim_timer.isActive():
-                self._work_anim_timer.start()
-        else:
-            self._anim_timer.stop()
-            self._work_anim_timer.stop()
-            self._pulse_on = False
-            self._work_pulse_on = False
 
     def update_recent_notifications(self, items: list[tuple[str, str]]) -> None:
         if self._recent_menu is None:
@@ -254,14 +219,6 @@ class TrayController(QWidget):
         if self._tray_icon is not None:
             self._tray_icon.show()
 
-    def _toggle_pulse(self) -> None:
-        self._pulse_on = not self._pulse_on
-        self._refresh_icon()
-
-    def _toggle_work_pulse(self) -> None:
-        self._work_pulse_on = not self._work_pulse_on
-        self._refresh_icon()
-
     def _refresh_presence(self) -> None:
         line = menu_status_line(self._activity, voice_paused=self._voice_paused)
         if self._status_action is not None:
@@ -270,26 +227,22 @@ class TrayController(QWidget):
             self._tray_icon.setToolTip(tray_tooltip_for_activity(self._activity, voice_paused=self._voice_paused))
         self._refresh_icon()
 
+    def refresh_icon(self) -> None:
+        """Re-render the tray icon glyph for the current activity."""
+        self._refresh_icon()
+
     def _refresh_icon(self) -> None:
         if self._tray_icon is None:
             return
-        color = _ICON_COLORS.get(self._activity, "#89b4fa")
-        if self._pulse_on and self._activity in (
-            AssistantActivity.IDLE_LISTEN,
-            AssistantActivity.BACKGROUND_BUSY,
-        ):
-            color = "#b4d0fb" if self._activity == AssistantActivity.IDLE_LISTEN else "#dcc6fa"
         icon_name = "fa5s.cube"
         if self._activity == AssistantActivity.CAPTURING:
             icon_name = "fa5s.microphone"
         elif self._activity == AssistantActivity.WORKING:
-            icon_name = "fa5s.brain" if not self._work_pulse_on else "fa5s.cog"
-            if self._work_pulse_on:
-                color = "#89b4fa"
+            icon_name = "fa5s.brain"
         elif self._activity == AssistantActivity.SPEAKING:
             icon_name = "fa5s.volume-up"
         elif self._activity == AssistantActivity.BACKGROUND_BUSY:
             icon_name = "fa5s.cloud-upload-alt"
         elif self._activity in (AssistantActivity.NEEDS_ATTENTION, AssistantActivity.ERROR):
             icon_name = "fa5s.exclamation-circle"
-        self._tray_icon.setIcon(qta.icon(icon_name, color=color))
+        self._tray_icon.setIcon(qta.icon(icon_name, color=_TRAY_ICON_COLOR))

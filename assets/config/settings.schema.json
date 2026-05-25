@@ -215,6 +215,12 @@
     "enum": ["sphere", "qube"],
     "description": "Companion visual persona (sphere or qube cube)."
   },
+  "qube.companion.idleColor": {
+    "type": "string",
+    "default": "purple",
+    "enum": ["purple", "blue"],
+    "description": "Base idle glow color for the desktop companion (purple = Qube brand, blue = legacy)."
+  },
   "qube.companion.position.x": {
     "type": ["integer", "null"],
     "default": null,

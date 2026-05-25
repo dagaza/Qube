@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget
 
+from core import app_settings
 from core.assistant_activity import AssistantActivity
 from core.assistant_presence import AssistantPhase, AssistantPresenceSnapshot
 from core.companion_personas import CompanionPersonaId, DEFAULT_COMPANION_PERSONA, normalize_companion_persona
@@ -13,7 +14,7 @@ from core.platform.companion_capabilities import CompanionPlatformTier
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import get_persona_renderer
-from ui.companion.personas.colors import ACTIVITY_COLORS
+from ui.companion.personas.colors import activity_color_pair
 
 _PREVIEW_DIMENSION = 280
 # Keep draw size stable so extra canvas space becomes visible margin (avoids scaling the cube up).
@@ -124,8 +125,8 @@ class CompanionPreviewWidget(QFrame):
         cy = self.height() / 2
         body_radius = _PREVIEW_BODY_RADIUS
 
-        primary_hex, secondary_hex = ACTIVITY_COLORS.get(
-            self._demo_activity, ACTIVITY_COLORS[AssistantActivity.IDLE_LISTEN]
+        primary_hex, secondary_hex = activity_color_pair(
+            self._demo_activity, app_settings.get_companion_idle_color()
         )
         ctx = CompanionPaintContext(
             activity=self._demo_activity,

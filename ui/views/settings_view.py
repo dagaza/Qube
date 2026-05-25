@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
-    QRadioButton, QButtonGroup,
+    QButtonGroup,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher
 from PyQt6.QtGui import QShowEvent
@@ -603,7 +603,7 @@ class SettingsView(QWidget):
         self.companion_dock_cb.toggled.connect(self._on_companion_setting_changed)
         companion_layout.addWidget(self.companion_dock_cb)
 
-        appearance_lbl = QLabel("Companion appearance")
+        appearance_lbl = QLabel("Companion shape")
         appearance_lbl.setObjectName("SettingsSubsectionLabel")
         companion_layout.addWidget(appearance_lbl)
 
@@ -612,46 +612,79 @@ class SettingsView(QWidget):
             PERSONA_DESCRIPTIONS,
             PERSONA_LABELS,
         )
+        from core.companion_idle_color import (
+            CompanionIdleColor,
+            IDLE_COLOR_DESCRIPTIONS,
+            IDLE_COLOR_LABELS,
+        )
         from ui.companion.companion_preview import CompanionPreviewWidget
-
-        self.companion_preview = CompanionPreviewWidget()
-        is_dark = bool(getattr(self.window(), "_is_dark_theme", True))
-        self.companion_preview.apply_theme(is_dark)
-        companion_layout.addWidget(self.companion_preview)
 
         persona_row = QHBoxLayout()
         persona_row.setSpacing(16)
         self.companion_persona_group = QButtonGroup(self)
+        self.companion_persona_group.setExclusive(True)
         current_persona = _companion_settings.get_companion_persona()
-        self.companion_persona_radios: dict[CompanionPersonaId, QRadioButton] = {}
+        self.companion_persona_cbs: dict[CompanionPersonaId, QCheckBox] = {}
         for persona_id in (CompanionPersonaId.SPHERE, CompanionPersonaId.QUBE):
-            radio = QRadioButton(PERSONA_LABELS[persona_id])
-            radio.setToolTip(PERSONA_DESCRIPTIONS[persona_id])
-            radio.setProperty("companion_persona_id", persona_id.value)
-            radio.setChecked(persona_id == current_persona)
-            self.companion_persona_group.addButton(radio)
-            self.companion_persona_radios[persona_id] = radio
-            persona_row.addWidget(radio)
+            cb = QCheckBox(PERSONA_LABELS[persona_id])
+            cb.setToolTip(PERSONA_DESCRIPTIONS[persona_id])
+            cb.setProperty("companion_persona_id", persona_id.value)
+            cb.setChecked(persona_id == current_persona)
+            self.companion_persona_group.addButton(cb)
+            self.companion_persona_cbs[persona_id] = cb
+            persona_row.addWidget(cb)
         self.companion_persona_group.buttonToggled.connect(self._on_companion_persona_toggled)
         persona_row.addStretch()
         companion_layout.addLayout(persona_row)
+
+        idle_color_lbl = QLabel("Companion idle glow color")
+        idle_color_lbl.setObjectName("SettingsSubsectionLabel")
+        companion_layout.addWidget(idle_color_lbl)
+
+        self.companion_idle_color_group = QButtonGroup(self)
+        self.companion_idle_color_group.setExclusive(True)
+        current_idle_color = _companion_settings.get_companion_idle_color()
+        self.companion_idle_color_cbs: dict[CompanionIdleColor, QCheckBox] = {}
+        for color_id in (CompanionIdleColor.PURPLE, CompanionIdleColor.BLUE):
+            cb = QCheckBox(IDLE_COLOR_LABELS[color_id])
+            cb.setToolTip(IDLE_COLOR_DESCRIPTIONS[color_id])
+            cb.setProperty("companion_idle_color_id", color_id.value)
+            cb.setChecked(color_id == current_idle_color)
+            self.companion_idle_color_group.addButton(cb)
+            self.companion_idle_color_cbs[color_id] = cb
+            companion_layout.addWidget(cb)
+        self.companion_idle_color_group.buttonToggled.connect(self._on_companion_idle_color_toggled)
 
         demo_row = QHBoxLayout()
         demo_row.setSpacing(8)
         demo_lbl = QLabel("Preview state:")
         demo_row.addWidget(demo_lbl)
-        self.companion_demo_combo = QComboBox()
-        self.companion_demo_combo.addItem("Idle", "idle")
-        self.companion_demo_combo.addItem("Thinking", "working")
-        self.companion_demo_combo.addItem("Listening", "capturing")
-        self.companion_demo_combo.addItem("Speaking", "speaking")
-        self.companion_demo_combo.currentIndexChanged.connect(self._on_companion_demo_changed)
-        demo_row.addWidget(self.companion_demo_combo)
+        self.companion_demo_selector = SelectorButton("", is_dark=is_dark)
+        self.companion_demo_selector.setMinimumWidth(180)
+        self.companion_demo_selector.setMaximumWidth(250)
+        self.companion_demo_selector.setMenu(QMenu(self.companion_demo_selector))
+        self._companion_demo_items = [
+            ("Idle", "idle"),
+            ("Thinking", "working"),
+            ("Listening", "capturing"),
+            ("Speaking", "speaking"),
+        ]
+        self._build_prestige_menu(
+            self.companion_demo_selector,
+            self._companion_demo_items,
+            self._on_companion_demo_state_selected,
+        )
+        self._sync_companion_demo_selector_label("idle")
+        demo_row.addWidget(self.companion_demo_selector)
         demo_row.addStretch()
         companion_layout.addLayout(demo_row)
 
+        self.companion_preview = CompanionPreviewWidget()
+        self.companion_preview.apply_theme(is_dark)
+        companion_layout.addWidget(self.companion_preview)
+
         self.companion_preview.set_persona(current_persona)
-        self._on_companion_demo_changed()
+        self._on_companion_demo_state_selected("idle")
 
         content_layout.addWidget(companion_widget)
         content_layout.addWidget(self._build_divider())
@@ -790,6 +823,12 @@ class SettingsView(QWidget):
             cb = getattr(self, name, None)
             if cb is not None:
                 yield cb
+        for choice_cbs in (
+            getattr(self, "companion_persona_cbs", {}),
+            getattr(self, "companion_idle_color_cbs", {}),
+        ):
+            if isinstance(choice_cbs, dict):
+                yield from choice_cbs.values()
 
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
@@ -1513,6 +1552,10 @@ class SettingsView(QWidget):
 
     def _on_companion_persona_toggled(self, button, checked: bool) -> None:
         if not checked:
+            if not any(cb.isChecked() for cb in self.companion_persona_cbs.values()):
+                button.blockSignals(True)
+                button.setChecked(True)
+                button.blockSignals(False)
             return
         from core import app_settings as _cs
         from core.companion_personas import normalize_companion_persona
@@ -1525,12 +1568,40 @@ class SettingsView(QWidget):
         if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
             win._companion_controller.on_settings_changed()
 
-    def _on_companion_demo_changed(self, *_args) -> None:
+    def _on_companion_idle_color_toggled(self, button, checked: bool) -> None:
+        if not checked:
+            if not any(cb.isChecked() for cb in self.companion_idle_color_cbs.values()):
+                button.blockSignals(True)
+                button.setChecked(True)
+                button.blockSignals(False)
+            return
+        from core import app_settings as _cs
+        from core.companion_idle_color import normalize_companion_idle_color
+
+        color_id = normalize_companion_idle_color(button.property("companion_idle_color_id"))
+        _cs.set_companion_idle_color(color_id.value)
+        if hasattr(self, "companion_preview"):
+            self.companion_preview.update()
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.on_settings_changed()
+
+    def _sync_companion_demo_selector_label(self, key: str = "idle") -> None:
+        if not hasattr(self, "companion_demo_selector"):
+            return
+        label = next(
+            (lbl for lbl, data in getattr(self, "_companion_demo_items", []) if data == key),
+            "Idle",
+        )
+        self.companion_demo_selector.setText(label)
+        self.companion_demo_selector.update()
+
+    def _on_companion_demo_state_selected(self, key: str) -> None:
+        self._sync_companion_demo_selector_label(key)
         if not hasattr(self, "companion_preview"):
             return
         from core.assistant_activity import AssistantActivity
 
-        key = self.companion_demo_combo.currentData() or "idle"
         mapping = {
             "idle": AssistantActivity.IDLE_LISTEN,
             "working": AssistantActivity.WORKING,
@@ -1640,8 +1711,11 @@ class SettingsView(QWidget):
             self.provider_selector,
             self.voice_selector,
             self.native_chat_format_selector,
+            getattr(self, "companion_demo_selector", None),
         ]
         for btn in buttons:
+            if btn is None:
+                continue
             if isinstance(btn, SelectorButton):
                 btn.apply_theme(is_dark)
             if btn.menu():
@@ -1687,6 +1761,8 @@ class SettingsView(QWidget):
 
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
+        if hasattr(button, "update"):
+            button.update()
         callback(data)
 
     def _on_wakeword_selection_changed(self, display_name: str) -> None:
@@ -1945,16 +2021,27 @@ class SettingsView(QWidget):
             if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
                 win.tray_controller.sync_companion_toggle()
 
-        if hasattr(self, "companion_persona_radios"):
+        if hasattr(self, "companion_persona_cbs"):
             from core import app_settings as _cs
 
             current = _cs.get_companion_persona()
-            for persona_id, radio in self.companion_persona_radios.items():
-                radio.blockSignals(True)
-                radio.setChecked(persona_id == current)
-                radio.blockSignals(False)
+            for persona_id, cb in self.companion_persona_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(persona_id == current)
+                cb.blockSignals(False)
             if hasattr(self, "companion_preview"):
                 self.companion_preview.set_persona(current)
+
+        if hasattr(self, "companion_idle_color_cbs"):
+            from core import app_settings as _cs
+
+            current_idle = _cs.get_companion_idle_color()
+            for color_id, cb in self.companion_idle_color_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(color_id == current_idle)
+                cb.blockSignals(False)
+            if hasattr(self, "companion_preview"):
+                self.companion_preview.update()
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

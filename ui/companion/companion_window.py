@@ -27,7 +27,7 @@ from core.local_gguf_library import list_local_gguf_menu_entries
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import CompanionPersonaRenderer, get_persona_renderer
-from ui.companion.personas.colors import ACTIVITY_COLORS
+from ui.companion.personas.colors import activity_color_pair
 
 _CAPTION_MAX_CHARS = 42
 _DOCK_STRIP_HEIGHT = 24
@@ -181,8 +181,8 @@ class CompanionWindow(QWidget):
         return self._anim.activity()
 
     def _colors(self) -> tuple[QColor, QColor]:
-        primary, secondary = ACTIVITY_COLORS.get(
-            self._activity(), ACTIVITY_COLORS[AssistantActivity.IDLE_LISTEN]
+        primary, secondary = activity_color_pair(
+            self._activity(), app_settings.get_companion_idle_color()
         )
         return QColor(primary), QColor(secondary)
 

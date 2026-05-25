@@ -64,6 +64,7 @@ KEY_COMPANION_POS_NORM_X = "qube.companion.position.normX"
 KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
 KEY_COMPANION_PERSONA = "qube.companion.persona"
+KEY_COMPANION_IDLE_COLOR = "qube.companion.idleColor"
 
 
 def _store():
@@ -717,6 +718,19 @@ def set_companion_persona(persona: str) -> None:
     from core.companion_personas import normalize_companion_persona
 
     _store().set(KEY_COMPANION_PERSONA, normalize_companion_persona(persona).value)
+
+
+def get_companion_idle_color() -> "CompanionIdleColor":
+    from core.companion_idle_color import DEFAULT_COMPANION_IDLE_COLOR, normalize_companion_idle_color
+
+    raw = _store().get(KEY_COMPANION_IDLE_COLOR, DEFAULT_COMPANION_IDLE_COLOR.value)
+    return normalize_companion_idle_color(str(raw) if raw is not None else None)
+
+
+def set_companion_idle_color(color: str) -> None:
+    from core.companion_idle_color import normalize_companion_idle_color
+
+    _store().set(KEY_COMPANION_IDLE_COLOR, normalize_companion_idle_color(color).value)
 
 
 def get_companion_position() -> dict:
