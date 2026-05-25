@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 from PyQt6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer, pyqtProperty, pyqtSignal
 from PyQt6.QtGui import (
@@ -18,9 +19,11 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QMenu, QVBoxLayout, QWidget
 
 from core import app_settings
+from core.app_settings import get_engine_mode, get_internal_model_path, resolve_internal_model_path
 from core.assistant_activity import AssistantActivity
 from core.assistant_presence import AssistantPresenceSnapshot
 from core.companion_personas import CompanionPersonaId, normalize_companion_persona
+from core.local_gguf_library import list_local_gguf_menu_entries
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import CompanionPersonaRenderer, get_persona_renderer
@@ -35,7 +38,14 @@ class CompanionWindow(QWidget):
     """Small always-on-top translucent companion with optional caption chip."""
 
     open_requested = pyqtSignal()
+    open_chat_requested = pyqtSignal()
+    new_chat_requested = pyqtSignal()
+    load_model_requested = pyqtSignal(str)
+    open_model_manager_requested = pyqtSignal()
+    voice_input_toggled = pyqtSignal(bool)
+    voice_output_toggled = pyqtSignal(bool)
     hide_for_one_hour_requested = pyqtSignal()
+    hide_companion_requested = pyqtSignal()
     snooze_requested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -56,6 +66,8 @@ class CompanionWindow(QWidget):
         self._idle_faded = False
         self._dock_mode = False
         self._drag_offset: QPoint | None = None
+        self._voice_input_enabled_fn: Callable[[], bool] | None = None
+        self._voice_output_enabled_fn: Callable[[], bool] | None = None
 
         self._anim = CompanionAnimEngine()
         self._persona_id = app_settings.get_companion_persona()
@@ -79,6 +91,14 @@ class CompanionWindow(QWidget):
         self.setAccessibleName("Qube assistant presence")
         self._apply_caption_style()
         self._resize_for_mode()
+
+    def set_voice_menu_providers(
+        self,
+        input_enabled: Callable[[], bool],
+        output_enabled: Callable[[], bool],
+    ) -> None:
+        self._voice_input_enabled_fn = input_enabled
+        self._voice_output_enabled_fn = output_enabled
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
@@ -363,14 +383,75 @@ class CompanionWindow(QWidget):
             f"QMenu {{ background-color: {bg}; color: {fg}; }}"
             f"QMenu::item:selected {{ background-color: {'#313244' if self._is_dark else '#e2e8f0'}; }}"
         )
+
         open_act = menu.addAction("Open Qube")
-        hide_act = menu.addAction("Hide for 1 hour")
+        open_act.triggered.connect(self.open_requested.emit)
+        open_chat_act = menu.addAction("Open Chat")
+        open_chat_act.triggered.connect(self.open_chat_requested.emit)
+        new_chat_act = menu.addAction("Start New Chat")
+        new_chat_act.triggered.connect(self.new_chat_requested.emit)
+
         menu.addSeparator()
+
+        load_menu = menu.addMenu("Load Model")
+        self._populate_load_model_menu(load_menu)
+        model_mgr_act = menu.addAction("Model Manager…")
+        model_mgr_act.triggered.connect(self.open_model_manager_requested.emit)
+
+        menu.addSeparator()
+
+        voice_in_act = menu.addAction("Voice input")
+        voice_in_act.setCheckable(True)
+        voice_in_act.setChecked(self._read_voice_input_enabled())
+        voice_in_act.triggered.connect(self.voice_input_toggled.emit)
+
+        voice_out_act = menu.addAction("Voice responses")
+        voice_out_act.setCheckable(True)
+        voice_out_act.setChecked(self._read_voice_output_enabled())
+        voice_out_act.triggered.connect(self.voice_output_toggled.emit)
+
+        menu.addSeparator()
+
+        hide_act = menu.addAction("Hide for 1 hour")
+        hide_act.triggered.connect(self.hide_for_one_hour_requested.emit)
+        hide_companion_act = menu.addAction("Hide companion")
+        hide_companion_act.triggered.connect(self.hide_companion_requested.emit)
+
+        menu.addSeparator()
+
         settings_act = menu.addAction("Companion settings…")
-        chosen = menu.exec(global_pos)
-        if chosen == open_act:
-            self.open_requested.emit()
-        elif chosen == hide_act:
-            self.hide_for_one_hour_requested.emit()
-        elif chosen == settings_act:
-            self.snooze_requested.emit()
+        settings_act.triggered.connect(self.snooze_requested.emit)
+
+        menu.exec(global_pos)
+
+    def _read_voice_input_enabled(self) -> bool:
+        if self._voice_input_enabled_fn is not None:
+            return bool(self._voice_input_enabled_fn())
+        return True
+
+    def _read_voice_output_enabled(self) -> bool:
+        if self._voice_output_enabled_fn is not None:
+            return bool(self._voice_output_enabled_fn())
+        return True
+
+    def _populate_load_model_menu(self, load_menu: QMenu) -> None:
+        if get_engine_mode() != "internal":
+            disabled = load_menu.addAction("Requires Internal Engine")
+            disabled.setEnabled(False)
+            return
+
+        active = resolve_internal_model_path(get_internal_model_path() or "")
+        entries = list_local_gguf_menu_entries()
+        if not entries:
+            empty = load_menu.addAction("No downloaded models")
+            empty.setEnabled(False)
+            return
+
+        for label, path in entries:
+            display = label
+            if path == active:
+                display = f"{label} ✓"
+            action = load_menu.addAction(display)
+            action.triggered.connect(
+                lambda _checked=False, model_path=path: self.load_model_requested.emit(model_path)
+            )

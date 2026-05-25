@@ -1164,27 +1164,7 @@ class MainWindow(QMainWindow):
                 )
 
             def on_pick(path: str) -> None:
-                path = resolve_internal_model_path(path)
-                set_internal_model_path(path)
-                if self._llm_worker:
-                    cv = getattr(self, "conversations_view", None)
-                    if cv is not None and hasattr(cv, "interrupt_active_response"):
-                        cv.interrupt_active_response()
-                    self._pending_native_model_path = path
-                    self._native_model_loading = True
-                    self._native_model_loaded_success = False
-                    self._set_native_model_progress_loading(True)
-                    self._apply_native_model_selector_text_state(False)
-                    pick_display = format_local_gguf_display(path, models_dir=models_dir)
-                    btn.setText(
-                        fm.elidedText(
-                            pick_display.button_label,
-                            Qt.TextElideMode.ElideMiddle,
-                            cap_btn,
-                        )
-                    )
-                    btn.setToolTip(pick_display.tooltip)
-                    self._llm_worker.refresh_native_model_from_settings()
+                self.load_native_model_from_path(path)
                 # Keep optimistic label; final state is resolved by load_finished.
 
             items = []
@@ -1660,6 +1640,42 @@ class MainWindow(QMainWindow):
         if self._companion_controller is not None:
             self._companion_controller.on_main_shown()
 
+    def _on_companion_open_chat(self) -> None:
+        self._restore_workspace_from_tray()
+        if hasattr(self, "nav_chat"):
+            self.nav_chat.setChecked(True)
+            self._route_view(0, self.nav_chat)
+
+    def _on_companion_new_chat(self) -> None:
+        self._restore_workspace_from_tray()
+        if hasattr(self, "nav_chat"):
+            self.nav_chat.setChecked(True)
+            self._route_view(0, self.nav_chat)
+        if hasattr(self, "conversations_view"):
+            self.conversations_view._start_new_chat()
+
+    def _on_companion_load_model(self, path: str) -> None:
+        self._restore_workspace_from_tray()
+        self.load_native_model_from_path(path)
+
+    def load_native_model_from_path(self, path: str) -> None:
+        """Activate a downloaded .gguf for the native engine (toolbar + companion menus)."""
+        path = resolve_internal_model_path(path)
+        if not path or not Path(path).is_file():
+            return
+        set_internal_model_path(path)
+        if self._llm_worker:
+            cv = getattr(self, "conversations_view", None)
+            if cv is not None and hasattr(cv, "interrupt_active_response"):
+                cv.interrupt_active_response()
+            self._pending_native_model_path = path
+            self._native_model_loading = True
+            self._native_model_loaded_success = False
+            self._set_native_model_progress_loading(True)
+            self._llm_worker.refresh_native_model_from_settings()
+        if hasattr(self, "refresh_toolbar_native_model_dropdown"):
+            self.refresh_toolbar_native_model_dropdown()
+
     def _setup_tray(self) -> None:
         self.tray_controller = TrayController(
             self,
@@ -1702,6 +1718,17 @@ class MainWindow(QMainWindow):
         self._companion_controller = CompanionController(self._presence_service, self)
         self._companion_controller.bind_main_window(self)
         self._companion_controller.open_requested.connect(self._restore_workspace_from_tray)
+        self._companion_controller.open_chat_requested.connect(self._on_companion_open_chat)
+        self._companion_controller.new_chat_requested.connect(self._on_companion_new_chat)
+        self._companion_controller.load_model_requested.connect(self._on_companion_load_model)
+        self._companion_controller.open_model_manager_requested.connect(
+            lambda: self._on_notification_action("open_models")
+        )
+        self._companion_controller.voice_input_toggled.connect(self._on_tray_voice_input_toggled)
+        self._companion_controller.voice_output_toggled.connect(self._on_tray_voice_output_toggled)
+        self._companion_controller.hide_companion_requested.connect(
+            lambda: self._on_tray_companion_toggled(False)
+        )
         self._companion_controller.navigate_settings_requested.connect(
             lambda: self._on_notification_action("open_settings")
         )
@@ -1735,6 +1762,7 @@ class MainWindow(QMainWindow):
             self._audio_worker.set_paused(not enabled)
         self._activity_reducer.set_voice_paused(not enabled)
         self._sync_tray_presence()
+        self._sync_tray_voice_toggles()
 
     def _on_tray_voice_output_toggled(self, enabled: bool) -> None:
         if hasattr(self, "voice_bypass_toggle"):
@@ -1744,6 +1772,7 @@ class MainWindow(QMainWindow):
         if self._tts_worker is not None:
             self._tts_worker.set_mute(not enabled)
         self._presence_service.set_voice_output_muted(not enabled)
+        self._sync_tray_voice_toggles()
 
     def _sync_tray_voice_toggles(self, *_args) -> None:
         if self.tray_controller is None:

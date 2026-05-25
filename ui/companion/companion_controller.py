@@ -23,6 +23,13 @@ class CompanionController(QObject):
     """Owns CompanionWindow visibility and syncs with assistant presence."""
 
     open_requested = pyqtSignal()
+    open_chat_requested = pyqtSignal()
+    new_chat_requested = pyqtSignal()
+    load_model_requested = pyqtSignal(str)
+    open_model_manager_requested = pyqtSignal()
+    voice_input_toggled = pyqtSignal(bool)
+    voice_output_toggled = pyqtSignal(bool)
+    hide_companion_requested = pyqtSignal()
     navigate_settings_requested = pyqtSignal()
 
     def __init__(
@@ -43,7 +50,14 @@ class CompanionController(QObject):
 
         self._window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self._window.open_requested.connect(self.open_requested.emit)
+        self._window.open_chat_requested.connect(self.open_chat_requested.emit)
+        self._window.new_chat_requested.connect(self.new_chat_requested.emit)
+        self._window.load_model_requested.connect(self.load_model_requested.emit)
+        self._window.open_model_manager_requested.connect(self.open_model_manager_requested.emit)
+        self._window.voice_input_toggled.connect(self.voice_input_toggled.emit)
+        self._window.voice_output_toggled.connect(self.voice_output_toggled.emit)
         self._window.hide_for_one_hour_requested.connect(self._snooze_one_hour)
+        self._window.hide_companion_requested.connect(self.hide_companion_requested.emit)
         self._window.snooze_requested.connect(self.navigate_settings_requested.emit)
 
         self._presence.presence_changed.connect(self._on_presence_changed)
@@ -76,6 +90,16 @@ class CompanionController(QObject):
         self._main_window = main_window
         is_dark = getattr(main_window, "_is_dark_theme", True)
         self._window.apply_theme(is_dark)
+        self._window.set_voice_menu_providers(
+            lambda: bool(
+                getattr(main_window, "voice_input_toggle", None)
+                and main_window.voice_input_toggle.isChecked()
+            ),
+            lambda: bool(
+                getattr(main_window, "voice_bypass_toggle", None)
+                and main_window.voice_bypass_toggle.isChecked()
+            ),
+        )
         self._apply_reduced_motion()
         self._restore_position()
         self._window.set_persona(app_settings.get_companion_persona())
