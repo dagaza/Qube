@@ -163,6 +163,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         if self._native_engine is not None:
             self._native_engine.load_finished.connect(self._on_native_model_load_finished_ui)
+            self._native_engine.status_update.connect(self._on_native_engine_status_update)
         self._setup_tray()
         self._setup_companion()
         self._start_timers()
@@ -727,7 +728,18 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_progress.setFixedHeight(4)
         self._set_native_model_progress_loading(False)
         native_llm_layout.addWidget(self.toolbar_native_model_progress)
-        native_llm_layout.addWidget(self.toolbar_native_model_selector)
+        native_model_row = QHBoxLayout()
+        native_model_row.setSpacing(6)
+        native_model_row.addWidget(self.toolbar_native_model_selector, 1)
+        self.toolbar_native_model_eject_btn = QPushButton()
+        self.toolbar_native_model_eject_btn.setObjectName("NativeModelEjectButton")
+        self.toolbar_native_model_eject_btn.setFixedSize(32, 32)
+        self.toolbar_native_model_eject_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toolbar_native_model_eject_btn.setToolTip("Eject loaded model (free VRAM)")
+        self._apply_native_model_eject_button_style()
+        self.toolbar_native_model_eject_btn.clicked.connect(self._on_native_model_eject_clicked)
+        native_model_row.addWidget(self.toolbar_native_model_eject_btn)
+        native_llm_layout.addLayout(native_model_row)
 
         _auto_load_model_tip = (
             "Automatically loads the last used model at startup. This may significantly increase "
@@ -1216,10 +1228,88 @@ class MainWindow(QMainWindow):
                 self._apply_native_model_selector_text_state(False)
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
+            self._sync_native_model_eject_button()
             if hasattr(self, "settings_view") and hasattr(
                 self.settings_view, "sync_active_native_model_label"
             ):
                 self.settings_view.sync_active_native_model_label()
+
+    def _apply_native_model_eject_button_style(self) -> None:
+        if not hasattr(self, "toolbar_native_model_eject_btn"):
+            return
+        btn = self.toolbar_native_model_eject_btn
+        btn.setStyleSheet(
+            """
+            QPushButton#NativeModelEjectButton {
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+            }
+            QPushButton#NativeModelEjectButton:hover:enabled {
+                background: rgba(139, 92, 246, 0.12);
+            }
+            QPushButton#NativeModelEjectButton:disabled {
+                background: transparent;
+            }
+            """
+        )
+        is_dark = getattr(self, "_is_dark_theme", True)
+        muted = "#3f3f46" if is_dark else "#a1a1aa"
+        color = "#8b5cf6" if btn.isEnabled() else muted
+        btn.setIcon(qta.icon("fa5s.eject", color=color))
+
+    def _sync_native_model_eject_button(self) -> None:
+        if not hasattr(self, "toolbar_native_model_eject_btn"):
+            return
+        btn = self.toolbar_native_model_eject_btn
+        if get_engine_mode() == "external":
+            btn.setEnabled(False)
+            btn.setToolTip(
+                "Local model eject is unavailable while AI Engine is set to External Server."
+            )
+            self._apply_native_model_eject_button_style()
+            return
+        if self._native_model_loading:
+            btn.setEnabled(False)
+            btn.setToolTip("Wait until the current model finishes loading.")
+            self._apply_native_model_eject_button_style()
+            return
+        snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
+        loaded = bool((snap or {}).get("loaded"))
+        btn.setEnabled(loaded)
+        btn.setToolTip(
+            "Eject loaded model (free VRAM)"
+            if loaded
+            else "No model is loaded in memory."
+        )
+        self._apply_native_model_eject_button_style()
+
+    def _on_native_model_eject_clicked(self) -> None:
+        if not self._llm_worker:
+            return
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None and hasattr(cv, "interrupt_active_response"):
+            cv.interrupt_active_response()
+        self._pending_native_model_path = None
+        self._native_model_loading = False
+        self._native_model_loaded_success = False
+        self._set_native_model_progress_loading(False)
+        self._sync_native_model_eject_button()
+        self._llm_worker.eject_loaded_native_model()
+
+    def _on_native_engine_status_update(self, message: str) -> None:
+        if str(message or "").strip() == "Native model unloaded":
+            self._on_native_model_ejected_ui()
+
+    def _on_native_model_ejected_ui(self) -> None:
+        self._pending_native_model_path = None
+        self._native_model_loading = False
+        self._native_model_loaded_success = False
+        self._set_native_model_progress_loading(False)
+        self.refresh_toolbar_native_model_dropdown()
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None and hasattr(cv, "refresh_think_toggle"):
+            cv.refresh_think_toggle()
 
     def _set_native_model_progress_loading(self, loading: bool) -> None:
         if not hasattr(self, "toolbar_native_model_progress"):
@@ -1535,6 +1625,7 @@ class MainWindow(QMainWindow):
             if native_menu:
                 self._apply_menu_theme(native_menu, self._is_dark_theme)
             self._apply_settings_menu_button_chevron_state(self.toolbar_native_model_selector)
+            self._apply_native_model_eject_button_style()
 
         # 3. 🔑 THE FIX: Update Conversations View
         if hasattr(self, 'conversations_view'):

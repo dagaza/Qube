@@ -1969,6 +1969,22 @@ class LLMWorker(QThread):
             self.status_update.emit("Engine: Internal (native)")
             # Do not auto-load here; startup/engine transitions decide this via settings.
 
+    def eject_loaded_native_model(self) -> None:
+        """Unload the in-process GGUF without clearing the saved model path."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
+            return
+        snap = self._native_engine.get_model_reasoning_telemetry()
+        if not bool((snap or {}).get("loaded")):
+            return
+        if self.isRunning():
+            self.cancel_generation()
+            for _ in range(20):
+                if not self.isRunning():
+                    break
+                time.sleep(0.05)
+        self._native_engine.unload_model()
+        self.status_update.emit("Native engine: model ejected (VRAM released)")
+
     def refresh_native_model_from_settings(self) -> None:
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
