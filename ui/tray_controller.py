@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable
 
 import qtawesome as qta
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QIcon, QPixmap
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
 
 from core import app_settings
@@ -16,12 +17,54 @@ from core.assistant_activity import (
     tray_tooltip_for_activity,
 )
 
-# Brand tray color — independent of companion idle color presets.
-_TRAY_ICON_COLOR = "#8b5cf6"
+_TRAY_LOGO_NAME = "qube_logo_256.png"
+_TRAY_ICON_SIZES_PX = (16, 22, 24, 32)
+_TRAY_ICON_FALLBACK_COLOR = "#8b5cf6"
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def resolve_qube_logo_path() -> Path | None:
+    """Resolve the Qube logo across new and legacy asset directories."""
+    root = _project_root()
+    for rel in (
+        Path("assets/logos") / _TRAY_LOGO_NAME,
+        Path("assets/icons") / _TRAY_LOGO_NAME,
+        Path("assets") / _TRAY_LOGO_NAME,
+    ):
+        candidate = root / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def build_tray_logo_icon(logo_path: Path | str | None = None) -> QIcon:
+    """Build a multi-resolution QIcon suitable for Linux panel trays."""
+    path = Path(logo_path) if logo_path is not None else resolve_qube_logo_path()
+    if path is None or not path.is_file():
+        return qta.icon("fa5s.cube", color=_TRAY_ICON_FALLBACK_COLOR)
+
+    source = QPixmap(str(path))
+    if source.isNull():
+        return qta.icon("fa5s.cube", color=_TRAY_ICON_FALLBACK_COLOR)
+
+    icon = QIcon()
+    for size in _TRAY_ICON_SIZES_PX:
+        icon.addPixmap(
+            source.scaled(
+                size,
+                size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+    return icon
 
 
 class TrayController(QWidget):
-    """Owns QSystemTrayIcon state, menu, and activity glyph."""
+    """Owns QSystemTrayIcon state, menu, and activity tooltip."""
 
     open_requested = pyqtSignal()
     exit_requested = pyqtSignal()
@@ -38,11 +81,13 @@ class TrayController(QWidget):
         *,
         voice_input_enabled: Callable[[], bool] | None = None,
         voice_output_enabled: Callable[[], bool] | None = None,
+        tray_logo_path: Path | str | None = None,
     ) -> None:
         super().__init__(parent)
         self._is_dark = True
         self._activity = AssistantActivity.IDLE_LISTEN
         self._voice_paused = False
+        self._tray_logo_icon = build_tray_logo_icon(tray_logo_path)
         self._tray_available = QSystemTrayIcon.isSystemTrayAvailable()
         self._tray_icon: QSystemTrayIcon | None = None
         self._status_action: QAction | None = None
@@ -76,7 +121,6 @@ class TrayController(QWidget):
                     f"QMenu {{ background-color: {menu_bg}; color: {menu_fg}; }}"
                     f"QMenu::item:selected {{ background-color: {'#313244' if is_dark else '#e2e8f0'}; }}"
                 )
-        self._refresh_icon()
 
     def set_activity(self, activity: AssistantActivity, *, voice_paused: bool = False) -> None:
         self._activity = activity
@@ -98,6 +142,7 @@ class TrayController(QWidget):
 
     def _build_tray(self) -> None:
         self._tray_icon = QSystemTrayIcon(self)
+        self._tray_icon.setIcon(self._tray_logo_icon)
         self._tray_icon.setToolTip("Qube")
 
         menu = QMenu()
@@ -165,6 +210,7 @@ class TrayController(QWidget):
         self._tray_icon.setContextMenu(menu)
         self._tray_icon.activated.connect(self._on_activated)
         self.apply_theme(self._is_dark)
+        self._refresh_presence()
         self._tray_icon.show()
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
@@ -225,24 +271,8 @@ class TrayController(QWidget):
             self._status_action.setText(f"● {line}")
         if self._tray_icon is not None:
             self._tray_icon.setToolTip(tray_tooltip_for_activity(self._activity, voice_paused=self._voice_paused))
-        self._refresh_icon()
 
     def refresh_icon(self) -> None:
-        """Re-render the tray icon glyph for the current activity."""
-        self._refresh_icon()
-
-    def _refresh_icon(self) -> None:
-        if self._tray_icon is None:
-            return
-        icon_name = "fa5s.cube"
-        if self._activity == AssistantActivity.CAPTURING:
-            icon_name = "fa5s.microphone"
-        elif self._activity == AssistantActivity.WORKING:
-            icon_name = "fa5s.brain"
-        elif self._activity == AssistantActivity.SPEAKING:
-            icon_name = "fa5s.volume-up"
-        elif self._activity == AssistantActivity.BACKGROUND_BUSY:
-            icon_name = "fa5s.cloud-upload-alt"
-        elif self._activity in (AssistantActivity.NEEDS_ATTENTION, AssistantActivity.ERROR):
-            icon_name = "fa5s.exclamation-circle"
-        self._tray_icon.setIcon(qta.icon(icon_name, color=_TRAY_ICON_COLOR))
+        """Re-apply the static Qube logo tray icon."""
+        if self._tray_icon is not None and not self._tray_logo_icon.isNull():
+            self._tray_icon.setIcon(self._tray_logo_icon)

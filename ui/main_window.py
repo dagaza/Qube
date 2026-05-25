@@ -1778,6 +1778,7 @@ class MainWindow(QMainWindow):
                 getattr(self, "voice_bypass_toggle", None)
                 and self.voice_bypass_toggle.isChecked()
             ),
+            tray_logo_path=self._resolve_logo_asset("qube_logo_256.png"),
         )
         self.tray_icon = self.tray_controller.tray_icon
         if not self.tray_controller.available:
