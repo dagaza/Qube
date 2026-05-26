@@ -7,6 +7,7 @@ from openwakeword.model import Model
 import logging
 
 from core.app_settings import set_wakeword_threshold_override
+from core.audio_utils import classify_mic_open_error, iter_mic_open_candidates
 from core.wakeword_manager import WakewordManager, WakewordSpec
 from core.wakeword_testbed import ConfidenceSmoother
 
@@ -61,6 +62,8 @@ class AudioListenerWorker(QThread):
         self.active_wakeword_threshold = 0.5
         self._smoother = ConfidenceSmoother(maxlen=12)
         self._test_mode_active = False
+        self._last_mic_error_message: str | None = None
+        self._mic_open_backoff_sec = 2.0
         self.refresh_wakewords(include_remote=True)
 
     def set_paused(self, paused: bool):
@@ -138,7 +141,18 @@ class AudioListenerWorker(QThread):
     def set_input_device(self, index):
         """Thread-safe request to swap the audio device."""
         self.pending_device_index = index
+        self._mic_open_backoff_sec = 2.0
         self.status_update.emit(f"Swapping to device {index}...")
+
+    def _emit_mic_error(self, message: str) -> None:
+        if self._last_mic_error_message == message:
+            return
+        self._last_mic_error_message = message
+        self.status_update.emit(message)
+
+    def _clear_mic_error(self) -> None:
+        self._last_mic_error_message = None
+        self._mic_open_backoff_sec = 2.0
 
     def _record_until_silence(self):
         # 🔑 THE FIX: Imports must go at the absolute top of the scope!
@@ -226,48 +240,77 @@ class AudioListenerWorker(QThread):
 
         Returns True on success, False on total failure.
         """
-        # Try 16kHz first, fall back to 48kHz
         configs = [
             (16000, CHUNK),
             (48000, CHUNK * 3),
         ]
+        candidates = iter_mic_open_candidates(self.audio, self.input_device_index)
+        if not candidates:
+            self._emit_mic_error("Mic Error: no input device available")
+            return False
 
-        for rate, chunk_size in configs:
-            try:
-                self.current_rate = rate
-                self.stream = self.audio.open(
-                    format=FORMAT, channels=1, rate=rate,
-                    input=True, frames_per_buffer=chunk_size,
-                    input_device_index=self.input_device_index
-                )
-                logger.info(f"Mic opened at {rate}Hz on device {self.input_device_index}")
-                self.status_update.emit("Idle")
-
-                # Flush ALSA startup corruption AND pre-warm the OWW feature buffer
+        last_error: Exception | None = None
+        for device_index, channels, label in candidates:
+            for rate, chunk_size in configs:
                 try:
-                    for _ in range(15):
-                        flush_data = self.stream.read(chunk_size, exception_on_overflow=False)
-                        if self.oww_model:
-                            flush_audio = np.frombuffer(flush_data, dtype=np.int16)
-                            if rate == 48000:
-                                flush_audio = flush_audio[::3]
-                            self.oww_model.predict(flush_audio)
-                except Exception:
-                    pass
-                logger.info("Hardware buffer flush complete. OWW model pre-warmed.")
-                return True
+                    self.current_rate = rate
+                    self.stream = self.audio.open(
+                        format=FORMAT,
+                        channels=channels,
+                        rate=rate,
+                        input=True,
+                        frames_per_buffer=chunk_size,
+                        input_device_index=device_index,
+                    )
+                    if device_index != self.input_device_index:
+                        logger.info(
+                            "Mic opened on fallback device %r (%s ch) at %sHz",
+                            label,
+                            channels,
+                            rate,
+                        )
+                    else:
+                        logger.info(
+                            "Mic opened at %sHz on device %s (%s ch)",
+                            rate,
+                            device_index,
+                            channels,
+                        )
+                    self._clear_mic_error()
+                    self.status_update.emit("Idle")
 
-            except Exception as e:
-                logger.warning(f"Mic open failed at {rate}Hz: {e}")
-                if self.stream:
+                    # Flush ALSA startup corruption AND pre-warm the OWW feature buffer
                     try:
-                        self.stream.stop_stream()
-                        self.stream.close()
+                        for _ in range(15):
+                            flush_data = self.stream.read(chunk_size, exception_on_overflow=False)
+                            if self.oww_model:
+                                flush_audio = np.frombuffer(flush_data, dtype=np.int16)
+                                if rate == 48000:
+                                    flush_audio = flush_audio[::3]
+                                self.oww_model.predict(flush_audio)
                     except Exception:
                         pass
-                    self.stream = None
+                    logger.info("Hardware buffer flush complete. OWW model pre-warmed.")
+                    return True
 
-        self.status_update.emit("Mic Error: ALSA Lock")
+                except Exception as e:
+                    last_error = e
+                    logger.warning(
+                        "Mic open failed (device=%s, channels=%s) at %sHz: %s",
+                        device_index,
+                        channels,
+                        rate,
+                        e,
+                    )
+                    if self.stream:
+                        try:
+                            self.stream.stop_stream()
+                            self.stream.close()
+                        except Exception:
+                            pass
+                        self.stream = None
+
+        self._emit_mic_error(classify_mic_open_error(last_error))
         return False
 
     def run(self):
@@ -339,7 +382,8 @@ class AudioListenerWorker(QThread):
             # --- 3. Open the Microphone & Read Audio ---
                 if self.stream is None:
                     if not self._open_mic_with_warmup():
-                        time.sleep(2)
+                        time.sleep(self._mic_open_backoff_sec)
+                        self._mic_open_backoff_sec = min(self._mic_open_backoff_sec * 1.5, 30.0)
                         continue
 
             # Read the live, clean audio buffer

@@ -12,7 +12,7 @@ if __package__ in (None, ""):
 import psutil
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QApplication, QLabel, QFrame, 
+    QPushButton, QToolButton, QApplication, QLabel, QFrame,
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar
 )
@@ -39,6 +39,7 @@ from ui.tray_controller import TrayController
 from ui.companion.companion_controller import CompanionController
 from core.app_settings import (
     get_auto_load_last_model_on_startup,
+    get_audio_input_device_index,
     get_engine_mode,
     get_internal_model_path,
     get_onboarding_local_llm_tour_completed,
@@ -46,8 +47,10 @@ from core.app_settings import (
     get_llm_models_dir,
     resolve_internal_model_path,
     set_auto_load_last_model_on_startup,
+    set_audio_input_device_index,
     set_internal_model_path,
 )
+from core.audio_utils import get_input_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.qube_tooltip import qube_tooltip_set_theme
 from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
@@ -141,6 +144,7 @@ class MainWindow(QMainWindow):
         self._enable_routing_debug_tool = bool(enable_routing_debug_tool)
         self.routing_debug_tool_view = None
         self._force_app_exit = False
+        self._last_mic_notification_detail: str | None = None
         self._pending_native_model_path: str | None = None
         self._native_model_loading: bool = False
         self._native_model_loaded_success: bool = False
@@ -416,7 +420,7 @@ class MainWindow(QMainWindow):
 
         # --- 1. FAR LEFT: LOGO & VU METER ---
         left_container = QWidget()
-        left_container.setFixedWidth(180) # Fits Logo + Padding + Mic + VU
+        left_container.setFixedWidth(196) # Logo + mic + VU + chevron
         left_layout = QHBoxLayout(left_container)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12) # 12px padding between elements
@@ -433,15 +437,28 @@ class MainWindow(QMainWindow):
             self.app_logo.setText("🧊") 
             self.app_logo.setStyleSheet("font-size: 18px;")
 
-        # Mic Icon & VU Meter
+        # Mic icon, VU meter, and chevron mic selector
         mic_icon = QLabel()
         mic_icon.setPixmap(qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14)))
         self.vu_meter = VUMeter()
-        
+
+        self.mic_selector_btn = QToolButton()
+        self.mic_selector_btn.setObjectName("TopBarMicSelector")
+        self.mic_selector_btn.setAutoRaise(True)
+        self.mic_selector_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.mic_selector_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.mic_selector_btn.setToolTip("Select microphone input")
+        self.mic_selector_btn.setFixedSize(18, 18)
+        self.mic_selector_btn.setIconSize(QSize(10, 10))
+
+        self._setup_topbar_mic_picker_menu()
+        self._apply_topbar_mic_chevron_style()
+
         left_layout.addWidget(self.app_logo)
         left_layout.addWidget(mic_icon)
         left_layout.addWidget(self.vu_meter)
-        left_layout.addStretch() 
+        left_layout.addWidget(self.mic_selector_btn)
+        left_layout.addStretch()
         
         layout.addWidget(left_container)
 
@@ -512,6 +529,125 @@ class MainWindow(QMainWindow):
         layout.addWidget(win_controls)
         
         return bar
+
+    def _apply_topbar_mic_chevron_style(self) -> None:
+        chevron_color = "#64748b"
+        hover = "rgba(148, 163, 184, 0.18)" if not getattr(self, "_is_dark_theme", True) else "rgba(205, 214, 244, 0.08)"
+        self.mic_selector_btn.setIcon(qta.icon("fa5s.chevron-down", color=chevron_color))
+        self.mic_selector_btn.setStyleSheet(
+            f"""
+            QToolButton#TopBarMicSelector {{
+                background: transparent;
+                border: none;
+                padding: 0px;
+            }}
+            QToolButton#TopBarMicSelector:hover {{
+                background: {hover};
+                border-radius: 4px;
+            }}
+            QToolButton#TopBarMicSelector::menu-indicator {{
+                image: none;
+                width: 0px;
+            }}
+            """
+        )
+
+    def _short_mic_device_label(self, display_name: str) -> str:
+        prefix = "Input "
+        if display_name.startswith(prefix) and ": " in display_name:
+            return display_name.split(": ", 1)[1]
+        return display_name
+
+    def _resolve_active_mic_device_index(self) -> int | None:
+        saved = get_audio_input_device_index()
+        if saved is not None:
+            return saved
+        worker = getattr(self, "_audio_worker", None)
+        worker_idx = getattr(worker, "input_device_index", None) if worker else None
+        if worker_idx is not None:
+            return worker_idx
+        try:
+            import pyaudio
+
+            pa = pyaudio.PyAudio()
+            try:
+                info = pa.get_default_input_device_info()
+                return int(info.get("index"))
+            finally:
+                pa.terminate()
+        except Exception:
+            return None
+
+    def _sync_settings_mic_selector_from_index(self, device_index: int) -> None:
+        settings = getattr(self, "settings_view", None)
+        if settings is None or not hasattr(settings, "mic_selector"):
+            return
+        for idx, name in get_input_devices():
+            if idx == device_index:
+                settings.mic_selector.setText(name)
+                break
+
+    def _on_topbar_mic_device_selected(self, device_index: int) -> None:
+        set_audio_input_device_index(device_index)
+        if self._audio_worker:
+            self._audio_worker.set_input_device(device_index)
+        self._sync_settings_mic_selector_from_index(device_index)
+
+    def _setup_topbar_mic_picker_menu(self) -> None:
+        from PyQt6.QtWidgets import QWidgetAction, QListWidget, QListWidgetItem
+
+        menu = QMenu(self.mic_selector_btn)
+        menu.setObjectName("PrestigeMenu")
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._topbar_mic_menu = menu
+        self._apply_menu_theme(menu, getattr(self, "_is_dark_theme", True))
+
+        list_widget = QListWidget()
+        list_widget.setObjectName("PrestigeMenuList")
+        list_widget.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._topbar_mic_list = list_widget
+
+        def refresh_mic_menu() -> None:
+            mics = get_input_devices()
+            active_idx = self._resolve_active_mic_device_index()
+            list_widget.clear()
+            for idx, name in mics:
+                short = self._short_mic_device_label(name)
+                prefix = "✓  " if idx == active_idx else "   "
+                row = QListWidgetItem(f"{prefix}{short}")
+                row.setData(Qt.ItemDataRole.UserRole, idx)
+                list_widget.addItem(row)
+
+            if not mics:
+                row = QListWidgetItem("No microphones found")
+                row.setFlags(Qt.ItemFlag.NoItemFlags)
+                list_widget.addItem(row)
+
+            required_height = max(1, list_widget.count()) * 32 + 10
+            main_win = self.window()
+            max_height = int(main_win.height() * 0.5) if main_win else 400
+            list_widget.setFixedHeight(min(required_height, max_height))
+
+            content_w = list_widget.sizeHintForColumn(0) + 40
+            cap = min(480, int(main_win.width() * 0.45)) if main_win else 480
+            list_widget.setFixedWidth(min(cap, max(content_w, 260)))
+
+        menu.aboutToShow.connect(refresh_mic_menu)
+
+        def on_item_clicked(item) -> None:
+            idx = item.data(Qt.ItemDataRole.UserRole)
+            if idx is None:
+                return
+            self._on_topbar_mic_device_selected(int(idx))
+            menu.hide()
+
+        list_widget.itemClicked.connect(on_item_clicked)
+
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(list_widget)
+        menu.addAction(action)
+        self.mic_selector_btn.setMenu(menu)
     
     def update_mic_level(self, level: float) -> None:
         """
@@ -1612,6 +1748,9 @@ class MainWindow(QMainWindow):
         # 1. Update the Settings Page menus
         if hasattr(self, 'settings_view') and hasattr(self.settings_view, 'refresh_menu_themes'):
             self.settings_view.refresh_menu_themes(self._is_dark_theme)
+        if hasattr(self, "_topbar_mic_menu"):
+            self._apply_menu_theme(self._topbar_mic_menu, self._is_dark_theme)
+        self._apply_topbar_mic_chevron_style()
             
         # 2. Update the Toolbar Voice Menu
         if hasattr(self, 'global_voice_selector'):
@@ -2059,14 +2198,20 @@ class MainWindow(QMainWindow):
                 )
 
         msg_upper = message.upper().strip()
-        if "MIC ERROR" in msg_upper:
-            from core.notification_types import mic_error_event
+        if "MIC ERROR" in msg_upper and "NO INPUT DEVICE" not in msg_upper:
+            from core.notification_types import voice_input_unavailable_event
 
-            self.emit_notification(mic_error_event(detail=message))
-        elif new_state == "needs_model":
-            from core.notification_types import needs_model_event
+            notify_key = "voice_input_unavailable"
+            if self._last_mic_notification_detail != notify_key:
+                self._last_mic_notification_detail = notify_key
+                self.emit_notification(voice_input_unavailable_event())
+        else:
+            if self._last_mic_notification_detail is not None and new_state == "idle":
+                self._last_mic_notification_detail = None
+            if new_state == "needs_model":
+                from core.notification_types import needs_model_event
 
-            self.emit_notification(needs_model_event())
+                self.emit_notification(needs_model_event())
 
     def update_rag_indicator(self, active: bool) -> None:
         """Called by the LLM Worker when actively retrieving documents."""

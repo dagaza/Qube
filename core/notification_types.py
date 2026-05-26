@@ -66,6 +66,7 @@ class NotificationEvent:
             severity=self.severity.value,
             category=self.category,
             event_id=self.event_id,
+            dedupe_key=self.dedupe_key,
         )
 
 
@@ -103,7 +104,29 @@ def stt_failed_event(*, reason: str = "") -> NotificationEvent:
     )
 
 
+VOICE_INPUT_UNAVAILABLE_BODY = (
+    "Voice input unavailable — another application may be using your microphone. "
+    "You may still use the text-based mode for interaction with your assistant."
+)
+
+
+def voice_input_unavailable_event() -> NotificationEvent:
+    """Tier-A reactive notice when mic capture cannot open (e.g. call app holds the device)."""
+    return NotificationEvent(
+        title="Voice input unavailable",
+        body=VOICE_INPUT_UNAVAILABLE_BODY,
+        severity=NotificationSeverity.WARNING,
+        category="voice",
+        auto_dismiss_ms=0,
+        dedupe_key="voice_input_unavailable",
+        rate_limit_key="voice_input_unavailable",
+        rate_limit_sec=60.0,
+        tray_bump=True,
+    )
+
+
 def mic_error_event(*, detail: str = "") -> NotificationEvent:
+    """Legacy builder — prefer ``voice_input_unavailable_event`` for mic open failures."""
     body = detail.strip() or "Microphone unavailable — check audio settings."
     return NotificationEvent(
         title="Microphone",

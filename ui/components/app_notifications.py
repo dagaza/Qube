@@ -197,6 +197,7 @@ class AppNotificationCenter(QWidget):
         self._stack.addStretch(1)
 
         self._toasts: list[AppNotificationToast] = []
+        self._toast_by_dedupe: dict[str, AppNotificationToast] = {}
         self._app_filter_installed = False
         self.hide()
         self._host.installEventFilter(self)
@@ -251,8 +252,22 @@ class AppNotificationCenter(QWidget):
             toast.apply_theme(is_dark)
 
     def show_notification(self, request: AppNotificationRequest) -> None:
+        if request.dedupe_key:
+            existing = self._toast_by_dedupe.get(request.dedupe_key)
+            if existing is not None and existing in self._toasts:
+                existing._request = request
+                existing._title.setText(request.title)
+                existing._body.setText(request.body)
+                if request.auto_dismiss_ms > 0:
+                    existing._auto_timer.start(request.auto_dismiss_ms)
+                self.relayout()
+                self.show()
+                self.raise_()
+                return
+
         while len(self._toasts) >= self._MAX_VISIBLE:
             old = self._toasts.pop(0)
+            self._unregister_dedupe(old)
             old.setParent(None)
             old.deleteLater()
 
@@ -261,6 +276,8 @@ class AppNotificationCenter(QWidget):
         toast.dismissed.connect(self._remove_toast)
         toast.action_triggered.connect(self._forward_action)
         self._toasts.append(toast)
+        if request.dedupe_key:
+            self._toast_by_dedupe[request.dedupe_key] = toast
         self._stack.addWidget(toast)
         self.relayout()
         self.show()
@@ -275,9 +292,15 @@ class AppNotificationCenter(QWidget):
     def _forward_action(self, action_id: str, _toast: AppNotificationToast) -> None:
         self.action_triggered.emit(action_id)
 
+    def _unregister_dedupe(self, toast: AppNotificationToast) -> None:
+        dedupe_key = getattr(toast._request, "dedupe_key", None)
+        if dedupe_key and self._toast_by_dedupe.get(dedupe_key) is toast:
+            self._toast_by_dedupe.pop(dedupe_key, None)
+
     def _remove_toast(self, toast: AppNotificationToast) -> None:
         if toast in self._toasts:
             self._toasts.remove(toast)
+        self._unregister_dedupe(toast)
         toast.setParent(None)
         toast.deleteLater()
         if not self._toasts:

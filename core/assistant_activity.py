@@ -191,4 +191,6 @@ class AssistantActivityReducer:
             return " IDLE"
         if bubble_state == "needs_model":
             return "Load a Model"
+        if "MIC ERROR" in msg_upper:
+            return " Voice input unavailable"
         return msg_upper

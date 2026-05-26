@@ -15,3 +15,4 @@ class AppNotificationRequest:
     severity: str = "info"
     category: str = "system"
     event_id: str = ""
+    dedupe_key: str | None = None
