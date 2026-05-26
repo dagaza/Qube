@@ -489,14 +489,17 @@ class SettingsView(QWidget):
         self.memory_enrichment_toggle.toggled.connect(self._on_memory_enrichment_toggled)
 
         self.memory_promotion_toggle = PrestigeToggle()
-        self.mem_promotion_label = QLabel("Enable Memory Promotion (v7 — context/knowledge → preference)")
+        self.mem_promotion_label = QLabel("Promote well-used memories to preferences")
         self.mem_promotion_label.setWordWrap(True)
         _mem_promotion_tip = (
-            "When enabled, a background worker periodically promotes durable "
-            "context and knowledge memories to the preference tier when they "
-            "score highly on retrieval frequency, citation rate, and query "
-            "diversity (OpenClaw dreaming analog). Requires Memory Enrichment. "
-            "Promotion never auto-deletes — flagged rows still surface in Memory Manager."
+            "When this is on, Qube occasionally upgrades facts you rely on often into "
+            "long-term preferences — the kind of thing Qube should remember about you "
+            "without being asked each time.\n\n"
+            "It looks at how often a memory is recalled in chat, whether answers actually "
+            "use it, and whether it comes up in different conversations. Requires "
+            "Memory Enrichment above.\n\n"
+            "Off by default. Qube never removes memories on its own — you can always "
+            "review or edit everything in Memory Manager."
         )
         self.memory_promotion_toggle.setToolTip(_mem_promotion_tip)
         self.mem_promotion_label.setToolTip(_mem_promotion_tip)
@@ -511,20 +514,27 @@ class SettingsView(QWidget):
         self.memory_promotion_toggle.toggled.connect(self._on_memory_promotion_toggled)
 
         self.memory_promotion_preset_selector = SelectorButton("Standard", is_dark=getattr(self.window(), "_is_dark_theme", True))
-        self.memory_promotion_preset_selector.setMaximumWidth(220)
+        self.memory_promotion_preset_selector.setMinimumWidth(200)
+        self.memory_promotion_preset_selector.setMaximumWidth(280)
         self.memory_promotion_preset_selector.setToolTip(
-            "Promotion threshold preset (Conservative / Standard / Aggressive). "
-            "Only applies when promotion is enabled."
+            "How cautious Qube should be before promoting a memory.\n\n"
+            "Conservative — waits for more repeated use before upgrading.\n"
+            "Standard — balanced default.\n"
+            "Aggressive — promotes sooner.\n\n"
+            "Only applies when Promote well-used memories is enabled."
         )
         self._build_memory_promotion_preset_menu()
 
         self.memory_consolidation_toggle = PrestigeToggle()
-        self.mem_consolidation_label = QLabel("Enable Memory Consolidation (v7.1 — cross-day staging)")
+        self.mem_consolidation_label = QLabel("Highlight memories that keep coming back")
         self.mem_consolidation_label.setWordWrap(True)
         _mem_consolidation_tip = (
-            "When enabled, a background worker stages context and knowledge memories "
-            "that recur across calendar days for review in Memory Manager. "
-            "Deterministic — no LLM dream pipeline. Default on when enrichment is enabled."
+            "When this is on, Qube watches for memories that show up again on "
+            "different days — a hint they may matter more than one-off notes.\n\n"
+            "Those items get a gentle nudge in Memory Manager (marked for your "
+            "review). Qube does not rewrite or delete them automatically, and "
+            "this runs quietly in the background.\n\n"
+            "On by default. Turn off if you prefer to curate memories only yourself."
         )
         self.memory_consolidation_toggle.setToolTip(_mem_consolidation_tip)
         self.mem_consolidation_label.setToolTip(_mem_consolidation_tip)
