@@ -97,7 +97,7 @@ def _avg_retrieval_score(payload: dict) -> float:
 
 
 def consolidation_from_retrieval_days(retrieval_days: list[str]) -> float:
-    """OpenClaw-style multi-day consolidation from ISO day buckets."""
+    """Multi-day consolidation score from ISO day buckets."""
     from datetime import datetime, timezone
 
     days = [str(d) for d in (retrieval_days or []) if d]

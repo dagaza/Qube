@@ -12,8 +12,7 @@ from typing import Callable, Iterable
 def bm25_rank_to_score(rank: float) -> float:
     """Map a BM25 rank (lower is better) to a normalized relevance score in [0, 1].
 
-    Port of OpenClaw ``memory/mmr.ts`` / hybrid BM25 transform: higher rank
-    indices (worse matches) decay toward zero via ``1 / (1 + rank)``.
+    Higher rank indices (worse matches) decay toward zero via ``1 / (1 + rank)``.
     """
     try:
         r = max(0.0, float(rank))

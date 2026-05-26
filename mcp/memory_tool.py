@@ -31,7 +31,7 @@ MAX_MEMORY_RESULTS = 5
 # ============================================================
 MIN_SIMILARITY_DISTANCE = 0.75  # higher = more permissive retrieval (L2 distance)
 
-# Candidate expansion factor (fixes starvation); v7 hybrid uses 4 (OpenClaw default).
+# Candidate expansion factor (fixes starvation); v7 hybrid uses 4 (default multiplier).
 CANDIDATE_MULTIPLIER = HYBRID_CANDIDATE_MULTIPLIER
 
 # Soft filtering (NOT hard cutoff)
