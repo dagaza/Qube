@@ -510,8 +510,6 @@ class SettingsView(QWidget):
         self.memory_promotion_toggle.blockSignals(False)
         self.memory_promotion_toggle.toggled.connect(self._on_memory_promotion_toggled)
 
-        from ui.components.selector_button import SelectorButton
-
         self.memory_promotion_preset_selector = SelectorButton("Standard", is_dark=getattr(self.window(), "_is_dark_theme", True))
         self.memory_promotion_preset_selector.setMaximumWidth(220)
         self.memory_promotion_preset_selector.setToolTip(
