@@ -1,9 +1,24 @@
 import logging
 import json
 import re
+import time
 import numpy as np
 
+from core.memory_filters import is_memory_actionable
+from core.memory_retrieval_policy import (
+    HYBRID_CANDIDATE_MULTIPLIER,
+    apply_core_memory_gate,
+    apply_mmr,
+    fts_query_token_overlap,
+    temporal_decay_multiplier,
+    tier_from_source,
+)
 from core.memory_usage_recorder import get_memory_usage_recorder
+from core.retrieval_fusion import (
+    _fts_has_score_metadata,
+    fuse_ranked_results,
+    fuse_weighted_scores,
+)
 
 logger = logging.getLogger("Qube.MemoryTool")
 
@@ -16,8 +31,8 @@ MAX_MEMORY_RESULTS = 5
 # ============================================================
 MIN_SIMILARITY_DISTANCE = 0.75  # higher = more permissive retrieval (L2 distance)
 
-# Candidate expansion factor (fixes starvation)
-CANDIDATE_MULTIPLIER = 6
+# Candidate expansion factor (fixes starvation); v7 hybrid uses 4 (OpenClaw default).
+CANDIDATE_MULTIPLIER = HYBRID_CANDIDATE_MULTIPLIER
 
 # Soft filtering (NOT hard cutoff)
 SOFT_DISTANCE_CUTOFF = 0.85
@@ -239,6 +254,10 @@ def memory_search(
     include_knowledge: bool = False,
     include_episode: bool = False,
     include_context: bool = True,
+    apply_core_memory_gate: bool = False,
+    apply_mmr: bool = False,
+    apply_temporal_decay: bool = False,
+    query_fingerprint: str | None = None,
 ) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
@@ -284,33 +303,71 @@ def memory_search(
     query_proper_nouns = _extract_query_proper_nouns(query)
 
     try:
-        # ============================================================
-        # 1. VECTOR SEARCH (EXPANDED CANDIDATES)
-        # ============================================================
-        results = (
-            store.table
-            .search(query_vector)
-            .where(where_clause)
-            .limit(top_k * CANDIDATE_MULTIPLIER)
-            .to_list()
-        )
+        limit = top_k * CANDIDATE_MULTIPLIER
 
-        if not results:
+        # ============================================================
+        # 1. VECTOR + FTS CHANNELS (v7 hybrid)
+        # ============================================================
+        vector_results: list = []
+        try:
+            vector_results = (
+                store.table
+                .search(query_vector)
+                .where(where_clause)
+                .limit(limit)
+                .to_list()
+            )
+        except Exception as e:
+            logger.debug("[Memory v7] vector search failed: %s", e)
+
+        text_results: list = []
+        try:
+            text_results = (
+                store.table.search(query, query_type="fts")
+                .where(where_clause)
+                .limit(limit)
+                .to_list()
+            )
+        except Exception as e:
+            logger.debug("[Memory v7] FTS search unavailable: %s", e)
+
+        if not vector_results and not text_results:
+            return {"memory_context": "", "memory_sources": []}
+
+        def _mem_doc_id(doc: dict) -> str:
+            return str(doc.get("id") or doc.get("source") or (doc.get("text") or "")[:64])
+
+        if _fts_has_score_metadata(text_results):
+            fused = fuse_weighted_scores(
+                vector_results,
+                text_results,
+                doc_id_fn=_mem_doc_id,
+            )
+        else:
+            fused = fuse_ranked_results(vector_results, text_results, doc_id_fn=_mem_doc_id)
+        if not fused:
             return {"memory_context": "", "memory_sources": []}
 
         filtered = []
+        now_ts = time.time()
 
         # ============================================================
         # 2. SCORE + TRACE PIPELINE
         # ============================================================
-        for r in results:
+        for r, channels in fused:
             distance = r.get("_distance", 1.0)
+            semantic_score = max(0.0, 1.0 - float(distance))
 
             try:
                 payload = json.loads(r.get("text", "{}"))
             except Exception:
                 if trace:
-                    logger.debug(f"[Memory TRACE] JSON parse failed for row")
+                    logger.debug("[Memory TRACE] JSON parse failed for row")
+                continue
+
+            if not is_memory_actionable(payload, now=now_ts):
+                if trace:
+                    logger.debug("[Memory TRACE] dropped (action boundary expired)")
                 continue
 
             content = payload.get("content", "")
@@ -319,23 +376,42 @@ def memory_search(
             strength = payload.get("strength", 1)
             decay = float(payload.get("decay", 1.0))
             links = payload.get("links_to_document_ids") or []
+            source = r.get("source") or ""
 
             if not content:
                 continue
 
-            # ========================================================
-            # v6 HYBRID SCORE (Phase C: decay-weighted)
-            # Re-weighted to include the decay term so memories that earn
-            # their keep float to the top while stale rows sink without
-            # being immediately purged.
-            # ========================================================
-            semantic_score = max(0.0, 1.0 - distance)
+            has_vector = "vector" in channels
+            has_fts = "fts" in channels
+            vector_reliable = (
+                has_vector
+                and float(distance) <= SOFT_DISTANCE_CUTOFF
+                and semantic_score >= MIN_SEMANTIC_SCORE
+            )
+            fts_only = has_fts and not vector_reliable
+
+            if fts_only and not fts_query_token_overlap(query, content):
+                if trace:
+                    logger.debug("[Memory TRACE] dropped (FTS-only, no token overlap)")
+                continue
+
+            if not fts_only and not vector_reliable:
+                if trace:
+                    logger.debug("[Memory TRACE] dropped (weak vector channel)")
+                continue
+
             final_score = (
                 semantic_score * 0.55
                 + confidence * 0.20
                 + min(strength, 10) / 10 * 0.10
                 + max(0.0, min(1.0, decay)) * 0.15
             )
+            if fts_only:
+                final_score = max(final_score, confidence * 0.35 + 0.25)
+
+            if apply_temporal_decay:
+                tier = tier_from_source(str(source))
+                final_score *= temporal_decay_multiplier(tier, payload, now=now_ts)
 
             is_episode = (category == "episode")
             if prefer_episode and is_episode:
@@ -344,47 +420,28 @@ def memory_search(
             if trace:
                 logger.debug(
                     f"[Memory TRACE] content='{content[:40]}...' "
-                    f"dist={distance:.3f} "
-                    f"semantic={semantic_score:.3f} "
-                    f"confidence={confidence:.2f} "
-                    f"strength={strength} "
-                    f"score={final_score:.3f} "
-                    f"links={len(links)}"
+                    f"channels={channels} dist={distance:.3f} "
+                    f"semantic={semantic_score:.3f} score={final_score:.3f}"
                 )
 
-            # Soft gate (NOT a hard rejection anymore)
-            if distance > SOFT_DISTANCE_CUTOFF:
-                if trace:
-                    logger.debug(f"[Memory TRACE] soft-rejected (too distant)")
-                continue
+            if not fts_only:
+                if float(distance) > SOFT_DISTANCE_CUTOFF:
+                    if trace:
+                        logger.debug("[Memory TRACE] soft-rejected (too distant)")
+                    continue
+                if semantic_score < MIN_SEMANTIC_SCORE:
+                    if trace:
+                        logger.debug(
+                            "[Memory TRACE] dropped (semantic=%.3f < %.2f)",
+                            semantic_score,
+                            MIN_SEMANTIC_SCORE,
+                        )
+                    continue
 
-            # v6.1 HARD gate on semantic relevance. This catches the
-            # "topically unrelated but not extremely distant" band where
-            # the soft L2 gate still lets rows through (e.g. a personal
-            # memory about a name scoring ~0.5 cosine against a generic
-            # document-lookup query). Below the floor, the memory is
-            # dropped entirely — no UI source, no LLM injection.
-            if semantic_score < MIN_SEMANTIC_SCORE:
-                if trace:
-                    logger.debug(
-                        f"[Memory TRACE] dropped (semantic={semantic_score:.3f} < {MIN_SEMANTIC_SCORE})"
-                    )
-                continue
-
-            # v6.1 PROPER-NOUN GATE. When the query scopes to a specific
-            # named entity (e.g. "tell me about Dr. Evelyn"), drop
-            # candidates whose content has zero overlap with those
-            # entities. This is what prevents a "my mom's name is
-            # Cornelia" memory from surfacing on a Dr. Evelyn query.
-            # Bypassed when the query has no distinctive proper nouns —
-            # generic questions ("what are my preferences?", "summarize my
-            # notes") still flow through the permissive semantic gate.
             if (
                 query_proper_nouns
+                and not fts_only
                 and not _content_has_any_token(content, query_proper_nouns)
-                # Episode summaries never carry individual proper nouns;
-                # they are narrative recap rows and must survive this gate
-                # when the caller opted into the episode-preferring path.
                 and not (prefer_episode and is_episode)
             ):
                 if trace:
@@ -403,15 +460,23 @@ def memory_search(
                 "strength": strength,
                 "score": final_score,
                 "links_to_document_ids": [str(x) for x in links if x],
+                "_row": r,
             })
 
         if not filtered:
             return {"memory_context": "", "memory_sources": []}
 
-        # ============================================================
-        # 3. SORT BY HYBRID SCORE
-        # ============================================================
         filtered.sort(key=lambda x: x["score"], reverse=True)
+
+        if apply_mmr:
+            filtered = apply_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
+
+        if apply_core_memory_gate:
+            gated = apply_core_memory_gate(filtered)
+            if not gated:
+                logger.info("[Memory v7] core memory suppressed (relevance gate)")
+                return {"memory_context": "", "memory_sources": []}
+            filtered = gated
 
         # ============================================================
         # 4. CONTEXT BUILD (STRICT BUDGET SAFE)
@@ -451,7 +516,11 @@ def memory_search(
                 "memory_id": mid,
             })
             if mid:
-                recorder.record_retrieved(str(mid))
+                recorder.record_retrieved(
+                    str(mid),
+                    query_fingerprint=query_fingerprint,
+                    retrieval_score=float(item.get("score") or 0.0),
+                )
 
         # ============================================================
         # 5. PHASE B LINK EXPANSION

@@ -22,6 +22,12 @@ from core.settings_store import (
 from core.app_settings import (
     get_enable_memory_enrichment,
     set_enable_memory_enrichment,
+    get_enable_memory_promotion,
+    set_enable_memory_promotion,
+    get_enable_memory_consolidation,
+    set_enable_memory_consolidation,
+    get_memory_promotion_preset,
+    set_memory_promotion_preset,
     DEFAULT_ENGINE_MODE,
     get_engine_mode,
     get_internal_model_path,
@@ -88,6 +94,8 @@ class SettingsView(QWidget):
     auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
     auto_load_last_model_changed = pyqtSignal(bool)
     memory_enrichment_changed = pyqtSignal(bool)
+    memory_promotion_changed = pyqtSignal(bool)
+    memory_consolidation_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
     external_settings_reloaded = pyqtSignal(set)
     def __init__(self, workers: dict, db_manager):
@@ -480,7 +488,71 @@ class SettingsView(QWidget):
         self.memory_enrichment_toggle.blockSignals(False)
         self.memory_enrichment_toggle.toggled.connect(self._on_memory_enrichment_toggled)
 
+        self.memory_promotion_toggle = PrestigeToggle()
+        self.mem_promotion_label = QLabel("Enable Memory Promotion (v7 — context/knowledge → preference)")
+        self.mem_promotion_label.setWordWrap(True)
+        _mem_promotion_tip = (
+            "When enabled, a background worker periodically promotes durable "
+            "context and knowledge memories to the preference tier when they "
+            "score highly on retrieval frequency, citation rate, and query "
+            "diversity (OpenClaw dreaming analog). Requires Memory Enrichment. "
+            "Promotion never auto-deletes — flagged rows still surface in Memory Manager."
+        )
+        self.memory_promotion_toggle.setToolTip(_mem_promotion_tip)
+        self.mem_promotion_label.setToolTip(_mem_promotion_tip)
+        promo_row = QWidget()
+        promo_row_layout = QHBoxLayout(promo_row)
+        promo_row_layout.setContentsMargins(0, 0, 0, 0)
+        promo_row_layout.addWidget(self.memory_promotion_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+        promo_row_layout.addWidget(self.mem_promotion_label, stretch=1)
+        self.memory_promotion_toggle.blockSignals(True)
+        self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())
+        self.memory_promotion_toggle.blockSignals(False)
+        self.memory_promotion_toggle.toggled.connect(self._on_memory_promotion_toggled)
+
+        from ui.components.selector_button import SelectorButton
+
+        self.memory_promotion_preset_selector = SelectorButton("Standard", is_dark=getattr(self.window(), "_is_dark_theme", True))
+        self.memory_promotion_preset_selector.setMaximumWidth(220)
+        self.memory_promotion_preset_selector.setToolTip(
+            "Promotion threshold preset (Conservative / Standard / Aggressive). "
+            "Only applies when promotion is enabled."
+        )
+        self._build_memory_promotion_preset_menu()
+
+        self.memory_consolidation_toggle = PrestigeToggle()
+        self.mem_consolidation_label = QLabel("Enable Memory Consolidation (v7.1 — cross-day staging)")
+        self.mem_consolidation_label.setWordWrap(True)
+        _mem_consolidation_tip = (
+            "When enabled, a background worker stages context and knowledge memories "
+            "that recur across calendar days for review in Memory Manager. "
+            "Deterministic — no LLM dream pipeline. Default on when enrichment is enabled."
+        )
+        self.memory_consolidation_toggle.setToolTip(_mem_consolidation_tip)
+        self.mem_consolidation_label.setToolTip(_mem_consolidation_tip)
+        consolidate_row = QWidget()
+        consolidate_row_layout = QHBoxLayout(consolidate_row)
+        consolidate_row_layout.setContentsMargins(0, 0, 0, 0)
+        consolidate_row_layout.addWidget(self.memory_consolidation_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+        consolidate_row_layout.addWidget(self.mem_consolidation_label, stretch=1)
+        self.memory_consolidation_toggle.blockSignals(True)
+        self.memory_consolidation_toggle.setChecked(get_enable_memory_consolidation())
+        self.memory_consolidation_toggle.blockSignals(False)
+        self.memory_consolidation_toggle.toggled.connect(self._on_memory_consolidation_toggled)
+
+        promo_preset_row = QWidget()
+        promo_preset_layout = QHBoxLayout(promo_preset_row)
+        promo_preset_layout.setContentsMargins(0, 0, 0, 0)
+        promo_preset_lbl = QLabel("Promotion preset")
+        promo_preset_lbl.setToolTip(self.memory_promotion_preset_selector.toolTip())
+        promo_preset_layout.addWidget(promo_preset_lbl)
+        promo_preset_layout.addWidget(self.memory_promotion_preset_selector)
+        promo_preset_layout.addStretch(1)
+
         perf_form.addRow("", mem_row)
+        perf_form.addRow("", promo_row)
+        perf_form.addRow("", promo_preset_row)
+        perf_form.addRow("", consolidate_row)
         content_layout.addWidget(perf_widget)
         content_layout.addWidget(self._build_divider())
 
@@ -920,6 +992,8 @@ class SettingsView(QWidget):
             cb.setStyleSheet(checkbox_style)
         if hasattr(self, 'mem_enrichment_label'):
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+        if hasattr(self, 'mem_promotion_label'):
+            self.mem_promotion_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         if hasattr(self, "local_llm_tour_hint_lbl"):
             self.local_llm_tour_hint_lbl.setStyleSheet(
                 f"color: {text_color}; font-size: 13px;"
@@ -1504,6 +1578,35 @@ class SettingsView(QWidget):
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
 
+    def _on_memory_promotion_toggled(self, checked: bool):
+        set_enable_memory_promotion(checked)
+        self.memory_promotion_changed.emit(checked)
+
+    def _build_memory_promotion_preset_menu(self) -> None:
+        if not hasattr(self, "memory_promotion_preset_selector"):
+            return
+        menu = QMenu(self)
+        labels = {
+            "conservative": "Conservative",
+            "standard": "Standard",
+            "aggressive": "Aggressive",
+        }
+        current = get_memory_promotion_preset()
+
+        def _pick(key: str, label: str) -> None:
+            set_memory_promotion_preset(key)
+            self.memory_promotion_preset_selector.setText(label)
+
+        for key, label in labels.items():
+            act = menu.addAction(label)
+            act.triggered.connect(lambda _checked=False, k=key, l=label: _pick(k, l))
+        self.memory_promotion_preset_selector.setMenu(menu)
+        self.memory_promotion_preset_selector.setText(labels.get(current, "Standard"))
+
+    def _on_memory_consolidation_toggled(self, checked: bool):
+        set_enable_memory_consolidation(checked)
+        self.memory_consolidation_changed.emit(checked)
+
     def _on_notifications_dnd_toggled(self, checked: bool) -> None:
         from core.app_settings import set_notifications_dnd
 
@@ -1712,6 +1815,7 @@ class SettingsView(QWidget):
             self.voice_selector,
             self.native_chat_format_selector,
             getattr(self, "companion_demo_selector", None),
+            getattr(self, "memory_promotion_preset_selector", None),
         ]
         for btn in buttons:
             if btn is None:
@@ -1985,6 +2089,22 @@ class SettingsView(QWidget):
         self.memory_enrichment_toggle.blockSignals(True)
         self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
         self.memory_enrichment_toggle.blockSignals(False)
+        if hasattr(self, "memory_promotion_toggle"):
+            self.memory_promotion_toggle.blockSignals(True)
+            self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())
+            self.memory_promotion_toggle.blockSignals(False)
+        if hasattr(self, "memory_consolidation_toggle"):
+            self.memory_consolidation_toggle.blockSignals(True)
+            self.memory_consolidation_toggle.setChecked(get_enable_memory_consolidation())
+            self.memory_consolidation_toggle.blockSignals(False)
+        if hasattr(self, "memory_promotion_preset_selector"):
+            labels = {
+                "conservative": "Conservative",
+                "standard": "Standard",
+                "aggressive": "Aggressive",
+            }
+            preset = get_memory_promotion_preset()
+            self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
 
         if hasattr(self, "notifications_enabled_cb"):
             from core import app_settings as _ns

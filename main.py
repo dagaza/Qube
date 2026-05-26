@@ -22,6 +22,9 @@ from core.database import DatabaseManager
 from core.app_settings import (
     ensure_engine_mode_initialized,
     get_enable_memory_enrichment,
+    get_enable_memory_promotion,
+    get_enable_memory_consolidation,
+    get_enable_memory_v7_salvage,
     get_engine_mode,
     get_auto_load_last_model_on_startup,
     get_internal_model_path,
@@ -47,6 +50,8 @@ from core.notification_types import (
 )
 from workers.enrichment_worker import EnrichmentWorker
 from workers.memory_reflection_worker import MemoryReflectionWorker
+from workers.memory_promotion_worker import MemoryPromotionWorker
+from workers.memory_consolidation_worker import MemoryConsolidationWorker
 from workers.internet_worker import InternetWorker
 
 import logging
@@ -121,6 +126,14 @@ class Qube:
         )
         self.memory_reflection_worker.set_enabled(get_enable_memory_enrichment())
         self.memory_reflection_worker.start()
+
+        self.memory_promotion_worker = MemoryPromotionWorker(store=self.store)
+        self.memory_promotion_worker.set_enabled(get_enable_memory_promotion())
+        self.memory_promotion_worker.start()
+
+        self.memory_consolidation_worker = MemoryConsolidationWorker(store=self.store)
+        self.memory_consolidation_worker.set_enabled(get_enable_memory_consolidation())
+        self.memory_consolidation_worker.start()
 
         workers = {
             "audio": self.audio_worker,
@@ -214,6 +227,14 @@ class Qube:
             self.window.settings_view.memory_enrichment_changed.connect(
                 self.memory_reflection_worker.set_enabled
             )
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_promotion_changed'):
+            self.window.settings_view.memory_promotion_changed.connect(
+                self.memory_promotion_worker.set_enabled
+            )
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_consolidation_changed'):
+            self.window.settings_view.memory_consolidation_changed.connect(
+                self.memory_consolidation_worker.set_enabled
+            )
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
             self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
         if hasattr(self.window, 'settings_view') and hasattr(
@@ -298,11 +319,19 @@ class Qube:
         if hasattr(self, 'enrichment_worker') and get_enable_memory_enrichment():
             ctx = getattr(self, "_pending_enrichment_context", None) or {}
             if ctx:
-                # Keep skip flags, message ids, and rag_chunk_ids even when
-                # the cached session_id drifted (e.g. rapid session switch).
                 payload = dict(ctx)
                 payload["session_id"] = session_id
                 self.enrichment_worker.enqueue(payload)
+                salvage_ids = list(payload.get("salvage_message_ids") or [])
+                if salvage_ids and get_enable_memory_v7_salvage() and not payload.get("skip_enrichment"):
+                    self.enrichment_worker.enqueue(
+                        {
+                            "session_id": session_id,
+                            "enrichment_mode": "salvage",
+                            "salvage_message_ids": salvage_ids,
+                            "salvage_reason": payload.get("salvage_reason") or "history_window",
+                        }
+                    )
             else:
                 self.enrichment_worker.enqueue(session_id)
         if hasattr(self, 'enrichment_worker'):
@@ -629,6 +658,14 @@ class Qube:
         if hasattr(self, 'memory_reflection_worker') and self.memory_reflection_worker.isRunning():
             self.memory_reflection_worker.shutdown()
             self.memory_reflection_worker.wait(2000)
+
+        if hasattr(self, 'memory_promotion_worker') and self.memory_promotion_worker.isRunning():
+            self.memory_promotion_worker.shutdown()
+            self.memory_promotion_worker.wait(2000)
+
+        if hasattr(self, 'memory_consolidation_worker') and self.memory_consolidation_worker.isRunning():
+            self.memory_consolidation_worker.shutdown()
+            self.memory_consolidation_worker.wait(2000)
 
         if hasattr(self, 'tts_worker'):
             # Cut any in-flight audio first, then request cooperative thread exit.

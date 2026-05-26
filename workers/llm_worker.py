@@ -38,7 +38,8 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
 )
-from core.memory_usage_recorder import get_memory_usage_recorder
+from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
+from core.app_settings import get_enable_memory_v7_salvage
 from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
     matches_custom_rag_trigger,
@@ -551,6 +552,23 @@ class LLMWorker(QThread):
             parts.append(f"--- {cite_tag}: {name} ---\n{body}")
         return "\n\n".join(parts)
 
+    def _memory_query_fingerprint(
+        self,
+        query: str,
+        *,
+        include_preference: bool,
+        include_knowledge: bool,
+        include_episode: bool,
+        include_context: bool,
+    ) -> str:
+        return compute_query_fingerprint(
+            query,
+            include_preference=include_preference,
+            include_knowledge=include_knowledge,
+            include_episode=include_episode,
+            include_context=include_context,
+        )
+
     def _bound_session_history(self, history: list[dict]) -> list[dict]:
         """
         Cull session messages for the completion request so the inference server's KV cache
@@ -588,6 +606,14 @@ class LLMWorker(QThread):
                 n_before,
                 limit,
             )
+            if get_enable_memory_v7_salvage():
+                windowed_ids = {m.get("id") for m in windowed if m.get("id")}
+                dropped_ids: list[str] = []
+                for m in capped:
+                    mid = m.get("id")
+                    if mid and mid not in windowed_ids:
+                        dropped_ids.append(str(mid))
+                self._pending_salvage_message_ids = dropped_ids[:24]
 
         return windowed
 
@@ -716,14 +742,11 @@ class LLMWorker(QThread):
                     "last_user_msg_id": getattr(self, "_turn_last_user_msg_id", None),
                     "last_assistant_msg_id": getattr(self, "_turn_last_assistant_msg_id", None),
                     "rag_chunk_ids": list(getattr(self, "_turn_rag_chunk_ids", []) or []),
-                    # T3.3: per-turn enrichment gate. ``skip_enrichment`` is
-                    # the primary boolean honoured by EnrichmentWorker;
-                    # ``enrichment_mode`` carries the finer tri-state so the
-                    # explicit-remember bypass can still seed its knowledge
-                    # fact on an "explicit_only" turn.
                     "skip_enrichment": mode == "skip",
                     "enrichment_mode": mode,
                     "skip_reason": reason,
+                    "salvage_message_ids": list(getattr(self, "_pending_salvage_message_ids", []) or []),
+                    "salvage_reason": "history_window" if getattr(self, "_pending_salvage_message_ids", None) else None,
                 }
                 self.enrichment_context_ready.emit(enrichment_payload)
             except Exception:
@@ -743,6 +766,7 @@ class LLMWorker(QThread):
         self._turn_last_assistant_msg_id = None
         # T3.3: reset tool-aware enrichment skip / mode flags for this turn.
         self._reset_turn_enrichment_flags()
+        self._pending_salvage_message_ids = []
 
         if self.session_id:
             user_content = getattr(self, "_persist_content", None) or self.prompt
@@ -753,8 +777,6 @@ class LLMWorker(QThread):
         self._ensure_cross_session_server_flush()
 
         history = self.db.get_session_history(self.session_id) if self.session_id else []
-        # API expects only role/content; DB rows may include "sources" for UI persistence
-        history = [{"role": m["role"], "content": m["content"]} for m in history]
         history = self._bound_session_history(history)
         clean_prompt = self.prompt.lower().strip()
 
@@ -1112,6 +1134,15 @@ class LLMWorker(QThread):
                 include_knowledge=True,
                 include_episode=include_episode,
                 include_context=True,
+                apply_mmr=True,
+                apply_temporal_decay=True,
+                query_fingerprint=self._memory_query_fingerprint(
+                    decision.get("memory_query") or self.prompt,
+                    include_preference=True,
+                    include_knowledge=True,
+                    include_episode=include_episode,
+                    include_context=True,
+                ),
             )
             memory_context = mem_result.get("memory_context", "")
             all_ui_sources.extend(mem_result.get("memory_sources", []))
@@ -1144,6 +1175,14 @@ class LLMWorker(QThread):
                 include_episode=False,
                 include_context=True,
                 top_k=3,
+                apply_core_memory_gate=True,
+                query_fingerprint=self._memory_query_fingerprint(
+                    self.prompt,
+                    include_preference=True,
+                    include_knowledge=False,
+                    include_episode=False,
+                    include_context=True,
+                ),
             )
             memory_context = mem_result.get("memory_context", "")
             all_ui_sources.extend(mem_result.get("memory_sources", []))

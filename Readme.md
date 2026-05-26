@@ -23,9 +23,9 @@ Inference and RAG stay on-device—**no** third-party chat API. (Optional **Mode
 
 ## ✨ Quick Overview
 
-🧠 **Long-Term Semantic Memory & RAG (v6):** Qube doesn't just hold temporary context; it learns. A background enrichment worker extracts **typed atomic facts** (subject / source_role / durability / provenance_quote) from your conversations, drops thin or unprovable claims at the door, links each memory back to the document chunk that inspired it, and stores everything in LanceDB. **Hardened against the classic memory regressions**: assistant refusal messages ("I don't have internet access") are scrubbed before extraction, single-token name stubs cannot become a memory on their own, and a persistent negative list ensures a memory you delete cannot be recreated. **Usage-driven decay** prunes memories that aren't earning their keep, and a periodic **self-reflection auditor** flags suspect entries for your review without ever deleting them on its own.
+🧠 **Long-Term Semantic Memory & RAG (v6 + v7.1):** Qube doesn't just hold temporary context; it learns. A background enrichment worker extracts **typed atomic facts** (subject / source_role / durability / provenance_quote) from your conversations, drops thin or unprovable claims at the door, links each memory back to the document chunk that inspired it, and stores everything in LanceDB. **Hardened against the classic memory regressions**: assistant refusal messages ("I don't have internet access") are scrubbed before extraction, single-token name stubs cannot become a memory on their own, and a persistent negative list ensures a memory you delete cannot be recreated. **Usage-driven decay** prunes memories that aren't earning their keep, and a periodic **self-reflection auditor** flags suspect entries for your review without ever deleting them on its own. **v7.1** adds cross-day **consolidation staging**, richer retrieval telemetry, and optional **promotion** of durable context/knowledge into the preference tier—with full explainability in Memory Manager.
 
-🗂️ **Memory Manager (NEW):** A dedicated **Memories** screen exposes everything Qube remembers about you. Filter by category, search by content, flip the **Flagged for review** toggle to see what the self-reflection worker has surfaced, and use per-row **Edit / Flag / Delete** (or bulk delete) to take direct editorial control of the assistant's long-term knowledge of you. Every delete also writes the entry into the negative list so the same memory cannot be recreated by a similar conversation in the future.
+🗂️ **Memory Manager (NEW):** A dedicated **Memories** screen exposes everything Qube remembers about you. Filter by tier and category, search by content, review **Promotion candidates** and **Almost promoted** rows (with gate-reason tooltips), skim **Recurring themes**, flip the **Flagged for review** toggle to see what the self-reflection worker has surfaced, and use per-row **Edit / Flag / Delete** (or bulk delete / Markdown export) to take direct editorial control. Every delete also writes the entry into the negative list so the same memory cannot be recreated by a similar conversation in the future.
 
 ⚡ **Real-Time Interruption (Barge-In):** Experience true conversational fluidity. Qube supports "Barge-In" capabilities, allowing you to interrupt the assistant mid-sentence by calling it out.
 
@@ -99,23 +99,74 @@ Qube uses two complementary memory layers:
 
 - **Self-reflection worker** — every 6 hours, batches 10 least-recently-reflected memories and asks the titler LLM to label each as `durable_user_fact` / `third_party_stub` / `system_claim` / `transient` / `unclear`. Anything other than `durable_user_fact` is marked `flagged_for_review` and surfaced in the Memory Manager's Flagged section. **Never auto-deletes** — final say belongs to you.
 
+- **Memory v7 hardening** — hybrid vector + FTS retrieval (0.7 / 0.3 rank fusion) with action-boundary filtering (`expires_at`, `safe_to_act_after`, `authority` in JSON payloads); CHAT-route core-memory relevance gate suppresses weak preference/context injection; pre-window **salvage** re-extracts facts from turns dropped by session history windowing; query-fingerprint tracking feeds deferred **promotion** of context/knowledge rows to preference (optional in Settings); MMR diversity + tier-specific temporal decay on recall routes; calendar daily episode rollup (`qube_memory::episode::YYYYMMDD`); Memory Manager **Promotion candidates** section + Markdown export of visible rows.
+
+#### 3. Memory v7.1 reliability (cross-day trust + explainability)
+
+v7.1 strengthens the existing LanceDB-centric stack without markdown dream files or auto-promotion by default. All new fields live **inside the JSON `text` payload**—no LanceDB schema migration.
+
+**Exposure telemetry (feeds promotion + consolidation scoring):**
+
+- **`retrieval_days`** — FIFO list of ISO calendar dates (`YYYY-MM-DD`, cap 16) deduped per retrieve event; analog to multi-day recall signals.
+- **`retrieval_score_sum` / `retrieval_score_count`** — running average of final `memory_search` scores, recorded via `MemoryUsageRecorder` on each kept hit.
+- **`times_salvage_considered` / `times_episode_overlap`** — bounded weak-exposure counters when salvage or daily/session episode rollups touch related atomic rows.
+
+**Background workers (all QThread, never on the UI thread):**
+
+| Worker | Cadence | Purpose |
+| :--- | :--- | :--- |
+| `MemoryConsolidationWorker` | 6 h | Deterministic cross-day staging: writes `consolidation_score`, `consolidation_hints`, `consolidation_staged_at` on context/knowledge rows. **Never auto-promotes or auto-deletes.** Default **on** in Settings. |
+| `MemoryPromotionWorker` | 6 h | Optional context/knowledge → preference tier upgrade when gates pass. **Off by default.** Pre-promote hardening: live re-read, near-duplicate block (`L2 < 0.22` vs existing preference rows), reflection veto on `flagged_for_review`. |
+
+**Promotion scoring (Settings → preset: Conservative / Standard / Aggressive):**
+
+- Log-scaled **frequency** from composite exposure (retrievals + capped citations + salvage touches).
+- **Relevance** blends citation rate with average retrieval score when scores exist.
+- **Diversity** uses `max(unique_query_count, len(retrieval_days))`.
+- **Consolidation** from multi-day `retrieval_days` span (not binary first-seen age alone).
+- `passes_promotion_gates_with_reason()` returns `(ok, reason, components)` for Memory Manager tooltips and logs.
+
+**Retrieval polish:**
+
+- MMR normalizes candidate scores to `[0, 1]` before diversity rerank (near-duplicate skip at similarity ≥ 0.85 unchanged).
+- When FTS exposes `_score` / rank metadata, hybrid merge uses `bm25_rank_to_score` + weighted vector/text fusion; otherwise canonical rank fusion is unchanged.
+
+**Settings toggles (Performance section):**
+
+- **Enable Memory Enrichment & Reflection** — master switch for extraction + reflection (existing).
+- **Enable Memory Promotion (v7)** — opt-in promotion worker (default off).
+- **Promotion preset** — Conservative / Standard / Aggressive gate thresholds (only when promotion is enabled).
+- **Enable Memory Consolidation (v7.1)** — cross-day staging worker (default on).
+
 ---
 
 ### 🗂️ Memory Manager
 
 A dedicated nav screen (between Library and Telemetry) that makes the long-term memory store a first-class, user-editable surface.
 
+- **Promotion candidates** — rows that pass v7.1 promotion gates (when promotion is enabled in Settings); hover for a weighted signal breakdown.
+
+- **Almost promoted** — high-scoring context/knowledge rows that fail one gate, or rows staged by the consolidation worker (`consolidation_staged_at`); tooltips show `passes_promotion_gates_with_reason` gate failure + signal components (capped at 12 rows).
+
+- **Recurring themes** — deterministic rollup card (categories, episode topics, frequent query fingerprints) over currently visible rows—no LLM.
+
+- **Consolidation badge (`STAGED`)** — on row cards when `consolidation_hints` is non-empty (e.g. `multi_day_retrieval`, `high_citation`, `episode_overlap`).
+
 - **Top "Flagged for review" section** shows entries the self-reflection worker has surfaced as suspect, so you can confirm or delete them in one pass.
 
-- **Category-grouped sections** for everything else (preference / identity / project / knowledge / context), with subject, origin, confidence, decay, and usage counters visible at a glance.
+- **Tier × category filters** — structural tier (preference / knowledge / episode / context) plus category dropdown; each row shows a colour-coded `PREF` / `KNOW` / `EP` / `CTX` pill.
 
-- **Per-row actions:** Edit content (PrestigeDialog input), Flag / Unflag for review, Delete (PrestigeDialog confirm). Bulk **Delete all visible** for cleanup passes.
+- **Category-grouped sections** for everything else, with subject, origin, confidence, decay, and usage counters visible at a glance.
 
-- **Filters:** SelectorButton category dropdown, **Flagged only** toggle, free-text search across memory content.
+- **Per-row actions:** Edit content (PrestigeDialog input), Flag / Unflag for review, Delete (PrestigeDialog confirm). Bulk **Delete all visible** and **Export visible** (Markdown under `~/.qube/exports/`) for cleanup passes.
+
+- **Filters:** SelectorButton tier + category dropdowns, **Flagged only** toggle, free-text search across memory content.
 
 - **Negative-list integration:** every delete also records the entry into `~/.qube/memory_negatives.json`, so the enrichment pipeline cannot recreate it from a similar conversation later.
 
 - **Off-thread DB work:** all LanceDB read / delete / re-add goes through a `MemoryManagerWorker` QThread; the UI stays fluid even on large stores.
+
+**QA:** See [`docs/memory_manual_qa.md`](docs/memory_manual_qa.md) for the full manual test plan (v6–v7.1). Run `pytest tests/test_memory_qa_smoke.py` before release for settings/export/negative-list smoke.
 
 ---
 
@@ -336,11 +387,15 @@ Want Qube to answer questions based on a specific book or PDF?
 
 Qube learns about you over time. Open the **Memories** screen (between Library and Telemetry) to see exactly what the assistant has filed away — preferences, identity facts, ongoing projects, knowledge you explicitly asked it to remember — and curate it directly:
 
-1. **Review the "Flagged for review" section at the top.** The self-reflection worker labels suspect entries (third-party stubs, system claims, transient notes) and parks them here for your decision. Confirm or delete in one pass.
+1. **Review pseudo-sections at the top** — **Promotion candidates** (when promotion is enabled), **Almost promoted** (near-miss rows with gate-reason tooltips), then **Flagged for review** from the self-reflection worker. Consolidated rows show a **STAGED** badge when cross-day retrieval patterns triggered staging.
 
-2. **Filter and search** by category, by flagged state, or by free-text content to zero in on a memory.
+2. **Skim Recurring themes** — a compact card summarises dominant categories, episode topics, and frequent query fingerprints across your filtered view.
 
-3. **Edit** rephrases a memory in place. **Flag** marks it for the next reflection pass. **Delete** removes it AND records it into the negative list at `~/.qube/memory_negatives.json`, so the same memory cannot be recreated by a similar conversation later.
+3. **Filter and search** by tier, category, flagged state, or free-text content to zero in on a memory.
+
+4. **Edit** rephrases a memory in place. **Flag** marks it for the next reflection pass. **Delete** removes it AND records it into the negative list at `~/.qube/memory_negatives.json`. **Export visible** writes a Markdown snapshot to `~/.qube/exports/`.
+
+**Optional background maintenance (Settings → Performance):** enable **Memory Promotion** and pick a preset (Conservative / Standard / Aggressive) to let a worker promote durable context/knowledge into preference tier; **Memory Consolidation** (default on) stages cross-day patterns for your review without LLM cost. Neither worker auto-deletes memories.
 
 You never *have* to use the Memory Manager — extraction filtering, decay, and self-reflection keep the store healthy on their own — but it's there whenever you want direct editorial control.
 
@@ -356,7 +411,7 @@ You never *have* to use the Memory Manager — extraction filtering, decay, and 
     
 - **Embeddings:** Nomic v1.5 GGUF via llama-cpp-python (Vulkan/CPU).
 
-- **Long-Term Memory pipeline (v6):** Typed-schema extraction with role-aware preprocessing + server-side validation in **`workers/enrichment_worker.py`**; per-turn provenance with `links_to_document_ids` for RAG chunks in context; embedding-based clustering + two-stage contradiction judge (Jaccard + LLM micro-call); usage counters drained from a thread-safe **`MemoryUsageRecorder`** queue; 24 h decay sweep that purges below `decay < 0.15`; persistent negative-pattern list at **`~/.qube/memory_negatives.json`**; periodic self-reflection via **`workers/memory_reflection_worker.py`** (6 h cadence, flags only — never auto-deletes); user-facing **`ui/views/memory_manager_view.py`** for Edit / Flag / Delete with all DB work on a **`MemoryManagerWorker`** QThread.
+- **Long-Term Memory pipeline (v6 → v7.1):** Typed-schema extraction with role-aware preprocessing + server-side validation in **`workers/enrichment_worker.py`**; per-turn provenance with `links_to_document_ids`; embedding-based clustering + two-stage contradiction judge; usage counters + v7.1 **`retrieval_days` / retrieval score averages / salvage·episode touch counters** drained from **`MemoryUsageRecorder`** via **`core/memory_usage_drain.py`**; 24 h decay sweep; negative-pattern list at **`~/.qube/memory_negatives.json`**; self-reflection via **`workers/memory_reflection_worker.py`**; v7 hybrid retrieval + MMR/decay in **`core/memory_retrieval_policy.py`** + **`core/retrieval_fusion.py`**; optional promotion (**`workers/memory_promotion_worker.py`**, **`core/memory_promotion.py`**) and consolidation staging (**`workers/memory_consolidation_worker.py`**, **`core/memory_consolidation.py`**); user-facing **`ui/views/memory_manager_view.py`** (Promotion candidates, Almost promoted, Recurring themes, consolidation badges) with all DB work on **`MemoryManagerWorker`** QThread.
     
 - **Wake Word:** OpenWakeWord
     

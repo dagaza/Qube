@@ -2,6 +2,8 @@ from rag.store import DocumentStore
 import logging
 import numpy as np
 
+from core.retrieval_fusion import fuse_ranked_results
+
 logger = logging.getLogger("Qube.RAGTool")
 
 MAX_CONTEXT_CHARS = 12000
@@ -209,38 +211,22 @@ def rag_search(
         # 2. SAFE FUSION LAYER (DB-AGNOSTIC RANK MERGE)
         # ============================================================
 
-        fused_scores = {}
-        doc_map = {}
+        def _rag_doc_id(doc: dict) -> str:
+            return str(
+                doc.get("chunk_id")
+                or doc.get("id")
+                or doc.get("source")
+                or (doc.get("text") or "")[:64]
+            )
 
-        def add_results(results, weight: float):
-            for rank, doc in enumerate(results):
-                doc_id = (
-                    doc.get("chunk_id")
-                    or doc.get("id")
-                    or doc.get("source")
-                    or doc.get("text", "")[:64]
-                )
-
-                if doc_id not in fused_scores:
-                    fused_scores[doc_id] = 0.0
-                    doc_map[doc_id] = doc
-
-                # rank-based scoring (stable across DBs)
-                fused_scores[doc_id] += weight / (rank + 1)
-
-        # Vector is primary signal
-        add_results(vector_results, weight=1.0)
-
-        # Text is fallback signal
-        add_results(text_results, weight=0.8)
-
-        ranked_docs = sorted(
-            fused_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
+        fused = fuse_ranked_results(
+            vector_results,
+            text_results,
+            vector_weight=1.0,
+            text_weight=0.8,
+            doc_id_fn=_rag_doc_id,
         )
-
-        ordered_results = [doc_map[doc_id] for doc_id, _ in ranked_docs]
+        ordered_results = [doc for doc, _channels in fused]
 
         # ============================================================
         # 3. CONTEXT BUILDER (HARD SAFETY + UI CONTRACT ENFORCEMENT)

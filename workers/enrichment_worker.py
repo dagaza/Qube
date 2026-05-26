@@ -11,6 +11,7 @@ from core.memory_filters import (
     detect_explicit_remember,
     is_assistant_failure_message,
     is_thin_content,
+    merge_action_boundary_fields,
 )
 # T3.2 episode summary constants — exposed for testing + ``.cursorrules``
 # reference. Turn cadence + idle window + summary length cap live here so
@@ -18,11 +19,16 @@ from core.memory_filters import (
 EPISODE_SUMMARY_TURN_CADENCE = 8
 EPISODE_SUMMARY_IDLE_SEC = 15 * 60
 MAX_EPISODE_CHARS = 800
+SALVAGE_MAX_MESSAGES = 24
+SALVAGE_RATE_LIMIT_SEC = 5 * 60
+DAILY_ROLLUP_IDLE_SEC = 24 * 60 * 60
 from core.memory_usage_recorder import (
     KIND_CITED,
     KIND_RETRIEVED,
     get_memory_usage_recorder,
 )
+from core.memory_usage_drain import apply_usage_deltas_to_payload
+from core.app_settings import get_enable_memory_v7_salvage
 from core.memory_negative_list import (
     DEFAULT_REJECT_DISTANCE,
     get_memory_negative_list,
@@ -113,6 +119,8 @@ class EnrichmentWorker(QThread):
         # (idle > EPISODE_SUMMARY_IDLE_SEC since previous turn).
         self._session_turns_since_summary: dict[str, int] = {}
         self._session_last_turn_ts: dict[str, float] = {}
+        self._salvage_last_ts: dict[str, float] = {}
+        self._last_daily_rollup_ts = 0.0
 
     # ============================================================
     # CLUSTERING (NOW ACTUALLY USED)
@@ -385,6 +393,11 @@ class EnrichmentWorker(QThread):
                                 item.get("session_id"),
                                 item.get("skip_reason") or "unspecified",
                             )
+                        elif str(item.get("enrichment_mode") or "").lower() == "salvage":
+                            if get_enable_memory_v7_salvage():
+                                self._process_salvage(item)
+                            else:
+                                logger.debug("[Memory v7] salvage disabled via settings")
                         else:
                             self._process_turn(item)
                     else:
@@ -393,6 +406,7 @@ class EnrichmentWorker(QThread):
                     # Idle tick — maintenance runs even when extraction is disabled.
                     self._maybe_drain_usage_recorder()
                     self._maybe_run_decay_sweep()
+                    self._maybe_daily_episode_rollup()
 
             except Exception as e:
                 logger.error(f"[Memory v6] Loop error: {e}")
@@ -476,6 +490,99 @@ class EnrichmentWorker(QThread):
         stored = getattr(self, "_last_facts_stored", 0)
         self.extraction_finished.emit(session_id, int(stored))
         self._last_facts_stored = 0
+
+    def _process_salvage(self, payload: dict) -> None:
+        """v7: extract durable facts from messages dropped by history windowing."""
+        session_id = str(payload.get("session_id") or "")
+        msg_ids = list(payload.get("salvage_message_ids") or [])[:SALVAGE_MAX_MESSAGES]
+        if not session_id or not msg_ids:
+            return
+
+        now = time.time()
+        last = self._salvage_last_ts.get(session_id, 0.0)
+        if now - last < SALVAGE_RATE_LIMIT_SEC:
+            logger.debug("[Memory v7] salvage rate-limited session=%s", session_id)
+            return
+        self._salvage_last_ts[session_id] = now
+
+        if not self._wait_for_chat_llm_idle():
+            return
+
+        try:
+            all_messages = self.db.get_session_history(session_id) or []
+        except Exception as e:
+            logger.error("[Memory v7] salvage DB error: %s", e)
+            return
+
+        id_set = set(msg_ids)
+        messages = [m for m in all_messages if m.get("id") in id_set]
+        if not messages:
+            return
+
+        messages.sort(key=lambda m: all_messages.index(m) if m in all_messages else 0)
+        scrubbed = self._scrub_assistant_failures(messages)
+        conversation = "\n".join(
+            f"{m.get('role') or 'user'}: {m.get('content') or ''}" for m in scrubbed
+        )
+        if not conversation.strip():
+            return
+
+        prompt = self._build_salvage_prompt(conversation)
+        raw = self._generate_memory(prompt)
+        facts = self._extract_json_facts(raw)
+        if not facts:
+            logger.info("[Memory v7] salvage found no new facts session=%s", session_id)
+            return
+
+        self._store_facts(
+            facts,
+            {
+                "session_id": session_id,
+                "source_message_ids": [m.get("id") for m in messages if m.get("id")],
+                "links_to_document_ids": [],
+                "conversation_text": conversation,
+                "salvage_mode": True,
+            },
+        )
+        stored = getattr(self, "_last_facts_stored", 0)
+        logger.info("[Memory v7] salvage stored %d fact(s) session=%s", stored, session_id)
+        self._last_facts_stored = 0
+
+    def _build_salvage_prompt(self, conversation: str) -> str:
+        return f"""Extract ONLY durable user facts from this conversation segment that may not
+have been stored yet. Skip duplicates of obvious preferences already implied.
+Return [] when nothing new qualifies.
+
+{self._build_extraction_rules_block()}
+
+Conversation:
+{conversation}
+"""
+
+    def _build_extraction_rules_block(self) -> str:
+        return """Rules:
+- ONLY extract durable facts about the user (preferences, identity, long-term knowledge).
+- Optional action-boundary fields when the user states timing/approval constraints:
+  expires_at (unix epoch int), safe_to_act_after (unix epoch int),
+  action_constraints (short plain text), authority ("user"|"system"|"third_party").
+- NEVER extract assistant limitations or thin stubs.
+
+Return JSON ONLY:
+[
+  {
+    "subject": "user" | "third_party" | "system",
+    "source_role": "user" | "assistant" | "derived",
+    "durability": "long_term" | "session" | "transient",
+    "category": "preference" | "identity" | "project" | "knowledge" | "context",
+    "content": "...",
+    "provenance_quote": "...",
+    "confidence": 0.0,
+    "expires_at": null,
+    "safe_to_act_after": null,
+    "action_constraints": null,
+    "authority": null
+  }
+]"""
 
     def _process_session(self, session_id: str):
         if not self._wait_for_chat_llm_idle():
@@ -909,6 +1016,10 @@ STRICT RULES:
 - NEVER invent facts. Every provenance_quote MUST be a verbatim substring of
   the actual conversation below — if you cannot quote the supporting
   sentence word-for-word from the CONVERSATION block, drop the fact.
+- When the user states a temporary constraint, approval boundary, or expiry
+  (e.g. "don't act on this until...", "this expires Friday"), include optional
+  fields: expires_at (unix epoch int), safe_to_act_after (unix epoch int),
+  action_constraints (short text), authority ("user"|"system"|"third_party").
 - Content must be a complete sentence of at least 3 words with real
   information.
 
@@ -922,7 +1033,11 @@ Return JSON ONLY in exactly this schema:
     "category": "preference" | "identity" | "project" | "knowledge" | "context",
     "content": "full sentence describing the fact",
     "provenance_quote": "exact sentence from the conversation that supports this fact",
-    "confidence": 0.0
+    "confidence": 0.0,
+    "expires_at": null,
+    "safe_to_act_after": null,
+    "action_constraints": null,
+    "authority": null
   }}
 ]
 
@@ -1256,8 +1371,19 @@ Conversation:
                     "last_reflected_at": 0,
                     "flagged_for_review": False,
 
-                    "timestamp": now_ts
+                    "timestamp": now_ts,
+                    "first_seen_at": now_ts,
+                    "retrieval_query_fps": [],
+                    "unique_query_count": 0,
+                    "retrieval_days": [],
+                    "retrieval_score_sum": 0.0,
+                    "retrieval_score_count": 0,
+                    "times_salvage_considered": 0,
+                    "times_episode_overlap": 0,
                 }
+                if turn_context.get("salvage_mode"):
+                    base_payload["times_salvage_considered"] = 1
+                merge_action_boundary_fields(fact, base_payload)
 
                 skip_insert = False
                 if existing:
@@ -1407,15 +1533,23 @@ Conversation:
         if not events:
             return
 
-        deltas: dict[str, dict[str, int]] = {}
-        for kind, mid in events:
-            d = deltas.setdefault(mid, {"retrieved": 0, "cited": 0})
+        deltas: dict[str, dict] = {}
+        for kind, mid, query_fp, retrieval_score in events:
+            d = deltas.setdefault(
+                mid,
+                {"retrieved": 0, "cited": 0, "fps": [], "scores": []},
+            )
             if kind == KIND_RETRIEVED:
                 d["retrieved"] += 1
+                if query_fp:
+                    d["fps"].append(str(query_fp))
+                if retrieval_score is not None:
+                    d["scores"].append(float(retrieval_score))
             elif kind == KIND_CITED:
                 d["cited"] += 1
 
         applied = 0
+        now_ts = time.time()
         for mid, d in deltas.items():
             row = self._load_memory_row(mid)
             if not row:
@@ -1424,9 +1558,14 @@ Conversation:
                 payload = json.loads(row.get("text", "{}") or "{}")
             except Exception:
                 continue
-            payload["times_retrieved"] = int(payload.get("times_retrieved", 0)) + d["retrieved"]
-            payload["times_cited_positively"] = int(payload.get("times_cited_positively", 0)) + d["cited"]
-            payload["last_used_at"] = int(time.time())
+            payload = apply_usage_deltas_to_payload(
+                payload,
+                retrieved=d["retrieved"],
+                cited=d["cited"],
+                query_fps=d.get("fps") or [],
+                retrieval_scores=d.get("scores") or [],
+                now_ts=now_ts,
+            )
             if self._rewrite_memory_row(row, payload):
                 applied += 1
 
@@ -1499,3 +1638,123 @@ Conversation:
             logger.info(
                 f"[Memory v6] decay sweep: purged={purged} rewritten={rewritten} (n={len(rows)})"
             )
+
+    def _maybe_daily_episode_rollup(self) -> None:
+        """v7: merge session episode rows into one calendar-day summary row."""
+        now = time.time()
+        if now - self._last_daily_rollup_ts < DAILY_ROLLUP_IDLE_SEC:
+            return
+        self._last_daily_rollup_ts = now
+
+        day_key = time.strftime("%Y%m%d", time.localtime(now))
+        source_prefix = f"qube_memory::episode::{day_key}"
+        if len(day_key) != 8 or not day_key.isdigit():
+            return
+
+        try:
+            rows = (
+                self.store.table.search()
+                .where("source LIKE 'qube_memory::episode::%'")
+                .limit(500)
+                .to_list()
+            )
+        except Exception as e:
+            logger.debug("[Memory v7] daily rollup scan failed: %s", e)
+            return
+
+        summaries: list[str] = []
+        topics: set[str] = set()
+        for row in rows:
+            src = str(row.get("source") or "")
+            if src.endswith(day_key) and src.count("::") >= 3:
+                continue
+            if f"::episode::{day_key}" in src:
+                continue
+            try:
+                payload = json.loads(row.get("text", "{}") or "{}")
+            except Exception:
+                continue
+            if str(payload.get("category") or "").lower() != "episode":
+                continue
+            body = (payload.get("content") or "").strip()
+            if body:
+                summaries.append(body)
+            for t in payload.get("topics") or []:
+                if str(t).strip():
+                    topics.add(str(t).strip())
+
+        if not summaries:
+            return
+
+        merged = " ".join(summaries)
+        if len(merged) > MAX_EPISODE_CHARS:
+            merged = merged[: MAX_EPISODE_CHARS - 3] + "..."
+        topic_line = list(topics)[:12]
+
+        try:
+            vector = self.embedder.embed_query(merged)
+        except Exception as e:
+            logger.debug("[Memory v7] daily rollup embed failed: %s", e)
+            return
+
+        daily_source = f"qube_memory::episode::{day_key}"
+        payload = {
+            "type": "fact",
+            "category": "episode",
+            "content": merged,
+            "confidence": 0.75,
+            "subject": "user",
+            "source_role": "derived",
+            "durability": "long_term",
+            "provenance_quote": merged[:200],
+            "origin": "daily_rollup",
+            "topics": topic_line,
+            "episode_reason": "daily_rollup",
+            "timestamp": int(now),
+        }
+        safe_source = daily_source.replace("'", "''")
+        try:
+            self.store.table.delete(f"source = '{safe_source}'")
+            self.store.table.add(
+                [
+                    {
+                        "text": json.dumps(payload),
+                        "vector": vector,
+                        "source": daily_source,
+                        "chunk_id": 0,
+                    }
+                ]
+            )
+        except Exception as e:
+            logger.debug("[Memory v7] daily rollup write failed: %s", e)
+            return
+        self._bump_episode_overlap_counters(merged)
+        logger.info("[Memory v7] daily episode rollup written for %s", day_key)
+
+    def _bump_episode_overlap_counters(self, episode_text: str) -> None:
+        """Best-effort: mark atomic rows whose content appears in a daily episode."""
+        needle = (episode_text or "").strip().lower()
+        if len(needle) < 12:
+            return
+        try:
+            rows = (
+                self.store.table.search()
+                .where("source LIKE 'qube_memory::%'")
+                .limit(300)
+                .to_list()
+            )
+        except Exception:
+            return
+        for row in rows:
+            src = str(row.get("source") or "").lower()
+            if "::episode::" in src:
+                continue
+            try:
+                payload = json.loads(row.get("text", "{}") or "{}")
+            except Exception:
+                continue
+            content = (payload.get("content") or "").strip().lower()
+            if len(content) < 12 or content not in needle:
+                continue
+            payload["times_episode_overlap"] = int(payload.get("times_episode_overlap", 0)) + 1
+            self._rewrite_memory_row(row, payload)

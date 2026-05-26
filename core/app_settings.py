@@ -17,6 +17,10 @@ _SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\
 
 # Dotted setting keys (schema in assets/config/settings.schema.json)
 KEY_MEMORY_ENRICHMENT = "qube.memory.enrichment"
+KEY_MEMORY_V7_SALVAGE = "qube.memory.v7_salvage_enabled"
+KEY_MEMORY_PROMOTION = "qube.memory.promotion_enabled"
+KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
+KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
 KEY_ENGINE_MODE = "qube.engine.mode"
 DEFAULT_ENGINE_MODE = "internal"
 KEY_NATIVE_MODEL_PATH = "qube.native.modelPath"
@@ -83,6 +87,47 @@ def get_enable_memory_enrichment() -> bool:
 
 def set_enable_memory_enrichment(enabled: bool) -> None:
     _store().set(KEY_MEMORY_ENRICHMENT, enabled)
+
+
+def get_enable_memory_v7_salvage() -> bool:
+    """When True, enqueue salvage extraction when chat history is windowed. Default True."""
+    return bool(_store().get(KEY_MEMORY_V7_SALVAGE, True))
+
+
+def set_enable_memory_v7_salvage(enabled: bool) -> None:
+    _store().set(KEY_MEMORY_V7_SALVAGE, enabled)
+
+
+def get_enable_memory_promotion() -> bool:
+    """When True, MemoryPromotionWorker may promote working-tier rows. Default False."""
+    return bool(_store().get(KEY_MEMORY_PROMOTION, False))
+
+
+def set_enable_memory_promotion(enabled: bool) -> None:
+    _store().set(KEY_MEMORY_PROMOTION, enabled)
+
+
+def get_memory_promotion_preset() -> str:
+    preset = str(_store().get(KEY_MEMORY_PROMOTION_PRESET, "standard") or "standard").lower()
+    if preset not in ("conservative", "standard", "aggressive"):
+        return "standard"
+    return preset
+
+
+def set_memory_promotion_preset(preset: str) -> None:
+    p = str(preset or "standard").lower()
+    if p not in ("conservative", "standard", "aggressive"):
+        p = "standard"
+    _store().set(KEY_MEMORY_PROMOTION_PRESET, p)
+
+
+def get_enable_memory_consolidation() -> bool:
+    """When True, MemoryConsolidationWorker stages cross-day review rows. Default True."""
+    return bool(_store().get(KEY_MEMORY_CONSOLIDATION, True))
+
+
+def set_enable_memory_consolidation(enabled: bool) -> None:
+    _store().set(KEY_MEMORY_CONSOLIDATION, enabled)
 
 
 def get_engine_mode() -> str:

@@ -334,6 +334,16 @@ Memory system supports 3 logical behaviors:
 
 ---
 
+### 5.4.1 Memory v7.1 — Consolidation, Promotion & Explainability
+
+- v7.1 payload fields (`retrieval_days`, `retrieval_score_sum/count`, `consolidation_*`, `promotion_*`, salvage/episode counters) live **only in JSON `text`** — no LanceDB column additions.
+- **`MemoryConsolidationWorker`**: deterministic cross-day staging; never auto-promote or auto-delete; default enabled via Settings.
+- **`MemoryPromotionWorker`**: opt-in (default off); preset gates (Conservative / Standard / Aggressive); pre-promote duplicate + reflection veto; live re-read before tier rewrite.
+- **`MemoryManagerView`**: Promotion candidates, Almost promoted (gate-reason tooltips), Recurring themes card, STAGED consolidation badge — all reads via `MemoryManagerWorker` QThread.
+- Hybrid retrieval: MMR score normalization; optional BM25-weighted fusion when FTS rank metadata exists (`core/retrieval_fusion.py`).
+
+---
+
 ### 5.5 Intent Routing Rules (CRITICAL FOR LATENCY)
 
 - Semantic Intent Router (`intent_router.py`) must remain:

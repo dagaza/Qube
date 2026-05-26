@@ -515,6 +515,75 @@ NARRATIVE_RECALL_SYSTEM_SUFFIX: str = (
 )
 
 
+# ============================================================
+# v7: Action-sensitive memory boundaries.
+# Optional JSON payload fields: expires_at, safe_to_act_after,
+# action_constraints, authority.
+# ============================================================
+_ALLOWED_AUTHORITY = frozenset({"user", "system", "third_party"})
+
+
+def is_action_sensitive(payload: dict) -> bool:
+    """True when the payload carries any action-boundary metadata."""
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("action_constraints"):
+        return True
+    if payload.get("expires_at") is not None:
+        return True
+    if payload.get("safe_to_act_after") is not None:
+        return True
+    auth = str(payload.get("authority") or "").strip().lower()
+    return auth in _ALLOWED_AUTHORITY and auth != "user"
+
+
+def is_memory_actionable(payload: dict, now: float | None = None) -> bool:
+    """False when a memory is expired or not yet safe to act on."""
+    if not isinstance(payload, dict):
+        return True
+    ts = float(now if now is not None else __import__("time").time())
+    expires_at = payload.get("expires_at")
+    if expires_at is not None:
+        try:
+            if ts >= float(expires_at):
+                return False
+        except (TypeError, ValueError):
+            pass
+    safe_after = payload.get("safe_to_act_after")
+    if safe_after is not None:
+        try:
+            if ts < float(safe_after):
+                return False
+        except (TypeError, ValueError):
+            pass
+    return True
+
+
+def merge_action_boundary_fields(fact: dict, stored: dict) -> None:
+    """Copy optional v7 action-boundary keys from extractor output into payload."""
+    if not isinstance(fact, dict) or not isinstance(stored, dict):
+        return
+    for key in ("expires_at", "safe_to_act_after", "action_constraints", "authority"):
+        if key not in fact:
+            continue
+        val = fact.get(key)
+        if val is None or val == "":
+            continue
+        if key == "authority":
+            auth = str(val).strip().lower()
+            if auth in _ALLOWED_AUTHORITY:
+                stored[key] = auth
+        elif key == "action_constraints":
+            text = str(val).strip()
+            if text:
+                stored[key] = text[:300]
+        else:
+            try:
+                stored[key] = int(val)
+            except (TypeError, ValueError):
+                continue
+
+
 __all__ = [
     "ASSISTANT_FAILURE_PATTERNS",
     "is_assistant_failure_message",
@@ -532,4 +601,7 @@ __all__ = [
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
     "NARRATIVE_RECALL_SYSTEM_SUFFIX",
+    "is_action_sensitive",
+    "is_memory_actionable",
+    "merge_action_boundary_fields",
 ]

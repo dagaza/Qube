@@ -52,6 +52,16 @@ from PyQt6.QtWidgets import (
 import qtawesome as qta
 
 from core.memory_negative_list import get_memory_negative_list
+from core.memory_filters import is_action_sensitive
+from core.memory_insights import aggregate_recurring_themes
+from core.memory_promotion import (
+    is_almost_promoted,
+    is_promotion_candidate,
+    passes_promotion_gates_with_reason,
+    promotion_score_breakdown,
+)
+from core.memory_export import write_memory_export
+from core.app_settings import get_memory_promotion_preset
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.selector_button import SelectorButton
@@ -381,6 +391,32 @@ class _MemoryRowCard(QFrame):
         else:
             self._flag_badge = None
 
+        if is_action_sensitive(self.payload):
+            self._action_badge = QLabel("ACTION")
+            self._action_badge.setObjectName("MemoryRowActionBadge")
+            tip_parts = []
+            if self.payload.get("action_constraints"):
+                tip_parts.append(str(self.payload.get("action_constraints")))
+            if self.payload.get("expires_at"):
+                tip_parts.append(f"expires_at={self.payload.get('expires_at')}")
+            if self.payload.get("safe_to_act_after"):
+                tip_parts.append(f"safe_after={self.payload.get('safe_to_act_after')}")
+            self._action_badge.setToolTip("\n".join(tip_parts) or "Action-sensitive memory")
+            top.addWidget(self._action_badge)
+        else:
+            self._action_badge = None
+
+        hints = self.payload.get("consolidation_hints") or []
+        if isinstance(hints, list) and hints:
+            self._consolidation_badge = QLabel("STAGED")
+            self._consolidation_badge.setObjectName("MemoryRowConsolidationBadge")
+            self._consolidation_badge.setToolTip(
+                "Consolidation hints:\n" + "\n".join(str(h) for h in hints if str(h).strip())
+            )
+            top.addWidget(self._consolidation_badge)
+        else:
+            self._consolidation_badge = None
+
         outer.addLayout(top)
 
         # Body: content
@@ -537,6 +573,24 @@ class _MemoryRowCard(QFrame):
             QLabel#MemoryRowFlaggedBadge {{
                 background: {amber_bg};
                 color: {amber_fg};
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }}
+            QLabel#MemoryRowActionBadge {{
+                background: rgba(245, 158, 11, 0.18);
+                color: #fcd34d;
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }}
+            QLabel#MemoryRowConsolidationBadge {{
+                background: rgba(59, 130, 246, 0.18);
+                color: #3b82f6;
                 border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -775,7 +829,28 @@ class MemoryManagerView(QWidget):
         self.bulk_delete_btn.clicked.connect(self._on_bulk_delete_clicked)
         filter_row.addWidget(self.bulk_delete_btn)
 
+        self.export_btn = QPushButton("Export visible")
+        apply_brand_primary(self.export_btn, icon_name="fa5s.file-export")
+        self.export_btn.setToolTip("Export visible memories to Markdown under ~/.qube/exports/")
+        self.export_btn.clicked.connect(self._on_export_visible)
+        filter_row.addWidget(self.export_btn)
+
         root.addLayout(filter_row)
+
+        self.themes_card = QFrame()
+        self.themes_card.setObjectName("MemoryThemesCard")
+        themes_layout = QVBoxLayout(self.themes_card)
+        themes_layout.setContentsMargins(12, 10, 12, 10)
+        themes_layout.setSpacing(4)
+        self.themes_title = QLabel("Recurring themes")
+        self.themes_title.setObjectName("MemoryThemesTitle")
+        self.themes_body = QLabel("")
+        self.themes_body.setObjectName("MemoryThemesBody")
+        self.themes_body.setWordWrap(True)
+        themes_layout.addWidget(self.themes_title)
+        themes_layout.addWidget(self.themes_body)
+        self.themes_card.setVisible(False)
+        root.addWidget(self.themes_card)
 
         # Status banner
         self.status_lbl = QLabel("")
@@ -928,6 +1003,76 @@ class MemoryManagerView(QWidget):
         non_flagged = [r for r in rows if not (r.get("payload") or {}).get("flagged_for_review")]
 
         insert_idx = 0
+        preset = get_memory_promotion_preset()
+
+        themes = aggregate_recurring_themes(rows, limit=5)
+        if themes:
+            parts = [f"{t['theme']} ({t['count']})" for t in themes]
+            self.themes_body.setText(" · ".join(parts))
+            self.themes_card.setVisible(True)
+        else:
+            self.themes_card.setVisible(False)
+
+        promo_candidates = []
+        almost_promoted = []
+        for r in rows:
+            payload = r.get("payload") or {}
+            if payload.get("promoted_at"):
+                continue
+            if not is_promotion_candidate(payload):
+                if payload.get("consolidation_staged_at"):
+                    almost_promoted.append(r)
+                continue
+            ok, _reason, _ = passes_promotion_gates_with_reason(
+                payload, r.get("source") or "", preset=preset
+            )
+            if ok:
+                promo_candidates.append(r)
+            elif payload.get("consolidation_staged_at") or is_almost_promoted(
+                payload, r.get("source") or "", preset=preset
+            ):
+                almost_promoted.append(r)
+
+        almost_promoted = almost_promoted[:12]
+
+        if almost_promoted:
+            header = _SectionHeader("Almost promoted", len(almost_promoted), is_dark)
+            self.sections_layout.insertWidget(insert_idx, header)
+            insert_idx += 1
+            for item in almost_promoted:
+                card = self._make_card(item, is_dark)
+                payload = item.get("payload") or {}
+                ok, reason, components = passes_promotion_gates_with_reason(
+                    payload, item.get("source") or "", preset=preset
+                )
+                breakdown = promotion_score_breakdown(payload)
+                tip_lines = [
+                    f"Gate: {'pass' if ok else reason}",
+                ]
+                for b in breakdown:
+                    if b["signal"] != "total":
+                        tip_lines.append(f"{b['signal']}: {b['contribution']}")
+                for key, val in sorted(components.items()):
+                    tip_lines.append(f"signal.{key}={val:.3f}")
+                card.setToolTip("\n".join(tip_lines))
+                self.sections_layout.insertWidget(insert_idx, card)
+                insert_idx += 1
+
+        if promo_candidates:
+            header = _SectionHeader("Promotion candidates", len(promo_candidates), is_dark)
+            self.sections_layout.insertWidget(insert_idx, header)
+            insert_idx += 1
+            for item in promo_candidates[:12]:
+                card = self._make_card(item, is_dark)
+                payload = item.get("payload") or {}
+                breakdown = promotion_score_breakdown(payload)
+                tip = "\n".join(
+                    f"{b['signal']}: {b['contribution']}" for b in breakdown if b["signal"] != "total"
+                )
+                card.setToolTip(f"Promotion score breakdown\n{tip}")
+                self.sections_layout.insertWidget(insert_idx, card)
+                insert_idx += 1
+
         if flagged:
             header = _SectionHeader("⚑ Flagged for review", len(flagged), is_dark)
             self.sections_layout.insertWidget(insert_idx, header)
@@ -1054,8 +1199,20 @@ class MemoryManagerView(QWidget):
         )
 
     # ------------------------------------------------------------------
-    # Bulk delete
+    # Bulk delete / export
     # ------------------------------------------------------------------
+
+    def _on_export_visible(self) -> None:
+        rows = self._filtered()
+        if not rows:
+            return
+        try:
+            path = write_memory_export(rows)
+        except Exception as e:
+            logger.warning("Memory export failed: %s", e)
+            return
+        self.status_lbl.setText(f"Exported {len(rows)} memories to {path}")
+        self.status_lbl.setVisible(True)
 
     def _on_bulk_delete_clicked(self) -> None:
         rows = self._filtered()
@@ -1124,6 +1281,28 @@ class MemoryManagerView(QWidget):
         self.subtitle_lbl.setStyleSheet(f"color: {bg_subtitle}; font-size: 12px;")
         self.status_lbl.setStyleSheet(
             f"color: {status_fg}; font-size: 13px; padding: 8px 4px;"
+        )
+        themes_bg = "#1e1e2e" if is_dark else "#f8fafc"
+        themes_border = "rgba(255,255,255,0.08)" if is_dark else "#e2e8f0"
+        themes_fg = "#cdd6f4" if is_dark else "#1e293b"
+        self.themes_card.setStyleSheet(
+            f"""
+            QFrame#MemoryThemesCard {{
+                background: {themes_bg};
+                border: 1px solid {themes_border};
+                border-radius: 10px;
+            }}
+            QLabel#MemoryThemesTitle {{
+                color: {themes_fg};
+                font-weight: 700;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+            }}
+            QLabel#MemoryThemesBody {{
+                color: {bg_subtitle};
+                font-size: 12px;
+            }}
+            """
         )
         self.search_input.setStyleSheet(
             f"""

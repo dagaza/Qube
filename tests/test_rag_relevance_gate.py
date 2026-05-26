@@ -317,9 +317,7 @@ class LLMWorkerDowngradeContractTests(unittest.TestCase):
         lands on the base prompt."""
         post_retrieval_idx = self.src.find(self._POST_RETRIEVAL_ANCHOR)
         self.assertGreater(post_retrieval_idx, 0)
-        prompt_branch_idx = self.src.find(
-            'elif execution_route in ["RAG", "HYBRID", "MEMORY"]'
-        )
+        prompt_branch_idx = self.src.find("build_prompt_blocks(")
         self.assertGreater(prompt_branch_idx, 0)
         self.assertLess(
             post_retrieval_idx, prompt_branch_idx,
