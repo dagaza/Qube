@@ -156,10 +156,8 @@ class MainWindow(QMainWindow):
         self.tray_icon = None  # legacy alias set by TrayController
         self._companion_controller: CompanionController | None = None
 
-        # 🔑 3. Initialize the AI Titling Worker (FLAN-T5-Small)
-        # We import it here or at the top of the file
-        from workers.title_worker import TitleWorker
-        self._title_worker = TitleWorker(self.db)
+        self._sidecar_client = workers.get("sidecar")
+        self._sidecar_worker = workers.get("sidecar_worker")
 
         # Global State
         self._is_dark_theme = True
@@ -214,10 +212,9 @@ class MainWindow(QMainWindow):
         if self._llm_worker:
             self._llm_worker.response_finished.connect(self._check_for_titling)
 
-        # 2. When the TitleWorker finishes its job, tell the sidebar to refresh
-        # This keeps the UI responsive by handling the ~300ms inference in the background
-        if hasattr(self, '_title_worker'):
-            self._title_worker.title_generated.connect(
+        # 2. When the sidecar finishes titling, refresh the history sidebar
+        if self._sidecar_worker is not None:
+            self._sidecar_worker.title_generated.connect(
                 lambda s_id, title: self.conversations_view._refresh_history_list()
             )
 
@@ -230,8 +227,8 @@ class MainWindow(QMainWindow):
             # Get the first message (the user's prompt) to use for the title
             user_prompt = history[0]['content']
             
-            # Fire and forget: TitleWorker handles the rest in the background
-            self._title_worker.run_titling(user_prompt, session_id)
+            if self._sidecar_client is not None:
+                self._sidecar_client.enqueue_title(user_prompt, session_id)
 
     # ------------------------------------------------------------------ #
     #  UI CONSTRUCTION                                                   #

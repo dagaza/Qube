@@ -847,6 +847,9 @@ class LibraryView(QWidget):
         item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
         lbl = QLabel(item_text)
         lbl.setObjectName("HistoryRowTitle")
+        blurb = (doc.get("summary_blurb") or "").strip()
+        if blurb:
+            lbl.setToolTip(blurb)
 
         btn = QPushButton()
         btn.setObjectName("HistoryOptionsBtn")
@@ -966,7 +969,14 @@ class LibraryView(QWidget):
         self.active_filename = doc_data['filename']
         
         self._set_preview_doc_title(self.active_filename)
-        self.doc_stats.setText(f"Size: {doc_data['file_size_kb']} KB | Chunks Indexed: {doc_data['chunk_count']}")
+        stats = (
+            f"Size: {doc_data['file_size_kb']} KB | "
+            f"Chunks Indexed: {doc_data['chunk_count']}"
+        )
+        blurb = (doc_data.get("summary_blurb") or "").strip()
+        if blurb:
+            stats = f"{stats} | {blurb}"
+        self.doc_stats.setText(stats)
 
         self.text_preview.setHtml("<center><h3>Reconstructing document from vector space...</h3></center>")
         self._apply_library_preview_readability()

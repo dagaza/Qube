@@ -13,6 +13,8 @@ from core.richtext_styles import apply_app_link_palette
 
 from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
 from workers.native_llama_engine import NativeLlamaEngine
+from workers.sidecar_llm_worker import SidecarLlmWorker
+from core.sidecar_llm import SidecarLlmClient
 from workers.ingestion_worker import IngestionWorker 
 from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
@@ -88,11 +90,16 @@ class Qube:
         self.native_llama_engine = NativeLlamaEngine()
         self.native_llama_engine.start()
 
+        self.sidecar_worker = SidecarLlmWorker(self.db_manager)
+        self.sidecar_worker.start()
+        self.sidecar_client = SidecarLlmClient(self.sidecar_worker)
+
         self.llm_worker = LLMWorker(
             self.embedder,
             self.store,
             self.db_manager,
             native_engine=self.native_llama_engine,
+            sidecar_client=self.sidecar_client,
         )
         self.tts_worker   = TTSWorker()
         self.gpu_monitor  = GPUMonitor()
@@ -100,12 +107,12 @@ class Qube:
         self.active_internet_worker = None
 
         # --- 3. Instantiate the Async Brain (Memory v3) -----------------
-        # 🔑 FIX: Corrected variable names to match self.store and self.db_manager
         self.enrichment_worker = EnrichmentWorker(
-            llm=self.llm_worker,
+            extraction_llm=self.llm_worker,
+            cognition_llm=self.sidecar_client,
             embedder=self.embedder,
             store=self.store,
-            db=self.db_manager
+            db=self.db_manager,
         )
         self.enrichment_worker.set_enabled(get_enable_memory_enrichment())
 
@@ -115,13 +122,11 @@ class Qube:
         # Start the memory worker thread
         self.enrichment_worker.start()
 
-        # Phase C: periodic memory self-reflection (6h cadence). Shares
-        # the LLM titler that EnrichmentWorker uses, and the same
-        # LanceDB store. Never auto-deletes — only sets
-        # ``flagged_for_review``; the user reviews flagged entries in
-        # the Memory Manager.
+        # Phase C: periodic memory self-reflection (6h cadence). Uses the
+        # CPU sidecar for labeling; never auto-deletes — only sets
+        # ``flagged_for_review`` for Memory Manager review.
         self.memory_reflection_worker = MemoryReflectionWorker(
-            llm=self.llm_worker,
+            llm=self.sidecar_client,
             store=self.store,
         )
         self.memory_reflection_worker.set_enabled(get_enable_memory_enrichment())
@@ -144,6 +149,8 @@ class Qube:
             "store": self.store,
             "embedder": self.embedder,
             "native_engine": self.native_llama_engine,
+            "sidecar": self.sidecar_client,
+            "sidecar_worker": self.sidecar_worker,
         }
 
         # -- 5. UI -------------------------------------------------------
@@ -157,6 +164,7 @@ class Qube:
         # -- 6. Wire signals ---------------------------------------------
         self._connect_signals()
         self._wire_notification_adapters()
+        self.sidecar_worker.ingest_blurb_ready.connect(self._on_ingest_blurb_ready)
         self._sync_databases()
 
         if (
@@ -514,6 +522,7 @@ class Qube:
             self.store,
             self.db_manager,
             folder_id=folder_id,
+            sidecar_worker=self.sidecar_worker,
         )
 
         # Wire the worker's progress signals back to the Library UI
@@ -530,6 +539,11 @@ class Qube:
 
         # Fire it up!
         self.ingestion_worker.start()
+
+    def _on_ingest_blurb_ready(self, filename: str, blurb: str) -> None:
+        if self.db_manager.update_document_blurb(filename, blurb):
+            if hasattr(self.window, "library_view"):
+                self.window.library_view.refresh_library_list()
 
     def _on_ingestion_complete(self, chunk_count: int) -> None:
         file_count = len(getattr(self.ingestion_worker, "file_paths", []) or [])
@@ -688,6 +702,10 @@ class Qube:
 
         if hasattr(self, "native_llama_engine"):
             self.native_llama_engine.stop_engine()
+
+        if hasattr(self, "sidecar_worker") and self.sidecar_worker.isRunning():
+            self.sidecar_worker.stop_engine()
+            self.sidecar_worker.wait(2000)
 
         # 3. Stop all core hardware/LLM workers
         for name, worker in self.window.workers.items():

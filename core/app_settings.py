@@ -22,6 +22,12 @@ KEY_MEMORY_PROMOTION = "qube.memory.promotion_enabled"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
 KEY_DISCOURSE_GROUNDING = "qube.discourse.grounding_enabled"
+KEY_SIDECAR_ENABLED = "qube.sidecar.enabled"
+KEY_SIDECAR_QUERY_REWRITE = "qube.sidecar.query_rewrite_enabled"
+KEY_SIDECAR_SOURCE_DIGEST = "qube.sidecar.source_digest_enabled"
+KEY_SIDECAR_MIN_REWRITE_CONFIDENCE = "qube.sidecar.min_rewrite_confidence"
+KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
+KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -142,6 +148,60 @@ def get_discourse_grounding_enabled() -> bool:
 
 def set_discourse_grounding_enabled(enabled: bool) -> None:
     _store().set(KEY_DISCOURSE_GROUNDING, enabled)
+
+
+def _sidecar_model_on_disk() -> bool:
+    from core.sidecar_llm import sidecar_model_available
+
+    return sidecar_model_available()
+
+
+def get_sidecar_enabled() -> bool:
+    """Sidecar cognition when GGUF exists and setting not explicitly false."""
+    if not _sidecar_model_on_disk():
+        return False
+    raw = _store().get(KEY_SIDECAR_ENABLED, None)
+    if raw is None:
+        return True
+    return bool(raw)
+
+
+def set_sidecar_enabled(enabled: bool) -> None:
+    _store().set(KEY_SIDECAR_ENABLED, enabled)
+
+
+def get_sidecar_query_rewrite_enabled() -> bool:
+    return get_sidecar_enabled() and bool(
+        _store().get(KEY_SIDECAR_QUERY_REWRITE, True)
+    )
+
+
+def get_sidecar_source_digest_enabled() -> bool:
+    return get_sidecar_enabled() and bool(
+        _store().get(KEY_SIDECAR_SOURCE_DIGEST, True)
+    )
+
+
+def get_sidecar_min_rewrite_confidence() -> float:
+    try:
+        v = float(_store().get(KEY_SIDECAR_MIN_REWRITE_CONFIDENCE, 0.60))
+    except (TypeError, ValueError):
+        v = 0.60
+    return max(0.0, min(1.0, v))
+
+
+def get_sidecar_foreground_timeout_ms() -> int:
+    try:
+        v = int(_store().get(KEY_SIDECAR_FOREGROUND_TIMEOUT_MS, 1500))
+    except (TypeError, ValueError):
+        v = 1500
+    return max(200, min(10000, v))
+
+
+def get_sidecar_ingest_blurb_enabled() -> bool:
+    return get_sidecar_enabled() and bool(
+        _store().get(KEY_SIDECAR_INGEST_BLURB, True)
+    )
 
 
 def get_profile_units() -> str | None:

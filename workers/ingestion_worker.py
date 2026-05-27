@@ -7,6 +7,8 @@ from rag.chunker import chunk_text, DEFAULT_CHUNK_SIZE
 from rag.store import DocumentStore
 import logging
 
+from core.app_settings import get_sidecar_ingest_blurb_enabled
+
 logger = logging.getLogger("Qube.RAG")
 
 # Slightly larger overlap than chunker default; still bounded inside chunk_text()
@@ -25,6 +27,7 @@ class IngestionWorker(QThread):
         store: DocumentStore,
         db_manager,
         folder_id: str | None = None,
+        sidecar_worker=None,
     ):
         super().__init__()
         self.file_paths = file_paths
@@ -32,6 +35,7 @@ class IngestionWorker(QThread):
         self.store = store
         self.db = db_manager
         self.folder_id = folder_id
+        self.sidecar_worker = sidecar_worker
 
     def run(self):
         total_chunks = 0
@@ -102,6 +106,14 @@ class IngestionWorker(QThread):
                 self.db.add_document_metadata(
                     source, file_size_kb, len(chunks), folder_id=self.folder_id
                 )
+
+                if (
+                    self.sidecar_worker
+                    and get_sidecar_ingest_blurb_enabled()
+                    and chunks
+                ):
+                    sample = chunks[0][:2500]
+                    self.sidecar_worker.enqueue_ingest_blurb(source, sample)
                 
                 total_chunks += len(records)
                 logger.info(f"Indexed {source}: {len(records)} chunks saved to LanceDB, metadata logged to SQLite.")

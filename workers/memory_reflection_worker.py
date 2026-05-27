@@ -327,6 +327,21 @@ Return ONLY the JSON object. No prose. No markdown."""
 
     def _call_llm(self, prompt: str) -> str:
         try:
+            from core.sidecar_types import SidecarTask
+
+            if hasattr(self.llm, "complete"):
+                result = self.llm.complete(
+                    SidecarTask.reflection_label,
+                    prompt=prompt,
+                    timeout_sec=120.0,
+                )
+                if result.ok and result.parsed:
+                    label = result.parsed.get("label")
+                    if label:
+                        return json.dumps({"label": label})
+                if result.text:
+                    return result.text.strip()
+                return ""
             out = self.llm.generate(prompt)
             return (out or "").strip()
         except Exception as e:

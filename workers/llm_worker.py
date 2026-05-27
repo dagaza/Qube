@@ -57,6 +57,10 @@ from core.discourse_query import (
 from core.discourse_state import DiscourseState, update_discourse_state
 from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
 from core.app_settings import get_enable_memory_v7_salvage, get_discourse_grounding_enabled
+from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
+from core.sidecar_query_rewrite import propose_query_expansion
+from core.source_digest import digest_memory_context, digest_rag_context
+from core.sidecar_types import QueryExpansion
 from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
     matches_custom_rag_trigger,
@@ -119,7 +123,7 @@ class LLMWorker(QThread):
     # Per-message cap before sending to the API (single huge assistant/user blobs).
     CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS = 14000
 
-    def __init__(self, embedder, store, db_manager, native_engine=None):
+    def __init__(self, embedder, store, db_manager, native_engine=None, sidecar_client=None):
         super().__init__()
 
         self.prompt = ""
@@ -130,6 +134,7 @@ class LLMWorker(QThread):
         self.store = store
         self.db = db_manager
         self._native_engine = native_engine
+        self._sidecar_client = sidecar_client
         self.engine_mode = get_engine_mode()
 
         self.embedding_cache = EmbeddingCache(self.embedder)
@@ -602,6 +607,67 @@ class LLMWorker(QThread):
         decision["core_memory_suppressed"] = bool(core_memory_suppressed)
         decision["retrieval_wrapper_mode"] = retrieval_wrapper_mode
 
+    def _stamp_query_expansion_on_decision(
+        self,
+        decision: dict,
+        *,
+        original_query: str,
+        retrieval_query: str,
+        expansion: QueryExpansion | None,
+    ) -> None:
+        if not isinstance(decision, dict):
+            return
+        decision["original_query"] = original_query
+        if expansion is not None:
+            decision["expanded_query"] = expansion.expanded_query
+            decision["query_expansion_confidence"] = round(expansion.confidence, 3)
+            decision["query_expansion_source"] = expansion.topic_source
+            decision["sidecar_rewrite_applied"] = True
+        elif retrieval_query != original_query:
+            decision["sidecar_rewrite_applied"] = False
+
+    def _memory_search_hybrid(
+        self,
+        query: str,
+        query_vector,
+        expansion: QueryExpansion | None,
+        **kwargs,
+    ) -> dict:
+        primary = memory_search(query, query_vector, self.store, **kwargs)
+        if expansion is None:
+            return primary
+        expanded = (expansion.expanded_query or "").strip()
+        if not expanded or expanded.lower() == (query or "").strip().lower():
+            return primary
+        try:
+            exp_vector = self.embedding_cache.get_embedding(expanded)
+        except Exception as e:
+            logger.debug("[Sidecar] expanded memory embedding failed: %s", e)
+            return primary
+        auxiliary = memory_search(expanded, exp_vector, self.store, **kwargs)
+        return merge_memory_search_results(primary, auxiliary)
+
+    def _rag_search_hybrid(
+        self,
+        query: str,
+        query_vector,
+        expansion: QueryExpansion | None,
+        **kwargs,
+    ) -> dict:
+        primary = rag_search(query, query_vector, self.store, **kwargs)
+        if expansion is None:
+            return primary
+        expanded = (expansion.expanded_query or "").strip()
+        if not expanded or expanded.lower() == (query or "").strip().lower():
+            return primary
+        try:
+            exp_vector = self.embedding_cache.get_embedding(expanded)
+        except Exception as e:
+            logger.debug("[Sidecar] expanded RAG embedding failed: %s", e)
+            return primary
+        auxiliary = rag_search(expanded, exp_vector, self.store, **kwargs)
+        return merge_rag_search_results(primary, auxiliary)
+
     def _log_discourse_debug(
         self,
         *,
@@ -862,8 +928,10 @@ class LLMWorker(QThread):
         discourse_enabled = get_discourse_grounding_enabled()
         discourse_state: DiscourseState | None = None
         follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
-        routing_query = (self.prompt or "").strip()
-        retrieval_query = routing_query
+        original_query = (self.prompt or "").strip()
+        routing_query = original_query
+        retrieval_query = original_query
+        query_expansion: QueryExpansion | None = None
         core_memory_suppressed = False
 
         if discourse_enabled:
@@ -878,6 +946,19 @@ class LLMWorker(QThread):
             follow_up = classify_follow_up(self.prompt, history, discourse_state)
             routing_query = resolve_routing_query(self.prompt, follow_up, discourse_state)
             retrieval_query = resolve_retrieval_query(self.prompt, follow_up, discourse_state)
+            query_expansion = propose_query_expansion(
+                original_query,
+                follow_up,
+                discourse_state,
+                history,
+                self._sidecar_client,
+            )
+            if query_expansion:
+                logger.info(
+                    "[Sidecar] assistive expansion conf=%.2f expanded=%r",
+                    query_expansion.confidence,
+                    query_expansion.expanded_query[:120],
+                )
             if follow_up.active:
                 logger.info(
                     "[Discourse] follow_up=%s conf=%.2f topic=%r",
@@ -1251,6 +1332,12 @@ class LLMWorker(QThread):
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
         )
+        self._stamp_query_expansion_on_decision(
+            decision,
+            original_query=original_query,
+            retrieval_query=retrieval_query,
+            expansion=query_expansion,
+        )
 
         try:
             self._routing_debug_turn_seq += 1
@@ -1303,10 +1390,11 @@ class LLMWorker(QThread):
             )
             include_episode = prefer_episode or narrative_active
 
-            mem_result = memory_search(
-                decision.get("memory_query") or retrieval_query,
+            mem_q = decision.get("memory_query") or retrieval_query
+            mem_result = self._memory_search_hybrid(
+                mem_q,
                 query_vector,
-                self.store,
+                query_expansion,
                 prefer_episode=prefer_episode,
                 include_preference=True,
                 include_knowledge=True,
@@ -1315,7 +1403,7 @@ class LLMWorker(QThread):
                 apply_mmr=True,
                 apply_temporal_decay=True,
                 query_fingerprint=self._memory_query_fingerprint(
-                    decision.get("memory_query") or retrieval_query,
+                    mem_q,
                     include_preference=True,
                     include_knowledge=True,
                     include_episode=include_episode,
@@ -1364,10 +1452,10 @@ class LLMWorker(QThread):
 
                     mem_kwargs["core_memory_min_score"] = FOLLOW_UP_CORE_MEMORY_MIN_SCORE
                     mem_kwargs["core_memory_min_margin"] = FOLLOW_UP_CORE_MEMORY_MIN_MARGIN
-                mem_result = memory_search(
+                mem_result = self._memory_search_hybrid(
                     retrieval_query,
                     query_vector,
-                    self.store,
+                    query_expansion,
                     prefer_episode=False,
                     include_preference=True,
                     include_knowledge=False,
@@ -1392,10 +1480,11 @@ class LLMWorker(QThread):
         if execution_route in ["RAG", "HYBRID"] and (
             self.mcp_rag_enabled or force_rag_via_trigger
         ):
-            rag_result = rag_search(
-                decision.get("rag_query") or retrieval_query,
+            rag_q = decision.get("rag_query") or retrieval_query
+            rag_result = self._rag_search_hybrid(
+                rag_q,
                 query_vector,
-                self.store,
+                query_expansion,
                 source_filter=getattr(self, "_turn_source_filter", None),
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
@@ -1517,6 +1606,34 @@ class LLMWorker(QThread):
                     len(web_items),
                     len(web_context),
                 )
+
+        if memory_context and mem_result.get("memory_sources"):
+            digested, applied = digest_memory_context(
+                memory_context,
+                mem_result.get("memory_sources") or [],
+                self._sidecar_client,
+            )
+            if applied:
+                logger.info(
+                    "[Sidecar] memory digest applied chars %d -> %d",
+                    len(memory_context),
+                    len(digested),
+                )
+                memory_context = digested
+
+        if tool_context and rag_result.get("sources"):
+            digested_rag, applied_rag = digest_rag_context(
+                tool_context,
+                rag_result.get("sources") or [],
+                self._sidecar_client,
+            )
+            if applied_rag:
+                logger.info(
+                    "[Sidecar] RAG digest applied chars %d -> %d",
+                    len(tool_context),
+                    len(digested_rag),
+                )
+                tool_context = digested_rag
 
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)
@@ -1818,6 +1935,12 @@ class LLMWorker(QThread):
             retrieval_query=retrieval_query,
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
+        )
+        self._stamp_query_expansion_on_decision(
+            decision,
+            original_query=original_query,
+            retrieval_query=retrieval_query,
+            expansion=query_expansion,
         )
 
         topic_salience = ""

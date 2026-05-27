@@ -127,6 +127,19 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 | C4.D5 | Follow-up WEB with topic expansion | Internet tool **enabled** | Same as C4.D1 with internet on | Turn 2 may stay **WEB**; log `[Discourse] web search query expanded for follow-up (topic='Slay the Spire')`; search uses expanded query; answer is **game-specific** tips (from web + thread), not generic life advice | Literal deictic query sent to search (`…successful at this?`) with unrelated snippets |
 | C4.D6 | Ungrounded follow-up WEB veto | Internet on; **no** prior topic in thread | Single message: *"Give me tips for this"* (no context) | **CHAT** (`route=NONE`); log `ungrounded follow-up (no topic); vetoing WEB` | Web search for meaningless deictic query |
 
+### 4E — Sidecar cognition (Qwen2-0.5B CPU)
+
+**Capability tested:** Background memory judge / reflection / episodes and foreground assistive rewrite+digest do not block the primary LLM or change the user-visible utterance.
+
+| ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
+|----|------|---------------|-------|---------------|--------------|
+| C4.E1 | Enrichment during active chat | `qube.sidecar.enabled=true`; model at `models/qwen2-0_5b-instruct-q4_k_m.gguf` | Start a long chat turn; confirm enrichment runs while LLM streams | No `[Memory v5.1] Chat LLM still busy after 300s` for judge/episode paths; facts still store | 300s skip solely because primary model busy |
+| C4.E2 | Hybrid rewrite telemetry | `qube.sidecar.query_rewrite_enabled=true`; C4.D1 thread | Run C4.D1 | Decision/routing debug includes `original_query`, optional `expanded_query`, `query_expansion_confidence`; user message text unchanged | Only expanded query shown to user |
+| C4.E3 | Source digest fallback | `qube.sidecar.source_digest_enabled=true` | MEMORY/RAG turn with sources; temporarily set `foreground_timeout_ms` very low | Chat completes with raw or digested sources; log `[Sidecar] memory digest applied` OR silent fallback | Hang waiting on sidecar |
+| C4.E4 | Ingest blurb | `qube.sidecar.ingest_blurb_enabled=true` | Ingest a short PDF/TXT | Library row tooltip or stats line shows one-sentence blurb within ~30s | No `summary_blurb` in SQLite |
+
+**Settings keys:** `qube.sidecar.enabled`, `query_rewrite_enabled`, `source_digest_enabled`, `min_rewrite_confidence`, `foreground_timeout_ms`, `ingest_blurb_enabled`.
+
 ---
 
 ## Section 5 — Tier Scoping & Memory Manager Filters

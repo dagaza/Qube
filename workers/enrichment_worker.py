@@ -71,10 +71,25 @@ class EnrichmentWorker(QThread):
 
     extraction_finished = pyqtSignal(str, int)  # session_id, facts_stored
 
-    def __init__(self, llm, embedder, store, db):
+    def __init__(
+        self,
+        embedder,
+        store,
+        db,
+        *,
+        extraction_llm=None,
+        cognition_llm=None,
+        llm=None,
+    ):
         super().__init__()
 
-        self.llm = llm
+        if llm is not None and extraction_llm is None:
+            extraction_llm = llm
+        if cognition_llm is None:
+            cognition_llm = extraction_llm
+        self.extraction_llm = extraction_llm
+        self.cognition_llm = cognition_llm
+        self.llm = extraction_llm
         self.embedder = embedder
         self.store = store
         self.db = db
@@ -254,7 +269,19 @@ class EnrichmentWorker(QThread):
             "Answer:"
         )
         try:
-            raw = (self.llm.generate(judge_prompt) or "").strip().lower()
+            from core.sidecar_types import SidecarTask
+
+            result = self.cognition_llm.complete(
+                SidecarTask.contradiction_judge,
+                timeout_sec=60.0,
+                old_content=old_s,
+                new_content=new_s,
+            )
+            if result.ok and result.parsed:
+                verdict = str(result.parsed.get("verdict") or "").strip().lower()
+                if verdict in ("duplicate", "contradiction", "complement"):
+                    return verdict
+            raw = (result.text or "").strip().lower()
         except Exception as e:
             logger.debug(f"[Memory v6] contradiction judge LLM failed: {e}")
             return "contradiction" if self._is_contradiction(old_s, new_s) else "duplicate"
@@ -350,7 +377,7 @@ class EnrichmentWorker(QThread):
         Returns False if we give up after a long wait (skip this extraction).
         """
         deadline = time.time() + 300.0
-        while self.llm.isRunning():
+        while self.extraction_llm.isRunning():
             if time.time() > deadline:
                 logger.warning(
                     "[Memory v5.1] Chat LLM still busy after 300s; skipping extraction for this turn"
@@ -786,7 +813,7 @@ Return JSON ONLY:
             return
 
         prompt = self._build_episode_prompt(conversation)
-        raw = self._generate_memory(prompt)
+        raw = self._generate_cognition(prompt)
         if not raw:
             return
 
@@ -1125,12 +1152,23 @@ Conversation:
     # LLM CALL
     # ============================================================
 
-    def _generate_memory(self, prompt: str) -> str:
+    def _generate_extraction(self, prompt: str) -> str:
         try:
-            return self.llm.generate(prompt).strip()
+            return self.extraction_llm.generate(prompt).strip()
         except Exception as e:
-            logger.error(f"[Memory v5.1] LLM error: {e}")
+            logger.error(f"[Memory v5.1] extraction LLM error: {e}")
             return ""
+
+    def _generate_cognition(self, prompt: str) -> str:
+        try:
+            return (self.cognition_llm.generate(prompt) or "").strip()
+        except Exception as e:
+            logger.error(f"[Memory v6] cognition LLM error: {e}")
+            return ""
+
+    def _generate_memory(self, prompt: str) -> str:
+        """Backward-compat alias for extraction paths."""
+        return self._generate_extraction(prompt)
 
     # ============================================================
     # JSON EXTRACTION

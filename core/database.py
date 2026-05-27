@@ -142,6 +142,7 @@ class DatabaseManager:
                 for alter_sql in (
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
                     "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
+                    "ALTER TABLE documents ADD COLUMN summary_blurb TEXT",
                 ):
                     try:
                         cursor.execute(alter_sql)
@@ -685,18 +686,31 @@ class DatabaseManager:
         file_size_kb: float,
         chunk_count: int,
         folder_id: str | None = None,
+        summary_blurb: str | None = None,
     ):
         doc_id = str(uuid.uuid4())
         fid = folder_id or self.get_main_library_folder_id()
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id, summary_blurb)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (doc_id, filename, file_size_kb, chunk_count, fid),
+                (doc_id, filename, file_size_kb, chunk_count, fid, summary_blurb),
             )
             conn.commit()
+
+    def update_document_blurb(self, filename: str, summary_blurb: str) -> bool:
+        blurb = (summary_blurb or "").strip()
+        if not filename or not blurb:
+            return False
+        with self._get_connection() as conn:
+            cur = conn.execute(
+                "UPDATE documents SET summary_blurb = ? WHERE filename = ?",
+                (blurb[:500], filename),
+            )
+            conn.commit()
+            return cur.rowcount > 0
 
     def get_library_documents(self, limit: int = 20, offset: int = 0) -> list[dict]:
         with self._get_connection() as conn:
