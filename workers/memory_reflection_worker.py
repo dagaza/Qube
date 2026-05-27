@@ -46,6 +46,8 @@ from typing import Optional
 
 from PyQt6.QtCore import QThread, QMutex, QMutexLocker
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
+
 logger = logging.getLogger("Qube.MemoryReflectionWorker")
 
 
@@ -162,6 +164,7 @@ class MemoryReflectionWorker(QThread):
         try:
             rows = (
                 self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
                 .limit(SCAN_LIMIT)
                 .to_list()
             )
@@ -197,7 +200,7 @@ class MemoryReflectionWorker(QThread):
             if last >= cutoff:
                 continue
             out.append({
-                "id": str(r.get("id") or ""),
+                "id": lance_row_id(r) or "",
                 "vector": r.get("vector"),
                 "source": r.get("source") or "qube_memory",
                 "chunk_id": int(r.get("chunk_id") or 0),
@@ -361,12 +364,12 @@ Return ONLY the JSON object. No prose. No markdown."""
     # ------------------------- writeback -------------------------
 
     def _rewrite_memory(self, cand: dict, new_payload: dict) -> bool:
-        rid = cand.get("id")
-        if not rid:
+        rid = lance_row_id(cand)
+        delete_filter = lance_row_delete_filter(rid)
+        if not delete_filter:
             return False
         try:
-            safe = str(rid).replace("'", "''")
-            self.store.table.delete(f"id = '{safe}'")
+            self.store.table.delete(delete_filter)
             self.store.table.add([{
                 "text": json.dumps(new_payload),
                 "vector": cand.get("vector"),

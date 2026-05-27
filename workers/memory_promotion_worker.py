@@ -11,6 +11,7 @@ from typing import Optional
 
 from PyQt6.QtCore import QMutex, QMutexLocker, QThread
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
 from core.memory_filters import derive_memory_tier, is_memory_actionable, is_thin_content
 from core.memory_negative_list import DEFAULT_REJECT_DISTANCE, get_memory_negative_list
 from core.memory_promotion import (
@@ -86,6 +87,7 @@ class MemoryPromotionWorker(QThread):
         try:
             rows = (
                 self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
                 .where("source LIKE 'qube_memory::%'")
                 .limit(SCAN_LIMIT)
                 .to_list()
@@ -113,7 +115,7 @@ class MemoryPromotionWorker(QThread):
             if not ok:
                 continue
             score = compute_promotion_score(payload, now=now)
-            scored.append((score, {"id": row.get("id"), "source": source, "row": row, "payload": payload}))
+            scored.append((score, {"id": lance_row_id(row), "source": source, "row": row, "payload": payload}))
 
         scored.sort(key=lambda t: t[0], reverse=True)
         return [c for _, c in scored]
@@ -121,9 +123,17 @@ class MemoryPromotionWorker(QThread):
     def _fetch_live_row(self, row_id: str) -> Optional[dict]:
         if not row_id:
             return None
+        row_filter = lance_row_delete_filter(row_id)
+        if not row_filter:
+            return None
         try:
-            safe_id = str(row_id).replace("'", "''")
-            rows = self.store.table.search().where(f"id = '{safe_id}'").limit(1).to_list()
+            rows = (
+                self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
+                .where(row_filter)
+                .limit(1)
+                .to_list()
+            )
             return rows[0] if rows else None
         except Exception:
             return None
@@ -208,12 +218,12 @@ class MemoryPromotionWorker(QThread):
         return self._rewrite_row(row, payload, new_source)
 
     def _rewrite_row(self, row: dict, payload: dict, new_source: str) -> bool:
-        row_id = row.get("id")
-        if not row_id:
+        row_id = lance_row_id(row)
+        delete_filter = lance_row_delete_filter(row_id)
+        if not delete_filter:
             return False
         try:
-            safe_id = str(row_id).replace("'", "''")
-            self.store.table.delete(f"id = '{safe_id}'")
+            self.store.table.delete(delete_filter)
             self.store.table.add(
                 [
                     {

@@ -87,6 +87,17 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 
 **Gate reference:** top score ≥ **0.45** and margin ≥ **0.08** ([`core/memory_retrieval_policy.py`](../core/memory_retrieval_policy.py)).
 
+**Presentation profile (v7.2):** Units/locale/name/verbosity are merged from Settings (`qube.profile.*`) + [`~/.qube/user_profile.json`](../core/user_profile.py) via [`core/preference_policy.py`](../core/preference_policy.py). Presentation prefs apply at **tool/formatter** layers; CHAT semantic injection skips `preference_kind=presentation` LanceDB rows.
+
+### 4A-P — Presentation policy + weather/units
+
+| ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
+|----|------|---------------|-------|---------------|--------------|
+| C4.P1 | Metric profile + weather (internet on) | Settings **Default units = Metric** OR inferred `units=metric` in profile card; internet enabled | *"What's the weather like today?"* | Web route or search runs; answer uses metric-friendly numbers (°C / km/h) or augmented snippets; no *"I've noted metric units"* re-ack | Imperial-only answer; unrelated memory ack |
+| C4.P2 | Weather + internet off | Internet tool disabled | *"What's the weather like?"* | Clear message that live weather is unavailable because internet is disabled; no fabricated forecast | Random preference re-ack; hallucinated weather |
+| C4.P3 | Explicit overrides inferred | Settings **Imperial**; conversation previously inferred metric | Ask measurement question | Imperial formatting wins | Metric leaks despite Settings |
+| C4.P4 | Profile card | Inferred or explicit prefs exist | Open Memory Manager | **Presentation profile** card lists merged keys + provenance | Card empty when prefs set |
+
 ### 4B — Recall / hybrid fusion
 
 | ID | Test | Preconditions | Steps | Pass criteria | Fail signals |

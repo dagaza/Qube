@@ -10,6 +10,28 @@
     "default": true,
     "description": "When enabled, extracts memories from chat, summarises sessions, and runs periodic memory reflection (higher RAM/LLM use). Retrieval of existing memories is unaffected when off."
   },
+  "qube.profile.units": {
+    "type": ["string", "null"],
+    "enum": ["metric", "imperial", null],
+    "default": null,
+    "description": "Explicit measurement units preference; null uses conversation-inferred profile only."
+  },
+  "qube.profile.locale": {
+    "type": ["string", "null"],
+    "default": null,
+    "description": "Explicit locale (e.g. en-DK); null uses inferred profile only."
+  },
+  "qube.profile.displayName": {
+    "type": ["string", "null"],
+    "default": null,
+    "description": "Explicit display name for the user; null uses inferred profile only."
+  },
+  "qube.profile.verbosity": {
+    "type": ["string", "null"],
+    "enum": ["concise", "balanced", "detailed", null],
+    "default": null,
+    "description": "Explicit response verbosity; null uses inferred profile only."
+  },
   "qube.native.modelPath": {
     "type": "string",
     "default": "",

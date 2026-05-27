@@ -4,6 +4,7 @@ import re
 import time
 import numpy as np
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_id
 from core.memory_filters import is_memory_actionable
 from core.memory_retrieval_policy import (
     HYBRID_CANDIDATE_MULTIPLIER,
@@ -258,6 +259,7 @@ def memory_search(
     apply_mmr: bool = False,
     apply_temporal_decay: bool = False,
     query_fingerprint: str | None = None,
+    exclude_presentation_preferences: bool = False,
 ) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
@@ -313,6 +315,7 @@ def memory_search(
             vector_results = (
                 store.table
                 .search(query_vector)
+                .select(LANCE_ROW_ID_SELECT)
                 .where(where_clause)
                 .limit(limit)
                 .to_list()
@@ -324,6 +327,7 @@ def memory_search(
         try:
             text_results = (
                 store.table.search(query, query_type="fts")
+                .select(["_rowid", "text", "source", "chunk_id"])
                 .where(where_clause)
                 .limit(limit)
                 .to_list()
@@ -335,7 +339,7 @@ def memory_search(
             return {"memory_context": "", "memory_sources": []}
 
         def _mem_doc_id(doc: dict) -> str:
-            return str(doc.get("id") or doc.get("source") or (doc.get("text") or "")[:64])
+            return lance_row_id(doc) or str(doc.get("source") or (doc.get("text") or "")[:64])
 
         if _fts_has_score_metadata(text_results):
             fused = fuse_weighted_scores(
@@ -369,6 +373,13 @@ def memory_search(
                 if trace:
                     logger.debug("[Memory TRACE] dropped (action boundary expired)")
                 continue
+
+            if exclude_presentation_preferences and apply_core_memory_gate:
+                kind = str(payload.get("preference_kind") or "").lower()
+                if kind == "presentation":
+                    if trace:
+                        logger.debug("[Memory TRACE] dropped (presentation; policy layer)")
+                    continue
 
             content = payload.get("content", "")
             confidence = float(payload.get("confidence", 0.0))
@@ -452,7 +463,7 @@ def memory_search(
                 continue
 
             filtered.append({
-                "memory_id": r.get("id"),
+                "memory_id": lance_row_id(r),
                 "content": content,
                 "confidence": confidence,
                 "distance": distance,

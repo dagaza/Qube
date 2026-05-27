@@ -186,7 +186,9 @@ class Qube:
             self.enrichment_worker.extraction_finished.connect(self._on_enrichment_finished)
 
     def _on_enrichment_finished(self, session_id: str, facts_stored: int) -> None:
-        self.window.emit_notification(enrichment_complete_event(session_id, facts_stored))
+        self.window.emit_notification(
+            enrichment_complete_event(session_id=session_id, facts_stored=facts_stored)
+        )
 
     def _notify_turn_complete_if_hidden(self, session_id: str, final_text: str) -> None:
         preview = ""

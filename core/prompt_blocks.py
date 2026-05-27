@@ -16,7 +16,9 @@ from core.memory_filters import (
     GROUNDED_ANSWER_SYSTEM_SUFFIX,
     NARRATIVE_RECALL_SYSTEM_SUFFIX,
     NO_SOURCES_SYSTEM_SUFFIX,
+    PREFERENCE_APPLICATION_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
+    WEB_CAPABILITY_DISABLED_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -99,6 +101,9 @@ def build_prompt_blocks(
     retrieval_context: str = "",
     conversation_history: list[dict[str, Any]] | None = None,
     composer_conversation_ref: bool = False,
+    web_capability_blocked: bool = False,
+    preference_context: str = "",
+    apply_preference_suffix: bool = False,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -123,6 +128,9 @@ def build_prompt_blocks(
         )
         if quoted:
             persona += f' The fact to acknowledge is: "{quoted}".'
+    elif web_capability_blocked:
+        persona = _BASE_PERSONA
+        suffixes.append(WEB_CAPABILITY_DISABLED_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True
@@ -142,6 +150,12 @@ def build_prompt_blocks(
         suffixes.append(CITATION_DISCIPLINE_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
+
+    if apply_preference_suffix and not explicit_remember_active:
+        suffixes.append(PREFERENCE_APPLICATION_SUFFIX)
+    pref_ctx = (preference_context or "").strip()
+    if pref_ctx and not explicit_remember_active:
+        suffixes.append(f" {pref_ctx}")
 
     if str(engine_mode or "").lower() == "internal":
         suffixes.append(

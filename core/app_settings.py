@@ -21,6 +21,10 @@ KEY_MEMORY_V7_SALVAGE = "qube.memory.v7_salvage_enabled"
 KEY_MEMORY_PROMOTION = "qube.memory.promotion_enabled"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
+KEY_PROFILE_UNITS = "qube.profile.units"
+KEY_PROFILE_LOCALE = "qube.profile.locale"
+KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
+KEY_PROFILE_VERBOSITY = "qube.profile.verbosity"
 KEY_ENGINE_MODE = "qube.engine.mode"
 DEFAULT_ENGINE_MODE = "internal"
 KEY_NATIVE_MODEL_PATH = "qube.native.modelPath"
@@ -128,6 +132,75 @@ def get_enable_memory_consolidation() -> bool:
 
 def set_enable_memory_consolidation(enabled: bool) -> None:
     _store().set(KEY_MEMORY_CONSOLIDATION, enabled)
+
+
+def get_profile_units() -> str | None:
+    """Explicit units preference: metric, imperial, or unset (None)."""
+    raw = _store().get(KEY_PROFILE_UNITS, None)
+    if raw is None or raw == "":
+        return None
+    u = str(raw).lower().strip()
+    if u in ("metric", "imperial"):
+        return u
+    return None
+
+
+def set_profile_units(units: str | None) -> None:
+    if units is None or str(units).strip() == "":
+        _store().set(KEY_PROFILE_UNITS, None)
+        return
+    u = str(units).lower().strip()
+    if u not in ("metric", "imperial"):
+        u = None
+    _store().set(KEY_PROFILE_UNITS, u)
+
+
+def get_profile_locale() -> str | None:
+    raw = _store().get(KEY_PROFILE_LOCALE, None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    return str(raw).strip()
+
+
+def set_profile_locale(locale: str | None) -> None:
+    if locale is None or str(locale).strip() == "":
+        _store().set(KEY_PROFILE_LOCALE, None)
+        return
+    _store().set(KEY_PROFILE_LOCALE, str(locale).strip())
+
+
+def get_profile_display_name() -> str | None:
+    raw = _store().get(KEY_PROFILE_DISPLAY_NAME, None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    return str(raw).strip()
+
+
+def set_profile_display_name(name: str | None) -> None:
+    if name is None or str(name).strip() == "":
+        _store().set(KEY_PROFILE_DISPLAY_NAME, None)
+        return
+    _store().set(KEY_PROFILE_DISPLAY_NAME, str(name).strip())
+
+
+def get_profile_verbosity() -> str | None:
+    raw = _store().get(KEY_PROFILE_VERBOSITY, None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    v = str(raw).lower().strip()
+    if v in ("concise", "balanced", "detailed"):
+        return v
+    return None
+
+
+def set_profile_verbosity(verbosity: str | None) -> None:
+    if verbosity is None or str(verbosity).strip() == "":
+        _store().set(KEY_PROFILE_VERBOSITY, None)
+        return
+    v = str(verbosity).lower().strip()
+    if v not in ("concise", "balanced", "detailed"):
+        v = None
+    _store().set(KEY_PROFILE_VERBOSITY, v)
 
 
 def get_engine_mode() -> str:

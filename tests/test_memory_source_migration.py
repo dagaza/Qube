@@ -43,6 +43,9 @@ class _FakeTable:
     def search(self):
         return self
 
+    def select(self, _fields):
+        return self
+
     def where(self, _clause: str):
         return self
 
@@ -54,7 +57,9 @@ class _FakeTable:
 
     def delete(self, clause: str):
         self.delete_calls.append(clause)
-        if "id = 'row-1'" in clause:
+        if "_rowid = 1" in clause:
+            self._rows = [r for r in self._rows if r.get("_rowid") != 1]
+        elif "id = 'row-1'" in clause:
             self._rows = [r for r in self._rows if r.get("id") != "row-1"]
 
     def add(self, records: list[dict]):
@@ -69,7 +74,7 @@ class _FakeStore:
 class MigrateLegacyMemorySourcesTests(unittest.TestCase):
     def test_migrates_unnamespaced_rows(self):
         rows = [{
-            "id": "row-1",
+            "_rowid": 1,
             "text": '{"type":"fact","content":"likes tea"}',
             "vector": [0.1, 0.2],
             "source": "qube_memory::preference",
@@ -87,7 +92,7 @@ class MigrateLegacyMemorySourcesTests(unittest.TestCase):
 
     def test_skips_already_tiered_rows(self):
         rows = [{
-            "id": "row-2",
+            "_rowid": 2,
             "text": '{"type":"fact","content":"fact"}',
             "vector": [0.1],
             "source": "qube_memory::knowledge::knowledge",

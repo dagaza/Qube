@@ -24,6 +24,8 @@ from core.app_settings import (
     set_engine_mode as persist_engine_mode,
 )
 from core.prompt_blocks import build_prompt_blocks
+from core.preference_formatters import format_web_snippets
+from core.preference_policy import apply_tool_policy, resolve_preference_policy
 from core.prompt_renderers import render_messages
 from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
@@ -1067,6 +1069,13 @@ class LLMWorker(QThread):
                 execution_route = "NONE"
                 decision["web_vetoed_tool_disabled"] = True
 
+        preference_policy = resolve_preference_policy(
+            session_overrides=getattr(self, "_session_preference_overrides", None),
+        )
+        web_capability_blocked = bool(
+            isinstance(decision, dict) and decision.get("web_vetoed_tool_disabled")
+        )
+
         # ============================================================
         # ROUTING START TIME (telemetry)
         # ============================================================
@@ -1183,6 +1192,7 @@ class LLMWorker(QThread):
                     include_episode=False,
                     include_context=True,
                 ),
+                exclude_presentation_preferences=True,
             )
             memory_context = mem_result.get("memory_context", "")
             all_ui_sources.extend(mem_result.get("memory_sources", []))
@@ -1212,10 +1222,14 @@ class LLMWorker(QThread):
 
         # ---- WEB + HYBRID ----
         if execution_route in ["WEB", "INTERNET", "HYBRID"] and (self.mcp_internet_enabled or force_web):
-            from mcp.internet_tool import search_internet
             self.status_update.emit("🌐 Searching the Web...")
-            
-            web_results = search_internet(self.prompt)
+
+            web_query = apply_tool_policy(
+                self.prompt,
+                preference_policy,
+                tool="internet",
+            )
+            web_results = search_internet(web_query)
 
             # Defensive guard: when search_internet fails (e.g. DNS /
             # connection reset / no-result sentinel) it still returns a
@@ -1256,6 +1270,7 @@ class LLMWorker(QThread):
                             "snippet": str(web_results),
                         }
                     ]
+                web_items = format_web_snippets(web_items, preference_policy)
 
                 web_context_parts: list[str] = []
                 for item in web_items:
@@ -1560,6 +1575,12 @@ class LLMWorker(QThread):
             retrieval_context=retrieval_prompt_body,
             conversation_history=prompt_history,
             composer_conversation_ref=attachment_conversation_active,
+            web_capability_blocked=web_capability_blocked,
+            preference_context=preference_policy.compact_prompt_context(
+                query=self.prompt,
+                route=execution_route,
+            ),
+            apply_preference_suffix=preference_policy.has_presentation_prefs(),
         )
         if prompt_blocks.no_sources_mode:
             logger.info(

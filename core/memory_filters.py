@@ -441,6 +441,20 @@ NO_SOURCES_SYSTEM_SUFFIX: str = (
     "invent names, dates, affiliations, or other details."
 )
 
+WEB_CAPABILITY_DISABLED_SUFFIX: str = (
+    " IMPORTANT: the user asked for live or real-time information, but "
+    "internet access is disabled in Qube settings. In one or two sentences, "
+    "say you cannot check live data right now because internet search is "
+    "turned off. Do NOT invent current weather, news, prices, or other "
+    "live facts. Do NOT re-announce unrelated stored preferences."
+)
+
+PREFERENCE_APPLICATION_SUFFIX: str = (
+    " Apply stored presentation preferences silently when formatting "
+    "answers (units, locale, name, verbosity). Do NOT re-announce or "
+    "re-acknowledge preferences unless the user explicitly asks."
+)
+
 
 # ============================================================
 # Memory tiering (T3.4).
@@ -600,6 +614,8 @@ __all__ = [
     "CITATION_DISCIPLINE_SUFFIX",
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
+    "WEB_CAPABILITY_DISABLED_SUFFIX",
+    "PREFERENCE_APPLICATION_SUFFIX",
     "NARRATIVE_RECALL_SYSTEM_SUFFIX",
     "is_action_sensitive",
     "is_memory_actionable",

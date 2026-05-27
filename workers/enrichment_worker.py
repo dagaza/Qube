@@ -6,6 +6,11 @@ import json
 import re
 from queue import Queue, Empty
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
+from core.preference_inference import (
+    apply_inferred_to_profile,
+    classify_preference_from_fact,
+)
 from core.memory_filters import (
     derive_memory_tier,
     detect_explicit_remember,
@@ -1385,6 +1390,16 @@ Conversation:
                     base_payload["times_salvage_considered"] = 1
                 merge_action_boundary_fields(fact, base_payload)
 
+                pref_kind, profile_key = classify_preference_from_fact(base_payload)
+                base_payload["preference_kind"] = pref_kind
+                if profile_key:
+                    base_payload["profile_key"] = profile_key
+                if pref_kind == "presentation":
+                    apply_inferred_to_profile(
+                        base_payload,
+                        confidence=float(confidence),
+                    )
+
                 skip_insert = False
                 if existing:
                     old_payload = {}
@@ -1407,7 +1422,9 @@ Conversation:
                         # Reinforce strength on the existing row, do NOT insert a
                         # new row. Use SAFE delete+re-add so we can bump strength.
                         try:
-                            self.store.table.delete(f"id = '{existing.get('id')}'")
+                            dup_filter = lance_row_delete_filter(lance_row_id(existing))
+                            if dup_filter:
+                                self.store.table.delete(dup_filter)
                         except Exception:
                             pass
                         base_payload["strength"] = min(old_strength + 1, self.MAX_STRENGTH)
@@ -1421,7 +1438,9 @@ Conversation:
                     elif verdict == "contradiction":
                         # Replace old with new.
                         try:
-                            self.store.table.delete(f"id = '{existing.get('id')}'")
+                            dup_filter = lance_row_delete_filter(lance_row_id(existing))
+                            if dup_filter:
+                                self.store.table.delete(dup_filter)
                         except Exception:
                             pass
                         base_payload["strength"] = 1
@@ -1473,14 +1492,17 @@ Conversation:
     # ============================================================
 
     def _load_memory_row(self, memory_id: str) -> dict | None:
-        """Fetch a single memory row by lance ``id``."""
+        """Fetch a single memory row by LanceDB row key."""
         if not memory_id:
             return None
+        row_filter = lance_row_delete_filter(memory_id)
+        if not row_filter:
+            return None
         try:
-            safe_id = memory_id.replace("'", "''")
             rows = (
                 self.store.table.search()
-                .where(f"id = '{safe_id}'")
+                .select(LANCE_ROW_ID_SELECT)
+                .where(row_filter)
                 .limit(1)
                 .to_list()
             )
@@ -1495,12 +1517,12 @@ Conversation:
         Mirrors the existing delete+add pattern used by ``_store_facts``.
         Returns True on success.
         """
-        rid = row.get("id")
-        if not rid:
+        rid = lance_row_id(row)
+        delete_filter = lance_row_delete_filter(rid)
+        if not delete_filter:
             return False
         try:
-            safe_id = str(rid).replace("'", "''")
-            self.store.table.delete(f"id = '{safe_id}'")
+            self.store.table.delete(delete_filter)
         except Exception as e:
             logger.debug(f"[Memory v6] _rewrite delete failed for {rid}: {e}")
             return False
@@ -1586,6 +1608,7 @@ Conversation:
         try:
             rows = (
                 self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
                 .where("source LIKE 'qube_memory::%'")
                 .limit(10000)
                 .to_list()
@@ -1619,11 +1642,10 @@ Conversation:
             new_decay = max(0.0, min(1.0, new_decay))
 
             if new_decay < self.DECAY_PURGE_THRESHOLD:
-                rid = row.get("id")
-                if rid:
+                delete_filter = lance_row_delete_filter(lance_row_id(row))
+                if delete_filter:
                     try:
-                        safe_id = str(rid).replace("'", "''")
-                        self.store.table.delete(f"id = '{safe_id}'")
+                        self.store.table.delete(delete_filter)
                         purged += 1
                     except Exception:
                         pass

@@ -10,6 +10,7 @@ import time
 
 from PyQt6.QtCore import QMutex, QMutexLocker, QThread
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
 from core.app_settings import get_enable_memory_consolidation
 from core.memory_consolidation import should_stage_for_consolidation
 
@@ -74,6 +75,7 @@ class MemoryConsolidationWorker(QThread):
         try:
             rows = (
                 self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
                 .where("source LIKE 'qube_memory::%'")
                 .limit(SCAN_LIMIT)
                 .to_list()
@@ -107,12 +109,12 @@ class MemoryConsolidationWorker(QThread):
             logger.info("[Memory v7.1] consolidation staged %d row(s)", staged)
 
     def _rewrite_row(self, row: dict, payload: dict) -> bool:
-        row_id = row.get("id")
-        if not row_id:
+        row_id = lance_row_id(row)
+        delete_filter = lance_row_delete_filter(row_id)
+        if not delete_filter:
             return False
         try:
-            safe_id = str(row_id).replace("'", "''")
-            self.store.table.delete(f"id = '{safe_id}'")
+            self.store.table.delete(delete_filter)
             self.store.table.add(
                 [
                     {

@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import logging
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
+
 logger = logging.getLogger("Qube.MemorySourceMigration")
 
 MEMORY_SOURCE_PREFIX = "qube_memory::"
@@ -53,6 +55,7 @@ def migrate_legacy_memory_sources(store, *, batch_limit: int = 100_000) -> int:
     try:
         rows = (
             store.table.search()
+            .select(LANCE_ROW_ID_SELECT)
             .where(f"source LIKE '{MEMORY_SOURCE_PREFIX}%'")
             .limit(batch_limit)
             .to_list()
@@ -69,13 +72,13 @@ def migrate_legacy_memory_sources(store, *, batch_limit: int = 100_000) -> int:
 
         category = source.split("::", 1)[1].strip().lower() or "context"
         new_source = legacy_namespaced_source(category)
-        rid = row.get("id")
-        if not rid:
+        rid = lance_row_id(row)
+        delete_filter = lance_row_delete_filter(rid)
+        if not delete_filter:
             continue
 
         try:
-            safe_id = str(rid).replace("'", "''")
-            store.table.delete(f"id = '{safe_id}'")
+            store.table.delete(delete_filter)
             store.table.add([{
                 "text": row.get("text"),
                 "vector": row.get("vector"),

@@ -28,6 +28,8 @@ from core.app_settings import (
     set_enable_memory_consolidation,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
+    get_profile_units,
+    set_profile_units,
     DEFAULT_ENGINE_MODE,
     get_engine_mode,
     get_internal_model_path,
@@ -561,6 +563,26 @@ class SettingsView(QWidget):
         perf_form.addRow("", promo_row)
         perf_form.addRow("", promo_preset_row)
         perf_form.addRow("", consolidate_row)
+
+        self.profile_units_selector = SelectorButton("Use inferred units", is_dark=is_dark)
+        self.profile_units_selector.setMinimumWidth(200)
+        self.profile_units_selector.setMaximumWidth(280)
+        self.profile_units_selector.setToolTip(
+            "Default measurement units for weather and other numeric answers. "
+            "Unset lets Qube learn units from conversation."
+        )
+        self._build_profile_units_menu()
+        profile_units_row = QWidget()
+        profile_units_layout = QHBoxLayout(profile_units_row)
+        profile_units_layout.setContentsMargins(0, 0, 0, 0)
+        profile_units_lbl = QLabel("Default units")
+        profile_units_lbl.setToolTip(self.profile_units_selector.toolTip())
+        profile_units_layout.addWidget(profile_units_lbl)
+        profile_units_layout.addWidget(self.profile_units_selector)
+        profile_units_layout.addStretch(1)
+        self._sync_profile_units_selector()
+        perf_form.addRow("", profile_units_row)
+
         content_layout.addWidget(perf_widget)
         content_layout.addWidget(self._build_divider())
 
@@ -1590,6 +1612,32 @@ class SettingsView(QWidget):
         set_enable_memory_promotion(checked)
         self.memory_promotion_changed.emit(checked)
 
+    def _build_profile_units_menu(self) -> None:
+        if not hasattr(self, "profile_units_selector"):
+            return
+        menu = QMenu(self)
+        options = [
+            ("", "Use inferred units"),
+            ("metric", "Metric"),
+            ("imperial", "Imperial"),
+        ]
+
+        def _pick(value: str, label: str) -> None:
+            set_profile_units(value or None)
+            self.profile_units_selector.setText(label)
+
+        for value, label in options:
+            act = menu.addAction(label)
+            act.triggered.connect(lambda _checked=False, v=value, l=label: _pick(v, l))
+        self.profile_units_selector.setMenu(menu)
+
+    def _sync_profile_units_selector(self) -> None:
+        if not hasattr(self, "profile_units_selector"):
+            return
+        units = get_profile_units()
+        labels = {"metric": "Metric", "imperial": "Imperial"}
+        self.profile_units_selector.setText(labels.get(units or "", "Use inferred units"))
+
     def _build_memory_promotion_preset_menu(self) -> None:
         if not hasattr(self, "memory_promotion_preset_selector"):
             return
@@ -2113,6 +2161,8 @@ class SettingsView(QWidget):
             }
             preset = get_memory_promotion_preset()
             self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
+        if hasattr(self, "profile_units_selector"):
+            self._sync_profile_units_selector()
 
         if hasattr(self, "notifications_enabled_cb"):
             from core import app_settings as _ns

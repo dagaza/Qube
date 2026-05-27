@@ -51,6 +51,7 @@ from PyQt6.QtWidgets import (
 
 import qtawesome as qta
 
+from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_delete_filter, lance_row_id
 from core.memory_negative_list import get_memory_negative_list
 from core.memory_filters import is_action_sensitive
 from core.memory_insights import aggregate_recurring_themes
@@ -60,7 +61,8 @@ from core.memory_promotion import (
     passes_promotion_gates_with_reason,
     promotion_score_breakdown,
 )
-from core.memory_export import write_memory_export
+from core.preference_policy import resolve_preference_policy
+from core.user_profile import get_user_profile_store
 from core.app_settings import get_memory_promotion_preset
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.prestige_dialog import PrestigeDialog
@@ -224,6 +226,7 @@ class MemoryManagerWorker(QThread):
         try:
             rows = (
                 self.store.table.search()
+                .select(LANCE_ROW_ID_SELECT)
                 .limit(MAX_ROWS_PER_LOAD)
                 .to_list()
             )
@@ -248,7 +251,7 @@ class MemoryManagerWorker(QThread):
                 continue
 
             out.append({
-                "id": str(r.get("id") or ""),
+                "id": lance_row_id(r) or "",
                 "vector": r.get("vector"),
                 "source": r.get("source") or "",
                 "chunk_id": int(r.get("chunk_id") or 0),
@@ -268,11 +271,11 @@ class MemoryManagerWorker(QThread):
 
     def _do_delete(self, job: dict) -> None:
         rid = job.get("id")
-        if not rid:
+        delete_filter = lance_row_delete_filter(rid)
+        if not delete_filter:
             return
         try:
-            safe = str(rid).replace("'", "''")
-            self.store.table.delete(f"id = '{safe}'")
+            self.store.table.delete(delete_filter)
         except Exception as e:
             logger.warning("[MemoryManagerWorker] delete %s failed: %s", rid, e)
             self.error.emit(f"Delete failed: {e}")
@@ -292,7 +295,8 @@ class MemoryManagerWorker(QThread):
 
     def _do_update(self, job: dict) -> None:
         rid = job.get("id")
-        if not rid:
+        delete_filter = lance_row_delete_filter(rid)
+        if not delete_filter:
             return
         payload = job.get("payload") or {}
         vector = job.get("vector")
@@ -307,8 +311,7 @@ class MemoryManagerWorker(QThread):
                     e,
                 )
         try:
-            safe = str(rid).replace("'", "''")
-            self.store.table.delete(f"id = '{safe}'")
+            self.store.table.delete(delete_filter)
             self.store.table.add([{
                 "text": json.dumps(payload),
                 "vector": vector,
@@ -416,6 +419,19 @@ class _MemoryRowCard(QFrame):
             top.addWidget(self._consolidation_badge)
         else:
             self._consolidation_badge = None
+
+        profile_key = str(self.payload.get("profile_key") or "")
+        pref_kind = str(self.payload.get("preference_kind") or "")
+        policy = resolve_preference_policy()
+        if pref_kind == "presentation" and profile_key and policy.get(profile_key):
+            self._profile_badge = QLabel("PROFILE")
+            self._profile_badge.setObjectName("MemoryRowProfileBadge")
+            self._profile_badge.setToolTip(
+                "This presentation preference is synced to your profile policy."
+            )
+            top.addWidget(self._profile_badge)
+        else:
+            self._profile_badge = None
 
         outer.addLayout(top)
 
@@ -788,6 +804,20 @@ class MemoryManagerView(QWidget):
 
         root.addLayout(title_row)
 
+        self.profile_card = QFrame()
+        self.profile_card.setObjectName("MemoryProfileCard")
+        profile_layout = QVBoxLayout(self.profile_card)
+        profile_layout.setContentsMargins(16, 12, 16, 12)
+        profile_layout.setSpacing(6)
+        self.profile_title = QLabel("Presentation profile")
+        self.profile_title.setObjectName("MemoryProfileTitle")
+        self.profile_body = QLabel("")
+        self.profile_body.setObjectName("MemoryProfileBody")
+        self.profile_body.setWordWrap(True)
+        profile_layout.addWidget(self.profile_title)
+        profile_layout.addWidget(self.profile_body)
+        root.addWidget(self.profile_card)
+
         # Filter row
         filter_row = QHBoxLayout()
         filter_row.setContentsMargins(0, 0, 0, 0)
@@ -930,6 +960,30 @@ class MemoryManagerView(QWidget):
     # Refresh + render
     # ------------------------------------------------------------------
 
+    def _update_profile_card(self) -> None:
+        policy = resolve_preference_policy()
+        inferred = get_user_profile_store().get_inferred_preferences()
+        lines: list[str] = []
+        for key in ("units", "locale", "display_name", "verbosity"):
+            val = policy.get(key)
+            if not val:
+                continue
+            prov = policy.provenance_of(key)
+            lines.append(f"{key}: {val} ({prov})")
+        if inferred and not lines:
+            for key, entry in sorted(inferred.items()):
+                if isinstance(entry, dict) and entry.get("value"):
+                    lines.append(f"{key}: {entry.get('value')} (inferred)")
+        if lines:
+            self.profile_body.setText(" · ".join(lines[:8]))
+            self.profile_card.setVisible(True)
+        else:
+            self.profile_body.setText(
+                "No presentation preferences yet. Set default units in Settings "
+                "or tell Qube in chat (e.g. metric units)."
+            )
+            self.profile_card.setVisible(True)
+
     def refresh(self) -> None:
         self.status_lbl.setText("Loading memories…")
         self.status_lbl.setVisible(True)
@@ -949,6 +1003,7 @@ class MemoryManagerView(QWidget):
             self.status_lbl.setVisible(True)
         else:
             self.status_lbl.setVisible(False)
+        self._update_profile_card()
         self._render_rows()
 
     def _filtered(self) -> list[dict]:
@@ -1285,6 +1340,24 @@ class MemoryManagerView(QWidget):
         themes_bg = "#1e1e2e" if is_dark else "#f8fafc"
         themes_border = "rgba(255,255,255,0.08)" if is_dark else "#e2e8f0"
         themes_fg = "#cdd6f4" if is_dark else "#1e293b"
+        profile_style = f"""
+            QFrame#MemoryProfileCard {{
+                background: {themes_bg};
+                border: 1px solid {themes_border};
+                border-radius: 10px;
+            }}
+            QLabel#MemoryProfileTitle {{
+                color: {themes_fg};
+                font-weight: 700;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+            }}
+            QLabel#MemoryProfileBody {{
+                color: {bg_subtitle};
+                font-size: 12px;
+            }}
+        """
+        self.profile_card.setStyleSheet(profile_style)
         self.themes_card.setStyleSheet(
             f"""
             QFrame#MemoryThemesCard {{
