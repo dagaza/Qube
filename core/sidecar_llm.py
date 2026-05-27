@@ -11,7 +11,12 @@ import threading
 import time
 from typing import Any, Optional
 
+from core.sidecar_telemetry import get_sidecar_telemetry
 from core.sidecar_types import QueryExpansion, SidecarResult, SidecarTask
+
+_FOREGROUND_TASKS = frozenset(
+    {SidecarTask.query_rewrite, SidecarTask.source_digest}
+)
 
 __all__ = [
     "SidecarTask",
@@ -60,25 +65,75 @@ class SidecarLlmClient:
         timeout_sec: float = 120.0,
         **kwargs: Any,
     ) -> SidecarResult:
+        tel = get_sidecar_telemetry()
+        t0 = time.perf_counter()
+        foreground = task in _FOREGROUND_TASKS
         if self._worker is None:
-            return SidecarResult(ok=False, error="no_worker", task=task)
+            result = SidecarResult(ok=False, error="no_worker", task=task)
+            tel.record(
+                task,
+                ok=False,
+                latency_ms=(time.perf_counter() - t0) * 1000,
+                foreground=foreground,
+                reason="no_worker",
+            )
+            return result
         out: list[SidecarResult] = []
         ev = threading.Event()
         self._worker.enqueue_task(task, kwargs, out, ev)
         if not ev.wait(timeout_sec):
+            tel.record(
+                task,
+                ok=False,
+                latency_ms=(time.perf_counter() - t0) * 1000,
+                foreground=foreground,
+                reason="timeout",
+            )
             return SidecarResult(ok=False, error="timeout", task=task)
-        return out[0] if out else SidecarResult(ok=False, error="empty", task=task)
+        result = out[0] if out else SidecarResult(ok=False, error="empty", task=task)
+        tel.record(
+            task,
+            ok=bool(result.ok),
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            foreground=foreground,
+            reason="" if result.ok else (result.error or "fail"),
+        )
+        return result
 
     def generate(self, prompt: str, *, timeout_sec: float = 120.0) -> str:
         """Legacy raw-prompt path (episode-sized prompts built upstream)."""
+        tel = get_sidecar_telemetry()
+        t0 = time.perf_counter()
         if self._worker is None:
+            tel.record(
+                "raw_prompt",
+                ok=False,
+                latency_ms=(time.perf_counter() - t0) * 1000,
+                foreground=False,
+                reason="no_worker",
+            )
             return ""
         out: list[str] = []
         ev = threading.Event()
         self._worker.enqueue_raw_prompt(prompt, out, ev, timeout_hint=timeout_sec)
         if not ev.wait(timeout_sec):
+            tel.record(
+                "raw_prompt",
+                ok=False,
+                latency_ms=(time.perf_counter() - t0) * 1000,
+                foreground=False,
+                reason="timeout",
+            )
             return ""
-        return (out[0] if out else "") or ""
+        text = (out[0] if out else "") or ""
+        tel.record(
+            "raw_prompt",
+            ok=bool(text),
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            foreground=False,
+            reason="" if text else "empty",
+        )
+        return text
 
     def enqueue_title(self, user_prompt: str, session_id: str) -> None:
         if self._worker is not None:

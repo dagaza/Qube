@@ -302,6 +302,17 @@ class Qube:
         if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_router_telemetry'):
                 self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
+        if hasattr(self, 'sidecar_worker') and hasattr(w, 'telemetry_view'):
+            if hasattr(self.sidecar_worker, 'sidecar_telemetry_updated'):
+                if hasattr(w.telemetry_view, 'update_sidecar_telemetry'):
+                    self.sidecar_worker.sidecar_telemetry_updated.connect(
+                        w.telemetry_view.update_sidecar_telemetry
+                    )
+        if hasattr(self.llm_worker, 'sidecar_telemetry_updated') and hasattr(w, 'telemetry_view'):
+            if hasattr(w.telemetry_view, 'update_sidecar_telemetry'):
+                self.llm_worker.sidecar_telemetry_updated.connect(
+                    w.telemetry_view.update_sidecar_telemetry
+                )
         if hasattr(self.llm_worker, 'routing_debug_record_added') and hasattr(w, 'routing_debug_tool_view'):
             if w.routing_debug_tool_view is not None:
                 self.llm_worker.routing_debug_record_added.connect(w.routing_debug_tool_view.add_record)

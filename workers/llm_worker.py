@@ -57,8 +57,10 @@ from core.discourse_query import (
 from core.discourse_state import DiscourseState, update_discourse_state
 from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
 from core.app_settings import get_enable_memory_v7_salvage, get_discourse_grounding_enabled
+from core.app_settings import get_sidecar_query_rewrite_enabled
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
+from core.sidecar_telemetry import get_sidecar_telemetry
 from core.source_digest import digest_memory_context, digest_rag_context
 from core.sidecar_types import QueryExpansion
 from core.rag_trigger_routing import (
@@ -105,6 +107,7 @@ class LLMWorker(QThread):
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
+    sidecar_telemetry_updated = pyqtSignal(dict)
     routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
     # Phase B: turn-scoped enrichment context (session_id + rag chunk ids + message ids).
     # Emitted once per completed turn, before response_finished, so main.py can
@@ -645,7 +648,11 @@ class LLMWorker(QThread):
             logger.debug("[Sidecar] expanded memory embedding failed: %s", e)
             return primary
         auxiliary = memory_search(expanded, exp_vector, self.store, **kwargs)
-        return merge_memory_search_results(primary, auxiliary)
+        merged = merge_memory_search_results(primary, auxiliary)
+        p_n = len(primary.get("memory_sources") or [])
+        m_n = len(merged.get("memory_sources") or [])
+        self._sidecar_hybrid_extra_memory = max(0, m_n - p_n)
+        return merged
 
     def _rag_search_hybrid(
         self,
@@ -666,7 +673,11 @@ class LLMWorker(QThread):
             logger.debug("[Sidecar] expanded RAG embedding failed: %s", e)
             return primary
         auxiliary = rag_search(expanded, exp_vector, self.store, **kwargs)
-        return merge_rag_search_results(primary, auxiliary)
+        merged = merge_rag_search_results(primary, auxiliary)
+        p_n = len(primary.get("sources") or [])
+        m_n = len(merged.get("sources") or [])
+        self._sidecar_hybrid_extra_rag = max(0, m_n - p_n)
+        return merged
 
     def _log_discourse_debug(
         self,
@@ -933,6 +944,12 @@ class LLMWorker(QThread):
         retrieval_query = original_query
         query_expansion: QueryExpansion | None = None
         core_memory_suppressed = False
+        self._sidecar_hybrid_extra_memory = 0
+        self._sidecar_hybrid_extra_rag = 0
+        digest_mem_attempted = False
+        digest_mem_applied = False
+        digest_rag_attempted = False
+        digest_rag_applied = False
 
         if discourse_enabled:
             prior = (
@@ -1607,12 +1624,17 @@ class LLMWorker(QThread):
                     len(web_context),
                 )
 
-        if memory_context and mem_result.get("memory_sources"):
+        digest_mem_attempted = bool(
+            memory_context and mem_result.get("memory_sources")
+        )
+        digest_mem_applied = False
+        if digest_mem_attempted:
             digested, applied = digest_memory_context(
                 memory_context,
                 mem_result.get("memory_sources") or [],
                 self._sidecar_client,
             )
+            digest_mem_applied = bool(applied)
             if applied:
                 logger.info(
                     "[Sidecar] memory digest applied chars %d -> %d",
@@ -1621,12 +1643,15 @@ class LLMWorker(QThread):
                 )
                 memory_context = digested
 
-        if tool_context and rag_result.get("sources"):
+        digest_rag_attempted = bool(tool_context and rag_result.get("sources"))
+        digest_rag_applied = False
+        if digest_rag_attempted:
             digested_rag, applied_rag = digest_rag_context(
                 tool_context,
                 rag_result.get("sources") or [],
                 self._sidecar_client,
             )
+            digest_rag_applied = bool(applied_rag)
             if applied_rag:
                 logger.info(
                     "[Sidecar] RAG digest applied chars %d -> %d",
@@ -1668,6 +1693,35 @@ class LLMWorker(QThread):
                 self.router_telemetry_updated.emit(summary, tuner_state)
             except Exception as e:
                 logger.error(f"Failed to emit router telemetry: {e}")
+
+        try:
+            rewrite_attempted = bool(
+                discourse_enabled
+                and get_sidecar_query_rewrite_enabled()
+                and follow_up.active
+            )
+            get_sidecar_telemetry().record_turn(
+                rewrite_attempted=rewrite_attempted,
+                rewrite_applied=query_expansion is not None,
+                rewrite_confidence=(
+                    float(query_expansion.confidence)
+                    if query_expansion is not None
+                    else 0.0
+                ),
+                digest_memory_attempted=digest_mem_attempted,
+                digest_memory_applied=digest_mem_applied,
+                digest_rag_attempted=digest_rag_attempted,
+                digest_rag_applied=digest_rag_applied,
+                hybrid_extra_memory=int(
+                    getattr(self, "_sidecar_hybrid_extra_memory", 0) or 0
+                ),
+                hybrid_extra_rag=int(
+                    getattr(self, "_sidecar_hybrid_extra_rag", 0) or 0
+                ),
+            )
+            self.sidecar_telemetry_updated.emit(get_sidecar_telemetry().summarize())
+        except Exception as e:
+            logger.debug("Failed to emit sidecar telemetry: %s", e)
 
         # 🔑 NEW: Feed the Cognitive V4 Router its learning data!
         if self.USE_COGNITIVE_ROUTER and hasattr(self, 'cognitive_router'):

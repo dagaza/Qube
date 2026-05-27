@@ -79,7 +79,7 @@ class TelemetryView(QWidget):
 
         # Main Dashboard Layout:
         # Row 1 -> Graph (left) + Latency/Capability (right)
-        # Row 2 -> Router card full-width
+        # Row 2 -> Router Intelligence + Sidecar Cognition (side by side)
         dashboard_layout = QVBoxLayout()
         dashboard_layout.setSpacing(20)
 
@@ -94,18 +94,24 @@ class TelemetryView(QWidget):
         left_column.addStretch(1)
         top_row_layout.addLayout(left_column, stretch=2)
 
-        # Right Column: Latency + Model capability + Router Metrics
+        # Right Column: Latency + Model capability
         right_column = QVBoxLayout()
         self.latency_card = self._build_latency_card()
         self.model_capability_card = self._build_model_capability_card()
-        self.router_card = self._build_router_card()
         right_column.addWidget(self.latency_card)
         right_column.addWidget(self.model_capability_card)
         right_column.addStretch()
         top_row_layout.addLayout(right_column, stretch=1)
 
+        bottom_row_layout = QHBoxLayout()
+        bottom_row_layout.setSpacing(20)
+        self.router_card = self._build_router_card()
+        self.sidecar_card = self._build_sidecar_card()
+        bottom_row_layout.addWidget(self.router_card, stretch=1)
+        bottom_row_layout.addWidget(self.sidecar_card, stretch=1)
+
         dashboard_layout.addLayout(top_row_layout)
-        dashboard_layout.addWidget(self.router_card)
+        dashboard_layout.addLayout(bottom_row_layout)
         layout.addLayout(dashboard_layout)
         if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
             "1",
@@ -342,6 +348,70 @@ class TelemetryView(QWidget):
 
         return frame
 
+    # ============================================================
+    # SIDECAR CARD
+    # ============================================================
+    def _build_sidecar_card(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("LatencyCard")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(25)
+
+        header = QLabel("Sidecar Cognition")
+        header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "CPU Qwen2-0.5B assist layer: health, queue depth, foreground latency, and rewrite/digest effectiveness."
+        )
+        layout.addWidget(header)
+
+        status_row, self.sidecar_status_val = self._make_metric_row(
+            "Status",
+            "Runtime availability",
+            "—",
+            "Online / degraded / disabled from sidecar telemetry runtime snapshot.",
+        )
+        queue_row, self.sidecar_queue_val = self._make_metric_row(
+            "Queue depth",
+            "Pending sidecar jobs",
+            "—",
+            "Command queue size on SidecarLlmWorker (background titling, judge, digest, etc.).",
+        )
+        success_row, self.sidecar_success_val = self._make_metric_row(
+            "Success rate",
+            "Completed sidecar calls",
+            "—",
+            "ok / total invocations over the rolling telemetry window.",
+        )
+        fg_row, self.sidecar_fg_p95_val = self._make_metric_row(
+            "Foreground p95",
+            "Rewrite + digest latency",
+            "—",
+            "95th percentile end-to-end latency for foreground tasks (query rewrite, source digest).",
+        )
+        rewrite_row, self.sidecar_rewrite_val = self._make_metric_row(
+            "Query rewrite",
+            "Assistive follow-up expansion",
+            "—",
+            "Applied / attempted on discourse follow-up turns (confidence-gated; never changes route).",
+        )
+        health_row, self.sidecar_health_val = self._make_metric_row(
+            "System health",
+            "Sidecar health summary",
+            "—",
+            "Rule-based status from queue depth, failure rate, and foreground latency.",
+        )
+
+        layout.addLayout(status_row)
+        layout.addLayout(queue_row)
+        layout.addLayout(success_row)
+        layout.addLayout(fg_row)
+        layout.addLayout(rewrite_row)
+        layout.addLayout(health_row)
+        layout.addStretch()
+
+        return frame
+
     def _make_metric_row(
         self,
         title: str,
@@ -432,7 +502,8 @@ class TelemetryView(QWidget):
         self._sync_hardware_card_min_height()
         self._refresh_model_capability_labels()
         self._refresh_router_from_worker_snapshot()
-    
+        self._refresh_sidecar_from_worker_snapshot()
+
     def refresh_after_theme_toggle(self) -> None:
         """Keep telemetry card shells aligned with global light/dark theme."""
         self._apply_card_surfaces()
@@ -459,9 +530,22 @@ class TelemetryView(QWidget):
         except Exception as e:
             logger.debug("Router telemetry snapshot failed: %s", e)
 
+    def _refresh_sidecar_from_worker_snapshot(self) -> None:
+        try:
+            from core.sidecar_telemetry import get_sidecar_telemetry
+
+            sw = self.workers.get("sidecar_worker") if getattr(self, "workers", None) else None
+            if sw is not None and getattr(sw, "model_loaded", False):
+                get_sidecar_telemetry().set_runtime_state(model_loaded=True)
+            summary = get_sidecar_telemetry().summarize()
+            self.update_sidecar_telemetry(summary or {})
+        except Exception as e:
+            logger.debug("Sidecar telemetry snapshot failed: %s", e)
+
     def _refresh_hardware(self):
         self._refresh_model_capability_labels()
         self._refresh_router_from_worker_snapshot()
+        self._refresh_sidecar_from_worker_snapshot()
 
         try:
             cpu = int(psutil.cpu_percent())
@@ -496,6 +580,7 @@ class TelemetryView(QWidget):
             getattr(self, "latency_card", None),
             getattr(self, "model_capability_card", None),
             getattr(self, "router_card", None),
+            getattr(self, "sidecar_card", None),
         ):
             if card is not None:
                 name = card.objectName() or "TelemetryCard"
@@ -641,3 +726,49 @@ class TelemetryView(QWidget):
 
         self.health_val.setText(health)
         self.health_val.setToolTip(f"System health: {health}")
+
+    # ============================================================
+    # SIDECAR TELEMETRY UPDATE SLOT
+    # ============================================================
+    def update_sidecar_telemetry(self, summary: dict | None) -> None:
+        summary = summary or {}
+        runtime = summary.get("runtime") or {}
+        status = str(runtime.get("status") or "—")
+        self.sidecar_status_val.setText(status)
+
+        depth = int(summary.get("queue_depth") or 0)
+        self.sidecar_queue_val.setText(str(depth))
+
+        total = int(summary.get("total_invocations") or 0)
+        if total <= 0:
+            self.sidecar_success_val.setText("—")
+            self.sidecar_fg_p95_val.setText("—")
+            self.sidecar_rewrite_val.setText("—")
+            self.sidecar_health_val.setText(str(summary.get("health") or "⚪ Idle"))
+            tip = summary.get("health_tip") or "Chat or background jobs to populate sidecar stats."
+            self.sidecar_health_val.setToolTip(tip)
+            return
+
+        rate = float(summary.get("success_rate") or 0.0)
+        self.sidecar_success_val.setText(f"{rate:.0%} ({total} calls)")
+
+        fg = summary.get("foreground") or {}
+        p95 = float(fg.get("p95_latency_ms") or 0.0)
+        timeout_rate = float(fg.get("timeout_rate") or 0.0)
+        self.sidecar_fg_p95_val.setText(
+            f"{p95:.0f} ms" + (f" · timeout {timeout_rate:.0%}" if fg.get("attempts") else "")
+        )
+
+        rewrite = summary.get("rewrite") or {}
+        attempted = int(rewrite.get("attempted") or 0)
+        applied = int(rewrite.get("applied") or 0)
+        if attempted:
+            self.sidecar_rewrite_val.setText(
+                f"{applied}/{attempted} ({float(rewrite.get('apply_rate') or 0):.0%})"
+            )
+        else:
+            self.sidecar_rewrite_val.setText("—")
+
+        health = str(summary.get("health") or "—")
+        self.sidecar_health_val.setText(health)
+        self.sidecar_health_val.setToolTip(str(summary.get("health_tip") or health))
