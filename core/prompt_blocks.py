@@ -7,7 +7,9 @@ Rendering lives in ``core/prompt_renderers.py`` (PR3).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
+
+RetrievalWrapperMode = Literal["grounded", "background", "none"]
 
 from core.memory_filters import (
     CITATION_DISCIPLINE_SUFFIX,
@@ -81,6 +83,28 @@ class PromptBlocks:
     no_sources_mode: bool = False
     execution_route: str = ""
     composer_conversation_ref: bool = False
+    retrieval_wrapper_mode: RetrievalWrapperMode = "none"
+    topic_salience_hint: str = ""
+    follow_up_active: bool = False
+
+
+def resolve_retrieval_wrapper_mode(
+    execution_route: str,
+    has_retrieval_sources: bool,
+    *,
+    memory_only_sources: bool = False,
+) -> RetrievalWrapperMode:
+    """Choose retrieval framing: grounded (RAG/recall), background (CHAT core memory), none."""
+    if not has_retrieval_sources:
+        return "none"
+    route = str(execution_route or "").upper()
+    if route == "NONE" and memory_only_sources:
+        return "background"
+    if route in ("RAG", "HYBRID", "MEMORY", "WEB", "INTERNET"):
+        return "grounded"
+    if route == "NONE":
+        return "background"
+    return "grounded"
 
 
 def is_explicit_remember_persona(persona: str) -> bool:
@@ -104,6 +128,9 @@ def build_prompt_blocks(
     web_capability_blocked: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
+    retrieval_wrapper_mode: RetrievalWrapperMode | None = None,
+    topic_salience_hint: str = "",
+    follow_up_active: bool = False,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -157,9 +184,21 @@ def build_prompt_blocks(
     if pref_ctx and not explicit_remember_active:
         suffixes.append(f" {pref_ctx}")
 
+    salience = (topic_salience_hint or "").strip()
+    if salience and not explicit_remember_active:
+        suffixes.append(salience)
+
     if str(engine_mode or "").lower() == "internal":
         suffixes.append(
             _INTERNAL_ALIGN_NVIDIA if internal_nvidia_family else _INTERNAL_ALIGN_DEFAULT
+        )
+
+    wrapper_mode = retrieval_wrapper_mode
+    if wrapper_mode is None:
+        wrapper_mode = resolve_retrieval_wrapper_mode(
+            route,
+            has_retrieval_sources,
+            memory_only_sources=False,
         )
 
     return PromptBlocks(
@@ -170,6 +209,9 @@ def build_prompt_blocks(
         no_sources_mode=no_sources,
         execution_route=route,
         composer_conversation_ref=bool(composer_conversation_ref),
+        retrieval_wrapper_mode=wrapper_mode,
+        topic_salience_hint=salience,
+        follow_up_active=bool(follow_up_active),
     )
 
 

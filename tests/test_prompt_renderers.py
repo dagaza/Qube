@@ -8,7 +8,7 @@ from core.memory_filters import (
     NO_SOURCES_SYSTEM_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
 )
-from core.prompt_blocks import build_prompt_blocks, compose_system_prompt
+from core.prompt_blocks import build_prompt_blocks, compose_system_prompt, resolve_retrieval_wrapper_mode
 from core.prompt_renderers import (
     openai_messages_to_alpaca_prompt,
     render_flattened_instruct_messages,
@@ -104,6 +104,52 @@ class TestPromptRenderers(unittest.TestCase):
         messages = render_flattened_instruct_messages(blocks)
         self.assertIn("remember", messages[-1]["content"].lower())
         self.assertIn("blue", messages[-1]["content"])
+
+    def test_background_wrapper_on_chat_core_memory(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="- User prefers metric units",
+            retrieval_wrapper_mode="background",
+            conversation_history=[{"role": "user", "content": "Hello"}],
+        )
+        messages = render_system_ok_messages(blocks)
+        last = messages[-1]["content"]
+        self.assertIn("POTENTIALLY RELEVANT USER CONTEXT", last)
+        self.assertNotIn("Use the following numbered sources", last)
+        self.assertIn("USER QUERY:", last)
+
+    def test_flatten_follow_up_reorders_background_context(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="- metric units preference",
+            retrieval_wrapper_mode="background",
+            follow_up_active=True,
+            topic_salience_hint=" Active conversation topic: Slay the Spire (game).",
+            conversation_history=[
+                {"role": "user", "content": "Slay the Spire?"},
+                {"role": "assistant", "content": "A roguelike deckbuilder."},
+                {"role": "user", "content": "tips for this"},
+            ],
+        )
+        messages = render_flattened_instruct_messages(blocks)
+        content = messages[-1]["content"]
+        q_idx = content.index("[USER QUESTION]")
+        bg_idx = content.index("[BACKGROUND CONTEXT]")
+        self.assertLess(q_idx, bg_idx)
+
+    def test_resolve_wrapper_mode_chat_memory_only(self) -> None:
+        self.assertEqual(
+            resolve_retrieval_wrapper_mode("NONE", True, memory_only_sources=True),
+            "background",
+        )
+        self.assertEqual(
+            resolve_retrieval_wrapper_mode("RAG", True, memory_only_sources=True),
+            "grounded",
+        )
 
 
 if __name__ == "__main__":

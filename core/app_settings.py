@@ -21,6 +21,7 @@ KEY_MEMORY_V7_SALVAGE = "qube.memory.v7_salvage_enabled"
 KEY_MEMORY_PROMOTION = "qube.memory.promotion_enabled"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
+KEY_DISCOURSE_GROUNDING = "qube.discourse.grounding_enabled"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -132,6 +133,15 @@ def get_enable_memory_consolidation() -> bool:
 
 def set_enable_memory_consolidation(enabled: bool) -> None:
     _store().set(KEY_MEMORY_CONSOLIDATION, enabled)
+
+
+def get_discourse_grounding_enabled() -> bool:
+    """When True, follow-up classification and discourse topic tracking are active. Default True."""
+    return bool(_store().get(KEY_DISCOURSE_GROUNDING, True))
+
+
+def set_discourse_grounding_enabled(enabled: bool) -> None:
+    _store().set(KEY_DISCOURSE_GROUNDING, enabled)
 
 
 def get_profile_units() -> str | None:

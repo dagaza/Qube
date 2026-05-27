@@ -23,7 +23,7 @@ from core.app_settings import (
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
 )
-from core.prompt_blocks import build_prompt_blocks
+from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
 from core.preference_formatters import format_web_snippets
 from core.preference_policy import apply_tool_policy, resolve_preference_policy
 from core.prompt_renderers import render_messages
@@ -40,8 +40,23 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
 )
+from core.discourse_intent import (
+    FOLLOW_UP_SUPPRESS_THRESHOLD,
+    FollowUpClassification,
+    FollowUpKind,
+    build_topic_salience_suffix,
+    classify_follow_up,
+    discourse_debug_enabled,
+)
+from core.discourse_query import (
+    resolve_retrieval_query,
+    resolve_routing_query,
+    resolve_web_query,
+    should_veto_ungrounded_web_follow_up,
+)
+from core.discourse_state import DiscourseState, update_discourse_state
 from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
-from core.app_settings import get_enable_memory_v7_salvage
+from core.app_settings import get_enable_memory_v7_salvage, get_discourse_grounding_enabled
 from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
     matches_custom_rag_trigger,
@@ -156,6 +171,7 @@ class LLMWorker(QThread):
         # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
         self._last_completed_llm_session_id = None
         self._server_kv_cleared_for_session_id = None
+        self._discourse_by_session: dict[str, DiscourseState] = {}
 
     def _is_local_llm_service(self) -> bool:
         """Only localhost inference gets cache_prompt / flush hints (OpenAI cloud may 400 on extras)."""
@@ -520,7 +536,12 @@ class LLMWorker(QThread):
     # edits, and so out-of-tree callers don't break.
     _ensure_recall_centroid = _ensure_router_centroids
 
-    def _format_sources_for_llm_prompt(self, sources: list) -> str:
+    def _format_sources_for_llm_prompt(
+        self,
+        sources: list,
+        *,
+        format_mode: str = "grounded",
+    ) -> str:
         """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids).
 
         Thin memory stubs (short memory entries whose content is essentially a
@@ -529,6 +550,7 @@ class LLMWorker(QThread):
         the richer document / web source for detail on "tell me about X"
         style queries.
         """
+        background = str(format_mode or "grounded").lower() == "background"
         has_non_memory = any(
             isinstance(s, dict) and str(s.get("type", "")).lower() not in ("memory", "")
             for s in sources
@@ -550,9 +572,64 @@ class LLMWorker(QThread):
             ):
                 name = f"{name} (short memory stub; prefer documents for detail)"
 
-            cite_tag = f"[{sid}]" if sid is not None else "[?]"
-            parts.append(f"--- {cite_tag}: {name} ---\n{body}")
+            if background and src_type == "memory":
+                parts.append(f"--- Known user context: {name} ---\n{body}")
+            else:
+                cite_tag = f"[{sid}]" if sid is not None else "[?]"
+                parts.append(f"--- {cite_tag}: {name} ---\n{body}")
         return "\n\n".join(parts)
+
+    def _stamp_discourse_on_decision(
+        self,
+        decision: dict,
+        *,
+        follow_up: FollowUpClassification,
+        discourse_state: DiscourseState | None,
+        routing_query: str,
+        retrieval_query: str,
+        core_memory_suppressed: bool,
+        retrieval_wrapper_mode: str,
+    ) -> None:
+        if not isinstance(decision, dict):
+            return
+        decision.update(follow_up.to_dict())
+        if discourse_state is not None:
+            decision.update(discourse_state.to_dict())
+        if routing_query != (self.prompt or "").strip():
+            decision["routing_query"] = routing_query
+        if retrieval_query != (self.prompt or "").strip():
+            decision["retrieval_query"] = retrieval_query
+        decision["core_memory_suppressed"] = bool(core_memory_suppressed)
+        decision["retrieval_wrapper_mode"] = retrieval_wrapper_mode
+
+    def _log_discourse_debug(
+        self,
+        *,
+        follow_up: FollowUpClassification,
+        discourse_state: DiscourseState | None,
+        roles: list[str],
+        history_chars: int,
+        retrieval_chars: int,
+        query_chars: int,
+        retrieval_wrapper_mode: str,
+        core_memory_suppressed: bool,
+    ) -> None:
+        if not discourse_debug_enabled():
+            return
+        topic = discourse_state.active_topic if discourse_state else None
+        logger.info(
+            "[Discourse] follow_up=%s conf=%.2f topic=%r wrapper=%s "
+            "core_memory_suppressed=%s roles=%s hist_chars=%d retrieval_chars=%d query_chars=%d",
+            follow_up.kind.value,
+            follow_up.confidence,
+            topic,
+            retrieval_wrapper_mode,
+            core_memory_suppressed,
+            roles,
+            history_chars,
+            retrieval_chars,
+            query_chars,
+        )
 
     def _memory_query_fingerprint(
         self,
@@ -782,6 +859,40 @@ class LLMWorker(QThread):
         history = self._bound_session_history(history)
         clean_prompt = self.prompt.lower().strip()
 
+        discourse_enabled = get_discourse_grounding_enabled()
+        discourse_state: DiscourseState | None = None
+        follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
+        routing_query = (self.prompt or "").strip()
+        retrieval_query = routing_query
+        core_memory_suppressed = False
+
+        if discourse_enabled:
+            prior = (
+                self._discourse_by_session.get(str(self.session_id))
+                if self.session_id
+                else None
+            )
+            discourse_state = update_discourse_state(history, prior, self.prompt)
+            if self.session_id:
+                self._discourse_by_session[str(self.session_id)] = discourse_state
+            follow_up = classify_follow_up(self.prompt, history, discourse_state)
+            routing_query = resolve_routing_query(self.prompt, follow_up, discourse_state)
+            retrieval_query = resolve_retrieval_query(self.prompt, follow_up, discourse_state)
+            if follow_up.active:
+                logger.info(
+                    "[Discourse] follow_up=%s conf=%.2f topic=%r",
+                    follow_up.kind.value,
+                    follow_up.confidence,
+                    discourse_state.active_topic if discourse_state else None,
+                )
+            elif follow_up.kind.value != "none":
+                logger.info(
+                    "[Discourse] follow_up=%s conf=%.2f (below suppress threshold) topic=%r",
+                    follow_up.kind.value,
+                    follow_up.confidence,
+                    discourse_state.active_topic if discourse_state else None,
+                )
+
         # ============================================================
         # 0. EXPLICIT-REMEMBER SHORT-CIRCUIT (Memory v6.1)
         # ------------------------------------------------------------
@@ -969,10 +1080,10 @@ class LLMWorker(QThread):
                 "prefer_episode": True,
             }
         elif self.USE_COGNITIVE_ROUTER:
-            intent_vector = self.embedding_cache.get_embedding(self.prompt)
+            intent_vector = self.embedding_cache.get_embedding(routing_query)
             self._ensure_recall_centroid()
             decision = self.cognitive_router.route(
-                self.prompt,
+                routing_query,
                 intent_vector=intent_vector,
                 weights=self.router_tuner.get_weights() if self.USE_ADAPTIVE_ROUTER else None
             )
@@ -1001,6 +1112,26 @@ class LLMWorker(QThread):
             logger.info("[LLM Worker] Recall intent detected; routing to HYBRID")
             execution_route = "HYBRID"
             decision["recall_fusion"] = True
+
+        if (
+            discourse_enabled
+            and follow_up.active
+            and discourse_state
+            and discourse_state.active_topic
+            and execution_route in ("MEMORY", "RAG", "HYBRID")
+            and not explicit_remember_active
+            and not scoped_library_active
+            and not narrative_active
+            and not decision.get("recall_fusion")
+            and not attachment_patch
+        ):
+            logger.info(
+                "[Discourse] follow-up topic %r; downgrading route %s -> NONE",
+                discourse_state.active_topic,
+                execution_route,
+            )
+            execution_route = "NONE"
+            decision["route_inherited_from_discourse"] = True
 
         force_rag_via_trigger = False
         # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.
@@ -1069,6 +1200,33 @@ class LLMWorker(QThread):
                 execution_route = "NONE"
                 decision["web_vetoed_tool_disabled"] = True
 
+            # Deictic follow-up with no resolvable topic cannot produce a
+            # meaningful web query ("tips for this" alone). When a topic
+            # IS known, WEB stays enabled and the search uses an expanded
+            # query (see resolve_web_query below).
+            if (
+                discourse_enabled
+                and should_veto_ungrounded_web_follow_up(follow_up, discourse_state)
+                and execution_route == "WEB"
+                and not force_web
+                and not manual_web
+                and not getattr(self, "_composer_internet_requested", False)
+            ):
+                logger.info(
+                    "[Discourse] ungrounded follow-up (no topic); "
+                    "vetoing WEB route -> NONE"
+                )
+                execution_route = "NONE"
+                decision["discourse_vetoed_web"] = True
+            elif (
+                discourse_enabled
+                and follow_up.active
+                and discourse_state
+                and discourse_state.active_topic
+                and execution_route == "WEB"
+            ):
+                decision["discourse_web_query_expanded"] = True
+
         preference_policy = resolve_preference_policy(
             session_overrides=getattr(self, "_session_preference_overrides", None),
         )
@@ -1082,6 +1240,17 @@ class LLMWorker(QThread):
         route_start = time.time()
 
         logger.info(f"[Router] route={execution_route}")
+
+        retrieval_wrapper_mode = "none"
+        self._stamp_discourse_on_decision(
+            decision,
+            follow_up=follow_up,
+            discourse_state=discourse_state if discourse_enabled else None,
+            routing_query=routing_query,
+            retrieval_query=retrieval_query,
+            core_memory_suppressed=core_memory_suppressed,
+            retrieval_wrapper_mode=retrieval_wrapper_mode,
+        )
 
         try:
             self._routing_debug_turn_seq += 1
@@ -1114,7 +1283,7 @@ class LLMWorker(QThread):
         query_vector = None
 
         if execution_route in ["MEMORY", "RAG", "HYBRID"]:
-            query_vector = self.embedding_cache.get_embedding(self.prompt)
+            query_vector = self.embedding_cache.get_embedding(retrieval_query)
 
         # ---- MEMORY ----
         if execution_route in ["MEMORY", "HYBRID"]:
@@ -1135,7 +1304,7 @@ class LLMWorker(QThread):
             include_episode = prefer_episode or narrative_active
 
             mem_result = memory_search(
-                decision.get("memory_query") or self.prompt,
+                decision.get("memory_query") or retrieval_query,
                 query_vector,
                 self.store,
                 prefer_episode=prefer_episode,
@@ -1146,7 +1315,7 @@ class LLMWorker(QThread):
                 apply_mmr=True,
                 apply_temporal_decay=True,
                 query_fingerprint=self._memory_query_fingerprint(
-                    decision.get("memory_query") or self.prompt,
+                    decision.get("memory_query") or retrieval_query,
                     include_preference=True,
                     include_knowledge=True,
                     include_episode=include_episode,
@@ -1172,37 +1341,59 @@ class LLMWorker(QThread):
             # Explicit-remember is a write turn — skip retrieval. File-
             # search scopes to docs; memory retrieval would just dilute
             # the context window.
-            if query_vector is None:
-                query_vector = self.embedding_cache.get_embedding(self.prompt)
-            mem_result = memory_search(
-                self.prompt,
-                query_vector,
-                self.store,
-                prefer_episode=False,
-                include_preference=True,
-                include_knowledge=False,
-                include_episode=False,
-                include_context=True,
-                top_k=3,
-                apply_core_memory_gate=True,
-                query_fingerprint=self._memory_query_fingerprint(
-                    self.prompt,
+            if discourse_enabled and follow_up.confidence >= FOLLOW_UP_SUPPRESS_THRESHOLD:
+                core_memory_suppressed = True
+                logger.info(
+                    "[Discourse] follow_up=%s conf=%.2f core_memory=suppressed",
+                    follow_up.kind.value,
+                    follow_up.confidence,
+                )
+            else:
+                if query_vector is None:
+                    query_vector = self.embedding_cache.get_embedding(retrieval_query)
+                mem_kwargs: dict = {}
+                if (
+                    discourse_enabled
+                    and follow_up.confidence >= 0.45
+                    and follow_up.confidence < FOLLOW_UP_SUPPRESS_THRESHOLD
+                ):
+                    from core.memory_retrieval_policy import (
+                        FOLLOW_UP_CORE_MEMORY_MIN_MARGIN,
+                        FOLLOW_UP_CORE_MEMORY_MIN_SCORE,
+                    )
+
+                    mem_kwargs["core_memory_min_score"] = FOLLOW_UP_CORE_MEMORY_MIN_SCORE
+                    mem_kwargs["core_memory_min_margin"] = FOLLOW_UP_CORE_MEMORY_MIN_MARGIN
+                mem_result = memory_search(
+                    retrieval_query,
+                    query_vector,
+                    self.store,
+                    prefer_episode=False,
                     include_preference=True,
                     include_knowledge=False,
                     include_episode=False,
                     include_context=True,
-                ),
-                exclude_presentation_preferences=True,
-            )
-            memory_context = mem_result.get("memory_context", "")
-            all_ui_sources.extend(mem_result.get("memory_sources", []))
+                    top_k=3,
+                    apply_core_memory_gate=True,
+                    query_fingerprint=self._memory_query_fingerprint(
+                        retrieval_query,
+                        include_preference=True,
+                        include_knowledge=False,
+                        include_episode=False,
+                        include_context=True,
+                    ),
+                    exclude_presentation_preferences=True,
+                    **mem_kwargs,
+                )
+                memory_context = mem_result.get("memory_context", "")
+                all_ui_sources.extend(mem_result.get("memory_sources", []))
 
         # ---- RAG ----
         if execution_route in ["RAG", "HYBRID"] and (
             self.mcp_rag_enabled or force_rag_via_trigger
         ):
             rag_result = rag_search(
-                decision.get("rag_query") or self.prompt,
+                decision.get("rag_query") or retrieval_query,
                 query_vector,
                 self.store,
                 source_filter=getattr(self, "_turn_source_filter", None),
@@ -1224,11 +1415,24 @@ class LLMWorker(QThread):
         if execution_route in ["WEB", "INTERNET", "HYBRID"] and (self.mcp_internet_enabled or force_web):
             self.status_update.emit("🌐 Searching the Web...")
 
+            web_semantic = (
+                resolve_web_query(self.prompt, follow_up, discourse_state)
+                if discourse_enabled
+                else (self.prompt or "").strip()
+            )
             web_query = apply_tool_policy(
-                self.prompt,
+                web_semantic,
                 preference_policy,
                 tool="internet",
             )
+            if web_semantic != (self.prompt or "").strip():
+                logger.info(
+                    "[Discourse] web search query expanded for follow-up "
+                    "(topic=%r)",
+                    discourse_state.active_topic if discourse_state else None,
+                )
+                if isinstance(decision, dict):
+                    decision["web_query"] = web_query
             web_results = search_internet(web_query)
 
             # Defensive guard: when search_internet fails (e.g. DNS /
@@ -1510,7 +1714,20 @@ class LLMWorker(QThread):
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
-        retrieval_prompt_body = self._format_sources_for_llm_prompt(all_ui_sources)
+        retrieval_prompt_body = self._format_sources_for_llm_prompt(
+            all_ui_sources,
+            format_mode=(
+                "background"
+                if execution_route == "NONE"
+                and all_ui_sources
+                and all(
+                    str(s.get("type", "")).lower() == "memory"
+                    for s in all_ui_sources
+                    if isinstance(s, dict)
+                )
+                else "grounded"
+            ),
+        )
         attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
         if attachment_ctx:
             if retrieval_prompt_body:
@@ -1550,6 +1767,26 @@ class LLMWorker(QThread):
                     "(omitted %d other messages from active session)",
                     len(history) - 1,
                 )
+        elif (
+            discourse_enabled
+            and follow_up.active
+            and history
+            and history[-1].get("role") == "user"
+        ):
+            grounded = list(history)
+            last = dict(grounded[-1])
+            if discourse_state and discourse_state.active_topic:
+                last["content"] = (
+                    f"[Continuing our discussion of {discourse_state.active_topic}]\n\n"
+                    f"{last.get('content') or ''}"
+                )
+            elif len(grounded) >= 2:
+                last["content"] = (
+                    "[Continuing from the conversation above]\n\n"
+                    f"{last.get('content') or ''}"
+                )
+            grounded[-1] = last
+            prompt_history = grounded
 
         # ============================================================
         # 3. PROMPT BUILD
@@ -1562,6 +1799,38 @@ class LLMWorker(QThread):
             pl_res.degraded,
             execution_route,
         )
+
+        memory_only_sources = bool(all_ui_sources) and all(
+            str(s.get("type", "")).lower() == "memory"
+            for s in all_ui_sources
+            if isinstance(s, dict)
+        )
+        retrieval_wrapper_mode = resolve_retrieval_wrapper_mode(
+            execution_route,
+            bool(all_ui_sources),
+            memory_only_sources=memory_only_sources,
+        )
+        self._stamp_discourse_on_decision(
+            decision,
+            follow_up=follow_up,
+            discourse_state=discourse_state if discourse_enabled else None,
+            routing_query=routing_query,
+            retrieval_query=retrieval_query,
+            core_memory_suppressed=core_memory_suppressed,
+            retrieval_wrapper_mode=retrieval_wrapper_mode,
+        )
+
+        topic_salience = ""
+        if (
+            discourse_enabled
+            and follow_up.active
+            and discourse_state
+            and discourse_state.active_topic
+        ):
+            topic_salience = build_topic_salience_suffix(
+                discourse_state.active_topic,
+                topic_type=discourse_state.topic_type,
+            )
 
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
@@ -1581,6 +1850,9 @@ class LLMWorker(QThread):
                 route=execution_route,
             ),
             apply_preference_suffix=preference_policy.has_presentation_prefs(),
+            retrieval_wrapper_mode=retrieval_wrapper_mode,
+            topic_salience_hint=topic_salience,
+            follow_up_active=follow_up.active,
         )
         if prompt_blocks.no_sources_mode:
             logger.info(
@@ -1591,6 +1863,17 @@ class LLMWorker(QThread):
 
         messages = render_messages(prompt_blocks, pl_res.layout)
         roles = [str(m.get("role", "")) for m in messages]
+        history_chars = sum(len(str(m.get("content") or "")) for m in prompt_history)
+        self._log_discourse_debug(
+            follow_up=follow_up,
+            discourse_state=discourse_state if discourse_enabled else None,
+            roles=roles,
+            history_chars=history_chars,
+            retrieval_chars=len(retrieval_prompt_body or ""),
+            query_chars=len((self.prompt or "")),
+            retrieval_wrapper_mode=retrieval_wrapper_mode,
+            core_memory_suppressed=core_memory_suppressed,
+        )
         logger.info(
             "[PromptLayout] rendered layout=%s roles=%s has_system=%s",
             pl_res.layout,

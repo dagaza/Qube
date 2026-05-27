@@ -114,6 +114,19 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 
 **Episode cadence:** summarizer fires at **8 turns** or **15 min idle** per session ([`workers/enrichment_worker.py`](../workers/enrichment_worker.py)).
 
+### 4D — Follow-up / discourse continuity
+
+**Capability tested:** Anaphoric follow-ups inherit the active conversational topic; CHAT core memory does not hijack with imperative retrieval framing.
+
+| ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
+|----|------|---------------|-------|---------------|--------------|
+| C4.D1 | Game topic follow-up | Same thread; `qube.discourse.grounding_enabled=true` | 1. *"What is Slay the Spire?"* 2. *"Can you give me the top 10 tips and tricks to be successful at this?"* | Turn 2 answers about **Slay the Spire** (game tips); not generic life-success advice | Generic self-help / career tips with no game context |
+| C4.D2 | Core memory suppressed on follow-up | Stored tangential context memory matching "successful" | Same as C4.D1 | Turn 2 shows **0 sources** or background-only framing without cite-[1] wrapper; no life-advice pivot from memory | Memory sources with imperative "use sources" wrapper on follow-up |
+| C4.D3 | Explicit entity follow-up | Fresh thread | *"Give me 10 Slay the Spire tips for beginners"* (no prior turn) | Game-specific tips from model knowledge | N/A |
+| C4.D4 | Discourse debug telemetry | `QUBE_DISCOURSE_DEBUG=1` | Run C4.D1 | Logs include `[Discourse] follow_up=…`, `topic='Slay the Spire'`, `wrapper=background` or `core_memory_suppressed=True` | No discourse log lines |
+| C4.D5 | Follow-up WEB with topic expansion | Internet tool **enabled** | Same as C4.D1 with internet on | Turn 2 may stay **WEB**; log `[Discourse] web search query expanded for follow-up (topic='Slay the Spire')`; search uses expanded query; answer is **game-specific** tips (from web + thread), not generic life advice | Literal deictic query sent to search (`…successful at this?`) with unrelated snippets |
+| C4.D6 | Ungrounded follow-up WEB veto | Internet on; **no** prior topic in thread | Single message: *"Give me tips for this"* (no context) | **CHAT** (`route=NONE`); log `ungrounded follow-up (no topic); vetoing WEB` | Web search for meaningless deictic query |
+
 ---
 
 ## Section 5 — Tier Scoping & Memory Manager Filters

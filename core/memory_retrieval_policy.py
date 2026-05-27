@@ -13,6 +13,10 @@ from typing import Any
 CORE_MEMORY_MIN_SCORE = 0.45
 CORE_MEMORY_MIN_MARGIN = 0.08
 
+# Stricter gate when a follow-up turn still allows optional core-memory injection.
+FOLLOW_UP_CORE_MEMORY_MIN_SCORE = CORE_MEMORY_MIN_SCORE + 0.10
+FOLLOW_UP_CORE_MEMORY_MIN_MARGIN = CORE_MEMORY_MIN_MARGIN + 0.05
+
 HYBRID_VECTOR_WEIGHT = 0.7
 HYBRID_TEXT_WEIGHT = 0.3
 HYBRID_CANDIDATE_MULTIPLIER = 4
@@ -28,17 +32,24 @@ TEMPORAL_HALF_LIFE_DAYS: dict[str, float | None] = {
 }
 
 
-def apply_core_memory_gate(scored_items: list[dict]) -> list[dict]:
+def apply_core_memory_gate(
+    scored_items: list[dict],
+    *,
+    min_score: float | None = None,
+    min_margin: float | None = None,
+) -> list[dict]:
     """Suppress weak core-memory hits on plain CHAT turns."""
     if not scored_items:
         return []
+    floor = CORE_MEMORY_MIN_SCORE if min_score is None else float(min_score)
+    margin = CORE_MEMORY_MIN_MARGIN if min_margin is None else float(min_margin)
     top = scored_items[0]
     top_score = float(top.get("score") or 0.0)
-    if top_score < CORE_MEMORY_MIN_SCORE:
+    if top_score < floor:
         return []
     if len(scored_items) >= 2:
         second = float(scored_items[1].get("score") or 0.0)
-        if (top_score - second) < CORE_MEMORY_MIN_MARGIN:
+        if (top_score - second) < margin:
             return []
     return scored_items
 

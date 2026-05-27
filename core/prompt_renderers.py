@@ -11,6 +11,7 @@ from typing import Any
 from core.memory_filters import RECALL_FUSION_SYSTEM_SUFFIX
 from core.prompt_blocks import (
     PromptBlocks,
+    RetrievalWrapperMode,
     compose_system_prompt,
     is_explicit_remember_persona,
 )
@@ -24,6 +25,14 @@ _RETRIEVAL_WRAPPER_HEAD = (
 )
 
 _RETRIEVAL_WRAPPER_TAIL = "================================\n\nUSER QUERY:\n"
+
+_BACKGROUND_WRAPPER_HEAD = (
+    "=== POTENTIALLY RELEVANT USER CONTEXT (optional) ===\n"
+    "Background preferences or context below may apply. Prefer the conversation "
+    "history above unless directly relevant. Do NOT cite with [1] or [W] tokens.\n\n"
+)
+
+_BACKGROUND_WRAPPER_TAIL = "================================\n\nUSER QUERY:\n"
 
 _CONVERSATION_REF_HEAD = (
     "=== REFERENCED CONVERSATION (this is a separate prior chat — "
@@ -53,22 +62,33 @@ def _normalize_history(blocks: PromptBlocks) -> list[dict[str, Any]]:
     return out
 
 
+def _strip_wrapped_query(content: str) -> str:
+    c = str(content or "")
+    for tail in (_RETRIEVAL_WRAPPER_TAIL, _BACKGROUND_WRAPPER_TAIL):
+        if tail in c:
+            return c.split(tail, 1)[-1].strip()
+    if "[USER QUESTION]\n" in c:
+        return c.split("[USER QUESTION]\n", 1)[-1].strip()
+    return c
+
+
 def _last_user_raw_content(blocks: PromptBlocks) -> str:
     for m in reversed(_normalize_history(blocks)):
         if m.get("role") == "user":
-            c = str(m.get("content") or "")
-            if _RETRIEVAL_WRAPPER_TAIL in c:
-                return c.split(_RETRIEVAL_WRAPPER_TAIL, 1)[-1].strip()
-            if "[USER QUESTION]\n" in c:
-                return c.split("[USER QUESTION]\n", 1)[-1].strip()
-            return c
+            return _strip_wrapped_query(str(m.get("content") or ""))
     return ""
 
 
-def _wrap_retrieval_legacy(user_content: str, retrieval_body: str) -> str:
+def _wrap_retrieval(
+    user_content: str,
+    retrieval_body: str,
+    mode: RetrievalWrapperMode,
+) -> str:
     body = (retrieval_body or "").strip()
-    if not body:
+    if not body or mode == "none":
         return user_content
+    if mode == "background":
+        return f"{_BACKGROUND_WRAPPER_HEAD}{body}\n{_BACKGROUND_WRAPPER_TAIL}{user_content}"
     return f"{_RETRIEVAL_WRAPPER_HEAD}{body}\n{_RETRIEVAL_WRAPPER_TAIL}{user_content}"
 
 
@@ -123,33 +143,48 @@ def _flatten_instruction_bullets(blocks: PromptBlocks) -> str:
 
 def _build_flatten_last_user(blocks: PromptBlocks) -> str:
     query = _last_user_raw_content(blocks)
-    parts = [f"[ASSISTANT INSTRUCTIONS]\n{_flatten_instruction_bullets(blocks)}"]
     body = (blocks.retrieval_context or "").strip()
-    if body:
-        label = (
-            "[REFERENCED CONVERSATION]"
-            if blocks.composer_conversation_ref
-            else "[RETRIEVED CONTEXT]"
-        )
-        parts.append(f"{label}\n{body}")
-    parts.append(f"[USER QUESTION]\n{query}")
+    mode = blocks.retrieval_wrapper_mode or "none"
+    salience = (blocks.topic_salience_hint or "").strip()
+    follow_up = bool(blocks.follow_up_active)
+
+    parts = [f"[ASSISTANT INSTRUCTIONS]\n{_flatten_instruction_bullets(blocks)}"]
+
+    if salience:
+        parts.append(f"[ACTIVE TOPIC]\n{salience.strip()}")
+
+    if body and mode == "background" and follow_up:
+        parts.append(f"[USER QUESTION]\n{query}")
+        parts.append(f"[BACKGROUND CONTEXT]\n{body}")
+    else:
+        if body:
+            if blocks.composer_conversation_ref:
+                label = "[REFERENCED CONVERSATION]"
+            elif mode == "background":
+                label = "[BACKGROUND CONTEXT]"
+            else:
+                label = "[RETRIEVED CONTEXT]"
+            parts.append(f"{label}\n{body}")
+        parts.append(f"[USER QUESTION]\n{query}")
+
     return "\n\n".join(parts)
 
 
 def render_system_ok_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
-    """One system message + history; legacy retrieval wrapper on last user turn."""
+    """One system message + history; retrieval wrapper on last user turn."""
     system_prompt = compose_system_prompt(blocks)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt},
         *_normalize_history(blocks),
     ]
     body = (blocks.retrieval_context or "").strip()
+    mode = blocks.retrieval_wrapper_mode or "none"
     if body and messages and messages[-1].get("role") == "user":
         original = str(messages[-1].get("content") or "")
         if blocks.composer_conversation_ref:
             messages[-1]["content"] = _wrap_conversation_ref(original, body)
         else:
-            messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
+            messages[-1]["content"] = _wrap_retrieval(original, body, mode)
     return messages
 
 
@@ -160,12 +195,13 @@ def render_short_system_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
         *_normalize_history(blocks),
     ]
     body = (blocks.retrieval_context or "").strip()
+    mode = blocks.retrieval_wrapper_mode or "none"
     if body and messages and messages[-1].get("role") == "user":
         original = str(messages[-1].get("content") or "")
         if blocks.composer_conversation_ref:
             messages[-1]["content"] = _wrap_conversation_ref(original, body)
         else:
-            messages[-1]["content"] = _wrap_retrieval_legacy(original, body)
+            messages[-1]["content"] = _wrap_retrieval(original, body, mode)
     return messages
 
 

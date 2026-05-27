@@ -256,6 +256,8 @@ def memory_search(
     include_episode: bool = False,
     include_context: bool = True,
     apply_core_memory_gate: bool = False,
+    core_memory_min_score: float | None = None,
+    core_memory_min_margin: float | None = None,
     apply_mmr: bool = False,
     apply_temporal_decay: bool = False,
     query_fingerprint: str | None = None,
@@ -483,7 +485,11 @@ def memory_search(
             filtered = apply_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
 
         if apply_core_memory_gate:
-            gated = apply_core_memory_gate(filtered)
+            gated = apply_core_memory_gate(
+                filtered,
+                min_score=core_memory_min_score,
+                min_margin=core_memory_min_margin,
+            )
             if not gated:
                 logger.info("[Memory v7] core memory suppressed (relevance gate)")
                 return {"memory_context": "", "memory_sources": []}
