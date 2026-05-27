@@ -10,6 +10,7 @@ QSettings may still run (e.g. first launch before the user file exists).
 """
 import os
 import re
+from pathlib import Path
 
 from core.settings_store import get_settings_store
 
@@ -28,6 +29,10 @@ KEY_SIDECAR_SOURCE_DIGEST = "qube.sidecar.source_digest_enabled"
 KEY_SIDECAR_MIN_REWRITE_CONFIDENCE = "qube.sidecar.min_rewrite_confidence"
 KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
 KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
+KEY_SIDECAR_MODEL_PATH = "qube.sidecar.model_path"
+KEY_SIDECAR_CHAT_FORMAT = "qube.sidecar.chat_format"
+KEY_ADVANCED_ENGINE_UNLOCKED = "qube.settings.advanced_engine_unlocked"
+KEY_ADVANCED_ENGINE_ACKNOWLEDGED = "qube.settings.advanced_engine_acknowledged"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -151,9 +156,9 @@ def set_discourse_grounding_enabled(enabled: bool) -> None:
 
 
 def _sidecar_model_on_disk() -> bool:
-    from core.sidecar_llm import sidecar_model_available
+    from core.auxiliary_cognition import cognition_model_available
 
-    return sidecar_model_available()
+    return cognition_model_available()
 
 
 def get_sidecar_enabled() -> bool:
@@ -202,6 +207,56 @@ def get_sidecar_ingest_blurb_enabled() -> bool:
     return get_sidecar_enabled() and bool(
         _store().get(KEY_SIDECAR_INGEST_BLURB, True)
     )
+
+
+def get_advanced_engine_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_ENGINE_UNLOCKED, False))
+
+
+def set_advanced_engine_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_ENGINE_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_engine_acknowledged() -> bool:
+    return bool(_store().get(KEY_ADVANCED_ENGINE_ACKNOWLEDGED, False))
+
+
+def set_advanced_engine_acknowledged(acknowledged: bool) -> None:
+    _store().set(KEY_ADVANCED_ENGINE_ACKNOWLEDGED, bool(acknowledged))
+
+
+def get_sidecar_model_path() -> str:
+    return str(_store().get(KEY_SIDECAR_MODEL_PATH, "") or "").strip()
+
+
+def set_sidecar_model_path(path: str) -> None:
+    from core.auxiliary_cognition import validate_cognition_model_path
+
+    cleaned = str(path or "").strip()
+    if not cleaned:
+        _store().set(KEY_SIDECAR_MODEL_PATH, "")
+        return
+    ok, _msg = validate_cognition_model_path(cleaned)
+    if ok:
+        try:
+            cleaned = str(Path(cleaned).resolve())
+        except OSError:
+            cleaned = os.path.abspath(cleaned)
+        _store().set(KEY_SIDECAR_MODEL_PATH, cleaned)
+    else:
+        _store().set(KEY_SIDECAR_MODEL_PATH, "")
+
+
+def get_sidecar_chat_format() -> str:
+    raw = str(_store().get(KEY_SIDECAR_CHAT_FORMAT, "auto") or "auto").lower().strip()
+    allowed = ("auto", "chatml", "llama-3", "phi", "gemma")
+    return raw if raw in allowed else "auto"
+
+
+def set_sidecar_chat_format(fmt: str) -> None:
+    raw = str(fmt or "auto").lower().strip()
+    allowed = ("auto", "chatml", "llama-3", "phi", "gemma")
+    _store().set(KEY_SIDECAR_CHAT_FORMAT, raw if raw in allowed else "auto")
 
 
 def get_profile_units() -> str | None:

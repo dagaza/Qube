@@ -49,6 +49,27 @@
     "default": true,
     "description": "Generate one-sentence Library document blurbs at ingest time via the sidecar."
   },
+  "qube.sidecar.model_path": {
+    "type": "string",
+    "default": "",
+    "description": "Absolute path to optional auxiliary cognition GGUF; empty uses bundled Qwen2-0.5B default."
+  },
+  "qube.sidecar.chat_format": {
+    "type": "string",
+    "enum": ["auto", "chatml", "llama-3", "phi", "gemma"],
+    "default": "auto",
+    "description": "Chat template for auxiliary cognition prompts; auto infers from model filename."
+  },
+  "qube.settings.advanced_engine_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced native-engine controls including optional cognition model swap."
+  },
+  "qube.settings.advanced_engine_acknowledged": {
+    "type": "boolean",
+    "default": false,
+    "description": "User acknowledged RAM impact warning for advanced engine / cognition settings."
+  },
   "qube.profile.units": {
     "type": ["string", "null"],
     "enum": ["metric", "imperial", null],

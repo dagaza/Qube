@@ -140,6 +140,19 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 
 **Settings keys:** `qube.sidecar.enabled`, `query_rewrite_enabled`, `source_digest_enabled`, `min_rewrite_confidence`, `foreground_timeout_ms`, `ingest_blurb_enabled`.
 
+### 4F — Pluggable auxiliary cognition model (advanced)
+
+**Capability tested:** Optional swap of the CPU sidecar GGUF without affecting the primary chat model.
+
+| ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
+|----|------|---------------|-------|---------------|--------------|
+| C4.F1 | Advanced gate | Default install | Settings → Native Engine → enable **Show advanced engine settings** (toggle off/on again) | Red RAM warning dialog on **every** enable; cognition panel appears after confirm | Panel visible without confirm; blue dialog; no dialog on re-enable |
+| C4.F2 | Bundled default protected | Advanced unlocked | Select bundled Qwen2 0.5B → Delete | Delete blocked with message; **Reset to default** clears custom override only | Bundled file removed from disk |
+| C4.F3 | Custom cognition swap | Copy small `.gguf` to `models/cognition/` | Select custom → **Use selected** | Telemetry/settings show custom basename; titling/judge still work after reload | Sidecar stuck degraded until restart |
+| C4.F4 | Reset to default | Custom model active | **Reset to default** | Active label shows bundled; `qube.sidecar.model_path` empty | Override persists |
+
+**Settings keys:** `qube.settings.advanced_engine_unlocked`, `qube.settings.advanced_engine_acknowledged`, `qube.sidecar.model_path`, `qube.sidecar.chat_format`.
+
 ---
 
 ## Section 5 — Tier Scoping & Memory Manager Filters

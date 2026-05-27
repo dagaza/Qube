@@ -734,6 +734,9 @@ class TelemetryView(QWidget):
         summary = summary or {}
         runtime = summary.get("runtime") or {}
         status = str(runtime.get("status") or "—")
+        basename = str(runtime.get("active_model_basename") or "")
+        if basename and not runtime.get("is_bundled_default", True):
+            status = f"{status} · {basename}"
         self.sidecar_status_val.setText(status)
 
         depth = int(summary.get("queue_depth") or 0)

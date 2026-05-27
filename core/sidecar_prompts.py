@@ -7,10 +7,14 @@ import json
 import re
 from typing import Any, Optional
 
+from core.cognition_prompt_adapter import (
+    build_cognition_prompt,
+    cognition_stop_tokens,
+)
 from core.sidecar_types import SidecarResult, SidecarTask
 
 IM_END = "<|im_end|>"
-CHATML_STOPS = [IM_END, "\n\n"]
+CHATML_STOPS = cognition_stop_tokens("chatml")
 
 _VALID_REFLECTION_LABELS = frozenset({
     "durable_user_fact",
@@ -38,15 +42,15 @@ def task_inference_params(task: SidecarTask) -> dict[str, Any]:
     return dict(defaults.get(task, {"max_tokens": 128, "temperature": 0.2}))
 
 
-def _chatml(system: str, user: str) -> str:
-    return (
-        f"<|im_start|>system\n{system}{IM_END}\n"
-        f"<|im_start|>user\n{user}{IM_END}\n"
-        "<|im_start|>assistant\n"
-    )
+def build_prompt_for_task(
+    task: SidecarTask,
+    *,
+    chat_format: str = "chatml",
+    **kwargs: Any,
+) -> str:
+    def _prompt(system: str, user: str) -> str:
+        return build_cognition_prompt(system, user, chat_format)
 
-
-def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
     if task == SidecarTask.title:
         user_prompt = (kwargs.get("user_prompt") or "").strip()
         system = (
@@ -54,7 +58,7 @@ def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
             "user's message into a 2-4 word title. No filler, punctuation, or quotes. "
             "Output ONLY the title text."
         )
-        return _chatml(system, user_prompt)
+        return _prompt(system, user_prompt)
 
     if task == SidecarTask.contradiction_judge:
         old_s = (kwargs.get("old_content") or "").strip()
@@ -64,16 +68,16 @@ def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
             "Respond with EXACTLY one word: duplicate, contradiction, or complement."
         )
         user = f"A: {old_s}\nB: {new_s}\n\nAnswer:"
-        return _chatml(system, user)
+        return _prompt(system, user)
 
     if task == SidecarTask.reflection_label:
-        return kwargs.get("prompt") or _chatml(
+        return kwargs.get("prompt") or _prompt(
             "Return STRICT JSON: {\"label\": \"durable_user_fact|...\"}",
             (kwargs.get("content") or "")[:800],
         )
 
     if task == SidecarTask.episode_summary:
-        return kwargs.get("prompt") or _chatml(
+        return kwargs.get("prompt") or _prompt(
             "Summarize the conversation per instructions.",
             (kwargs.get("conversation") or "")[:6000],
         )
@@ -96,7 +100,7 @@ def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
             f"follow_up_kind: {kind}\n"
             f"recent_turns:\n{tail}"
         )
-        return _chatml(system, user)
+        return _prompt(system, user)
 
     if task == SidecarTask.source_digest:
         sources_text = (kwargs.get("sources_text") or "").strip()[:8000]
@@ -105,7 +109,7 @@ def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
             "Keep each source citation id [N] from the input. "
             "One or two bullets per source. No prose outside bullets."
         )
-        return _chatml(system, sources_text)
+        return _prompt(system, sources_text)
 
     if task == SidecarTask.ingest_blurb:
         sample = (kwargs.get("sample_text") or "").strip()[:2500]
@@ -113,9 +117,9 @@ def build_prompt_for_task(task: SidecarTask, **kwargs: Any) -> str:
             "Write ONE sentence describing what this document is about. "
             "No quotes. No markdown. Under 30 words."
         )
-        return _chatml(system, sample)
+        return _prompt(system, sample)
 
-    return _chatml("Respond concisely.", str(kwargs))
+    return _prompt("Respond concisely.", str(kwargs))
 
 
 def parse_task_output(task: SidecarTask, raw: str, **kwargs: Any) -> SidecarResult:

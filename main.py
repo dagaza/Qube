@@ -308,6 +308,18 @@ class Qube:
                     self.sidecar_worker.sidecar_telemetry_updated.connect(
                         w.telemetry_view.update_sidecar_telemetry
                     )
+            if hasattr(self.sidecar_worker, 'model_reload_finished'):
+                tv = w.telemetry_view
+                if hasattr(tv, '_refresh_sidecar_from_worker_snapshot'):
+                    self.sidecar_worker.model_reload_finished.connect(
+                        lambda _ok, _msg: tv._refresh_sidecar_from_worker_snapshot()
+                    )
+                if hasattr(w, 'settings_view') and hasattr(
+                    w.settings_view, '_sync_active_cognition_label'
+                ):
+                    self.sidecar_worker.model_reload_finished.connect(
+                        lambda _ok, _msg: w.settings_view._sync_active_cognition_label()
+                    )
         if hasattr(self.llm_worker, 'sidecar_telemetry_updated') and hasattr(w, 'telemetry_view'):
             if hasattr(w.telemetry_view, 'update_sidecar_telemetry'):
                 self.llm_worker.sidecar_telemetry_updated.connect(

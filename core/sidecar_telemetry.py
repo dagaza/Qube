@@ -29,6 +29,8 @@ class SidecarRuntimeState:
     model_on_disk: bool = False
     model_loaded: bool = False
     degraded_reason: str = ""
+    active_model_basename: str = ""
+    is_bundled_default: bool = True
 
 
 class SidecarTelemetryBrain:
@@ -46,16 +48,22 @@ class SidecarTelemetryBrain:
         *,
         model_loaded: bool | None = None,
         degraded_reason: str | None = None,
+        active_model_basename: str | None = None,
+        is_bundled_default: bool | None = None,
     ) -> None:
         with self._lock:
             if model_loaded is not None:
                 self._runtime.model_loaded = bool(model_loaded)
             if degraded_reason is not None:
                 self._runtime.degraded_reason = str(degraded_reason or "")
+            if active_model_basename is not None:
+                self._runtime.active_model_basename = str(active_model_basename or "")
+            if is_bundled_default is not None:
+                self._runtime.is_bundled_default = bool(is_bundled_default)
             self._runtime.enabled = get_sidecar_enabled()
-            from core.sidecar_llm import sidecar_model_available
+            from core.auxiliary_cognition import cognition_model_available
 
-            self._runtime.model_on_disk = sidecar_model_available()
+            self._runtime.model_on_disk = cognition_model_available()
 
     def set_queue_depth(self, depth: int) -> None:
         with self._lock:
@@ -125,7 +133,15 @@ class SidecarTelemetryBrain:
             self._turn_events.append(event)
 
     def summarize(self) -> dict[str, Any]:
-        self.set_runtime_state()
+        from core.auxiliary_cognition import (
+            active_cognition_basename,
+            is_active_cognition_bundled,
+        )
+
+        self.set_runtime_state(
+            active_model_basename=active_cognition_basename(),
+            is_bundled_default=is_active_cognition_bundled(),
+        )
         with self._lock:
             events = list(self._events)
             turns = list(self._turn_events)
@@ -134,6 +150,8 @@ class SidecarTelemetryBrain:
                 model_on_disk=self._runtime.model_on_disk,
                 model_loaded=self._runtime.model_loaded,
                 degraded_reason=self._runtime.degraded_reason,
+                active_model_basename=self._runtime.active_model_basename,
+                is_bundled_default=self._runtime.is_bundled_default,
             )
             queue_depth = self._queue_depth
 
@@ -238,6 +256,8 @@ def _build_summary(
             "model_on_disk": runtime.model_on_disk,
             "model_loaded": runtime.model_loaded,
             "degraded_reason": runtime.degraded_reason,
+            "active_model_basename": runtime.active_model_basename,
+            "is_bundled_default": runtime.is_bundled_default,
             "status": _status_label(runtime, queue_depth),
         },
         "queue_depth": queue_depth,

@@ -29,15 +29,25 @@ __all__ = [
 
 logger = logging.getLogger("Qube.SidecarLLM")
 
-DEFAULT_MODEL_REL_PATH = os.path.join("models", "qwen2-0_5b-instruct-q4_k_m.gguf")
+from core.auxiliary_cognition import (
+    BUNDLED_DEFAULT_REL_PATH as DEFAULT_MODEL_REL_PATH,
+    bundled_default_path,
+    cognition_model_available,
+    resolve_active_cognition_path,
+)
 
 
 def default_sidecar_model_path() -> str:
-    return os.path.join(os.getcwd(), DEFAULT_MODEL_REL_PATH)
+    """Backward-compatible alias for bundled default path."""
+    return bundled_default_path()
 
 
 def sidecar_model_available() -> bool:
-    return os.path.isfile(default_sidecar_model_path())
+    return cognition_model_available()
+
+
+def active_sidecar_model_path() -> str:
+    return resolve_active_cognition_path()
 
 
 class SidecarLlmClient:

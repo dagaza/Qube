@@ -22,16 +22,41 @@ def _resolve_is_dark_from_parent(parent) -> bool:
 
 
 class PrestigeDialog(QDialog):
-    def __init__(self, parent, title, message, is_dark=True, is_input=False, default_text=""):
+    def __init__(
+        self,
+        parent,
+        title,
+        message,
+        is_dark=True,
+        is_input=False,
+        default_text="",
+        *,
+        tone: str = "default",
+        min_width: int = 450,
+        dialog_width: int | None = None,
+    ):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        self.setMinimumWidth(450)
+        fixed_w = int(dialog_width) if dialog_width is not None else None
+        if fixed_w is not None:
+            fixed_w = max(300, fixed_w)
+        else:
+            self.setMinimumWidth(max(280, int(min_width)))
 
         self.result_text = None
         bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#f38ba8" if "Delete" in title else "#89b4fa"
+        tone_key = str(tone or "default").lower().strip()
+        if tone_key == "danger":
+            accent = "#dc2626"
+            confirm_fg = "#f8fafc"
+        elif "Delete" in title:
+            accent = "#f38ba8"
+            confirm_fg = "#11111b"
+        else:
+            accent = "#89b4fa"
+            confirm_fg = "#11111b"
         border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
 
         layout = QVBoxLayout(self)
@@ -55,13 +80,20 @@ class PrestigeDialog(QDialog):
         c_layout.setContentsMargins(30, 30, 30, 25)
         c_layout.setSpacing(20)
 
+        if fixed_w is not None:
+            # Outer layout margins (10px) + container side padding (30px each).
+            self.container.setFixedWidth(fixed_w - 20)
+            message_max_w = fixed_w - 80
+
         t_lbl = QLabel(title.upper())
         t_lbl.setStyleSheet(f"color: {accent}; font-weight: bold; font-size: 12px; letter-spacing: 2px;")
 
         m_lbl = QLabel(message)
         m_lbl.setWordWrap(True)
-        m_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        m_lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         m_lbl.setMinimumWidth(0)
+        if fixed_w is not None:
+            m_lbl.setMaximumWidth(message_max_w)
         m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
 
         c_layout.addWidget(t_lbl)
@@ -122,7 +154,7 @@ class PrestigeDialog(QDialog):
             + f"""
             QPushButton {{
                 background: {accent};
-                color: #11111b;
+                color: {confirm_fg};
                 border: none;
             }}
             QPushButton:hover {{

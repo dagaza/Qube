@@ -98,6 +98,8 @@ Qube/
 │   ├── prompt_integrity_validator.py # Prompt structure checks, LM Studio parity scoring, QUBE_LLM_REFERENCE_JSON / first_sampler_token_ids (validation only); attaches model_reasoning_profile_detected + execution_mode (resolved policy mode) to validation JSON (metadata).
 │   ├── prompt_blocks.py # PromptBlocks + build_prompt_blocks + compose_system_prompt (PR2 normalization).
 │   ├── prompt_renderers.py # render_messages(system_ok|short_system|flatten_user); PR3 LLMWorker + adaptive_retry Alpaca fallback.
+│   ├── auxiliary_cognition.py # Pluggable sidecar GGUF resolution: bundled Qwen2-0.5B default (protected), models/cognition/ swaps, validate + list_selectable_cognition_models
+│   ├── cognition_prompt_adapter.py # Per-model chat templates + stops for auxiliary cognition (chatml/llama-3/phi/gemma; auto from filename)
 │   ├── prompt_layout.py # PromptLayout (system_ok | short_system | flatten_user) + resolve_prompt_layout (curated/family/settings/store; PR1 telemetry only).
 │   ├── prompt_layout_store.py # ~/.qube/prompt_layout_overrides.json per-model layout overrides.
 │   ├── prompt_template_router.py # infer_template_type + apply_reasoning_injection + build_prompt_bundle; template_override + model_override_store layers; [LLM-TEMPLATE] / [LLM-TEMPLATE-OVERRIDE] / [LLM-SELF-HEAL-APPLY] / [LLM-PROMPT-ROUTER]; validation/log prefetch (chat path unchanged).
@@ -138,7 +140,7 @@ Qube/
 │   ├── memory_promotion_worker.py # Memory v7.1 — periodic context/knowledge → preference promotion; preset thresholds; near-duplicate + reflection veto; live re-read idempotency; gated by Settings toggle.
 │   ├── memory_consolidation_worker.py # Memory v7.1 — 6h deterministic cross-day staging (consolidation_score / consolidation_hints / consolidation_staged_at in JSON); never auto-promote or auto-delete; gated by Settings toggle (default on).
 │   ├── tts_worker.py       # Manages universal TTS adapters (Piper/Kokoro) and audio queues.
-│   ├── sidecar_llm_worker.py  # CPU Qwen2-0.5B sidecar queue: titling, memory judge, reflection labels, episodes, query rewrite, source digest, ingest blurbs
+│   ├── sidecar_llm_worker.py  # Auxiliary cognition runtime (CPU GGUF queue, hot-reload): titling, judge, reflection, episodes, query rewrite, digest, ingest blurbs; default Qwen2-0.5B, optional swap via Settings
 │   ├── title_worker.py       # Deprecated shim → SidecarLlmWorker
 │   ├── intent_router.py       # Uses semantic vector embeddings for intent routing instead of rigid keywords, while cognitive_router manages load and thresholds.
 │   ├── ingestion_worker.py # Parses, chunks, and embeds documents in the background.

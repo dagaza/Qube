@@ -6,6 +6,7 @@ import qtawesome as qta
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
+    QToolButton,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
     QButtonGroup,
 )
@@ -53,6 +54,19 @@ from core.app_settings import (
     set_audio_input_device_index,
     get_audio_output_device_index,
     set_audio_output_device_index,
+    get_advanced_engine_unlocked,
+    set_advanced_engine_unlocked,
+    get_sidecar_model_path,
+    set_sidecar_model_path,
+    get_sidecar_chat_format,
+    set_sidecar_chat_format,
+)
+from core.auxiliary_cognition import (
+    get_cognition_models_dir,
+    is_protected_cognition_model,
+    list_selectable_cognition_models,
+    resolve_active_cognition_path,
+    validate_cognition_model_path,
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
@@ -69,6 +83,7 @@ from ui.components.selector_button import SelectorButton
 
 logger = logging.getLogger("Qube.UI.Settings")
 LOCAL_GGUF_SHARD_PATHS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+COGNITION_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
 
 
 class NoScrollSpinBox(QSpinBox):
@@ -100,6 +115,7 @@ class SettingsView(QWidget):
     memory_consolidation_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
     external_settings_reloaded = pyqtSignal(set)
+    cognition_model_changed = pyqtSignal()
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -435,6 +451,125 @@ class SettingsView(QWidget):
         native_form.addRow("Model storage", self.models_dir_label)
         native_form.addRow("On this device", local_row)
         native_form.addRow("Active model", self.active_native_model_lbl)
+
+        _adv_tip = (
+            "Advanced engine controls are not for everyday use. Only enable them if you "
+            "have a very powerful machine with plenty of RAM.\n\n"
+            "Unlocks optional auxiliary cognition model selection. The cognition model "
+            "runs on CPU RAM in parallel with your primary chat model — larger swaps "
+            "(e.g. 1.5B+) reduce headroom available for conversation."
+        )
+        self.advanced_engine_toggle = PrestigeToggle()
+        self.advanced_engine_label = QLabel("Show advanced engine settings")
+        self.advanced_engine_toggle.setToolTip(_adv_tip)
+        self.advanced_engine_label.setToolTip(_adv_tip)
+        self.advanced_engine_info_btn = self._make_settings_info_button(_adv_tip)
+        label_cluster = QWidget()
+        label_cluster_layout = QHBoxLayout(label_cluster)
+        label_cluster_layout.setContentsMargins(0, 0, 0, 0)
+        label_cluster_layout.setSpacing(6)
+        label_cluster_layout.addWidget(self.advanced_engine_label)
+        label_cluster_layout.addWidget(self.advanced_engine_info_btn)
+        advanced_row = QWidget()
+        advanced_row_layout = QHBoxLayout(advanced_row)
+        advanced_row_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_row_layout.setSpacing(8)
+        advanced_row_layout.addWidget(
+            self.advanced_engine_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+        )
+        advanced_row_layout.addWidget(label_cluster)
+        advanced_row_layout.addStretch(1)
+        self.advanced_engine_toggle.blockSignals(True)
+        self.advanced_engine_toggle.setChecked(get_advanced_engine_unlocked())
+        self.advanced_engine_toggle.blockSignals(False)
+        self.advanced_engine_toggle.toggled.connect(self._on_advanced_engine_toggled)
+        native_form.addRow("", advanced_row)
+
+        self.advanced_engine_panel = QWidget()
+        adv_panel_layout = QVBoxLayout(self.advanced_engine_panel)
+        adv_panel_layout.setContentsMargins(0, 8, 0, 0)
+        adv_panel_layout.setSpacing(12)
+
+        cognition_dir = get_cognition_models_dir()
+        self.cognition_dir_label = QLabel(cognition_dir)
+        self.cognition_dir_label.setWordWrap(True)
+        self.cognition_dir_label.setToolTip(
+            "Place optional cognition .gguf files here (bundled default stays in models/)."
+        )
+
+        cognition_row = QHBoxLayout()
+        self.cognition_gguf_list = QListWidget()
+        self.cognition_gguf_list.setMinimumHeight(90)
+        self.cognition_gguf_list.setMaximumHeight(140)
+        self.cognition_gguf_list.setToolTip(
+            "Built-in Qwen2 0.5B default cannot be deleted. Select a custom model and "
+            "click Use selected, or Reset to default."
+        )
+        cognition_row.addWidget(self.cognition_gguf_list, stretch=1)
+        cognition_btn_col = QVBoxLayout()
+        cognition_btn_col.setSpacing(8)
+        self.use_cognition_gguf_btn = QPushButton("Use selected")
+        apply_brand_primary(self.use_cognition_gguf_btn)
+        self.use_cognition_gguf_btn.clicked.connect(self._apply_selected_cognition_gguf)
+        cognition_btn_col.addWidget(
+            self.use_cognition_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop
+        )
+        self.reset_cognition_btn = QPushButton("Reset to default")
+        apply_brand_primary(self.reset_cognition_btn, icon_name="fa5s.undo")
+        self.reset_cognition_btn.clicked.connect(self._reset_cognition_to_default)
+        cognition_btn_col.addWidget(
+            self.reset_cognition_btn, alignment=Qt.AlignmentFlag.AlignTop
+        )
+        self.delete_cognition_gguf_btn = QPushButton("Delete")
+        apply_brand_danger(self.delete_cognition_gguf_btn)
+        self.delete_cognition_gguf_btn.clicked.connect(self._delete_selected_cognition_gguf)
+        cognition_btn_col.addWidget(
+            self.delete_cognition_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop
+        )
+        cognition_row.addLayout(cognition_btn_col)
+
+        self.cognition_chat_format_selector = SelectorButton(
+            "Cognition chat template...", is_dark=is_dark
+        )
+        self.cognition_chat_format_selector.setMaximumWidth(350)
+        self.cognition_chat_format_selector.setMenu(
+            QMenu(self.cognition_chat_format_selector)
+        )
+        self.cognition_chat_format_selector.setToolTip(
+            "Prompt format for the auxiliary cognition model. Auto infers from filename."
+        )
+        self._cognition_chat_format_items = [
+            ("Auto (from filename)", "auto"),
+            ("ChatML", "chatml"),
+            ("Llama 3 Instruct", "llama-3"),
+            ("Phi-3", "phi"),
+            ("Gemma", "gemma"),
+        ]
+        self._build_prestige_menu(
+            self.cognition_chat_format_selector,
+            self._cognition_chat_format_items,
+            self._on_cognition_chat_format_changed,
+        )
+        self._sync_cognition_chat_format_label()
+
+        self.active_cognition_model_lbl = QLabel()
+        self.active_cognition_model_lbl.setWordWrap(True)
+
+        adv_panel_layout.addWidget(
+            QLabel("Optional cognition models directory:")
+        )
+        adv_panel_layout.addWidget(self.cognition_dir_label)
+        adv_panel_layout.addLayout(cognition_row)
+        adv_panel_layout.addWidget(
+            QLabel("Cognition chat template (advanced)")
+        )
+        adv_panel_layout.addWidget(self.cognition_chat_format_selector)
+        adv_panel_layout.addWidget(self.active_cognition_model_lbl)
+
+        native_form.addRow("", self.advanced_engine_panel)
+        self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
+        self._refresh_cognition_gguf_list()
+        self._sync_active_cognition_label()
 
         content_layout.addWidget(native_widget)
         content_layout.addWidget(self._build_divider())
@@ -898,6 +1033,18 @@ class SettingsView(QWidget):
         active = "#64748b"
         color = active if button.isEnabled() else muted
         button.setIcon(qta.icon("fa5s.chevron-down", color=color))
+
+    def _make_settings_info_button(self, tooltip_text: str) -> QToolButton:
+        btn = QToolButton()
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(tooltip_text)
+        btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        btn.setIconSize(QSize(14, 14))
+        btn.setAutoRaise(True)
+        btn.setStyleSheet(
+            "QToolButton { border: none; padding: 0px; background: transparent; }"
+        )
+        return btn
 
     def _iter_settings_checkboxes(self):
         """All Settings-page QCheckBox widgets that share the Prestige indicator style."""
@@ -1469,11 +1616,192 @@ class SettingsView(QWidget):
         self._refresh_local_gguf_list()
         self._refresh_toolbar_native_model_after_model_change()
 
+    def _reload_sidecar_from_settings(self) -> None:
+        sw = self.workers.get("sidecar_worker") if getattr(self, "workers", None) else None
+        if sw is not None and hasattr(sw, "reload_from_settings"):
+            sw.reload_from_settings()
+        self.cognition_model_changed.emit()
+
+    def _on_advanced_engine_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced engine settings",
+                "The auxiliary cognition model uses additional CPU RAM while your primary "
+                "chat model is loaded. Swapping to a larger model (1.5B+) can reduce "
+                "headroom and slow background tasks.\n\n"
+                "The bundled Qwen2 0.5B default cannot be deleted — you may only load an "
+                "alternate model from models/cognition/.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                self.advanced_engine_toggle.blockSignals(True)
+                self.advanced_engine_toggle.setChecked(False)
+                self.advanced_engine_toggle.blockSignals(False)
+                return
+        set_advanced_engine_unlocked(bool(checked))
+        if hasattr(self, "advanced_engine_panel"):
+            self.advanced_engine_panel.setVisible(bool(checked))
+
+    def _refresh_cognition_gguf_list(self) -> None:
+        if not hasattr(self, "cognition_gguf_list"):
+            return
+        self.cognition_gguf_list.clear()
+        active = resolve_active_cognition_path()
+        try:
+            active_norm = str(Path(active).resolve()) if active else ""
+        except OSError:
+            active_norm = active or ""
+
+        for entry in list_selectable_cognition_models():
+            item = QListWidgetItem(entry.display_name)
+            item.setData(Qt.ItemDataRole.UserRole, entry.path)
+            item.setData(COGNITION_ENTRY_DELETABLE_ROLE, entry.is_deletable)
+            self.cognition_gguf_list.addItem(item)
+            try:
+                if active_norm and str(Path(entry.path).resolve()) == active_norm:
+                    self.cognition_gguf_list.setCurrentItem(item)
+            except OSError:
+                if entry.path == active:
+                    self.cognition_gguf_list.setCurrentItem(item)
+
+    def _sync_active_cognition_label(self) -> None:
+        if not hasattr(self, "active_cognition_model_lbl"):
+            return
+        path = resolve_active_cognition_path()
+        if not path or not os.path.isfile(path):
+            self.active_cognition_model_lbl.setText("— (bundled default missing)")
+            return
+        base = os.path.basename(path)
+        if is_protected_cognition_model(path):
+            self.active_cognition_model_lbl.setText(f"{base} (bundled default)")
+        else:
+            self.active_cognition_model_lbl.setText(f"{base} (custom)")
+
+    def _sync_cognition_chat_format_label(self) -> None:
+        if not hasattr(self, "cognition_chat_format_selector"):
+            return
+        fmt = get_sidecar_chat_format()
+        labels = {v: k for k, v in self._cognition_chat_format_items}
+        self.cognition_chat_format_selector.setText(
+            labels.get(fmt, "Auto (from filename)")
+        )
+
+    def _on_cognition_chat_format_changed(self, mode: str) -> None:
+        set_sidecar_chat_format(str(mode))
+        self._sync_cognition_chat_format_label()
+        self._reload_sidecar_from_settings()
+
+    def _apply_selected_cognition_gguf(self) -> None:
+        item = self.cognition_gguf_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a cognition model from the list.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_cognition_model(path):
+            set_sidecar_model_path("")
+        else:
+            ok, msg = validate_cognition_model_path(path)
+            if not ok:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                PrestigeDialog(
+                    self.window(),
+                    "Invalid cognition model",
+                    msg or "That file cannot be used as the cognition model.",
+                    is_dark=is_dark,
+                ).exec()
+                return
+            set_sidecar_model_path(path)
+        self._sync_active_cognition_label()
+        self._reload_sidecar_from_settings()
+
+    def _reset_cognition_to_default(self) -> None:
+        set_sidecar_model_path("")
+        self._refresh_cognition_gguf_list()
+        self._sync_active_cognition_label()
+        self._reload_sidecar_from_settings()
+
+    def _delete_selected_cognition_gguf(self) -> None:
+        item = self.cognition_gguf_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a cognition model to delete.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_cognition_model(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Protected model",
+                "The bundled Qwen2 0.5B default cannot be deleted. Use Reset to default "
+                "to stop using a custom cognition model.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        if not item.data(COGNITION_ENTRY_DELETABLE_ROLE):
+            return
+        if not path or not os.path.isfile(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Missing file",
+                "That file is not available on disk.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        name = os.path.basename(path)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Delete cognition model",
+            f'Permanently delete "{name}" from models/cognition/? This cannot be undone.',
+            is_dark=is_dark,
+        )
+        if not dlg.exec():
+            return
+        try:
+            os.remove(path)
+        except OSError as e:
+            logger.error("Failed to delete cognition GGUF %s: %s", path, e)
+            PrestigeDialog(
+                self.window(),
+                "Delete failed",
+                str(e),
+                is_dark=is_dark,
+            ).exec()
+            return
+        override = get_sidecar_model_path()
+        try:
+            was_active = str(Path(override).resolve()) == str(Path(path).resolve())
+        except OSError:
+            was_active = override == path
+        if was_active:
+            set_sidecar_model_path("")
+            self._reload_sidecar_from_settings()
+        self._refresh_cognition_gguf_list()
+        self._sync_active_cognition_label()
+
     def refresh_native_local_library(self) -> None:
         """Call when a .gguf is saved elsewhere (e.g. Model Manager download)."""
         self._sync_models_dir_label()
         self._sync_active_native_model_label()
         self._refresh_local_gguf_list()
+        if hasattr(self, "_refresh_cognition_gguf_list"):
+            self._refresh_cognition_gguf_list()
 
     # --------------------------------------------------------- #
     #  🔑 NEW RAG TRIGGER MANAGER                              #
@@ -1881,6 +2209,11 @@ class SettingsView(QWidget):
             if btn.menu():
                 self._apply_menu_theme(btn.menu(), is_dark)
 
+        info_btn = getattr(self, "advanced_engine_info_btn", None)
+        if info_btn is not None:
+            info_color = "#94a3b8" if is_dark else "#64748b"
+            info_btn.setIcon(qta.icon("fa5s.info-circle", color=info_color))
+
         # Update Section Header Icons
         icon_color = "#8b5cf6" if is_dark else "#4c4f69" 
         
@@ -2220,6 +2553,13 @@ class SettingsView(QWidget):
                 cb.blockSignals(False)
             if hasattr(self, "companion_preview"):
                 self.companion_preview.update()
+
+        if hasattr(self, "advanced_engine_toggle"):
+            self.advanced_engine_toggle.blockSignals(True)
+            self.advanced_engine_toggle.setChecked(get_advanced_engine_unlocked())
+            self.advanced_engine_toggle.blockSignals(False)
+            if hasattr(self, "advanced_engine_panel"):
+                self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

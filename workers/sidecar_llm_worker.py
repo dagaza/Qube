@@ -1,8 +1,9 @@
 """
-CPU-bound Qwen2-0.5B sidecar — serial task queue for async cognition.
+CPU-bound auxiliary cognition — serial task queue for async sidecar inference.
 """
 from __future__ import annotations
 
+import gc
 import logging
 import os
 import queue
@@ -12,10 +13,16 @@ from typing import Any, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from core.sidecar_llm import DEFAULT_MODEL_REL_PATH, default_sidecar_model_path
+from core.auxiliary_cognition import (
+    cognition_n_ctx_for_path,
+    resolve_active_cognition_path,
+)
+from core.cognition_prompt_adapter import (
+    cognition_stop_tokens,
+    resolve_cognition_chat_format,
+)
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.sidecar_prompts import (
-    CHATML_STOPS,
     build_prompt_for_task,
     parse_task_output,
     task_inference_params,
@@ -36,16 +43,24 @@ class SidecarLlmWorker(QThread):
     title_generated = pyqtSignal(str, str)
     ingest_blurb_ready = pyqtSignal(str, str)  # filename, blurb
     sidecar_telemetry_updated = pyqtSignal(dict)
+    model_reload_finished = pyqtSignal(bool, str)
 
     def __init__(self, db_manager=None, parent=None) -> None:
         super().__init__(parent)
         self.db = db_manager
         self._cmd_queue: queue.Queue = queue.Queue()
         self._stop = threading.Event()
+        self._reloading = False
         self.model = None
         self.model_loaded = False
+        self.active_model_path: str = ""
+        self.active_chat_format: str = "chatml"
         self._warned_missing = False
         self.telemetry = get_sidecar_telemetry()
+
+    def reload_from_settings(self) -> None:
+        """Enqueue hot-reload of the cognition model from current settings."""
+        self._cmd_queue.put({"op": "reload"})
 
     def enqueue_task(
         self,
@@ -109,9 +124,16 @@ class SidecarLlmWorker(QThread):
         self._cmd_queue.put({"op": "shutdown"})
 
     def _sync_telemetry_runtime(self, *, degraded_reason: str = "") -> None:
+        from core.auxiliary_cognition import (
+            active_cognition_basename,
+            is_active_cognition_bundled,
+        )
+
         self.telemetry.set_runtime_state(
             model_loaded=bool(self.model_loaded),
             degraded_reason=degraded_reason,
+            active_model_basename=active_cognition_basename(),
+            is_bundled_default=is_active_cognition_bundled(),
         )
         try:
             self.telemetry.set_queue_depth(self._cmd_queue.qsize())
@@ -122,6 +144,55 @@ class SidecarLlmWorker(QThread):
         except Exception as e:
             logger.debug("[Sidecar] telemetry emit skipped: %s", e)
 
+    def _unload_cognition_model(self) -> None:
+        self.model = None
+        self.model_loaded = False
+        gc.collect()
+
+    def _load_cognition_model(self, path: str) -> tuple[bool, str]:
+        if Llama is None:
+            return False, "llama_cpp_unavailable"
+        if not path or not os.path.isfile(path):
+            return False, "model_not_found"
+
+        self._unload_cognition_model()
+        n_ctx = cognition_n_ctx_for_path(path)
+        self.active_chat_format = resolve_cognition_chat_format(path)
+        try:
+            logger.info(
+                "[Sidecar] Loading cognition model on CPU (%s) n_ctx=%d format=%s",
+                path,
+                n_ctx,
+                self.active_chat_format,
+            )
+            self.model = Llama(
+                model_path=path,
+                n_gpu_layers=0,
+                n_ctx=n_ctx,
+                verbose=False,
+            )
+            self.model_loaded = True
+            self.active_model_path = path
+            return True, "ok"
+        except Exception as e:
+            logger.error("[Sidecar] Load failed: %s", e)
+            self._unload_cognition_model()
+            self.active_model_path = ""
+            return False, str(e)
+
+    def _do_reload(self) -> None:
+        self._reloading = True
+        try:
+            path = resolve_active_cognition_path()
+            ok, msg = self._load_cognition_model(path)
+            if ok:
+                self._sync_telemetry_runtime()
+            else:
+                self._sync_telemetry_runtime(degraded_reason=msg)
+            self.model_reload_finished.emit(ok, msg)
+        finally:
+            self._reloading = False
+
     def run(self) -> None:
         if Llama is None:
             logger.error("[Sidecar] llama_cpp not available")
@@ -129,7 +200,7 @@ class SidecarLlmWorker(QThread):
             self._run_degraded_queue_loop()
             return
 
-        path = default_sidecar_model_path()
+        path = resolve_active_cognition_path()
         if not os.path.isfile(path):
             if not self._warned_missing:
                 logger.warning("[Sidecar] Model not found at %s — sidecar disabled", path)
@@ -138,21 +209,12 @@ class SidecarLlmWorker(QThread):
             self._run_degraded_queue_loop()
             return
 
-        try:
-            logger.info("[Sidecar] Loading Qwen2-0.5B on CPU (%s)", path)
-            self.model = Llama(
-                model_path=path,
-                n_gpu_layers=0,
-                n_ctx=2048,
-                verbose=False,
-            )
-            self.model_loaded = True
-            self._sync_telemetry_runtime()
-        except Exception as e:
-            logger.error("[Sidecar] Load failed: %s", e)
-            self._sync_telemetry_runtime(degraded_reason=f"load_failed:{e}")
+        ok, msg = self._load_cognition_model(path)
+        if not ok:
+            self._sync_telemetry_runtime(degraded_reason=msg)
             self._run_degraded_queue_loop()
             return
+        self._sync_telemetry_runtime()
 
         while not self._stop.is_set():
             try:
@@ -165,6 +227,15 @@ class SidecarLlmWorker(QThread):
             op = cmd.get("op")
             if op == "shutdown":
                 break
+            if op == "reload":
+                self._do_reload()
+                continue
+            if self._reloading:
+                self._fail_command(cmd, "reloading")
+                continue
+            if not self.model_loaded:
+                self._fail_command(cmd, "model_unavailable")
+                continue
             try:
                 if op == "title":
                     self._do_title(cmd)
@@ -197,8 +268,8 @@ class SidecarLlmWorker(QThread):
                     if ev is not None:
                         ev.set()
 
-        self.model = None
-        self.model_loaded = False
+        self._unload_cognition_model()
+        self.active_model_path = ""
 
     def _run_degraded_queue_loop(self) -> None:
         """Drain queue with failures so waiters never block forever."""
@@ -209,6 +280,9 @@ class SidecarLlmWorker(QThread):
                 continue
             if cmd.get("op") == "shutdown":
                 break
+            if cmd.get("op") == "reload":
+                self._do_reload()
+                continue
             self._fail_command(cmd, "model_unavailable")
 
     def _fail_command(self, cmd: dict, reason: str) -> None:
@@ -268,12 +342,13 @@ class SidecarLlmWorker(QThread):
     ) -> str:
         if not self.model:
             return ""
+        stops = cognition_stop_tokens(self.active_chat_format)
         try:
             output = self.model(
                 prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                stop=CHATML_STOPS,
+                stop=stops,
             )
             return (output.get("choices") or [{}])[0].get("text") or ""
         except Exception as e:
@@ -284,7 +359,9 @@ class SidecarLlmWorker(QThread):
         task: SidecarTask = cmd["task"]
         payload = cmd.get("payload") or {}
         params = task_inference_params(task)
-        prompt = build_prompt_for_task(task, **payload)
+        prompt = build_prompt_for_task(
+            task, chat_format=self.active_chat_format, **payload
+        )
         raw = self._complete_prompt(
             prompt,
             max_tokens=int(params.get("max_tokens", 128)),
@@ -319,7 +396,11 @@ class SidecarLlmWorker(QThread):
         result = parse_task_output(
             SidecarTask.title,
             self._complete_prompt(
-                build_prompt_for_task(SidecarTask.title, user_prompt=user_prompt),
+                build_prompt_for_task(
+                    SidecarTask.title,
+                    chat_format=self.active_chat_format,
+                    user_prompt=user_prompt,
+                ),
                 max_tokens=12,
                 temperature=0.2,
             ),
@@ -345,7 +426,11 @@ class SidecarLlmWorker(QThread):
         result = parse_task_output(
             SidecarTask.ingest_blurb,
             self._complete_prompt(
-                build_prompt_for_task(SidecarTask.ingest_blurb, sample_text=sample),
+                build_prompt_for_task(
+                    SidecarTask.ingest_blurb,
+                    chat_format=self.active_chat_format,
+                    sample_text=sample,
+                ),
                 max_tokens=48,
                 temperature=0.2,
             ),
