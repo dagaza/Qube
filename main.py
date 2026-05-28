@@ -1,5 +1,6 @@
 import sys
 import os
+from collections.abc import Callable
 from pathlib import Path
 os.environ["QUBE_LLM_DEBUG"] = "1"
 
@@ -20,6 +21,7 @@ from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
+from ui.splash_overlay import bootstrap_with_splash, start_phased_qube_build
 from core.database import DatabaseManager
 from core.app_settings import (
     ensure_engine_mode_initialized,
@@ -78,15 +80,40 @@ logger = logging.getLogger("Qube.Core")
 logger.info("Terminal logging initialized. Booting sequence started.")
 
 class Qube:
-    def __init__(self, enable_routing_debug_tool: bool = False):
-        # -- 1. Shared services ------------------------------------------
-        self.embedder = EmbeddingModel()
-        self.store    = DocumentStore()
+    def __init__(
+        self,
+        enable_routing_debug_tool: bool = False,
+        *,
+        embedder: EmbeddingModel | None = None,
+        startup_tick: Callable[[str], None] | None = None,
+    ):
+        tick = startup_tick or (lambda _msg: None)
+        self._boot_storage(tick, embedder)  # startup_tick optional; splash uses a fixed label
+        self._boot_core_workers(tick)
+        self._boot_memory_workers(tick)
+        self._boot_main_window(tick, enable_routing_debug_tool)
+        self._boot_connect_and_sync(tick)
+        self._boot_autoload_model(tick)
+        self._boot_runtime(tick)
+
+    def _boot_storage(
+        self,
+        tick: Callable[[str], None],
+        embedder: EmbeddingModel | None,
+    ) -> None:
+        if embedder is not None:
+            self.embedder = embedder
+        else:
+            tick("Loading embeddings…")
+            self.embedder = EmbeddingModel()
+        tick("Preparing storage…")
+        self.store = DocumentStore()
         self.db_manager = DatabaseManager()
-        
-        # -- 2. Background workers ---------------------------------------
+
+    def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
+        tick("Starting core services…")
         self.audio_worker = AudioListenerWorker()
-        self.stt_worker   = STTWorker()
+        self.stt_worker = STTWorker()
         self.native_llama_engine = NativeLlamaEngine()
         self.native_llama_engine.start()
 
@@ -101,12 +128,12 @@ class Qube:
             native_engine=self.native_llama_engine,
             sidecar_client=self.sidecar_client,
         )
-        self.tts_worker   = TTSWorker()
-        self.gpu_monitor  = GPUMonitor()
-
+        self.tts_worker = TTSWorker()
+        self.gpu_monitor = GPUMonitor()
         self.active_internet_worker = None
 
-        # --- 3. Instantiate the Async Brain (Memory v3) -----------------
+    def _boot_memory_workers(self, tick: Callable[[str], None]) -> None:
+        tick("Starting memory services…")
         self.enrichment_worker = EnrichmentWorker(
             extraction_llm=self.llm_worker,
             cognition_llm=self.sidecar_client,
@@ -115,16 +142,8 @@ class Qube:
             db=self.db_manager,
         )
         self.enrichment_worker.set_enabled(get_enable_memory_enrichment())
-
-        # --- 4. THE GOLDEN WIRE (Signal -> Slot) ------------------------
-        # response_finished wiring lives in _connect_signals (needs MainWindow + TTS sentinel).
-
-        # Start the memory worker thread
         self.enrichment_worker.start()
 
-        # Phase C: periodic memory self-reflection (6h cadence). Uses the
-        # CPU sidecar for labeling; never auto-deletes — only sets
-        # ``flagged_for_review`` for Memory Manager review.
         self.memory_reflection_worker = MemoryReflectionWorker(
             llm=self.sidecar_client,
             store=self.store,
@@ -142,11 +161,12 @@ class Qube:
         self.memory_consolidation_worker.set_enabled(get_enable_memory_consolidation())
         self.memory_consolidation_worker.start()
 
-        workers = {
+    def _workers_for_main_window(self) -> dict:
+        return {
             "audio": self.audio_worker,
-            "stt":   self.stt_worker,
-            "llm":   self.llm_worker,
-            "tts":   self.tts_worker,
+            "stt": self.stt_worker,
+            "llm": self.llm_worker,
+            "tts": self.tts_worker,
             "db": self.db_manager,
             "store": self.store,
             "embedder": self.embedder,
@@ -155,35 +175,42 @@ class Qube:
             "sidecar_worker": self.sidecar_worker,
         }
 
-        # -- 5. UI -------------------------------------------------------
+    def _boot_main_window(
+        self,
+        tick: Callable[[str], None],
+        enable_routing_debug_tool: bool,
+    ) -> None:
+        tick("Building interface…")
         self.window = MainWindow(
-            workers=workers,
+            workers=self._workers_for_main_window(),
             gpu_monitor=self.gpu_monitor,
             native_engine=self.native_llama_engine,
             enable_routing_debug_tool=enable_routing_debug_tool,
         )
 
-        # -- 6. Wire signals ---------------------------------------------
+    def _boot_connect_and_sync(self, tick: Callable[[str], None]) -> None:
+        tick("Connecting services…")
         self._connect_signals()
         self._wire_notification_adapters()
         self.sidecar_worker.ingest_blurb_ready.connect(self._on_ingest_blurb_ready)
         self._sync_databases()
 
+    def _boot_autoload_model(self, tick: Callable[[str], None]) -> None:
         if (
             get_engine_mode() == "internal"
             and get_auto_load_last_model_on_startup()
             and bool(get_internal_model_path())
         ):
+            tick("Loading language model…")
             self.llm_worker.refresh_native_model_from_settings()
 
-        # -- 7. Start continuous processes --------------------------------
+    def _boot_runtime(self, tick: Callable[[str], None]) -> None:
+        tick("Starting audio and voice…")
         self.audio_worker.start()
-
-        # Load the TTS Kokoro Model
         tts_path = os.path.join("models", "tts", "kokoro-v1.0.onnx")
         self.tts_worker.load_voice(tts_path)
-
-        self._pending_enrichment_context: dict = {}
+        tick("Ready")
+        self._pending_enrichment_context = {}
         self._pending_turn_session_id: str | None = None
 
     # ------------------------------------------------------------------ #
@@ -850,10 +877,32 @@ if __name__ == "__main__":
 
     # 4. Boot the Qube Assistant (first launch defaults to Internal Engine)
     ensure_engine_mode_initialized()
-    qube = Qube(enable_routing_debug_tool=bool(args.routing_debug))
-    qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
-    app.aboutToQuit.connect(qube._graceful_shutdown)
-    qube.show()
+
+    def _build_qube(
+        *,
+        embedder: EmbeddingModel,
+        on_phase,
+        on_complete,
+    ):
+        return start_phased_qube_build(
+            embedder=embedder,
+            enable_routing_debug_tool=bool(args.routing_debug),
+            on_phase=on_phase,
+            on_complete=on_complete,
+        )
+
+    def _on_qube_ready(qube: Qube) -> None:
+        qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
+        app.aboutToQuit.connect(qube._graceful_shutdown)
+        qube.show()
+
+    # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
+    app._startup_splash_controller = bootstrap_with_splash(
+        repo_root=repo_root,
+        build_app_fn=_build_qube,
+        on_ready=_on_qube_ready,
+    )
+    logger.info("Entering Qt event loop.")
     sys.exit(app.exec())
 
 
