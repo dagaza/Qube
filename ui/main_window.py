@@ -1148,7 +1148,7 @@ class MainWindow(QMainWindow):
 
         # 🔑 NEW: Cognitive/Hybrid Internet Mode
         desc_hybrid = "Hybrid Mode: Let Qube automatically decide when to search the internet based on context and cognitive routing."
-        hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row("Hybrid Internet Mode", desc_hybrid, checked=False)
+        hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row("Hybrid Internet Mode", desc_hybrid, checked=True)
         tools_layout.addLayout(hybrid_row)
         main_layout.addLayout(tools_layout)
         outer_layout.addWidget(self.tools_content)

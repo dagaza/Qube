@@ -25,7 +25,7 @@
     {
       "id": "llama-3.1-8b-instruct",
       "title": "Llama 3.1 8B Instruct - Uncensored",
-      "description": "Uncensored fine-tune of Meta Llama 3.1 8B Instruct. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
+      "description": "Uncensored fine-tune of Meta Llama 3.1 8B Instruct. Uncensored models can be used for creative writing and other purposes, but may hallucinate more often or behave in unexpected ways.Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
       "publisher": "meta-llama",
       "gguf_repo": "bartowski/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF"
     },
@@ -37,6 +37,13 @@
       "gguf_repo": "bartowski/ibm-granite_granite-4.1-8b-GGUF"
     },
     {
+      "id": "Phi-3-medium-128k-instruct-imatrix-GGUF",
+      "title": "Microsoft Phi-3 Medium 128K Instruct (imatrix)",
+      "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",
+      "publisher": "microsoft",
+      "gguf_repo": "hermes42/Phi-3-medium-128k-instruct-imatrix-GGUF"
+    },
+    {
       "id": "gpt-oss-20b",
       "title": "GPT-OSS 20B",
       "description": "OpenAI's open-weights MoE model (community GGUF). Extreme speed.",
@@ -45,10 +52,10 @@
     },
     {
       "id": "gpt-oss-20b-uncensored",
-      "title": "GPT-OSS 20B Uncensored",
-      "description": "Uncensored fine-tune of OpenAI's open-weights MoE model. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
+      "title": "GPT-OSS 20B Moderate Uncensored",
+      "description": "Moderately uncensored fine-tune of OpenAI's open-weights MoE model. Uncensored models can be used for creative writing and other purposes, but may hallucinate more often or behave in unexpected ways. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
       "publisher": "openai",
-      "gguf_repo": "DavidAU/OpenAi-GPT-oss-20b-HERETIC-uncensored-NEO-Imatrix-gguf"
+      "gguf_repo": "DavidAU/OpenAi-GPT-oss-20b-MODERATE-uncensored-NEO-Imatrix-gguf"
     },
     {
       "id": "mistral-small-24b-instruct",
@@ -83,6 +90,13 @@
       "gguf_repo": "unsloth/GLM-4.7-Flash-GGUF"
     },
     {
+      "id": "qwen3-128k-30B-a3b-neo-imatrix",
+      "title": "Qwen 3 128K 30B A3B Neo (imatrix)",
+      "description": "Qwen 3.1 128K 30B A3B Neo (imatrix) (community GGUF).",
+      "publisher": "qwen",
+      "gguf_repo": "DavidAU/Qwen3-128k-30B-A3B-NEO-MAX-Imatrix-gguf"
+    },
+    {
       "id": "gemma-4-31b-it",
       "title": "Gemma 4 31B Instruct",
       "description": "Google's flagship dense Gemma 4 model (community GGUF).",
@@ -92,7 +106,7 @@
     {
       "id": "gemma-4-31b-jang-uncensored",
       "title": "Gemma 4 31B Uncensored (JANG)",
-      "description": "Abliterated version of Gemma 4 31B. Corporate guardrails removed for completely unrestricted creative writing.",
+      "description": "Abliterated version of Gemma 4 31B. Corporate guardrails removed for completely unrestricted creative writing. Uncensored models can be used for creative writing and other purposes, but may hallucinate more often or behave in unexpected ways.",
       "publisher": "google",
       "gguf_repo": "douyamv/Gemma-4-31B-JANG_4M-CRACK-GGUF"
     },
