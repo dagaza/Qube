@@ -194,6 +194,42 @@ class TestAppSettingsWithJsonStore(unittest.TestCase):
         self.assertFalse(app_settings.get_onboarding_local_llm_tour_completed())
         self.assertFalse(app_settings.get_model_manager_hardware_suggestions())
 
+    def test_memory_promotion_persists_across_reload(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        app_settings.set_enable_memory_promotion(True)
+        data = json.loads(self.user_path.read_text(encoding="utf-8"))
+        self.assertTrue(data.get("qube.memory.promotion_enabled"))
+        reset_settings_store_for_tests()
+        self.assertTrue(app_settings.get_enable_memory_promotion())
+
+    def test_memory_consolidation_off_persists_across_reload(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        app_settings.set_enable_memory_consolidation(False)
+        data = json.loads(self.user_path.read_text(encoding="utf-8"))
+        self.assertFalse(data.get("qube.memory.consolidation_enabled"))
+        reset_settings_store_for_tests()
+        self.assertFalse(app_settings.get_enable_memory_consolidation())
+
+    def test_memory_promotion_preset_persists_across_reload(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        app_settings.set_memory_promotion_preset("aggressive")
+        data = json.loads(self.user_path.read_text(encoding="utf-8"))
+        self.assertEqual(data.get("qube.memory.promotion_preset"), "aggressive")
+        reset_settings_store_for_tests()
+        self.assertEqual(app_settings.get_memory_promotion_preset(), "aggressive")
+
+    def test_memory_promotion_acknowledged_persists_across_reload(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        app_settings.set_memory_promotion_acknowledged(True)
+        data = json.loads(self.user_path.read_text(encoding="utf-8"))
+        self.assertTrue(data.get("qube.memory.promotion_acknowledged"))
+        reset_settings_store_for_tests()
+        self.assertTrue(app_settings.get_memory_promotion_acknowledged())
+
 
 if __name__ == "__main__":
     unittest.main()

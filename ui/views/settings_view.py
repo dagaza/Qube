@@ -25,6 +25,8 @@ from core.app_settings import (
     set_enable_memory_enrichment,
     get_enable_memory_promotion,
     set_enable_memory_promotion,
+    get_memory_promotion_acknowledged,
+    set_memory_promotion_acknowledged,
     get_enable_memory_consolidation,
     set_enable_memory_consolidation,
     get_memory_promotion_preset,
@@ -688,11 +690,13 @@ class SettingsView(QWidget):
         promo_preset_row = QWidget()
         promo_preset_layout = QHBoxLayout(promo_preset_row)
         promo_preset_layout.setContentsMargins(0, 0, 0, 0)
-        promo_preset_lbl = QLabel("Promotion preset")
-        promo_preset_lbl.setToolTip(self.memory_promotion_preset_selector.toolTip())
-        promo_preset_layout.addWidget(promo_preset_lbl)
+        self._promo_preset_lbl = QLabel("Promotion preset")
+        self._promo_preset_lbl.setToolTip(self.memory_promotion_preset_selector.toolTip())
+        promo_preset_layout.addWidget(self._promo_preset_lbl)
         promo_preset_layout.addWidget(self.memory_promotion_preset_selector)
         promo_preset_layout.addStretch(1)
+
+        self._sync_memory_promotion_controls_for_enrichment()
 
         perf_form.addRow("", mem_row)
         perf_form.addRow("", promo_row)
@@ -1932,13 +1936,59 @@ class SettingsView(QWidget):
         self._refresh_trigger_list()
         self._refresh_llm_rag_triggers()
 
+    def _sync_memory_promotion_controls_for_enrichment(self) -> None:
+        """Enable promotion controls only when enrichment is on; worker uses effective AND."""
+        enrichment_on = get_enable_memory_enrichment()
+        for widget in (
+            getattr(self, "memory_promotion_toggle", None),
+            getattr(self, "mem_promotion_label", None),
+            getattr(self, "memory_promotion_preset_selector", None),
+            getattr(self, "_promo_preset_lbl", None),
+        ):
+            if widget is not None:
+                widget.setEnabled(enrichment_on)
+        if hasattr(self, "memory_promotion_toggle"):
+            self.memory_promotion_changed.emit(
+                enrichment_on and get_enable_memory_promotion()
+            )
+
     def _on_memory_enrichment_toggled(self, checked: bool):
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
+        self._sync_memory_promotion_controls_for_enrichment()
+
+    def _confirm_memory_promotion_enable(self) -> bool:
+        """One-time PrestigeDialog before first enable; returns True if user confirms."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Enable memory promotion?",
+            "When this is on, Qube may upgrade facts you rely on often from "
+            "context or knowledge into long-term preferences — the kind of "
+            "thing Qube should remember about you without being asked each time.\n\n"
+            "Preferences are weighted more strongly in future recall. Runs quietly "
+            "in the background (about every 6 hours). Qube never deletes memories "
+            "on its own.\n\n"
+            "Review promoted rows in Memory Manager. Use the Conservative preset "
+            "below if you want stricter gates before anything is upgraded.\n\n"
+            "Requires Memory Enrichment & Reflection to be enabled.",
+            is_dark=is_dark,
+            dialog_width=480,
+        )
+        return bool(dlg.exec())
 
     def _on_memory_promotion_toggled(self, checked: bool):
+        if checked and not get_memory_promotion_acknowledged():
+            if not self._confirm_memory_promotion_enable():
+                self.memory_promotion_toggle.blockSignals(True)
+                self.memory_promotion_toggle.setChecked(False)
+                self.memory_promotion_toggle.blockSignals(False)
+                return
+            set_memory_promotion_acknowledged(True)
         set_enable_memory_promotion(checked)
-        self.memory_promotion_changed.emit(checked)
+        self.memory_promotion_changed.emit(
+            get_enable_memory_enrichment() and checked
+        )
 
     def _build_profile_units_menu(self) -> None:
         if not hasattr(self, "profile_units_selector"):
@@ -2494,6 +2544,8 @@ class SettingsView(QWidget):
             }
             preset = get_memory_promotion_preset()
             self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
+        if hasattr(self, "memory_promotion_toggle"):
+            self._sync_memory_promotion_controls_for_enrichment()
         if hasattr(self, "profile_units_selector"):
             self._sync_profile_units_selector()
 

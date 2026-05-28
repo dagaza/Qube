@@ -133,7 +133,9 @@ class Qube:
         self.memory_reflection_worker.start()
 
         self.memory_promotion_worker = MemoryPromotionWorker(store=self.store)
-        self.memory_promotion_worker.set_enabled(get_enable_memory_promotion())
+        self.memory_promotion_worker.set_enabled(
+            get_enable_memory_enrichment() and get_enable_memory_promotion()
+        )
         self.memory_promotion_worker.start()
 
         self.memory_consolidation_worker = MemoryConsolidationWorker(store=self.store)

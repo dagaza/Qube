@@ -20,6 +20,7 @@ _SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\
 KEY_MEMORY_ENRICHMENT = "qube.memory.enrichment"
 KEY_MEMORY_V7_SALVAGE = "qube.memory.v7_salvage_enabled"
 KEY_MEMORY_PROMOTION = "qube.memory.promotion_enabled"
+KEY_MEMORY_PROMOTION_ACKNOWLEDGED = "qube.memory.promotion_acknowledged"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
 KEY_DISCOURSE_GROUNDING = "qube.discourse.grounding_enabled"
@@ -121,6 +122,15 @@ def get_enable_memory_promotion() -> bool:
 
 def set_enable_memory_promotion(enabled: bool) -> None:
     _store().set(KEY_MEMORY_PROMOTION, enabled)
+
+
+def get_memory_promotion_acknowledged() -> bool:
+    """True after the user confirmed the one-time memory promotion enable dialog."""
+    return bool(_store().get(KEY_MEMORY_PROMOTION_ACKNOWLEDGED, False))
+
+
+def set_memory_promotion_acknowledged(acknowledged: bool) -> None:
+    _store().set(KEY_MEMORY_PROMOTION_ACKNOWLEDGED, acknowledged)
 
 
 def get_memory_promotion_preset() -> str:

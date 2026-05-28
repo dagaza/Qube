@@ -10,6 +10,27 @@
     "default": true,
     "description": "When enabled, extracts memories from chat, summarises sessions, and runs periodic memory reflection (higher RAM/LLM use). Retrieval of existing memories is unaffected when off."
   },
+  "qube.memory.promotion_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, periodically promotes well-used context/knowledge memories to the preference tier (requires memory enrichment)."
+  },
+  "qube.memory.promotion_acknowledged": {
+    "type": "boolean",
+    "default": false,
+    "description": "True after the user accepted the one-time confirmation when enabling memory promotion."
+  },
+  "qube.memory.promotion_preset": {
+    "type": "string",
+    "enum": ["conservative", "standard", "aggressive"],
+    "default": "standard",
+    "description": "How cautious Qube is before promoting a memory (conservative, standard, or aggressive)."
+  },
+  "qube.memory.consolidation_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, stages cross-day memory review hints in Memory Manager without auto-promoting or deleting."
+  },
   "qube.discourse.grounding_enabled": {
     "type": "boolean",
     "default": true,
