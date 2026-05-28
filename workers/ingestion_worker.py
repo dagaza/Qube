@@ -34,7 +34,13 @@ class IngestionWorker(QThread):
         self.embedder = embedder
         self.store = store
         self.db = db_manager
-        self.folder_id = folder_id
+        resolved = folder_id or db_manager.get_main_library_folder_id()
+        if not db_manager.library_folder_allows_user_ingest(resolved):
+            logger.warning(
+                "Ingestion target folder does not allow user uploads; using Main."
+            )
+            resolved = db_manager.get_main_library_folder_id()
+        self.folder_id = resolved
         self.sidecar_worker = sidecar_worker
 
     def run(self):

@@ -234,6 +234,7 @@ class LibraryView(QWidget):
         self.doc_list.itemSelectionChanged.connect(self._update_row_colors)
 
         self._active_folder_id = self.db.get_main_library_folder_id()
+        self._sync_ingest_button_for_active_folder()
         self._folder_controller = SidebarFolderListController(
             scope="library",
             list_widget=self.doc_list,
@@ -758,6 +759,19 @@ class LibraryView(QWidget):
 
     def _set_active_folder_id(self, folder_id: str) -> None:
         self._active_folder_id = folder_id
+        self._sync_ingest_button_for_active_folder()
+
+    def _sync_ingest_button_for_active_folder(self) -> None:
+        folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
+        allowed = self.db.library_folder_allows_user_ingest(folder_id)
+        self.add_btn.setEnabled(allowed)
+        if allowed:
+            self.add_btn.setToolTip("Ingest New Document")
+        else:
+            self.add_btn.setToolTip(
+                "The Qube folder is reserved for app-generated knowledge. "
+                "Select Main or another folder to add documents."
+            )
 
     def _purge_deleted_library_files(self, filenames: list[str]) -> None:
         if not self.store:
@@ -991,6 +1005,18 @@ class LibraryView(QWidget):
 
     def _browse_for_document(self):
         """Opens a file dialog, checks for duplicates, and handles overwrites."""
+        folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
+        if not self.db.library_folder_allows_user_ingest(folder_id):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Cannot Add Here",
+                "The Qube folder is reserved for knowledge Qube creates automatically. "
+                "Select the Main folder or another folder to add your own documents.",
+                is_dark,
+            ).exec()
+            return
+
         files, _ = QFileDialog.getOpenFileNames(
             self, "Select Documents to Ingest", "", "Documents (*.txt *.md *.pdf *.epub)"
         )

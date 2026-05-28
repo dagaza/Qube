@@ -27,11 +27,19 @@ class SidebarFolderTests(unittest.TestCase):
         conv = self.db.list_conversation_folders()
         lib = self.db.list_library_folders()
         self.assertEqual(len(conv), 1)
-        self.assertEqual(len(lib), 1)
+        self.assertEqual(len(lib), 2)
         self.assertEqual(conv[0]["name"], "Main")
-        self.assertEqual(lib[0]["name"], "Main")
+        lib_names = {f["name"] for f in lib}
+        self.assertEqual(lib_names, {"Main", "Qube"})
         self.assertTrue(conv[0]["is_system"])
-        self.assertTrue(lib[0]["is_system"])
+        for folder in lib:
+            self.assertTrue(folder["is_system"])
+        main = next(f for f in lib if f["name"] == "Main")
+        qube = next(f for f in lib if f["name"] == "Qube")
+        self.assertTrue(main["allows_user_ingest"])
+        self.assertFalse(qube["allows_user_ingest"])
+        self.assertEqual(main["folder_key"], "main")
+        self.assertEqual(qube["folder_key"], "qube")
 
     def test_backfill_existing_sessions_and_documents(self) -> None:
         main_conv = self.db.get_main_conversation_folder_id()
@@ -110,9 +118,40 @@ class SidebarFolderTests(unittest.TestCase):
         self.assertFalse(self.db.delete_conversation_folder(main_id))
 
         lib_main = self.db.get_main_library_folder_id()
+        lib_qube = self.db.get_qube_library_folder_id()
         self.db.add_document_metadata("keep.pdf", 1.0, 1)
         ok, _ = self.db.delete_library_folder(lib_main)
         self.assertFalse(ok)
+        ok, _ = self.db.delete_library_folder(lib_qube)
+        self.assertFalse(ok)
+
+    def test_qube_folder_blocks_user_ingest_and_moves(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        qube_id = self.db.get_qube_library_folder_id()
+        self.assertFalse(self.db.library_folder_allows_user_ingest(qube_id))
+        self.assertTrue(self.db.library_folder_allows_user_ingest(main_id))
+
+        self.db.add_document_metadata("user.txt", 1.0, 1, folder_id=main_id)
+        self.assertFalse(self.db.move_document_to_folder("user.txt", qube_id))
+        self.assertIsNone(self.db.create_library_folder("Qube"))
+        self.assertFalse(self.db.rename_library_folder(qube_id, "Renamed"))
+
+    def test_qube_managed_documents_migrate_from_main(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        qube_id = self.db.get_qube_library_folder_id()
+        self.db.add_document_metadata("qube/preferences.md", 1.0, 2, folder_id=main_id)
+        self.db.add_document_metadata("notes.pdf", 1.0, 1, folder_id=main_id)
+
+        with self.db._get_connection() as conn:
+            self.db._migrate_qube_managed_documents_to_qube_folder(conn, main_id, qube_id)
+            conn.commit()
+
+        _, grouped = self.db.get_documents_for_sidebar_by_folder()
+        qube_names = {d["filename"] for d in grouped[qube_id]}
+        main_names = {d["filename"] for d in grouped[main_id]}
+        self.assertIn("qube/preferences.md", qube_names)
+        self.assertNotIn("qube/preferences.md", main_names)
+        self.assertIn("notes.pdf", main_names)
 
     def test_cascade_delete_conversation_folder(self) -> None:
         folder_id = self.db.create_conversation_folder("Temp")

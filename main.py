@@ -554,10 +554,18 @@ class Qube:
         if missing_from_ui:
             logger.warning(f"Found {len(missing_from_ui)} ghost files in LanceDB. Healing UI registry...")
             for source in missing_from_ui:
+                from core.library_folder_policy import is_qube_managed_document_filename
+
+                if is_qube_managed_document_filename(source):
+                    folder_id = self.db_manager.get_qube_library_folder_id()
+                else:
+                    folder_id = self.db_manager.get_main_library_folder_id()
                 # Add a dummy record to SQLite so the UI can see it and delete it if needed
                 self.db_manager.add_document_metadata(
-                    source, file_size_kb=0, chunk_count=0,
-                    folder_id=self.db_manager.get_main_library_folder_id(),
+                    source,
+                    file_size_kb=0,
+                    chunk_count=0,
+                    folder_id=folder_id,
                 )
                 
             logger.info("Database synchronization complete.")

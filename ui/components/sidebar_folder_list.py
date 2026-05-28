@@ -176,7 +176,11 @@ class SidebarFolderListController:
         if self.sort_mode == "name":
             return sorted(
                 folders,
-                key=lambda f: (not f.get("is_system"), str(f.get("name") or "").lower()),
+                key=lambda f: (
+                    not f.get("is_system"),
+                    str(f.get("folder_key") or f.get("name") or "").lower(),
+                    str(f.get("name") or "").lower(),
+                ),
             )
         return sorted(
             folders,
@@ -298,6 +302,17 @@ class SidebarFolderListController:
         folder_font = title_lbl.font()
         folder_font.setBold(True)
         title_lbl.setFont(folder_font)
+        if self.scope == "library" and folder.get("is_system"):
+            if folder.get("folder_key") == "qube" or (
+                not folder.get("allows_user_ingest", True)
+                and folder.get("name") == "Qube"
+            ):
+                title_lbl.setToolTip(
+                    "Reserved for knowledge Qube generates. You can delete items "
+                    "here, but cannot add files manually."
+                )
+            elif folder.get("folder_key") == "main" or folder.get("name") == "Main":
+                title_lbl.setToolTip("Default folder for documents you add to the library.")
 
         chevron_btn = QPushButton()
         chevron_btn.setObjectName("HistoryFolderChevronBtn")
@@ -335,14 +350,15 @@ class SidebarFolderListController:
         self.apply_menu_theme(menu, is_dark)
         self.register_menu(menu)
 
-        rename_action = menu.addAction(
-            qta.icon("fa5s.edit", color="#89b4fa"), "Rename Folder"
-        )
-        rename_action.triggered.connect(
-            lambda _checked=False, f_id=folder_id, old=folder["name"]: self.prompt_rename_folder(
-                f_id, old
+        if not folder.get("is_system"):
+            rename_action = menu.addAction(
+                qta.icon("fa5s.edit", color="#89b4fa"), "Rename Folder"
             )
-        )
+            rename_action.triggered.connect(
+                lambda _checked=False, f_id=folder_id, old=folder["name"]: self.prompt_rename_folder(
+                    f_id, old
+                )
+            )
         if self.on_export_folder and self.scope == "conversation":
             export_action = menu.addAction(
                 qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
@@ -441,7 +457,12 @@ class SidebarFolderListController:
         self.apply_menu_theme(sub, self.get_is_dark())
         self.register_menu(sub)
         added = False
-        for folder in self._list_folders():
+        folders = self._list_folders()
+        if self.scope == "library":
+            folders = [
+                f for f in folders if f.get("allows_user_ingest", True)
+            ]
+        for folder in folders:
             fid = folder["id"]
             if fid == current_folder_id:
                 continue

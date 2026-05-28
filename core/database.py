@@ -5,9 +5,19 @@ from datetime import datetime
 from pathlib import Path
 import logging
 
+from core.library_folder_policy import (
+    FOLDER_KEY_MAIN,
+    FOLDER_KEY_QUBE,
+    MAIN_FOLDER_DISPLAY_NAME,
+    QUBE_FOLDER_DISPLAY_NAME,
+    RESERVED_LIBRARY_FOLDER_NAMES,
+    is_qube_managed_document_filename,
+)
+
 logger = logging.getLogger("Qube.Database")
 
-_MAIN_FOLDER_NAME = "Main"
+_MAIN_FOLDER_NAME = MAIN_FOLDER_DISPLAY_NAME
+_QUBE_FOLDER_NAME = QUBE_FOLDER_DISPLAY_NAME
 
 
 class DatabaseManager:
@@ -143,6 +153,8 @@ class DatabaseManager:
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
                     "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
                     "ALTER TABLE documents ADD COLUMN summary_blurb TEXT",
+                    "ALTER TABLE library_folders ADD COLUMN folder_key TEXT",
+                    "ALTER TABLE library_folders ADD COLUMN allows_user_ingest INTEGER NOT NULL DEFAULT 1",
                 ):
                     try:
                         cursor.execute(alter_sql)
@@ -155,14 +167,12 @@ class DatabaseManager:
             logger.error(f"Failed to initialize database: {e}")
 
     def _ensure_main_folders_and_backfill(self, conn: sqlite3.Connection) -> None:
-        """Seed Main folders when missing and backfill NULL folder_id on legacy rows."""
+        """Seed system folders when missing and backfill NULL folder_id on legacy rows."""
         cursor = conn.cursor()
         conv_main = self._ensure_main_folder_row(
             conn, "conversation_folders", _MAIN_FOLDER_NAME
         )
-        lib_main = self._ensure_main_folder_row(
-            conn, "library_folders", _MAIN_FOLDER_NAME
-        )
+        lib_main, lib_qube = self._ensure_library_system_folders(conn)
         cursor.execute(
             "UPDATE sessions SET folder_id = ? WHERE folder_id IS NULL",
             (conv_main,),
@@ -171,12 +181,20 @@ class DatabaseManager:
             "UPDATE documents SET folder_id = ? WHERE folder_id IS NULL",
             (lib_main,),
         )
+        self._migrate_qube_managed_documents_to_qube_folder(conn, lib_main, lib_qube)
         conn.commit()
 
     def _ensure_main_folder_row(
         self, conn: sqlite3.Connection, table: str, name: str
     ) -> str:
         cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT id FROM {table} WHERE is_system = 1 AND name = ? LIMIT 1",
+            (name,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row[0]
         cursor.execute(f"SELECT id FROM {table} WHERE is_system = 1 LIMIT 1")
         row = cursor.fetchone()
         if row:
@@ -200,7 +218,141 @@ class DatabaseManager:
         fallback = cursor.fetchone()
         return fallback[0] if fallback else str(uuid.uuid4())
 
+    def _ensure_library_system_folders(
+        self, conn: sqlite3.Connection
+    ) -> tuple[str, str]:
+        """Ensure Main + Qube library folders; return (main_id, qube_id)."""
+        main_id = self._ensure_library_folder_by_key(
+            conn,
+            folder_key=FOLDER_KEY_MAIN,
+            name=_MAIN_FOLDER_NAME,
+            sort_order=0,
+            allows_user_ingest=True,
+        )
+        qube_id = self._ensure_library_folder_by_key(
+            conn,
+            folder_key=FOLDER_KEY_QUBE,
+            name=_QUBE_FOLDER_NAME,
+            sort_order=1,
+            allows_user_ingest=False,
+        )
+        return main_id, qube_id
+
+    def _ensure_library_folder_by_key(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        folder_key: str,
+        name: str,
+        sort_order: int,
+        allows_user_ingest: bool,
+    ) -> str:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM library_folders WHERE folder_key = ? LIMIT 1",
+            (folder_key,),
+        )
+        row = cursor.fetchone()
+        if row:
+            folder_id = row[0]
+            cursor.execute(
+                """
+                UPDATE library_folders
+                SET name = ?, is_system = 1, sort_order = ?, allows_user_ingest = ?
+                WHERE id = ?
+                """,
+                (name, sort_order, 1 if allows_user_ingest else 0, folder_id),
+            )
+            return folder_id
+        cursor.execute(
+            "SELECT id FROM library_folders WHERE is_system = 1 AND name = ? LIMIT 1",
+            (name,),
+        )
+        row = cursor.fetchone()
+        if row:
+            folder_id = row[0]
+            cursor.execute(
+                """
+                UPDATE library_folders
+                SET folder_key = ?, is_system = 1, sort_order = ?, allows_user_ingest = ?
+                WHERE id = ?
+                """,
+                (folder_key, sort_order, 1 if allows_user_ingest else 0, folder_id),
+            )
+            return folder_id
+        folder_id = str(uuid.uuid4())
+        cursor.execute(
+            """
+            INSERT INTO library_folders
+                (id, name, sort_order, is_collapsed, is_system, folder_key, allows_user_ingest)
+            VALUES (?, ?, ?, 0, 1, ?, ?)
+            """,
+            (
+                folder_id,
+                name,
+                sort_order,
+                folder_key,
+                1 if allows_user_ingest else 0,
+            ),
+        )
+        return folder_id
+
+    def _migrate_qube_managed_documents_to_qube_folder(
+        self,
+        conn: sqlite3.Connection,
+        main_id: str,
+        qube_id: str,
+    ) -> None:
+        cursor = conn.execute("SELECT filename, folder_id FROM documents")
+        for row in cursor.fetchall():
+            if not is_qube_managed_document_filename(row["filename"]):
+                continue
+            if row["folder_id"] != main_id:
+                continue
+            conn.execute(
+                "UPDATE documents SET folder_id = ? WHERE filename = ?",
+                (qube_id, row["filename"]),
+            )
+
+    def _get_library_folder_id_by_key(self, folder_key: str) -> str:
+        with self._get_connection() as conn:
+            folder_id = self._ensure_library_folder_by_key(
+                conn,
+                folder_key=folder_key,
+                name=_MAIN_FOLDER_NAME
+                if folder_key == FOLDER_KEY_MAIN
+                else _QUBE_FOLDER_NAME,
+                sort_order=0 if folder_key == FOLDER_KEY_MAIN else 1,
+                allows_user_ingest=folder_key == FOLDER_KEY_MAIN,
+            )
+            conn.commit()
+            return folder_id
+
+    def get_library_folder(self, folder_id: str) -> dict | None:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, name, sort_order, is_collapsed, is_system, created_at,
+                       folder_key, allows_user_ingest
+                FROM library_folders WHERE id = ?
+                """,
+                (folder_id,),
+            ).fetchone()
+            return self._folder_row_to_dict(row) if row else None
+
+    def library_folder_allows_user_ingest(self, folder_id: str) -> bool:
+        folder = self.get_library_folder(folder_id)
+        if folder is None:
+            return True
+        return bool(folder.get("allows_user_ingest", True))
+
     def _folder_row_to_dict(self, row: sqlite3.Row) -> dict:
+        keys = row.keys()
+        allows_user_ingest = True
+        if "allows_user_ingest" in keys:
+            allows_user_ingest = bool(row["allows_user_ingest"])
+        elif row["is_system"] and row["name"] == _QUBE_FOLDER_NAME:
+            allows_user_ingest = False
         return {
             "id": row["id"],
             "name": row["name"],
@@ -208,6 +360,8 @@ class DatabaseManager:
             "is_collapsed": bool(row["is_collapsed"]),
             "is_system": bool(row["is_system"]),
             "created_at": row["created_at"],
+            "folder_key": row["folder_key"] if "folder_key" in keys else None,
+            "allows_user_ingest": allows_user_ingest,
         }
 
     def get_main_conversation_folder_id(self) -> str:
@@ -217,10 +371,10 @@ class DatabaseManager:
             )
 
     def get_main_library_folder_id(self) -> str:
-        with self._get_connection() as conn:
-            return self._ensure_main_folder_row(
-                conn, "library_folders", _MAIN_FOLDER_NAME
-            )
+        return self._get_library_folder_id_by_key(FOLDER_KEY_MAIN)
+
+    def get_qube_library_folder_id(self) -> str:
+        return self._get_library_folder_id_by_key(FOLDER_KEY_QUBE)
 
     def list_conversation_folders(self) -> list[dict]:
         with self._get_connection() as conn:
@@ -237,12 +391,21 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                SELECT id, name, sort_order, is_collapsed, is_system, created_at,
+                       folder_key, allows_user_ingest
                 FROM library_folders
                 ORDER BY sort_order ASC, created_at ASC
                 """
             )
             return [self._folder_row_to_dict(row) for row in cursor.fetchall()]
+
+    def list_user_ingest_library_folders(self) -> list[dict]:
+        """Library folders the user may target for manual ingestion or moves."""
+        return [
+            f
+            for f in self.list_library_folders()
+            if f.get("allows_user_ingest", True)
+        ]
 
     def create_conversation_folder(self, name: str) -> str | None:
         clean = (name or "").strip()
@@ -268,6 +431,8 @@ class DatabaseManager:
     def create_library_folder(self, name: str) -> str | None:
         clean = (name or "").strip()
         if not clean:
+            return None
+        if clean.casefold() in RESERVED_LIBRARY_FOLDER_NAMES:
             return None
         folder_id = str(uuid.uuid4())
         with self._get_connection() as conn:
@@ -306,8 +471,16 @@ class DatabaseManager:
         clean = (name or "").strip()
         if not clean:
             return False
+        if clean.casefold() in RESERVED_LIBRARY_FOLDER_NAMES:
+            return False
         try:
             with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT is_system FROM library_folders WHERE id = ?",
+                    (folder_id,),
+                ).fetchone()
+                if row is None or row["is_system"]:
+                    return False
                 conn.execute(
                     "UPDATE library_folders SET name = ? WHERE id = ?",
                     (clean, folder_id),
@@ -416,6 +589,8 @@ class DatabaseManager:
             return False
 
     def move_document_to_folder(self, filename: str, folder_id: str) -> bool:
+        if not self.library_folder_allows_user_ingest(folder_id):
+            return False
         try:
             with self._get_connection() as conn:
                 exists = conn.execute(
@@ -468,14 +643,13 @@ class DatabaseManager:
 
     def get_documents_for_sidebar_by_folder(self) -> tuple[list[dict], dict[str, list[dict]]]:
         with self._get_connection() as conn:
-            main_id = self._ensure_main_folder_row(
-                conn, "library_folders", _MAIN_FOLDER_NAME
-            )
+            main_id, _qube_id = self._ensure_library_system_folders(conn)
             folders = [
                 self._folder_row_to_dict(row)
                 for row in conn.execute(
                     """
-                    SELECT id, name, sort_order, is_collapsed, is_system, created_at
+                    SELECT id, name, sort_order, is_collapsed, is_system, created_at,
+                           folder_key, allows_user_ingest
                     FROM library_folders
                     ORDER BY sort_order ASC, created_at ASC
                     """
@@ -689,7 +863,12 @@ class DatabaseManager:
         summary_blurb: str | None = None,
     ):
         doc_id = str(uuid.uuid4())
-        fid = folder_id or self.get_main_library_folder_id()
+        if folder_id:
+            fid = folder_id
+        elif is_qube_managed_document_filename(filename):
+            fid = self.get_qube_library_folder_id()
+        else:
+            fid = self.get_main_library_folder_id()
         with self._get_connection() as conn:
             conn.execute(
                 """
