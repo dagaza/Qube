@@ -889,7 +889,7 @@ class MainWindow(QMainWindow):
             get_auto_load_last_model_on_startup()
         )
         self.toolbar_auto_load_model_toggle.setToolTip(_auto_load_model_tip)
-        auto_load_lbl = QLabel("Load on startup")
+        auto_load_lbl = QLabel("Load model on startup")
         auto_load_lbl.setProperty("class", "ToolsPaneControl")
         auto_load_lbl.setToolTip("")
         auto_load_info = QLabel()
