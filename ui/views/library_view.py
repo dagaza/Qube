@@ -32,6 +32,7 @@ from pathlib import Path
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
+from core.composer_attachments import validate_file_token
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
 from ui.components.sidebar_folder_list import (
@@ -82,6 +83,9 @@ ALIGN_JUSTIFY = "align_justify"
 
 # QLabel word-wrap breaks at spaces only; long underscore_joined filenames stay one token.
 _PREVIEW_TITLE_SOFT_BREAK = "\u200b"
+_CHAT_WITH_DOC_FAB_SIZE = 52
+_CHAT_WITH_DOC_FAB_MARGIN = 24
+_BRAND_PURPLE = "#8b5cf6"
 
 
 def _filename_title_for_label(text: str) -> str:
@@ -171,6 +175,9 @@ class LibraryView(QWidget):
 
         layout.addWidget(self.preview_stage, stretch=1)
 
+        self._setup_chat_with_doc_fab()
+        self.preview_stage.installEventFilter(self)
+
         # Forces the button to load with the default Dark Mode purple on startup
         self.refresh_button_themes(is_dark=True)
 
@@ -256,6 +263,77 @@ class LibraryView(QWidget):
         layout.addWidget(self.doc_list)
 
         return frame
+
+    def _setup_chat_with_doc_fab(self) -> None:
+        """Floating action button: chat with the currently open library document."""
+        self._chat_with_doc_btn = QPushButton(self.preview_stage)
+        self._chat_with_doc_btn.setObjectName("LibraryChatWithDocFab")
+        self._chat_with_doc_btn.setFixedSize(_CHAT_WITH_DOC_FAB_SIZE, _CHAT_WITH_DOC_FAB_SIZE)
+        self._chat_with_doc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._chat_with_doc_btn.setToolTip("Chat with document")
+        self._chat_with_doc_btn.setIcon(
+            qta.icon("fa5s.comment-alt", color="#f8fafc")
+        )
+        self._chat_with_doc_btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX + 2, _CHAT_UTILITY_ICON_PX + 2))
+        self._chat_with_doc_btn.setStyleSheet(
+            f"""
+            QPushButton#LibraryChatWithDocFab {{
+                background-color: {_BRAND_PURPLE};
+                border: none;
+                border-radius: {_CHAT_WITH_DOC_FAB_SIZE // 2}px;
+            }}
+            QPushButton#LibraryChatWithDocFab:hover {{
+                background-color: #7c3aed;
+            }}
+            QPushButton#LibraryChatWithDocFab:pressed {{
+                background-color: #6d28d9;
+            }}
+        """
+        )
+        self._chat_with_doc_btn.clicked.connect(self._on_chat_with_document_clicked)
+        self._chat_with_doc_btn.hide()
+        self._chat_with_doc_btn.raise_()
+
+    def _reposition_chat_with_doc_fab(self) -> None:
+        btn = getattr(self, "_chat_with_doc_btn", None)
+        host = getattr(self, "preview_stage", None)
+        if btn is None or host is None:
+            return
+        x = max(0, host.width() - btn.width() - _CHAT_WITH_DOC_FAB_MARGIN)
+        y = max(0, host.height() - btn.height() - _CHAT_WITH_DOC_FAB_MARGIN)
+        btn.move(x, y)
+
+    def _sync_chat_with_doc_fab_visibility(self) -> None:
+        btn = getattr(self, "_chat_with_doc_btn", None)
+        if btn is None:
+            return
+        show = bool(self.active_filename and validate_file_token(self.active_filename))
+        btn.setVisible(show)
+        if show:
+            btn.raise_()
+            self._reposition_chat_with_doc_fab()
+
+    def _on_chat_with_document_clicked(self) -> None:
+        filename = (self.active_filename or "").strip()
+        if not filename or not validate_file_token(filename):
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Chat with document",
+            f'Start a new conversation about "{filename}"?',
+            is_dark=is_dark,
+        )
+        if not dlg.exec():
+            return
+        main_win = self.window()
+        if main_win is not None and hasattr(main_win, "open_chat_with_library_document"):
+            main_win.open_chat_with_library_document(filename)
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is getattr(self, "preview_stage", None) and event.type() == QEvent.Type.Resize:
+            self._reposition_chat_with_doc_fab()
+        return super().eventFilter(obj, event)
     
     def _build_preview_stage(self) -> QFrame:
         frame = QFrame()
@@ -790,6 +868,7 @@ class LibraryView(QWidget):
                 "<center><h3>Document deleted.</h3></center>"
             )
             self._apply_library_preview_readability()
+            self._sync_chat_with_doc_fab_visibility()
 
     def refresh_library_list(self):
         """Rebuild the list (respects search box)."""
@@ -973,6 +1052,7 @@ class LibraryView(QWidget):
                 self.doc_stats.setText("")
                 self.text_preview.setHtml("<center><h3>Document deleted.</h3></center>")
                 self._apply_library_preview_readability()
+                self._sync_chat_with_doc_fab_visibility()
 
             self.refresh_library_list()
 
@@ -1002,6 +1082,7 @@ class LibraryView(QWidget):
         else:
             self.text_preview.setPlainText("Error: Vector store not connected.")
         self._apply_library_preview_readability()
+        self._sync_chat_with_doc_fab_visibility()
 
     def _browse_for_document(self):
         """Opens a file dialog, checks for duplicates, and handles overwrites."""
@@ -1183,3 +1264,4 @@ class LibraryView(QWidget):
         super().showEvent(event)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_library_list_surface(is_dark)
+        self._reposition_chat_with_doc_fab()

@@ -1881,6 +1881,24 @@ class MainWindow(QMainWindow):
         if hasattr(self, "conversations_view"):
             self.conversations_view._start_new_chat()
 
+    def open_chat_with_library_document(self, filename: str) -> None:
+        """Navigate to Conversations, start a new thread, and prefill a file attachment token."""
+        filename = (filename or "").strip()
+        if not filename:
+            return
+        if hasattr(self, "nav_chat"):
+            self.nav_chat.setChecked(True)
+            self._route_view(0, self.nav_chat)
+        cv = getattr(self, "conversations_view", None)
+        if cv is None or not hasattr(cv, "start_new_chat_with_composer_prefill"):
+            return
+        from core.composer_attachments import ComposerAttachment, format_token, validate_file_token
+
+        if not validate_file_token(filename):
+            return
+        token = format_token(ComposerAttachment(kind="file", id=filename, label=filename))
+        cv.start_new_chat_with_composer_prefill(f"{token} ")
+
     def _on_companion_load_model(self, path: str) -> None:
         self._restore_workspace_from_tray()
         self.load_native_model_from_path(path)

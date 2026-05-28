@@ -2735,6 +2735,16 @@ class ConversationsView(QWidget):
         self._refresh_history_list()
         self._scroll_to_bottom()
 
+    def start_new_chat_with_composer_prefill(self, text: str) -> None:
+        """Open a fresh session and seed the composer (e.g. Library → chat with document)."""
+        self._start_new_chat()
+        if not hasattr(self, "text_input"):
+            return
+        self.text_input.setPlainText((text or "").strip())
+        if hasattr(self.text_input, "_schedule_height_sync"):
+            self.text_input._schedule_height_sync()
+        self.text_input.setFocus()
+
     def _load_selected_chat(self, item):
         from PyQt6.QtCore import Qt
         session_id = item.data(Qt.ItemDataRole.UserRole)
