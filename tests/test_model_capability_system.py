@@ -246,5 +246,16 @@ class TestModelCapabilitySystem(unittest.TestCase):
             self.assertFalse(refreshed.reasoning.value)
 
 
+    def test_readme_redacted_thinking_reasoning_chip(self) -> None:
+        caps = detect_capabilities(
+            {
+                "id": "readme-reasoning-tags",
+                "readme": "Use redacted thinking tags for internal reasoning.",
+            }
+        )
+        self.assertTrue(caps.reasoning.value)
+        self.assertTrue(any(s.source == "readme" for s in caps.reasoning.sources))
+
+
 if __name__ == "__main__":
     unittest.main()

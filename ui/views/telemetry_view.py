@@ -276,10 +276,17 @@ class TelemetryView(QWidget):
             "—",
             "Numeric reasoning-profile confidence from native detection pipeline, formatted to 2 decimals when present.",
         )
+        pg_row, self._cap_publisher_guidance_val = self._make_metric_row(
+            "Publisher guidance",
+            "README/curated publisher contract",
+            "—",
+            "When set: publisher_default_reasoning and thinking tags from deterministic README extraction (not pasted presets).",
+        )
         layout.addLayout(model_row)
         layout.addLayout(reasoning_row)
         layout.addLayout(mode_row)
         layout.addLayout(conf_row)
+        layout.addLayout(pg_row)
         layout.addStretch()
 
         return frame
@@ -623,12 +630,14 @@ class TelemetryView(QWidget):
             self._cap_reasoning_val.setText("—")
             self._cap_mode_val.setText(mode)
             self._cap_conf_val.setText("—")
+            self._cap_publisher_guidance_val.setText("—")
             return
         if not snap.get("loaded"):
             self._cap_model_val.setText("—")
             self._cap_reasoning_val.setText("—")
             self._cap_mode_val.setText(str(snap.get("policy_execution_mode", mode)))
             self._cap_conf_val.setText("—")
+            self._cap_publisher_guidance_val.setText("—")
             return
         base = snap.get("model_basename") or ""
         name = snap.get("model_name") or ""
@@ -654,6 +663,14 @@ class TelemetryView(QWidget):
                 self._cap_conf_val.setText(f"{float(conf):.2f}")
             except (TypeError, ValueError):
                 self._cap_conf_val.setText("—")
+        pg_src = snap.get("publisher_guidance_source")
+        if pg_src:
+            default = snap.get("publisher_default_reasoning") or "unknown"
+            tags = snap.get("publisher_thinking_tags") or []
+            tag_txt = ", ".join(str(t) for t in tags[:2]) if tags else "none"
+            self._cap_publisher_guidance_val.setText(f"{pg_src}; default={default}; tags={tag_txt}")
+        else:
+            self._cap_publisher_guidance_val.setText("—")
 
     # ============================================================
     # LATENCY UPDATE SLOTS

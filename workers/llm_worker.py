@@ -2340,6 +2340,13 @@ class LLMWorker(QThread):
         final_text = authoritative_text or emitted_text
         if not final_text.strip() and native_load_error_text:
             final_text = native_load_error_text
+        if not final_text.strip():
+            empty_msg = (
+                "The model finished without producing any visible text. "
+                "Try sending again, adjust Think, or inspect logs/llm_debug.log."
+            )
+            final_text = empty_msg
+            _emit_filtered(empty_msg)
 
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
@@ -2493,17 +2500,13 @@ class LLMWorker(QThread):
         """Unload the in-process GGUF without clearing the saved model path."""
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
             return
-        snap = self._native_engine.get_model_reasoning_telemetry()
-        if not bool((snap or {}).get("loaded")):
-            return
+        self.cancel_generation()
         if self.isRunning():
-            self.cancel_generation()
-            for _ in range(20):
+            for _ in range(40):
                 if not self.isRunning():
                     break
                 time.sleep(0.05)
         self._native_engine.unload_model()
-        self.status_update.emit("Native engine: model ejected (VRAM released)")
 
     def refresh_native_model_from_settings(self) -> None:
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""

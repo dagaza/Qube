@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from core.model_capability_service import ModelCapabilityService
+from core.publisher_guidance_service import PublisherGuidanceService
 
 
 class OverridePayload(BaseModel):
@@ -40,6 +41,7 @@ def create_model_capabilities_app(
 ) -> FastAPI:
     app = FastAPI(title="Qube Model Capabilities API")
     cap_service = service or ModelCapabilityService()
+    guidance_service = PublisherGuidanceService(store=cap_service.store)
 
     def _provider() -> list[dict[str, Any]]:
         if models_provider is None:
@@ -97,9 +99,20 @@ def create_model_capabilities_app(
         caps = cap_service.on_model_loaded(model_id, runtime_caps)
         return {"id": model_id, "capabilities": cap_service.summarize_for_ui(caps)}
 
+    @app.get("/models/{model_id}/publisher-guidance")
+    def get_publisher_guidance(model_id: str) -> dict[str, Any]:
+        guidance = guidance_service.get_by_repo_id(model_id)
+        if guidance is None:
+            raise HTTPException(status_code=404, detail="No publisher guidance for model.")
+        return {"id": model_id, "publisher_guidance": guidance.to_dict()}
+
     @app.post("/models/{model_id}/enrich")
     def enrich_model_capabilities(model_id: str, payload: EnrichPayload) -> dict[str, Any]:
-        caps = cap_service.enrich_capabilities_after_load(model_id, payload.model_dump(exclude_none=True))
+        data = payload.model_dump(exclude_none=True)
+        readme = data.get("readme")
+        if readme:
+            guidance_service.extract_and_store(model_id, str(readme))
+        caps = cap_service.enrich_capabilities_after_load(model_id, data)
         return {"id": model_id, "capabilities": cap_service.summarize_for_ui(caps)}
 
     @app.get("/capabilities/export")

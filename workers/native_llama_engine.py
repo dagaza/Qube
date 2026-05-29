@@ -20,7 +20,6 @@ from PyQt6.QtCore import QThread, pyqtSignal
 logger = logging.getLogger("Qube.NativeLLM")
 _debug_logger = logging.getLogger("Qube.NativeLLM.Debug")
 
-
 class _StopEventUnion:
     """True when any wrapped threading.Event is set (for ablation cancel)."""
 
@@ -111,6 +110,8 @@ from core.model_reasoning_profile import (
     ModelReasoningProfile,
     detect_model_reasoning_profile,
 )
+from core.model_publisher_guidance import apply_guidance_to_reasoning_profile
+from core.publisher_guidance_service import PublisherGuidanceService
 from core.model_override_store import get_override
 from core.prompt_ablation_harness import SCENARIO_BASELINE, run_ablation_test
 from core.prompt_integrity_validator import (
@@ -133,6 +134,35 @@ from core.native_token_trace import (
     token_trace_early_n,
     token_trace_enabled,
 )
+
+
+def _completion_text_from_result(result: Any) -> str:
+    if not isinstance(result, dict):
+        return ""
+    return str((result.get("choices") or [{}])[0].get("text") or "")
+
+
+_THINKING_STOP_FRAGMENTS: tuple[str, ...] = (
+    "<think>",
+    "</think>",
+    "<thinking>",
+    "</thinking>",
+)
+
+
+def _minimal_safe_stops(llama: Any, merged_stops: list[str]) -> list[str]:
+    """Eos + format stops only — drop thinking-tag policy stops that can zero out generation."""
+    eos_s, _ = llama_eos_bos_strings(llama)
+    out: list[str] = []
+    if eos_s:
+        out.append(eos_s)
+    for stop in merged_stops or []:
+        if not stop or stop in out:
+            continue
+        if any(tag in stop for tag in _THINKING_STOP_FRAGMENTS):
+            continue
+        out.append(stop)
+    return out or list(merged_stops or [])
 
 
 class NativeLlamaEngine(QThread):
@@ -182,6 +212,8 @@ class NativeLlamaEngine(QThread):
         # Set by _prepare_validation_and_logs when using build_prompt_bundle (messages path).
         self._last_render_bundle: Optional[RenderPromptBundle] = None
         self._bundle_contract_id: Optional[int] = None
+        self._publisher_guidance: Any = None
+        self._publisher_guidance_service = PublisherGuidanceService()
 
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
@@ -198,6 +230,16 @@ class NativeLlamaEngine(QThread):
             with self._cmd_queue.mutex:
                 self._cmd_queue.queue = queue.deque(
                     c for c in self._cmd_queue.queue if c.get("op") != "profile_behavior"
+                )
+        except Exception:
+            pass
+
+    def _purge_queue_for_unload(self) -> None:
+        """Drop pending load/generate/profile ops so eject is not stuck behind them."""
+        try:
+            with self._cmd_queue.mutex:
+                self._cmd_queue.queue = queue.deque(
+                    c for c in self._cmd_queue.queue if c.get("op") == "shutdown"
                 )
         except Exception:
             pass
@@ -268,6 +310,19 @@ class NativeLlamaEngine(QThread):
             out["prompt_layout_source"] = None
             out["prompt_layout_degraded"] = None
             out["prompt_layout_evidence"] = None
+        pg = self._publisher_guidance
+        if pg is not None:
+            out["publisher_guidance_source"] = str(getattr(pg, "source", "") or "")
+            out["publisher_default_reasoning"] = str(
+                getattr(pg, "default_reasoning_without_system", "unknown") or "unknown"
+            )
+            out["publisher_thinking_tags"] = list(getattr(pg, "thinking_tags", ()) or ())
+            out["publisher_guidance_confidence"] = _safe_float(getattr(pg, "confidence", None))
+        else:
+            out["publisher_guidance_source"] = None
+            out["publisher_default_reasoning"] = None
+            out["publisher_thinking_tags"] = None
+            out["publisher_guidance_confidence"] = None
         rd = self._last_router_decision
         if rd is not None:
             out["router_selected_model"] = rd.selected_model
@@ -347,6 +402,11 @@ class NativeLlamaEngine(QThread):
         )
 
     def unload_model(self) -> None:
+        """Request immediate unload: cancel in-flight work and jump ahead of queued ops."""
+        self.request_cancel_generation()
+        self._cancel_behavior_profile.set()
+        self._purge_pending_profile_ops()
+        self._purge_queue_for_unload()
         self._cmd_queue.put({"op": "unload"})
 
     def enqueue_generation(
@@ -359,6 +419,7 @@ class NativeLlamaEngine(QThread):
     ) -> None:
         self._cancel_behavior_profile.set()
         self._purge_pending_profile_ops()
+        self._cancel_generation = False
         self._cmd_queue.put(
             {
                 "op": "generate",
@@ -460,10 +521,22 @@ class NativeLlamaEngine(QThread):
                     self._llama,
                     model_path=self._model_path,
                 )
+                self._publisher_guidance = self._publisher_guidance_service.lookup_for_load(
+                    path,
+                    self._model_reasoning_profile.model_name
+                    if self._model_reasoning_profile
+                    else os.path.basename(path),
+                )
+                if self._publisher_guidance is not None and self._model_reasoning_profile is not None:
+                    self._model_reasoning_profile = apply_guidance_to_reasoning_profile(
+                        self._model_reasoning_profile,
+                        self._publisher_guidance,
+                    )
                 self._execution_mode = str(self._model_reasoning_profile.default_mode)
             except Exception as e:
                 logger.debug("[Native] reasoning profile detection failed: %s", e)
                 self._model_reasoning_profile = None
+                self._publisher_guidance = None
                 self._execution_mode = "unknown"
             if self._model_reasoning_profile is not None:
                 rp = self._model_reasoning_profile
@@ -476,6 +549,14 @@ class NativeLlamaEngine(QThread):
                     rp.detection_method,
                     rp.model_name,
                     rp.thinking_token_patterns[:8],
+                )
+            if self._publisher_guidance is not None:
+                pg = self._publisher_guidance
+                _debug_logger.info(
+                    "[README-GUIDANCE] load source=%s default=%s tags=%s",
+                    pg.source,
+                    pg.default_reasoning_without_system,
+                    list(pg.thinking_tags)[:4],
                 )
             pol = self.get_execution_policy()
             _debug_logger.info("[LLM-DEBUG] execution_policy=%s", pol)
@@ -666,6 +747,8 @@ class NativeLlamaEngine(QThread):
             self._cancel_behavior_profile.clear()
 
     def _do_unload(self) -> None:
+        self.request_cancel_generation()
+        self._cancel_behavior_profile.set()
         self._chat_contract = None
         if self._llama is None:
             return
@@ -693,6 +776,7 @@ class NativeLlamaEngine(QThread):
         self._last_render_bundle = None
         self._bundle_contract_id = None
         self._model_reasoning_profile = None
+        self._publisher_guidance = None
         self._execution_mode = "unknown"
         self.execution_policy = None
         self._model_behavior_profile = None
@@ -700,9 +784,9 @@ class NativeLlamaEngine(QThread):
         self._behavior_override_material = False
         self._router_profile_key = None
         self._prompt_layout_resolution = None
-        gc.collect()
         self.status_update.emit("Native model unloaded")
         logger.info("[Native] Model unloaded")
+        gc.collect()
 
     def _emit_token_trace_safe(
         self,
@@ -954,6 +1038,7 @@ class NativeLlamaEngine(QThread):
                 effective_chat_format=contract.chat_format,
                 suppress_gguf_metadata=_unsafe_template,
                 prompt_contract_stops=list(contract.stop or []),
+                publisher_guidance=self._publisher_guidance,
             )
             prompt_txt = bundle.prompt
             merged_stops = list(bundle.stop_tokens)
@@ -1178,7 +1263,11 @@ class NativeLlamaEngine(QThread):
             done_event.set()
             return
 
-        self._cancel_generation = False
+        if self._cancel_generation:
+            token_queue.put(("end", ""))
+            done_event.set()
+            return
+
         self._cancel_behavior_profile.clear()
         started_at = time.perf_counter()
         stream_t0 = time.monotonic()
@@ -1197,6 +1286,7 @@ class NativeLlamaEngine(QThread):
             pre = self._last_trace_preflight or {}
 
             gt_early_sent = False
+            chunk_count = 0
 
             if token_trace_enabled():
                 live_trace = LiveStreamTokenTrace(
@@ -1239,6 +1329,7 @@ class NativeLlamaEngine(QThread):
                     stream=True,
                 )
                 for chunk in stream:
+                    chunk_count += 1
                     if self._cancel_generation:
                         break
                     if (time.monotonic() - stream_t0) > 600.0:
@@ -1259,7 +1350,38 @@ class NativeLlamaEngine(QThread):
                     if finish_reason in ("stop", "length"):
                         break
 
-            if token_trace_enabled() and gt_capture_ids:
+            if self._cancel_generation:
+                token_queue.put(("end", final_text))
+            elif not (final_text or "").strip():
+                logger.warning(
+                    "[Native] Streaming produced no text (chunks=%d); retrying non-stream once",
+                    chunk_count,
+                )
+                try:
+                    prompt_str, merged_stops = self._completion_prompt_and_stops(
+                        contract, messages
+                    )
+                    prompt_str = prepare_completion_prompt(self._llama, prompt_str)
+                    safe_stops = _minimal_safe_stops(self._llama, merged_stops)
+                    ns_result = self._llama.create_completion(
+                        prompt=prompt_str,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=False,
+                        echo=False,
+                        stop=safe_stops,
+                        **_cc_kw,
+                    )
+                    recovered = _completion_text_from_result(ns_result).strip()
+                    if recovered:
+                        final_text = recovered
+                        token_queue.put(("delta", recovered))
+                except Exception as exc:
+                    logger.warning(
+                        "[Native] empty-stream non-stream fallback failed: %s", exc
+                    )
+
+            if not self._cancel_generation and token_trace_enabled() and gt_capture_ids:
                 self._gt_token_ids = list(gt_capture_ids)
                 self._gt_token_texts = detokenize_sampler_token_ids(
                     self._llama, prompt_tokens_for_gt, self._gt_token_ids
@@ -1273,105 +1395,106 @@ class NativeLlamaEngine(QThread):
                         chat_format=cf,
                     )
 
-            validation = validate_output(final_text, contract)
-            retried_text, final_contract, retry_used = maybe_retry(
-                self,
-                messages,
-                contract,
-                final_text,
-                validation,
-            )
-            logger.info(
-                "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
-                validation.issues,
-                validation.severity,
-                retry_used,
-                1 if retry_used else 0,
-                contract.chat_format or contract.mode,
-                final_contract.chat_format or final_contract.mode,
-            )
-            if retry_used and retried_text and retried_text != final_text:
-                # Streaming path already emitted first-pass deltas. Append the safer retry output.
-                token_queue.put(("delta", "\n\n[format fallback applied]\n"))
-                token_queue.put(("delta", retried_text))
-                final_text = f"{final_text}\n\n{retried_text}"
-            self._last_prompt_contract = final_contract
-            latest_user_query = ""
-            for _m in reversed(messages):
-                if str((_m or {}).get("role", "")).lower() == "user":
-                    latest_user_query = str((_m or {}).get("content") or "")
-                    break
-            quality = evaluate_response_quality(
-                user_query=latest_user_query,
-                output=final_text,
-            )
-            needs_review = quality.score < 0.4
-            logger.info(
-                "[ResponseQuality] response_quality_score=%.3f response_quality_issues=%s "
-                "response_quality_confidence=%s needs_review=%s",
-                quality.score,
-                quality.issues,
-                quality.confidence,
-                needs_review,
-            )
-            self._log_chat_contract_violation_if_any(final_text)
-            try:
-                record_inference_feedback(
-                    (self._router_profile_key or "").strip()
-                    or os.path.basename(self._model_path or ""),
-                    float(quality.score),
+            if not self._cancel_generation:
+                validation = validate_output(final_text, contract)
+                retried_text, final_contract, retry_used = maybe_retry(
+                    self,
+                    messages,
+                    contract,
+                    final_text,
+                    validation,
                 )
-            except Exception as e:
-                logger.debug("[ModelRouter] record_inference_feedback failed: %s", e)
-            model_key = (self._router_profile_key or "").strip() or os.path.basename(
-                self._model_path or ""
-            )
-            latency = max(0.0, time.perf_counter() - started_at)
-            try:
-                perf = self._performance_store.update_model_metrics(
-                    model_name=model_key,
-                    validation_result=validation,
-                    quality_score=float(quality.score),
-                    latency=latency,
-                    retry_used=bool(retry_used),
+                logger.info(
+                    "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
+                    validation.issues,
+                    validation.severity,
+                    retry_used,
+                    1 if retry_used else 0,
+                    contract.chat_format or contract.mode,
+                    final_contract.chat_format or final_contract.mode,
                 )
-                if perf is not None:
-                    logger.info(
-                        "[ModelPerformance] %s",
-                        {
-                            "model": model_key,
-                            "performance_update": {
-                                "quality": round(float(perf.avg_response_quality), 4),
-                                "latency": round(float(perf.avg_latency), 4),
-                                "retry_used": bool(retry_used),
-                                "failure_rate": round(float(perf.structural_failure_rate), 4),
-                            },
-                        },
+                if retry_used and retried_text and retried_text != final_text:
+                    # Streaming path already emitted first-pass deltas. Append the safer retry output.
+                    token_queue.put(("delta", "\n\n[format fallback applied]\n"))
+                    token_queue.put(("delta", retried_text))
+                    final_text = f"{final_text}\n\n{retried_text}"
+                self._last_prompt_contract = final_contract
+                latest_user_query = ""
+                for _m in reversed(messages):
+                    if str((_m or {}).get("role", "")).lower() == "user":
+                        latest_user_query = str((_m or {}).get("content") or "")
+                        break
+                quality = evaluate_response_quality(
+                    user_query=latest_user_query,
+                    output=final_text,
+                )
+                needs_review = quality.score < 0.4
+                logger.info(
+                    "[ResponseQuality] response_quality_score=%.3f response_quality_issues=%s "
+                    "response_quality_confidence=%s needs_review=%s",
+                    quality.score,
+                    quality.issues,
+                    quality.confidence,
+                    needs_review,
+                )
+                self._log_chat_contract_violation_if_any(final_text)
+                try:
+                    record_inference_feedback(
+                        (self._router_profile_key or "").strip()
+                        or os.path.basename(self._model_path or ""),
+                        float(quality.score),
                     )
-            except Exception as e:
-                logger.debug("[ModelPerformance] update failed: %s", e)
+                except Exception as e:
+                    logger.debug("[ModelRouter] record_inference_feedback failed: %s", e)
+                model_key = (self._router_profile_key or "").strip() or os.path.basename(
+                    self._model_path or ""
+                )
+                latency = max(0.0, time.perf_counter() - started_at)
+                try:
+                    perf = self._performance_store.update_model_metrics(
+                        model_name=model_key,
+                        validation_result=validation,
+                        quality_score=float(quality.score),
+                        latency=latency,
+                        retry_used=bool(retry_used),
+                    )
+                    if perf is not None:
+                        logger.info(
+                            "[ModelPerformance] %s",
+                            {
+                                "model": model_key,
+                                "performance_update": {
+                                    "quality": round(float(perf.avg_response_quality), 4),
+                                    "latency": round(float(perf.avg_latency), 4),
+                                    "retry_used": bool(retry_used),
+                                    "failure_rate": round(float(perf.structural_failure_rate), 4),
+                                },
+                            },
+                        )
+                except Exception as e:
+                    logger.debug("[ModelPerformance] update failed: %s", e)
 
-            self._emit_token_trace_safe(
-                final_text,
-                live_trace,
-                gt_capture_ids=gt_capture_ids if gt_capture_ids else None,
-                prompt_tokens_for_gt=prompt_tokens_for_gt
-                if prompt_tokens_for_gt
-                else None,
-            )
-            self._emit_causality_safe(
-                final_text,
-                live_trace,
-                gt_capture_ids if gt_capture_ids else None,
-                prompt_tokens_for_gt if prompt_tokens_for_gt else None,
-            )
-            self._emit_counterfactual_safe(
-                final_text,
-                live_trace,
-                gt_capture_ids if gt_capture_ids else None,
-                prompt_tokens_for_gt if prompt_tokens_for_gt else None,
-            )
-            token_queue.put(("end", final_text))
+                self._emit_token_trace_safe(
+                    final_text,
+                    live_trace,
+                    gt_capture_ids=gt_capture_ids if gt_capture_ids else None,
+                    prompt_tokens_for_gt=prompt_tokens_for_gt
+                    if prompt_tokens_for_gt
+                    else None,
+                )
+                self._emit_causality_safe(
+                    final_text,
+                    live_trace,
+                    gt_capture_ids if gt_capture_ids else None,
+                    prompt_tokens_for_gt if prompt_tokens_for_gt else None,
+                )
+                self._emit_counterfactual_safe(
+                    final_text,
+                    live_trace,
+                    gt_capture_ids if gt_capture_ids else None,
+                    prompt_tokens_for_gt if prompt_tokens_for_gt else None,
+                )
+                token_queue.put(("end", final_text))
         except Exception as e:
             logger.exception("[Native] Generation error: %s", e)
             token_queue.put(("error", str(e)))

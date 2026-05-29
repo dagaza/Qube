@@ -165,46 +165,59 @@ def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: s
     if reasoning_mode == "hard":
         return prompt
 
-    if reasoning_mode == "disabled":
-        return _insert_before_last_anchor(
-            prompt or "",
-            "<|im_start|>assistant",
-            "Write only the user-facing response.",
-        )
-
-    if reasoning_mode != "soft":
+    if reasoning_mode != "soft" and reasoning_mode != "disabled":
         return prompt
 
     tt = (template_type or "fallback").lower()
+    suffix = (
+        "Write only the user-facing response."
+        if reasoning_mode == "disabled"
+        else None
+    )
 
     if tt == "chatml":
+        if reasoning_mode == "soft":
+            return _insert_before_last_anchor(
+                prompt or "",
+                "<|im_start|>assistant",
+                "You may use <think>...</think> internally. "
+                "Write only the user-facing response outside those tags.",
+            )
         return _insert_before_last_anchor(
             prompt or "",
             "<|im_start|>assistant",
-            "You may use <redacted_thinking>...</redacted_thinking> internally. "
-            "Write only the user-facing response outside those tags.",
+            suffix or "Write only the user-facing response.",
         )
 
     if tt == "llama3":
+        anchor = "<|start_header_id|>assistant<|end_header_id|>"
+        if reasoning_mode == "soft":
+            return _insert_before_last_anchor(
+                prompt or "",
+                anchor,
+                "Keep any hidden reasoning private and write only the user-facing response.",
+            )
         return _insert_before_last_anchor(
             prompt or "",
-            "<|start_header_id|>assistant<|end_header_id|>",
-            "Keep any hidden reasoning private and write only the user-facing response.",
+            anchor,
+            suffix or "Write only the user-facing response.",
         )
 
     if tt == "phi":
         p = prompt or ""
-        if _PHI_ASSISTANT in p:
+        if reasoning_mode == "soft" and _PHI_ASSISTANT in p:
             prefix = "Keep hidden reasoning private. Write only the user-facing response."
             before, sep, after = p.rpartition(_PHI_ASSISTANT)
             if sep:
                 return before + prefix + _PHI_ASSISTANT + after
-        return (prompt or "") + "\nWrite only the user-facing response."
+        return (prompt or "") + "\n" + (suffix or "Write only the user-facing response.")
 
     if tt == "mistral":
-        return (prompt or "") + "\n(Use internal reasoning. Do not expose it.)"
+        if reasoning_mode == "soft":
+            return (prompt or "") + "\n(Use internal reasoning. Do not expose it.)"
+        return (prompt or "") + "\n" + (suffix or "Write only the user-facing response.")
 
-    return (prompt or "") + "\nWrite only the user-facing response."
+    return (prompt or "") + "\n" + (suffix or "Write only the user-facing response.")
 
 
 def build_prompt_bundle(
@@ -216,6 +229,7 @@ def build_prompt_bundle(
     effective_chat_format: Optional[str] = None,
     suppress_gguf_metadata: bool = False,
     prompt_contract_stops: Optional[Sequence[str]] = None,
+    publisher_guidance: Optional[Any] = None,
 ) -> tuple[RenderPromptBundle, str, Any]:
     """
     Build RenderPromptBundle using existing reconstruct_formatted_prompt + policy overlays + stops.
@@ -250,7 +264,9 @@ def build_prompt_bundle(
 
     merged, _ = merge_stop_lists(_cc_kw.get("stop"), fmt_stop)
     stops = list(merged)
-    if reasoning_mode == "disabled":
+    # Thinking-tag stops are for ChatML/Llama3/Phi where tags are in-vocab anchors.
+    # On Jinja/GGUF templates they can truncate the first token to empty (stream + non-stream).
+    if reasoning_mode == "disabled" and template_type in ("chatml", "llama3", "phi"):
         stops = stops + list(_POLICY_DISABLED_EXTRA_STOPS)
 
     cf = str(getattr(llama, "chat_format", "") or "")
@@ -295,6 +311,17 @@ def build_prompt_bundle(
             bundle.stop_tokens, list(prompt_contract_stops)
         )
         bundle.stop_tokens = list(merged_cc)
+    if publisher_guidance is not None:
+        pg_tags = getattr(publisher_guidance, "thinking_tags", None) or ()
+        if pg_tags:
+            merged_pg, _ = merge_stop_lists(bundle.stop_tokens, list(pg_tags))
+            bundle.stop_tokens = list(merged_pg)
+            logger.info(
+                "[LLM-README-GUIDANCE] source=%s tags=%d default_without_system=%s",
+                getattr(publisher_guidance, "source", ""),
+                len(pg_tags),
+                getattr(publisher_guidance, "default_reasoning_without_system", "unknown"),
+            )
     logger.info(
         "[LLM-PROMPT-ROUTER] template=%s reasoning=%s stop_count=%d",
         template_type,

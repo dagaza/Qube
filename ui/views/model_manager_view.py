@@ -63,6 +63,7 @@ from core.quant_recommendation import (
 from core.hub_readme_html import hf_readme_markdown_to_safe_html, strip_hub_readme_preamble
 from core.hf_publisher_branding import HuggingFaceBrandingResolver, owner_from_repo_id
 from core.model_capability_service import ModelCapabilityService
+from core.publisher_guidance_service import PublisherGuidanceService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_dialog import PrestigeDialog
@@ -477,6 +478,7 @@ class ModelManagerView(QWidget):
         self._curated_meta_worker: HfModelMetaWorker | None = None
         self._curated_meta_queue: list[str] = []
         self._capability_service = ModelCapabilityService()
+        self._publisher_guidance_service = PublisherGuidanceService()
         self._branding_resolver = HuggingFaceBrandingResolver()
         self._download_ui_cancel_mode = False
         self._download_ui_load_mode = False
@@ -1715,6 +1717,9 @@ class ModelManagerView(QWidget):
             self._sync_download_action_state()
             return
         set_internal_model_path(str(p))
+        repo = str(getattr(self, "_current_repo_id", "") or "").strip()
+        if repo:
+            self._publisher_guidance_service.record_provenance(str(p), repo)
         if self._llm:
             cv = getattr(self.window(), "conversations_view", None)
             if cv is not None and hasattr(cv, "interrupt_active_response"):
@@ -2805,6 +2810,8 @@ class ModelManagerView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._last_readme_markdown = text
         self._render_readme_with_fallback(is_dark)
+        guidance = self._publisher_guidance_service.extract_and_store(repo, text)
+        self._set_meta_hint(self._publisher_guidance_service.summarize_for_ui(guidance))
         current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
         if current is None:
             return
@@ -3141,6 +3148,9 @@ class ModelManagerView(QWidget):
             self._restore_download_idle_ui()
             self._set_download_status_text(f"Saved: {os.path.basename(resolved)} ({n}/{n} shards)")
             set_internal_model_path(resolved)
+            repo = str(getattr(self, "_current_repo_id", "") or "").strip()
+            if repo:
+                self._publisher_guidance_service.record_provenance(resolved, repo)
             self.native_library_changed.emit()
             self._sync_download_action_state()
             return

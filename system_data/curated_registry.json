@@ -93,6 +93,19 @@
       }
     }
   ],
+  "publisher_guidance": {
+    "patterns": [
+      {
+        "match": "redacted",
+        "type": "contains",
+        "guidance": {
+          "thinking_tags": ["<think>", "</think>"],
+          "default_reasoning_without_system": "off",
+          "reasoning_controlled_by_system": true
+        }
+      }
+    ]
+  },
   "prompt_layout": {
     "exact": {
       "mistral-7b-instruct-v0.3": "flatten_user",

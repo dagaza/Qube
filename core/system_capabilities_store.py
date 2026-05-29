@@ -54,9 +54,13 @@ class SystemCapabilitiesStore:
         self.registry_path = self.system_data_dir / "curated_registry.json"
         self.missed_models_path = self.system_data_dir / "missed_models.json"
         self.learned_registry_path = self.system_data_dir / "learned_capabilities.json"
+        self.publisher_guidance_path = self.system_data_dir / "publisher_guidance.json"
+        self.model_hf_provenance_path = self.system_data_dir / "model_hf_provenance.json"
         self._ensure_registry_seeded()
         self._ensure_missed_models_seeded()
         self._ensure_learned_registry_seeded()
+        self._ensure_publisher_guidance_seeded()
+        self._ensure_model_hf_provenance_seeded()
         self.init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -214,7 +218,10 @@ class SystemCapabilitiesStore:
                     "capabilities": {str(k): bool(v) for k, v in caps.items()},
                 }
             )
-        merged = {"exact": out_exact, "patterns": out_patterns}
+        merged: dict[str, Any] = {"exact": out_exact, "patterns": out_patterns}
+        pg = raw.get("publisher_guidance")
+        if isinstance(pg, dict):
+            merged["publisher_guidance"] = pg
         return self._merge_with_seed_registry(merged)
 
     def _merge_with_seed_registry(self, current: dict[str, Any]) -> dict[str, Any]:
@@ -268,7 +275,48 @@ class SystemCapabilitiesStore:
             )
             seen.add(key)
 
-        return {"exact": merged_exact, "patterns": merged_patterns}
+        seed_pg = seed_raw.get("publisher_guidance")
+        merged_pg: dict[str, Any] = dict(current.get("publisher_guidance") or {})
+        if isinstance(seed_pg, dict):
+            for section in ("exact", "patterns"):
+                seed_section = seed_pg.get(section) or {}
+                cur_section = merged_pg.get(section) or {}
+                if section == "exact" and isinstance(seed_section, dict):
+                    merged_exact_pg = dict(cur_section) if isinstance(cur_section, dict) else {}
+                    for k, v in seed_section.items():
+                        kk = str(k).strip().lower()
+                        if kk not in merged_exact_pg:
+                            merged_exact_pg[kk] = v
+                    merged_pg["exact"] = merged_exact_pg
+                elif section == "patterns" and isinstance(seed_section, list):
+                    merged_patterns_pg = list(cur_section) if isinstance(cur_section, list) else []
+                    seen_pg = {
+                        (
+                            str(p.get("match") or "").strip().lower(),
+                            str(p.get("type") or "contains").strip().lower(),
+                        )
+                        for p in merged_patterns_pg
+                        if isinstance(p, dict)
+                    }
+                    for p in seed_section:
+                        if not isinstance(p, dict):
+                            continue
+                        key = (
+                            str(p.get("match") or "").strip().lower(),
+                            str(p.get("type") or "contains").strip().lower(),
+                        )
+                        if key not in seen_pg:
+                            merged_patterns_pg.append(p)
+                            seen_pg.add(key)
+                    merged_pg["patterns"] = merged_patterns_pg
+            if merged_pg:
+                current = dict(current)
+                current["publisher_guidance"] = merged_pg
+
+        result: dict[str, Any] = {"exact": merged_exact, "patterns": merged_patterns}
+        if current.get("publisher_guidance"):
+            result["publisher_guidance"] = current["publisher_guidance"]
+        return result
 
     def append_missed_detection(self, payload: dict[str, Any]) -> None:
         try:
@@ -360,3 +408,82 @@ class SystemCapabilitiesStore:
             self.learned_registry_path.write_text(seed.read_text(encoding="utf-8"), encoding="utf-8")
             return
         self.learned_registry_path.write_text("{}", encoding="utf-8")
+
+    def _load_publisher_guidance_file(self) -> dict[str, Any]:
+        try:
+            raw = json.loads(self.publisher_guidance_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {"by_repo_id": {}, "by_model_key": {}}
+        if not isinstance(raw, dict):
+            return {"by_repo_id": {}, "by_model_key": {}}
+        return {
+            "by_repo_id": raw.get("by_repo_id") if isinstance(raw.get("by_repo_id"), dict) else {},
+            "by_model_key": raw.get("by_model_key") if isinstance(raw.get("by_model_key"), dict) else {},
+        }
+
+    def _save_publisher_guidance_file(self, data: dict[str, Any]) -> None:
+        self.publisher_guidance_path.write_text(
+            json.dumps(data, ensure_ascii=True, indent=2),
+            encoding="utf-8",
+        )
+
+    def upsert_publisher_guidance(self, repo_id: str, guidance: dict[str, Any]) -> None:
+        key = str(repo_id or "").strip()
+        if not key:
+            return
+        data = self._load_publisher_guidance_file()
+        by_repo = dict(data.get("by_repo_id") or {})
+        by_repo[key] = dict(guidance)
+        data["by_repo_id"] = by_repo
+        self._save_publisher_guidance_file(data)
+
+    def get_publisher_guidance(self, repo_id: str) -> dict[str, Any] | None:
+        key = str(repo_id or "").strip()
+        if not key:
+            return None
+        data = self._load_publisher_guidance_file()
+        raw = (data.get("by_repo_id") or {}).get(key)
+        return dict(raw) if isinstance(raw, dict) else None
+
+    def _load_provenance_file(self) -> dict[str, str]:
+        try:
+            raw = json.loads(self.model_hf_provenance_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+        if not isinstance(raw, dict):
+            return {}
+        return {str(k): str(v) for k, v in raw.items() if k and v}
+
+    def _save_provenance_file(self, data: dict[str, str]) -> None:
+        self.model_hf_provenance_path.write_text(
+            json.dumps(data, ensure_ascii=True, indent=2),
+            encoding="utf-8",
+        )
+
+    def set_model_hf_provenance(self, local_path: str, repo_id: str) -> None:
+        path = str(local_path or "").strip()
+        repo = str(repo_id or "").strip()
+        if not path or not repo:
+            return
+        data = self._load_provenance_file()
+        data[path] = repo
+        self._save_provenance_file(data)
+
+    def get_model_hf_provenance(self, local_path: str) -> str | None:
+        path = str(local_path or "").strip()
+        if not path:
+            return None
+        return self._load_provenance_file().get(path)
+
+    def _ensure_publisher_guidance_seeded(self) -> None:
+        if self.publisher_guidance_path.exists():
+            return
+        self.publisher_guidance_path.write_text(
+            json.dumps({"by_repo_id": {}, "by_model_key": {}}, indent=2),
+            encoding="utf-8",
+        )
+
+    def _ensure_model_hf_provenance_seeded(self) -> None:
+        if self.model_hf_provenance_path.exists():
+            return
+        self.model_hf_provenance_path.write_text("{}", encoding="utf-8")

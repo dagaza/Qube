@@ -38,6 +38,9 @@ README_PATTERNS: dict[str, list[str]] = {
         "reasoning model",
         "chain-of-thought",
         "step-by-step reasoning",
+        "<think>",
+        "redacted_thinking",
+        "redacted thinking",
     ],
     "coding": [
         "code generation",

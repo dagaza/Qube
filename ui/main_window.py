@@ -147,6 +147,7 @@ class MainWindow(QMainWindow):
         self._last_mic_notification_detail: str | None = None
         self._pending_native_model_path: str | None = None
         self._native_model_loading: bool = False
+        self._native_model_unloading: bool = False
         self._native_model_loaded_success: bool = False
         self._presence_service = AssistantPresenceService(self)
         self._activity_reducer = self._presence_service
@@ -1335,6 +1336,26 @@ class MainWindow(QMainWindow):
                 self._apply_native_model_selector_text_state(False)
                 return
 
+            if self._native_model_unloading:
+                snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
+                loaded_name = str((snap or {}).get("model_basename") or "").strip()
+                if loaded_name:
+                    matched = next((p for p in ggufs if p.name == loaded_name), None)
+                    if matched is not None:
+                        unloading_display = format_local_gguf_display(
+                            str(matched), models_dir=models_dir
+                        )
+                        btn.setText(
+                            fm.elidedText(
+                                unloading_display.button_label,
+                                Qt.TextElideMode.ElideMiddle,
+                                cap_btn,
+                            )
+                        )
+                        btn.setToolTip("Ejecting model from memory…")
+                        self._apply_native_model_selector_text_state(False)
+                        return
+
             snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
             loaded = bool((snap or {}).get("loaded"))
             loaded_name = str((snap or {}).get("model_basename") or "").strip()
@@ -1407,6 +1428,11 @@ class MainWindow(QMainWindow):
             btn.setToolTip("Wait until the current model finishes loading.")
             self._apply_native_model_eject_button_style()
             return
+        if self._native_model_unloading:
+            btn.setEnabled(False)
+            btn.setToolTip("Ejecting model from memory…")
+            self._apply_native_model_eject_button_style()
+            return
         snap = self._native_engine.get_model_reasoning_telemetry() if self._native_engine else None
         loaded = bool((snap or {}).get("loaded"))
         btn.setEnabled(loaded)
@@ -1423,20 +1449,35 @@ class MainWindow(QMainWindow):
         cv = getattr(self, "conversations_view", None)
         if cv is not None and hasattr(cv, "interrupt_active_response"):
             cv.interrupt_active_response()
-        self._pending_native_model_path = None
-        self._native_model_loading = False
+        self._native_model_unloading = True
         self._native_model_loaded_success = False
-        self._set_native_model_progress_loading(False)
+        self._set_native_model_progress_loading(True)
         self._sync_native_model_eject_button()
         self._llm_worker.eject_loaded_native_model()
 
     def _on_native_engine_status_update(self, message: str) -> None:
-        if str(message or "").strip() == "Native model unloaded":
+        msg = str(message or "").strip()
+        if msg == "Loading native model…":
+            if not self._native_model_unloading:
+                self._native_model_loading = True
+                self._set_native_model_progress_loading(True)
+                self._sync_native_model_eject_button()
+            return
+        if msg == "Unloading native model…":
+            self._native_model_unloading = True
+            self._native_model_loading = False
+            self._set_native_model_progress_loading(True)
+            self._sync_native_model_eject_button()
+            return
+        if msg == "Native model unloaded":
+            if self._native_model_loading:
+                return
             self._on_native_model_ejected_ui()
 
     def _on_native_model_ejected_ui(self) -> None:
         self._pending_native_model_path = None
         self._native_model_loading = False
+        self._native_model_unloading = False
         self._native_model_loaded_success = False
         self._set_native_model_progress_loading(False)
         self.refresh_toolbar_native_model_dropdown()
@@ -1497,12 +1538,16 @@ class MainWindow(QMainWindow):
             btn.setStyleSheet("")
 
     def _on_native_model_load_finished_ui(self, ok: bool, message: str) -> None:
+        stale_ignored = False
         if self._native_model_loading and self._pending_native_model_path:
             pending_name = Path(self._pending_native_model_path).name
             # Ignore stale completion from an older rapid selection.
             if ok and str(message or "").strip() and str(message).strip() != pending_name:
-                return
+                stale_ignored = True
+        if stale_ignored:
+            return
         self._native_model_loading = False
+        self._native_model_unloading = False
         self._native_model_loaded_success = bool(ok)
         self._pending_native_model_path = None
         self._set_native_model_progress_loading(False)

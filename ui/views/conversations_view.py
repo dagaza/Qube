@@ -3190,12 +3190,12 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
-        if final_text:
-            cleaned = strip_harmony_oss_artifacts(final_text)
+        cleaned = strip_harmony_oss_artifacts(final_text or "")
+        if cleaned:
             cur = getattr(self, "current_agent_msg", None)
-            if cleaned and cur is None:
+            if cur is None:
                 self.log_agent_token(cleaned)
-            elif cleaned:
+            else:
                 # The finished worker text is the sanitized source of truth.
                 # Replace the active bubble instead of appending/reconciling around leaked prefix text.
                 self._agent_text_buffer = cleaned
