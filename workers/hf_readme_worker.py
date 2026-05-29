@@ -7,6 +7,8 @@ import logging
 import requests
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_hub_errors import HubErrorInfo, classify_hf_error, classify_hf_http_status
+
 logger = logging.getLogger("Qube.HFReadme")
 
 _RAW_URL = "https://huggingface.co/{repo}/raw/main/{name}"
@@ -25,7 +27,7 @@ class HfReadmeWorker(QThread):
     """Fetches README markdown text for a model repo."""
 
     finished_ok = pyqtSignal(str, str)  # repo_id, markdown_text
-    failed = pyqtSignal(str, str)  # repo_id, error message (non-fatal: UI shows fallback)
+    failed = pyqtSignal(str, object)  # repo_id, HubErrorInfo
 
     def __init__(self, repo_id: str):
         super().__init__()
@@ -34,11 +36,11 @@ class HfReadmeWorker(QThread):
     def run(self) -> None:
         repo = self._repo_id
         if not repo:
-            self.failed.emit("", "Empty repository id.")
+            self.failed.emit("", classify_hf_error("Empty repository id."))
             return
 
         headers = {"Accept": "text/plain, text/markdown, */*"}
-        last_err = ""
+        last_info: HubErrorInfo | None = None
         for name in _README_CANDIDATES:
             if self.isInterruptionRequested():
                 return
@@ -55,9 +57,16 @@ class HfReadmeWorker(QThread):
                             text = text[:1_500_000] + "\n\n… *(README truncated for display)*"
                         self.finished_ok.emit(repo, text)
                         return
-                    last_err = f"HTTP {r.status_code}"
+                    last_info = classify_hf_http_status(
+                        r.status_code,
+                        context="README fetch",
+                    )
                 except requests.RequestException as e:
-                    last_err = str(e)
+                    last_info = classify_hf_error(e, context="README fetch")
                     logger.debug("README fetch attempt failed %s: %s", url, e)
 
-        self.failed.emit(repo, last_err or "No README found.")
+        self.failed.emit(
+            repo,
+            last_info
+            or classify_hf_error("No README found.", context="README fetch"),
+        )

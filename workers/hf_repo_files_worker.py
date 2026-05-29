@@ -8,6 +8,8 @@ from typing import Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_hub_errors import HubErrorInfo, classify_hf_error
+
 logger = logging.getLogger("Qube.HFRepoFiles")
 
 
@@ -23,7 +25,7 @@ class HfRepoFilesWorker(QThread):
 
     # list[tuple[str, int | None]] — path, size in bytes (None if unknown)
     finished_ok = pyqtSignal(list)
-    failed = pyqtSignal(str)
+    failed = pyqtSignal(object)  # HubErrorInfo
 
     def __init__(self, repo_id: str, revision: Optional[str] = None):
         super().__init__()
@@ -69,7 +71,7 @@ class HfRepoFilesWorker(QThread):
         try:
             repo = _sanitize_repo_id(self._repo_id)
         except ValueError as e:
-            self.failed.emit(str(e))
+            self.failed.emit(classify_hf_error(e))
             return
 
         try:
@@ -148,7 +150,7 @@ class HfRepoFilesWorker(QThread):
             )
         except Exception as e:
             logger.exception("HfApi.list_repo_files failed: %s", e)
-            self.failed.emit(str(e))
+            self.failed.emit(classify_hf_error(e, context="repo file list"))
             return
 
         gguf = sorted(f for f in files if str(f).lower().endswith(".gguf"))

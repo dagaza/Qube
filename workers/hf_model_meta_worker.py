@@ -9,6 +9,8 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_hub_errors import HubErrorInfo, classify_hf_error
+
 logger = logging.getLogger("Qube.HFModelMeta")
 
 
@@ -135,7 +137,7 @@ class HfModelMetaWorker(QThread):
     """Fetches model metadata from Hub model_info/card_data."""
 
     finished_ok = pyqtSignal(str, dict)  # repo_id, metadata
-    failed = pyqtSignal(str, str)  # repo_id, error message
+    failed = pyqtSignal(str, object)  # repo_id, HubErrorInfo
 
     def __init__(self, repo_id: str):
         super().__init__()
@@ -144,7 +146,7 @@ class HfModelMetaWorker(QThread):
     def run(self) -> None:
         repo = self._repo_id
         if not repo:
-            self.failed.emit("", "Empty repository id.")
+            self.failed.emit("", classify_hf_error("Empty repository id."))
             return
         try:
             from huggingface_hub import HfApi
@@ -193,4 +195,4 @@ class HfModelMetaWorker(QThread):
                     return
             except Exception as sub_e:
                 logger.debug("metadata fallback failed for %s: %s", repo, sub_e)
-            self.failed.emit(repo, str(e))
+            self.failed.emit(repo, classify_hf_error(e, context=f"metadata for {repo}"))

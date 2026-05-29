@@ -13,6 +13,8 @@ import requests
 from huggingface_hub import hf_hub_url
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_hub_errors import HubErrorInfo, classify_hf_error, classify_hf_http_status
+
 logger = logging.getLogger("Qube.ModelDownload")
 
 # Extra headroom on top of Content-Length (bytes) before starting the stream.
@@ -57,7 +59,7 @@ class HuggingFaceGgufDownloadWorker(QThread):
     progress_pct = pyqtSignal(int)  # 0–100
     status_message = pyqtSignal(str)
     finished_ok = pyqtSignal(str)  # absolute path saved
-    failed = pyqtSignal(str)
+    failed = pyqtSignal(object)  # HubErrorInfo
     insufficient_space_error = pyqtSignal(int, int)  # required_bytes, available_bytes
     download_cancelled = pyqtSignal()
 
@@ -88,7 +90,7 @@ class HuggingFaceGgufDownloadWorker(QThread):
             repo = _sanitize_repo_id(self._repo_id)
             fname = _sanitize_repo_file_path(self._filename)
         except ValueError as e:
-            self.failed.emit(str(e))
+            self.failed.emit(classify_hf_error(e))
             return
 
         dest_root = Path(self._dest_dir).resolve()
@@ -109,7 +111,10 @@ class HuggingFaceGgufDownloadWorker(QThread):
             with requests.get(url, stream=True, timeout=(30, 300)) as resp:
                 if resp.status_code != 200:
                     self.failed.emit(
-                        f"HTTP {resp.status_code} — check repo id and filename (default branch)."
+                        classify_hf_http_status(
+                            resp.status_code,
+                            context="model download",
+                        )
                     )
                     return
 
@@ -151,7 +156,7 @@ class HuggingFaceGgufDownloadWorker(QThread):
                             except OSError as e:
                                 logger.exception("Write failed: %s", e)
                                 _unlink_quiet(tmp_path)
-                                self.failed.emit(f"Disk write failed: {e}")
+                                self.failed.emit(classify_hf_error(e, context="download write"))
                                 return
                             done += len(chunk)
                             if total > 0:
@@ -170,23 +175,23 @@ class HuggingFaceGgufDownloadWorker(QThread):
                     except OSError as e:
                         logger.exception("Could not finalize download: %s", e)
                         _unlink_quiet(tmp_path)
-                        self.failed.emit(f"Could not move file into place: {e}")
+                        self.failed.emit(classify_hf_error(e, context="download finalize"))
                         return
                 except OSError as e:
                     logger.exception("Download I/O error: %s", e)
                     _unlink_quiet(tmp_path)
-                    self.failed.emit(str(e))
+                    self.failed.emit(classify_hf_error(e, context="download I/O"))
                     return
 
         except requests.RequestException as e:
             logger.exception("HF download request failed: %s", e)
             _unlink_quiet(tmp_path)
-            self.failed.emit(str(e))
+            self.failed.emit(classify_hf_error(e, context="model download"))
             return
         except Exception as e:
             logger.exception("HF download failed: %s", e)
             _unlink_quiet(tmp_path)
-            self.failed.emit(str(e))
+            self.failed.emit(classify_hf_error(e, context="model download"))
             return
 
         self.progress_pct.emit(100)

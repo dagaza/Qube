@@ -43,6 +43,7 @@ from core.app_settings import (
     resolve_internal_model_path,
     set_internal_model_path,
 )
+from core.hf_hub_errors import HubErrorInfo, coerce_hub_error
 from core.qube_verified_models import branding_for_entry, load_qube_verified_models
 from core.catalog_hardware_recommendation import (
     CatalogFitLevel,
@@ -67,11 +68,13 @@ from core.publisher_guidance_service import PublisherGuidanceService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.hub_error_dialog import HubErrorDialog
 from ui.components.brand_buttons import (
     apply_brand_primary,
     apply_brand_success,
     apply_brand_danger,
 )
+from workers.hf_connectivity_probe_worker import HfConnectivityProbeWorker
 from workers.hf_model_search_worker import HfModelSearchWorker
 from workers.hf_model_meta_worker import HfModelMetaWorker
 from workers.hf_readme_worker import HfReadmeWorker
@@ -507,6 +510,10 @@ class ModelManagerView(QWidget):
         self._search_visible_count: int = 0
         self._catalog_hardware_plan = None
         self._hardware_suggestions_enabled = get_model_manager_hardware_suggestions()
+        self._hub_probe_worker: HfConnectivityProbeWorker | None = None
+        self._hub_reachable: bool | None = None
+        self._hub_status_detail: str = ""
+        self._pending_download_retry: bool = False
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
@@ -518,6 +525,7 @@ class ModelManagerView(QWidget):
         self._apply_hub_list_surface(is_dark)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._apply_hub_combo_chevron(is_dark)
+        self._apply_hub_connectivity_banner(is_dark)
         self._update_hub_row_colors()
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
@@ -532,6 +540,8 @@ class ModelManagerView(QWidget):
         self._apply_hub_list_surface(is_dark)
         self._apply_hub_metadata_styles(is_dark)
         self._apply_hub_combo_chevron(is_dark)
+        self._apply_hub_connectivity_banner(is_dark)
+        self._start_hub_connectivity_probe()
         QTimer.singleShot(0, self._refresh_hub_row_heights)
 
     def eventFilter(self, obj, event) -> bool:
@@ -669,7 +679,7 @@ class ModelManagerView(QWidget):
             if not dw.wait(10_000):
                 logger.warning("Download worker did not finish within 10s during shutdown.")
 
-        for attr in ("_search_worker", "_readme_worker", "_list_worker", "_meta_worker", "_curated_meta_worker"):
+        for attr in ("_search_worker", "_readme_worker", "_list_worker", "_meta_worker", "_curated_meta_worker", "_hub_probe_worker"):
             w = getattr(self, attr, None)
             if w is None or not w.isRunning():
                 continue
@@ -767,12 +777,33 @@ class ModelManagerView(QWidget):
         self.hub_search_edit.textChanged.connect(self._schedule_hub_search)
         left_l.addWidget(self.hub_search_edit)
 
+        self.hub_status_banner = QFrame()
+        self.hub_status_banner.setObjectName("ModelManagerHubStatusBanner")
+        self.hub_status_banner.setVisible(False)
+        banner_l = QHBoxLayout(self.hub_status_banner)
+        banner_l.setContentsMargins(10, 8, 10, 8)
+        banner_l.setSpacing(8)
+        self.hub_status_banner_icon = QLabel()
+        self.hub_status_banner_icon.setFixedSize(16, 16)
+        self.hub_status_banner_text = QLabel("")
+        self.hub_status_banner_text.setWordWrap(True)
+        banner_l.addWidget(self.hub_status_banner_icon, alignment=Qt.AlignmentFlag.AlignTop)
+        banner_l.addWidget(self.hub_status_banner_text, stretch=1)
+        left_l.addWidget(self.hub_status_banner)
+
         self.hub_list_hint = QLabel("Qube Verified — curated GGUF models")
         self.hub_list_hint.setWordWrap(True)
         self.hub_list_hint.setToolTip(
             "Curated models tested for Qube. Clear the search box to browse this list."
         )
         left_l.addWidget(self.hub_list_hint)
+
+        self.hub_search_retry_btn = QPushButton("Retry search")
+        self.hub_search_retry_btn.setObjectName("ModelManagerHubSearchRetry")
+        self.hub_search_retry_btn.setVisible(False)
+        apply_brand_primary(self.hub_search_retry_btn, icon_name="fa5s.redo")
+        self.hub_search_retry_btn.clicked.connect(self._run_hub_search)
+        left_l.addWidget(self.hub_search_retry_btn)
 
         self.hub_model_list = QListWidget()
         self.hub_model_list.setObjectName("ModelHubList")
@@ -2255,6 +2286,8 @@ class ModelManagerView(QWidget):
             self._apply_download_action_button_style(mode="load")
             return
         self._apply_download_action_button_style(mode="download")
+        if hasattr(self, "hub_search_retry_btn") and self.hub_search_retry_btn.isVisible():
+            apply_brand_primary(self.hub_search_retry_btn, icon_name="fa5s.redo")
 
     def _set_system_match_style(self, state: str) -> None:
         """Render System label as plain text (no chip card), colored by memory experience."""
@@ -2377,10 +2410,12 @@ class ModelManagerView(QWidget):
         self._curated_meta_worker.start()
 
     def _on_curated_meta_finished(self, repo: str, meta: dict) -> None:
+        self._note_hub_success()
         self._apply_curated_card_metadata(repo, meta)
 
-    def _on_curated_meta_failed(self, _repo: str, _err: str) -> None:
-        pass
+    def _on_curated_meta_failed(self, _repo: str, err: object) -> None:
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
 
     def _on_curated_meta_thread_finished(self) -> None:
         self._retire_hf_thread(self._curated_meta_worker)
@@ -2432,6 +2467,7 @@ class ModelManagerView(QWidget):
         q = self.hub_search_edit.text().strip()
         if not q:
             self._search_seq += 1
+            self._set_hub_search_retry_visible(False)
             self._populate_editors_picks()
             return
 
@@ -2439,6 +2475,7 @@ class ModelManagerView(QWidget):
         seq = self._search_seq
         self._search_models_cache = []
         self._search_visible_count = 0
+        self._set_hub_search_retry_visible(False)
         self.hub_list_hint.setText("Searching Hugging Face (GGUF-tagged models)…")
         if hasattr(self, "hub_load_more_btn"):
             self.hub_load_more_btn.setVisible(False)
@@ -2522,19 +2559,31 @@ class ModelManagerView(QWidget):
     def _apply_hub_search_results(self, models: list, seq: int) -> None:
         if seq != self._search_seq:
             return
+        self._note_hub_success()
+        self._set_hub_search_retry_visible(False)
         self._search_models_cache = list(models or [])
         self._search_visible_count = min(HUB_SEARCH_PAGE_SIZE, len(self._search_models_cache))
         self._render_hub_search_page()
 
-    def _on_hub_search_failed(self, msg: str, seq: int) -> None:
+    def _on_hub_search_failed(self, err: object, seq: int) -> None:
         if seq != self._search_seq:
             return
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
         self._search_models_cache = []
         self._search_visible_count = 0
         if hasattr(self, "hub_load_more_btn"):
             self.hub_load_more_btn.setVisible(False)
+        if info.inline_only:
+            self.hub_list_hint.setText(
+                "Can't reach Hugging Face — check your connection, then tap Retry search. "
+                "Your previous list is still shown below."
+            )
+            self._set_hub_search_retry_visible(True)
+            return
         self.hub_list_hint.setText("Search failed — try different keywords.")
-        self._show_error("Hub search failed", msg)
+        self._set_hub_search_retry_visible(info.retryable)
+        self._show_hub_error_dialog(info, on_retry=self._run_hub_search)
 
     def _model_description_tooltip_text(
         self,
@@ -2725,6 +2774,7 @@ class ModelManagerView(QWidget):
     def _apply_meta_if_current(self, repo: str, meta: dict, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        self._note_hub_success()
         current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
         row_title = str(current.data(HUB_ROW_TITLE_ROLE) or self.detail_title.text() or repo) if current else str(self.detail_title.text() or repo)
         row_desc = str(current.data(HUB_ROW_DESC_ROLE) or repo) if current else str(repo)
@@ -2746,13 +2796,22 @@ class ModelManagerView(QWidget):
         if self.hf_file_combo.count() > 1:
             self._refresh_quant_recommendations()
 
-    def _apply_meta_failed_if_current(self, repo: str, err: str, seq: int) -> None:
+    def _apply_meta_failed_if_current(self, repo: str, err: object, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
         self._reset_hub_metadata_labels()
-        self._set_meta_hint(
-            "Model metadata unavailable for this repository. Quantization and README are still available."
-        )
+        if info.is_platform_outage:
+            self._set_meta_hint(
+                "Hugging Face is unreachable — metadata is unavailable. "
+                "Quantization listing and README may also fail until connectivity returns."
+            )
+        else:
+            self._set_meta_hint(
+                "Model metadata unavailable for this repository. "
+                "Quantization and README are still available."
+            )
 
     def _sync_readme_panel_height(self) -> None:
         """Size README to its content so the outer detail scroll owns vertical scrolling."""
@@ -2807,6 +2866,7 @@ class ModelManagerView(QWidget):
     def _apply_readme_if_current(self, repo: str, text: str, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        self._note_hub_success()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._last_readme_markdown = text
         self._render_readme_with_fallback(is_dark)
@@ -2834,13 +2894,15 @@ class ModelManagerView(QWidget):
             self._apply_hub_row_size_hint(current, row)
         self._render_capability_chips(refreshed_caps)
 
-    def _apply_readme_failed_if_current(self, repo: str, err: str, seq: int) -> None:
+    def _apply_readme_failed_if_current(self, repo: str, err: object, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
         self._last_readme_markdown = None
         self.readme_browser.setPlainText(
-            f"Could not load README for `{repo}`.\n\n{err}\n\n"
-            "You can still pick a .gguf file below if the repo lists files on the Hub."
+            f"Could not load README for `{repo}`.\n\n{info.message}\n\n"
+            "You can still pick a .gguf file below if the repo file list loads successfully."
         )
 
     def _start_list_worker_for_repo(self, repo: str, seq: int) -> None:
@@ -2866,6 +2928,7 @@ class ModelManagerView(QWidget):
     def _on_hf_list_finished(self, entries: list, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        self._note_hub_success()
         self.hf_file_combo.blockSignals(True)
         self.hf_file_combo.clear()
         normalized: list[tuple[str, int | None]] = []
@@ -2974,9 +3037,11 @@ class ModelManagerView(QWidget):
         self._sync_download_action_state()
         self._refresh_download_options_card_geometry()
 
-    def _on_hf_list_failed(self, msg: str, seq: int) -> None:
+    def _on_hf_list_failed(self, err: object, seq: int) -> None:
         if seq != self._detail_seq:
             return
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
         if self._try_next_catalog_gguf_repo(seq):
             return
         self.hf_file_combo.blockSignals(True)
@@ -2988,7 +3053,13 @@ class ModelManagerView(QWidget):
         self._update_download_button_label()
         self._update_gpu_fit_status()
         self._sync_download_action_state()
-        self._show_error("Could not list files", msg)
+
+        def _retry_list() -> None:
+            repo = str(getattr(self, "_current_repo_id", "") or "").strip()
+            if repo:
+                self._start_list_worker_for_repo(repo, seq)
+
+        self._show_hub_error_dialog(info, on_retry=_retry_list if info.retryable else None)
 
     def _section_header(self, icon_name: str, text: str) -> QWidget:
         row = QWidget()
@@ -3090,12 +3161,13 @@ class ModelManagerView(QWidget):
             return
         self._sync_download_button_tooltip()
 
-    def _restore_download_idle_ui(self) -> None:
+    def _restore_download_idle_ui(self, *, clear_queue: bool = True) -> None:
         self._download_ui_cancel_mode = False
         self.download_progress.hide()
         self.download_progress.setValue(0)
         self.download_progress.setFormat("(%p%)")
-        self._reset_download_queue_state()
+        if clear_queue:
+            self._reset_download_queue_state()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._sync_download_action_state()
@@ -3178,6 +3250,7 @@ class ModelManagerView(QWidget):
         self._download_worker.start()
 
     def _on_download_finished(self, path: str) -> None:
+        self._note_hub_success()
         if self._download_queue_active():
             self._download_completed_paths.append(str(path))
             if self._download_current_bytes_total > 0:
@@ -3200,22 +3273,37 @@ class ModelManagerView(QWidget):
         self.native_library_changed.emit()
         self._sync_download_action_state()
 
-    def _on_download_failed(self, msg: str) -> None:
+    def _on_download_failed(self, err: object) -> None:
+        info = coerce_hub_error(err)
+        self._note_hub_failure(info)
         failed_name = Path(self._download_current_path).name if self._download_current_path else "model"
+        message = self._format_download_failure_message(info)
+        dialog_info = HubErrorInfo(
+            kind=info.kind,
+            title=info.title if not self._download_queue_active() else "Download failed",
+            message=message,
+            technical_detail=info.technical_detail,
+            retryable=info.retryable,
+            show_status_link=info.show_status_link,
+        )
         if self._download_queue_active():
             self._download_failed_path = failed_name
             n = len(self._download_queue_paths)
             done = self._download_queue_index
-            self._restore_download_idle_ui()
+            self._pending_download_retry = info.retryable
+            self._restore_download_idle_ui(clear_queue=not info.retryable)
             self._set_download_status_text(f"Download failed after {done}/{n} shards")
-            self._show_error(
-                "Download failed",
-                f"Failed while downloading shard {done + 1}/{n}: {failed_name}\n\n{msg}",
+            self._show_hub_error_dialog(
+                dialog_info,
+                on_retry=self._retry_download_from_current_shard if info.retryable else None,
             )
             return
         self._restore_download_idle_ui()
         self._set_download_status_text("")
-        self._show_error("Download failed", msg)
+        self._show_hub_error_dialog(
+            dialog_info,
+            on_retry=self._start_download if info.retryable else None,
+        )
 
     def _on_insufficient_space(self, required: int, available: int) -> None:
         failed_name = Path(self._download_current_path).name if self._download_current_path else "model"
@@ -3251,6 +3339,147 @@ class ModelManagerView(QWidget):
         self._restore_download_idle_ui()
         self._set_download_status_text("Download cancelled.")
 
+    def _apply_hub_connectivity_banner(self, is_dark: bool) -> None:
+        if not hasattr(self, "hub_status_banner"):
+            return
+        bg = "#3b2f2f" if is_dark else "#fef2f2"
+        border = "#f38ba8" if is_dark else "#fecaca"
+        fg = "#fcd8e0" if is_dark else "#991b1b"
+        self.hub_status_banner.setStyleSheet(
+            f"""
+            QFrame#ModelManagerHubStatusBanner {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 10px;
+            }}
+            QLabel {{ color: {fg}; background: transparent; border: none; font-size: 12px; }}
+            """
+        )
+        icon_color = "#f38ba8" if is_dark else "#dc2626"
+        self.hub_status_banner_icon.setPixmap(
+            qta.icon("fa5s.exclamation-triangle", color=icon_color).pixmap(QSize(16, 16))
+        )
+        if self._hub_reachable is False:
+            detail = self._hub_status_detail.strip()
+            text = (
+                "Can't reach Hugging Face — Hub search and downloads are unavailable. "
+                "Browse Qube Verified models below or retry when you're back online."
+            )
+            if detail:
+                text = f"{text}\n{detail}"
+            self.hub_status_banner_text.setText(text)
+            self.hub_status_banner.setVisible(True)
+        else:
+            self.hub_status_banner.setVisible(False)
+
+    def _set_hub_search_retry_visible(self, visible: bool) -> None:
+        if hasattr(self, "hub_search_retry_btn"):
+            self.hub_search_retry_btn.setVisible(bool(visible))
+
+    def _note_hub_success(self) -> None:
+        self._hub_reachable = True
+        self._hub_status_detail = ""
+        self._set_hub_search_retry_visible(False)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_hub_connectivity_banner(is_dark)
+
+    def _note_hub_failure(self, info: HubErrorInfo) -> None:
+        info = coerce_hub_error(info)
+        if not info.is_platform_outage:
+            return
+        self._hub_reachable = False
+        self._hub_status_detail = info.message
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_hub_connectivity_banner(is_dark)
+
+    def _start_hub_connectivity_probe(self) -> None:
+        if self._hub_probe_worker is not None and self._hub_probe_worker.isRunning():
+            return
+        self._retire_hf_thread(self._hub_probe_worker)
+        self._hub_probe_worker = HfConnectivityProbeWorker()
+        self._hub_probe_worker.finished_ok.connect(self._on_hub_probe_ok)
+        self._hub_probe_worker.failed.connect(self._on_hub_probe_failed)
+        self._hub_probe_worker.start()
+
+    def _on_hub_probe_ok(self) -> None:
+        self._note_hub_success()
+
+    def _on_hub_probe_failed(self, info: object) -> None:
+        self._note_hub_failure(coerce_hub_error(info))
+
+    def _show_hub_error_dialog(
+        self,
+        info: HubErrorInfo,
+        *,
+        on_retry=None,
+        force_modal: bool = False,
+    ) -> None:
+        info = coerce_hub_error(info)
+        if info.inline_only and not force_modal:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = HubErrorDialog(self.window(), info, is_dark=is_dark)
+        if dlg.exec_retry() and on_retry is not None:
+            on_retry()
+
+    def _format_download_failure_message(self, info: HubErrorInfo) -> str:
+        info = coerce_hub_error(info)
+        lines = [info.message]
+        if self._download_queue_active():
+            n = len(self._download_queue_paths)
+            done = self._download_queue_index
+            failed_name = (
+                Path(self._download_current_path).name if self._download_current_path else "model"
+            )
+            lines.insert(0, f"Failed while downloading shard {done + 1}/{n}: {failed_name}")
+            saved = list(self._download_completed_paths)
+            if saved:
+                lines.append("")
+                lines.append(
+                    f"{len(saved)} shard(s) were saved locally before the failure."
+                )
+                preview = "\n".join(f"  • {Path(p).name}" for p in saved[:6])
+                if preview:
+                    lines.append(preview)
+                if len(saved) > 6:
+                    lines.append(f"  • … and {len(saved) - 6} more")
+                if self._download_queue_paths:
+                    first_path = self._download_queue_paths[0][0]
+                    local_first = Path(get_llm_models_dir()) / Path(first_path).name
+                    if local_first.is_file() or saved:
+                        probe = str(local_first if local_first.is_file() else saved[0])
+                        missing = missing_gguf_shards(probe)
+                        if missing:
+                            lines.append("")
+                            lines.append(
+                                "This model cannot load until every shard is present. "
+                                "Retry the download to fetch the missing parts."
+                            )
+                            miss_preview = "\n".join(f"  • {name}" for name in missing[:6])
+                            if miss_preview:
+                                lines.append("Missing:")
+                                lines.append(miss_preview)
+                            if len(missing) > 6:
+                                lines.append(f"  • … and {len(missing) - 6} more")
+        if info.technical_detail and info.technical_detail not in "\n".join(lines):
+            lines.append("")
+            lines.append(f"({info.technical_detail})")
+        return "\n".join(lines)
+
+    def _retry_download_from_current_shard(self) -> None:
+        if not self._download_queue_paths or not self._current_repo_id.strip():
+            self._start_download()
+            return
+        self._pending_download_retry = False
+        repo = self._current_repo_id.strip()
+        self.download_progress.setValue(0)
+        self.download_progress.show()
+        self._set_download_button_cancel_mode(True)
+        if self._download_completed_bytes > 0 and self._download_total_bytes > 0:
+            pct = int(self._download_completed_bytes * 100 / self._download_total_bytes)
+            self.download_progress.setValue(min(99, max(0, pct)))
+        self._start_next_shard_download(repo)
+
     def _show_error(self, title: str, message: str) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         dlg = PrestigeDialog(self.window(), title, message, is_dark=is_dark)
@@ -3276,6 +3505,7 @@ class ModelManagerView(QWidget):
         self._refresh_hub_row_heights()
         current = self.hub_model_list.currentItem() if hasattr(self, "hub_model_list") else None
         self._apply_detail_branding(dict(current.data(HUB_ROW_BRANDING_ROLE) or {}) if current else None)
+        self._apply_hub_connectivity_banner(is_dark)
         if self._last_readme_markdown:
             self._render_readme_with_fallback(is_dark)
         self._update_quant_rationale_label()

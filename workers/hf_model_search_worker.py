@@ -8,6 +8,7 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from core.hf_hub_errors import HubErrorInfo, classify_hf_error
 from core.hf_publisher_branding import HuggingFaceBrandingResolver
 
 logger = logging.getLogger("Qube.HFModelSearch")
@@ -34,7 +35,7 @@ class HfModelSearchWorker(QThread):
     """
 
     finished_ok = pyqtSignal(list, int)  # models, request_seq
-    failed = pyqtSignal(str, int)  # message, request_seq
+    failed = pyqtSignal(object, int)  # HubErrorInfo, request_seq
 
     def __init__(self, query: str, request_seq: int, limit: int = 200):
         super().__init__()
@@ -53,7 +54,7 @@ class HfModelSearchWorker(QThread):
             it = api.list_models(**kwargs)
         except Exception as e:
             logger.exception("HfApi.list_models failed: %s", e)
-            self.failed.emit(str(e), self._seq)
+            self.failed.emit(classify_hf_error(e, context="model search"), self._seq)
             return
 
         out: list[dict] = []
@@ -149,7 +150,7 @@ class HfModelSearchWorker(QThread):
                     break
         except Exception as e:
             logger.exception("Hub search iteration failed: %s", e)
-            self.failed.emit(str(e), self._seq)
+            self.failed.emit(classify_hf_error(e, context="model search"), self._seq)
             return
 
         self.finished_ok.emit(out, self._seq)
