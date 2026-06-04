@@ -20,6 +20,8 @@ class RouterTelemetryBrain:
         logger.debug(
             f"[Telemetry] route={event.get('route')} "
             f"mem={event.get('memory_hits')} rag={event.get('rag_hits')} "
+            f"web={event.get('web_hits', 0)} "
+            f"web_attempted={event.get('web_search_attempted', False)} "
             f"lat={event.get('latency_ms'):.1f}ms"
         )
 

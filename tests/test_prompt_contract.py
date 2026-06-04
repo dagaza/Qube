@@ -27,6 +27,7 @@ class TestPromptContract(unittest.TestCase):
         self.assertIsNone(resolved.chat_format)
         self.assertIn("<|channel|>final<|message|>", resolved.prompt or "")
         self.assertIn("<|return|>", resolved.stop)
+        self.assertEqual(resolved.protocol, "harmony")
         self.assertNotEqual(resolved.chat_format, "llama-2")
         self.assertEqual(resolved.template_source, "fallback")
 
@@ -48,9 +49,50 @@ class TestPromptContract(unittest.TestCase):
                 {"role": "user", "content": "Why is the sky blue?"},
             ]
         )
-        self.assertIn("<|start|>system<|message|>Be direct.<|end|>", prompt)
+        self.assertIn("<|start|>system<|message|>Be direct.", prompt)
+        self.assertIn("2–4 short sections", prompt)
         self.assertIn("<|start|>user<|message|>Why is the sky blue?<|end|>", prompt)
         self.assertTrue(prompt.endswith("<|start|>assistant<|channel|>final<|message|>"))
+
+    def test_render_harmony_multiturn_uses_compact_user_block(self) -> None:
+        """Regression: one final anchor; history in a labeled user block."""
+        prompt = render_harmony_final_prompt(
+            [
+                {"role": "user", "content": "What does MCP mean here?"},
+                {
+                    "role": "assistant",
+                    "content": "MCP means Microsoft Cloud Platform in this context.",
+                },
+                {
+                    "role": "user",
+                    "content": "MCP does not mean Microsoft Cloud Platform",
+                },
+            ]
+        )
+        self.assertNotIn("<|start|>assistant<|message|>", prompt)
+        self.assertEqual(prompt.count("<|start|>assistant<|channel|>final<|message|>"), 1)
+        self.assertIn("[Conversation so far]", prompt)
+        self.assertIn(
+            "Assistant: MCP means Microsoft Cloud Platform in this context.",
+            prompt,
+        )
+        self.assertIn("[Current message]", prompt)
+        self.assertIn(
+            "User: MCP does not mean Microsoft Cloud Platform",
+            prompt,
+        )
+        self.assertTrue(prompt.endswith("<|start|>assistant<|channel|>final<|message|>"))
+
+    def test_render_harmony_collapses_duplicate_trailing_user(self) -> None:
+        prompt = render_harmony_final_prompt(
+            [
+                {"role": "user", "content": "First question"},
+                {"role": "assistant", "content": "First answer"},
+                {"role": "user", "content": "Same again"},
+                {"role": "user", "content": "Same again"},
+            ]
+        )
+        self.assertEqual(prompt.count("User: Same again"), 1)
 
     def test_qwen_family_routes_to_chatml(self) -> None:
         llama = _FakeLlama(name="Qwen2.5-7B-Instruct-Q4_0", handlers={"chatml": object()})

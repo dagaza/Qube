@@ -2,10 +2,15 @@
 Heuristic detection of GGUF ``tokenizer.chat_template`` strings that are unsafe for
 end-user chat (channel / multi-phase scaffolding). Used only during prompt contract
 resolution; does not add new formatting paths.
+
+Harmony-trained models are expected to ship Harmony markers; use
+``is_unsafe_chat_template(..., harmony_model=True)`` to skip false positives.
 """
 from __future__ import annotations
 
 import re
+
+from core.harmony_protocol import is_expected_harmony_chat_template
 
 # Substrings / patterns (case-insensitive). Minimal set per product spec.
 _SUBSTRING_MARKERS: tuple[tuple[str, str], ...] = (
@@ -27,13 +32,21 @@ _PHASE_TAG = re.compile(
 )
 
 
-def is_unsafe_chat_template(template: str) -> tuple[bool, list[str]]:
+def is_unsafe_chat_template(
+    template: str,
+    *,
+    harmony_model: bool = False,
+) -> tuple[bool, list[str]]:
     """
     Return (is_unsafe, reasons) for a tokenizer Jinja / chat template string.
 
-    Strict, substring-based rules only; no model-name checks.
+    Strict, substring-based rules only; no model-name checks unless ``harmony_model``
+    is True (expected Harmony protocol template).
     """
     if not isinstance(template, str) or not template.strip():
+        return False, []
+
+    if harmony_model and is_expected_harmony_chat_template(template):
         return False, []
 
     reasons: list[str] = []

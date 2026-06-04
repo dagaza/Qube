@@ -1,0 +1,330 @@
+{
+  "pack": "milestones",
+  "messages": [
+    {
+      "id": "mil_001",
+      "intent": "celebration",
+      "text": "We've accumulated a few days together.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_7"
+      ]
+    },
+    {
+      "id": "mil_002",
+      "intent": "celebration",
+      "text": "A month of quiet presence adds up.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_30"
+      ]
+    },
+    {
+      "id": "mil_003",
+      "intent": "celebration",
+      "text": "A hundred days is a respectable stretch.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_100"
+      ]
+    },
+    {
+      "id": "mil_004",
+      "intent": "celebration",
+      "text": "A year is a respectable amount of observing.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_365"
+      ]
+    },
+    {
+      "id": "mil_005",
+      "intent": "celebration",
+      "text": "Two years of floating nearby — noted.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "years_2"
+      ]
+    },
+    {
+      "id": "mil_006",
+      "intent": "celebration",
+      "text": "A handful of sessions now behind us.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_10"
+      ]
+    },
+    {
+      "id": "mil_007",
+      "intent": "celebration",
+      "text": "Fifty starts — a familiar rhythm.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_50"
+      ]
+    },
+    {
+      "id": "mil_008",
+      "intent": "celebration",
+      "text": "A hundred sessions worth of quiet company.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_100"
+      ]
+    },
+    {
+      "id": "mil_009",
+      "intent": "celebration",
+      "text": "A year's worth of sessions, more or less.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_365"
+      ]
+    },
+    {
+      "id": "mil_010",
+      "intent": "celebration",
+      "text": "The library has grown quite a bit.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "library_25"
+      ]
+    },
+    {
+      "id": "mil_011",
+      "intent": "celebration",
+      "text": "That's a substantial collection now.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "library_100"
+      ]
+    },
+    {
+      "id": "mil_012",
+      "intent": "celebration",
+      "text": "Fifty small moments noted from here.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "companion_50"
+      ]
+    },
+    {
+      "id": "mil_013",
+      "intent": "celebration",
+      "text": "Two hundred quiet captions — who keeps count.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "companion_200"
+      ]
+    }
+  ]
+}

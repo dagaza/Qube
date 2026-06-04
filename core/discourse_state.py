@@ -34,6 +34,18 @@ _TOPIC_CHANGE = re.compile(
     r"\b(?:let'?s talk about|switch(?:ing)? to|change topic to|new topic:?)\s+(.{2,80})",
     re.I,
 )
+_WHY_CAPTURE = re.compile(
+    r"^\s*why\s+(?:do|does|is|are|can|could|would|will)\s+(.+?)\??\s*$",
+    re.I,
+)
+_HOW_WORKS_CAPTURE = re.compile(
+    r"^\s*how\s+(?:do|does)\s+(.+?)\s+work\??\s*$",
+    re.I,
+)
+_HOW_CAPTURE = re.compile(
+    r"^\s*how\s+(?:do|does|can|could|would|will)\s+(.+?)\??\s*$",
+    re.I,
+)
 
 
 @dataclass(frozen=True)
@@ -65,6 +77,13 @@ def _infer_topic_type(topic: str, context: str = "") -> TopicType:
     return "unknown"
 
 
+def _normalize_concept_subject(subject: str) -> Optional[str]:
+    s = (subject or "").strip(" .?!")
+    if len(s) < 3:
+        return None
+    return s[:120]
+
+
 def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
     s = (text or "").strip()
     if not s:
@@ -91,6 +110,24 @@ def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
         topic = m.group(1).strip(" .?!")
         if topic and len(topic) >= 2:
             return topic[:120], _infer_topic_type(topic, s)
+
+    m = _WHY_CAPTURE.search(s)
+    if m:
+        topic = _normalize_concept_subject(m.group(1))
+        if topic:
+            return topic, "concept"
+
+    m = _HOW_WORKS_CAPTURE.search(s)
+    if m:
+        topic = _normalize_concept_subject(m.group(1))
+        if topic:
+            return topic, "concept"
+
+    m = _HOW_CAPTURE.search(s)
+    if m:
+        topic = _normalize_concept_subject(m.group(1))
+        if topic:
+            return topic, "concept"
 
     names = _PROPER_NAME.findall(s)
     if names:

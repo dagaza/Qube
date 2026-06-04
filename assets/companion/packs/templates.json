@@ -1,0 +1,46 @@
+{
+  "pack": "templates",
+  "templates": [
+    {
+      "id": "tpl_dl_001",
+      "intent": "celebration",
+      "pattern": "{basename} is ready when you are.",
+      "voice": "cozy",
+      "placeholders": [
+        "basename"
+      ],
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 72,
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "pack": "templates"
+    },
+    {
+      "id": "tpl_ing_001",
+      "intent": "acknowledge_effort",
+      "pattern": "Another piece added — {file_count_word} in the library.",
+      "voice": "cozy",
+      "placeholders": [
+        "file_count_word"
+      ],
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 72,
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "pack": "templates"
+    }
+  ]
+}

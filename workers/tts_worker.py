@@ -137,6 +137,7 @@ class TTSWorker(QThread):
         # --- NEW: Voice Bypass Flag ---
         self.is_muted = False
         self._playback_active = False
+        self._last_queued_tts_key = ""
         
         if initial_model:
             self.load_voice(initial_model)
@@ -163,6 +164,9 @@ class TTSWorker(QThread):
     def set_voice(self, voice_name):
         self.active_voice_name = voice_name
         self.status_update.emit(f"Voice set to: {voice_name}")
+
+    def _normalize_tts_queue_key(self, text: str) -> str:
+        return " ".join(str(text or "").split()).strip().lower()
 
     def load_voice(self, model_path):
         self.model_path = model_path
@@ -204,8 +208,14 @@ class TTSWorker(QThread):
         """Modified to accept a session_id for the Memory Brain."""
         # 🔑 THE FAILSAFE: Never queue empty text!
         if not text or not text.strip():
-            return 
-            
+            return
+
+        queue_key = self._normalize_tts_queue_key(text)
+        if queue_key and queue_key == self._last_queued_tts_key:
+            logger.debug("[TTS] Skipping duplicate queued sentence.")
+            return
+        self._last_queued_tts_key = queue_key
+
         # Store as a tuple so the session_id travels with the text
         self.sentence_queue.put((text, session_id))
         if not self.isRunning():
@@ -249,6 +259,7 @@ class TTSWorker(QThread):
 
                 if item is _END_OF_LLM_TURN:
                     logger.debug("[TTS] End-of-turn sentinel received.")
+                    self._last_queued_tts_key = ""
                     self._signal_playback_finished()
                     self.turn_settled.emit()
                     continue
@@ -337,6 +348,7 @@ class TTSWorker(QThread):
         )
         self._interrupt_tts = True
         self.playback_level.emit(0.0)
+        self._last_queued_tts_key = ""
 
         if hasattr(self, 'sentence_queue'):
             try:

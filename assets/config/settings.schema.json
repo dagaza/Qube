@@ -36,10 +36,15 @@
     "default": true,
     "description": "When enabled, classifies follow-up turns and tracks active conversation topic to improve pronoun resolution and reduce retrieval hijacking on CHAT turns."
   },
+  "qube.chat.personality_nudge_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, general chat turns (no retrieval sources) gently encourage one optional short follow-up question or invitation when appropriate—not on RAG, memory recall, or web-grounded turns."
+  },
   "qube.sidecar.enabled": {
     "type": "boolean",
     "default": true,
-    "description": "When true and the bundled Qwen2-0.5B GGUF is present, background cognition (memory judge, reflection, episodes, titling) uses the CPU sidecar instead of the primary LLM."
+    "description": "When true and the bundled Qwen3 1.7B GGUF is present under models/cognition/, background cognition (memory judge, reflection, episodes, titling) uses the CPU sidecar instead of the primary LLM."
   },
   "qube.sidecar.query_rewrite_enabled": {
     "type": "boolean",
@@ -73,7 +78,7 @@
   "qube.sidecar.model_path": {
     "type": "string",
     "default": "",
-    "description": "Absolute path to optional auxiliary cognition GGUF; empty uses bundled Qwen2-0.5B default."
+    "description": "Absolute path to optional auxiliary cognition GGUF; empty uses bundled Qwen3 1.7B default in models/cognition/."
   },
   "qube.sidecar.chat_format": {
     "type": "string",
@@ -354,5 +359,74 @@
     "enum": ["none", "left", "right", "bottom"],
     "default": "none",
     "description": "Edge dock preference for companion placement."
+  },
+  "qube.companion.verbal.enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Enable sidecar-generated companion commentary captions."
+  },
+  "qube.companion.verbal.systemPrompt": {
+    "type": "string",
+    "default": "",
+    "description": "Optional companion-only system prompt; does not affect chat replies."
+  },
+  "qube.companion.verbal.traitPreset": {
+    "type": "string",
+    "default": "neutral",
+    "enum": ["neutral", "warm", "witty", "dry", "sarcastic"],
+    "description": "Companion commentary personality preset."
+  },
+  "qube.companion.verbal.frequency": {
+    "type": "string",
+    "default": "normal",
+    "enum": ["rare", "normal", "chatty"],
+    "description": "How often idle companion commentary may appear."
+  },
+  "qube.companion.verbal.reactIngest": {
+    "type": "boolean",
+    "default": true,
+    "description": "Companion may comment when library ingest completes."
+  },
+  "qube.companion.verbal.reactDownload": {
+    "type": "boolean",
+    "default": true,
+    "description": "Companion may comment when a model download completes."
+  },
+  "qube.companion.cognition.v2": {
+    "type": "boolean",
+    "default": true,
+    "description": "Use Companion Cognition v2 pipeline (observation → thought → curated expression)."
+  },
+  "qube.companion.personality.v2": {
+    "type": "string",
+    "default": "",
+    "description": "JSON personality vector for companion cognition (warmth, humor, etc.)."
+  },
+  "qube.companion.expression.freedom": {
+    "type": "string",
+    "default": "balanced",
+    "enum": ["conservative", "balanced", "expressive"],
+    "description": "Sidecar expression freedom tier override for companion captions."
+  },
+  "qube.companion.moodDrift.enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "Enable slow ambient mood drift for companion cognition v3."
+  },
+  "qube.companion.seasonal.enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "Enable calendar season context for companion messages."
+  },
+  "qube.companion.seasonal.hemisphere": {
+    "type": "string",
+    "default": "north",
+    "enum": ["north", "south"],
+    "description": "Season hemisphere for companion seasonal context."
+  },
+  "qube.companion.motifs.enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "Enable rotating companion identity motifs in message selection."
   }
 }

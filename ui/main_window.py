@@ -225,11 +225,15 @@ class MainWindow(QMainWindow):
         history = self.db.get_session_history(session_id)
         
         if len(history) == 2:
-            # Get the first message (the user's prompt) to use for the title
-            user_prompt = history[0]['content']
+            user_prompt = history[0].get("content") or ""
+            assistant_reply = history[1].get("content") or full_response or ""
             
             if self._sidecar_client is not None:
-                self._sidecar_client.enqueue_title(user_prompt, session_id)
+                self._sidecar_client.enqueue_title(
+                    user_prompt,
+                    session_id,
+                    assistant_reply=assistant_reply,
+                )
 
     # ------------------------------------------------------------------ #
     #  UI CONSTRUCTION                                                   #
@@ -2087,6 +2091,7 @@ class MainWindow(QMainWindow):
         self.tray_controller.set_activity(
             self._activity_reducer.activity,
             voice_paused=voice_paused,
+            voice_output_muted=self._presence_service.snapshot().voice_output_muted,
         )
 
     def _should_hide_to_tray(self) -> bool:
@@ -2212,16 +2217,24 @@ class MainWindow(QMainWindow):
             self._restore_workspace_from_tray()
         elif action_id == "open_settings":
             self._restore_workspace_from_tray()
-            self._route_view(5)
+            if hasattr(self, "nav_settings"):
+                self.nav_settings.setChecked(True)
+                self._route_view(5, self.nav_settings)
         elif action_id == "open_models":
             self._restore_workspace_from_tray()
-            self._route_view(4)
+            if hasattr(self, "nav_models"):
+                self.nav_models.setChecked(True)
+                self._route_view(4, self.nav_models)
         elif action_id == "open_library":
             self._restore_workspace_from_tray()
-            self._route_view(1)
+            if hasattr(self, "nav_library"):
+                self.nav_library.setChecked(True)
+                self._route_view(1, self.nav_library)
         elif action_id == "open_memories":
             self._restore_workspace_from_tray()
-            self._route_view(2)
+            if hasattr(self, "nav_memory"):
+                self.nav_memory.setChecked(True)
+                self._route_view(2, self.nav_memory)
 
     def request_application_restart(self) -> None:
         self._force_app_exit = True
@@ -2250,6 +2263,8 @@ class MainWindow(QMainWindow):
         self._sync_tray_presence()
 
         if hasattr(self, "conversations_view"):
+            label = transition.display_text.strip()
+            self.conversations_view.update_action_placeholder(label)
             if new_state == "idle":
                 self.conversations_view.on_turn_complete_idle()
             else:

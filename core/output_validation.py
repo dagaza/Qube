@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import re
 from typing import Literal
 
+from core.harmony_protocol import is_harmony_contract
 from core.prompt_contract import PromptContract
 
 Severity = Literal["low", "medium", "high"]
@@ -108,10 +109,28 @@ def _degeneration(text: str) -> bool:
     return False
 
 
+_PLANNING_ONLY = re.compile(
+    r"(?is)^\s*(?:we\s+need\s+to|we\s+should|we\s+have|let'?s\s+clarify|the\s+user\s+says)\b"
+)
+
+
+def _harmony_no_final_answer(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return True
+    if _PLANNING_ONLY.match(t) and len(t) < 400:
+        return True
+    return False
+
+
 def validate_output(text: str, contract: PromptContract) -> OutputValidationResult:
-    _ = contract
     issues: list[str] = []
     severity: Severity = "low"
+    harmony = is_harmony_contract(contract)
+
+    if harmony and _harmony_no_final_answer(text):
+        issues.append("harmony_no_final_answer")
+        severity = "high"
 
     if _template_leakage(text):
         issues.append("template_leakage")

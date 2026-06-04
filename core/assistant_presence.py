@@ -11,6 +11,7 @@ from core.assistant_activity import (
     ActivityTransition,
     AssistantActivity,
     AssistantActivityReducer,
+    user_presence_label,
 )
 from core.platform.companion_capabilities import CompanionPlatformTier, detect_companion_platform_tier
 
@@ -52,7 +53,9 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
     """Derive a visual sub-phase from a worker status string."""
     msg_upper = message.upper().strip()
 
-    if activity == AssistantActivity.CAPTURING and "RECORDING" in msg_upper:
+    if activity == AssistantActivity.CAPTURING and (
+        _is_capture_phase_message(msg_upper)
+    ):
         return AssistantPhase.VAD_ACTIVE
     if activity == AssistantActivity.SPEAKING:
         return AssistantPhase.TTS_STREAM
@@ -80,24 +83,20 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
     return AssistantPhase.LLM
 
 
+def _is_capture_phase_message(msg_upper: str) -> bool:
+    return msg_upper == "LISTENING" or "RECORDING" in msg_upper
+
+
 def companion_status_caption(
     activity: AssistantActivity,
     phase: AssistantPhase | None,
+    *,
+    voice_output_muted: bool = False,
 ) -> str | None:
-    """Short companion chip text for the current assistant activity."""
-    if activity == AssistantActivity.CAPTURING:
-        return "Listening…"
-    if activity == AssistantActivity.WORKING:
-        if phase == AssistantPhase.STT:
-            return "Transcribing…"
-        if phase == AssistantPhase.MODEL_LOAD:
-            return "Loading model…"
-        if phase == AssistantPhase.ROUTING:
-            return "Searching…"
-        return "Thinking…"
-    if activity == AssistantActivity.SPEAKING:
-        return "Speaking…"
-    return None
+    """Short companion chip text — mirrors user_presence_label (never Idle; see companion UI)."""
+    if activity in (AssistantActivity.NEEDS_ATTENTION, AssistantActivity.IDLE_LISTEN):
+        return None
+    return user_presence_label(activity, voice_output_muted=voice_output_muted)
 
 
 class AssistantPresenceService(QObject):
@@ -138,6 +137,7 @@ class AssistantPresenceService(QObject):
 
     def set_voice_output_muted(self, muted: bool) -> None:
         self._voice_output_muted = muted
+        self._reducer.set_voice_output_muted(muted)
         self._publish_from_current("")
 
     def set_dnd(self, enabled: bool) -> None:
@@ -169,20 +169,24 @@ class AssistantPresenceService(QObject):
     def snapshot(self) -> AssistantPresenceSnapshot:
         if self._last_snapshot is not None:
             return self._last_snapshot
+        activity = self.activity
+        bubble = self.bubble_state
         return self._build_snapshot(
             ActivityTransition(
-                activity=self.activity,
-                bubble_state=self.bubble_state,
-                display_text="",
+                activity=activity,
+                bubble_state=bubble,
+                display_text=self._reducer._format_display("", bubble, activity),
             ),
             "",
         )
 
     def _publish_from_current(self, message: str) -> None:
+        activity = self.activity
+        bubble = self.bubble_state
         transition = ActivityTransition(
-            activity=self.activity,
-            bubble_state=self.bubble_state,
-            display_text="",
+            activity=activity,
+            bubble_state=bubble,
+            display_text=self._reducer._format_display("", bubble, activity),
         )
         self._publish(transition, message)
 
@@ -204,7 +208,14 @@ class AssistantPresenceService(QObject):
         )
         caption = self._caption_text
         if caption is None:
-            caption = companion_status_caption(activity, phase)
+            from core import app_settings
+
+            if app_settings.get_companion_show_caption():
+                caption = companion_status_caption(
+                    activity,
+                    phase,
+                    voice_output_muted=self._voice_output_muted,
+                )
 
         return AssistantPresenceSnapshot(
             activity=activity,

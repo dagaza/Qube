@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Qube Companion Message Library v3",
+  "type": "object",
+  "required": ["schema_version", "messages"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "intents": { "type": "array", "items": { "type": "string" } },
+    "voices": {
+      "type": "array",
+      "items": {
+        "enum": ["cozy", "dry", "curious", "playful", "reflective", "wry", "observational"]
+      }
+    },
+    "ambient_moods": {
+      "type": "array",
+      "items": {
+        "enum": ["reflective", "cozy", "curious", "playful", "observant", "quiet"]
+      }
+    },
+    "dayparts": {
+      "type": "array",
+      "items": { "enum": ["morning", "afternoon", "evening", "late_night"] }
+    },
+    "seasons": {
+      "type": "array",
+      "items": { "enum": ["spring", "summer", "autumn", "winter"] }
+    },
+    "motifs": {
+      "type": "array",
+      "items": { "enum": ["pixels", "routines", "observing", "weather", "tea", "quiet"] }
+    },
+    "pack_manifest": { "type": "array", "items": { "type": "string" } },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "intent", "text", "contexts"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "intent": { "type": "string" },
+          "text": { "type": "string", "maxLength": 72 },
+          "voice": {
+            "enum": ["cozy", "dry", "curious", "playful", "reflective", "wry", "observational"]
+          },
+          "mood": { "type": "array", "items": { "type": "string" } },
+          "energy": { "enum": ["low", "medium"] },
+          "rarity": { "enum": ["common", "uncommon", "rare"] },
+          "contexts": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "cooldown_hours": { "type": "number", "minimum": 0 },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "ambient_moods": { "type": "array", "items": { "type": "string" } },
+          "dayparts": { "type": "array", "items": { "type": "string" } },
+          "seasons": { "type": "array", "items": { "type": "string" } },
+          "motifs": { "type": "array", "items": { "type": "string" } },
+          "milestone_ids": { "type": "array", "items": { "type": "string" } },
+          "pack": { "type": "string" },
+          "min_warmth": { "type": "number", "minimum": 0, "maximum": 1 },
+          "max_warmth": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "intent", "pattern", "placeholders", "contexts"],
+        "properties": {
+          "id": { "type": "string" },
+          "intent": { "type": "string" },
+          "pattern": { "type": "string" },
+          "voice": {
+            "enum": ["cozy", "dry", "curious", "playful", "reflective", "wry", "observational"]
+          },
+          "placeholders": { "type": "array", "items": { "type": "string" } },
+          "contexts": { "type": "array", "items": { "type": "string" } },
+          "cooldown_hours": { "type": "number" },
+          "mood": { "type": "array", "items": { "type": "string" } },
+          "energy": { "enum": ["low", "medium"] },
+          "rarity": { "enum": ["common", "uncommon", "rare"] },
+          "pack": { "type": "string" }
+        }
+      }
+    }
+  }
+}

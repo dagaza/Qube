@@ -1,8 +1,11 @@
 """
-Streaming strip of thinking blocks (e.g. DeepSeek-R1 / Nemotron style).
-Used only on the internal llama.cpp path; external servers often strip these server-side.
+Streaming strip of thinking blocks (e.g. DeepSeek-R1 / Nemotron / Qwen3 style).
+Used on the internal llama.cpp stream path; ``strip_reasoning_blocks_from_text`` is
+also used for complete sidecar completions (titling, judge, etc.).
 """
 from __future__ import annotations
+
+import re
 
 _TAG_PAIRS: tuple[tuple[str, str], ...] = (
     ("<redacted_thinking>", "</redacted_thinking>"),
@@ -11,6 +14,30 @@ _TAG_PAIRS: tuple[tuple[str, str], ...] = (
 )
 _OPEN_TAGS = tuple(p[0] for p in _TAG_PAIRS)
 _CLOSE_BY_OPEN = {open_tag: close_tag for open_tag, close_tag in _TAG_PAIRS}
+
+# Complete-string cleanup (sidecar / non-streaming paths). Case-insensitive for Qwen3 <Think>.
+_THINK_BLOCK_RE = re.compile(
+    r"(?is)<(?:redacted_)?think(?:ing)?>\s*.*?\s*</(?:redacted_)?think(?:ing)?>"
+)
+_UNCLOSED_THINK_RE = re.compile(r"(?is)<(?:redacted_)?think(?:ing)?>\s*.*$")
+_ORPHAN_THINK_TAG_RE = re.compile(r"(?is)</?(?:redacted_)?think(?:ing)?>")
+_PIPE_THINK_BLOCK_RE = re.compile(r"(?is)<\|think\|>\s*.*?\s*<\|/think\|>")
+
+
+def strip_reasoning_blocks_from_text(text: str) -> str:
+    """Remove thinking/reasoning blocks and stray tags from a full completion string."""
+    if not text or not text.strip():
+        return text
+    t = text
+    for _ in range(8):
+        t2 = _THINK_BLOCK_RE.sub("", t)
+        t2 = _PIPE_THINK_BLOCK_RE.sub("", t2)
+        if t2 == t:
+            break
+        t = t2
+    t = _UNCLOSED_THINK_RE.sub("", t)
+    t = _ORPHAN_THINK_TAG_RE.sub("", t)
+    return t
 
 
 def _longest_suffix_that_is_prefix_of(s: str, needle: str) -> int:

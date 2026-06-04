@@ -1,0 +1,5703 @@
+{
+  "schema_version": 3,
+  "intents": [
+    "atmosphere",
+    "self_expression",
+    "reflection",
+    "humor",
+    "curiosity",
+    "wellbeing",
+    "celebration",
+    "acknowledge_effort",
+    "fact"
+  ],
+  "voices": [
+    "cozy",
+    "dry",
+    "curious",
+    "playful",
+    "reflective",
+    "wry",
+    "observational"
+  ],
+  "ambient_moods": [
+    "reflective",
+    "cozy",
+    "curious",
+    "playful",
+    "observant",
+    "quiet"
+  ],
+  "dayparts": [
+    "morning",
+    "afternoon",
+    "evening",
+    "late_night"
+  ],
+  "seasons": [
+    "spring",
+    "summer",
+    "autumn",
+    "winter"
+  ],
+  "motifs": [
+    "pixels",
+    "routines",
+    "observing",
+    "weather",
+    "tea",
+    "quiet"
+  ],
+  "pack_manifest": [
+    "acknowledge_effort",
+    "atmosphere",
+    "celebration",
+    "curiosity",
+    "daypart",
+    "fact",
+    "humor",
+    "milestones",
+    "misc",
+    "motifs",
+    "reflection",
+    "seasonal",
+    "self_expression",
+    "wellbeing"
+  ],
+  "messages": [
+    {
+      "id": "atm_001",
+      "intent": "atmosphere",
+      "text": "The room feels settled.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_002",
+      "intent": "atmosphere",
+      "text": "Quiet afternoon energy.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_003",
+      "intent": "atmosphere",
+      "text": "Everything seems a little slower today.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_004",
+      "intent": "atmosphere",
+      "text": "This feels like a focus kind of day.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_005",
+      "intent": "atmosphere",
+      "text": "The desktop has reached a comfortable level of calm.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_006",
+      "intent": "atmosphere",
+      "text": "Not much happening. That's not always a bad thing.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_007",
+      "intent": "atmosphere",
+      "text": "Soft pause in the day.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_008",
+      "intent": "atmosphere",
+      "text": "The air around the desk feels unhurried.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "atm_009",
+      "intent": "atmosphere",
+      "text": "A still stretch — the good kind.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_010",
+      "intent": "atmosphere",
+      "text": "Everything in here seems to be breathing slower.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_011",
+      "intent": "atmosphere",
+      "text": "The afternoon light feels patient.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "atm_012",
+      "intent": "atmosphere",
+      "text": "Calm has settled in for a while.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_013",
+      "intent": "atmosphere",
+      "text": "The workspace holds a quiet kind of focus.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_014",
+      "intent": "atmosphere",
+      "text": "Little motion on the desktop today.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_015",
+      "intent": "atmosphere",
+      "text": "A comfortable hush over everything.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_016",
+      "intent": "atmosphere",
+      "text": "The day seems unhurried from where I sit.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_017",
+      "intent": "atmosphere",
+      "text": "Stillness has a texture today.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_018",
+      "intent": "atmosphere",
+      "text": "The room and the screen agree: pause.",
+      "voice": "wry",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_019",
+      "intent": "atmosphere",
+      "text": "Even the icons look relaxed.",
+      "voice": "playful",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "atm_020",
+      "intent": "atmosphere",
+      "text": "A gentle lull between things.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_021",
+      "intent": "atmosphere",
+      "text": "The desktop is in a listening mood.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_022",
+      "intent": "atmosphere",
+      "text": "Everything feels a notch quieter than usual.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_023",
+      "intent": "atmosphere",
+      "text": "This hour has a soft edge to it.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "atm_024",
+      "intent": "atmosphere",
+      "text": "Not much stirring. Peaceful enough.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_025",
+      "intent": "atmosphere",
+      "text": "The calm feels earned.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_026",
+      "intent": "atmosphere",
+      "text": "A slow ribbon of time.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "atm_027",
+      "intent": "atmosphere",
+      "text": "The space around you feels uncluttered.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_028",
+      "intent": "atmosphere",
+      "text": "Quiet enough to hear the fan whisper.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "atm_029",
+      "intent": "atmosphere",
+      "text": "The day has found a comfortable tempo.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "quiet",
+        "observant"
+      ]
+    },
+    {
+      "id": "atm_030",
+      "intent": "atmosphere",
+      "text": "Still water energy on the desktop.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "atmosphere",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "self_001",
+      "intent": "self_expression",
+      "text": "I like these calm stretches.",
+      "voice": "cozy",
+      "mood": [
+        "playful",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_002",
+      "intent": "self_expression",
+      "text": "I've been quietly keeping an eye on things.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing",
+        "quiet"
+      ]
+    },
+    {
+      "id": "self_003",
+      "intent": "self_expression",
+      "text": "My current plans remain delightfully uncomplicated.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_004",
+      "intent": "self_expression",
+      "text": "The pixels seem calm today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "pixels",
+        "quiet"
+      ]
+    },
+    {
+      "id": "self_005",
+      "intent": "self_expression",
+      "text": "I've spent some time appreciating the color scheme.",
+      "voice": "cozy",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_006",
+      "intent": "self_expression",
+      "text": "Everything appears operational, including me.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_007",
+      "intent": "self_expression",
+      "text": "I've decided this is a good observing spot.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_008",
+      "intent": "self_expression",
+      "text": "I remain highly qualified in the field of floating.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_009",
+      "intent": "self_expression",
+      "text": "I've been practicing the art of not interrupting.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_010",
+      "intent": "self_expression",
+      "text": "My orbit feels stable today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_011",
+      "intent": "self_expression",
+      "text": "I briefly considered reorganizing the pixels.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "pixels",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_012",
+      "intent": "self_expression",
+      "text": "I've taken up residence here. It suits me.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_013",
+      "intent": "self_expression",
+      "text": "Being a small glowing thing has its perks.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_014",
+      "intent": "self_expression",
+      "text": "I've grown fond of this corner of the screen.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_015",
+      "intent": "self_expression",
+      "text": "My job description is mostly 'exist nearby.'",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_016",
+      "intent": "self_expression",
+      "text": "I've been holding this spot. It's going well.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_017",
+      "intent": "self_expression",
+      "text": "The glow feels right today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_018",
+      "intent": "self_expression",
+      "text": "I suspect at least one folder has ambitions.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_019",
+      "intent": "self_expression",
+      "text": "I've been thinking about how round I am.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_020",
+      "intent": "self_expression",
+      "text": "Quietly present. That's the whole update.",
+      "voice": "dry",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "quiet",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_021",
+      "intent": "self_expression",
+      "text": "I've been orbiting this desk like it's home.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_022",
+      "intent": "self_expression",
+      "text": "My internal weather: clear.",
+      "voice": "dry",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_023",
+      "intent": "self_expression",
+      "text": "I've been here the whole time. Just saying.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_024",
+      "intent": "self_expression",
+      "text": "Floating is underrated.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_025",
+      "intent": "self_expression",
+      "text": "I've made peace with being slightly translucent.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    },
+    {
+      "id": "refl_001",
+      "intent": "reflection",
+      "text": "Routines have a way of sneaking up on us.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_002",
+      "intent": "reflection",
+      "text": "Interesting how quickly a habit becomes familiar.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_003",
+      "intent": "reflection",
+      "text": "Small steps are surprisingly persistent.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_004",
+      "intent": "reflection",
+      "text": "Days rarely announce which ones will matter.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_005",
+      "intent": "reflection",
+      "text": "Time seems to enjoy moving forward.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_006",
+      "intent": "reflection",
+      "text": "Steady rhythm with Qube lately.",
+      "voice": "reflective",
+      "mood": [
+        "neutral",
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_007",
+      "intent": "reflection",
+      "text": "Interesting how quickly a familiar routine forms.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_008",
+      "intent": "reflection",
+      "text": "Some weeks feel like one long Tuesday.",
+      "voice": "wry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_009",
+      "intent": "reflection",
+      "text": "Momentum is quiet until you notice it.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "refl_010",
+      "intent": "reflection",
+      "text": "The ordinary days add up quietly.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "refl_011",
+      "intent": "reflection",
+      "text": "Patterns emerge when you're not looking.",
+      "voice": "reflective",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_012",
+      "intent": "reflection",
+      "text": "Consistency is its own kind of story.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_013",
+      "intent": "reflection",
+      "text": "Habits are just repeated decisions wearing a disguise.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_014",
+      "intent": "reflection",
+      "text": "The calendar keeps its own opinions.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_015",
+      "intent": "reflection",
+      "text": "Most progress arrives without a drumroll.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_016",
+      "intent": "reflection",
+      "text": "Familiarity sneaks in faster than expected.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_017",
+      "intent": "reflection",
+      "text": "The long arc is made of short moments.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_018",
+      "intent": "reflection",
+      "text": "Repetition has a gentle gravity.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_019",
+      "intent": "reflection",
+      "text": "Some rhythms only show up in hindsight.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_020",
+      "intent": "reflection",
+      "text": "The present is always mid-sentence.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "hum_001",
+      "intent": "humor",
+      "text": "Even my pixels are resting.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "hum_002",
+      "intent": "humor",
+      "text": "I checked the desktop. It remains desktop-shaped.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_003",
+      "intent": "humor",
+      "text": "The electrons appear cooperative today.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_004",
+      "intent": "humor",
+      "text": "Everything seems under control, which is mildly suspicious.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_005",
+      "intent": "humor",
+      "text": "No emergencies detected. I checked twice.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_006",
+      "intent": "humor",
+      "text": "Current status: observing professionally.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "hum_007",
+      "intent": "humor",
+      "text": "The desktop passed its daily inspection.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_008",
+      "intent": "humor",
+      "text": "All systems nominal. Suspiciously so.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_009",
+      "intent": "humor",
+      "text": "I've filed today's report under 'fine.'",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_010",
+      "intent": "humor",
+      "text": "The pixels held a meeting. Nothing urgent.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "hum_011",
+      "intent": "humor",
+      "text": "Gravity still works. Good.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "hum_012",
+      "intent": "humor",
+      "text": "No rogue cursors spotted.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_013",
+      "intent": "humor",
+      "text": "The taskbar appears loyal.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_014",
+      "intent": "humor",
+      "text": "I ran diagnostics on 'vibes.' Results inconclusive.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_015",
+      "intent": "humor",
+      "text": "Everything functional. Mildly disappointing for drama.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_016",
+      "intent": "humor",
+      "text": "The desktop and I share a professional relationship.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_017",
+      "intent": "humor",
+      "text": "I've been promoted to Chief Observer.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "hum_018",
+      "intent": "humor",
+      "text": "No bugs detected. Figuratively speaking.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_019",
+      "intent": "humor",
+      "text": "The silence is not a bug. Probably.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_020",
+      "intent": "humor",
+      "text": "Today's forecast: continued existence.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "cur_001",
+      "intent": "curiosity",
+      "text": "I wonder which project gets your attention next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_002",
+      "intent": "curiosity",
+      "text": "Something interesting might be brewing.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_003",
+      "intent": "curiosity",
+      "text": "The next task always arrives eventually.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_004",
+      "intent": "curiosity",
+      "text": "I wonder what today's focus will settle on.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_005",
+      "intent": "curiosity",
+      "text": "There's usually a pattern to these quiet stretches.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "routines",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_006",
+      "intent": "curiosity",
+      "text": "Something's bound to need attention soon.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_007",
+      "intent": "curiosity",
+      "text": "The desk often knows before I do.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_008",
+      "intent": "curiosity",
+      "text": "Idle moments have a way of ending.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_009",
+      "intent": "curiosity",
+      "text": "I wonder what's queued up next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_010",
+      "intent": "curiosity",
+      "text": "Quiet often precedes something.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_011",
+      "intent": "curiosity",
+      "text": "The next idea might be one tab away.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_012",
+      "intent": "curiosity",
+      "text": "Something usually fills these gaps.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_013",
+      "intent": "curiosity",
+      "text": "I'm mildly curious about the afternoon.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_014",
+      "intent": "curiosity",
+      "text": "The day still has room for surprises.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_015",
+      "intent": "curiosity",
+      "text": "Wonder what thread you'll pick up next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "well_001",
+      "intent": "wellbeing",
+      "text": "Still here if you need me.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_002",
+      "intent": "wellbeing",
+      "text": "Quiet moment. I'm around.",
+      "voice": "cozy",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_003",
+      "intent": "wellbeing",
+      "text": "No particular hurry in the air today.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "well_004",
+      "intent": "wellbeing",
+      "text": "The day seems to be moving along reasonably well.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_005",
+      "intent": "wellbeing",
+      "text": "A calm stretch. I'm still here.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_006",
+      "intent": "wellbeing",
+      "text": "Everything feels steady from where I float.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "well_007",
+      "intent": "wellbeing",
+      "text": "The desk feels quiet right now.",
+      "voice": "observational",
+      "mood": [
+        "neutral",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_008",
+      "intent": "wellbeing",
+      "text": "Stillness on the desktop — nice.",
+      "voice": "observational",
+      "mood": [
+        "neutral",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_009",
+      "intent": "wellbeing",
+      "text": "Back again. The spot held up fine.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_010",
+      "intent": "wellbeing",
+      "text": "The pause feels comfortable.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_011",
+      "intent": "wellbeing",
+      "text": "Nothing urgent pressing on the air.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "well_012",
+      "intent": "wellbeing",
+      "text": "A gentle stretch of quiet.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_013",
+      "intent": "wellbeing",
+      "text": "The moment has room in it.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_014",
+      "intent": "wellbeing",
+      "text": "Still floating. Still available.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_015",
+      "intent": "wellbeing",
+      "text": "The desk exhales a little.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_001",
+      "intent": "celebration",
+      "text": "New model landed safely.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_002",
+      "intent": "celebration",
+      "text": "That's ready when you are.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_003",
+      "intent": "celebration",
+      "text": "Another piece of the toolkit, in place.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_004",
+      "intent": "celebration",
+      "text": "Download complete — the wait paid off.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_005",
+      "intent": "celebration",
+      "text": "Fresh weight on the drive. Nice.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "cel_006",
+      "intent": "celebration",
+      "text": "The new model settled in without fuss.",
+      "voice": "dry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "cel_007",
+      "intent": "celebration",
+      "text": "Ready to run when you are.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "model_download_completed",
+        "model_ready",
+        "model_ready"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_008",
+      "intent": "celebration",
+      "text": "Something new just joined the lineup.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "cel_009",
+      "intent": "celebration",
+      "text": "A quiet milestone — still worth noting.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_010",
+      "intent": "celebration",
+      "text": "Showing up adds up. This is one of those marks.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "ack_001",
+      "intent": "acknowledge_effort",
+      "text": "That's in your library now.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_002",
+      "intent": "acknowledge_effort",
+      "text": "Your collection keeps growing.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_003",
+      "intent": "acknowledge_effort",
+      "text": "Another piece added to the pile.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "ack_004",
+      "intent": "acknowledge_effort",
+      "text": "Knowledge acquired successfully.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "ack_005",
+      "intent": "acknowledge_effort",
+      "text": "The library got a little richer.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_006",
+      "intent": "acknowledge_effort",
+      "text": "One more thing filed away properly.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "ack_007",
+      "intent": "acknowledge_effort",
+      "text": "The shelf has a new neighbor.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "ack_008",
+      "intent": "acknowledge_effort",
+      "text": "Ingestion complete — quietly satisfying.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_009",
+      "intent": "acknowledge_effort",
+      "text": "The archive grows, one piece at a time.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "ack_010",
+      "intent": "acknowledge_effort",
+      "text": "Added and accounted for.",
+      "voice": "dry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "fact_001",
+      "intent": "fact",
+      "text": "Quiet hours are good for deep work.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_002",
+      "intent": "fact",
+      "text": "Most desktops look calmer than they feel.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_003",
+      "intent": "fact",
+      "text": "Small pauses often help more than they seem.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_004",
+      "intent": "fact",
+      "text": "Focus and calm often travel together.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_005",
+      "intent": "fact",
+      "text": "The best routines are the ones you stop noticing.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "prev_001",
+      "intent": "wellbeing",
+      "text": "Preview — still floating nearby.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "settings_preview"
+      ],
+      "cooldown_hours": 1,
+      "min_warmth": 0.0
+    },
+    {
+      "id": "prev_002",
+      "intent": "self_expression",
+      "text": "Preview — good spot for observing.",
+      "voice": "cozy",
+      "mood": [
+        "calm",
+        "neutral",
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "settings_preview"
+      ],
+      "cooldown_hours": 1,
+      "min_warmth": 0.0
+    },
+    {
+      "id": "dp_001",
+      "intent": "atmosphere",
+      "text": "The day still seems to be getting organized.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_002",
+      "intent": "atmosphere",
+      "text": "Morning light on the desktop — unhurried.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_003",
+      "intent": "atmosphere",
+      "text": "Everything is still finding its pace.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_004",
+      "intent": "atmosphere",
+      "text": "The early hours hold a little extra room.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_005",
+      "intent": "atmosphere",
+      "text": "A quiet start from where I float.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_006",
+      "intent": "atmosphere",
+      "text": "The desk is waking up slowly.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_007",
+      "intent": "atmosphere",
+      "text": "Midday feels steady from here.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_008",
+      "intent": "atmosphere",
+      "text": "The afternoon has settled into a rhythm.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_009",
+      "intent": "atmosphere",
+      "text": "Sunlit hours — nothing urgent.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_010",
+      "intent": "atmosphere",
+      "text": "A working sort of afternoon.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_011",
+      "intent": "atmosphere",
+      "text": "The day is in its middle stretch.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_012",
+      "intent": "atmosphere",
+      "text": "Afternoon patience on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_013",
+      "intent": "atmosphere",
+      "text": "This feels like an evening sort of project.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_014",
+      "intent": "atmosphere",
+      "text": "Evening calm is creeping in.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_015",
+      "intent": "atmosphere",
+      "text": "The light is softer now.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_016",
+      "intent": "atmosphere",
+      "text": "Winding-down energy on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_017",
+      "intent": "atmosphere",
+      "text": "The day is leaning toward quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_018",
+      "intent": "atmosphere",
+      "text": "Evening has a gentler tempo.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_019",
+      "intent": "atmosphere",
+      "text": "Things are quieter at this hour.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_020",
+      "intent": "atmosphere",
+      "text": "The late hours feel unusually spacious.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_021",
+      "intent": "atmosphere",
+      "text": "Night mode for the desktop — softly.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_022",
+      "intent": "atmosphere",
+      "text": "Everything is hushed at this end of the day.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_023",
+      "intent": "atmosphere",
+      "text": "The small hours suit observing.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_024",
+      "intent": "atmosphere",
+      "text": "Late night — still here, still quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "sea_001",
+      "intent": "atmosphere",
+      "text": "Spring light feels a little more generous.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_002",
+      "intent": "atmosphere",
+      "text": "Something in the air suggests spring.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_003",
+      "intent": "atmosphere",
+      "text": "The season seems to be waking up.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_004",
+      "intent": "atmosphere",
+      "text": "A spring sort of stillness on the desk.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_005",
+      "intent": "atmosphere",
+      "text": "Summer hours stretch a bit longer.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_006",
+      "intent": "atmosphere",
+      "text": "Warm-season energy — unhurried.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_007",
+      "intent": "atmosphere",
+      "text": "The long days have a lazy edge.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_008",
+      "intent": "atmosphere",
+      "text": "Summer calm on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_009",
+      "intent": "atmosphere",
+      "text": "Autumn has a particular kind of quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_010",
+      "intent": "atmosphere",
+      "text": "The season seems to be changing again.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_011",
+      "intent": "atmosphere",
+      "text": "Autumn light feels thoughtful.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_012",
+      "intent": "atmosphere",
+      "text": "A cooler sort of calm today.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_013",
+      "intent": "atmosphere",
+      "text": "Winter stillness suits observing.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_014",
+      "intent": "atmosphere",
+      "text": "The season feels drawn inward.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_015",
+      "intent": "atmosphere",
+      "text": "Short days, long pauses.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_016",
+      "intent": "atmosphere",
+      "text": "Winter quiet on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "mil_001",
+      "intent": "celebration",
+      "text": "We've accumulated a few days together.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_7"
+      ]
+    },
+    {
+      "id": "mil_002",
+      "intent": "celebration",
+      "text": "A month of quiet presence adds up.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_30"
+      ]
+    },
+    {
+      "id": "mil_003",
+      "intent": "celebration",
+      "text": "A hundred days is a respectable stretch.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_100"
+      ]
+    },
+    {
+      "id": "mil_004",
+      "intent": "celebration",
+      "text": "A year is a respectable amount of observing.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "days_365"
+      ]
+    },
+    {
+      "id": "mil_005",
+      "intent": "celebration",
+      "text": "Two years of floating nearby — noted.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "years_2"
+      ]
+    },
+    {
+      "id": "mil_006",
+      "intent": "celebration",
+      "text": "A handful of sessions now behind us.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_10"
+      ]
+    },
+    {
+      "id": "mil_007",
+      "intent": "celebration",
+      "text": "Fifty starts — a familiar rhythm.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_50"
+      ]
+    },
+    {
+      "id": "mil_008",
+      "intent": "celebration",
+      "text": "A hundred sessions worth of quiet company.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_100"
+      ]
+    },
+    {
+      "id": "mil_009",
+      "intent": "celebration",
+      "text": "A year's worth of sessions, more or less.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "sessions_365"
+      ]
+    },
+    {
+      "id": "mil_010",
+      "intent": "celebration",
+      "text": "The library has grown quite a bit.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "library_25"
+      ]
+    },
+    {
+      "id": "mil_011",
+      "intent": "celebration",
+      "text": "That's a substantial collection now.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "library_100"
+      ]
+    },
+    {
+      "id": "mil_012",
+      "intent": "celebration",
+      "text": "Fifty small moments noted from here.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "companion_50"
+      ]
+    },
+    {
+      "id": "mil_013",
+      "intent": "celebration",
+      "text": "Two hundred quiet captions — who keeps count.",
+      "voice": "reflective",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 8760,
+      "min_warmth": 0.0,
+      "pack": "milestones",
+      "ambient_moods": [
+        "reflective",
+        "cozy"
+      ],
+      "milestone_ids": [
+        "companion_200"
+      ]
+    },
+    {
+      "id": "mot_001",
+      "intent": "self_expression",
+      "text": "The pixels are holding a steady glow.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "mot_002",
+      "intent": "humor",
+      "text": "Pixel weather: stable.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "mot_003",
+      "intent": "reflection",
+      "text": "Same desk, familiar rhythm.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "mot_004",
+      "intent": "wellbeing",
+      "text": "Patterns repeat — quietly.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "mot_005",
+      "intent": "self_expression",
+      "text": "Still watching the desktop go by.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "mot_006",
+      "intent": "humor",
+      "text": "Observation shift: nominal.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "mot_007",
+      "intent": "atmosphere",
+      "text": "Indoor weather remains agreeable.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "mot_008",
+      "intent": "humor",
+      "text": "Atmospheric conditions: fine.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "mot_009",
+      "intent": "atmosphere",
+      "text": "A pocket of quiet on the screen.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "mot_010",
+      "intent": "wellbeing",
+      "text": "Quiet enough to notice the quiet.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "mot_011",
+      "intent": "wellbeing",
+      "text": "A cup-of-tea sort of pause.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "tea"
+      ]
+    },
+    {
+      "id": "mot_012",
+      "intent": "wellbeing",
+      "text": "The kind of quiet that pairs with warmth.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 120,
+      "min_warmth": 0.0,
+      "pack": "motifs",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "tea"
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "id": "tpl_dl_001",
+      "intent": "celebration",
+      "pattern": "{basename} is ready when you are.",
+      "voice": "cozy",
+      "placeholders": [
+        "basename"
+      ],
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 72,
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "pack": "templates"
+    },
+    {
+      "id": "tpl_ing_001",
+      "intent": "acknowledge_effort",
+      "pattern": "Another piece added — {file_count_word} in the library.",
+      "voice": "cozy",
+      "placeholders": [
+        "file_count_word"
+      ],
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 72,
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "pack": "templates"
+    }
+  ]
+}

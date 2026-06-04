@@ -2184,8 +2184,9 @@ class ConversationsView(QWidget):
         self.stt_latency_lbl = QLabel("STT: -- ms")
         self.ttft_latency_lbl = QLabel("TTFT: -- ms")
         self.tts_latency_lbl = QLabel("TTS: -- ms")
+        self.tps_lbl = QLabel("TPS: -- tok/s")
         
-        for lbl in [self.stt_latency_lbl, self.ttft_latency_lbl, self.tts_latency_lbl]:
+        for lbl in [self.stt_latency_lbl, self.ttft_latency_lbl, self.tts_latency_lbl, self.tps_lbl]:
             lbl.setProperty("class", "MiniLatencyLabel")
             latency_layout.addWidget(lbl)
             
@@ -2486,6 +2487,12 @@ class ConversationsView(QWidget):
 
     def update_tts_latency(self, ms: float) -> None:
         self.tts_latency_lbl.setText(f"TTS: {ms:.0f} ms")
+
+    def update_tps(self, tps: float) -> None:
+        if tps and tps > 0:
+            self.tps_lbl.setText(f"TPS: {tps:.1f} tok/s")
+        else:
+            self.tps_lbl.setText("TPS: -- tok/s")
 
     def _on_history_search_changed(self, _text: str) -> None:
         self._history_search_timer.stop()
@@ -3049,6 +3056,20 @@ class ConversationsView(QWidget):
             return
         self.log_agent_token(token)
 
+    def on_llm_stream_replaced(self, session_id: str, text: str) -> None:
+        """Mid-turn full replace (native format fallback) — sync bubble before finish."""
+        from core.output_artifact_strip import strip_harmony_oss_artifacts
+
+        active = str(getattr(self, "active_session_id", "") or "")
+        sid = str(session_id or "")
+        if not active or sid != active:
+            return
+        cleaned = strip_harmony_oss_artifacts(text or "")
+        if not cleaned:
+            return
+        self._agent_text_buffer = cleaned
+        self._flush_agent_markdown_coalesce_immediate(finalize=True)
+
     def on_sources_found(self, session_id: str, sources):
         """Receive tool sources for inline citation links (no separate chip UI)."""
         active = str(getattr(self, "active_session_id", "") or "")
@@ -3149,11 +3170,12 @@ class ConversationsView(QWidget):
 
     # 🔑 NEW: A dynamic receiver to update the text box live
     def update_action_placeholder(self, status: str):
-        """Dynamically updates the text box placeholder based on worker status."""
-        if not self.text_input.isEnabled() and status != "Idle":
-            # Just clean up the string to sound natural (add an ellipsis if missing)
-            display_text = status if "..." in status else f"{status}..."
-            self.text_input.setPlaceholderText(display_text)
+        """Dynamically updates the text box placeholder from unified presence labels."""
+        label = (status or "").strip()
+        if not self.text_input.isEnabled() and label.lower() != "idle":
+            self.text_input.setPlaceholderText(
+                label if label.endswith("...") else f"{label}..."
+            )
 
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback

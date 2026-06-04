@@ -42,6 +42,13 @@ TRUSTED_PUBLISHERS: dict[str, dict[str, str]] = {
     "rnj": {"name": "RNJ", "logo": "rnj.svg"},
 }
 
+# Community quantizers / modifiers with bundled logos (not official allowlist).
+# Keys are lowercase Hub org ids; values are filenames under assets/logos/.
+COMMUNITY_PUBLISHER_LOGOS: dict[str, str] = {
+    # PNG (Qt cannot decode AVIF); source artwork may remain as unsloth.avif.
+    "unsloth": "unsloth.png",
+}
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
@@ -98,6 +105,22 @@ def _hf_logo_asset_path() -> str:
         if (root / rel).is_file():
             return f"/{rel}"
     return "/assets/logos/hf-logo.svg"
+
+
+def _community_logo_asset_path(owner: str) -> str | None:
+    """Bundled logo for known community publishers (e.g. Unsloth), or None."""
+    owner_l = str(owner or "").strip().lower()
+    if not owner_l:
+        return None
+    logo_name = str(COMMUNITY_PUBLISHER_LOGOS.get(owner_l, "") or "").strip()
+    if not logo_name or not _logo_exists(logo_name):
+        return None
+    return f"/assets/logos/{logo_name}"
+
+
+def has_bundled_community_logo(repo_id: str) -> bool:
+    """True when this repo owner has a local logo (no HF org/user fetch needed)."""
+    return _community_logo_asset_path(_owner_from_repo_id(repo_id)) is not None
 
 
 def _norm_card_data(model: dict[str, Any]) -> dict[str, Any]:
@@ -328,6 +351,19 @@ class HuggingFaceBrandingResolver:
         owner = _owner_from_repo_id(rid)
         if not owner:
             return None
+
+        community_logo = _community_logo_asset_path(owner)
+        if community_logo:
+            result = {
+                "name": _humanize_owner(owner),
+                "logo": community_logo,
+                "owner": owner,
+                "official": False,
+                "variant": True,
+            }
+            with self._lock:
+                self._variant_cache[rid] = result
+            return dict(result)
 
         org_data = self.get_org_metadata(owner)
         user_data = None

@@ -9,10 +9,27 @@ from typing import Any
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from core.hf_hub_errors import HubErrorInfo, classify_hf_error
-from core.hf_publisher_branding import HuggingFaceBrandingResolver
+from core.hf_publisher_branding import HuggingFaceBrandingResolver, has_bundled_community_logo
 
 logger = logging.getLogger("Qube.HFModelSearch")
 _BRANDING_RESOLVER = HuggingFaceBrandingResolver()
+
+
+def _resolve_hub_search_branding(
+    repo_id: str,
+    *,
+    preloaded_model: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """
+    Hub list branding: official allowlist only, plus bundled community logos (e.g. Unsloth).
+    Does not call HF org/user APIs for every search row (avoids 404 spam and slowdown).
+    """
+    branding = _BRANDING_RESOLVER.resolve_for_model(repo_id, preloaded_model=preloaded_model)
+    if branding is not None:
+        return branding
+    if has_bundled_community_logo(repo_id):
+        return _BRANDING_RESOLVER.resolve_variant_branding(repo_id)
+    return None
 
 
 def _model_id(m: Any) -> str:
@@ -137,7 +154,7 @@ class HfModelSearchWorker(QThread):
                         "updated_at": updated_at,
                         "hf_pipeline_tag": str(getattr(m, "pipeline_tag", "") or ""),
                         "hf_tags": [str(t) for t in (getattr(m, "tags", None) or []) if str(t).strip()],
-                        "branding": _BRANDING_RESOLVER.resolve_for_model(
+                        "branding": _resolve_hub_search_branding(
                             rid,
                             preloaded_model={
                                 "id": rid,

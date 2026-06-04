@@ -1,0 +1,345 @@
+{
+  "pack": "curiosity",
+  "messages": [
+    {
+      "id": "cur_001",
+      "intent": "curiosity",
+      "text": "I wonder which project gets your attention next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_002",
+      "intent": "curiosity",
+      "text": "Something interesting might be brewing.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_003",
+      "intent": "curiosity",
+      "text": "The next task always arrives eventually.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_004",
+      "intent": "curiosity",
+      "text": "I wonder what today's focus will settle on.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_005",
+      "intent": "curiosity",
+      "text": "There's usually a pattern to these quiet stretches.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "routines",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_006",
+      "intent": "curiosity",
+      "text": "Something's bound to need attention soon.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_007",
+      "intent": "curiosity",
+      "text": "The desk often knows before I do.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_008",
+      "intent": "curiosity",
+      "text": "Idle moments have a way of ending.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_009",
+      "intent": "curiosity",
+      "text": "I wonder what's queued up next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_010",
+      "intent": "curiosity",
+      "text": "Quiet often precedes something.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_011",
+      "intent": "curiosity",
+      "text": "The next idea might be one tab away.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_012",
+      "intent": "curiosity",
+      "text": "Something usually fills these gaps.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_013",
+      "intent": "curiosity",
+      "text": "I'm mildly curious about the afternoon.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    },
+    {
+      "id": "cur_014",
+      "intent": "curiosity",
+      "text": "The day still has room for surprises.",
+      "voice": "curious",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cur_015",
+      "intent": "curiosity",
+      "text": "Wonder what thread you'll pick up next.",
+      "voice": "curious",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "curiosity",
+      "ambient_moods": [
+        "curious"
+      ]
+    }
+  ]
+}

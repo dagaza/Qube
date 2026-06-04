@@ -113,14 +113,29 @@ def _utility_issue(query: str, output: str) -> bool:
     return False
 
 
+def _retrieval_ignored_issue(query: str, output: str, context: str) -> bool:
+    """True when sources were provided but the answer barely uses retrieval vocabulary."""
+    ctx = (context or "").strip()
+    if not ctx or len(ctx) < 40:
+        return False
+    q_words = _token_set(query)
+    o_words = _token_set(output)
+    c_words = _token_set(ctx)
+    if not o_words or not c_words:
+        return False
+    answer_ctx_overlap = len(o_words & c_words) / max(1, len(o_words))
+    answer_query_overlap = len(o_words & q_words) / max(1, len(q_words)) if q_words else 1.0
+    return answer_ctx_overlap < 0.08 and answer_query_overlap >= 0.15
+
+
 def evaluate_response_quality(
     user_query: str,
     output: str,
     context: Optional[str] = None,
 ) -> ResponseQualityResult:
-    _ = context
     query = _last_user_query(user_query)
     text = (output or "").strip()
+    ctx = (context or "").strip()
     issues: list[str] = []
     reasoning_parts: list[str] = []
     score = 1.0
@@ -129,6 +144,11 @@ def evaluate_response_quality(
         issues.append("low_relevance")
         reasoning_parts.append("weak lexical/topic overlap with user query")
         score -= 0.35
+
+    if ctx and _retrieval_ignored_issue(query, text, ctx):
+        issues.append("retrieval_ignored")
+        reasoning_parts.append("retrieval context present but answer barely uses source vocabulary")
+        score -= 0.15
 
     if _requires_brief(query) and len(text) > 380:
         issues.append("constraint_missed_brief")

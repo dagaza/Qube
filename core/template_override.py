@@ -9,6 +9,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from core.harmony_protocol import (
+    HARMONY_EMERGENCY_PHRASE_STOPS,
+    HARMONY_PRIMARY_STOPS,
+    harmony_phrase_stops_disabled,
+    is_harmony_model_name,
+)
+
 
 @dataclass
 class TemplateOverride:
@@ -49,20 +56,16 @@ def detect_template_override(model_name: str, tokenizer_info: dict[str, Any]) ->
             enforce_assistant_anchor=False,
         )
 
-    # OpenAI gpt-oss / Harmony: EOS is <|return|>. Do not add <|end|> as a stop here — it can
-    # appear between internal sections and would truncate the completion mid-turn until we
-    # support multi-segment streaming.
-    if "gpt-oss" in name or ("gpt" in name and "oss" in name):
+    # OpenAI gpt-oss / Harmony: EOS is <|return|>. Do not add <|end|> as a stop — it can
+    # appear between internal sections and truncate mid-turn.
+    if is_harmony_model_name(name):
+        extra = list(HARMONY_PRIMARY_STOPS)
+        if not harmony_phrase_stops_disabled():
+            extra.extend(HARMONY_EMERGENCY_PHRASE_STOPS)
         return TemplateOverride(
             template_type="oss_harmony",
             force_prefix="",
-            extra_stops=[
-                "<|return|>",
-                "\nWe need to",
-                " We need to",
-                "\nWe should",
-                " We should",
-            ],
+            extra_stops=extra,
             enforce_assistant_anchor=False,
         )
 

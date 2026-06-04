@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QPainter, QPen
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from core import app_settings
 from core.assistant_activity import AssistantActivity
 from core.assistant_presence import AssistantPhase, AssistantPresenceSnapshot
 from core.companion_personas import CompanionPersonaId, DEFAULT_COMPANION_PERSONA, normalize_companion_persona
+from core.companion_verbal_prompts import truncate_companion_caption
 from core.platform.companion_capabilities import CompanionPlatformTier
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
@@ -71,6 +72,21 @@ class CompanionPreviewWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
 
+        self._sample_caption = QLabel("")
+        self._sample_caption.setObjectName("CompanionPreviewCaption")
+        self._sample_caption.setWordWrap(True)
+        self._sample_caption.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        self._sample_caption.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Minimum,
+        )
+        self._sample_caption.hide()
+        layout.addWidget(self._sample_caption)
+
+        self._sample_caption_timer = QTimer(self)
+        self._sample_caption_timer.setSingleShot(True)
+        self._sample_caption_timer.timeout.connect(self._clear_sample_caption)
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not self._timer.isActive():
@@ -93,6 +109,29 @@ class CompanionPreviewWidget(QFrame):
         if not self._timer.isActive():
             self._timer.start()
         self.repaint()
+
+    def show_sample_caption(self, text: str, ttl_sec: float = 12.0) -> None:
+        line = (text or "").strip()
+        if not line:
+            return
+        line = truncate_companion_caption(line, 72)
+        self._sample_caption.setText(line)
+        inner_w = max(120, min(240, self.width() - 48))
+        self._sample_caption.setFixedWidth(inner_w)
+        label_h = self._sample_caption.heightForWidth(inner_w)
+        if label_h > 0:
+            self._sample_caption.setFixedHeight(label_h + 4)
+        self._sample_caption.show()
+        self._sample_caption_timer.stop()
+        self._sample_caption_timer.start(int(max(1000, ttl_sec * 1000)))
+        self.update()
+
+    def _clear_sample_caption(self) -> None:
+        self._sample_caption.clear()
+        self._sample_caption.setMinimumHeight(0)
+        self._sample_caption.setMaximumHeight(16777215)
+        self._sample_caption.hide()
+        self.update()
 
     def set_demo_activity(self, activity: AssistantActivity) -> None:
         self._demo_activity = activity

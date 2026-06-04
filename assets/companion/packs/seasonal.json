@@ -1,0 +1,533 @@
+{
+  "pack": "seasonal",
+  "messages": [
+    {
+      "id": "sea_001",
+      "intent": "atmosphere",
+      "text": "Spring light feels a little more generous.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_002",
+      "intent": "atmosphere",
+      "text": "Something in the air suggests spring.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_003",
+      "intent": "atmosphere",
+      "text": "The season seems to be waking up.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_004",
+      "intent": "atmosphere",
+      "text": "A spring sort of stillness on the desk.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "spring"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_005",
+      "intent": "atmosphere",
+      "text": "Summer hours stretch a bit longer.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_006",
+      "intent": "atmosphere",
+      "text": "Warm-season energy — unhurried.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_007",
+      "intent": "atmosphere",
+      "text": "The long days have a lazy edge.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_008",
+      "intent": "atmosphere",
+      "text": "Summer calm on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "summer"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_009",
+      "intent": "atmosphere",
+      "text": "Autumn has a particular kind of quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_010",
+      "intent": "atmosphere",
+      "text": "The season seems to be changing again.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_011",
+      "intent": "atmosphere",
+      "text": "Autumn light feels thoughtful.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_012",
+      "intent": "atmosphere",
+      "text": "A cooler sort of calm today.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "autumn"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_013",
+      "intent": "atmosphere",
+      "text": "Winter stillness suits observing.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_014",
+      "intent": "atmosphere",
+      "text": "The season feels drawn inward.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_015",
+      "intent": "atmosphere",
+      "text": "Short days, long pauses.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "sea_016",
+      "intent": "atmosphere",
+      "text": "Winter quiet on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 336,
+      "min_warmth": 0.0,
+      "pack": "seasonal",
+      "ambient_moods": [
+        "reflective",
+        "quiet"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    }
+  ]
+}

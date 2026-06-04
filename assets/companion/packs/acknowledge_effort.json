@@ -1,0 +1,213 @@
+{
+  "pack": "acknowledge_effort",
+  "messages": [
+    {
+      "id": "ack_001",
+      "intent": "acknowledge_effort",
+      "text": "That's in your library now.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_002",
+      "intent": "acknowledge_effort",
+      "text": "Your collection keeps growing.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_003",
+      "intent": "acknowledge_effort",
+      "text": "Another piece added to the pile.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "ack_004",
+      "intent": "acknowledge_effort",
+      "text": "Knowledge acquired successfully.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "ack_005",
+      "intent": "acknowledge_effort",
+      "text": "The library got a little richer.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_006",
+      "intent": "acknowledge_effort",
+      "text": "One more thing filed away properly.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "ack_007",
+      "intent": "acknowledge_effort",
+      "text": "The shelf has a new neighbor.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "ack_008",
+      "intent": "acknowledge_effort",
+      "text": "Ingestion complete — quietly satisfying.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "ack_009",
+      "intent": "acknowledge_effort",
+      "text": "The archive grows, one piece at a time.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "ack_010",
+      "intent": "acknowledge_effort",
+      "text": "Added and accounted for.",
+      "voice": "dry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "library_update_completed"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "acknowledge_effort",
+      "ambient_moods": [
+        "observant"
+      ]
+    }
+  ]
+}

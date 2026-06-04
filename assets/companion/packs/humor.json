@@ -1,0 +1,460 @@
+{
+  "pack": "humor",
+  "messages": [
+    {
+      "id": "hum_001",
+      "intent": "humor",
+      "text": "Even my pixels are resting.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "hum_002",
+      "intent": "humor",
+      "text": "I checked the desktop. It remains desktop-shaped.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_003",
+      "intent": "humor",
+      "text": "The electrons appear cooperative today.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_004",
+      "intent": "humor",
+      "text": "Everything seems under control, which is mildly suspicious.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_005",
+      "intent": "humor",
+      "text": "No emergencies detected. I checked twice.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_006",
+      "intent": "humor",
+      "text": "Current status: observing professionally.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "hum_007",
+      "intent": "humor",
+      "text": "The desktop passed its daily inspection.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_008",
+      "intent": "humor",
+      "text": "All systems nominal. Suspiciously so.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_009",
+      "intent": "humor",
+      "text": "I've filed today's report under 'fine.'",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_010",
+      "intent": "humor",
+      "text": "The pixels held a meeting. Nothing urgent.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "pixels"
+      ]
+    },
+    {
+      "id": "hum_011",
+      "intent": "humor",
+      "text": "Gravity still works. Good.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "hum_012",
+      "intent": "humor",
+      "text": "No rogue cursors spotted.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_013",
+      "intent": "humor",
+      "text": "The taskbar appears loyal.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_014",
+      "intent": "humor",
+      "text": "I ran diagnostics on 'vibes.' Results inconclusive.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_015",
+      "intent": "humor",
+      "text": "Everything functional. Mildly disappointing for drama.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_016",
+      "intent": "humor",
+      "text": "The desktop and I share a professional relationship.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_017",
+      "intent": "humor",
+      "text": "I've been promoted to Chief Observer.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "hum_018",
+      "intent": "humor",
+      "text": "No bugs detected. Figuratively speaking.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_019",
+      "intent": "humor",
+      "text": "The silence is not a bug. Probably.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "hum_020",
+      "intent": "humor",
+      "text": "Today's forecast: continued existence.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "humor",
+      "ambient_moods": [
+        "playful"
+      ]
+    }
+  ]
+}

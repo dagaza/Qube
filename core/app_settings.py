@@ -24,6 +24,7 @@ KEY_MEMORY_PROMOTION_ACKNOWLEDGED = "qube.memory.promotion_acknowledged"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
 KEY_DISCOURSE_GROUNDING = "qube.discourse.grounding_enabled"
+KEY_CHAT_PERSONALITY_NUDGE = "qube.chat.personality_nudge_enabled"
 KEY_SIDECAR_ENABLED = "qube.sidecar.enabled"
 KEY_SIDECAR_QUERY_REWRITE = "qube.sidecar.query_rewrite_enabled"
 KEY_SIDECAR_SOURCE_DIGEST = "qube.sidecar.source_digest_enabled"
@@ -86,6 +87,20 @@ KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
 KEY_COMPANION_PERSONA = "qube.companion.persona"
 KEY_COMPANION_IDLE_COLOR = "qube.companion.idleColor"
+KEY_COMPANION_VERBAL_ENABLED = "qube.companion.verbal.enabled"
+KEY_COMPANION_VERBAL_SYSTEM_PROMPT = "qube.companion.verbal.systemPrompt"
+KEY_COMPANION_VERBAL_TRAIT_PRESET = "qube.companion.verbal.traitPreset"
+KEY_COMPANION_VERBAL_FREQUENCY = "qube.companion.verbal.frequency"
+KEY_COMPANION_VERBAL_REACT_INGEST = "qube.companion.verbal.reactIngest"
+KEY_COMPANION_VERBAL_REACT_DOWNLOAD = "qube.companion.verbal.reactDownload"
+KEY_COMPANION_COGNITION_V2 = "qube.companion.cognition.v2"
+KEY_COMPANION_PERSONALITY_V2 = "qube.companion.personality.v2"
+KEY_COMPANION_EXPRESSION_FREEDOM = "qube.companion.expression.freedom"
+KEY_COMPANION_MOOD_DRIFT = "qube.companion.moodDrift.enabled"
+KEY_COMPANION_SEASONAL = "qube.companion.seasonal.enabled"
+KEY_COMPANION_SEASONAL_HEMISPHERE = "qube.companion.seasonal.hemisphere"
+KEY_COMPANION_MOTIFS = "qube.companion.motifs.enabled"
+COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN = 800
 
 
 def _store():
@@ -163,6 +178,15 @@ def get_discourse_grounding_enabled() -> bool:
 
 def set_discourse_grounding_enabled(enabled: bool) -> None:
     _store().set(KEY_DISCOURSE_GROUNDING, enabled)
+
+
+def get_enable_chat_personality_nudge() -> bool:
+    """When True, plain CHAT turns get an optional follow-up nudge in the system prompt. Default True."""
+    return bool(_store().get(KEY_CHAT_PERSONALITY_NUDGE, True))
+
+
+def set_enable_chat_personality_nudge(enabled: bool) -> None:
+    _store().set(KEY_CHAT_PERSONALITY_NUDGE, enabled)
 
 
 def _sidecar_model_on_disk() -> bool:
@@ -1023,3 +1047,147 @@ def set_companion_position(
         if edge not in ("none", "left", "right", "bottom"):
             edge = "none"
         store.set(KEY_COMPANION_DOCK_EDGE, edge)
+
+
+def get_companion_verbal_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_ENABLED, False))
+
+
+def set_companion_verbal_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_ENABLED, bool(enabled))
+
+
+def get_companion_verbal_system_prompt() -> str:
+    raw = str(_store().get(KEY_COMPANION_VERBAL_SYSTEM_PROMPT, "") or "")
+    return raw[:COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN]
+
+
+def set_companion_verbal_system_prompt(text: str) -> None:
+    _store().set(
+        KEY_COMPANION_VERBAL_SYSTEM_PROMPT,
+        str(text or "")[:COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN],
+    )
+
+
+def get_companion_verbal_trait_preset() -> str:
+    from core.companion_verbal_traits import (
+        DEFAULT_COMPANION_VERBAL_TRAIT,
+        normalize_companion_verbal_trait,
+    )
+
+    raw = _store().get(KEY_COMPANION_VERBAL_TRAIT_PRESET, DEFAULT_COMPANION_VERBAL_TRAIT.value)
+    return normalize_companion_verbal_trait(str(raw) if raw is not None else None).value
+
+
+def set_companion_verbal_trait_preset(preset: str) -> None:
+    from core.companion_verbal_traits import normalize_companion_verbal_trait
+
+    _store().set(
+        KEY_COMPANION_VERBAL_TRAIT_PRESET,
+        normalize_companion_verbal_trait(preset).value,
+    )
+
+
+def get_companion_verbal_frequency() -> str:
+    from core.companion_verbal_policy import (
+        DEFAULT_COMPANION_VERBAL_FREQUENCY,
+        normalize_companion_verbal_frequency,
+    )
+
+    raw = _store().get(KEY_COMPANION_VERBAL_FREQUENCY, DEFAULT_COMPANION_VERBAL_FREQUENCY.value)
+    return normalize_companion_verbal_frequency(str(raw) if raw is not None else None).value
+
+
+def set_companion_verbal_frequency(frequency: str) -> None:
+    from core.companion_verbal_policy import normalize_companion_verbal_frequency
+
+    _store().set(
+        KEY_COMPANION_VERBAL_FREQUENCY,
+        normalize_companion_verbal_frequency(frequency).value,
+    )
+
+
+def get_companion_verbal_react_ingest() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_REACT_INGEST, True))
+
+
+def set_companion_verbal_react_ingest(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_REACT_INGEST, bool(enabled))
+
+
+def get_companion_verbal_react_download() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_REACT_DOWNLOAD, True))
+
+
+def set_companion_verbal_react_download(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_REACT_DOWNLOAD, bool(enabled))
+
+
+def get_companion_cognition_v2_enabled() -> bool:
+    import os
+
+    if os.environ.get("QUBE_COMPANION_COGNITION_V2", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    return bool(_store().get(KEY_COMPANION_COGNITION_V2, True))
+
+
+def set_companion_cognition_v2_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_COGNITION_V2, bool(enabled))
+
+
+def get_companion_personality_v2_json() -> str:
+    return str(_store().get(KEY_COMPANION_PERSONALITY_V2, "") or "")
+
+
+def set_companion_personality_v2_json(text: str) -> None:
+    _store().set(KEY_COMPANION_PERSONALITY_V2, str(text or ""))
+
+
+def get_companion_expression_freedom() -> str:
+    raw = str(_store().get(KEY_COMPANION_EXPRESSION_FREEDOM, "balanced") or "balanced").strip().lower()
+    if raw in ("conservative", "balanced", "expressive"):
+        return raw
+    return "balanced"
+
+
+def set_companion_expression_freedom(mode: str) -> None:
+    raw = str(mode or "balanced").strip().lower()
+    if raw not in ("conservative", "balanced", "expressive"):
+        raw = "balanced"
+    _store().set(KEY_COMPANION_EXPRESSION_FREEDOM, raw)
+
+
+def get_companion_mood_drift_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_MOOD_DRIFT, True))
+
+
+def set_companion_mood_drift_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_MOOD_DRIFT, bool(enabled))
+
+
+def get_companion_seasonal_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_SEASONAL, True))
+
+
+def set_companion_seasonal_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SEASONAL, bool(enabled))
+
+
+def get_companion_seasonal_hemisphere() -> str:
+    raw = str(_store().get(KEY_COMPANION_SEASONAL_HEMISPHERE, "north") or "north").strip().lower()
+    return raw if raw in ("north", "south") else "north"
+
+
+def set_companion_seasonal_hemisphere(value: str) -> None:
+    raw = str(value or "north").strip().lower()
+    if raw not in ("north", "south"):
+        raw = "north"
+    _store().set(KEY_COMPANION_SEASONAL_HEMISPHERE, raw)
+
+
+def get_companion_motifs_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_MOTIFS, True))
+
+
+def set_companion_motifs_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_MOTIFS, bool(enabled))

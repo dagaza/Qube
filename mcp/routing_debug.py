@@ -253,6 +253,38 @@ class RoutingDebugBuffer:
             self._deque[-1] = updated
             return updated
 
+    def merge_web_pipeline_into_latest(
+        self, web_pipeline: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach post-search web pipeline diagnostics to the newest record."""
+        if not web_pipeline:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_decision = dict(last.decision)
+            new_decision.update(copy.deepcopy(web_pipeline))
+            new_trace = dict(last.trace)
+            new_trace["web_pipeline"] = copy.deepcopy(web_pipeline)
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=last.route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=new_decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
 
 def _coerce_float(v: Any) -> Optional[float]:
     if v is None:

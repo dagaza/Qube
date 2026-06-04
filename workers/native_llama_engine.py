@@ -214,6 +214,7 @@ class NativeLlamaEngine(QThread):
         self._bundle_contract_id: Optional[int] = None
         self._publisher_guidance: Any = None
         self._publisher_guidance_service = PublisherGuidanceService()
+        self._last_retrieval_context: str = ""
 
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
@@ -416,10 +417,13 @@ class NativeLlamaEngine(QThread):
         max_tokens: int,
         token_queue: queue.Queue,
         done_event: threading.Event,
+        *,
+        retrieval_context: str = "",
     ) -> None:
         self._cancel_behavior_profile.set()
         self._purge_pending_profile_ops()
         self._cancel_generation = False
+        self._last_retrieval_context = (retrieval_context or "").strip()
         self._cmd_queue.put(
             {
                 "op": "generate",
@@ -428,6 +432,7 @@ class NativeLlamaEngine(QThread):
                 "max_tokens": int(max_tokens),
                 "token_queue": token_queue,
                 "done_event": done_event,
+                "retrieval_context": self._last_retrieval_context,
             }
         )
 
@@ -1375,7 +1380,9 @@ class NativeLlamaEngine(QThread):
                     recovered = _completion_text_from_result(ns_result).strip()
                     if recovered:
                         final_text = recovered
-                        token_queue.put(("delta", recovered))
+                        # Hold UI/TTS until validation/retry — a format
+                        # fallback may replace this provisional output.
+                        token_queue.put(("recovery", recovered))
                 except Exception as exc:
                     logger.warning(
                         "[Native] empty-stream non-stream fallback failed: %s", exc
@@ -1414,10 +1421,10 @@ class NativeLlamaEngine(QThread):
                     final_contract.chat_format or final_contract.mode,
                 )
                 if retry_used and retried_text and retried_text != final_text:
-                    # Streaming path already emitted first-pass deltas. Append the safer retry output.
-                    token_queue.put(("delta", "\n\n[format fallback applied]\n"))
-                    token_queue.put(("delta", retried_text))
-                    final_text = f"{final_text}\n\n{retried_text}"
+                    # First-pass streaming may already have reached UI/TTS; replace with the
+                    # validated retry output (matches non-stream chat_once behavior).
+                    token_queue.put(("replace", retried_text))
+                    final_text = retried_text
                 self._last_prompt_contract = final_contract
                 latest_user_query = ""
                 for _m in reversed(messages):
@@ -1427,6 +1434,7 @@ class NativeLlamaEngine(QThread):
                 quality = evaluate_response_quality(
                     user_query=latest_user_query,
                     output=final_text,
+                    context=self._last_retrieval_context,
                 )
                 needs_review = quality.score < 0.4
                 logger.info(
@@ -1611,6 +1619,7 @@ class NativeLlamaEngine(QThread):
             quality = evaluate_response_quality(
                 user_query=latest_user_query,
                 output=text,
+                context=self._last_retrieval_context,
             )
             needs_review = quality.score < 0.4
             logger.info(

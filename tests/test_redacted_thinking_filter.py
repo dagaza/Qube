@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from core.redacted_thinking_filter import RedactedThinkingStreamFilter
+from core.redacted_thinking_filter import (
+    RedactedThinkingStreamFilter,
+    strip_reasoning_blocks_from_text,
+)
 
 
 class TestRedactedThinkingStreamFilter(unittest.TestCase):
@@ -29,6 +32,26 @@ class TestRedactedThinkingStreamFilter(unittest.TestCase):
         out = f.feed("<thinking>Provide brief explanation.</thinking>Blue light scatters.")
         out += f.flush()
         self.assertEqual(out, "Blue light scatters.")
+
+
+class TestStripReasoningBlocksFromText(unittest.TestCase):
+    def test_strips_qwen3_think_block_multiline(self) -> None:
+        raw = (
+            "<Think>\nUser asked about weather.\nPick a short label.\n</Think>\n"
+            "Copenhagen Weather"
+        )
+        self.assertEqual(
+            strip_reasoning_blocks_from_text(raw).strip(),
+            "Copenhagen Weather",
+        )
+
+    def test_strips_lowercase_thinking_block(self) -> None:
+        raw = "<thinking>plan</thinking>\nSky Color"
+        self.assertEqual(strip_reasoning_blocks_from_text(raw).strip(), "Sky Color")
+
+    def test_strips_unclosed_think_tail(self) -> None:
+        raw = "<Think>\npartial reasoning\n"
+        self.assertEqual(strip_reasoning_blocks_from_text(raw).strip(), "")
 
 
 if __name__ == "__main__":

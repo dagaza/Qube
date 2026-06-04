@@ -38,3 +38,29 @@ def test_signal_playback_finished_clears_active_flag(monkeypatch):
 
     assert worker._playback_active is False
     assert finished == ["finished"]
+
+
+def test_add_to_queue_skips_exact_duplicate_back_to_back():
+    from workers.tts_worker import TTSWorker
+
+    worker = TTSWorker.__new__(TTSWorker)
+    worker.sentence_queue = __import__("queue").Queue()
+    worker._last_queued_tts_key = ""
+
+    worker.add_to_queue("Here's a joke.", "sess-1")
+    worker.add_to_queue("Here's a joke.", "sess-1")
+
+    assert worker.sentence_queue.qsize() == 1
+
+
+def test_add_to_queue_allows_distinct_sentences():
+    from workers.tts_worker import TTSWorker
+
+    worker = TTSWorker.__new__(TTSWorker)
+    worker.sentence_queue = __import__("queue").Queue()
+    worker._last_queued_tts_key = ""
+
+    worker.add_to_queue("First sentence.", "sess-1")
+    worker.add_to_queue("Second sentence.", "sess-1")
+
+    assert worker.sentence_queue.qsize() == 2

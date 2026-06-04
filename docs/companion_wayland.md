@@ -24,6 +24,10 @@ A native helper using `wlr-layer-shell` (Sway, Hyprland, labwc) could provide ti
 | `QUBE_COMPANION_FORCE_TIER=full\|limited\|degraded\|none` | Override platform tier detection in tests |
 | `QUBE_REDUCED_MOTION=1` | Force reduced motion when Qt style hints are unavailable |
 
+## Companion commentary (optional)
+
+Settings → Desktop Companion → **Enable companion commentary** uses the auxiliary cognition model (CPU sidecar) to generate short caption lines while idle or after library ingest / model download events. Commentary appears in the caption chip for a few seconds and does not affect chat prompts or TTS. The bundled default is Qwen3 1.7B under `models/cognition/`; for lighter CPU use, place Qwen2 0.5B or Qwen2-1.5B-Instruct in `models/cognition/` and select it under Advanced engine settings.
+
 ## Testing matrix (manual)
 
 - Windows 10/11: orb AOT, drag, snap, fullscreen suppress

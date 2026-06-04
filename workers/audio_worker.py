@@ -158,15 +158,19 @@ class AudioListenerWorker(QThread):
         # 🔑 THE FIX: Imports must go at the absolute top of the scope!
         import time
         import numpy as np
-        
-        self.status_update.emit("🎙️ RECORDING...")
-        logger.info("Wake word detected. Opening recording buffer...")
 
-        # 🔑 THE TEMPORAL GATE SETUP
-        # This ignores the first X seconds of audio to let speakers go silent.
+        emitted_transcribing = False
+        self.status_update.emit("Listening")
+        logger.info("Wake word detected. Opening recording buffer (deaf window active).")
+
+        # Temporal gate: discard early mic audio so speaker echo does not fill the buffer.
         gate_start_time = time.time()
         DELAY_BUFFER = 0.50  # Adjust to 1.0 if you still hear "phantom" syllables
-        
+        deaf_window_logged = False
+        capture_deadline = (
+            gate_start_time + DELAY_BUFFER + float(self.silence_timeout) + 5.0
+        )
+
         # 🔑 THE ECHO FLUSH: Instantly throw away the mic's hardware buffer!
         try:
             if getattr(self, 'stream', None) and self.stream.get_read_available() > 0:
@@ -180,53 +184,74 @@ class AudioListenerWorker(QThread):
 
         read_chunk = 1024 if self.current_rate == 16000 else 1024 * 3
 
-        while self.running:
-            data = self.stream.read(read_chunk, exception_on_overflow=False)
+        try:
+            while self.running and time.time() < capture_deadline:
+                data = self.stream.read(read_chunk, exception_on_overflow=False)
 
-            # 🔑 THE TEMPORAL GATE: Skip everything for the first 0.8 seconds
-            if time.time() - gate_start_time < DELAY_BUFFER:
-                # Reset the silence timer so the 5s timeout starts AFTER the gate opens
-                silence_start_time = time.time() 
-                continue
+                if time.time() - gate_start_time < DELAY_BUFFER:
+                    # Reset the silence timer so the timeout starts AFTER the gate opens
+                    silence_start_time = time.time()
+                    continue
+                if not deaf_window_logged:
+                    deaf_window_logged = True
+                    logger.debug("Deaf window closed; accepting utterance audio.")
 
-            audio_data = np.frombuffer(data, dtype=np.int16)
-            
-            if self.current_rate == 48000:
-                audio_data = audio_data[::3]
-                
-            recording.append(audio_data.tobytes())
-            
-            try:
-                peak = np.max(np.abs(audio_data))
-                
-                # Calculate and emit during active recording
-                normalized_level = min(1.0, peak / 32767.0)
-                self.volume_update.emit(float(normalized_level))
-                
-                current_vol_pct = int(normalized_level * 100)
-            except ValueError:
-                current_vol_pct = 0
+                audio_data = np.frombuffer(data, dtype=np.int16)
+
+                if self.current_rate == 48000:
+                    audio_data = audio_data[::3]
+
+                recording.append(audio_data.tobytes())
+
+                try:
+                    peak = np.max(np.abs(audio_data))
+
+                    # Calculate and emit during active recording
+                    normalized_level = min(1.0, peak / 32767.0)
+                    self.volume_update.emit(float(normalized_level))
+
+                    current_vol_pct = int(normalized_level * 100)
+                except ValueError:
+                    current_vol_pct = 0
+                    self.volume_update.emit(0.0)
+
+                self.current_volume = current_vol_pct
+
+                if current_vol_pct >= self.speech_threshold:
+                    silence_start_time = time.time()
+                    has_spoken = True
+
+                elapsed_silence = time.time() - silence_start_time
+
+                # No utterance crossed the speech threshold: same silence window as post-speech cutoff
+                if not has_spoken and elapsed_silence > self.silence_timeout:
+                    logger.info(
+                        "Silence cutoff (no speech) after %.1fs; releasing capture buffer.",
+                        self.silence_timeout,
+                    )
+                    return
+
+                if has_spoken and elapsed_silence > self.silence_timeout:
+                    self.status_update.emit("Thinking...")
+                    emitted_transcribing = True
+                    logger.info(
+                        "Silence timeout reached (%.1fs). Closing buffer.",
+                        self.silence_timeout,
+                    )
+                    audio_bytes = b"".join(recording)
+                    self.audio_captured.emit(audio_bytes)
+                    return
+            else:
+                if self.running:
+                    logger.warning(
+                        "Voice capture wall timeout (%.1fs); forcing capture idle.",
+                        capture_deadline - gate_start_time,
+                    )
+        finally:
+            if not emitted_transcribing:
                 self.volume_update.emit(0.0)
-                
-            self.current_volume = current_vol_pct
-
-            if current_vol_pct >= self.speech_threshold:
-                silence_start_time = time.time()
-                has_spoken = True
-                
-            elapsed_silence = time.time() - silence_start_time
-
-            # No utterance crossed the speech threshold: same silence window as post-speech cutoff
-            if not has_spoken and elapsed_silence > self.silence_timeout:
+                self.current_volume = 0
                 self.status_update.emit("Voice capture idle")
-                return
-                
-            if has_spoken and elapsed_silence > self.silence_timeout:
-                self.status_update.emit("Transcribing...")
-                logger.info(f"Silence timeout reached ({self.silence_timeout}s). Closing buffer.")
-                audio_bytes = b''.join(recording)
-                self.audio_captured.emit(audio_bytes)
-                return
 
     def _open_mic_with_warmup(self):
         """

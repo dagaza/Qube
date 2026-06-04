@@ -18,6 +18,7 @@ from core.auxiliary_cognition import (
     resolve_active_cognition_path,
 )
 from core.cognition_prompt_adapter import (
+    apply_qwen3_no_think_to_prompt,
     cognition_stop_tokens,
     resolve_cognition_chat_format,
 )
@@ -42,6 +43,7 @@ class SidecarLlmWorker(QThread):
 
     title_generated = pyqtSignal(str, str)
     ingest_blurb_ready = pyqtSignal(str, str)  # filename, blurb
+    companion_line_ready = pyqtSignal(str, str, str)  # line, kind, trigger
     sidecar_telemetry_updated = pyqtSignal(dict)
     model_reload_finished = pyqtSignal(bool, str)
 
@@ -98,11 +100,18 @@ class SidecarLlmWorker(QThread):
             }
         )
 
-    def enqueue_title(self, user_prompt: str, session_id: str) -> None:
+    def enqueue_title(
+        self,
+        user_prompt: str,
+        session_id: str,
+        *,
+        assistant_reply: str = "",
+    ) -> None:
         self._cmd_queue.put(
             {
                 "op": "title",
                 "user_prompt": user_prompt,
+                "assistant_reply": assistant_reply,
                 "session_id": session_id,
             }
         )
@@ -118,6 +127,13 @@ class SidecarLlmWorker(QThread):
                 "out": out,
             }
         )
+
+    def enqueue_companion_line(self, payload: dict) -> bool:
+        """Fire-and-forget companion caption; queues behind other sidecar work."""
+        if self._reloading or not self.model_loaded:
+            return False
+        self._cmd_queue.put({"op": "companion_line", "payload": dict(payload or {})})
+        return True
 
     def stop_engine(self) -> None:
         self._stop.set()
@@ -245,6 +261,8 @@ class SidecarLlmWorker(QThread):
                     self._do_raw(cmd)
                 elif op == "ingest_blurb":
                     self._do_ingest_blurb(cmd)
+                elif op == "companion_line":
+                    self._do_companion_line(cmd)
             except Exception as e:
                 logger.exception("[Sidecar] command failed op=%s: %s", op, e)
                 if op == "task":
@@ -312,6 +330,14 @@ class SidecarLlmWorker(QThread):
                 foreground=False,
                 reason=reason,
             )
+        elif op == "companion_line":
+            self.telemetry.record(
+                SidecarTask.companion_line,
+                ok=False,
+                latency_ms=0.0,
+                foreground=False,
+                reason=reason,
+            )
         if op == "task":
             out = cmd.get("out")
             if isinstance(out, list):
@@ -337,11 +363,15 @@ class SidecarLlmWorker(QThread):
             if isinstance(out, list):
                 out.append("")
 
+    def _prepare_sidecar_prompt(self, prompt: str) -> str:
+        return apply_qwen3_no_think_to_prompt(prompt, self.active_model_path)
+
     def _complete_prompt(
         self, prompt: str, *, max_tokens: int, temperature: float
     ) -> str:
         if not self.model:
             return ""
+        prompt = self._prepare_sidecar_prompt(prompt)
         stops = cognition_stop_tokens(self.active_chat_format)
         try:
             output = self.model(
@@ -360,7 +390,10 @@ class SidecarLlmWorker(QThread):
         payload = cmd.get("payload") or {}
         params = task_inference_params(task)
         prompt = build_prompt_for_task(
-            task, chat_format=self.active_chat_format, **payload
+            task,
+            chat_format=self.active_chat_format,
+            model_path=self.active_model_path,
+            **payload,
         )
         raw = self._complete_prompt(
             prompt,
@@ -392,30 +425,50 @@ class SidecarLlmWorker(QThread):
     def _do_title(self, cmd: dict) -> None:
         session_id = str(cmd.get("session_id") or "")
         user_prompt = cmd.get("user_prompt") or ""
+        assistant_reply = cmd.get("assistant_reply") or ""
         t0 = time.perf_counter()
+        title_params = task_inference_params(SidecarTask.title)
+        raw_title = self._complete_prompt(
+            build_prompt_for_task(
+                SidecarTask.title,
+                chat_format=self.active_chat_format,
+                model_path=self.active_model_path,
+                user_prompt=user_prompt,
+                assistant_reply=assistant_reply,
+            ),
+            max_tokens=int(title_params.get("max_tokens", 128)),
+            temperature=float(title_params.get("temperature", 0.1)),
+        )
         result = parse_task_output(
             SidecarTask.title,
-            self._complete_prompt(
-                build_prompt_for_task(
-                    SidecarTask.title,
-                    chat_format=self.active_chat_format,
-                    user_prompt=user_prompt,
-                ),
-                max_tokens=12,
-                temperature=0.2,
-            ),
+            raw_title,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
         )
         new_title = (result.parsed or {}).get("title") or result.text
         ok = bool(new_title)
         if new_title and self.db and session_id:
             if self.db.rename_session(session_id, new_title):
                 self.title_generated.emit(session_id, new_title)
+            else:
+                logger.warning(
+                    "[Sidecar] rename_session failed session=%s title=%r",
+                    session_id,
+                    new_title,
+                )
+        elif not ok:
+            snippet = (raw_title or "").strip().replace("\n", " ")[:120]
+            logger.info(
+                "[Sidecar] Title empty for session=%s raw=%r",
+                session_id,
+                snippet,
+            )
         self.telemetry.record(
             SidecarTask.title,
             ok=ok,
             latency_ms=(time.perf_counter() - t0) * 1000,
             foreground=False,
-            reason="" if ok else "empty",
+            reason="" if ok else (result.error or "empty"),
         )
         self._sync_telemetry_runtime()
 
@@ -429,6 +482,7 @@ class SidecarLlmWorker(QThread):
                 build_prompt_for_task(
                     SidecarTask.ingest_blurb,
                     chat_format=self.active_chat_format,
+                    model_path=self.active_model_path,
                     sample_text=sample,
                 ),
                 max_tokens=48,
@@ -448,5 +502,37 @@ class SidecarLlmWorker(QThread):
             latency_ms=(time.perf_counter() - t0) * 1000,
             foreground=False,
             reason="" if ok else "empty",
+        )
+        self._sync_telemetry_runtime()
+
+    def _do_companion_line(self, cmd: dict) -> None:
+        payload = dict(cmd.get("payload") or {})
+        trigger = str(payload.get("trigger") or "idle")
+        t0 = time.perf_counter()
+        params = task_inference_params(SidecarTask.companion_line)
+        prompt = build_prompt_for_task(
+            SidecarTask.companion_line,
+            chat_format=self.active_chat_format,
+            model_path=self.active_model_path,
+            **payload,
+        )
+        raw = self._complete_prompt(
+            prompt,
+            max_tokens=int(params.get("max_tokens", 64)),
+            temperature=float(params.get("temperature", 0.35)),
+        )
+        result = parse_task_output(SidecarTask.companion_line, raw, **payload)
+        ok = bool(result.ok)
+        if ok:
+            kind = str((result.parsed or {}).get("kind") or "idle_quip")
+            line = str(result.text or "").strip()
+            if line:
+                self.companion_line_ready.emit(line, kind, trigger)
+        self.telemetry.record(
+            SidecarTask.companion_line,
+            ok=ok,
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            foreground=False,
+            reason="" if ok else (result.error or "skip"),
         )
         self._sync_telemetry_runtime()

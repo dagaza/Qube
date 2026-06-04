@@ -6,6 +6,7 @@ Examples:
   python tools/view_llm_logs.py --last 200
   python tools/view_llm_logs.py --follow
   python tools/view_llm_logs.py --filter token_trace --last 500
+  python tools/view_llm_logs.py --filter completion_output_trace --last 50
 """
 from __future__ import annotations
 
