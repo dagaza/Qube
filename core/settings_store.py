@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from core.paths import resource_path
+
 logger = logging.getLogger("Qube.SettingsStore")
 
 _LEGACY_TO_DOTTED: dict[str, str] = {
@@ -40,12 +42,8 @@ _QSETTINGS_APP = "Qube"
 _store: "SettingsStore | None" = None
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 def bundled_settings_schema_path() -> Path:
-    return _project_root() / "assets" / "config" / "settings.schema.json"
+    return resource_path("assets", "config", "settings.schema.json")
 
 
 def default_user_settings_path() -> Path:

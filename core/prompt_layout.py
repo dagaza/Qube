@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 from core.model_capability_detection import match_pattern, normalize_model_id
+from core.paths import resource_path
 from core.prompt_layout_store import get_override as get_layout_override
 
 logger = logging.getLogger("Qube.PromptLayout")
@@ -49,7 +50,7 @@ def is_degraded_layout(layout: PromptLayout) -> bool:
 
 
 def _workspace_seed_registry_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "system_data" / "curated_registry.json"
+    return resource_path("system_data", "curated_registry.json")
 
 
 def _user_registry_path() -> Path:

@@ -395,6 +395,7 @@ class RoutingDebugSinkTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             text = path.read_text(encoding="utf-8", errors="replace")
             self.assertIn('"route":"hybrid"', text)
+            detach_routing_debug_file_sink_for_tests()
 
 
 class MaxRecordsConstantTests(unittest.TestCase):

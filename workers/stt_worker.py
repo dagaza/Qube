@@ -3,6 +3,9 @@ import numpy as np
 import time
 from faster_whisper import WhisperModel
 import logging
+
+from core.paths import models_root
+
 logger = logging.getLogger("Qube.Audio")
 
 class STTWorker(QThread):
@@ -14,7 +17,12 @@ class STTWorker(QThread):
         super().__init__()
         self.status_update.emit("BOOT: Loading Whisper Weights...")
         # This tells Whisper to check your local folder first
-        self.stt_model = WhisperModel("small", device="cpu", compute_type="int8", download_root="models/stt")
+        self.stt_model = WhisperModel(
+            "small",
+            device="cpu",
+            compute_type="int8",
+            download_root=str(models_root() / "stt"),
+        )
         self.status_update.emit("STT Engine Ready")
 
     def process_audio(self, raw_audio_bytes):

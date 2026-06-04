@@ -13,6 +13,7 @@ from core.app_settings import (
     get_wakeword_threshold_override,
     set_active_wakeword_id,
 )
+from core.paths import models_root
 
 logger = logging.getLogger("Qube.WakewordManager")
 
@@ -38,8 +39,8 @@ class WakewordSpec:
 
 
 class WakewordManager:
-    def __init__(self, cache_dir: str = "models/wakeword"):
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, cache_dir: str | None = None):
+        self.cache_dir = Path(cache_dir) if cache_dir else models_root() / "wakeword"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._catalog: dict[str, WakewordSpec] = {}
 

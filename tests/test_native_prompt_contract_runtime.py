@@ -101,6 +101,18 @@ class _FakeTokenizerModel:
     def token_get_text(self, _tid: int) -> str:
         return ""
 
+    def token_cls(self) -> int:
+        return -1
+
+    def token_sep(self) -> int:
+        return -1
+
+    def add_bos_token(self) -> bool:
+        return False
+
+    def add_eos_token(self) -> bool:
+        return False
+
 
 class _FakeLlama:
     def __init__(self) -> None:
@@ -116,6 +128,11 @@ class _FakeLlama:
 
     def token_bos(self) -> int:
         return 1
+
+    def tokenize(self, data, add_bos=False, special=False):
+        if isinstance(data, bytes):
+            return [1] * max(1, len(data) // 4) if data else []
+        return [1]
 
     def create_completion(self, **kwargs):
         self.calls.append(("completion", kwargs))

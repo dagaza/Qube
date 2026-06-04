@@ -221,6 +221,3 @@ def compose_system_prompt(blocks: PromptBlocks) -> str:
     for suf in blocks.system_suffixes:
         out += suf
     return out
-
-
-from core.prompt_renderers import render_system_ok_messages  # noqa: E402,F401

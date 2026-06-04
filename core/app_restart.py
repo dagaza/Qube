@@ -11,11 +11,13 @@ from pathlib import Path
 from PyQt6.QtCore import QProcess
 from PyQt6.QtWidgets import QApplication
 
+from core.paths import install_root
+
 logger = logging.getLogger("Qube.Restart")
 
 
 def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return install_root()
 
 
 def platform_display_name() -> str:

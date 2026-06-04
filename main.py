@@ -62,6 +62,7 @@ import logging
 
 from core.logging_bootstrap import init_llm_debug_logging, init_routing_debug_logging
 from core.boot_args import parse_boot_args
+from core.paths import install_root, resource_path
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -834,30 +835,33 @@ if __name__ == "__main__":
 
     app = QubeApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    repo_root = Path(__file__).resolve().parent
-    window_icon_path = repo_root / "assets" / "logos" / "qube_logo_256.png"
+    repo_root = install_root()
+    window_icon_path = resource_path("assets", "logos", "qube_logo_256.png")
     if not window_icon_path.is_file():
-        window_icon_path = repo_root / "assets" / "icons" / "qube_logo_256.png"
+        window_icon_path = resource_path("assets", "icons", "qube_logo_256.png")
     if not window_icon_path.is_file():
-        window_icon_path = repo_root / "assets" / "qube_logo_256.png"
+        window_icon_path = resource_path("assets", "qube_logo_256.png")
     if window_icon_path.is_file():
         app.setWindowIcon(QIcon(str(window_icon_path)))
     apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER
     font_files = [
-        "assets/fonts/Inter-Regular.ttf",
-        "assets/fonts/Inter-Italic.ttf",
-        "assets/fonts/Inter-Medium.ttf",
-        "assets/fonts/Inter-MediumItalic.ttf",
-        "assets/fonts/Inter-SemiBold.ttf",
-        "assets/fonts/Inter-SemiBoldItalic.ttf",
-        "assets/fonts/Inter-Bold.ttf",
-        "assets/fonts/Inter-BoldItalic.ttf"
+        resource_path("assets", "fonts", name)
+        for name in (
+            "Inter-Regular.ttf",
+            "Inter-Italic.ttf",
+            "Inter-Medium.ttf",
+            "Inter-MediumItalic.ttf",
+            "Inter-SemiBold.ttf",
+            "Inter-SemiBoldItalic.ttf",
+            "Inter-Bold.ttf",
+            "Inter-BoldItalic.ttf",
+        )
     ]
     
     font_family = None
     for font_file in font_files:
-        font_id = QFontDatabase.addApplicationFont(font_file)
+        font_id = QFontDatabase.addApplicationFont(str(font_file))
         if font_id != -1 and font_family is None:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
 
@@ -873,8 +877,8 @@ if __name__ == "__main__":
 
     # 3. Load the Global Structural Stylesheet
     # This interprets the ObjectNames and Classes we just added to the views.
-    style_path = os.path.join("assets", "styles", "base.qss")
-    if os.path.exists(style_path):
+    style_path = resource_path("assets", "styles", "base.qss")
+    if style_path.is_file():
         with open(style_path, "r") as f:
             custom_style = f.read()
             # We append our structure to the qt_material base styles
