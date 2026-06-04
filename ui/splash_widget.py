@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.paths import install_root
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QHBoxLayout,
