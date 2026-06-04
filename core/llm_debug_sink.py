@@ -11,19 +11,16 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+from core.paths import logs_dir
+
 LLM_DEBUG_LOGGER_NAME = "Qube.NativeLLM.Debug"
 
 # Marker on our handler instance to avoid duplicate attachment
 _HANDLER_ATTR = "_qube_llm_debug_rotating_sink"
 
 
-def project_root() -> Path:
-    """core/ -> repo root."""
-    return Path(__file__).resolve().parent.parent
-
-
 def default_llm_debug_log_path() -> Path:
-    return project_root() / "logs" / "llm_debug.log"
+    return logs_dir() / "llm_debug.log"
 
 
 def _ensure_logs_dir(path: Path) -> None:

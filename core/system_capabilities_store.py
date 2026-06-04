@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+
+from core.paths import resource_path
 
 
 SCHEMA_SQL = """
@@ -35,15 +38,15 @@ def default_system_data_dir() -> Path:
 
 
 def _workspace_seed_registry_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "system_data" / "curated_registry.json"
+    return resource_path("system_data", "curated_registry.json")
 
 
 def _workspace_missed_models_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "system_data" / "missed_models.json"
+    return resource_path("system_data", "missed_models.json")
 
 
 def _workspace_learned_registry_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "system_data" / "learned_capabilities.json"
+    return resource_path("system_data", "learned_capabilities.json")
 
 
 class SystemCapabilitiesStore:
@@ -63,10 +66,14 @@ class SystemCapabilitiesStore:
         self._ensure_model_hf_provenance_seeded()
         self.init_db()
 
-    def _conn(self) -> sqlite3.Connection:
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def init_db(self) -> None:
         with self._conn() as conn:

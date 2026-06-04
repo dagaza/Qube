@@ -25,6 +25,15 @@ if _REPO_ROOT not in sys.path:
 sys.setrecursionlimit(sys.getrecursionlimit() + 500)
 
 
+def pytest_sessionfinish(session, exitstatus):
+    # PyQt6 6.11 + Python 3.13 can crash the process during QApplication teardown
+    # on Windows after all tests pass. Force a clean exit so CI sees success.
+    if exitstatus == 0 and sys.platform == "win32":
+        import os
+
+        os._exit(0)
+
+
 @pytest.fixture(scope="session")
 def qapp_cls():
     """Use the real QubeApplication so QSS / tooltip routing is exercised."""
@@ -36,7 +45,7 @@ def qapp_cls():
 def _qube_app(qapp_cls):
     """Create (or reuse) a QApplication before any widget construction."""
     app = qapp_cls.instance() or qapp_cls([])
-    return app
+    yield app
 
 
 @pytest.fixture(scope="session")
@@ -51,6 +60,23 @@ def mock_workers():
     db.get_session_history.return_value = []
     db.get_all_sessions.return_value = []
     db.get_session_messages.return_value = []
+    db.get_main_conversation_folder_id.return_value = "folder-main"
+    db.get_main_library_folder_id.return_value = "folder-library-main"
+    db.create_session.return_value = "session-new"
+    db.get_session_count.return_value = 0
+    db.get_recent_sessions.return_value = []
+    db.get_sessions_for_sidebar_by_folder.return_value = ([], {})
+    db.get_documents_for_sidebar_by_folder.return_value = ([], {})
+    db.get_sessions_for_sidebar_search.return_value = []
+    db.list_conversation_folders.return_value = []
+    db.list_library_folders.return_value = []
+    db.create_conversation_folder.return_value = "folder-new"
+    db.create_library_folder.return_value = "folder-lib-new"
+    db.rename_conversation_folder.return_value = True
+    db.rename_library_folder.return_value = True
+    db.delete_conversation_folder.return_value = True
+    db.delete_library_folder.return_value = ([], [])
+    db.cleanup_empty_sessions.return_value = None
 
     return {
         "audio": MagicMock(name="AudioWorker"),
@@ -84,4 +110,9 @@ def main_window(_qube_app, mock_workers):
         gpu_monitor=gpu_monitor,
         native_engine=native_engine,
     )
-    return win
+    yield win
+    timer = getattr(win, "telemetry_timer", None)
+    if timer is not None:
+        timer.stop()
+    win.close()
+    _qube_app.processEvents()

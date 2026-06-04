@@ -4,39 +4,44 @@ PyInstaller spec for Qube.
 
 Build with:   pyinstaller qube.spec --noconfirm
 Output goes to:  dist/Qube/  (one-dir mode)
-
-To add a Windows icon, place an .ico file at assets/logos/qube.ico and
-uncomment the icon= line in the EXE block below.
 """
-import sys
 import os
+import sys
+
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 
 sys.path.insert(0, os.getcwd())
-from core.__version__ import __version__
+from core.__version__ import __version__  # noqa: F401 — build metadata
+
+datas = [
+    ("assets", "assets"),
+    ("system_data", "system_data"),
+]
+datas += collect_data_files("qtawesome", include_py_files=False)
+
+binaries = []
+for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
+    try:
+        binaries += collect_dynamic_libs(package)
+    except Exception:
+        pass
 
 a = Analysis(
     ["main.py"],
     pathex=["."],
-    datas=[
-        ("assets", "assets"),
-        ("system_data", "system_data"),
-    ],
+    binaries=binaries,
+    datas=datas,
     hiddenimports=[
-        # qtawesome renders SVG icons through QtSvg
         "PyQt6.QtSvg",
         "PyQt6.QtSvgWidgets",
-        # lancedb / lance / pyarrow use dynamic C-extension loading
         "lancedb",
         "lance",
         "pyarrow",
-        # nvidia-ml-py exposes as pynvml
         "pynvml",
-        # faster-whisper backend
         "ctranslate2",
-        # onnxruntime for kokoro-onnx TTS
         "onnxruntime",
-        # openwakeword pulls tflite_runtime dynamically
         "tflite_runtime",
+        "llama_cpp",
     ],
     hookspath=[],
     runtime_hooks=[],

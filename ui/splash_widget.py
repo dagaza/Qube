@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QRectF
+from core.paths import install_root
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QHBoxLayout,
@@ -29,7 +30,7 @@ SPLASH_STEP_LABELS: tuple[str, ...] = (
 
 def resolve_splash_logo_path(repo_root: Path | None = None) -> Path | None:
     """Return the best available logo for the splash card, or ``None``."""
-    root = repo_root or Path(__file__).resolve().parent.parent
+    root = repo_root or install_root()
     candidates = (
         root / "assets" / "logos" / "qube_logo_256.png",
         root / "assets" / "icons" / "qube_logo_256.png",

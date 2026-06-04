@@ -80,6 +80,7 @@ from workers.hf_model_meta_worker import HfModelMetaWorker
 from workers.hf_readme_worker import HfReadmeWorker
 from workers.hf_repo_files_worker import HfRepoFilesWorker
 from workers.model_download_worker import HuggingFaceGgufDownloadWorker
+from core.paths import install_root
 
 # Extra display data on Hub .gguf combo rows (file size, right-aligned in popup).
 HUB_FILE_COMBO_SIZE_ROLE = int(Qt.ItemDataRole.UserRole) + 42
@@ -103,7 +104,7 @@ HUB_SEARCH_PAGE_SIZE = 20
 
 
 def _model_manager_project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return install_root()
 
 
 def _hub_file_combo_list_qss(is_dark: bool) -> str:

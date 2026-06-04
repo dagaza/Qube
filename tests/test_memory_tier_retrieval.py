@@ -28,6 +28,9 @@ class _FakeQuery:
     def __init__(self, parent: "_FakeTable") -> None:
         self._parent = parent
 
+    def select(self, *_cols) -> "_FakeQuery":
+        return self
+
     def where(self, clause: str) -> "_FakeQuery":
         self._parent.last_where = clause
         self._parent.where_calls.append(clause)
@@ -47,7 +50,7 @@ class _FakeTable:
         self.last_where: str | None = None
         self.where_calls: list[str] = []
 
-    def search(self, _vec):
+    def search(self, _query=None, query_type=None):
         return _FakeQuery(self)
 
 

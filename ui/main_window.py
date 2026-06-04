@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
 from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics
 import qtawesome as qta
+from core.paths import install_root, resource_path
 from ui.views.conversations_view import ConversationsView
 from ui.views.settings_view import SettingsView
 from ui.views.library_view import LibraryView
@@ -118,7 +119,7 @@ class MainWindow(QMainWindow):
         enable_routing_debug_tool: bool = False,
     ):
         super().__init__()
-        self._project_root = Path(__file__).resolve().parent.parent
+        self._project_root = install_root()
         # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
         logo_icon_path = self._resolve_logo_asset("qube_logo_256.png")
         if logo_icon_path is not None:
@@ -200,8 +201,12 @@ class MainWindow(QMainWindow):
 
     def _resolve_logo_asset(self, name: str) -> Path | None:
         """Resolve logo paths across new and legacy asset directories."""
-        for rel in (Path("assets/logos") / name, Path("assets/icons") / name, Path("assets") / name):
-            candidate = self._project_root / rel
+        for parts in (
+            ("assets", "logos", name),
+            ("assets", "icons", name),
+            ("assets", name),
+        ):
+            candidate = resource_path(*parts)
             if candidate.is_file():
                 return candidate
         return None
@@ -1758,8 +1763,8 @@ class MainWindow(QMainWindow):
 
         if self._is_dark_theme:
             # --- Load Light Theme ---
-            style_path = os.path.join("assets", "styles", "light.qss")
-            if os.path.exists(style_path):
+            style_path = resource_path("assets", "styles", "light.qss")
+            if style_path.is_file():
                 with open(style_path, "r") as f:
                     app.setStyleSheet(f.read())
             
@@ -1770,8 +1775,8 @@ class MainWindow(QMainWindow):
             logger.info("Theme switched to Light Mode.")
         else:
             # --- Load Dark Theme ---
-            style_path = os.path.join("assets", "styles", "base.qss")
-            if os.path.exists(style_path):
+            style_path = resource_path("assets", "styles", "base.qss")
+            if style_path.is_file():
                 with open(style_path, "r") as f:
                     app.setStyleSheet(f.read())
                     

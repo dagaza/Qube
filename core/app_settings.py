@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from core.settings_store import get_settings_store
+from core.paths import models_root
 
 _SHARDED_GGUF_RE = re.compile(r"^(?P<prefix>.+)-(?P<part>\d+)-of-(?P<total>\d+)\.gguf$", re.IGNORECASE)
 
@@ -93,8 +94,10 @@ def _store():
 
 
 def default_llm_models_dir() -> str:
-    """Directory for downloaded / native .gguf models (under app cwd)."""
-    return os.path.join(os.getcwd(), "models", "llm")
+    """Directory for downloaded / native .gguf models."""
+    path = models_root() / "llm"
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 def get_enable_memory_enrichment() -> bool:

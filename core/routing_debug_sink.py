@@ -8,18 +8,15 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+from core.paths import logs_dir
+
 ROUTING_DEBUG_LOGGER_NAME = "Qube.RoutingDebug"
 
 _HANDLER_ATTR = "_qube_routing_debug_rotating_sink"
 
 
-def project_root() -> Path:
-    """core/ -> repo root."""
-    return Path(__file__).resolve().parent.parent
-
-
 def default_routing_debug_log_path() -> Path:
-    return project_root() / "logs" / "routing_debug.log"
+    return logs_dir() / "routing_debug.log"
 
 
 def _ensure_logs_dir(path: Path) -> None:

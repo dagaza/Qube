@@ -13,6 +13,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from typing import Any
 
+from core.paths import resource_path
+
 logger = logging.getLogger("Qube.HFBranding")
 
 HF_API_BASE = "https://huggingface.co/api"
@@ -43,12 +45,8 @@ TRUSTED_PUBLISHERS: dict[str, dict[str, str]] = {
 }
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 def _logo_exists(filename: str) -> bool:
-    return (_project_root() / "assets" / "logos" / filename).is_file()
+    return resource_path("assets", "logos", filename).is_file()
 
 
 def _owner_from_repo_id(repo_id: str) -> str:
@@ -93,9 +91,8 @@ def _avatar_url_from_payload(data: dict[str, Any] | None) -> str:
 
 
 def _hf_logo_asset_path() -> str:
-    root = _project_root()
     for rel in ("assets/logos/hf-logo.svg", "assets/icons/hf-logo.svg"):
-        if (root / rel).is_file():
+        if resource_path(*rel.split("/")).is_file():
             return f"/{rel}"
     return "/assets/logos/hf-logo.svg"
 
