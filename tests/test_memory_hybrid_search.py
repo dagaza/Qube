@@ -40,6 +40,9 @@ class _FakeTable:
         self._last_query = query
         return self
 
+    def select(self, *_cols):
+        return self
+
     def where(self, _clause):
         return self
 

@@ -14,8 +14,8 @@ from core.memory_filters import (
 from core.prompt_blocks import (
     build_prompt_blocks,
     compose_system_prompt,
-    render_system_ok_messages,
 )
+from core.prompt_renderers import render_system_ok_messages
 
 
 def _legacy_compose(

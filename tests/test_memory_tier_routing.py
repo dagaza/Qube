@@ -34,6 +34,9 @@ class _FakeQuery:
     def __init__(self, parent):
         self._parent = parent
 
+    def select(self, *_cols):
+        return self
+
     def where(self, clause):
         self._parent.last_where = clause
         return self
@@ -49,7 +52,7 @@ class _FakeTable:
     def __init__(self):
         self.last_where = None
 
-    def search(self, _vec):
+    def search(self, _query=None, query_type=None):
         return _FakeQuery(self)
 
 
@@ -152,42 +155,40 @@ class LLMWorkerSourceContractTests(unittest.TestCase):
             cls.src = f.read()
 
     def test_every_memory_search_call_passes_include_preference(self):
-        """Every ``memory_search(...)`` call must pass ``include_preference``."""
-        # Extract each memory_search(...) block.
+        """Every ``_memory_search_hybrid(...)`` call site must pass tier flags."""
         blocks = re.findall(
-            r"memory_search\(\s*(?P<body>.*?)\n\s*\)",
+            r"mem_result = self\._memory_search_hybrid\(\s*(?P<body>.*?)\n\s*\)",
             self.src,
             flags=re.DOTALL,
         )
         self.assertGreaterEqual(
-            len(blocks), 1,
-            "llm_worker.py should call memory_search at least once",
+            len(blocks), 2,
+            "llm_worker.py should call _memory_search_hybrid at least twice",
         )
         for body in blocks:
             self.assertIn(
                 "include_preference",
                 body,
-                msg=f"memory_search call missing include_preference:\n{body}",
+                msg=f"_memory_search_hybrid call missing include_preference:\n{body}",
             )
             self.assertIn(
                 "include_context",
                 body,
-                msg=f"memory_search call missing include_context:\n{body}",
+                msg=f"_memory_search_hybrid call missing include_context:\n{body}",
             )
 
     def test_chat_path_passes_include_knowledge_false(self):
         """The plain-CHAT (route=NONE) branch must pass
         ``include_knowledge=False`` — knowledge rows should not leak
         into ordinary chat turns."""
-        # Slice the source around ``execution_route == "NONE"`` block.
         match = re.search(
-            r"execution_route == \"NONE\".*?memory_search\(\s*(?P<body>.*?)\n\s*\)",
+            r'execution_route == "NONE".*?_memory_search_hybrid\(\s*(?P<body>.*?)\n\s*\)',
             self.src,
             flags=re.DOTALL,
         )
         self.assertIsNotNone(
             match,
-            "No memory_search call found in the execution_route=='NONE' branch; "
+            "No _memory_search_hybrid call found in the execution_route=='NONE' branch; "
             "plain CHAT turns must still run a preferences-only retrieval.",
         )
         body = match.group("body")
@@ -198,7 +199,7 @@ class LLMWorkerSourceContractTests(unittest.TestCase):
     def test_memory_or_hybrid_path_passes_include_knowledge_true(self):
         """The MEMORY/HYBRID branch must pass ``include_knowledge=True``."""
         match = re.search(
-            r"execution_route in \[\"MEMORY\", \"HYBRID\"\].*?memory_search\(\s*(?P<body>.*?)\n\s*\)",
+            r'execution_route in \["MEMORY", "HYBRID"\].*?_memory_search_hybrid\(\s*(?P<body>.*?)\n\s*\)',
             self.src,
             flags=re.DOTALL,
         )

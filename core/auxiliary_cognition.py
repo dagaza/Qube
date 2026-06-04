@@ -15,6 +15,7 @@ from core.app_settings import (
     get_sidecar_model_path,
     is_secondary_gguf_shard,
 )
+from core.paths import models_root
 
 BUNDLED_DEFAULT_REL_PATH = os.path.join("models", "qwen2-0_5b-instruct-q4_k_m.gguf")
 BUNDLED_DEFAULT_ID = "qwen2-0.5b-instruct-q4_k_m"
@@ -32,18 +33,14 @@ class CognitionModelEntry:
     is_deletable: bool
 
 
-def project_root() -> str:
-    return os.getcwd()
-
-
 def bundled_default_path() -> str:
-    return os.path.join(project_root(), BUNDLED_DEFAULT_REL_PATH)
+    return str(models_root() / Path(BUNDLED_DEFAULT_REL_PATH).name)
 
 
 def get_cognition_models_dir() -> str:
-    path = os.path.join(project_root(), COGNITION_SUBDIR)
-    os.makedirs(path, exist_ok=True)
-    return path
+    path = models_root() / "cognition"
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 def _normalize_path(path: str) -> str:

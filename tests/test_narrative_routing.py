@@ -70,6 +70,9 @@ class _Search:
     def __init__(self, rows):
         self.rows = rows
 
+    def select(self, *_cols):
+        return self
+
     def where(self, *_a, **_kw):
         return self
 

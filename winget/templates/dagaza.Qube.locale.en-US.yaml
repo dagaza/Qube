@@ -1,0 +1,22 @@
+PackageIdentifier: dagaza.Qube
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: dagaza
+PublisherUrl: https://github.com/dagaza
+PackageName: Qube
+License: MIT
+LicenseUrl: https://github.com/dagaza/Qube/blob/main/LICENSE
+ShortDescription: Local hardware-accelerated AI desktop assistant
+Description: >-
+  Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant.
+PackageUrl: https://github.com/dagaza/Qube
+Tags:
+  - ai
+  - assistant
+  - local
+  - privacy
+  - voice
+  - llm
+  - desktop
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

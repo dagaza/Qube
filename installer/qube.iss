@@ -10,7 +10,9 @@
 ;
 
 #define MyAppName      "Qube"
-#define MyAppVersion   "1.0.0"
+#ifndef MyAppVersion
+  #define MyAppVersion   "1.0.0"
+#endif
 #define MyAppPublisher "dagaza"
 #define MyAppURL       "https://github.com/dagaza/Qube"
 #define MyAppExeName   "Qube.exe"
@@ -35,9 +37,10 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
-; Uncomment once an .ico is available:
-; SetupIconFile=..\assets\logos\qube.ico
-; UninstallDisplayIcon={app}\Qube.exe
+#ifexist "..\assets\logos\qube.ico"
+SetupIconFile=..\assets\logos\qube.ico
+UninstallDisplayIcon={app}\Qube.exe
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

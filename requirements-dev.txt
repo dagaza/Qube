@@ -3,3 +3,4 @@ pytest-qt>=4.4
 pytest-xvfb>=3.0
 pyinstaller>=6.0
 pip-audit>=2.7
+pillow>=10.0

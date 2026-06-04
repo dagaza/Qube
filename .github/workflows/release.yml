@@ -7,10 +7,11 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHON_VERSION: "3.13"
+  PACKAGE_ID: dagaza.Qube
+
 jobs:
-  # -------------------------------------------------------------------
-  # 1. TEST — run pytest (unit + UI) on Windows
-  # -------------------------------------------------------------------
   test:
     runs-on: windows-latest
     steps:
@@ -18,7 +19,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -26,62 +27,92 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short -m "not packaging"
 
-  # -------------------------------------------------------------------
-  # 2. BUILD — PyInstaller → smoke test → Inno Setup → hash
-  # -------------------------------------------------------------------
   build:
     needs: test
     runs-on: windows-latest
     outputs:
+      version: ${{ steps.version.outputs.version }}
       installer_hash: ${{ steps.hash.outputs.sha256 }}
       installer_name: ${{ steps.hash.outputs.filename }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Derive version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}" -replace '^v',''
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Sync version into source
+        run: python scripts/set_version.py ${{ steps.version.outputs.version }}
+
+      - name: Install build dependencies
         run: |
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pillow
+
+      - name: Generate application icon
+        run: python scripts/generate_ico.py
 
       - name: Build executable
         run: pyinstaller qube.spec --noconfirm
 
-      - name: Smoke test — verify EXE launches
+      - name: Sign application binary
+        if: vars.ENABLE_CODE_SIGNING == 'true'
+        env:
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         shell: pwsh
         run: |
-          $proc = Start-Process -FilePath "dist\Qube\Qube.exe" -PassThru
-          Start-Sleep -Seconds 10
-          if ($proc.HasExited) {
-            Write-Error "App crashed on launch (exit code: $($proc.ExitCode))"
-            exit 1
+          if (-not $env:WINDOWS_CERT_PFX_BASE64 -or -not $env:WINDOWS_CERT_PASSWORD) {
+            throw "ENABLE_CODE_SIGNING is true but signing secrets are missing"
           }
-          Write-Host "Smoke test passed — process alive after 10 s"
-          Stop-Process -Id $proc.Id -Force
+          $signtool = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found" }
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
+          $exe = (Resolve-Path "dist\Qube\Qube.exe").Path
+          & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
+            /tr http://timestamp.digicert.com /td SHA256 $exe
+
+      - name: Smoke test dist EXE
+        shell: pwsh
+        run: scripts/release/smoke_dist.ps1
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
       - name: Build installer
-        run: iscc installer\qube.iss
+        run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} installer\qube.iss
 
-      - name: Test silent install
+      - name: Sign installer
+        if: vars.ENABLE_CODE_SIGNING == 'true'
+        env:
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         shell: pwsh
         run: |
-          $setup = Get-Item "installer\output\Qube-*-Setup.exe"
-          Start-Process -Wait -FilePath $setup.FullName `
-            -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
-          $installed = Join-Path $env:LOCALAPPDATA "Programs\Qube\Qube.exe"
-          if (-not (Test-Path $installed)) {
-            Write-Error "Silent install failed — $installed not found"
-            exit 1
-          }
-          Write-Host "Silent install verified at $installed"
+          $signtool = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
+          $setup = (Get-Item "installer\output\Qube-*-Setup.exe").FullName
+          & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
+            /tr http://timestamp.digicert.com /td SHA256 $setup
+
+      - name: Silent install, launch, and uninstall
+        shell: pwsh
+        run: scripts/release/smoke_installed.ps1
 
       - name: Compute SHA256
         id: hash
@@ -89,40 +120,72 @@ jobs:
         run: |
           $file = Get-Item "installer\output\Qube-*-Setup.exe"
           $hash = (Get-FileHash $file -Algorithm SHA256).Hash
-          "sha256=$hash"    >> $env:GITHUB_OUTPUT
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
           "filename=$($file.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Generate WinGet manifests
+        run: python scripts/render_winget_manifests.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
+
+      - name: Validate WinGet manifests
+        shell: pwsh
+        run: winget validate --manifest "winget/out/${{ steps.version.outputs.version }}"
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: installer
+          name: installer-${{ steps.version.outputs.version }}
           path: installer/output/Qube-*-Setup.exe
 
-  # -------------------------------------------------------------------
-  # 3. RELEASE — attach installer to a GitHub Release
-  # -------------------------------------------------------------------
+      - name: Upload WinGet manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests-${{ steps.version.outputs.version }}
+          path: winget/out/${{ steps.version.outputs.version }}/
+
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: installer
+          name: installer-${{ needs.build.outputs.version }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: Qube-*-Setup.exe
           body: |
-            ## Qube ${{ github.ref_name }}
+            ## Install
+
+            ```powershell
+            winget install -e --id ${{ env.PACKAGE_ID }}
+            ```
 
             **SHA256:** `${{ needs.build.outputs.installer_hash }}`
 
-            ### Install via WinGet
-            ```
-            winget install -e --id dagaza.Qube
-            ```
+            **Silent install:** `${{ needs.build.outputs.installer_name }} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
 
-            ### Manual install
-            Download `${{ needs.build.outputs.installer_name }}` below.
-            Silent install: `Qube-*-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+  winget:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: github.repository == 'dagaza/Qube' && vars.WINGET_AUTO_SUBMIT == 'true'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests-${{ needs.build.outputs.version }}
+          path: winget/out/${{ needs.build.outputs.version }}
+
+      - name: Submit WinGet manifest PR
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          URL="https://github.com/dagaza/Qube/releases/download/v${VERSION}/Qube-${VERSION}-Setup.exe"
+          curl -sL https://aka.ms/wingetcreate/latest -o wingetcreate
+          chmod +x wingetcreate
+          ./wingetcreate update ${{ env.PACKAGE_ID }} \
+            --version "$VERSION" \
+            --urls "$URL" \
+            --token "$WINGET_TOKEN" \
+            --submit

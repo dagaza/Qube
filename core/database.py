@@ -1,6 +1,7 @@
 import sqlite3
 import uuid
 import json
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 import logging
@@ -13,6 +14,7 @@ from core.library_folder_policy import (
     RESERVED_LIBRARY_FOLDER_NAMES,
     is_qube_managed_document_filename,
 )
+from core.paths import default_db_path
 
 logger = logging.getLogger("Qube.Database")
 
@@ -21,16 +23,20 @@ _QUBE_FOLDER_NAME = QUBE_FOLDER_DISPLAY_NAME
 
 
 class DatabaseManager:
-    def __init__(self, db_path: str = "qube_data.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str | None = None):
+        self.db_path = Path(db_path) if db_path else default_db_path()
         self.init_db()
 
+    @contextmanager
     def _get_connection(self):
-        """Returns a configured SQLite connection."""
+        """Yield a configured SQLite connection; always closed on exit."""
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row 
+        conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def init_db(self):
         """Creates the tables and FTS search index if they don't exist."""

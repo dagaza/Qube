@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from core.hf_publisher_branding import TRUSTED_PUBLISHERS, HuggingFaceBrandingResolver
+from core.paths import resource_path
 
 logger = logging.getLogger("Qube.QubeVerifiedModels")
 
@@ -40,12 +41,8 @@ class CatalogEntry:
         return bool(self.publisher.strip() or self.description.strip())
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 def bundled_verified_models_path() -> Path:
-    return _project_root() / "assets" / "qube_verified_models.json"
+    return resource_path("assets", "qube_verified_models.json")
 
 
 def default_user_verified_models_path() -> Path:
@@ -67,7 +64,7 @@ def ensure_user_verified_models_seeded(user_path: Path | None = None) -> Path:
 
 
 def _logo_exists(filename: str) -> bool:
-    return (_project_root() / "assets" / "logos" / filename).is_file()
+    return resource_path("assets", "logos", filename).is_file()
 
 
 def _slug_catalog_id(title: str, gguf_repo: str) -> str:

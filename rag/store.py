@@ -6,11 +6,11 @@ from pathlib import Path
 import logging
 import os
 
+from core.paths import default_lancedb_dir
+
 logger = logging.getLogger("Qube.RAG.Store")
 
-# 🔑 Use an absolute path to stop the "Relative Path" guessing game
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "lancedb"
+DB_PATH = default_lancedb_dir()
 TABLE_NAME = "documents"
 VECTOR_DIM = 768 
 

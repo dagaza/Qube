@@ -11,6 +11,7 @@ from PyQt6.QtGui import QAction, QIcon, QPixmap
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
 
 from core import app_settings
+from core.paths import resource_path
 from core.assistant_activity import (
     AssistantActivity,
     menu_status_line,
@@ -22,19 +23,14 @@ _TRAY_ICON_SIZES_PX = (16, 22, 24, 32)
 _TRAY_ICON_FALLBACK_COLOR = "#8b5cf6"
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 def resolve_qube_logo_path() -> Path | None:
     """Resolve the Qube logo across new and legacy asset directories."""
-    root = _project_root()
     for rel in (
-        Path("assets/logos") / _TRAY_LOGO_NAME,
-        Path("assets/icons") / _TRAY_LOGO_NAME,
-        Path("assets") / _TRAY_LOGO_NAME,
+        ("assets", "logos", _TRAY_LOGO_NAME),
+        ("assets", "icons", _TRAY_LOGO_NAME),
+        ("assets", _TRAY_LOGO_NAME),
     ):
-        candidate = root / rel
+        candidate = resource_path(*rel)
         if candidate.is_file():
             return candidate
     return None
