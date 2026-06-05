@@ -7,15 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Windows release pipeline: PyInstaller, Inno Setup, GitHub Release, WinGet manifest generation.
-- Frozen-aware path resolution via `core.paths`.
-- PR CI workflow with pytest and `pip-audit`.
-
-## [1.0.0] - 2026-06-01
+## [1.0.0] - 2026-06-05
 
 ### Added
 - Initial public release of the Qube PyQt6 desktop assistant.
+- Windows release pipeline: PyInstaller, Inno Setup, GitHub Release, WinGet manifest generation.
+- Frozen-aware path resolution via `core.paths`.
+- PR CI workflow with pytest and `pip-audit`.
 
 [Unreleased]: https://github.com/dagaza/Qube/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/dagaza/Qube/releases/tag/v1.0.0
