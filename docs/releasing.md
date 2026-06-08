@@ -1,6 +1,6 @@
 # Releasing Qube
 
-This document describes how to cut a Windows release and publish it to WinGet.
+This document describes how to cut a Windows release and publish it to WinGet and Chocolatey.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ This document describes how to cut a Windows release and publish it to WinGet.
 | **Sync tool** | `scripts/set_version.py` — writes `__version__.py` + `pyproject.toml` |
 | **Maintainer helper** | `scripts/prepare_release.py` — runs sync + CHANGELOG check + prints tag commands |
 
-CI does **not** guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, and WinGet manifests always match the tag you pushed.
+CI does **not** guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, WinGet manifests, and Chocolatey package always match the tag you pushed.
 
 ## Pre-release checklist
 
@@ -63,8 +63,10 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
    - Run pytest
    - Build PyInstaller output and Inno Setup installer
    - Smoke-test dist EXE, silent install, installed EXE launch, and uninstall
-   - Compute SHA256 and render WinGet manifests
+   - Compute SHA256 and render WinGet manifests and Chocolatey package
    - Create a GitHub Release with `Qube-<version>-Setup.exe`
+   - Smoke-test Chocolatey install/uninstall (after release is published)
+   - Optionally push the Chocolatey package to community.chocolatey.org
 
 5. Verify the release asset and SHA256 in the release notes.
 
@@ -87,6 +89,25 @@ winget install -e --id dagaza.Qube
 winget upgrade -e --id dagaza.Qube
 ```
 
+## Chocolatey
+
+### First catalog entry (one-time manual submission)
+
+Follow [`chocolatey/README.md`](../chocolatey/README.md).
+
+### Automated updates
+
+Set repository **variable** `CHOCOLATEY_AUTO_PUSH=true` and secret `CHOCOLATEY_API_KEY` (push-only API key from chocolatey.org).
+
+After each tagged release, the workflow pushes `qube.<version>.nupkg` automatically once the GitHub Release is live and the Chocolatey smoke test passes.
+
+Users install or upgrade with:
+
+```powershell
+choco install qube
+choco upgrade qube
+```
+
 ## Code signing (optional)
 
 SmartScreen trust improves when binaries are Authenticode-signed.
@@ -103,7 +124,8 @@ The release workflow signs `dist\Qube\Qube.exe` and the Inno Setup installer whe
 
 1. Mark the bad GitHub Release as **Pre-release** or delete the release asset if necessary.
 2. Revert or submit a corrective WinGet manifest pointing to the previous `InstallerUrl`.
-3. Tag a patch release (`v1.0.2`) rather than rewriting history on `main`.
+3. Push a corrective Chocolatey package version if the bad nupkg was published.
+4. Tag a patch release (`v1.0.2`) rather than rewriting history on `main`.
 
 ## Artifact naming
 
@@ -112,6 +134,7 @@ The release workflow signs `dist\Qube\Qube.exe` and the Inno Setup installer whe
 | Git tag | `v1.0.1` |
 | Installer | `Qube-1.0.1-Setup.exe` |
 | WinGet folder | `manifests/d/dagaza/Qube/1.0.1/` |
+| Chocolatey nupkg | `qube.1.0.1.nupkg` |
 
 ## Version source of truth
 

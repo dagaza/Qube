@@ -130,6 +130,21 @@ jobs:
         shell: pwsh
         run: winget validate --manifest "winget/out/${{ steps.version.outputs.version }}"
 
+      - name: Render Chocolatey package
+        run: python scripts/render_chocolatey_package.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
+
+      - name: Pack Chocolatey package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          choco pack "chocolatey/out/$version/qube.nuspec" --output-directory "chocolatey/out/$version"
+
+      - name: Validate Chocolatey package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          choco info qube --source="chocolatey/out/$version" --version="$version"
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -141,6 +156,12 @@ jobs:
         with:
           name: winget-manifests-${{ steps.version.outputs.version }}
           path: winget/out/${{ steps.version.outputs.version }}/
+
+      - name: Upload Chocolatey package
+        uses: actions/upload-artifact@v4
+        with:
+          name: chocolatey-package-${{ steps.version.outputs.version }}
+          path: chocolatey/out/${{ steps.version.outputs.version }}/qube.${{ steps.version.outputs.version }}.nupkg
 
   release:
     needs: build
@@ -160,6 +181,7 @@ jobs:
 
             ```powershell
             winget install -e --id ${{ env.PACKAGE_ID }}
+            choco install qube
             ```
 
             **SHA256:** `${{ needs.build.outputs.installer_hash }}`
@@ -189,3 +211,36 @@ jobs:
             --urls "$URL" \
             --token "$WINGET_TOKEN" \
             --submit
+
+  chocolatey-test:
+    needs: [build, release]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: chocolatey-package-${{ needs.build.outputs.version }}
+          path: pkg/
+
+      - name: Install, launch, and uninstall via Chocolatey
+        shell: pwsh
+        run: scripts/release/smoke_choco.ps1 -Version ${{ needs.build.outputs.version }} -PackageDir pkg
+
+  chocolatey-push:
+    needs: [build, release, chocolatey-test]
+    runs-on: windows-latest
+    if: github.repository == 'dagaza/Qube' && vars.CHOCOLATEY_AUTO_PUSH == 'true'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: chocolatey-package-${{ needs.build.outputs.version }}
+          path: pkg/
+
+      - name: Push to Chocolatey Community Repository
+        shell: pwsh
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          $nupkg = Get-ChildItem pkg\*.nupkg | Select-Object -First 1
+          choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
