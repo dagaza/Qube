@@ -5,8 +5,8 @@ Syncs the version into core/__version__.py and pyproject.toml (via set_version.p
 optionally checks CHANGELOG.md, and prints the git commands to cut the release.
 
 The git tag vX.Y.Z remains the trigger for GitHub Actions; CI runs the same
-set_version.py step from the tag so the built installer and WinGet manifests
-match even if you skip committing version files to main.
+set_version.py step from the tag so the built installer, WinGet manifests,
+and Chocolatey package match even if you skip committing version files to main.
 """
 
 from __future__ import annotations
@@ -94,8 +94,9 @@ def main(argv: list[str] | None = None) -> int:
     print()
     print(f"GitHub Actions (on push of {tag}) will:")
     print("  - Run set_version.py from the tag (same version)")
-    print("  - Build Qube-<version>-Setup.exe and WinGet manifests")
+    print("  - Build Qube-<version>-Setup.exe, WinGet manifests, and Chocolatey package")
     print("  - Create the GitHub Release")
+    print("  - Optionally push qube.<version>.nupkg to Chocolatey (CHOCOLATEY_AUTO_PUSH)")
     return 0
 
 

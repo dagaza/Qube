@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>qube</id>
+    <version>{{VERSION}}</version>
+    <title>Qube</title>
+    <authors>dagaza</authors>
+    <owners>dagaza</owners>
+    <projectUrl>https://github.com/dagaza/Qube</projectUrl>
+    <license type="expression">MIT</license>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <packageSourceUrl>https://github.com/dagaza/Qube/tree/main/chocolatey</packageSourceUrl>
+    <projectSourceUrl>https://github.com/dagaza/Qube</projectSourceUrl>
+    <docsUrl>https://github.com/dagaza/Qube/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/dagaza/Qube/issues</bugTrackerUrl>
+    <tags>ai assistant local privacy voice llm desktop</tags>
+    <summary>Local hardware-accelerated AI desktop assistant</summary>
+    <description>Qube is a fully local, privacy-first, voice-to-voice AI desktop assistant. It integrates speech-to-text, text-to-speech, retrieval-augmented generation, and local LLM inference into a native PyQt6 desktop shell.</description>
+    <releaseNotes>https://github.com/dagaza/Qube/releases/tag/v{{VERSION}}</releaseNotes>
+  </metadata>
+</package>

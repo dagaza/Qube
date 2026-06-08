@@ -46,6 +46,7 @@ build/
 *.egg-info/
 installer/output/
 winget/out/
+chocolatey/out/
 
 # --- IDE, OS & Tools ---
 .vscode/
