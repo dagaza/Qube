@@ -1,0 +1,357 @@
+---
+description: Strict constraints for the RAG engine, memory ingestion, routing, and asynchronous background workers.
+globs: rag/*.py, mcp/*.py, workers/ingestion_worker.py, workers/enrichment_worker.py, workers/memory_*_worker.py, workers/sidecar_llm_worker.py, core/memory_*.py, core/retrieval_fusion.py, core/sidecar_*.py, core/auxiliary_cognition.py, core/cognition_prompt_adapter.py, core/dual_query_retrieval.py, core/source_digest.py
+---
+
+### RAG Constraints & Embedder Stability
+- **Disk-Native Priority:** LanceDB is the mandated storage engine. Do not use FAISS or entirely in-memory stores.
+
+- **Vulkan + CPU Fallback Architecture:** The `EmbeddingModel` MUST probe hardware on boot. Attempt `n_gpu_layers=-1` (Vulkan) first for GPU acceleration. If it fails due to missing drivers, automatically fall back to `n_gpu_layers=0` (CPU mode).
+
+- **Sequential Embedding (Bug Bypass):** Due to known batching bugs in `llama.cpp` for lists of strings, `embedder.py` must process chunks sequentially. Hard-cap text string lengths (e.g., `[:25000]`) before passing to the engine to prevent `llama_decode returned -1` crashes.
+
+- **Conversational Memory (The Amnesia Fix):** To persist context across turns, retrieved RAG data must be injected into the SQLite message history as a system role block labeled --- RAG MEMORY ---
+
+- **Dynamic System Prompts:** The system prompt must be built dynamically. RAG-specific instructions (citations, strict document scope) should only be injected if the RAG engine is actually enabled for that specific turn to prevent "System Prompt Tunnel Vision."
+
+- **TTS Micro-Chunking:** To ensure instant voice cut-off during barge-in, the TTSWorker must slice audio chunks into microscopic segments (approx. 4096 bytes / 85ms) and check for the _interrupt_tts flag between every segment to prevent thread-blocking during stream.write().
+
+- **The Temporal Gate:** Every voice recording session must implement a ~0.75s "Deaf Window" immediately following a wakeword trigger to allow hardware speaker buffers to clear and prevent the AI from transcribing its own echo.
+
+- **Pure Python Semantic Chunking:** Documents must be sliced using paragraph/sentence overlap logic (max ~1500 chars) before embedding. Never pass massive, multi-page raw strings to the C++ engine.
+
+- **Strict Database Schema & Absolute Paths:** `rag/store.py` must enforce the correct vector dimension (e.g., `768` for Nomic). It must use absolute `Path(__file__).resolve()` routing to prevent "Ghost Database" relative-path bugs. Include auto-healing logic to `drop_table` if a dimension mismatch is detected.
+
+- **Worker Telemetry Contract:**
+  - Workers emitting router decisions (LLMWorker, Cognitive Router) must provide telemetry signals with consistent keys.
+  - Workers must never block the UI to push telemetry.
+  - Telemetry dictionaries must be defensive; missing fields default to 0 or empty string.
+  - UI consumers (TelemetryView) must gracefully handle missing or delayed updates.
+
+## Memory, RAG & Enrichment System Rules (CRITICAL)
+
+### Memory System Contract (ABSOLUTE)
+
+- Memory is stored in **LanceDB only** and must remain schema-stable.
+- Allowed columns in memory table:
+  - `text` (JSON-encoded payload string)
+  - `vector` (embedding ndarray)
+  - `source` (must be namespaced string: `qube_memory::<category>`)
+  - `chunk_id` (integer, always present, usually `0`)
+- ❌ DO NOT introduce new schema fields (e.g. `type`, `strength`, `cluster`) unless the schema migration is explicitly performed in `rag/store.py`.
+
+- Memory entries must be:
+  - atomic (single fact per entry)
+  - durable (non-transient conversational noise must be excluded)
+  - bounded (max length enforced before insertion)
+
+---
+
+### Memory Ingestion (Enrichment Worker Rules)
+
+- Memory enrichment MUST be asynchronous via a `QThread` worker.
+- It MUST NOT block:
+  - LLM response streaming
+  - TTS playback
+  - UI thread
+
+- Memory extraction must:
+  - use last N messages from SQLite (bounded context window)
+  - rely on LLM structured output (JSON array preferred)
+  - tolerate malformed LLM output (robust JSON extraction required)
+
+- JSON extraction MUST be defensive:
+  - LLM output is untrusted
+  - must extract first valid JSON array if wrapped in text/markdown
+  - system must never crash on malformed JSON
+
+- Deduplication rules:
+  - vector similarity search is required before insertion
+  - similarity threshold must be strictly enforced
+  - fallback behavior must be "skip on uncertainty" (no blocking writes)
+
+---
+
+### Memory Update Semantics (CRITICAL BEHAVIOR RULE)
+
+Memory system supports 3 logical behaviors:
+
+1. **Insert New Fact**
+   - if no semantically similar memory exists
+
+2. **Skip Duplicate**
+   - if fact is semantically identical (above similarity threshold)
+
+3. **Replace / Reinforce**
+   - if contradiction is detected OR repeated fact strengthens confidence
+   - replacement MUST preserve schema integrity (`text`, `vector`, `source`, `chunk_id`)
+
+❗ IMPORTANT:
+- Memory updates must NEVER silently create duplicate conflicting facts
+- Memory updates must NEVER violate schema consistency
+- If update is required, it must be explicit overwrite/update, not dual insertion
+
+---
+
+### RAG Retrieval Rules
+
+- RAG is scoped strictly to:
+  - document sources
+  - memory sources (`qube_memory::%`)
+
+- Retrieval MUST enforce:
+  - max context character budget (`MAX_MEMORY_CHARS`)
+  - max result cap (`MAX_MEMORY_RESULTS`)
+  - similarity filtering before injection
+
+- Retrieved memory MUST:
+  - be formatted into UI-safe structure:
+    ```python
+    {
+      "memory_context": str,
+      "memory_sources": list[dict]
+    }
+    ```
+
+- UI contract MUST ALWAYS include:
+  - `filename`
+  - `content`
+
+❗ Breaking this contract causes UI failures.
+
+---
+
+### Memory v7.1 — Exposure Telemetry, Consolidation & Promotion (CRITICAL)
+
+All v7.1 fields are **JSON payload keys inside `text`** — never new LanceDB columns. FIFO caps apply (`retrieval_days` max 16). No schema migration in `rag/store.py`.
+
+#### Usage telemetry drain
+
+- **`MemoryUsageRecorder`** queues `(kind, memory_id, query_fingerprint?, retrieval_score?)` events from `memory_search` (retrieved) and `LLMWorker` (cited).
+- **`EnrichmentWorker._maybe_drain_usage_recorder`** merges via **`core/memory_usage_drain.apply_usage_deltas_to_payload`**: `times_retrieved`, `times_cited_positively`, `last_used_at`, `retrieval_query_fps`, `unique_query_count`, **`retrieval_days`** (ISO date FIFO), **`retrieval_score_sum/count`**, optional **`times_salvage_considered`** / **`times_episode_overlap`**.
+
+#### Consolidation worker (deterministic, no LLM)
+
+- **`MemoryConsolidationWorker`** (6 h, batch 15, jitter): scores context/knowledge rows via **`core/memory_consolidation.should_stage_for_consolidation`**; writes `consolidation_score`, `consolidation_hints`, `consolidation_staged_at`.
+- **NEVER auto-promote, NEVER auto-delete** — same invariant as reflection.
+- Gated by **`get_enable_memory_consolidation()`** (default True). Settings signal: `memory_consolidation_changed`.
+
+#### Promotion worker (opt-in)
+
+- **`MemoryPromotionWorker`** (6 h, batch 10): promotes context/knowledge → preference when **`core/memory_promotion.passes_promotion_gates_with_reason`** passes for the active preset.
+- **Default off** — `get_enable_memory_promotion()` is False until user enables in Settings.
+- Pre-promote hardening: live row re-read, **`flagged_for_review` veto**, near-duplicate block vs preference tier (`PROMOTION_NEAR_DUPLICATE_DISTANCE = 0.22`), idempotency on `promoted_at`.
+- Presets in **`core/memory_promotion.PROMOTION_PRESETS`**: conservative / standard / aggressive — wired via Settings SelectorButton.
+
+#### Retrieval polish
+
+- **`apply_mmr`**: normalize scores to `[0, 1]` before MMR; keep near-duplicate skip at similarity ≥ 0.85.
+- **`mcp/memory_tool`**: probe FTS for `_score`/`score`; use **`fuse_weighted_scores`** when present, else **`fuse_ranked_results`**.
+
+#### Preference policy (presentation vs factual)
+
+- **Explicit** prefs: `qube.profile.*` in `settings.json` (Settings → Default units).
+- **Inferred** prefs: `~/.qube/user_profile.json` via `core/user_profile.py` (written by enrichment when `preference_kind=presentation`).
+- **Merge**: `core/preference_policy.resolve_preference_policy()` — session > explicit > inferred.
+- **Application**: tool-layer query augmentation + `core/preference_formatters.format_web_snippets`; thin system hint via `PREFERENCE_APPLICATION_SUFFIX`; CHAT semantic injection skips presentation LanceDB rows (`exclude_presentation_preferences`).
+- **Web veto UX**: when router picks WEB but internet disabled, `web_capability_blocked` → `WEB_CAPABILITY_DISABLED_SUFFIX` (not silent NONE chat).
+
+#### Memory Manager explainability
+
+- **`ui/views/memory_manager_view.py`**: Promotion candidates, Almost promoted (cap 12, gate-reason tooltips), Recurring themes card (`core/memory_insights.aggregate_recurring_themes`), STAGED badge when `consolidation_hints` non-empty.
+- All LanceDB reads/writes stay on **`MemoryManagerWorker`** QThread — UI thread never touches `store.table`.
+
+#### Test surface (must stay green)
+
+`tests/test_memory_usage_drain.py`, `test_memory_promotion.py`, `test_memory_consolidation.py`, `test_memory_insights.py`, `test_memory_mmr_decay.py`, `test_memory_hybrid_search.py`, `test_episode_daily_rollup.py`, `test_preference_policy.py`, `test_preference_inference.py`, `test_preference_formatters.py`, `test_web_veto_fallback.py`, plus existing v7 memory tests.
+
+---
+
+### Intent Routing Rules (CRITICAL FOR LATENCY)
+
+- Semantic Intent Router (`intent_router.py`) must remain:
+  - centroid-based or lightweight scoring system
+  - mathematically deterministic (Cosine Similarity)
+  - fast (<10ms target)
+
+- Cognitive Router (`cognitive_router.py`) is permitted to be adaptive:
+  - dynamically shifts thresholds based on system load, latency, and intent drift
+  - acts as a higher-level orchestrator above the deterministic semantic baseline
+
+- Router MUST NOT:
+  - execute tools
+  - perform multi-step planning
+  - invoke LLM calls
+  - construct DAGs
+
+- Routing output must be:
+  - single decision (CHAT | RAG | WEB | MEMORY)
+  - with confidence score
+
+- If confidence is low OR margin is small:
+  → MUST default to CHAT (safety fallback)
+
+#### **Cognitive Router Update**
+
+- Cognitive Router Introduction:
+  - A new router layer, "Cognitive Router," has been added to improve multi-strategy prompt handling.
+  - Legacy router remains active for backwards compatibility and fallback.
+  - The Cognitive Router evaluates inputs with multiple scoring dimensions (CHAT, RAG, MEMORY, TOOL) and outputs a routing summary for telemetry purposes.
+  - Must emit routing decisions asynchronously via PyQt signals; UI must only consume these signals.
+
+#### **CognitiveRouterV4 — Tiered Architecture (CRITICAL)**
+
+`CognitiveRouterV4` is built up as **six additive, observable tiers**. Each tier is its own module under `mcp/`; the routing priority tree (`web > recall > rag+memory > rag > memory > none`) and the public `route(...)` contract are unchanged across all tiers.
+
+- **Tier 1 — correctness baseline (lives in `cognitive_router.py` + `router_self_tuner.py`):**
+  - Dynamic thresholds are re-derived per turn (no compounding mutation).
+  - Substring scores normalised to floats in `[0, 1]` (`count / len(triggers)`) so they are type-comparable with float thresholds.
+  - Conservative bases — `base_memory_threshold ≈ 0.25`, `base_rag_threshold ≈ 0.25`, `base_internet_threshold = 0.20`.
+  - Substring-margin logic is removed — no gating beyond threshold checks.
+  - Tuner ↔ router weight keys are aligned; `AdaptiveRouterSelfTunerV2.get_weights()` MUST emit exactly `memory_sensitivity` / `rag_sensitivity` / `internet_sensitivity` / `hybrid_sensitivity`. **This contract is pinned by `tests/test_router_tuner_router_contract.py` — do not rename keys.**
+
+- **Tier 2 — semantic enhancement (in `cognitive_router.py`, fed by `workers/llm_worker.py`):**
+  - Per-lane embedding scoring fused with substring scoring via `final_score = max(substring_score, embedding_score)`. **Default fusion is `max()` — never replace it with a learned weighting in this tier.**
+  - Confidence layer: `MIN_CONFIDENCE_FLOOR = 0.30`, `AMBIGUITY_MARGIN = 0.10`. The floor only downgrades when `top_score < MIN_CONFIDENCE_FLOOR AND top_score < dynamic_*_threshold + 0.05 AND _top_lane_source == "embedding"` — pure-substring matches MUST bypass the floor.
+  - **All Tier 2 logic is gated by `any_embedding_centroid`.** A router with no centroids installed is bit-identical to Tier 1; surface this via `tier2_active` in the decision dict.
+  - Decision dict adds (additive only, never rename): `memory_score_embedding` / `rag_score_embedding` / `web_score_embedding`, `memory_score_final` / `rag_score_final` / `web_score_final`, `memory_score_source` / `rag_score_source` / `web_score_source`, `top_intent` / `top_intent_source` / `top_score` / `second_best_score` / `confidence_margin`, `min_confidence_floor` / `ambiguity_margin`, `tier2_active`.
+
+- **Tier 3 — feedback-driven calibration (state in `mcp/router_lane_stats.py`):**
+  - State lives in `LaneStatsRegistry` — bounded per-lane `deque(maxlen=RECENT_WINDOW_SIZE=50)` of recent (success, source) outcomes. **No accumulator that influences thresholds may grow without bound.**
+  - `LLMWorker` emits a `RouteFeedbackEvent` at end-of-turn via `cognitive_router.observe_feedback(event)`. **Success is a deterministic signal (e.g. ≥1 surviving source on retrieval routes, non-failure final text on chat) — never an LLM-judged score.**
+  - Adaptive bias is `lane_bias = lane_stats.adaptive_offset(lane) * LANE_BIAS_DAMPING` with `LANE_BIAS_RAW_CLAMP = 0.05` and `LANE_BIAS_DAMPING = 0.6` → effective max `|lane_bias| = 0.03`.
+  - Bias is applied to `dynamic_*_threshold` ONLY inside the band `MIN_CONFIDENCE_FLOOR <= top_score <= HIGH_CONFIDENCE_CEILING (0.75)` and the result is clamped via `_clamp_lane_threshold` against `_LANE_THRESHOLD_BOUNDS`. Below `MIN_OBSERVATIONS = 10`, `adaptive_offset` returns `0.0` so a fresh router with no feedback history is bit-identical to the Tier 1 + Tier 2 router.
+  - `embedding_trust(lane)` / `substring_trust(lane)` / `recent_success_rate(lane)` are **observability-only** diagnostics — they MUST NOT be wired back into routing decisions.
+  - Decision dict adds (additive only): `*_lane_bias`, `*_lane_success_rate`, `*_embedding_trust`, `*_substring_trust`, `tier3_active`, `tier3_band_active`, `tier3_high_confidence_ceiling`, `tier3_damping`.
+
+- **Tier 4 — Routing Stability Layer, observe-only v1 (state in `mcp/routing_stability_tracker.py`):**
+  - State lives in `RoutingStabilityTracker` — bounded cluster store hard-capped at `MAX_CLUSTERS = 64` with LRU eviction by `last_seen_ts`, keyed on l2-normalised intent_vector centroids.
+  - `SIMILARITY_THRESHOLD = 0.85` gates JOIN-vs-NEW; `OSCILLATION_DOMINANT_FRAC = 0.60` + `RECENT_ROUTE_WINDOW = 10` + `MIN_CLUSTER_OBSERVATIONS = 3` govern the `is_oscillating` flag.
+  - **Embedding-gated**: when `intent_vector is None` (or wrong-dim / non-finite / zero-norm), the tracker returns `_DORMANT_DIAGNOSTIC` and performs no state mutation. The route field stays bit-identical for non-embedding turns.
+  - `observe(...)` returns a `ClusterDiagnostic` snapshot of the **PRE-update** state so observability reflects historical patterns, not the self-fulfilling current decision.
+  - Decision dict adds (additive only): eight `tier4_*` keys (`active` / `cluster_id` / `cluster_size` / `cluster_dominant_route` / `cluster_dominant_frequency` / `cluster_oscillating` / `route_consistent_with_cluster` / `total_clusters`).
+  - **v1 NEVER modifies the `route` field** — pinned by `Tier4RouteFieldNeverModified`. Override semantics are deferred.
+
+- **Tier 5 — Routing Control Policy Layer, observability-only v1 (in `mcp/routing_policy_engine.py`):**
+  - Pure stateless `RoutingPolicyEngine` consuming `RoutingPolicyInputs` (frozen dataclass aggregating Tier 2/3/4 signals already in scope) → `RoutingPolicyDecision` (frozen: policy + reason + JSON-safe inputs_snapshot).
+  - `POLICY_VALUES = (accept / stabilize / override_to_hybrid / suppress_flip / no_action)`. Rule precedence (pinned): `suppress_flip > override_to_hybrid > stabilize > accept`. `no_action` is reserved for the engine-failed defensive path.
+  - Imports `MIN_CONFIDENCE_FLOOR` + `AMBIGUITY_MARGIN` from `mcp.cognitive_router` so the would-upgrade-to-hybrid predicate stays in lock-step with the actual Tier 2 upgrade predicate.
+  - **ALWAYS active** (unlike Tier 4, the engine does not require `intent_vector`); derived numeric signals go neutral when Tier 4 is dormant.
+  - Decision dict adds (additive only): four `tier5_*` keys (`active` / `policy` / `policy_reason` / `policy_inputs`).
+  - **v1 NEVER modifies the `route` field** — pinned by `Tier5RouteFieldNeverModified`.
+
+- **Tier 6 — Routing Arbitration Layer, observability-only v1 (in `mcp/routing_arbitration_layer.py`):**
+  - Pure stateless `RoutingArbitrationLayer` hooked AFTER Tier 5. Reads `tier5_decision.policy` directly — **never re-evaluates Tier 5's rules**.
+  - `CONFLICT_FLAGS_VALUES = (stability_override / structural_instability / adaptive_conflict)`. Three independent rules — Rule A (`tier5_policy == suppress_flip`), Rule B (`oscillation_index > 0.50` AND `confidence_margin < 0.10` — strictly stricter than Tier 5's 0.40 gate), Rule C (`lane_bias_max_abs > 0.02` AND `tier5_policy == stabilize`) — can co-fire; flags are reported in canonical `CONFLICT_FLAGS_VALUES` order.
+  - `INTERPRETATION_VALUES = (stable / policy_dominant / structural_unstable / adaptive_pressure / passthrough)`. Interpretation is a deterministic mapping where `structural_instability` dominates whenever it fires.
+  - **ALWAYS active.**
+  - Decision dict adds (additive only): four `tier6_*` keys (`active` / `conflict_flags` / `interpretation` / `inputs_snapshot`).
+  - **v1 NEVER modifies the `route` field** — pinned by `Tier6RouteFieldNeverModified`.
+
+- **Failure handling (every observability tier):**
+  - The router wraps every tier's `evaluate(...)` / `observe(...)` call in a try/except that degrades to a sentinel: Tier 4 → `_DORMANT_DIAGNOSTIC`, Tier 5 → `POLICY_NO_ACTION`, Tier 6 → `INTERPRETATION_PASSTHROUGH`.
+  - Each layer ALSO wraps its inner evaluation in a try/except that returns the same sentinel and logs a single WARNING per exception type via `_warned: set[str]`. **A misbehaving observability tier MUST never crash a user-facing turn.**
+
+- **Logging discipline:**
+  - Tier 5 emits one INFO `[Tier5Policy] policy=... reason=... confidence_margin=... oscillation=...` only when `policy != accept` and `policy != no_action`.
+  - Tier 6 emits one INFO `[Tier6RAL] conflict=... interpretation=... stability=... policy=...` only when at least one conflict flag fires.
+  - Failure-mode WARNINGs are deduped per layer via `_warned`.
+
+- **Schema additivity (CRITICAL — DO NOT BREAK):**
+  - Every observability key from Tier 1 through Tier 6 is `tierN_*`-prefixed and additive.
+  - **Never rename or remove an existing decision-dict key** — telemetry pipelines that only know an older Tier-N schema continue to work unchanged.
+  - When a future tier adds new keys, follow the same convention (`tier7_*`, etc.).
+
+- **Test surface (must stay green):** `tests/test_cognitive_router_margin.py`, `test_cognitive_router_tier2.py`, `test_cognitive_router_tier3.py`, `test_cognitive_router_tier4.py`, `test_cognitive_router_tier5.py`, `test_cognitive_router_tier6.py`, `test_router_tuner_router_contract.py`, plus the dedicated per-tier module tests (`test_router_lane_stats.py`, `test_routing_stability_tracker.py`, `test_routing_policy_engine.py`, `test_routing_arbitration_layer.py`). The `Tier{4,5,6}RouteFieldNeverModified` random-walk-vs-null-layer control tests are the canonical "v1 is observability-only" pin and must remain green.
+
+#### **Router Telemetry Rules**
+
+- Router Telemetry:
+  - All routing decisions, per-worker latency, and tuner states must be exposed to the UI via signals.
+  - Telemetry includes:
+    - route_distribution (counts per path)
+    - total_requests
+    - avg_latency_ms
+    - hybrid_sensitivity, memory_sensitivity, rag_sensitivity, internet_sensitivity (all four are emitted by `AdaptiveRouterSelfTunerV2.get_weights()` and consumed by `CognitiveRouterV4` — pinned by `tests/test_router_tuner_router_contract.py`).
+    - The full Tier 1-6 observability schema lives in the decision dict returned by `CognitiveRouterV4.route(...)`. Every key is `tierN_*`-prefixed (where N >= 2) — see "CognitiveRouterV4 — Tiered Architecture" above for the canonical key list per tier.
+  - Signals must be emitted on every decision cycle to keep the dashboard current.
+  - UI must not poll workers directly; always use signals to maintain thread safety.
+- Routing diagnostics/debug surfaces (`mcp/routing_debug.py`, `ui/views/routing_debug_view.py`) are observability-only consumers of this telemetry contract and must not mutate route decisions.
+
+#### **Router Dashboard Rules**
+
+- Router Dashboard (Telemetry View): 
+  - Displays both legacy and cognitive router metrics. 
+  - Sections: 
+    1. System Health (CPU, RAM, GPU) 
+    2. Pipeline Latency (STT, TTFT, TTS) 
+    3. Cognitive Router Telemetry: 
+       - Total requests routed 
+       - Distribution per routing path (CHAT, RAG, MEMORY, TOOL) 
+       - Sensitivity tuning metrics 
+  - Must only update via connected PyQt signals. 
+  - UI elements showing "..." indicate missing telemetry signals. 
+  - Labels must dynamically update on signal emission; no polling. 
+  - All new fields must match telemetry dictionary keys exactly to prevent UI failure
+- Keep routing-debug regression pins (including `tests/test_routing_debug.py` and `tests/test_cognitive_router_trace.py`) green when extending telemetry/debug payload shapes.
+
+---
+
+#### Qube Execution Model (ANTI-AGENTIC COMPLEXITY RULE)
+
+When writing or modifying Qube's internal routing, tool use, or agentic logic, you must strictly enforce the following execution tiers to protect hardware constraints:
+
+#### Tier 1 — Instant Response
+...
+- direct LLM response
+- no tools
+- no blocking operations
+
+#### Tier 2 — Lightweight Orchestration
+- max 1 tool per request
+- optional RAG OR tool OR memory fetch
+- never chained execution
+
+#### Tier 3 — Async Enrichment
+- memory updates
+- background summarization
+- non-blocking embedding/storage tasks
+
+❗ HARD RULE:
+- No DAG execution systems
+- No multi-hop tool chains
+- No recursive planners
+
+---
+
+### UI / Thread Safety Rules (CRITICAL)
+
+- **UI thread MUST NOT:**
+  - perform embedding
+  - perform LLM calls
+  - access LanceDB directly
+  - perform file I/O
+
+- **All heavy tasks MUST run in QThread workers.**
+
+- **Worker communication MUST use:**
+  - Qt signals OR
+  - thread-safe queues (`queue.Queue`)
+
+- **UI must NEVER:**
+  - stop audio streams directly
+  - call `.close()` on hardware resources
+
+- **Worker interruption MUST be:**
+  - flag-based (`self._interrupt`, `self.is_running`)
+  - not force-killed
+
+- **Strict LLM Timeouts:** All requests.post() calls to local LLM providers (e.g., LM Studio/Ollama) MUST include a strict timeout parameter. The stream loop MUST be wrapped in a try...except...finally block to guarantee the emission of response_finished and status_update("Idle"), ensuring the UI unlocks even if the local server crashes mid-stream.
+
+### Sidecar LLM (Qwen3 1.7B CPU) — assistive cognition only
+
+- **`workers/sidecar_llm_worker.py`** owns the bundled GGUF on a dedicated `QThread` (`n_gpu_layers=0`). **`core/sidecar_llm.py`** + **`core/sidecar_prompts.py`** define per-task contracts.
+- **Workload split:** `EnrichmentWorker` uses `extraction_llm` (primary `LLMWorker`) for atomic fact extraction/salvage; `cognition_llm` (`SidecarLlmClient`) for contradiction judge + episode summaries. `MemoryReflectionWorker` labels via sidecar. Chat titling uses sidecar queue (not the primary model).
+- **Never authoritative:** Sidecar must not choose cognitive routes. Query rewrite (`core/sidecar_query_rewrite.py`) is assistive only — keep `original_query` in telemetry, hybrid-merge retrieval (`core/dual_query_retrieval.py`), user-visible utterance unchanged.
+- **Never block chat:** Foreground rewrite/digest honor `qube.sidecar.foreground_timeout_ms`; on timeout/failure fall back to regex expansion / raw sources.
+- **Memory extraction stays on primary** — do not move JSON fact extraction to the sidecar without explicit product approval.

@@ -1,0 +1,38 @@
+---
+description: Non-production CLI tools for LLM debugging — prompt ablation (python -m tools.run_ablation; may persist ~/.qube/model_overrides.json via prompt_ablation harness self-heal), llm_debug.log tail/filter (view_llm_logs), prompt text diff (llm_prompt_diff). Complements Qube.NativeLLM.Debug env-gated logs.
+globs:
+  - tools/run_ablation.py
+  - tools/view_llm_logs.py
+  - tools/llm_prompt_diff.py
+  - core/prompt_ablation_harness.py
+  - core/model_override_store.py
+---
+
+# Tools & diagnostics (CLI)
+
+These scripts are **developer / lab** utilities. They do not run inside the PyQt app loop unless you invoke them manually.
+
+## `python -m tools.run_ablation`
+
+- **Purpose:** Run **`core/prompt_ablation_harness.run_ablation_test`** against a chosen **`.gguf`** — loads **`llama_cpp.Llama`**, resolves **`ModelReasoningProfile`** + **`ExecutionPolicy`**, iterates **ablation scenarios**, writes **`AblationReport`** (optional **`--json-out`**).
+- **Self-heal side effect:** the harness may **`infer_override_from_ablation`** and **`store_override`** → **`~/.qube/model_overrides.json`** (same as in-app load-time ablation). Check **`Qube.PromptAblation`** for **`[LLM-SELF-HEAL]`** when a new **`LearnedOverride`** is written.
+- **Not** the production chat path (uses low-level **`create_completion(prompt=...)`** style experiments per harness).
+- **Flags (typical):** `--model`, `--message`, `--n-gpu-layers`, `--n-ctx`, `--n-threads`, `--max-tokens`, `--temperature`, `--seed`, `--json-out`.
+- **Requires:** `llama-cpp-python`, enough RAM/VRAM for the model.
+
+## `python tools/view_llm_logs.py`
+
+- **Purpose:** Read **`logs/llm_debug.log`** (**`Qube.NativeLLM.Debug`**) without tailing the main app stdout.
+- **Examples:** `--last 200`, `--follow`, `--filter token_trace --last 500`.
+- Path resolution uses **`core.llm_debug_sink.default_llm_debug_log_path`** (repo-relative **`logs/`**).
+
+## `python tools/llm_prompt_diff.py`
+
+- **Purpose:** Unified diff of two prompt dump files (e.g. LM Studio server log vs **`QUBE_LLM_DEBUG_FILE`** output).
+- **Usage:** `python tools/llm_prompt_diff.py path/a.txt path/b.txt`
+- **Env:** `DIFF_CONTEXT=N` optional context lines (default 3).
+
+## Relationship to in-app logging
+
+- **`QUBE_LLM_DEBUG`**, **`QUBE_LLM_TOKEN_TRACE`**, **`QUBE_LLM_CAUSALITY`**, **`QUBE_LLM_COUNTERFACTUAL`**, **`QUBE_LLM_REFERENCE_JSON`** drive JSON lines consumed by **`view_llm_logs`** and parity tooling — see **`.cursor/rules/native_engine.mdc`**.
+- Internal engine load may emit **`llm_model_behavior_profile`** (from **`core/model_behavior`**, using the same **`run_ablation_test`** harness as this CLI when no persisted **`model_override_store`** entry exists — load-only, not per chat turn). Persisted self-heal overrides are documented in **`.cursor/rules/native_engine.mdc`**.

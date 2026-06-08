@@ -1,0 +1,218 @@
+---
+description: Dual-engine inference (external vs internal llama.cpp), VRAM/CPU thread limits, n_gpu_layers and n_threads wiring, Settings sliders & toolbar UX, Prestige disabled styling, model reasoning profile, model_behavior (load-time ablation + execution overrides), template_override (Phase 4 model-name stops + anchor), model_override_store (Phase 5 ~/.qube/model_overrides.json self-heal from ablation), central ExecutionPolicy, Conversations Think toggle, prompt_template_router (infer_template_type, apply_reasoning_injection, build_prompt_bundle), diagnostic ablation harness, native LLM debug stack (token trace, causality, counterfactual) and env-gated JSON logs.
+globs:
+  - core/app_settings.py
+  - core/execution_policy.py
+  - core/gpu_layers_cap.py
+  - core/cpu_threads.py
+  - core/gpu_monitor.py
+  - core/model_reasoning_profile.py
+  - core/model_behavior.py
+  - core/model_override_store.py
+  - core/model_router.py
+  - core/model_performance_store.py
+  - core/model_chat_contract.py
+  - core/template_override.py
+  - core/prompt_template_router.py
+  - core/prompt_contract.py
+  - core/template_safety.py
+  - core/output_validation.py
+  - core/output_artifact_strip.py
+  - core/response_quality.py
+  - core/engine_input_trace.py
+  - core/adaptive_retry.py
+  - core/prompt_blocks.py
+  - core/prompt_renderers.py
+  - core/prompt_layout.py
+  - core/prompt_layout_store.py
+  - core/prompt_ablation_harness.py
+  - core/native_token_trace.py
+  - core/native_sampler_gt.py
+  - core/llm_execution_causality.py
+  - core/llm_counterfactual.py
+  - core/llm_debug_sink.py
+  - core/logging_bootstrap.py
+  - core/native_llm_debug.py
+  - core/prompt_integrity_validator.py
+  - workers/llm_worker.py
+  - workers/native_llama_engine.py
+  - ui/views/settings_view.py
+  - ui/views/telemetry_view.py
+  - ui/views/conversations_view.py
+  - ui/main_window.py
+  - assets/styles/base.qss
+  - assets/styles/light.qss
+---
+
+# Native engine & dual-engine inference (Qube)
+
+## State & persistence (`core/app_settings.py`)
+
+- **`engine_mode`:** `external` | `internal`.
+- **`internal_model_path`:** active `.gguf` for the internal engine.
+- **`internal_n_gpu_layers`:** clamped to `max_safe_n_gpu_layers()` from `gpu_layers_cap`. If the key was **never** written, **`get_internal_n_gpu_layers()`** returns **`default_internal_n_gpu_layers_suggested()`** (~**75%** of the VRAM-derived cap, 0 if cap is 0).
+- **`internal_n_threads`:** clamped to **`[1, logical_cpu_count]`** via `cpu_threads`. If the key was **never** written, **`get_internal_n_threads()`** returns **`default_internal_n_threads()`** (~**75%** of logical cores, minimum 1).
+- **`llm_models_dir`**, memory enrichment, etc.
+
+## Hardware utilities
+
+- **`core/gpu_layers_cap.py`:** `detect_gpu_vram_bytes()`, `max_safe_n_gpu_layers()`, `default_internal_n_gpu_layers_suggested()`. Unknown VRAM → conservative max layer cap (e.g. 99) before applying the 75% first-run default.
+- **`core/cpu_threads.py`:** `detect_logical_cpu_count()` (psutil + fallback), `max_cpu_threads_for_ui()`, `default_internal_n_threads()` — **not** the same as **`gpu_monitor`** (telemetry load % only).
+
+## Workers
+
+- **`workers/llm_worker.py`:** `refresh_native_model_from_settings()` reads path, **`get_internal_n_gpu_layers()`**, **`get_internal_n_threads()`**, context window; calls **`NativeLlamaEngine.load_model(path, n_gpu, n_ctx, n_threads)`**. `set_engine_mode("external")` unloads native VRAM. Native streaming must expose **only sanitized user-facing fragments** to both UI and TTS while preserving live streaming UX: pass deltas through **`RedactedThinkingStreamFilter`** (removes `<think>` / `<thinking>` / `<redacted_thinking>` blocks) and **`LeadingMetaInstructionStripper`** before emitting the same cleaned fragment to **both** `token_streamed` and TTS sentence buffering. Do **not** split display and TTS into separate raw-vs-filtered paths, and do **not** gate the entire native completion before emitting (that breaks the app's streaming UX). `ConversationsView.on_llm_response_finished` must hard-replace the active assistant bubble with the sanitized final text so the transcript cannot diverge from the saved answer. Prompt wording must avoid trigger phrases such as "final answer", "answer concisely", or "provide an answer" for NVIDIA/Nemotron; those models may turn such control language into visible planning text.
+- **`workers/native_llama_engine.py`:** Single **`Llama`** instance on the engine thread; **`Llama(..., n_gpu_layers=, n_ctx=, n_threads=)`**. Rapid picker bursts are coalesced in **`load_model()`** by dropping older queued `load` commands so only the newest pending load remains queued behind any in-flight operation.
+
+## Central execution policy (`core/execution_policy.py`)
+
+**Single source of truth** for reasoning allowance, UI vs TTS thinking display, strip policy, and enforcement (**`soft`** / **`hard`**) given **`ModelReasoningProfile`**, **`get_native_reasoning_display_user_override()`** (Think QSettings), and **`get_engine_mode()`**.
+
+- **`ExecutionPolicy`:** **`execution_mode`** (`direct` \| `thinking` \| `hybrid`), **`allow_thinking_tokens`**, **`strip_thinking_output`**, **`ui_display_thinking`**, **`tts_strip_thinking`**, **`enforcement_mode`**.
+- **`resolve_execution_policy(profile, user_think_enabled, engine_mode)`** — strict cases: non-thinking or external → direct + hard strip; thinking model + user OFF → strip + hard; thinking model + user ON + non-hybrid profile → **`thinking`** + soft; user ON + **`profile.default_mode == "hybrid"`** → **`hybrid`** + soft. **`resolve_user_think_enabled`** merges unset override with profile defaults.
+- **`NativeLlamaEngine`:** **`get_execution_policy()`** recomputes and caches on **`self.execution_policy`** (applies load-time **`model_behavior`** overrides from **`core/model_behavior.py`** when set); **`get_model_reasoning_telemetry()`** includes **`ui_display_thinking`**, **`policy_execution_mode`**, strip flags, **`behavior_class`**, **`behavior_confidence`**, **`override_active`**, **`override_summary`**, etc. After load: **`[LLM-DEBUG] execution_policy=...`**, optional **`llm_model_behavior_profile`** JSON on **`Qube.NativeLLM.Debug`**. Prompt validation uses **`get_execution_policy().execution_mode`** for the logged **`execution_mode`** field.
+- **UI:** **`ui/views/conversations_view.py`** — **Think** toggle persists preference; **checked / styling** follows telemetry **`ui_display_thinking`** (policy projection), not duplicated resolver logic in the view. **`refresh_think_toggle()`** runs from **`main.py`** via **`_on_native_model_load_finished`** (connected to **`native_llama_engine.load_finished`**) and from **`showEvent`** when the Conversations screen is shown (re-sync if the model finished loading elsewhere).
+
+**User-facing invariant:** Internal reasoning, scratchpads, model planning monologues, role/template tokens, and thinking blocks must never be visible in chat or audible through TTS. The Think policy/telemetry may describe model capability or future controlled UX, but the runtime stream presented to the user is final-answer-only.
+
+## Prompt template router (`core/prompt_template_router.py`)
+
+Single place for native prompt **representation** used with **`ExecutionPolicy`**: `NativeLlamaEngine` calls **`build_prompt_bundle`**, then passes the returned prompt string to **`Llama.create_completion(prompt=, stop=, ...)`** (pre-rendered string; not `create_chat_completion(messages=...)`). The bundle includes reasoning injection, `detect_template_override` + learned stops, and merged `PromptContract.stop` for parity with **`resolve_prompt_contract`**. Same bundle drives validation / logging.
+
+- **`RenderPromptBundle`:** `prompt`, `chat_format`, `stop_tokens`, `template_type`, **`reasoning_mode`** (`disabled` \| `soft` \| `hard`).
+- **`infer_template_type(llama)`** — Inspects GGUF **`tokenizer.chat_template`** when present: **`chatml`** (`<|im_start|>`), **`llama3`** (`start_header_id`), **`phi`** (`<|system|>` + `<|assistant|>`), **`mistral`** (`[INST]`); else **`jinja`** for other templates. Without a template string, falls back to **`chat_format`** (`chatml` / `llama-3` / `mistral-instruct`) or **`fallback`**.
+- **`apply_reasoning_injection(prompt, template_type, reasoning_mode)`** — Template-safe text (**`hard`** → no change; **`disabled`** → short “final answer only” line; **`soft`** → ChatML / Llama3 / Phi / Mistral / default variants; Phi injects **before** the last **`<|assistant|>`** marker without appending after the assistant block).
+- **`build_prompt_bundle(...)`** — **`reconstruct_formatted_prompt`** → **`infer_template_type`** + **`resolve_reasoning_mode`** → **`apply_reasoning_injection`** → **`merge_stop_lists`** + policy extra stops when **`reasoning_mode == disabled`**.
+- Logger **`Qube.PromptTemplateRouter`** — **`[LLM-TEMPLATE]`** (`type` + **`reasoning_mode`**) and **`[LLM-PROMPT-ROUTER]`** on **`Qube.NativeLLM.Debug`** when enabled.
+- **`workers/native_llama_engine.py`:** **`_prepare_validation_and_logs`** calls **`build_prompt_bundle`** so **`prompt_integrity_validator`** / **`QUBE_LLM_DEBUG`** / trace prefetch see the same reconstructed prompt + stops as policy intends; the actual run uses the resulting string via **`Llama.create_completion(prompt=..., stop=...)`**.
+
+## Publisher guidance (`core/model_publisher_guidance.py`, `core/publisher_guidance_service.py`)
+
+- Deterministic README/curated **contract signals only** (thinking tags, default reasoning without system, template mentions). **Never** auto-inject publisher preset system prompts (MULTI-TIERED / CREATIVE blocks).
+- **`NativeLlamaEngine`:** on load, **`lookup_for_load`** → optional **`apply_guidance_to_reasoning_profile`** when tokenizer scan missed tags; telemetry keys **`publisher_guidance_source`**, **`publisher_default_reasoning`**, **`publisher_thinking_tags`**, **`publisher_guidance_confidence`**.
+- **`build_prompt_bundle(..., publisher_guidance=...)`** merges thinking tags into stops after template/self-heal layers; logs **`[LLM-README-GUIDANCE]`**. Think toggle / **`ExecutionPolicy`** unchanged — README “off by default” is observability, not a silent override of user Think ON.
+- **No sidecar LLM** for this path.
+
+## OpenAI gpt-oss / Harmony models (critical)
+
+- **Do not route OpenAI `gpt-oss-*` / Harmony-trained models through ChatML.** In native llama.cpp mode they leak untagged planning text (`We need to...`, `We have sources...`, `Let's produce answer...`) when forced into ChatML or unsafe-GGUF fallback.
+- **`core/prompt_contract.py` owns the gpt-oss exception:** **`resolve_prompt_contract(...)`** must detect `gpt-oss` / `gpt`+`oss` **before** the GGUF-template branch and return a **rendered** contract from **`render_harmony_final_prompt(messages)`**, ending with **`<|start|>assistant<|channel|>final<|message|>`**. This pre-fills the assistant in the Harmony **final** channel and avoids inviting analysis-channel text.
+- **Stops for gpt-oss:** keep **`<|return|>`** as the real Harmony EOS plus narrow planning sentinels (`We need to`, `We should`, `We have`, `Let's`) in the rendered contract / template override. Do **not** add **`<|end|>`** as a generation stop by default; it can appear between Harmony sections and truncate the answer before the final channel on multi-segment outputs.
+- **Output backstop:** **`core/output_artifact_strip.py`** strips Harmony scaffolding (`<|start|>`, `<|channel|>`, `<|message|>`, etc.) and untagged OSS scratchpad tails. This is only a safety net; the primary fix is the Harmony final-channel prompt contract.
+- **Regression coverage:** keep **`tests/test_prompt_contract.py`** (`gpt-oss` rendered Harmony path, unsafe-GGUF still Harmony) and **`tests/test_output_artifact_strip.py`** (untagged scratchpad/source-planning tail cleanup) green when editing native prompt routing.
+
+## Prompt/output contract safety coverage
+
+- Keep prompt/output contract modules in the same native-engine guardrail boundary: **`core/prompt_contract.py`**, **`core/template_safety.py`**, **`core/model_chat_contract.py`**, **`core/output_validation.py`**, **`core/output_artifact_strip.py`**, **`core/response_quality.py`**, **`core/engine_input_trace.py`**, **`core/adaptive_retry.py`**, plus policy helpers in **`core/model_router.py`** / **`core/model_performance_store.py`**.
+- Contract/parity regressions are pinned by dedicated tests (including `test_native_prompt_contract_runtime.py`, `test_native_llm_debug_reconstruct.py`, and the corresponding `test_*contract*` / `test_*validation*` / `test_*quality*` files). Keep these tests green when changing native prompt or output enforcement.
+
+## Native chat format auto preference (`core/native_llama_chat.py`)
+
+- **`prefer_gguf_jinja_chat_format(llama)`** runs after **`Llama(...)`** initialization and only mutates `llama.chat_format` when QSettings chat format is **`auto`**.
+- Priority in Auto mode:
+  1. If model identity (`general.name` / basename / model path) indicates **NVIDIA/Nemotron** and current format is `llama-2`, switch to **`chatml`** when the handler exists.
+  2. Else, if current format is `llama-2` and GGUF has `tokenizer.chat_template`, switch to **`chat_template.default`** when available.
+  3. Otherwise leave library-selected format unchanged.
+- If user explicitly selects a format in Settings (`jinja`, `chatml`, `llama-3`, `mistral`, `llama-2`), auto coercion is skipped.
+
+## Prompt layout (PR1 — resolve + telemetry only)
+
+- **`core/prompt_layout.py`** — `PromptLayout` = `system_ok` \| `short_system` \| `flatten_user`; **`resolve_prompt_layout(...)`** (curated registry + family heuristics + settings/store overrides; **no dynamic probing**).
+- **`core/prompt_layout_store.py`** — per-model overrides in **`~/.qube/prompt_layout_overrides.json`** (not bool `capability_overrides`).
+- **`system_data/curated_registry.json`** — optional **`prompt_layout.exact`** / **`prompt_layout.patterns`** (`layout` field per rule).
+- **`core/app_settings.py`** — **`get_internal_prompt_layout_override()`** / **`set_internal_prompt_layout_override()`** (`auto` \| layout values); global override when not `auto`.
+- **Load / turn:** `NativeLlamaEngine` resolves at load → **`_prompt_layout_resolution`** → **`get_model_reasoning_telemetry()`** (`prompt_layout`, `prompt_layout_source`, `prompt_layout_degraded`). **`LLMWorker`** logs **`[PromptLayout]`** each turn; **PR1 does not change message roles** (renderers in PR3).
+- **Default:** `system_ok` for all models until curated/override/family match.
+
+## Prompt blocks (PR2 — normalization)
+
+- **`core/prompt_blocks.py`** — **`PromptBlocks`** + **`build_prompt_blocks(...)`** + **`compose_system_prompt`**.
+
+## Prompt renderers (PR3 — layout strategies)
+
+- **`core/prompt_renderers.py`** — **`render_system_ok_messages`**, **`render_short_system_messages`** (drops **`RECALL_FUSION_SYSTEM_SUFFIX`**), **`render_flattened_instruct_messages`** (`[ASSISTANT INSTRUCTIONS]` / `[RETRIEVED CONTEXT]` / `[USER QUESTION]`, no `system` role), **`render_messages(blocks, layout)`**, **`openai_messages_to_alpaca_prompt`** (used by **`adaptive_retry`**).
+- **`workers/llm_worker.py`** — **`render_messages(prompt_blocks, pl_res.layout)`**; logs **`[PromptLayout] rendered layout=... roles=...`**.
+- **`flatten_user`** / **`short_system`** are degraded compat modes (telemetry **`prompt_layout_degraded`**).
+
+## Model-specific template overrides (`core/template_override.py`, Phase 4)
+
+- **`TemplateOverride`** + **`detect_template_override(model_name, tokenizer_info)`** — name-based heuristics (e.g. **phi**, **nemotron** / **nvidia**, **mistral** / **mixtral**) to add **extra stop strings** and optionally **enforce an assistant anchor** after the formatted prompt. Applied **inside** **`build_prompt_bundle`** after the base **`RenderPromptBundle`** is built (does **not** modify **`reconstruct_formatted_prompt`**). Logger **`Qube.PromptTemplateRouter`**: **`[LLM-TEMPLATE-OVERRIDE]`**.
+
+## Self-healing learned overrides (`core/model_override_store.py`, Phase 5)
+
+- **Persistence:** **`~/.qube/model_overrides.json`** — keyed by **`model_name`**. **`LearnedOverride`** holds **`extra_stop_tokens`**, **`enforce_assistant_anchor`**, and optional metadata fields (**`force_execution_mode`**, **`enforcement_mode`**, **`strip_thinking`**) learned from ablation heuristics; **only** **`extra_stop_tokens`** + **`enforce_assistant_anchor`** are applied in **`build_prompt_bundle`** (merged stops + anchor suffix check); policy metadata is **not** applied in the router (execution policy unchanged there). Logger: **`[LLM-SELF-HEAL-APPLY]`** on **`Qube.PromptTemplateRouter`**.
+- **Learning:** **`core/prompt_ablation_harness.infer_override_from_ablation`** inspects **`AblationReport`** (baseline scenario + scores); **`run_ablation_test`** calls **`store_override`** when non-**`None`**. Log: **`[LLM-SELF-HEAL]`** on **`Qube.PromptAblation`**.
+- **`workers/native_llama_engine.py`:** If **`get_override(mname)`** returns a record, **skips** **`run_ablation_test`** for load-time behavior profiling (log **`[LLM-SELF-HEAL] skip ablation`** on **`Qube.NativeLLM.Debug`**); otherwise passes **`model_name=mname`** into **`run_ablation_test`** so stored keys match **`ModelReasoningProfile.model_name`** lookups in **`build_prompt_bundle`**.
+
+## Model behavior profiling (`core/model_behavior.py`, load-time only)
+
+- After **`detect_model_reasoning_profile`** and baseline **`get_execution_policy()`**, the engine runs **`run_ablation_test`** once **unless** a persisted self-heal override exists (see above) — small **`max_tokens`**, deterministic seed. **`classify_model_behavior`** + **`resolve_behavior_override`** may adjust **`ExecutionPolicy`** fields via **`apply_behavior_override_to_policy`** (no prompt/sampling changes in those helpers). Failures are non-fatal.
+- Telemetry and **`llm_model_behavior_profile`** JSON (see **`Qube.NativeLLM.Debug`**) expose **`behavior_class`**, confidence, and whether an override materially changed policy.
+
+## Diagnostic prompt ablation (non-production)
+
+- **`core/prompt_ablation_harness.py`** — **`run_ablation_test`**, **`AblationReport`**, fixed **`AblationScenario`** list (e.g. BASELINE, NO_SYSTEM_CONSTRAINT, NO_STOP_TOKENS). Uses **`create_completion(prompt=...)`** — **not** the app **`create_chat_completion(messages=...)`** chat path. End of run: **`infer_override_from_ablation`** → optional **`store_override`** → **`~/.qube/model_overrides.json`**. **`NativeLlamaEngine`** calls **`run_ablation_test`** **once per load** for **`model_behavior`** profiling when no persisted self-heal entry exists (see **Self-healing** above); the **CLI** is for manual experiments and also persists learned overrides when heuristics fire.
+- **CLI:** **`python -m tools.run_ablation`** — see **`.cursor/rules/tools-diagnostics.mdc`**.
+
+## Model reasoning profile & execution mode (metadata only)
+
+**Purpose:** Classify whether the loaded GGUF is likely to emit reasoning / thinking markup (e.g. `<redacted_thinking>`) and expose a default **`ExecutionMode`** for future routing — **without** changing prompts, sampling, stop lists, stream filters, or inference today.
+
+- **`core/model_reasoning_profile.py`:** **`detect_model_reasoning_profile(llama, model_path)`** returns **`ModelReasoningProfile`** (`model_name`, **`supports_thinking_tokens`**, **`thinking_token_patterns`**, **`default_mode`**, **`reasoning_confidence`**, **`detection_method`**). Signal priority: tokenizer vocabulary scan over **`THINKING_MARKERS`** (stops at **first** matching vocab piece; uses **`_llama_cpp_model(llama)`** = **`_model`** or **`model`**) → GGUF **`tokenizer.chat_template`** substring match → **`metadata_template`** (weaker Jinja hints: **`_metadata_template_weak_signals`**) → model **name/path** heuristics (weaker; **`default_mode`** may be **`hybrid`** when only name matches). Confidence bands: tokenizer **1.0**, metadata **0.7**, **`metadata_template`** ~**0.62**, name **0.6**, fallback **0.3**.
+- **`workers/native_llama_engine.py`:** After successful **`Llama`** init (and chat-format preference), sets **`_model_reasoning_profile`**, **`_execution_mode`** from **`profile.default_mode`**, and logs one line on **`Qube.NativeLLM.Debug`**: **`[LLM-DEBUG] reasoning_profile=… execution_mode=… confidence=…`** (plus detection method, model name, pattern sample). Cleared on unload / failed load. **`get_model_reasoning_telemetry()`** exposes a read-only dict for the UI thread (includes **resolved** **`policy_execution_mode`** / **`ui_display_thinking`**).
+- **`core/prompt_integrity_validator.py`:** **`validate_chat_inference`** / JSON log lines include **`model_reasoning_profile_detected`** and **`execution_mode`** (resolved **`ExecutionPolicy.execution_mode`**) for observability. On the native engine path, validation prep aligns with **`build_prompt_bundle`** output where **`_prepare_validation_and_logs`** supplies the bundle.
+- **Telemetry:** **`ui/views/telemetry_view.py`** shows model basename / profile name, reasoning-capable flag, execution mode (prefers **`policy_execution_mode`** when present), and confidence when **`MainWindow`** receives **`native_engine`** from **`main.py`**.
+
+## Inference debug pipeline (internal engine, post-inference)
+
+All layers are **optional**, **observer-only** (no prompt/sampling/stop/stream mutation). Logger: **`Qube.NativeLLM.Debug`** — by default written only to **`logs/llm_debug.log`** (rotating, UTF-8) via **`core/logging_bootstrap.init_llm_debug_logging()`** in **`main.py`**; not echoed to the terminal. CLI: **`python tools/view_llm_logs.py --follow`**. Optional Telemetry panel when **`QUBE_LLM_LOG_UI=1`**.
+
+| Order | Env | Module | Event / role |
+|------|-----|--------|----------------|
+| 0 (baseline) | `QUBE_LLM_DEBUG`, `QUBE_LLM_PROMPT_VALIDATE` | `native_llm_debug`, `prompt_integrity_validator` | Reconstructed prompt, `llm_prompt_validation`; optional **`QUBE_LLM_REFERENCE_JSON`** parity + `first_sampler_token_ids` |
+| 1 | `QUBE_LLM_TOKEN_TRACE` | `native_token_trace`, `native_sampler_gt` | Live / post-hoc / **sampler GT** (`Llama.generate` wrap); `llm_token_trace_*`, `llm_token_trace_ground_truth` |
+| 2 | `QUBE_LLM_CAUSALITY` | `llm_execution_causality` | `llm_execution_causality_report` — influence scores, first-token cause |
+| 3 | `QUBE_LLM_COUNTERFACTUAL` | `llm_counterfactual` | `llm_counterfactual_simulation` — one intervention at a time, **no extra inference** |
+
+**`workers/native_llama_engine.py`** runs hooks after each completion (and on generation error after partial output); keeps **`_last_formatted_prompt`**, **`_last_inference_messages`**, **`_last_merged_stops`**, **`_last_eos_token_str`**, and (when tracing) **`_gt_token_ids`** / **`_gt_token_texts`** for downstream modules.
+
+## Settings UI (`ui/views/settings_view.py`)
+
+- **Engine vs external provider:** `_sync_ai_provider_enabled_for_inference` disables **External Provider** when internal engine is selected.
+- **GPU offload layers:** horizontal **`QSlider`** + label; max = `max_safe_n_gpu_layers()` at UI build time; **`blockSignals`** when seeding from settings.
+- **CPU thread pool:** **`QSlider`** below GPU row; min **1**, max = logical CPU count; persists **`internal_n_threads`**; changing value triggers native reload when engine is internal.
+- **Local GGUF:** list, Use selected, Delete — **`PrestigeDialog`** only (no **`QMessageBox`**). Toolbar sync via **`MainWindow.refresh_toolbar_native_model_dropdown()`** where wired.
+
+## Global toolbar (`ui/main_window.py`)
+
+- **LOCAL LLM** **`SettingsMenuButton`:** Prestige menu for `.gguf` when internal; external mode disabled with **“Managed by External Server”**; pass **`engine_mode_changed`** mode into refresh to avoid QSettings ordering bugs; chevron tint helpers for disabled state (QtAwesome ignores QSS).
+- **Optimistic picker UX:** on menu selection the button text updates immediately to the chosen model basename (no wait for RAM/VRAM load completion), resets success tint, and starts a dedicated slim progress bar.
+- **Zero-shift loading bar:** `QProgressBar` above the selector is fixed-height (`4px`) and never removed from layout; loading uses indeterminate range (`0..0`), idle state is transparent to preserve geometry.
+- **Success + stale-finish guard:** when `load_finished` reports success for the current pending model, selector text uses prestige green; stale success events from superseded picks are ignored so post-turn/late completions do not unexpectedly rewrite the label.
+
+## Styling
+
+- **`#SettingsMenuButton`** in **`base.qss`** / **`light.qss`** includes **`:disabled`**. Chevrons need **`_apply_settings_menu_button_chevron_state`** on **`SettingsView`** / **`MainWindow`**.
+
+## Telemetry note
+
+- **`core/gpu_monitor.py`:** GPU **utilization %** only — not used for **`n_gpu_layers`** or **`n_threads`** limits.
+
+## Native LLM debug & token trace (optional)
+
+Observer-only: **does not** change prompts, sampling, stop lists, or streamed deltas.
+
+- **Env:** `QUBE_LLM_TOKEN_TRACE=1` enables tracing. Optional: `QUBE_LLM_TOKEN_TRACE_N` (default 20), `QUBE_LLM_TOKEN_TRACE_EARLY` (default 5). Related: `QUBE_LLM_DEBUG` / `QUBE_LLM_DEBUG_FILE` in **`core/native_llm_debug.py`** (reconstructed prompt logging); **`core/prompt_integrity_validator.py`** (chat template / parity helpers).
+- **`core/native_token_trace.py`:** Emits JSON lines on logger **`Qube.NativeLLM.Debug`**: live trace (re-tokenize stream deltas), post-hoc full-string tokenize, and **`llm_token_trace_ground_truth`** complete events with `live_match_score`, `posthoc_match_score`, `ground_truth_authority: "sampler"`.
+- **`core/native_sampler_gt.py`:** Temporarily wraps **`llama_cpp.Llama.generate`** during **`create_chat_completion`** so each sampler token ID is recorded; **`build_prompt_tokens_for_completion`** must stay aligned with upstream **`Llama._create_completion`** prompt assembly for correct per-token detokenize.
+- **`workers/native_llama_engine.py`:** Applies the capture context when tracing is on; stores **`_gt_token_ids`** / **`_gt_token_texts`** on the engine for the last run.
+
+## Execution causality (post-inference)
+
+- **Env:** `QUBE_LLM_CAUSALITY=1` emits **`llm_execution_causality_report`** JSON on **`Qube.NativeLLM.Debug`** after each native completion (streaming or `chat_once`). Runs **after** the stream ends — no added work on the hot path.
+- **`core/llm_execution_causality.py`:** Builds **`LLMExecutionCausalReport`** (influence scores + `first_token_cause_label` + `divergence_root_cause`). Uses prompt validation, optional parity vs **`QUBE_LLM_REFERENCE_JSON`**, live vs sampler IDs when token trace captured GT, and optional **`first_sampler_token_ids`** in the reference file for first 1–3 token differential impact. **`automatic_fix_available`** is always false (guidance only).
+
+## Counterfactual simulation (post-inference, analytical)
+
+- **Env:** `QUBE_LLM_COUNTERFACTUAL=1` emits one or more **`llm_counterfactual_simulation`** JSON lines on **`Qube.NativeLLM.Debug`** after each native run. **No** extra model inference — only **`validate_chat_inference`** + parity recompute on hypothetical prompt/stop/format strings.
+- **`core/llm_counterfactual.py`:** **`LLMCounterfactualScenario`** records modified fields per scenario. Scenarios (when applicable): **`strong_assistant_anchor`**, **`expanded_stop_set`**, **`system_instruction_tightening`**, **`aligned_reference_chat_format`**. Each event includes **`predicted_risk_reduction`**, **`expected_first_token_shift`**, **`confidence`**, and **`recomputed`** influence scores + cause label vs baseline.
