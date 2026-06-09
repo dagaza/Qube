@@ -1,0 +1,184 @@
+---
+description: Native internal engine & Model Manager — threading, queue handoff, HF workers, download safety
+globs:
+  - workers/native_llama_engine.py
+  - workers/hf_*.py
+  - workers/hf_model_meta_worker.py
+  - workers/model_download_worker.py
+  - ui/views/model_manager_view.py
+  - core/model_capability_*.py
+  - core/system_capabilities_store.py
+  - core/qube_verified_models.py
+  - assets/qube_verified_models.json
+---
+
+## Model Manager & Native Engine — Architectural Laws
+
+Rules established for the **Native Internal Engine**, **App Store Model Manager**, and **Hugging Face** integration. Follow these to avoid segfaults, UI freezes, and disk corruption.
+
+### Thread Affinity (llama.cpp)
+
+- **`Llama` instances** (llama-cpp-python) must be **created, held, and invoked only** on the long-lived **`NativeLlamaEngine`** `QThread` command loop.
+- **Do not** construct `Llama` inside `LLMWorker.run()` or on the **main/UI thread**. Moving inference across OS threads after load is undefined and can **segfault**.
+- `LLMWorker` orchestrates routing and consumes streamed tokens; it does **not** own the native model handle.
+
+### Queue Handoff (Streaming)
+
+- Streaming tokens from the native engine to **`LLMWorker`** must use a **`queue.Queue`** (or equivalent thread-safe queue) for handoff, preserving **sentence buffering**, **TTS `sentence_ready`**, and **UI `token_streamed`** semantics.
+- Do not replace this with ad-hoc cross-thread shared lists without synchronization.
+
+### UI Thread Safety (Hugging Face & Network)
+
+- **All** Hugging Face work that touches the network or blocks on I/O must run on **`QThread` workers**, not on the main thread:
+  - Model **search** (`HfModelSearchWorker`)
+  - Model **metadata/detail fetch** (`HfModelMetaWorker`)
+  - **README** fetch (`HfReadmeWorker`)
+  - **Repo file listing** / `.gguf` enumeration (`HfRepoFilesWorker`)
+  - **GGUF file download** (`HuggingFaceGgufDownloadWorker`)
+- **`ModelManagerView`** may only schedule work, connect signals, and update widgets in response to **signals** (or short slot bodies). No blocking Hub calls in UI methods.
+
+### Official Publisher Branding (HF)
+
+- Official publisher logos in Model Manager must be resolved by **`core/hf_publisher_branding.py`** only; do not duplicate branding logic in UI classes.
+- Branding must be **strictly allowlist-based** (`TRUSTED_PUBLISHERS`) and resilient:
+  - missing/unknown owner -> no branding
+  - missing logo file in `assets/logos/` -> no branding
+  - network/API errors -> no branding (never crash)
+- Derivative gate:
+  - reject when `cardData.base_model` references a **different owner namespace**
+  - do not blanket-reject official owner repos solely because repo id contains `gguf/quant` tokens
+- `HfModelSearchWorker` may attach branding payloads to row models; `ModelManagerView` should consume payloads and render fallback HF logo when branding is absent.
+- Keep logo filename mapping aligned with actual files in `assets/logos/` (case-sensitive on Linux).
+
+### Download Guardrails (`HuggingFaceGgufDownloadWorker`)
+
+- **Disk space:** Before streaming the body, use **`Content-Length`** (when present) plus **`SAFETY_BUFFER_BYTES`** (500 MB) and **`shutil.disk_usage`** on the **destination directory**; abort early with **`insufficient_space_error`** if there is not enough free space.
+- **Cancellation:** Use a cooperative flag (e.g. **`threading.Event`** / **`_is_cancelled`**) checked **inside** the streaming loop; close the response and stop writing promptly when set.
+- **Teardown:** On **cancel**, **failure**, or **insufficient space**, **delete** any partial **`.part`** file so the filesystem is not left with junk multi‑GB fragments.
+- **Signals:** Keep distinct signals for **`insufficient_space_error`**, **`download_cancelled`**, and generic **`failed`** so the UI can reset state and messaging without conflating cases.
+
+### Related Settings
+
+- Engine mode and paths for the native stack live under **`core/app_settings.py`** (e.g. engine mode, internal model path, GPU layers); do not bypass persistence when adding controls.
+
+### Model Capability System (Persistent / Isolated)
+
+- Capability detection and cache are a **system layer**, not user data:
+  - **`core/model_capability_detection.py`** (pipeline)
+  - **`core/model_capability_service.py`** (cache + overrides + miss logging)
+  - **`core/system_capabilities_store.py`** (isolated store + registry/miss files)
+- Persist capability artifacts in **`~/.qube/system_data/`** only:
+  - **`capabilities.db`**
+  - **`curated_registry.json`**
+  - **`learned_capabilities.json`**
+  - **`missed_models.json`**
+- **Never** write model capability cache/overrides into user SQLite (`qube_data.db`) or LanceDB.
+- Ground-truth runtime evidence persists in SQLite table **`ground_truth_capabilities`** (same isolated system DB).
+
+### Detection Pipeline Contract (LM Studio-style)
+
+- Required priority order:
+  1. **`user_override`**
+  2. **`ground_truth`**
+  3. **`learned_registry`**
+  4. **`curated`** (exact)
+  5. **`curated_pattern`**
+  6. **`file_inference`**
+  7. **`huggingface`**
+  8. **`readme`** (safe phrase extraction)
+  9. **`soft_default`**
+  10. **`heuristic`**
+- Curated registry format must support both:
+  - exact map (`exact`)
+  - pattern rules (`patterns`: `contains` / `prefix` / `suffix` / `regex`)
+- Use model normalization before curated/pattern matching:
+  - lowercasing
+  - org prefix stripping
+  - quant suffix stripping (`-gguf`, `-awq`, `-gptq`, `-exl2`)
+  - known family extraction (e.g. `qwen2.5*`, `deepseek-r1*`)
+- README extraction must be deterministic/offline-only:
+  - no LLM calls
+  - markdown/codeblock stripping + max-length truncation
+  - phrase matching with negation guard (e.g. "not designed for ...")
+
+### Publisher guidance (README contract layer)
+
+- **`core/model_publisher_guidance.py`** + **`core/publisher_guidance_service.py`**: deterministic offline extraction of **contract signals** from Hub README (thinking tags, default-off-without-system, template mentions) — **never** paste README system-prompt preset blocks into chat.
+- Persist under **`~/.qube/system_data/publisher_guidance.json`** (by repo id) and **`model_hf_provenance.json`** (local GGUF path → repo id). Record provenance on Hub download complete and load-from-detail when **`_current_repo_id`** is known.
+- **`ModelManagerView._apply_readme_if_current`**: call **`PublisherGuidanceService.extract_and_store`** after README fetch; show summary via **`meta_hint_lbl`**.
+- Runtime merge priority: **`curated_registry.publisher_guidance`** > stored README > GGUF profile; ablation **`model_overrides.json`** still wins for empirical stops.
+- **No sidecar LLM** for README parsing in v1.
+
+### UI Wiring Rules for Capabilities
+
+- Sidebar model cards and mainstage metadata **Capabilities** row must resolve from the same service path (`ModelCapabilityService`) so chips stay consistent.
+- Use Hugging Face worker metadata (`hf_tags`, `hf_pipeline_tag`) as input signals, but keep detection/caching decisions in the system capability service.
+- Progressive enrichment is required:
+  - pre-load chips may be partial
+  - post-load / README-available re-evaluation must refresh sidebar + mainstage chips
+- Missing-capability models (all false after full pipeline) must be appended to **`missed_models.json`** for curation feedback loops.
+- Runtime-loaded capabilities should call `on_model_loaded(...)` to persist ground truth and update learned registry.
+
+### Model Manager Surface Styling (Regression Guard)
+
+- For right-side Model Manager cards (metadata, download options, README), prefer **objectName-scoped** style rules over generic class/global QSS when you need exact background parity with the left sidebar surface.
+  - Recommended object names:
+    - `ModelManagerMetaCard`
+    - `ModelManagerDownloadCard`
+    - `ModelManagerReadmeCard`
+- Re-apply those card styles from `ModelManagerView._apply_hub_list_surface(...)` so theme toggles keep surfaces synchronized.
+- `QTextBrowser` needs extra handling:
+  - set widget `Base/Window` palette
+  - set viewport `Base/Window` palette
+  - otherwise the inner document area may keep an old/default color even if the outer frame changes.
+- Avoid broad row-card restyles that alter shared list-row identities (`HistoryRowWidget`) without checking selection behavior; these can regress selected fill rendering and clipping in `#ModelHubList`.
+- Keep chevron behavior isolated from card/surface changes; do not modify combo chevron logic while debugging unrelated background issues.
+
+### Search Pagination Contract
+
+- Model Manager search results are rendered in UI pages of **20 items per click** (`Load More`) from a cached worker result set.
+- Hint text above the list must explicitly communicate partial visibility (e.g., `Showing X of Y ... Click Load More ...`) so users do not infer global result count from first page.
+- Curated mode (empty search) must clear pagination state and hide the `Load More` control.
+- Search worker fetch limits may exceed UI page size to support pagination, but UI must remain responsive and avoid blocking main-thread loops.
+
+### Source Link UX
+
+- Detail pane may expose a source action button that opens `https://huggingface.co/{repo_id}` for the currently selected row.
+- Source action must be hidden/disabled when no row is selected.
+
+### Qube Verified model catalog (default hub rows)
+
+LM Studio–style catalog: **brand-facing card** (title, description, official publisher logo) is separate from the **GGUF Hugging Face repo** used for README, `.gguf` file list, download, and source link.
+
+- Loader: **`core/qube_verified_models.load_qube_verified_models()`** → `list[CatalogEntry]`.
+- Branding: **`branding_for_entry(entry)`** — `publisher` key → `TRUSTED_PUBLISHERS` logo without HF fetch; else `HuggingFaceBrandingResolver` on `gguf_repo`.
+- **Shipped seed:** `assets/qube_verified_models.json`
+- **Runtime copy (what the app loads):** `~/.qube/qube_verified_models.json` — seeded on first use. On each load, if **`assets/qube_verified_models.json` is newer (filesystem mtime) than** the `~/.qube` copy, the app **replaces** the runtime file from assets (so editing `assets/` and restarting picks up changes without bumping `schema_version`). Also refreshes for higher `schema_version`, legacy stubs, or bundled catalog superset by id. A **custom** list in `~/.qube` keeps working until you edit `assets/` again (which becomes newer) or delete the runtime file.
+- **To add models in dev:** edit `assets/qube_verified_models.json`, save, restart (mtime sync); or edit `~/.qube/qube_verified_models.json` directly; optional bump `schema_version` for forced sync when mtimes are ambiguous.
+
+**Schema v1** (`schema_version` optional):
+
+```json
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "gemma-4-26b-a4b-it",
+      "title": "Gemma 4 26B A4B",
+      "description": "Instruction-tuned Gemma 4 MoE (community GGUF).",
+      "publisher": "google",
+      "gguf_repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
+      "gguf_repos": ["unsloth/gemma-4-26B-A4B-it-GGUF", "bartowski/google_gemma-4-26B-A4B-it-GGUF"]
+    }
+  ]
+}
+```
+
+| Field | Role |
+|-------|------|
+| `publisher` | Allowlist key in `core/hf_publisher_branding.TRUSTED_PUBLISHERS` → official logo on card |
+| `gguf_repo` | Primary HF repo for file list, download, README, meta, source button |
+| `gguf_repos` | Optional fallbacks; Model Manager tries next repo if primary has no `.gguf` files |
+| `repo_id` (legacy) | Treated as `gguf_repo` when `gguf_repo` omitted |
+
+Hub search results are unchanged (raw GGUF repos; branding from repo owner).

@@ -1,0 +1,33 @@
+---
+description: Strict constraints and latency requirements for audio processing, wakeword interruption, TTS/STT background workers, and LLM prompting behavior.
+globs: workers/*_worker.py, core/audio_utils.py, core/wakeword_manager.py, core/wakeword_testbed.py
+---
+
+### Routing, Prompting, & Audio
+- **LLM Provider Agnosticism:** The system supports Ollama/LM Studio via standard OpenAI-compatible streaming endpoints.
+
+- **Strict Citation Prompting:** When the RAG tool is triggered, the system prompt must explicitly command the LLM to use bracketed inline citations (e.g., `[1]`, `[2]`) mapped to the `SOURCE` blocks.
+
+- **TTS Citation Stripping:** The `TTSWorker` (or text-cleaning step) MUST strip bracketed citations (using regex like `\[\d+\]`) from the audio queue before synthesis so the assistant does not speak the citation numbers aloud, while leaving them visible in the UI chat log.
+
+- **Latency Waterfall Tracking:** `STTWorker`, `LLMWorker` (TTFT), and `TTSWorker` must manually track their stopwatch times and emit latency metrics back to the UI upon task completion.
+
+### Audio + Latency Safety Rules
+
+- TTS must support:
+  - chunked streaming output
+  - frequent interrupt checks between chunks
+
+- System must support:
+  - immediate "barge-in" cancellation
+  - wakeword interruption during TTS
+
+- End-to-end latency targets:
+  - Routing: <10ms
+  - Embedding: <50ms
+  - First token: <300ms target
+  - Tool calls: <400ms soft limit
+
+### Wakeword coordination ownership
+
+- `core/wakeword_manager.py` and `core/wakeword_testbed.py` inherit the same interruption/latency safety constraints as `audio_worker.py` and `tts_worker.py`; wakeword testing utilities must not bypass barge-in cancellation, temporal gate behavior, or worker-thread boundaries.

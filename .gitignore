@@ -6,8 +6,6 @@ __pycache__/
 *.pyo
 *.pyd
 .env
-.cursor/
-!/.cursor/rules/
 
 # --- Pytest ---
 .pytest_tmp/
@@ -57,7 +55,9 @@ Thumbs.db
 tools/test_outputs/
 
 # --- Cursor ---
-.cursor/    
+/.cursor/* # Allow the rules folder and everything inside it
+!/.cursor/rules/
+!/.cursor/rules/**
 
 # --- Cursorrules ---
 .cursorrules

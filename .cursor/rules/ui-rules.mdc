@@ -1,0 +1,156 @@
+---
+description: Strict safety rules for PyQt6 UI components
+globs: ui/**/*.py
+---
+
+### UI Anti-Patterns
+
+- **No Direct Hardware Teardown:** The UI must never call `.close()`, `.stop_stream()`, or initialize models like `Model()`. Ripping streams out of memory from the UI thread causes Segmentation Faults.
+    
+- **Preventing "Ghost Clicks" on Boot:** When populating PyQt dropdowns (`QComboBox`) in views like `settings_view.py`, ensure `currentIndexChanged` or `currentTextChanged` signals are either blocked (`blockSignals(True)`) or wired _after_ population to prevent triggering background workers during UI initialization.
+
+- **The `setItemWidget` + QListWidget pattern:** Qt stylesheets usually **do not** style `QLabel` instances inside `setItemWidget` rows via `#List::item …` / `::item:selected` descendant selectors (those widgets are not style children of `::item`). Use **`ui.components.sidebar_list_qss.apply_sidebar_row_title_colors(list_widget, is_dark=…)`** from `_update_row_colors()` (and after theme toggles) so **dark** = slate unselected / white selected, **light** = slate for both. Keep list chrome (backgrounds, borders) in QSS; centralize row title hex values in that helper so Conversations/Library stay in sync.
+
+- **No Native OS Dialogs:** Never use `QMessageBox`, `QInputDialog`, or `QFileDialog` directly for warnings/confirmations. Always use the unified `PrestigeDialog` class to maintain the dark/light frameless aesthetic and prevent overlapping "Ghost Dialogs."
+
+- **No Logic in the UI:** Do not place `socket`, `pyaudio`, or network logic inside `ui/` classes. The UI must request this data from the `core/` utilities.
+    
+- **No Blocking Workloads:** Never parse documents, load ML models, or wait for HTTP requests inside a UI class method. Fire a signal to a `worker` instead.
+    
+- **No Direct Worker Instantiation in Dialogs:** Global objects (like the RAG `EmbeddingModel` and `DocumentStore`) must be instantiated exactly once in `main.py` and passed down by reference to the workers that need them.
+
+- **Status Priority Gate:** The MainWindow.update_status method must implement a priority system. "RECORDING" and "THINKING" states must take precedence over "IDLE" signals to prevent rapid-fire background threads from clobbering the active UI state.
+
+- **Context-Aware Placeholders:** Text input placeholders must dynamically reflect the system state (e.g., "Listening...", "Qube is thinking...", or "Reading documents...") based on active RAG and Audio Worker flags.
+
+- **No Raw HTML in Markdown Labels:** Never inject raw HTML links into a QLabel or QTextEdit configured for Markdown if it uses dynamic heightForWidth geometry. It will cause an infinite recalculation loop and freeze the UI thread. Use native escaped Markdown (e.g., [\[1\]](source_1)) or explicitly handle <a> tags via linkActivated with setOpenExternalLinks(False)
+
+- **No Alignment Flags for Expanding Widgets in `addWidget()`:** When a widget must expand to fill the available layout cell (e.g., assistant chat bubbles), **never** pass `Qt.AlignmentFlag` to `QBoxLayout.addWidget()`. Qt's documented behavior is that alignment flags constrain the widget to its `sizeHint()` width and prevent expansion, regardless of `QSizePolicy`. Use stretch factors alone for space allocation; use alignment only on widgets that should shrink to content (e.g., user chat bubbles aligned right).
+
+- **Never call `QTextDocument.adjustSize()` in height computation:** `adjustSize()` internally overwrites `textWidth()` with the document's natural/ideal width, destroying any explicit width constraint. For paragraphs this shrinks the document to `idealWidth()` (→ narrow column); for tables it expands to the table's ideal width (→ horizontal overflow). In `AgentMessageLabel._compute_doc_height`, call `doc.setTextWidth(constraint)` then read `documentSize().height()` directly — the layout engine relayouts lazily on the query. Never insert `adjustSize()` between the width constraint and the height read.
+
+### Telemetry & native engine snapshots
+
+- **Read-only polling:** Views such as **`telemetry_view.py`** may poll **`NativeLlamaEngine.get_model_reasoning_telemetry()`** on a timer for labels (model capability, **`policy_execution_mode`**, **`ui_display_thinking`**, optional **`behavior_class`** / **`override_active`** / **`override_summary`**, etc.). Do not load models or call blocking llama APIs from the UI thread; the engine owns **`Llama`** on its QThread.
+- **LOCAL LLM selector state (toolbar):** UI may maintain transient presentation state for model loading (`pending path`, `is loading`, `load success tint`) to support optimistic feedback. This state must be driven by user selection + engine `load_finished` signals only; never by blocking checks on llama load internals from the UI thread.
+- **No-shift progress indicators:** If adding inline loading visuals in toolbar/forms, reserve fixed geometry (e.g., fixed-height progress bar) and fade/transparent-idle instead of hide/show that reflows neighboring controls.
+
+- **Think toggle (Conversations):** Persist the user preference with **`set_native_reasoning_display_enabled`** in **`app_settings`**. **Do not** re-implement **`resolve_execution_policy`** in the UI — refresh the **Think** control from telemetry **`ui_display_thinking`** (projection of **`ExecutionPolicy`**) via **`refresh_think_toggle()`** after loads / toggles / engine mode changes. **`main.py`** connects **`native_llama_engine.load_finished`** to refresh the toggle; **`ConversationsView.showEvent`** calls **`refresh_think_toggle()`** so returning to the screen picks up a model that finished loading while the user was elsewhere.
+
+- **Prompt bundle / ablation / overrides:** **`build_prompt_bundle`** (template + learned stop/anchor layers from **`template_override`** / **`model_override_store`**) and **`prompt_ablation_harness`** run on worker / CLI paths only. The UI must not import them or attempt to reconstruct prompts for inference; use telemetry and existing engine signals for display state. Learned fixes live under **`~/.qube/model_overrides.json`** (not editable from the UI today).
+
+- **Model Manager capability chips must be service-backed:** In **`model_manager_view.py`**, render capability chips (sidebar cards and mainstage metadata "Capabilities" row) from **`ModelCapabilityService`** outputs, not ad-hoc UI-only keyword inference. Feed HF metadata (`hf_tags`, `hf_pipeline_tag`) into the service as signals, but keep source weighting/pipeline logic in `core/`.
+- **Model Manager progressive enrichment:** When richer data arrives (README fetch completion and/or runtime-loaded capability truth), trigger a service recompute and refresh chips in both list cards and mainstage metadata row. UI may show partial chips pre-load but must converge to enriched results post-load.
+- **Model Manager branding presentation:** Row avatar should show official publisher logo when branding payload exists; otherwise fallback to HF logo. Keep row logos vertically centered. Avoid duplicate publisher icons in the same row line (one primary avatar is sufficient).
+- **Model Manager source action:** Keep a compact source button in the detail header that opens the selected Hugging Face repo URL. Hide it when no model is selected.
+- **Model Manager search pagination UX:** Render search rows in 20-item pages with a `Load More` control and explicit copy indicating `Showing X of Y` to avoid misleading users about total matches.
+- **QSS precedence for `setItemWidget` rows/cards:** If a background change appears to "do nothing", check for global selectors and class-level card styles overriding local widget styles. Use objectName-scoped rules for targeted surfaces and avoid broad inline `background-color` rules that leak to child widgets.
+- **`QTextBrowser` surface parity:** For themed card backgrounds, style both the outer browser widget and its viewport palette; setting only one often leaves mismatched interiors.
+
+### Sidebar list + readability toolbar regression checks (manual)
+
+After changing Conversations or Library sidebars, verify:
+
+1. **Theme toggle** with a row selected in **Conversations** and **Library**: **dark** = slate titles when unselected, white when selected; **light** = slate for both (via `apply_sidebar_row_title_colors` + `_update_row_colors`).
+2. **Select / deselect** rows repeatedly after a theme switch: row title colors track selection and theme (no drift vs. global `*` text color).
+3. **LLM + TTS busy states** (stop mode, playback): `A−` / `A+` (and other readability icons) keep **theme-stable** colors; only intentionally dynamic controls (e.g. send/stop) may change.
+4. **Cold start**: open app, select a row — same as (1); list rebuilds call `_update_row_colors` so titles are correct on first paint.
+
+### Dropdown selector buttons (critical)
+
+Context: the legacy Prestige dropdown pattern (`QPushButton` + `setObjectName("SettingsMenuButton")` + `setIcon(fa chevron)` + `setLayoutDirection(RightToLeft)`) has **two** long-standing Qt rendering quirks that both originate from the same `icon + RTL` widget configuration interacting with `QStyleSheetStyle`:
+
+1. **QSS `padding` and `text-align` are silently ignored for the label and icon**. The outer button size still reflects QSS padding (sizeHint is correct), but the label hugs the left inner edge and the chevron hugs the right inner edge with zero horizontal inset.
+2. **QSS `background-color` / `border` can be silently overridden by the QWidget palette for the button surface** on Linux / some platform styles, even with `!important`. In light theme this makes the dropdown appear as the same color as its parent page (`#SettingsScrollArea` = `#ffffff`), effectively invisible against the background while its border washes out.
+
+On narrow buttons (~≤180 px) both effects are usually invisible; on wide buttons (Settings → Wakeword selector / Audio Input / Audio Output / AI Engine / External Provider / Chat template, Wakeword Test Lab modal) they are immediately obvious and cannot be fixed by stylesheet tweaks alone — we tried, it doesn't stick.
+
+**Use `SelectorButton` for every wide dropdown-style button, everywhere.** `ui/components/selector_button.py` defines a `QPushButton` subclass with `objectName="QubeSelectorButton"` that:
+
+- paints its own label in `paintEvent` with an explicit left inset (`PADDING_LEFT = 15` — matches the `padding: 8px 15px;` in the global `#SettingsMenuButton` rule);
+- paints its own chevron on the right at a fixed inset (`CHEVRON_RIGHT_INSET`), so no `setIcon` + RTL dance is needed;
+- paints its own bezel via `style().drawControl(QStyle.ControlElement.CE_PushButton, opt, painter, self)` with `opt.text = ""` and `opt.icon = QIcon()` — which honors the widget-level stylesheet and sidesteps the palette-over-QSS background quirk;
+- declares `padding: 8px 15px;` in its local QSS so the button's `sizeHint()` / height matches every other Prestige dropdown (the `paintEvent` custom text drawing does NOT skip QSS padding for height — only for text placement);
+- suppresses its own menu-indicator locally via `#QubeSelectorButton::menu-indicator { image: none; width: 0; }` so it does NOT need a global suppression rule;
+- stores its own theme colors and applies them through `apply_theme(is_dark)`.
+
+Rules when working on dropdown selectors:
+
+1. **Never add a global `#SettingsMenuButton::menu-indicator { image: none; }` rule** to `assets/styles/base.qss` / `light.qss`. It cascades to every other Prestige dropdown and breaks their native chevrons / popup indicators. The menu-indicator override must stay scoped to `#QubeSelectorButton`.
+2. **Do not resize the font manually** inside `SelectorButton`. `paintEvent` calls `painter.setFont(self.font())`, which inherits the global `QPushButton { font-family: "Inter"; font-weight: 400; }` rule from `base.qss`. If text looks "smaller than the other dropdowns", the cause is almost always a shorter button (missing `padding: 8px 15px;`), not a smaller font.
+3. **Keep `padding: 8px 15px;` and `PADDING_LEFT = 15`** aligned with `#SettingsMenuButton`. `sizeHint` (button height) is driven by the QSS padding; the manual text inset must be kept in sync so the label line-up matches sibling dropdowns.
+4. **Theme sync at construction time is not reliable.** `SettingsView` is instantiated before it is parented to `MainWindow`, so `self.window()._is_dark_theme` is not available when `SelectorButton.__init__` runs. Rely on `SelectorButton.showEvent(...)` to re-check `self.window()._is_dark_theme` and re-apply the theme when the widget actually becomes visible. Do not remove this `showEvent` override.
+5. **Theme toggles must call `SelectorButton.apply_theme(is_dark)` explicitly.** Settings views that track a list of themed buttons (e.g. `SettingsView.refresh_menu_themes`) must detect `SelectorButton` instances with `isinstance(btn, SelectorButton)` and call `btn.apply_theme(is_dark)` alongside the existing `_apply_menu_theme(btn.menu(), …)` call. Generic QSS repainting will NOT refresh a `SelectorButton` because its theme is stored on the instance.
+6. **Chevron state helpers must be SelectorButton-aware.** `_apply_settings_menu_button_chevron_state(...)` (in `SettingsView` and `MainWindow`) manipulates a QtAwesome chevron icon; `SelectorButton` has no icon, so these helpers must branch on `isinstance(btn, SelectorButton)` and `return` early (or re-render via `update()` if needed). Never call `setIcon(...)` on a `SelectorButton`.
+7. **Sync the popup menu / list width with the button.** `SelectorButton` itself does not solve menu-item truncation; the Prestige menu builder (`_build_prestige_menu` in `settings_view.py` / `wakeword_testbed_dialog.py`) is responsible for sizing its internal `QListWidget` to fit the widest row so items are not elided.
+
+**New dropdowns anywhere in the app MUST start from `SelectorButton`.** Do not reintroduce the `QPushButton + setObjectName("SettingsMenuButton") + setLayoutDirection(RightToLeft) + setIcon(qta.icon("fa5s.chevron-down", ...))` pattern in any new view. If you need a wide labeled dropdown, import `SelectorButton` and attach a `QMenu` (typically via `_build_prestige_menu(...)`); there is no legitimate remaining use case for the old pattern inside a page/view. The remaining `#SettingsMenuButton` usages in `MainWindow` (toolbar LOCAL LLM selector, etc.) are narrow compact controls and are kept for historical stability — if you touch them or widen them, migrate them too.
+
+**Canonical migration example:** `ui/views/settings_view.py` now uses `SelectorButton` for all six dropdowns (Audio Input, Audio Output, Active Wakeword, AI Engine, External Provider, Voice, Chat template). The migration pattern per selector is:
+
+```python
+# Old (don't do this for new widgets):
+btn = QPushButton("Select ...")
+btn.setObjectName("SettingsMenuButton")
+btn.setMaximumWidth(250)
+btn.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+btn.setIcon(qta.icon("fa5s.chevron-down", color="#64748b"))
+btn.setMenu(QMenu(btn))
+
+# New (do this):
+btn = SelectorButton("Select ...", is_dark=is_dark)
+btn.setMaximumWidth(250)
+btn.setMenu(QMenu(btn))
+```
+
+Resolve `is_dark = getattr(self.window(), "_is_dark_theme", True)` once at the top of your view's `_setup_ui(...)` and reuse it for every `SelectorButton` in that view (see `SettingsView._setup_ui`). `SelectorButton.showEvent` re-syncs the theme once the view is parented, so an early `True` default during construction is safe.
+
+If a future "dropdown looks wrong" bug shows up again, the diagnostic order is:
+
+1. Is the button a `SelectorButton`? If not and it's wide, convert it first — do not chase QSS fixes on the legacy pattern.
+2. Is `padding: 8px 15px;` present in its QSS? That drives height.
+3. Is `apply_theme(is_dark)` called on theme toggle (via `refresh_menu_themes` or an equivalent in that view)? That drives light/dark correctness.
+4. If the button bg is rendering as the page bg in light theme, it is almost certainly the palette-over-QSS quirk from the legacy pattern — `SelectorButton` solves this; do not try to beat it with more `!important` rules.
+5. Only then investigate QSS cascade / compositor / DPI issues.
+
+### Primary / Brand action buttons (critical)
+
+Context: the reusable "primary / brand" filled action buttons (Wakeword Test Lab, Use Selected, Delete, primary_btn in the testbed dialog, Model Manager Download / Load More, etc.) have a painful rendering history. Originally they were styled purely through app-level QSS via a dynamic class property — `btn.setProperty("class", "PrimaryActionButton BrandPrimaryButton")` + `QPushButton[class~="Brand...Button"] { ... }` rules in `assets/styles/base.qss` + `assets/styles/light.qss`. In light theme, on some Qt builds / platform styles, the generic `QPushButton { background-color: #ffffff; color: #1e293b; }` rule consistently won the `background-color` race against the attribute-selector Brand rules — even with `!important` added, and even with CSS2 specificity clearly in the Brand rule's favor. The observable symptom was white-on-off-white brand buttons. Adding more `!important` or chaining more attribute selectors did not fix it. This is a well-known class of Qt QSS issue: specificity and `!important` honoring of dynamic-property selectors is not consistently enforced by every `QStyle`.
+
+**Authoritative fix — use the helper, not app-level QSS:** `ui/components/brand_buttons.py` exposes `apply_brand_primary(btn, icon_name=None)` / `apply_brand_success(btn, icon_name=None)` / `apply_brand_danger(btn, icon_name=None)`. Each:
+
+- installs a **widget-level** `setStyleSheet(...)` on the button. Widget-level QSS has the highest specificity of any QSS source in Qt — it defeats the app-level `QPushButton { ... }` rule, cannot be overridden by `QPalette`, and is re-polished automatically on every repaint. This is the guarantee the attribute-selector + `!important` combination did not give us.
+- re-sets the legacy `class` dynamic property for backward compatibility with any code still matching on `class~=` (e.g. telemetry / future refactors).
+- if `icon_name` is provided, renders that qtawesome icon tinted to `BRAND_FG_COLOR[variant]` (with `color_disabled=BRAND_DISABLED_FG_COLOR`) so the icon always matches the button's text color — a filled brand background paired with an un-tinted icon in the bg color (e.g. purple `fa5s.download` on the purple primary bg) is invisible, and this single parameter is the guarded path that prevents that regression.
+- runs `widget.style().unpolish(widget); widget.style().polish(widget); widget.update()` so runtime mutations re-render immediately.
+
+Because brand accents (purple / green / red) are the same in both dark and light themes, no theme-aware refresh is needed on `apply_brand_*` — a single `setStyleSheet` at construction time (or at each state transition) is enough. Icon tint also does not change between themes, so `refresh_button_themes` only needs to re-invoke `apply_brand_*` (or its wrapper like `_apply_download_action_button_style`) for the currently active mode; it does not need to re-set an icon manually.
+
+Rules when working on Primary / Brand filled action buttons:
+
+1. **All new filled primary / success / danger action buttons must go through the helper.** Do not copy-paste `btn.setProperty("class", "PrimaryActionButton BrandXxxButton")` into a new view — import from `ui.components.brand_buttons` instead.
+2. **Do not wrap a button that is already styled by a container-level QSS with `result_tone` variants.** The canonical exception today is `WakewordTestbedDialog.apply_btn`, which is styled by `#WakewordApplyButton[result_tone="success|caution|failure"]` rules embedded inside `self.container.setStyleSheet(...)`. Calling `apply_brand_*` on it would install a widget-level QSS that defeats the container's tone variants. If you add a similar tone-driven button, keep it out of the helper.
+3. **Runtime state transitions should call the helper again, not mutate `class` manually.** See `WakewordTestbedDialog._sync_action_buttons` and `ModelManagerView._apply_download_action_button_style` — both call `apply_brand_primary` / `apply_brand_danger` / `apply_brand_success` on each state transition. The helper's internal `unpolish` + `polish` is idempotent, so calling it repeatedly is safe.
+4. **Do not mix `apply_brand_*` with an additional `btn.setStyleSheet("...")` or a QPushButton-level stylesheet elsewhere.** Widget-level stylesheets replace each other wholesale; a second call wipes the brand surface. If you need the button to also carry padding tweaks or a new variant, extend `brand_buttons.py` rather than layering a second stylesheet.
+5. **Brand buttons with icons must tint the icon to the button's foreground color.** Pass `icon_name="fa5s.download"` (or similar qtawesome name) to `apply_brand_*`, which applies `BRAND_FG_COLOR[variant]` automatically — do not follow `apply_brand_*` with a manual `btn.setIcon(qta.icon(name, color="#...hardcoded"))`. If the icon switches together with the button mode (e.g. `download` → `play` → `times` on the Model Manager action button), put the icon name alongside the variant in a single mode-switch helper (`_apply_download_action_button_style`) so the style + icon stay in lockstep. If a call site genuinely needs a custom qtawesome option (stacked icons, animation, per-state color overrides that are not the brand fg), read the canonical tint with `brand_fg_color(variant)` and pass it as the `color` kwarg — never hard-code the hex.
+6. **The app-level `QPushButton[class~="..."]` + `.PrimaryActionButton` rules in `assets/styles/base.qss` + `light.qss` are kept as a legacy fallback** so nothing regresses for any stray call-site still using `setProperty("class", ...)` directly, but they are no longer the authoritative rendering path. Do not rely on them for correctness.
+7. **Adding a new brand accent variant:** add a new entry to `_BRAND_QSS` in `ui/components/brand_buttons.py` (`normal` / `:hover` / `:pressed` / `:disabled`), add the matching foreground color to `BRAND_FG_COLOR`, and expose a matching `apply_brand_<variant>(btn, icon_name=None)` wrapper. Keep the disabled tone consistent with the existing variants (`rgba(100,116,139,0.22)` bg / `rgba(148,163,184,0.85)` text / `rgba(148,163,184,0.35)` border). If the variant's foreground color must differ from `#f8fafc`, update `BRAND_FG_COLOR[variant]` — that single dict drives every icon tint automatically.
+
+If a "primary / brand button looks wrong" bug shows up again, the diagnostic order is:
+
+1. Is the button being styled through `apply_brand_primary` / `apply_brand_success` / `apply_brand_danger`? If it is still using `setProperty("class", ...)` directly, that is almost certainly the bug — migrate it first.
+2. Is another call (later in the control flow) clearing the widget-level stylesheet via `btn.setStyleSheet("")` or `btn.setStyleSheet("other qss")`? The last widget-level stylesheet wins.
+3. For runtime-mutable buttons: is each state transition calling `apply_brand_*` (not re-using a stale `class` property)?
+4. Is the button's icon blending into the background (e.g. brand-purple `fa5s.download` on brand-purple bg)? Pass `icon_name=...` through `apply_brand_*` so the helper tints it to `BRAND_FG_COLOR[variant]` instead of using a hard-coded `qta.icon(..., color="#...")` at the call site.
+5. Is this a tone-driven button that should be styled by a container-level QSS with attribute variants instead? (apply_btn in the testbed dialog is the canonical example.)
+6. Only then investigate theme toggle / cascade / palette issues.
+
+### Tooltip reliability (critical)
+
+- **Single tooltip authority:** In this project, tooltip rendering is routed through **`core/qube_tooltip.py`** (`QubeApplication` + `QubeToolTipController`) for compositor-safe, theme-consistent behavior. Do not reintroduce native `QToolTip`-only assumptions for complex/light-theme fixes.
+- **Theme source of truth:** Keep tooltip colors synchronized via **`qube_tooltip_set_theme(...)`** during startup and in `MainWindow._toggle_theme`. If adding new theme entry points, also call this sync.
+- **No rich-HTML tooltip styling hacks:** Do not inject inline background/border/text-color HTML in tooltip strings or monkey-patch `setToolTip` to rich HTML; this caused square backdrop artifacts and per-screen inconsistencies.
+- **Transparent host + rounded shell pattern:** If editing custom tooltip UI, preserve the transparent top-level popup window and draw visuals on an inner rounded shell frame to avoid visible rectangular containers behind curved corners.
+- **Use plain tooltip text in views:** Keep `setToolTip(...)` payloads plain text in `ui/**`; styling belongs to the tooltip controller and theme rules, not per-widget strings.
+- **Adaptive tooltip width:** `QubeToolTipController` sizes each tip to its content up to **`_TOOLTIP_MAX_WIDTH_PX` (300)** — short strings (e.g. `"Copy message"`) shrink-wrap; long Settings/help copy still wraps at the cap. Do not reintroduce a fixed minimum label width on the tooltip popup.
+- **Compatibility wrappers:** If `core/tooltip_wrap.py` is used for text wrapping/truncation, treat it as a helper layered under `core/qube_tooltip.py` (not a second tooltip renderer); do not split ownership of tooltip styling between the two modules.
