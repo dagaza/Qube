@@ -22,7 +22,8 @@ class AssistantActivity(str, Enum):
 # Maps legacy status-bubble property names to AssistantActivity.
 _BUBBLE_STATE_TO_ACTIVITY: dict[str, AssistantActivity] = {
     "idle": AssistantActivity.IDLE_LISTEN,
-    "recording": AssistantActivity.CAPTURING,
+    "listening": AssistantActivity.CAPTURING,
+    "recording": AssistantActivity.CAPTURING,  # legacy QSS alias
     "speaking": AssistantActivity.SPEAKING,
     "thinking": AssistantActivity.WORKING,
     "needs_model": AssistantActivity.NEEDS_ATTENTION,
@@ -31,7 +32,7 @@ _BUBBLE_STATE_TO_ACTIVITY: dict[str, AssistantActivity] = {
 
 _ACTIVITY_TO_BUBBLE_STATE: dict[AssistantActivity, str] = {
     AssistantActivity.IDLE_LISTEN: "idle",
-    AssistantActivity.CAPTURING: "recording",
+    AssistantActivity.CAPTURING: "listening",
     AssistantActivity.SPEAKING: "speaking",
     AssistantActivity.WORKING: "thinking",
     AssistantActivity.NEEDS_ATTENTION: "needs_model",
@@ -89,6 +90,25 @@ def menu_status_line(activity: AssistantActivity, *, voice_paused: bool = False)
     return lines.get(activity, "Idle")
 
 
+def user_presence_label(activity: AssistantActivity) -> str:
+    """User-facing presence line for the status bubble."""
+    if activity == AssistantActivity.ASSISTANT_OFF:
+        return "Assistant paused"
+    if activity == AssistantActivity.NEEDS_ATTENTION:
+        return "Needs attention"
+    if activity == AssistantActivity.CAPTURING:
+        return "Listening"
+    if activity == AssistantActivity.SPEAKING:
+        return "Speaking"
+    if activity in (AssistantActivity.WORKING, AssistantActivity.BACKGROUND_BUSY):
+        return "Thinking"
+    return "Idle"
+
+
+def _is_voice_capture_message(msg_upper: str) -> bool:
+    return msg_upper == "LISTENING" or "RECORDING" in msg_upper
+
+
 class AssistantActivityReducer:
     """Priority gate for worker status strings (extracted from MainWindow.update_status)."""
 
@@ -132,8 +152,8 @@ class AssistantActivityReducer:
                 activity = AssistantActivity.ASSISTANT_OFF
             else:
                 activity = AssistantActivity.ASSISTANT_OFF if "DEACTIVATED" in msg_upper else AssistantActivity.IDLE_LISTEN
-        elif any(k in msg_upper for k in ("RECORDING", "LISTENING")):
-            new_bubble = "recording"
+        elif _is_voice_capture_message(msg_upper):
+            new_bubble = "listening"
             activity = AssistantActivity.CAPTURING
         elif "SPEAKING" in msg_upper:
             new_bubble = "speaking"
@@ -156,12 +176,19 @@ class AssistantActivityReducer:
 
         # Block stray Idle from the always-on mic listener while the assistant
         # is capturing, thinking, or speaking (audio_worker emits Idle every loop).
-        if new_bubble == "idle" and current_state in ("recording", "thinking", "speaking"):
+        if new_bubble == "idle" and current_state in (
+            "listening",
+            "recording",
+            "thinking",
+            "speaking",
+        ):
             if not force and msg_upper != "VOICE CAPTURE IDLE":
                 return ActivityTransition(
                     activity=self.activity,
                     bubble_state=current_state,
-                    display_text=self._format_display(msg_upper, new_bubble),
+                    display_text=self._format_display(
+                        msg_upper, current_state, self.activity
+                    ),
                     blocked=True,
                 )
 
@@ -177,7 +204,7 @@ class AssistantActivityReducer:
         elif self._forced_activity == AssistantActivity.BACKGROUND_BUSY and new_bubble == "idle":
             activity = AssistantActivity.BACKGROUND_BUSY
 
-        display = self._format_display(msg_upper, new_bubble)
+        display = self._format_display(msg_upper, new_bubble, activity)
         return ActivityTransition(
             activity=activity,
             bubble_state=new_bubble,
@@ -186,11 +213,21 @@ class AssistantActivityReducer:
         )
 
     @staticmethod
-    def _format_display(msg_upper: str, bubble_state: str) -> str:
+    def _format_display(
+        msg_upper: str,
+        bubble_state: str,
+        activity: AssistantActivity,
+    ) -> str:
         if msg_upper == "VOICE CAPTURE IDLE":
-            return " IDLE"
-        if bubble_state == "needs_model":
+            return " Idle"
+        if bubble_state == "needs_model" or msg_upper == "LOAD A MODEL":
             return "Load a Model"
         if "MIC ERROR" in msg_upper:
             return " Voice input unavailable"
+        if activity == AssistantActivity.ASSISTANT_OFF or "DEACTIVATED" in msg_upper:
+            return " Assistant paused"
+        if activity == AssistantActivity.CAPTURING:
+            return " Listening"
+        if activity == AssistantActivity.SPEAKING:
+            return " Speaking"
         return msg_upper

@@ -535,6 +535,7 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
     border: none;
 }
 
+#StatusBubble[state="listening"],
 #StatusBubble[state="recording"] { 
     color: #ef4444; 
     background-color: rgba(239, 68, 68, 0.1); 

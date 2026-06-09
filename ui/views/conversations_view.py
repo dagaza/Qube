@@ -1286,6 +1286,7 @@ class ConversationsView(QWidget):
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
+        self._voice_capture_active = False
         self._layout_mode: str = LAYOUT_CENTERED_COLUMN
         self._font_scale: float = 1.0
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
@@ -2915,9 +2916,7 @@ class ConversationsView(QWidget):
             if self._is_stop_mode() and not is_dark:
                 send_icon_color = "#dc2626"
             self.send_btn.setIcon(qta.icon(icon_name, color=send_icon_color))
-            self.send_btn.setToolTip(
-                "Stop response" if self._is_stop_mode() else "Send message"
-            )
+            self.send_btn.setToolTip(self._stop_button_tooltip())
             self.send_btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
                 QPushButton:hover {{ background-color: {hover_bg}; }}
@@ -3176,8 +3175,31 @@ class ConversationsView(QWidget):
         self.set_input_enabled(True)
         self._refresh_send_stop_button()
 
+    def on_voice_capture_started(self) -> None:
+        """Wakeword listening window — expose Stop so false triggers can be dismissed."""
+        self._voice_capture_active = True
+        if hasattr(self, "text_input") and hasattr(self, "send_btn"):
+            self.text_input.setEnabled(False)
+            self.text_input.setPlaceholderText("Listening...")
+            self.send_btn.setEnabled(True)
+        self._refresh_send_stop_button()
+
+    def on_voice_capture_ended(self) -> None:
+        """Listening window closed; STT/LLM may follow without re-enabling chat yet."""
+        if not self._voice_capture_active:
+            return
+        self._voice_capture_active = False
+        self._refresh_send_stop_button()
+
+    def on_voice_capture_stopped(self) -> None:
+        """User cancelled a mistaken wakeword before utterance capture finished."""
+        self._voice_capture_active = False
+        self.set_input_enabled(True)
+        self._refresh_send_stop_button()
+
     def on_turn_complete_idle(self) -> None:
         """Status bubble returned to idle — release stop mode if generation is done."""
+        self._voice_capture_active = False
         self._restore_send_mode_if_idle()
 
     def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
@@ -3235,12 +3257,27 @@ class ConversationsView(QWidget):
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
+        self._voice_capture_active = False
         self.set_input_enabled(True)
         self.clear_stale_agent_pointer()
         self._refresh_send_stop_button()
 
     def _is_stop_mode(self) -> bool:
-        return self._llm_in_progress or self._awaiting_tts_end or self._tts_playing
+        return (
+            self._voice_capture_active
+            or self._llm_in_progress
+            or self._awaiting_tts_end
+            or self._tts_playing
+        )
+
+    def _stop_button_tooltip(self) -> str:
+        if self._voice_capture_active and not (
+            self._llm_in_progress or self._awaiting_tts_end or self._tts_playing
+        ):
+            return "Stop listening"
+        if self._is_stop_mode():
+            return "Stop response"
+        return "Send message"
 
     def _refresh_send_stop_button(self) -> None:
         is_dark = getattr(self.window(), '_is_dark_theme', True)

@@ -52,7 +52,9 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
     """Derive a visual sub-phase from a worker status string."""
     msg_upper = message.upper().strip()
 
-    if activity == AssistantActivity.CAPTURING and "RECORDING" in msg_upper:
+    if activity == AssistantActivity.CAPTURING and (
+        msg_upper == "LISTENING" or "RECORDING" in msg_upper
+    ):
         return AssistantPhase.VAD_ACTIVE
     if activity == AssistantActivity.SPEAKING:
         return AssistantPhase.TTS_STREAM

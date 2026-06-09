@@ -453,14 +453,17 @@ class Qube:
         session_id = getattr(self, "_pending_turn_session_id", None)
         if session_id:
             self.window.notification_service.cancel_turn_complete(session_id)
-        
+
+        interrupted = False
         if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
+            interrupted = True
         if hasattr(self, 'tts_worker') and getattr(self.tts_worker, 'is_playing', False):
             self.tts_worker.stop_playback()
-            
-        if hasattr(self, 'window'):
-            self.window.update_status("LISTENING...")
+            interrupted = True
+
+        if interrupted and hasattr(self, 'window'):
+            self.window.update_status("Listening")
             if hasattr(self.window.conversations_view, "on_generation_stopped"):
                 self.window.conversations_view.on_generation_stopped()
             else:
@@ -472,19 +475,35 @@ class Qube:
         logger.debug("Deaf window closed. Ready to accept new voice commands.")
 
     def stop_active_response(self):
-        """Manual UI stop: immediately cancel LLM + TTS and unlock text input."""
+        """Manual UI stop: cancel voice capture, LLM, and/or TTS; unlock text input."""
         logger.info("[Main] Manual Stop requested from chat UI.")
+        audio_worker = getattr(self, "audio_worker", None)
+        llm_running = hasattr(self, "llm_worker") and self.llm_worker.isRunning()
+        tts_playing = hasattr(self, "tts_worker") and getattr(
+            self.tts_worker, "is_playing", False
+        )
+        voice_capturing = bool(
+            audio_worker is not None and getattr(audio_worker, "is_capturing_voice", False)
+        )
+
+        if voice_capturing and audio_worker is not None:
+            audio_worker.cancel_voice_capture()
+
         session_id = getattr(self, "_pending_turn_session_id", None)
         if session_id:
             self.window.notification_service.cancel_turn_complete(session_id)
-        if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
+        if llm_running:
             self.llm_worker.cancel_generation()
-        if hasattr(self, 'tts_worker') and getattr(self.tts_worker, 'is_playing', False):
+        if tts_playing:
             self.tts_worker.stop_playback()
-        if hasattr(self, 'window') and hasattr(self.window, 'conversations_view'):
-            self.window.conversations_view.on_generation_stopped()
-        if hasattr(self, 'window'):
+
+        conv = getattr(self.window, "conversations_view", None)
+        if llm_running or tts_playing:
+            if conv is not None:
+                conv.on_generation_stopped()
             self.window.update_status("Idle", force=True)
+        elif voice_capturing and conv is not None:
+            conv.on_voice_capture_stopped()
     
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""

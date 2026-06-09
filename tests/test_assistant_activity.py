@@ -6,18 +6,27 @@ from core.assistant_presence import AssistantPresenceService, AssistantPhase, co
 
 def test_reducer_blocks_stray_idle_during_recording():
     reducer = AssistantActivityReducer()
-    reducer.reduce("🎙️ RECORDING...")
+    reducer.reduce("Listening")
     blocked = reducer.reduce("Idle")
     assert blocked.blocked is True
-    assert blocked.bubble_state == "recording"
+    assert blocked.bubble_state == "listening"
+    assert blocked.display_text == " Listening"
+
+
+def test_reducer_maps_legacy_recording_message_to_listening():
+    reducer = AssistantActivityReducer()
+    transition = reducer.reduce("🎙️ RECORDING...")
+    assert transition.bubble_state == "listening"
+    assert transition.display_text == " Listening"
 
 
 def test_reducer_allows_voice_capture_idle():
     reducer = AssistantActivityReducer()
-    reducer.reduce("🎙️ RECORDING...")
+    reducer.reduce("Listening")
     ok = reducer.reduce("Voice capture idle")
     assert ok.blocked is False
     assert ok.bubble_state == "idle"
+    assert ok.display_text == " Idle"
 
 
 def test_reducer_maps_thinking_to_working_activity():

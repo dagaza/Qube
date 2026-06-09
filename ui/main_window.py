@@ -2257,7 +2257,11 @@ class MainWindow(QMainWindow):
         if hasattr(self, "conversations_view"):
             if new_state == "idle":
                 self.conversations_view.on_turn_complete_idle()
+            elif new_state == "listening":
+                self.conversations_view.on_voice_capture_started()
             else:
+                if getattr(self.conversations_view, "_voice_capture_active", False):
+                    self.conversations_view.on_voice_capture_ended()
                 self.conversations_view.set_input_enabled(
                     new_state in ("idle", "speaking", "needs_model")
                 )
