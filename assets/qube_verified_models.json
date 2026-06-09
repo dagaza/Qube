@@ -44,6 +44,13 @@
       "gguf_repo": "hermes42/Phi-3-medium-128k-instruct-imatrix-GGUF"
     },
     {
+      "id": "Gemma-4-12B-it-GGUF",
+      "title": "Gemma 4 12B Instruct",
+      "description": "Google's latest flagship dense Gemma 4 model (community GGUF).",
+      "publisher": "google",
+      "gguf_repo": "unsloth/gemma-4-12b-it-GGUF"
+    },
+    {
       "id": "gpt-oss-20b",
       "title": "GPT-OSS 20B",
       "description": "OpenAI's open-weights MoE model (community GGUF). Extreme speed.",
