@@ -438,6 +438,12 @@ class SettingsView(QWidget):
         self.use_local_gguf_btn.setToolTip("Activate a downloaded .gguf for the native engine")
         self.use_local_gguf_btn.clicked.connect(self._apply_selected_local_gguf)
         local_btn_col.addWidget(self.use_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        self.refresh_local_gguf_btn = QPushButton("Refresh")
+        self.refresh_local_gguf_btn.setToolTip(
+            "Rescan the models folder for .gguf files added while the app is running"
+        )
+        self.refresh_local_gguf_btn.clicked.connect(self._on_refresh_local_gguf_clicked)
+        local_btn_col.addWidget(self.refresh_local_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop)
         self.delete_local_gguf_btn = QPushButton("Delete")
         apply_brand_danger(self.delete_local_gguf_btn)
         self.delete_local_gguf_btn.setToolTip("Permanently delete the selected .gguf file from disk")
@@ -1501,6 +1507,10 @@ class SettingsView(QWidget):
                 if it.data(Qt.ItemDataRole.UserRole) == active:
                     self.local_gguf_list.setCurrentItem(it)
                     break
+
+    def _on_refresh_local_gguf_clicked(self) -> None:
+        self.refresh_native_local_library()
+        self._refresh_toolbar_native_model_after_model_change()
 
     def _apply_selected_local_gguf(self) -> None:
         item = self.local_gguf_list.currentItem()
