@@ -297,9 +297,24 @@ def log_native_inference_request(
     precomputed_prompt: Optional[str] = None,
     precomputed_merged_stops: Optional[list[str]] = None,
     precomputed_recon_note: str = "",
+    task_type: Optional[str] = None,
+    chat_format_mode: Optional[str] = None,
+    message_roles: Optional[list[str]] = None,
+    harmony_reply_guidance_applied: Optional[bool] = None,
+    harmony_phrase_stops_applied: Optional[bool] = None,
+    debug_caller: str = "native",
+    debug_exchange_id: Optional[int] = None,
 ) -> None:
     if not llm_debug_enabled():
         return
+
+    from core.llm_debug_markers import log_inference_scope_begin
+
+    log_inference_scope_begin(
+        caller=debug_caller,
+        exchange_id=debug_exchange_id,
+        stream=stream,
+    )
 
     basename = os.path.basename(model_path or "") or "(unknown)"
     cf = getattr(llama, "chat_format", "?")
@@ -322,11 +337,33 @@ def log_native_inference_request(
 
     eos_s, bos_s = _eos_bos_strings(llama)
 
+    ex_tag = f" exchange={debug_exchange_id}" if debug_exchange_id is not None else ""
     logger.info(
-        "[LLM-DEBUG] === native request %s ===",
+        "[LLM-DEBUG] === native request %s caller=%s%s ===",
         datetime.now(timezone.utc).isoformat(),
+        debug_caller or "native",
+        ex_tag,
     )
     logger.info("[LLM-DEBUG] model_file=%s chat_format=%s gguf_has_tokenizer.chat_template=%s", basename, cf, has_jinja)
+    if task_type is not None:
+        logger.info("[LLM-DEBUG] task_type=%s", task_type)
+    if chat_format_mode is not None:
+        logger.info("[LLM-DEBUG] chat_format_mode=%s", chat_format_mode)
+    if message_roles is not None:
+        logger.info(
+            "[LLM-DEBUG] pre_render_message_roles=%s (rendered-mode contract.messages may be empty)",
+            message_roles,
+        )
+    if harmony_reply_guidance_applied is not None:
+        logger.info(
+            "[LLM-DEBUG] harmony_reply_guidance_applied=%s",
+            harmony_reply_guidance_applied,
+        )
+    if harmony_phrase_stops_applied is not None:
+        logger.info(
+            "[LLM-DEBUG] harmony_phrase_stops_applied=%s",
+            harmony_phrase_stops_applied,
+        )
     if contract is not None:
         try:
             logger.info(
@@ -377,7 +414,17 @@ def log_native_inference_request(
     else:
         logger.warning("[LLM-DEBUG] prompt reconstruction failed — see prompt_reconstruction note above")
 
-    logger.info("[LLM-DEBUG] === end native request ===")
+    logger.info(
+        "[LLM-DEBUG] === end native request caller=%s%s ===",
+        debug_caller or "native",
+        ex_tag,
+    )
+    from core.llm_debug_markers import log_inference_scope_end
+
+    log_inference_scope_end(
+        caller=debug_caller,
+        exchange_id=debug_exchange_id,
+    )
 
 
 def log_engine_input_trace_ground_truth(trace: Optional["EngineInputTrace"]) -> None:

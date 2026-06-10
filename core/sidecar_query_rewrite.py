@@ -68,7 +68,11 @@ def propose_query_expansion(
     if hasattr(sidecar_client, "available") and not sidecar_client.available:
         return None
 
-    topic = (discourse.active_topic if discourse else None) or ""
+    topic = (
+        (discourse.active_referent if discourse else None)
+        or (discourse.active_topic if discourse else None)
+        or ""
+    )
     tail = _history_tail(history or [])
 
     timeout = get_sidecar_foreground_timeout_ms() / 1000.0

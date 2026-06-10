@@ -570,7 +570,9 @@ PREFERENCE_APPLICATION_SUFFIX: str = (
 CHAT_PERSONALITY_SUFFIX: str = (
     " When the answer is open-ended (story, joke, explanation), you may "
     "add one brief optional follow-up or invitation if it fits naturally. "
-    "Skip this for short factual replies. No citations or meta commentary."
+    "Only apply section formatting when the answer requires multiple distinct "
+    "ideas or steps. Do not force section structure for single-fact or "
+    "single-sentence answers. No citations or meta commentary."
 )
 
 

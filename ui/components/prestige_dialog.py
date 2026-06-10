@@ -34,6 +34,8 @@ class PrestigeDialog(QDialog):
         tone: str = "default",
         min_width: int = 450,
         dialog_width: int | None = None,
+        confirm_text: str = "CONFIRM",
+        cancel_text: str = "CANCEL",
     ):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -121,8 +123,8 @@ class PrestigeDialog(QDialog):
         btns = QHBoxLayout()
         btns.setSpacing(15)
 
-        cancel_btn = QPushButton("CANCEL")
-        con_b = QPushButton("CONFIRM")
+        cancel_btn = QPushButton(cancel_text)
+        con_b = QPushButton(confirm_text)
 
         btn_style = """
             QPushButton {

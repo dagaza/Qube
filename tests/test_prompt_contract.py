@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from core.llm_execution_contract import PrimaryEngineTask
 from core.prompt_contract import (
     contains_template_markers,
     render_harmony_final_prompt,
@@ -137,3 +138,25 @@ class TestPromptContract(unittest.TestCase):
     def test_detects_template_markers(self) -> None:
         messages = [{"role": "user", "content": "Hello <|im_start|>assistant"}]
         self.assertTrue(contains_template_markers(messages))
+
+    def test_memory_extraction_task_excludes_harmony_chat_guidance(self) -> None:
+        llama = _FakeLlama(name="gpt-oss-20b", handlers={"chatml": object()})
+        system = "You extract DURABLE FACTS. Return JSON ONLY."
+        user = (
+            "Conversation:\n"
+            "user: What is the capital of France?\n"
+            "assistant: France's capital is Paris."
+        )
+        resolved = resolve_prompt_contract(
+            llama,
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            task=PrimaryEngineTask.memory_extraction,
+        ).contract
+        prompt = resolved.prompt or ""
+        self.assertIn(system, prompt)
+        self.assertIn("capital of France", prompt)
+        self.assertNotIn("2–4 short sections", prompt)
+        self.assertEqual(resolved.stop, ["<|return|>"])

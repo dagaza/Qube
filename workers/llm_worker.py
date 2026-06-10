@@ -19,9 +19,25 @@ from core.app_settings import (
     get_internal_n_gpu_layers,
     get_internal_n_threads,
     get_internal_prompt_layout_override,
+    get_llm_chat_history_messages,
+    get_llm_context_limit,
+    get_llm_min_p,
+    get_llm_presence_penalty,
+    get_llm_repeat_penalty,
+    get_llm_temperature,
+    get_llm_top_k,
+    get_llm_top_p,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
+    set_llm_chat_history_messages,
+    set_llm_context_limit,
+    set_llm_min_p,
+    set_llm_presence_penalty,
+    set_llm_repeat_penalty,
+    set_llm_temperature,
+    set_llm_top_k,
+    set_llm_top_p,
 )
 from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
 from core.preference_formatters import format_web_snippets
@@ -37,11 +53,18 @@ from core.harmony_degeneration import (
     polish_harmony_visible_text,
 )
 from core.harmony_protocol import harmony_stream_parser_enabled, is_harmony_contract
+from core.chat_format_mode import resolve_chat_format_mode
+from core.llm_execution_contract import PrimaryEngineTask
 from core.harmony_stream_parser import HarmonyStreamParser
 from core.output_artifact_strip import strip_harmony_oss_artifacts
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
+)
+from core.llm_debug_markers import (
+    log_chat_exchange_begin,
+    log_chat_exchange_end,
+    next_exchange_id,
 )
 from core.conversational_follow_up import preserve_streamed_follow_up
 from core.memory_filters import (
@@ -59,9 +82,17 @@ from core.discourse_intent import (
     FOLLOW_UP_SUPPRESS_THRESHOLD,
     FollowUpClassification,
     FollowUpKind,
+    build_minimal_referent_fallback_suffix,
+    build_referent_salience_suffix,
     build_topic_salience_suffix,
     classify_follow_up,
     discourse_debug_enabled,
+    discourse_prompt_hint_enabled,
+)
+from core.discourse_query_rewrite import ResolvedUserQuery, resolve_ambiguous_user_query
+from core.discourse_telemetry import (
+    log_discourse_query_rewrite,
+    log_discourse_referent_trace,
 )
 from core.discourse_query import (
     resolve_retrieval_query,
@@ -71,7 +102,12 @@ from core.discourse_query import (
     web_query_rewrite_failed,
 )
 from core.retrieval_relevance import filter_web_results
-from core.discourse_state import DiscourseState, update_discourse_state
+from core.discourse_state import (
+    DiscourseState,
+    is_deictic_topic_phrase,
+    promote_referent_after_assistant,
+    update_discourse_state,
+)
 from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
 from core.app_settings import (
     get_discourse_grounding_enabled,
@@ -162,6 +198,7 @@ class LLMWorker(QThread):
         self.db = db_manager
         self._native_engine = native_engine
         self._sidecar_client = sidecar_client
+        self._last_native_job_cancelled = False
         self.engine_mode = get_engine_mode()
 
         self.embedding_cache = EmbeddingCache(self.embedder)
@@ -191,10 +228,15 @@ class LLMWorker(QThread):
 
         # toggles
         self.mcp_auto_enabled = True
-        self.temperature = 0.7
-        self.context_window = 4096
+        self.temperature = get_llm_temperature()
+        self.context_window = get_llm_context_limit()
         # Sliding window: max DB messages to include in the chat completion (user-controlled).
-        self.max_history_messages = 10
+        self.max_history_messages = get_llm_chat_history_messages()
+        self.top_k = get_llm_top_k()
+        self.repeat_penalty = get_llm_repeat_penalty()
+        self.presence_penalty = get_llm_presence_penalty()
+        self.top_p = get_llm_top_p()
+        self.min_p = get_llm_min_p()
         self.mcp_rag_enabled = True
         self.mcp_strict_enabled = False
         self.mcp_internet_enabled = False
@@ -204,6 +246,25 @@ class LLMWorker(QThread):
         self._last_completed_llm_session_id = None
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
+        self._push_sampling_to_native()
+
+    def _sampling_payload(self) -> dict:
+        payload: dict = {
+            "top_p": self.top_p,
+            "repeat_penalty": self.repeat_penalty,
+            "presence_penalty": self.presence_penalty,
+        }
+        if self.top_k > 0:
+            payload["top_k"] = self.top_k
+        if self.min_p > 0:
+            payload["min_p"] = self.min_p
+        return payload
+
+    def _push_sampling_to_native(self) -> None:
+        engine = self._native_engine
+        if engine is None or not hasattr(engine, "set_sampling_overrides"):
+            return
+        engine.set_sampling_overrides(**self._sampling_payload())
 
     def _is_local_llm_service(self) -> bool:
         """Only localhost inference gets cache_prompt / flush hints (OpenAI cloud may 400 on extras)."""
@@ -621,15 +682,27 @@ class LLMWorker(QThread):
         retrieval_query: str,
         core_memory_suppressed: bool,
         retrieval_wrapper_mode: str,
+        inference_user_text: str = "",
+        resolved_query: ResolvedUserQuery | None = None,
     ) -> None:
         if not isinstance(decision, dict):
             return
         decision.update(follow_up.to_dict())
         if discourse_state is not None:
             decision.update(discourse_state.to_dict())
-        if routing_query != (self.prompt or "").strip():
+        original = (self.prompt or "").strip()
+        inference = (inference_user_text or original).strip()
+        if inference != original:
+            decision["inference_user_text"] = inference
+        if resolved_query is not None and resolved_query.succeeded:
+            decision["discourse_query_resolved"] = True
+            decision["discourse_rewrite_reason"] = resolved_query.rewrite_reason
+            decision["discourse_rewrite_confidence"] = round(
+                resolved_query.confidence, 3
+            )
+        if routing_query != original:
             decision["routing_query"] = routing_query
-        if retrieval_query != (self.prompt or "").strip():
+        if retrieval_query != original:
             decision["retrieval_query"] = retrieval_query
         decision["core_memory_suppressed"] = bool(core_memory_suppressed)
         decision["retrieval_wrapper_mode"] = retrieval_wrapper_mode
@@ -718,12 +791,23 @@ class LLMWorker(QThread):
         if not discourse_debug_enabled():
             return
         topic = discourse_state.active_topic if discourse_state else None
+        referent = discourse_state.active_referent if discourse_state else None
+        ref_source = (
+            discourse_state.referent_source if discourse_state else "none"
+        )
+        ref_conf = (
+            discourse_state.referent_confidence if discourse_state else 0.0
+        )
         logger.info(
-            "[Discourse] follow_up=%s conf=%.2f topic=%r wrapper=%s "
-            "core_memory_suppressed=%s roles=%s hist_chars=%d retrieval_chars=%d query_chars=%d",
+            "[Discourse] follow_up=%s conf=%.2f topic=%r referent=%r "
+            "source=%s ref_conf=%.2f wrapper=%s core_memory_suppressed=%s "
+            "roles=%s hist_chars=%d retrieval_chars=%d query_chars=%d",
             follow_up.kind.value,
             follow_up.confidence,
             topic,
+            referent,
+            ref_source,
+            ref_conf,
             retrieval_wrapper_mode,
             core_memory_suppressed,
             roles,
@@ -731,6 +815,33 @@ class LLMWorker(QThread):
             retrieval_chars,
             query_chars,
         )
+
+    def _promote_discourse_after_assistant(self, final_text: str) -> None:
+        if not get_discourse_grounding_enabled() or not self.session_id:
+            return
+        text = (final_text or "").strip()
+        if not text:
+            return
+        sid = str(self.session_id)
+        prior = self._discourse_by_session.get(sid)
+        promoted = promote_referent_after_assistant(
+            user_prompt=str(self.prompt or ""),
+            assistant_text=text,
+            prior=prior,
+        )
+        if promoted.active_referent and (
+            prior is None
+            or promoted.active_referent != prior.active_referent
+            or promoted.referent_source != prior.referent_source
+        ):
+            log_discourse_referent_trace(
+                referent=promoted.active_referent,
+                referent_source=promoted.referent_source,
+                referent_confidence=promoted.referent_confidence,
+                user_prompt_preview=str(self.prompt or ""),
+                assistant_preview=text,
+            )
+        self._discourse_by_session[sid] = promoted
 
     def _memory_query_fingerprint(
         self,
@@ -885,25 +996,48 @@ class LLMWorker(QThread):
         self.start() # This automatically triggers the run() method
 
     # ============================================================
-    def generate(self, prompt: str) -> str:
+    def was_last_native_job_cancelled(self) -> bool:
+        return bool(getattr(self, "_last_native_job_cancelled", False))
+
+    def generate(
+        self,
+        *,
+        task: PrimaryEngineTask,
+        system: str,
+        user: str,
+        temperature: float = 0.1,
+        max_tokens: int = 1000,
+        debug_caller: str = "helper",
+    ) -> str:
+        self._last_native_job_cancelled = False
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             out: list = []
             ev = threading.Event()
             self._native_engine.enqueue_simple_completion(
-                [{"role": "user", "content": prompt}],
-                0.1,
-                1000,
+                messages,
+                temperature,
+                max_tokens,
                 out,
                 ev,
+                task=task,
+                debug_caller=debug_caller,
             )
             if not ev.wait(120):
                 return ""
-            return (out[0] if out else "") or ""
+            result = (out[0] if out else "") or ""
+            self._last_native_job_cancelled = bool(
+                self._native_engine.consume_last_job_cancelled()
+            )
+            return result
 
         payload = {
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "max_tokens": 1000,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "stream": False,
         }
         if self._is_local_llm_service():
@@ -931,6 +1065,16 @@ class LLMWorker(QThread):
         # in case an early exception fires before that method is called.
         self._reset_turn_enrichment_flags()
         self._completion_output_snapshot = None
+        self._turn_execution_route = ""
+        self._debug_exchange_id = next_exchange_id()
+        self._exchange_worker_started_at = time.monotonic()
+        self._engine_enqueue_at: float | None = None
+        log_chat_exchange_begin(
+            exchange_id=self._debug_exchange_id,
+            session_id=str(self.session_id or ""),
+            user_prompt=str(getattr(self, "_persist_content", None) or self.prompt or ""),
+            engine_mode=str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or ""),
+        )
         final_text_out = ""
         try:
             final_text_out = self._execute_llm_turn()
@@ -981,6 +1125,35 @@ class LLMWorker(QThread):
                 snapshot=getattr(self, "_completion_output_snapshot", None),
                 presented_text=final_text_out,
             )
+            worker_prep_ms = None
+            engine_queue_wait_ms = None
+            engine_inference_ms = None
+            exchange_total_ms = None
+            enqueue_at = getattr(self, "_engine_enqueue_at", None)
+            started_at = getattr(self, "_exchange_worker_started_at", None)
+            if started_at is not None:
+                exchange_total_ms = max(
+                    0, int(round((time.monotonic() - started_at) * 1000))
+                )
+            if enqueue_at is not None and started_at is not None:
+                worker_prep_ms = max(0, int(round((enqueue_at - started_at) * 1000)))
+            native_engine = getattr(self, "_native_engine", None)
+            if native_engine is not None:
+                job_timing = native_engine.consume_last_job_timing()
+                if job_timing is not None:
+                    engine_queue_wait_ms = job_timing.queue_wait_ms
+                    engine_inference_ms = job_timing.inference_ms
+            log_chat_exchange_end(
+                exchange_id=self._debug_exchange_id,
+                session_id=str(self.session_id or ""),
+                route=str(getattr(self, "_turn_execution_route", "") or ""),
+                success=bool(self._successfully_finished),
+                presented_text=final_text_out,
+                worker_prep_ms=worker_prep_ms,
+                engine_queue_wait_ms=engine_queue_wait_ms,
+                engine_inference_ms=engine_inference_ms,
+                exchange_total_ms=exchange_total_ms,
+            )
             self._completion_output_snapshot = None
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
@@ -1014,6 +1187,8 @@ class LLMWorker(QThread):
         discourse_state: DiscourseState | None = None
         follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
         original_query = (self.prompt or "").strip()
+        resolved_query: ResolvedUserQuery | None = None
+        inference_user_text = original_query
         routing_query = original_query
         retrieval_query = original_query
         query_expansion: QueryExpansion | None = None
@@ -1035,10 +1210,26 @@ class LLMWorker(QThread):
             if self.session_id:
                 self._discourse_by_session[str(self.session_id)] = discourse_state
             follow_up = classify_follow_up(self.prompt, history, discourse_state)
-            routing_query = resolve_routing_query(self.prompt, follow_up, discourse_state)
-            retrieval_query = resolve_retrieval_query(self.prompt, follow_up, discourse_state)
+            resolved_query = resolve_ambiguous_user_query(
+                self.prompt, discourse_state, follow_up
+            )
+            if resolved_query.succeeded:
+                inference_user_text = resolved_query.resolved
+                log_discourse_query_rewrite(
+                    original=resolved_query.original,
+                    resolved=resolved_query.resolved,
+                    substitutions=resolved_query.substitutions,
+                    confidence=resolved_query.confidence,
+                    rewrite_reason=resolved_query.rewrite_reason,
+                )
+            routing_query = resolve_routing_query(
+                inference_user_text, follow_up, discourse_state
+            )
+            retrieval_query = resolve_retrieval_query(
+                inference_user_text, follow_up, discourse_state
+            )
             query_expansion = propose_query_expansion(
-                original_query,
+                inference_user_text,
                 follow_up,
                 discourse_state,
                 history,
@@ -1434,6 +1625,8 @@ class LLMWorker(QThread):
             retrieval_query=retrieval_query,
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
+            inference_user_text=inference_user_text,
+            resolved_query=resolved_query,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -2008,6 +2201,7 @@ class LLMWorker(QThread):
             and self.mcp_internet_enabled
             and execution_route == "NONE"
         )
+        self._turn_execution_route = execution_route
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
@@ -2136,24 +2330,40 @@ class LLMWorker(QThread):
                     "(omitted %d other messages from active session)",
                     len(history) - 1,
                 )
-        elif (
-            discourse_enabled
-            and follow_up.active
-            and history
-            and history[-1].get("role") == "user"
-        ):
+        elif discourse_enabled and history and history[-1].get("role") == "user":
             grounded = list(history)
             last = dict(grounded[-1])
-            if discourse_state and discourse_state.active_topic:
-                last["content"] = (
-                    f"[Continuing our discussion of {discourse_state.active_topic}]\n\n"
-                    f"{last.get('content') or ''}"
+            rewrite_ok = bool(
+                resolved_query is not None and resolved_query.succeeded
+            )
+            if rewrite_ok:
+                last["content"] = inference_user_text
+            elif follow_up.active:
+                referent = (
+                    (discourse_state.active_referent or "").strip()
+                    if discourse_state
+                    else ""
                 )
-            elif len(grounded) >= 2:
-                last["content"] = (
-                    "[Continuing from the conversation above]\n\n"
-                    f"{last.get('content') or ''}"
+                topic_anchor = (
+                    (discourse_state.active_topic or "").strip()
+                    if discourse_state
+                    else ""
                 )
+                if referent:
+                    last["content"] = (
+                        f"[Referring to {referent}]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
+                elif topic_anchor and not is_deictic_topic_phrase(topic_anchor):
+                    last["content"] = (
+                        f"[Continuing our discussion of {topic_anchor}]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
+                elif len(grounded) >= 2:
+                    last["content"] = (
+                        "[Continuing from the conversation above]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
             grounded[-1] = last
             prompt_history = grounded
 
@@ -2187,6 +2397,8 @@ class LLMWorker(QThread):
             retrieval_query=retrieval_query,
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
+            inference_user_text=inference_user_text,
+            resolved_query=resolved_query,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -2196,16 +2408,32 @@ class LLMWorker(QThread):
         )
 
         topic_salience = ""
-        if (
+        rewrite_ok = bool(
             discourse_enabled
-            and follow_up.active
-            and discourse_state
-            and discourse_state.active_topic
-        ):
-            topic_salience = build_topic_salience_suffix(
-                discourse_state.active_topic,
-                topic_type=discourse_state.topic_type,
-            )
+            and resolved_query is not None
+            and resolved_query.succeeded
+        )
+        if discourse_enabled and follow_up.active and discourse_state:
+            referent = (discourse_state.active_referent or "").strip()
+            if rewrite_ok:
+                topic_salience = ""
+            elif referent:
+                if discourse_prompt_hint_enabled():
+                    token = "it"
+                    if resolved_query and resolved_query.substitutions:
+                        token = resolved_query.substitutions[0][0]
+                    topic_salience = build_minimal_referent_fallback_suffix(
+                        referent,
+                        token=token,
+                    )
+            elif (
+                discourse_state.active_topic
+                and not is_deictic_topic_phrase(discourse_state.active_topic)
+            ):
+                topic_salience = build_topic_salience_suffix(
+                    discourse_state.active_topic,
+                    topic_type=discourse_state.topic_type,
+                )
 
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
@@ -2272,6 +2500,7 @@ class LLMWorker(QThread):
                 messages,
                 all_ui_sources,
                 retrieval_context=retrieval_prompt_body,
+                execution_route=execution_route,
             )
             return final_text
 
@@ -2280,6 +2509,7 @@ class LLMWorker(QThread):
             "temperature": self.temperature,
             "max_tokens": self.context_window,
             "stream": True,
+            **self._sampling_payload(),
         }
         if self._uses_external_http() and self._is_local_llm_service():
             # llama.cpp server: avoid unbounded prompt-prefix / KV reuse across unrelated requests
@@ -2376,6 +2606,7 @@ class LLMWorker(QThread):
                     self.session_id, "assistant", final_text, sources_json=src_payload
                 )
                 self._record_memory_citations(final_text, all_ui_sources)
+                self._promote_discourse_after_assistant(final_text)
 
             self._successfully_finished = True
 
@@ -2410,6 +2641,7 @@ class LLMWorker(QThread):
         all_ui_sources: list,
         *,
         retrieval_context: str = "",
+        execution_route: str = "NONE",
     ) -> str:
         """Stream native output after a small leading-meta/thinking gate.
 
@@ -2420,6 +2652,17 @@ class LLMWorker(QThread):
         self._reset_tts_dedupe_state()
         token_queue: queue.Queue = queue.Queue()
         done_event = threading.Event()
+        chat_format_mode = resolve_chat_format_mode(
+            execution_route=execution_route,
+            user_query=str(self.prompt or ""),
+        )
+        logger.info(
+            "[ChatFormatMode] mode=%s route=%s query_preview=%r",
+            chat_format_mode,
+            execution_route,
+            (str(self.prompt or "")[:80]),
+        )
+        self._engine_enqueue_at = time.monotonic()
         self._native_engine.enqueue_generation(
             messages,
             self.temperature,
@@ -2427,6 +2670,9 @@ class LLMWorker(QThread):
             token_queue,
             done_event,
             retrieval_context=(retrieval_context or "").strip(),
+            chat_format_mode=chat_format_mode,
+            debug_caller="chat",
+            debug_exchange_id=getattr(self, "_debug_exchange_id", None),
         )
 
         cot_filter = RedactedThinkingStreamFilter()
@@ -2682,6 +2928,7 @@ class LLMWorker(QThread):
                 self.session_id, "assistant", final_text, sources_json=src_payload
             )
             self._record_memory_citations(final_text, all_ui_sources)
+            self._promote_discourse_after_assistant(final_text)
 
         try:
             mr_trace = build_model_router_trace(self._native_engine)
@@ -2711,18 +2958,54 @@ class LLMWorker(QThread):
         logger.info(f"LLM Provider API URL updated to: {self.api_url}")
 
     def set_temperature(self, val: float):
-        self.temperature = val
-        logger.debug(f"Temperature updated to {val}")
+        self.temperature = max(0.0, min(2.0, float(val)))
+        set_llm_temperature(self.temperature)
+        logger.debug(f"Temperature updated to {self.temperature}")
 
     def set_context_window(self, val: int):
-        self.context_window = val
-        logger.debug(f"Context Window updated to {val}")
+        new_val = max(1024, min(128000, int(val)))
+        if new_val == self.context_window:
+            return
+        self.context_window = new_val
+        set_llm_context_limit(self.context_window)
+        logger.debug(f"Context Window updated to {self.context_window}")
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self.refresh_native_model_from_settings()
 
     def set_max_history_messages(self, val: int):
         self.max_history_messages = max(2, min(100, int(val)))
+        set_llm_chat_history_messages(self.max_history_messages)
         logger.debug(f"Max chat history messages updated to {self.max_history_messages}")
+
+    def set_top_k(self, val: int):
+        self.top_k = max(0, min(200, int(val)))
+        set_llm_top_k(self.top_k)
+        self._push_sampling_to_native()
+        logger.debug(f"Top-K updated to {self.top_k}")
+
+    def set_repeat_penalty(self, val: float):
+        self.repeat_penalty = max(0.0, min(2.0, float(val)))
+        set_llm_repeat_penalty(self.repeat_penalty)
+        self._push_sampling_to_native()
+        logger.debug(f"Repeat penalty updated to {self.repeat_penalty}")
+
+    def set_presence_penalty(self, val: float):
+        self.presence_penalty = max(0.0, min(2.0, float(val)))
+        set_llm_presence_penalty(self.presence_penalty)
+        self._push_sampling_to_native()
+        logger.debug(f"Presence penalty updated to {self.presence_penalty}")
+
+    def set_top_p(self, val: float):
+        self.top_p = max(0.0, min(1.0, float(val)))
+        set_llm_top_p(self.top_p)
+        self._push_sampling_to_native()
+        logger.debug(f"Top-P updated to {self.top_p}")
+
+    def set_min_p(self, val: float):
+        self.min_p = max(0.0, min(1.0, float(val)))
+        set_llm_min_p(self.min_p)
+        self._push_sampling_to_native()
+        logger.debug(f"Min-P updated to {self.min_p}")
 
     def set_mcp_rag(self, enabled: bool):
         self.mcp_rag_enabled = enabled

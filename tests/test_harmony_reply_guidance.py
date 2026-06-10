@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import unittest
 
-from core.harmony_reply_guidance import HARMONY_FINAL_REPLY_GUIDANCE
+from core.harmony_reply_guidance import (
+    HARMONY_BRIEF_REPLY_GUIDANCE,
+    HARMONY_FINAL_REPLY_GUIDANCE,
+    HARMONY_MIXED_REPLY_GUIDANCE,
+    merge_harmony_system_content,
+)
 from core.harmony_renderer import render_harmony_final_prompt
 
 
@@ -25,3 +30,31 @@ class TestHarmonyReplyGuidance(unittest.TestCase):
         self.assertIn("You are Qube.", prompt)
         self.assertIn("Cleaning, Temperature", prompt)
         self.assertEqual(prompt.count(HARMONY_FINAL_REPLY_GUIDANCE), 1)
+
+    def test_structured_task_omits_guidance(self) -> None:
+        prompt = render_harmony_final_prompt(
+            [
+                {"role": "system", "content": "Return JSON ONLY."},
+                {"role": "user", "content": "Conversation:\nuser: hi"},
+            ],
+            include_reply_guidance=False,
+        )
+        self.assertIn("Return JSON ONLY.", prompt)
+        self.assertNotIn(HARMONY_FINAL_REPLY_GUIDANCE, prompt)
+        self.assertNotIn("2–4 short sections", prompt)
+
+    def test_brief_mode_guidance_text(self) -> None:
+        merged = merge_harmony_system_content(
+            ["You are Qube."],
+            chat_format_mode="brief",
+        )
+        self.assertIn(HARMONY_BRIEF_REPLY_GUIDANCE, merged)
+        self.assertNotIn(HARMONY_FINAL_REPLY_GUIDANCE, merged)
+
+    def test_mixed_mode_guidance_text(self) -> None:
+        merged = merge_harmony_system_content(
+            ["You are Qube."],
+            chat_format_mode="mixed",
+        )
+        self.assertIn(HARMONY_MIXED_REPLY_GUIDANCE, merged)
+        self.assertNotIn("2–4 short sections", merged)

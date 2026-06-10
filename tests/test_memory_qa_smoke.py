@@ -23,21 +23,21 @@ def test_s1_promotion_default_off():
         assert get_enable_memory_promotion() is False
 
 
-def test_s1_consolidation_default_on():
-    """S1.6 — consolidation staging default enabled."""
+def test_s1_consolidation_default_off():
+    """S1.6 — consolidation staging is opt-in."""
     from core.app_settings import get_enable_memory_consolidation
 
     with mock.patch("core.app_settings._store") as store:
         store.return_value.get.side_effect = lambda key, default=None: default
-        assert get_enable_memory_consolidation() is True
+        assert get_enable_memory_consolidation() is False
 
 
-def test_s1_enrichment_default_on():
+def test_s1_enrichment_default_off():
     from core.app_settings import get_enable_memory_enrichment
 
     with mock.patch("core.app_settings._store") as store:
         store.return_value.get.side_effect = lambda key, default=None: default
-        assert get_enable_memory_enrichment() is True
+        assert get_enable_memory_enrichment() is False
 
 
 def test_s1_promotion_preset_default_standard():

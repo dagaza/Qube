@@ -144,3 +144,25 @@ def test_presence_service_caption_roundtrip():
     service = AssistantPresenceService()
     service.set_caption_text("Hello world")
     assert service.snapshot().caption_text == "Hello world"
+
+
+def test_ingestion_complete_must_force_idle_after_background_busy():
+    """Regression: ingestion sets thinking + BACKGROUND_BUSY; completion must not stick."""
+    reducer = AssistantActivityReducer()
+    reducer.reduce("Ingesting Documents...")
+    assert reducer.activity == AssistantActivity.BACKGROUND_BUSY
+    assert reducer.bubble_state == "thinking"
+
+    blocked = reducer.reduce("Indexed: notes.txt")
+    assert blocked.blocked is True
+    assert blocked.bubble_state == "thinking"
+
+    reducer.set_background_busy(False)
+    assert reducer.bubble_state == "thinking"
+    assert reducer.activity == AssistantActivity.WORKING
+
+    ok = reducer.reduce("Idle", force=True)
+    assert ok.blocked is False
+    assert ok.bubble_state == "idle"
+    assert ok.activity == AssistantActivity.IDLE_LISTEN
+    assert ok.display_text.strip() == "Idle"

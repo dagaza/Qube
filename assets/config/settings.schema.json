@@ -7,7 +7,7 @@
   },
   "qube.memory.enrichment": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "When enabled, extracts memories from chat, summarises sessions, and runs periodic memory reflection (higher RAM/LLM use). Retrieval of existing memories is unaffected when off."
   },
   "qube.memory.promotion_enabled": {
@@ -26,9 +26,14 @@
     "default": "standard",
     "description": "How cautious Qube is before promoting a memory (conservative, standard, or aggressive)."
   },
+  "qube.memory.v7_salvage_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, enqueue salvage memory extraction when chat history is windowed (requires memory enrichment)."
+  },
   "qube.memory.consolidation_enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "When enabled, stages cross-day memory review hints in Memory Manager without auto-promoting or deleting."
   },
   "qube.discourse.grounding_enabled": {
@@ -158,6 +163,62 @@
     "default": null,
     "description": "Show thinking tokens in native chat; null means use model telemetry defaults."
   },
+  "qube.llm.temperature": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 2,
+    "default": 0.8,
+    "description": "LLM sampling temperature (creativity)."
+  },
+  "qube.llm.contextLimit": {
+    "type": "integer",
+    "minimum": 1024,
+    "maximum": 128000,
+    "default": 4096,
+    "description": "Maximum output tokens allowed per assistant turn."
+  },
+  "qube.llm.chatHistoryMessages": {
+    "type": "integer",
+    "minimum": 2,
+    "maximum": 100,
+    "default": 10,
+    "description": "How many recent chat messages to include in each LLM request."
+  },
+  "qube.llm.topK": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 200,
+    "default": 40,
+    "description": "Top-K sampling limit; 0 disables top-K filtering."
+  },
+  "qube.llm.repeatPenalty": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 2,
+    "default": 1.1,
+    "description": "Repeat penalty discourages the model from reusing recent tokens."
+  },
+  "qube.llm.presencePenalty": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 2,
+    "default": 0.0,
+    "description": "Presence penalty discourages tokens that already appeared in the output."
+  },
+  "qube.llm.topP": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 1,
+    "default": 0.95,
+    "description": "Top-P (nucleus) sampling cutoff."
+  },
+  "qube.llm.minP": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 1,
+    "default": 0.05,
+    "description": "Min-P sampling floor; 0 disables min-P filtering."
+  },
   "qube.models.directory": {
     "type": "string",
     "default": "",
@@ -265,7 +326,7 @@
   },
   "qube.companion.showWhenTrayHidden": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Show companion while the main window is hidden to the system tray."
   },
   "qube.companion.showWhileWindowOpen": {
@@ -275,7 +336,7 @@
   },
   "qube.companion.autoHideIdle": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Fade companion when idle."
   },
   "qube.companion.idleFadeSec": {
@@ -294,12 +355,12 @@
   },
   "qube.companion.showCaption": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Show the activity label (Listening, Thinking, Speaking, etc.) below the companion."
   },
   "qube.companion.suppressOnFullscreen": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Hide companion when a fullscreen app is detected (non-active turns)."
   },
   "qube.companion.tryOnWayland": {
@@ -384,17 +445,17 @@
   },
   "qube.companion.verbal.reactIngest": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Companion may comment when library ingest completes."
   },
   "qube.companion.verbal.reactDownload": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Companion may comment when a model download completes."
   },
   "qube.companion.cognition.v2": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Use Companion Cognition v2 pipeline (observation → thought → curated expression)."
   },
   "qube.companion.personality.v2": {
@@ -410,12 +471,12 @@
   },
   "qube.companion.moodDrift.enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Enable slow ambient mood drift for companion cognition v3."
   },
   "qube.companion.seasonal.enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Enable calendar season context for companion messages."
   },
   "qube.companion.seasonal.hemisphere": {
@@ -426,7 +487,7 @@
   },
   "qube.companion.motifs.enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Enable rotating companion identity motifs in message selection."
   }
 }

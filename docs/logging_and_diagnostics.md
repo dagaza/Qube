@@ -206,6 +206,28 @@ Sidecar aggregate summary is also shown on the **Telemetry** screen (no env var 
 | `llm_execution_causality_report` | `QUBE_LLM_CAUSALITY` |
 | `llm_counterfactual_simulation` | `QUBE_LLM_COUNTERFACTUAL` |
 | `llm_model_behavior_profile` | Model load (internal engine) |
+| `llm_debug_exchange_begin` / `llm_debug_exchange_end` | `QUBE_LLM_DEBUG` (always on in `main.py`) |
+| `llm_engine_job_timing` | `QUBE_LLM_DEBUG` — per native-engine job (chat + background) |
+| `llm_engine_background_job_timing` | `QUBE_LLM_DEBUG` — background `chat_once` jobs (e.g. memory extraction) |
+| `llm_engine_queue_snapshot` | `QUBE_LLM_DEBUG` — queue depth on each enqueue |
+
+**Exchange timing fields** (`llm_debug_exchange_end`, when `QUBE_LLM_DEBUG=1`):
+
+- `worker_prep_ms` — `LLMWorker.run()` start → `enqueue_generation` (routing, RAG, prompt build)
+- `engine_queue_wait_ms` — engine job `submitted_at` → dequeue (contention with background extraction)
+- `engine_inference_ms` — first model token → last token (`create_completion` boundary)
+- `exchange_total_ms` — exchange begin → exchange end
+
+**Engine job timing fields** (`llm_engine_job_timing`):
+
+- `queue_wait_ms`, `engine_prep_ms`, `inference_ms`, `total_ms`
+- `queue_depth_at_submit`, `queue_depth_at_start`, `queued_behind` (e.g. `["memory_extraction"]`)
+- `cancelled`, `preempted_by` (background jobs cancelled when chat preempts)
+
+**Marker semantics (important):**
+
+- `[QUBE INFERENCE BEGIN/END]` — prompt logging only (before `create_completion`)
+- `[QUBE INFERENCE TOKEN BEGIN/END]` — true GPU/token generation boundary
 
 Plus plain-text blocks: `[LLM-DEBUG] …`, `[CompletionOutputTrace] …`, `[LLM-DEBUG][engine_input] …`.
 

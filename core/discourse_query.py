@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
-from core.discourse_state import DiscourseState
+from core.discourse_state import DiscourseState, is_deictic_topic_phrase
 from core.memory_filters import detect_explicit_web_request
 
 # Deictic follow-ups that ask for web search without restating the topic.
@@ -101,12 +101,20 @@ def resolve_search_target(
             return SearchTargetResult(prior, "meta_prior_turn")
 
     if follow_up.confidence >= FOLLOW_UP_SUPPRESS_THRESHOLD:
-        topic = (discourse.active_topic if discourse else None) or ""
-        topic = topic.strip()
-        if topic and topic.lower() not in raw.lower():
+        anchor = ""
+        rewrite_reason = "topic_expansion"
+        if discourse:
+            referent = (discourse.active_referent or "").strip()
+            topic = (discourse.active_topic or "").strip()
+            if referent:
+                anchor = referent
+                rewrite_reason = "referent_expansion"
+            elif topic and not is_deictic_topic_phrase(topic):
+                anchor = topic
+        if anchor and anchor.lower() not in raw.lower():
             return SearchTargetResult(
-                f"Regarding {topic}: {raw}",
-                "topic_expansion",
+                f"Regarding {anchor}: {raw}",
+                rewrite_reason,
             )
 
     return SearchTargetResult(raw, "none")
@@ -147,6 +155,9 @@ def should_veto_ungrounded_web_follow_up(
     """
     if not follow_up.active:
         return False
-    if discourse and (discourse.active_topic or "").strip():
+    if discourse and (
+        (discourse.active_referent or "").strip()
+        or (discourse.active_topic or "").strip()
+    ):
         return False
     return follow_up.kind.value != "none"

@@ -11,6 +11,7 @@ import os
 import queue
 import threading
 import time
+import uuid
 from contextlib import nullcontext
 from dataclasses import replace
 from typing import Any, Dict, Optional
@@ -66,6 +67,14 @@ from core.model_chat_contract import (
     resolve_chat_contract,
 )
 from core.prompt_template_router import RenderPromptBundle, build_prompt_bundle
+from core.chat_format_mode import ChatFormatMode
+from core.llm_execution_contract import (
+    PrimaryEngineTask,
+    check_task_prompt_policy,
+    message_roles_summary,
+    normalize_messages_for_task,
+    policy_for_task,
+)
 from core.prompt_contract import (
     PromptContract,
     assert_prompt_contract,
@@ -134,6 +143,19 @@ from core.native_token_trace import (
     token_trace_early_n,
     token_trace_enabled,
 )
+from core.native_engine_queue import (
+    EnginePriority,
+    PriorityCommandQueue,
+    priority_for_op,
+    priority_label,
+)
+from core.native_engine_timing import EngineJobTiming, timing_from_cmd
+from core.llm_debug_markers import (
+    log_engine_job_timing,
+    log_engine_queue_snapshot,
+    log_inference_token_begin,
+    log_inference_token_end,
+)
 
 
 def _completion_text_from_result(result: Any) -> str:
@@ -176,9 +198,14 @@ class NativeLlamaEngine(QThread):
 
     def __init__(self):
         super().__init__()
-        self._cmd_queue: queue.Queue = queue.Queue()
+        self._cmd_queue = PriorityCommandQueue()
         self._stop = threading.Event()
         self._cancel_behavior_profile = threading.Event()
+        self._generation_epoch: int = 0
+        self._active_job_epoch: int = 0
+        self._last_job_cancelled: bool = False
+        self._last_job_timing: Optional[EngineJobTiming] = None
+        self._active_cmd: Optional[dict] = None
         self._llama: Any = None
         self._model_path: Optional[str] = None
         self._n_gpu_layers: int = 0
@@ -200,6 +227,7 @@ class NativeLlamaEngine(QThread):
         self.execution_policy: Optional[ExecutionPolicy] = None
         self._model_behavior_profile: Optional[ModelBehaviorProfile] = None
         self._model_behavior_override: Optional[Dict[str, Any]] = None
+        self._sampling_overrides: dict[str, Any] = {}
         self._behavior_override_material: bool = False
         self._last_router_decision: Optional[RoutingDecision] = None
         self._router_profile_key: Optional[str] = None
@@ -219,31 +247,98 @@ class NativeLlamaEngine(QThread):
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
         self._stop.set()
-        self._cmd_queue.put({"op": "shutdown"})
+        self._stamp_enqueue_meta({"op": "shutdown"}, priority=EnginePriority.control)
         self.wait(30_000)
 
     def request_cancel_generation(self) -> None:
         self._cancel_generation = True
 
+    def consume_last_job_cancelled(self) -> bool:
+        """Read-and-clear whether the most recent background job was preempted."""
+        v = self._last_job_cancelled
+        self._last_job_cancelled = False
+        return v
+
+    def consume_last_job_timing(self) -> Optional[EngineJobTiming]:
+        """Read-and-clear timing for the most recently finished engine job."""
+        t = self._last_job_timing
+        self._last_job_timing = None
+        return t
+
     def _purge_pending_profile_ops(self) -> None:
         """Drop queued behavior profiling so user-facing generate is not blocked."""
-        try:
-            with self._cmd_queue.mutex:
-                self._cmd_queue.queue = queue.deque(
-                    c for c in self._cmd_queue.queue if c.get("op") != "profile_behavior"
-                )
-        except Exception:
-            pass
+        self._cmd_queue.purge(lambda c: c.get("op") == "profile_behavior")
+
+    def _purge_pending_background_ops(self) -> None:
+        """Drop queued background extraction and maintenance ops when chat preempts."""
+        self._cmd_queue.purge(
+            lambda c: c.get("op") in ("chat_once", "profile_behavior")
+        )
 
     def _purge_queue_for_unload(self) -> None:
         """Drop pending load/generate/profile ops so eject is not stuck behind them."""
-        try:
-            with self._cmd_queue.mutex:
-                self._cmd_queue.queue = queue.deque(
-                    c for c in self._cmd_queue.queue if c.get("op") == "shutdown"
-                )
-        except Exception:
-            pass
+        self._cmd_queue.purge(lambda c: c.get("op") != "shutdown")
+
+    def _stamp_enqueue_meta(self, cmd: dict, *, priority: EnginePriority) -> dict:
+        snap = self._cmd_queue.snapshot()
+        cmd = dict(cmd)
+        cmd["request_id"] = cmd.get("request_id") or uuid.uuid4().hex[:12]
+        cmd["priority_label"] = priority_label(int(priority))
+        cmd["_timing_meta"] = {
+            "queue_depth_at_submit": int(snap.get("depth_total") or 0),
+            "queued_behind": list(snap.get("queued_callers") or []),
+        }
+        task = cmd.get("task")
+        if task is not None:
+            cmd["task_type"] = str(getattr(task, "value", task) or "")
+        log_engine_queue_snapshot(
+            {
+                "action": "enqueue",
+                "request_id": cmd["request_id"],
+                "op": cmd.get("op"),
+                "debug_caller": cmd.get("debug_caller"),
+                "priority": cmd["priority_label"],
+                **snap,
+            }
+        )
+        return self._cmd_queue.put(cmd, priority=priority)
+
+    def _should_cancel_background_job(self, cmd: dict) -> bool:
+        if cmd.get("op") != "chat_once":
+            return bool(self._cancel_generation)
+        epoch = int(cmd.get("epoch") or 0)
+        return bool(self._cancel_generation) or epoch < self._generation_epoch
+
+    def _emit_job_timing(self, cmd: dict, *, finished_at: float | None = None) -> None:
+        if not cmd:
+            return
+        meta = dict(cmd.get("_timing_meta") or {})
+        meta["queue_depth_at_start"] = meta.get("queue_depth_at_start", 0)
+        stamped = dict(cmd)
+        stamped["_timing_meta"] = meta
+        timing = timing_from_cmd(stamped, finished_at=finished_at)
+        self._last_job_timing = timing
+        background = cmd.get("op") == "chat_once" and str(
+            cmd.get("debug_caller") or ""
+        ) != "chat"
+        log_engine_job_timing(timing.to_dict(), background=background)
+
+    def _begin_active_job(self, cmd: dict) -> None:
+        self._active_cmd = cmd
+        self._active_job_epoch = int(cmd.get("epoch") or 0)
+        meta = dict(cmd.get("_timing_meta") or {})
+        meta["queue_depth_at_start"] = self._cmd_queue.qsize()
+        cmd["_timing_meta"] = meta
+
+    def _end_active_job(self, cmd: dict, *, cancelled: bool = False) -> None:
+        if cancelled:
+            cmd["cancelled"] = True
+            if cmd.get("op") == "chat_once":
+                cmd["preempted_by"] = "chat"
+                self._last_job_cancelled = True
+        cmd["finished_at"] = time.monotonic()
+        self._emit_job_timing(cmd, finished_at=cmd["finished_at"])
+        self._active_cmd = None
 
     def get_execution_policy(self) -> ExecutionPolicy:
         """
@@ -383,23 +478,18 @@ class NativeLlamaEngine(QThread):
         n_threads: int,
     ) -> None:
         # Collapse queued load bursts (A->B->C clicks) so only the latest pending load remains.
-        try:
-            with self._cmd_queue.mutex:
-                self._cmd_queue.queue = queue.deque(
-                    c
-                    for c in self._cmd_queue.queue
-                    if c.get("op") not in ("load", "profile_behavior")
-                )
-        except Exception:
-            pass
-        self._cmd_queue.put(
+        self._cmd_queue.purge(
+            lambda c: c.get("op") in ("load", "profile_behavior")
+        )
+        self._stamp_enqueue_meta(
             {
                 "op": "load",
                 "path": model_path,
                 "n_gpu_layers": int(n_gpu_layers),
                 "n_ctx": int(n_ctx),
                 "n_threads": max(1, int(n_threads)),
-            }
+            },
+            priority=EnginePriority.control,
         )
 
     def unload_model(self) -> None:
@@ -408,7 +498,16 @@ class NativeLlamaEngine(QThread):
         self._cancel_behavior_profile.set()
         self._purge_pending_profile_ops()
         self._purge_queue_for_unload()
-        self._cmd_queue.put({"op": "unload"})
+        self._stamp_enqueue_meta({"op": "unload"}, priority=EnginePriority.control)
+
+    def set_sampling_overrides(self, **kwargs: Any) -> None:
+        """User-controlled sampling knobs merged over native_chat_completion_kwargs defaults."""
+        allowed = ("top_k", "top_p", "repeat_penalty", "presence_penalty", "min_p")
+        self._sampling_overrides = {
+            key: kwargs[key]
+            for key in allowed
+            if key in kwargs and kwargs[key] is not None
+        }
 
     def enqueue_generation(
         self,
@@ -419,12 +518,18 @@ class NativeLlamaEngine(QThread):
         done_event: threading.Event,
         *,
         retrieval_context: str = "",
+        task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
+        chat_format_mode: ChatFormatMode = "structured",
+        debug_caller: str = "chat",
+        debug_exchange_id: int | None = None,
     ) -> None:
         self._cancel_behavior_profile.set()
+        self._generation_epoch += 1
+        self._purge_pending_background_ops()
         self._purge_pending_profile_ops()
-        self._cancel_generation = False
+        self.request_cancel_generation()
         self._last_retrieval_context = (retrieval_context or "").strip()
-        self._cmd_queue.put(
+        stamped = self._stamp_enqueue_meta(
             {
                 "op": "generate",
                 "messages": messages,
@@ -433,8 +538,16 @@ class NativeLlamaEngine(QThread):
                 "token_queue": token_queue,
                 "done_event": done_event,
                 "retrieval_context": self._last_retrieval_context,
-            }
+                "task": task,
+                "chat_format_mode": chat_format_mode,
+                "debug_caller": debug_caller,
+                "debug_exchange_id": debug_exchange_id,
+                "epoch": self._generation_epoch,
+            },
+            priority=EnginePriority.interactive,
         )
+        self._cancel_generation = False
+        _ = stamped
 
     def enqueue_simple_completion(
         self,
@@ -443,10 +556,14 @@ class NativeLlamaEngine(QThread):
         max_tokens: int,
         out: list,
         done_event: threading.Event,
+        *,
+        task: PrimaryEngineTask | str,
+        debug_caller: str = "helper",
+        debug_exchange_id: int | None = None,
     ) -> None:
         """Non-streaming completion for LLMWorker.generate() helpers (same thread as other ops)."""
         self._purge_pending_profile_ops()
-        self._cmd_queue.put(
+        self._stamp_enqueue_meta(
             {
                 "op": "chat_once",
                 "messages": messages,
@@ -454,7 +571,12 @@ class NativeLlamaEngine(QThread):
                 "max_tokens": int(max_tokens),
                 "out": out,
                 "done_event": done_event,
-            }
+                "task": task,
+                "debug_caller": debug_caller,
+                "debug_exchange_id": debug_exchange_id,
+                "epoch": self._generation_epoch,
+            },
+            priority=EnginePriority.background,
         )
 
     def run(self) -> None:
@@ -468,20 +590,25 @@ class NativeLlamaEngine(QThread):
             except queue.Empty:
                 continue
 
+            self._begin_active_job(cmd)
             op = cmd.get("op")
-            if op == "shutdown":
-                self._do_unload()
-                break
-            if op == "load":
-                self._do_load(cmd)
-            elif op == "unload":
-                self._do_unload()
-            elif op == "profile_behavior":
-                self._do_profile_behavior()
-            elif op == "generate":
-                self._do_generate(cmd)
-            elif op == "chat_once":
-                self._do_chat_once(cmd)
+            try:
+                if op == "shutdown":
+                    self._do_unload()
+                    break
+                if op == "load":
+                    self._do_load(cmd)
+                elif op == "unload":
+                    self._do_unload()
+                elif op == "profile_behavior":
+                    self._do_profile_behavior()
+                elif op == "generate":
+                    self._do_generate(cmd)
+                elif op == "chat_once":
+                    self._do_chat_once(cmd)
+            finally:
+                if op not in ("generate", "chat_once"):
+                    self._end_active_job(cmd)
 
     def _do_load(self, cmd: dict) -> None:
         path = resolve_internal_model_path(cmd.get("path") or "")
@@ -670,7 +797,10 @@ class NativeLlamaEngine(QThread):
             self.status_update.emit(f"Native model ready: {os.path.basename(path)}")
             # Behavior profiling runs on a separate queued op so chat/generate is not
             # blocked behind load-time ablation (Gemma 4 can hang in diagnostic completions).
-            self._cmd_queue.put({"op": "profile_behavior"})
+            self._stamp_enqueue_meta(
+                {"op": "profile_behavior", "debug_caller": "profile_behavior"},
+                priority=EnginePriority.maintenance,
+            )
         except Exception as e:
             logger.exception("[Native] Load failed: %s", e)
             self._llama = None
@@ -901,12 +1031,22 @@ class NativeLlamaEngine(QThread):
         temperature: float,
         max_tokens: int,
         stream: bool,
+        *,
+        task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
+        chat_format_mode: ChatFormatMode = "structured",
+        debug_caller: str = "native",
+        debug_exchange_id: int | None = None,
     ) -> tuple[PromptContract, dict[str, Any]]:
         """Resolve prompt contract, then emit prompt integrity validation + logs."""
         assert self._llama is not None
         self._last_render_bundle = None
         self._bundle_contract_id = None
-        cc_kw = native_chat_completion_kwargs(self._llama)
+        task_policy = policy_for_task(task)
+        self._last_execution_task = task_policy.task
+        self._last_task_policy = task_policy
+        self._last_chat_format_mode = chat_format_mode
+        messages = normalize_messages_for_task(messages, task_policy.task)
+        cc_kw = {**native_chat_completion_kwargs(self._llama), **self._sampling_overrides}
         try:
             uq = extract_last_user_query(messages)
             ctx_blob = " ".join(
@@ -932,7 +1072,12 @@ class NativeLlamaEngine(QThread):
         except Exception as e:
             logger.warning("[ModelRouter] routing skipped: %s", e)
             self._last_router_decision = None
-        contract_result = resolve_prompt_contract(self._llama, messages)
+        contract_result = resolve_prompt_contract(
+            self._llama,
+            messages,
+            task=task_policy.task,
+            chat_format_mode=chat_format_mode,
+        )
         contract = contract_result.contract
         self._last_template_safety = getattr(contract_result, "template_safety", None)
         if contract_result.warning:
@@ -1057,7 +1202,7 @@ class NativeLlamaEngine(QThread):
         )
         pv = validate_chat_inference(
             rendered_prompt=prompt_txt or "",
-            messages=contract.messages or messages,
+            messages=messages,
             chat_format=_val_cf,
             merged_stop_tokens=merged_stops,
             eos_token_str=eos_s,
@@ -1065,6 +1210,9 @@ class NativeLlamaEngine(QThread):
             reconstruction_ok=bool(prompt_txt is not None),
             model_reasoning_profile_detected=self._model_reasoning_profile is not None,
             execution_mode=str(pol.execution_mode),
+            task=task_policy.task,
+            harmony_reply_guidance_applied=task_policy.include_harmony_reply_guidance,
+            harmony_phrase_stops_applied=task_policy.include_harmony_phrase_stops,
         )
         self._last_prompt_validation = pv
         ref = load_lm_studio_reference_from_env()
@@ -1084,11 +1232,19 @@ class NativeLlamaEngine(QThread):
             chat_format=_val_cf,
             merged_stop_count=len(merged_stops),
             reconstruction_note=recon_note or "",
+            task_type=task_policy.task.value,
+            chat_format_mode=(
+                chat_format_mode
+                if task_policy.task == PrimaryEngineTask.chat
+                else None
+            ),
+            harmony_reply_guidance_applied=task_policy.include_harmony_reply_guidance,
+            harmony_phrase_stops_applied=task_policy.include_harmony_phrase_stops,
         )
         log_native_inference_request(
             self._llama,
             model_path=self._model_path,
-            messages=contract.messages or [],
+            messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             stream=stream,
@@ -1097,6 +1253,17 @@ class NativeLlamaEngine(QThread):
             precomputed_prompt=prompt_txt,
             precomputed_merged_stops=merged_stops,
             precomputed_recon_note=recon_note or "",
+            task_type=task_policy.task.value,
+            chat_format_mode=(
+                chat_format_mode
+                if task_policy.task == PrimaryEngineTask.chat
+                else None
+            ),
+            message_roles=message_roles_summary(messages),
+            harmony_reply_guidance_applied=task_policy.include_harmony_reply_guidance,
+            harmony_phrase_stops_applied=task_policy.include_harmony_phrase_stops,
+            debug_caller=debug_caller,
+            debug_exchange_id=debug_exchange_id,
         )
         self._last_trace_preflight = {
             "prompt_tail": (prompt_txt or "")[-200:],
@@ -1112,7 +1279,7 @@ class NativeLlamaEngine(QThread):
             },
         }
         self._last_formatted_prompt = prompt_txt
-        self._last_inference_messages = list(contract.messages or [])
+        self._last_inference_messages = list(messages)
         self._last_merged_stops = list(merged_stops)
         self._last_eos_token_str = eos_s
         self._last_prompt_contract = contract
@@ -1265,11 +1432,13 @@ class NativeLlamaEngine(QThread):
         if self._llama is None:
             token_queue.put(("error", "Native model not loaded, please load a model first or use the external server mode"))
             token_queue.put(("end", ""))
+            self._end_active_job(cmd)
             done_event.set()
             return
 
         if self._cancel_generation:
             token_queue.put(("end", ""))
+            self._end_active_job(cmd)
             done_event.set()
             return
 
@@ -1285,7 +1454,14 @@ class NativeLlamaEngine(QThread):
 
         try:
             contract, _cc_kw = self._prepare_validation_and_logs(
-                messages, temperature, max_tokens, stream=True
+                messages,
+                temperature,
+                max_tokens,
+                stream=True,
+                task=cmd.get("task") or PrimaryEngineTask.chat,
+                chat_format_mode=cmd.get("chat_format_mode") or "structured",
+                debug_caller=str(cmd.get("debug_caller") or "chat"),
+                debug_exchange_id=cmd.get("debug_exchange_id"),
             )
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}
@@ -1325,6 +1501,12 @@ class NativeLlamaEngine(QThread):
 
             _stream_cm = ctx if ctx is not None else nullcontext()
             with _stream_cm:
+                log_inference_token_begin(
+                    caller=str(cmd.get("debug_caller") or "chat"),
+                    exchange_id=cmd.get("debug_exchange_id"),
+                    stream=True,
+                )
+                cmd["inference_started_at"] = time.monotonic()
                 stream = self._execute_from_contract(
                     contract,
                     messages,
@@ -1354,6 +1536,11 @@ class NativeLlamaEngine(QThread):
                         token_queue.put(("delta", delta))
                     if finish_reason in ("stop", "length"):
                         break
+                cmd["inference_finished_at"] = time.monotonic()
+                log_inference_token_end(
+                    caller=str(cmd.get("debug_caller") or "chat"),
+                    exchange_id=cmd.get("debug_exchange_id"),
+                )
 
             if self._cancel_generation:
                 token_queue.put(("end", final_text))
@@ -1528,6 +1715,9 @@ class NativeLlamaEngine(QThread):
             )
             token_queue.put(("end", final_text))
         finally:
+            if not cmd.get("inference_finished_at"):
+                cmd["inference_finished_at"] = time.monotonic()
+            self._end_active_job(cmd)
             done_event.set()
 
     def _do_chat_once(self, cmd: dict) -> None:
@@ -1537,16 +1727,31 @@ class NativeLlamaEngine(QThread):
         messages = normalize_chat_messages(raw_messages)
         temperature = float(cmd.get("temperature", 0.1))
         max_tokens = int(cmd.get("max_tokens", 1000))
+        cancelled = False
 
         if self._llama is None:
             out.append("")
+            self._end_active_job(cmd)
+            done_event.set()
+            return
+
+        if self._should_cancel_background_job(cmd):
+            out.append("")
+            self._end_active_job(cmd, cancelled=True)
             done_event.set()
             return
 
         started_at = time.perf_counter()
+        text = ""
         try:
             contract, _cc_kw = self._prepare_validation_and_logs(
-                messages, temperature, max_tokens, stream=False
+                messages,
+                temperature,
+                max_tokens,
+                stream=True,
+                task=cmd.get("task") or PrimaryEngineTask.chat,
+                debug_caller=str(cmd.get("debug_caller") or "helper"),
+                debug_exchange_id=cmd.get("debug_exchange_id"),
             )
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}
@@ -1582,93 +1787,122 @@ class NativeLlamaEngine(QThread):
                 _once_cm = nullcontext()
 
             with _once_cm:
-                r = self._execute_from_contract(
+                log_inference_token_begin(
+                    caller=str(cmd.get("debug_caller") or "helper"),
+                    exchange_id=cmd.get("debug_exchange_id"),
+                    stream=True,
+                )
+                cmd["inference_started_at"] = time.monotonic()
+                stream = self._execute_from_contract(
                     contract,
                     messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
                     cc_kw=_cc_kw,
-                    stream=False,
+                    stream=True,
                 )
-                text = (r.get("choices") or [{}])[0].get("text") or ""
+                for chunk in stream:
+                    if self._should_cancel_background_job(cmd):
+                        cancelled = True
+                        break
+                    try:
+                        ch0 = chunk.get("choices", [{}])[0]
+                        delta = ch0.get("text") or ""
+                        finish_reason = ch0.get("finish_reason")
+                    except Exception:
+                        delta = ""
+                        finish_reason = None
+                    if delta:
+                        text += delta
+                    if finish_reason in ("stop", "length"):
+                        break
+                cmd["inference_finished_at"] = time.monotonic()
+                log_inference_token_end(
+                    caller=str(cmd.get("debug_caller") or "helper"),
+                    exchange_id=cmd.get("debug_exchange_id"),
+                )
 
-            validation = validate_output(text, contract)
-            retried_text, final_contract, retry_used = maybe_retry(
-                self,
-                messages,
-                contract,
-                text,
-                validation,
-            )
-            logger.info(
-                "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
-                validation.issues,
-                validation.severity,
-                retry_used,
-                1 if retry_used else 0,
-                contract.chat_format or contract.mode,
-                final_contract.chat_format or final_contract.mode,
-            )
-            self._last_prompt_contract = final_contract
-            text = retried_text
-            latest_user_query = ""
-            for _m in reversed(messages):
-                if str((_m or {}).get("role", "")).lower() == "user":
-                    latest_user_query = str((_m or {}).get("content") or "")
-                    break
-            quality = evaluate_response_quality(
-                user_query=latest_user_query,
-                output=text,
-                context=self._last_retrieval_context,
-            )
-            needs_review = quality.score < 0.4
-            logger.info(
-                "[ResponseQuality] response_quality_score=%.3f response_quality_issues=%s "
-                "response_quality_confidence=%s needs_review=%s",
-                quality.score,
-                quality.issues,
-                quality.confidence,
-                needs_review,
-            )
-            self._log_chat_contract_violation_if_any(text)
-            try:
-                record_inference_feedback(
-                    (self._router_profile_key or "").strip()
-                    or os.path.basename(self._model_path or ""),
-                    float(quality.score),
+            if cancelled:
+                text = ""
+                out.append("")
+            else:
+                validation = validate_output(text, contract)
+                retried_text, final_contract, retry_used = maybe_retry(
+                    self,
+                    messages,
+                    contract,
+                    text,
+                    validation,
                 )
-            except Exception as e:
-                logger.debug("[ModelRouter] record_inference_feedback failed: %s", e)
-            model_key = (self._router_profile_key or "").strip() or os.path.basename(
-                self._model_path or ""
-            )
-            latency = max(0.0, time.perf_counter() - started_at)
-            try:
-                perf = self._performance_store.update_model_metrics(
-                    model_name=model_key,
-                    validation_result=validation,
-                    quality_score=float(quality.score),
-                    latency=latency,
-                    retry_used=bool(retry_used),
+                logger.info(
+                    "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
+                    validation.issues,
+                    validation.severity,
+                    retry_used,
+                    1 if retry_used else 0,
+                    contract.chat_format or contract.mode,
+                    final_contract.chat_format or final_contract.mode,
                 )
-                if perf is not None:
-                    logger.info(
-                        "[ModelPerformance] %s",
-                        {
-                            "model": model_key,
-                            "performance_update": {
-                                "quality": round(float(perf.avg_response_quality), 4),
-                                "latency": round(float(perf.avg_latency), 4),
-                                "retry_used": bool(retry_used),
-                                "failure_rate": round(float(perf.structural_failure_rate), 4),
-                            },
-                        },
+                self._last_prompt_contract = final_contract
+                text = retried_text
+                latest_user_query = ""
+                for _m in reversed(messages):
+                    if str((_m or {}).get("role", "")).lower() == "user":
+                        latest_user_query = str((_m or {}).get("content") or "")
+                        break
+                quality = evaluate_response_quality(
+                    user_query=latest_user_query,
+                    output=text,
+                    context=self._last_retrieval_context,
+                )
+                needs_review = quality.score < 0.4
+                logger.info(
+                    "[ResponseQuality] response_quality_score=%.3f response_quality_issues=%s "
+                    "response_quality_confidence=%s needs_review=%s",
+                    quality.score,
+                    quality.issues,
+                    quality.confidence,
+                    needs_review,
+                )
+                self._log_chat_contract_violation_if_any(text)
+                try:
+                    record_inference_feedback(
+                        (self._router_profile_key or "").strip()
+                        or os.path.basename(self._model_path or ""),
+                        float(quality.score),
                     )
-            except Exception as e:
-                logger.debug("[ModelPerformance] update failed: %s", e)
-            out.append(text)
+                except Exception as e:
+                    logger.debug("[ModelRouter] record_inference_feedback failed: %s", e)
+                model_key = (self._router_profile_key or "").strip() or os.path.basename(
+                    self._model_path or ""
+                )
+                latency = max(0.0, time.perf_counter() - started_at)
+                try:
+                    perf = self._performance_store.update_model_metrics(
+                        model_name=model_key,
+                        validation_result=validation,
+                        quality_score=float(quality.score),
+                        latency=latency,
+                        retry_used=bool(retry_used),
+                    )
+                    if perf is not None:
+                        logger.info(
+                            "[ModelPerformance] %s",
+                            {
+                                "model": model_key,
+                                "performance_update": {
+                                    "quality": round(float(perf.avg_response_quality), 4),
+                                    "latency": round(float(perf.avg_latency), 4),
+                                    "retry_used": bool(retry_used),
+                                    "failure_rate": round(float(perf.structural_failure_rate), 4),
+                                },
+                            },
+                        )
+                except Exception as e:
+                    logger.debug("[ModelPerformance] update failed: %s", e)
+                out.append(text)
             once_trace: Optional[LiveStreamTokenTrace] = None
-            if token_trace_enabled():
+            if token_trace_enabled() and not cancelled:
                 once_trace = LiveStreamTokenTrace(
                     self._llama,
                     self._last_trace_preflight,
@@ -1712,4 +1946,7 @@ class NativeLlamaEngine(QThread):
             logger.exception("[Native] chat_once error: %s", e)
             out.append("")
         finally:
+            if not cmd.get("inference_finished_at"):
+                cmd["inference_finished_at"] = time.monotonic()
+            self._end_active_job(cmd, cancelled=cancelled)
             done_event.set()

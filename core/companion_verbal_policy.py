@@ -67,6 +67,18 @@ def frequency_idle_before_sec(frequency: CompanionVerbalFrequency | str) -> int:
     return _FREQUENCY_IDLE_BEFORE_SEC[normalize_companion_verbal_frequency(frequency)]
 
 
+def frequency_idle_label(frequency: CompanionVerbalFrequency | str) -> str:
+    """User-facing summary of idle spacing for settings tooltips."""
+    freq = normalize_companion_verbal_frequency(frequency)
+    before = frequency_idle_before_sec(freq)
+    interval = frequency_idle_min_interval_sec(freq)
+    before_label = f"{before // 60} min" if before >= 60 else f"{before} sec"
+    interval_label = f"{interval // 60} min" if interval >= 60 else f"{interval} sec"
+    return (
+        f"After {before_label} of assistant idle, at most one line every {interval_label}"
+    )
+
+
 def frequency_event_min_interval_sec(frequency: CompanionVerbalFrequency | str) -> int:
     return max(60, frequency_idle_min_interval_sec(frequency) // 2)
 
@@ -152,9 +164,10 @@ def should_emit_idle(
     ok, _ = _base_gates(ctx)
     if not ok:
         return False
-    # Proactive idle quips are for quiet desktop time — not while the main app is in use.
+    # Idle quips while the main window is foreground only when the user keeps the companion visible there.
     if ctx.main_window_visible and not ctx.main_window_minimized:
-        return False
+        if not app_settings.get_companion_show_while_window_open():
+            return False
     if ctx.idle_since is None:
         return False
     freq = normalize_companion_verbal_frequency(app_settings.get_companion_verbal_frequency())

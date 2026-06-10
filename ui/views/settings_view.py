@@ -64,6 +64,14 @@ from core.app_settings import (
     set_sidecar_model_path,
     get_sidecar_chat_format,
     set_sidecar_chat_format,
+    get_llm_temperature,
+    get_llm_context_limit,
+    get_llm_chat_history_messages,
+    get_llm_top_k,
+    get_llm_repeat_penalty,
+    get_llm_presence_penalty,
+    get_llm_top_p,
+    get_llm_min_p,
 )
 from core.auxiliary_cognition import (
     get_cognition_models_dir,
@@ -315,6 +323,94 @@ class SettingsView(QWidget):
         ai_form.addRow("", wakeword_lab_row)
         ai_form.addRow("AI Engine", self.engine_selector)
         ai_form.addRow("External Provider", self.provider_selector)
+
+        self._generation_spinboxes: list = []
+        _gen_temp_tip = (
+            "Creativity slider: lower values (0.1–0.3) produce strict, factual answers. "
+            "Higher values (0.7–1.0) make Qube more creative."
+        )
+        _gen_ctx_tip = (
+            "Memory wall: sets the absolute maximum number of tokens Qube is allowed to "
+            "output in a single turn."
+        )
+        _gen_history_tip = (
+            "Short-term memory: how many past messages to send to the AI. Higher values "
+            "give the AI better context but consume more system RAM (VRAM). Qube's "
+            "long-term memory still remembers important facts even when this is set low."
+        )
+        _gen_top_k_tip = (
+            "Top-K sampling: only the K most likely next tokens are considered. "
+            "0 disables top-K filtering."
+        )
+        _gen_repeat_tip = (
+            "Repeat penalty: values above 1.0 discourage the model from repeating recent "
+            "words or phrases."
+        )
+        _gen_presence_tip = (
+            "Presence penalty: discourages tokens that have already appeared anywhere in "
+            "the current output."
+        )
+        _gen_top_p_tip = (
+            "Top-P (nucleus) sampling: keeps the smallest set of tokens whose cumulative "
+            "probability reaches P."
+        )
+        _gen_min_p_tip = (
+            "Min-P sampling: drops tokens below this relative probability floor. "
+            "0 disables min-P filtering."
+        )
+
+        self.llm_temp_spin = NoScrollDoubleSpinBox()
+        self.llm_temp_spin.setRange(0.0, 2.0)
+        self.llm_temp_spin.setSingleStep(0.1)
+        self.llm_temp_spin.setValue(get_llm_temperature())
+        self._add_generation_form_row(ai_form, "Temperature", _gen_temp_tip, self.llm_temp_spin)
+
+        self.llm_ctx_spin = NoScrollSpinBox()
+        self.llm_ctx_spin.setRange(1024, 128000)
+        self.llm_ctx_spin.setSingleStep(256)
+        self.llm_ctx_spin.setValue(get_llm_context_limit())
+        self._add_generation_form_row(ai_form, "Context limit", _gen_ctx_tip, self.llm_ctx_spin)
+
+        self.llm_history_spin = NoScrollSpinBox()
+        self.llm_history_spin.setRange(2, 100)
+        self.llm_history_spin.setSingleStep(2)
+        self.llm_history_spin.setValue(get_llm_chat_history_messages())
+        self._add_generation_form_row(ai_form, "Chat history", _gen_history_tip, self.llm_history_spin)
+
+        self.llm_top_k_spin = NoScrollSpinBox()
+        self.llm_top_k_spin.setRange(0, 200)
+        self.llm_top_k_spin.setValue(get_llm_top_k())
+        self._add_generation_form_row(ai_form, "Top-K sampling", _gen_top_k_tip, self.llm_top_k_spin)
+
+        self.llm_repeat_penalty_spin = NoScrollDoubleSpinBox()
+        self.llm_repeat_penalty_spin.setRange(0.0, 2.0)
+        self.llm_repeat_penalty_spin.setSingleStep(0.05)
+        self.llm_repeat_penalty_spin.setValue(get_llm_repeat_penalty())
+        self._add_generation_form_row(
+            ai_form, "Repeat penalty", _gen_repeat_tip, self.llm_repeat_penalty_spin
+        )
+
+        self.llm_presence_penalty_spin = NoScrollDoubleSpinBox()
+        self.llm_presence_penalty_spin.setRange(0.0, 2.0)
+        self.llm_presence_penalty_spin.setSingleStep(0.05)
+        self.llm_presence_penalty_spin.setValue(get_llm_presence_penalty())
+        self._add_generation_form_row(
+            ai_form, "Presence penalty", _gen_presence_tip, self.llm_presence_penalty_spin
+        )
+
+        self.llm_top_p_spin = NoScrollDoubleSpinBox()
+        self.llm_top_p_spin.setRange(0.0, 1.0)
+        self.llm_top_p_spin.setSingleStep(0.01)
+        self.llm_top_p_spin.setValue(get_llm_top_p())
+        self._add_generation_form_row(ai_form, "Top-P sampling", _gen_top_p_tip, self.llm_top_p_spin)
+
+        self.llm_min_p_spin = NoScrollDoubleSpinBox()
+        self.llm_min_p_spin.setRange(0.0, 1.0)
+        self.llm_min_p_spin.setSingleStep(0.01)
+        self.llm_min_p_spin.setValue(get_llm_min_p())
+        self._add_generation_form_row(ai_form, "Min-P sampling", _gen_min_p_tip, self.llm_min_p_spin)
+
+        self._wire_llm_generation_settings()
 
         content_layout.addWidget(ai_widget)
         content_layout.addWidget(self._build_divider())
@@ -926,10 +1022,10 @@ class SettingsView(QWidget):
         companion_layout.addWidget(self.companion_cognition_v2_cb)
 
         _companion_freedom_tip = (
-            "How creative companion captions may be (Cognition v2).\n\n"
-            "Conservative — mostly curated templates.\n"
-            "Balanced — follows your sidecar model size.\n"
-            "Expressive — richer lines and optional sidecar rephrasing when the model supports it."
+            "How creative companion commentary may be (Cognition v2).\n\n"
+            "Conservative — curated library only; no sidecar rephrasing.\n"
+            "Balanced — capability follows your auxiliary model size.\n"
+            "Expressive — richer lines plus sidecar rephrasing or generation when supported."
         )
         freedom_row = QHBoxLayout()
         freedom_row.setSpacing(8)
@@ -984,11 +1080,14 @@ class SettingsView(QWidget):
         companion_layout.addLayout(trait_row)
 
         _companion_freq_tip = (
-            "Minimum spacing for idle companion lines.\n\n"
-            "Rare — about every 45 minutes when idle.\n"
-            "Normal — about every 15 minutes.\n"
-            "Chatty — about every 5 minutes.\n\n"
-            "Event reactions (ingest/download) use separate, shorter cooldowns."
+            "Spacing for proactive idle commentary while the assistant is listening and idle.\n\n"
+            "Rare — after 2 min idle, at most one line every ~45 min.\n"
+            "Normal — after 1 min idle, at most one line every ~15 min.\n"
+            "Chatty — after 30 sec idle, at most one line every ~5 min.\n\n"
+            "Requires companion commentary enabled and the companion visible. "
+            "With the main window open, idle lines only appear when "
+            "'Show while main window is open' is enabled. "
+            "Ingest/download reactions use separate cooldowns."
         )
         freq_row = QHBoxLayout()
         freq_row.setSpacing(8)
@@ -1310,6 +1409,40 @@ class SettingsView(QWidget):
         color = active if button.isEnabled() else muted
         button.setIcon(qta.icon("fa5s.chevron-down", color=color))
 
+    def _add_generation_form_row(
+        self,
+        form: QFormLayout,
+        label: str,
+        tooltip: str,
+        spinbox,
+        *,
+        width: int = 120,
+    ) -> None:
+        spinbox.setFixedWidth(width)
+        spinbox.setToolTip(tooltip)
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(6)
+        row_layout.addWidget(spinbox)
+        row_layout.addWidget(self._make_settings_info_button(tooltip))
+        row_layout.addStretch(1)
+        form.addRow(label, row)
+        self._generation_spinboxes.append(spinbox)
+
+    def _wire_llm_generation_settings(self) -> None:
+        llm = self.llm_worker
+        if llm is None:
+            return
+        self.llm_temp_spin.valueChanged.connect(llm.set_temperature)
+        self.llm_ctx_spin.valueChanged.connect(llm.set_context_window)
+        self.llm_history_spin.valueChanged.connect(llm.set_max_history_messages)
+        self.llm_top_k_spin.valueChanged.connect(llm.set_top_k)
+        self.llm_repeat_penalty_spin.valueChanged.connect(llm.set_repeat_penalty)
+        self.llm_presence_penalty_spin.valueChanged.connect(llm.set_presence_penalty)
+        self.llm_top_p_spin.valueChanged.connect(llm.set_top_p)
+        self.llm_min_p_spin.valueChanged.connect(llm.set_min_p)
+
     def _make_settings_info_button(self, tooltip_text: str) -> QToolButton:
         btn = QToolButton()
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1406,6 +1539,8 @@ class SettingsView(QWidget):
         """
         self.timeout_spinner.setStyleSheet(style)
         self.threshold_spinner.setStyleSheet(style)
+        for spinbox in getattr(self, "_generation_spinboxes", ()):
+            spinbox.setStyleSheet(style)
         if hasattr(self, "native_chat_format_selector"):
             self._apply_settings_menu_button_chevron_state(self.native_chat_format_selector)
         if hasattr(self, "gpu_layers_slider"):
@@ -2382,8 +2517,16 @@ class SettingsView(QWidget):
             self.companion_verbal_trait_selector.setText(TRAIT_LABELS[preset])
             self._on_companion_verbal_setting_changed()
 
+        trait_tips = {
+            CompanionVerbalTraitPreset.NEUTRAL: "Calm, brief companion lines.",
+            CompanionVerbalTraitPreset.WARM: "Gently encouraging tone.",
+            CompanionVerbalTraitPreset.WITTY: "Light humor; never distracting or insulting.",
+            CompanionVerbalTraitPreset.DRY: "Understated, deadpan humor.",
+            CompanionVerbalTraitPreset.SARCASTIC: "Mild sarcasm; still friendly.",
+        }
         for preset in CompanionVerbalTraitPreset:
             act = menu.addAction(TRAIT_LABELS[preset])
+            act.setToolTip(trait_tips.get(preset, ""))
             act.triggered.connect(lambda _checked=False, p=preset: _pick(p))
         self.companion_verbal_trait_selector.setMenu(menu)
         self.companion_verbal_trait_selector.setText(TRAIT_LABELS[current])
@@ -2394,6 +2537,7 @@ class SettingsView(QWidget):
         from core import app_settings as _cs
         from core.companion_verbal_policy import (
             CompanionVerbalFrequency,
+            frequency_idle_label,
             normalize_companion_verbal_frequency,
         )
 
@@ -2412,6 +2556,7 @@ class SettingsView(QWidget):
 
         for freq in CompanionVerbalFrequency:
             act = menu.addAction(labels[freq])
+            act.setToolTip(frequency_idle_label(freq))
             act.triggered.connect(lambda _checked=False, f=freq: _pick(f))
         self.companion_verbal_frequency_selector.setMenu(menu)
         self.companion_verbal_frequency_selector.setText(labels[current])
@@ -2426,6 +2571,20 @@ class SettingsView(QWidget):
             "balanced": "Balanced",
             "expressive": "Expressive",
         }
+        freedom_tips = {
+            "conservative": (
+                "Curated message library only — templates at most. "
+                "No sidecar rephrasing or full generation."
+            ),
+            "balanced": (
+                "Expression depth follows your auxiliary cognition model "
+                "(small models: templates; larger models: optional rephrasing)."
+            ),
+            "expressive": (
+                "Allows the richest local lines plus sidecar rephrasing or "
+                "full generation when the auxiliary model supports it."
+            ),
+        }
         menu = QMenu(self)
         current = _cs.get_companion_expression_freedom()
 
@@ -2436,6 +2595,7 @@ class SettingsView(QWidget):
 
         for mode in ("conservative", "balanced", "expressive"):
             act = menu.addAction(labels[mode])
+            act.setToolTip(freedom_tips[mode])
             act.triggered.connect(lambda _checked=False, m=mode: _pick(m))
         self.companion_expression_freedom_selector.setMenu(menu)
         self.companion_expression_freedom_selector.setText(labels.get(current, "Balanced"))

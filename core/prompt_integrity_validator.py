@@ -20,6 +20,10 @@ from difflib import SequenceMatcher
 from typing import Any, Literal, Optional
 
 from core.harmony_protocol import HARMONY_FINAL_ANCHOR, HARMONY_PRIMARY_STOPS
+from core.llm_execution_contract import (
+    PrimaryEngineTask,
+    check_task_prompt_policy,
+)
 
 logger = logging.getLogger("Qube.NativeLLM.Debug")
 
@@ -103,6 +107,9 @@ def validate_chat_inference(
     reconstruction_ok: bool,
     model_reasoning_profile_detected: bool = False,
     execution_mode: str = "unknown",
+    task: PrimaryEngineTask | str | None = None,
+    harmony_reply_guidance_applied: bool | None = None,
+    harmony_phrase_stops_applied: bool | None = None,
 ) -> PromptValidationResult:
     """
     Structural checks on the same rendered prompt string the native engine would tokenize
@@ -173,6 +180,11 @@ def validate_chat_inference(
         flags.append("possible_prompt_bleed_multi_turn")
     if suspicious and anchor:
         flags.append("possible_meta_output_weak_stops")
+
+    if task is not None:
+        flags.extend(
+            check_task_prompt_policy(task=task, rendered_prompt=p)
+        )
 
     verdict: Verdict = "OK"
     if not anchor or not p:
@@ -383,6 +395,10 @@ def log_prompt_validation_jsonlines(
     chat_format: str,
     merged_stop_count: int,
     reconstruction_note: str,
+    task_type: str | None = None,
+    chat_format_mode: str | None = None,
+    harmony_reply_guidance_applied: bool | None = None,
+    harmony_phrase_stops_applied: bool | None = None,
 ) -> None:
     if not prompt_validation_log_enabled():
         return
@@ -403,6 +419,14 @@ def log_prompt_validation_jsonlines(
         "model_reasoning_profile_detected": result.model_reasoning_profile_detected,
         "execution_mode": result.execution_mode,
     }
+    if task_type is not None:
+        payload["task_type"] = task_type
+    if chat_format_mode is not None:
+        payload["chat_format_mode"] = chat_format_mode
+    if harmony_reply_guidance_applied is not None:
+        payload["harmony_reply_guidance_applied"] = harmony_reply_guidance_applied
+    if harmony_phrase_stops_applied is not None:
+        payload["harmony_phrase_stops_applied"] = harmony_phrase_stops_applied
     if parity is not None:
         payload["parity_score"] = parity.score
         payload["parity_differences"] = parity.differences

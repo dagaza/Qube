@@ -342,8 +342,10 @@ Return ONLY the JSON object. No prose. No markdown."""
                 if result.text:
                     return result.text.strip()
                 return ""
-            out = self.llm.generate(prompt)
-            return (out or "").strip()
+            logger.warning(
+                "[MemoryReflection] LLM lacks complete(); reflection label skipped"
+            )
+            return ""
         except Exception as e:
             logger.debug("[MemoryReflection] llm.generate failed: %s", e)
             return ""

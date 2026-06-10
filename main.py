@@ -660,8 +660,10 @@ class Qube:
             file_count = 1
         if file_count > 0:
             self.window.emit_notification(ingestion_complete_event(file_count=file_count))
+        # Clear background-busy before forcing Idle — otherwise BACKGROUND_BUSY wins
+        # over an idle bubble (see AssistantActivityReducer.reduce).
         self.window._activity_reducer.set_background_busy(False)
-        self.window._sync_tray_presence()
+        self.window.update_status("Idle", force=True)
         if (
             hasattr(self.window, "_companion_controller")
             and self.window._companion_controller is not None

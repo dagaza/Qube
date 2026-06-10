@@ -110,7 +110,7 @@ class CompanionController(QObject):
         self._window.set_persona(app_settings.get_companion_persona())
         sidecar_client = getattr(main_window, "_sidecar_client", None)
         sidecar_worker = getattr(main_window, "_sidecar_worker", None)
-        if sidecar_client is not None:
+        if sidecar_client is not None or app_settings.get_companion_cognition_v2_enabled():
             self._verbal_scheduler = CompanionVerbalScheduler(
                 self,
                 self._presence,
@@ -119,12 +119,14 @@ class CompanionController(QObject):
                 parent=self,
             )
             self._verbal_scheduler.start()
-            self._emit_startup_cognition()
         self._visibility_timer.start()
         self._idle_timer.start()
         if app_settings.get_companion_suppress_on_fullscreen():
             self._fullscreen_timer.start()
         self._refresh_visibility()
+        if self._verbal_scheduler is not None:
+            # Startup gates read companion visibility; refresh before first emit.
+            QTimer.singleShot(0, self._emit_startup_cognition)
         self._offer_transient_idle_caption(self._presence.snapshot())
 
     def apply_theme(self, is_dark: bool) -> None:

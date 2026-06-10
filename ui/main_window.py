@@ -42,9 +42,12 @@ from core.app_settings import (
     get_audio_input_device_index,
     get_engine_mode,
     get_internal_model_path,
+    get_llm_chat_history_messages,
+    get_llm_context_limit,
+    get_llm_models_dir,
+    get_llm_temperature,
     get_onboarding_local_llm_tour_completed,
     is_secondary_gguf_shard,
-    get_llm_models_dir,
     resolve_internal_model_path,
     set_auto_load_last_model_on_startup,
     set_audio_input_device_index,
@@ -52,6 +55,7 @@ from core.app_settings import (
 )
 from core.audio_utils import get_input_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
+from core.local_gguf_library import list_local_gguf_menu_entries
 from core.qube_tooltip import qube_tooltip_set_theme
 from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
@@ -345,6 +349,9 @@ class MainWindow(QMainWindow):
                     max(0.1, min(0.95, 1.0 - (float(v) / 100.0)))
                 )
             )
+
+        # 4b. Generation parameters: Settings ↔ Toolbar (both write through LLMWorker)
+        self._wire_generation_settings_toolbar_sync()
 
         # 5. 🔑 Sync Auto-Activator Toggles
         self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
@@ -857,6 +864,9 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_selector.setToolTip(
             "Choose and load a local AI model (.gguf)"
         )
+        self.toolbar_native_model_selector.clicked.connect(
+            self._on_toolbar_native_model_selector_clicked
+        )
         self._apply_native_model_selector_text_state(False)
         self.toolbar_native_model_progress = QProgressBar()
         self.toolbar_native_model_progress.setObjectName("NativeModelLoadProgress")
@@ -1076,22 +1086,22 @@ class MainWindow(QMainWindow):
 
         self.temp_spin = NoScrollDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
-        self.temp_spin.setValue(0.7)
+        self.temp_spin.setSingleStep(0.1)
         self.temp_spin.setProperty("class", "ToolsPaneInput")
         param_layout.addLayout(create_spinbox_row("Temperature:", desc_temp, self.temp_spin))
 
         self.ctx_spin = NoScrollSpinBox()
         self.ctx_spin.setRange(1024, 128000)
-        self.ctx_spin.setValue(4096)
+        self.ctx_spin.setSingleStep(256)
         self.ctx_spin.setProperty("class", "ToolsPaneInput")
         param_layout.addLayout(create_spinbox_row("Context Limit:", desc_ctx, self.ctx_spin))
 
         self.history_spin = NoScrollSpinBox()
         self.history_spin.setRange(2, 100)
         self.history_spin.setSingleStep(2)
-        self.history_spin.setValue(10)
         self.history_spin.setProperty("class", "ToolsPaneInput")
         param_layout.addLayout(create_spinbox_row("Chat History:", desc_history, self.history_spin))
+        self._apply_toolbar_generation_spin_values()
 
         main_layout.addLayout(param_layout)
 
@@ -1172,7 +1182,6 @@ class MainWindow(QMainWindow):
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
             self.history_spin.valueChanged.connect(self._llm_worker.set_max_history_messages)
-            self._llm_worker.set_max_history_messages(self.history_spin.value())
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):
@@ -1204,7 +1213,54 @@ class MainWindow(QMainWindow):
         outer_layout.addWidget(self.tools_content)
 
         return self.tools_frame
-    
+
+    def _generation_spin_values(self) -> tuple[float, int, int]:
+        """Resolved temperature / context / history for toolbar display."""
+        if self._llm_worker is not None:
+            return (
+                float(self._llm_worker.temperature),
+                int(self._llm_worker.context_window),
+                int(self._llm_worker.max_history_messages),
+            )
+        return (
+            get_llm_temperature(),
+            get_llm_context_limit(),
+            get_llm_chat_history_messages(),
+        )
+
+    def _apply_toolbar_generation_spin_values(self) -> None:
+        """Seed toolbar generation controls from LLMWorker / QSettings without write-back."""
+        if not hasattr(self, "temp_spin"):
+            return
+        temp, ctx, history = self._generation_spin_values()
+        for spin, value in (
+            (self.temp_spin, temp),
+            (self.ctx_spin, ctx),
+            (self.history_spin, history),
+        ):
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+
+    def _wire_generation_settings_toolbar_sync(self) -> None:
+        """Keep Settings and toolbar generation spinboxes aligned (audio-style sync)."""
+        if not self._llm_worker:
+            return
+        sv = getattr(self, "settings_view", None)
+        if sv is None:
+            return
+        pairs = (
+            (self.temp_spin, getattr(sv, "llm_temp_spin", None)),
+            (self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
+            (self.history_spin, getattr(sv, "llm_history_spin", None)),
+        )
+        for toolbar_spin, settings_spin in pairs:
+            if toolbar_spin is None or settings_spin is None:
+                continue
+            settings_spin.valueChanged.connect(toolbar_spin.setValue)
+            toolbar_spin.valueChanged.connect(settings_spin.setValue)
+        self._apply_toolbar_generation_spin_values()
+
     def _toggle_tools_pane(self):
         """Animates the collapse of the content while keeping the handle visible."""
         # Check if we are currently collapsed (width is small)
@@ -1239,6 +1295,27 @@ class MainWindow(QMainWindow):
     def _refresh_toolbar_native_model_from_settings_signal(self, mode: str) -> None:
         """Uses the value from Settings' Inference engine menu (authoritative for this UI tick)."""
         self.refresh_toolbar_native_model_dropdown(mode)
+
+    def _on_toolbar_native_model_selector_clicked(self) -> None:
+        """When the local library is empty, guide the user to Model Manager."""
+        if get_engine_mode() != "internal":
+            return
+        if list_local_gguf_menu_entries():
+            return
+        self._show_no_local_models_dialog()
+
+    def _show_no_local_models_dialog(self) -> None:
+        is_dark = getattr(self, "_is_dark_theme", True)
+        if PrestigeDialog(
+            self,
+            "No models found",
+            "No local .gguf models were detected on this device.\n\n"
+            "Open Model Manager to browse Qube Verified models, download one, "
+            "then return here and pick it from Select AI Model.",
+            is_dark=is_dark,
+            confirm_text="OPEN MODEL MANAGER",
+        ).exec():
+            self._on_notification_action("open_models")
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
         """QtAwesome icons ignore QSS; match chevron to #SettingsMenuButton enabled/disabled look."""
@@ -1302,7 +1379,9 @@ class MainWindow(QMainWindow):
                 self._native_model_loaded_success = False
                 self._set_native_model_progress_loading(False)
                 btn.setText("Select AI Model")
-                btn.setToolTip("")
+                btn.setToolTip(
+                    "No local .gguf models found. Click to open Model Manager and download one."
+                )
                 self._apply_native_model_selector_text_state(False)
                 btn.setMenu(None)
                 return

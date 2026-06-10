@@ -12,6 +12,11 @@ from core.harmony_protocol import (
     is_harmony_model_name,
 )
 from core.harmony_renderer import render_harmony_final_prompt
+from core.chat_format_mode import ChatFormatMode
+from core.llm_execution_contract import (
+    PrimaryEngineTask,
+    policy_for_task,
+)
 from core.native_llm_debug import reconstruct_formatted_prompt
 from core.template_safety import is_unsafe_chat_template
 
@@ -125,7 +130,13 @@ def _format_supported(chat_format: str, handlers: set[str]) -> bool:
     return chat_format in {"chatml", "llama-2", "llama-3", "mistral-instruct"}
 
 
-def resolve_prompt_contract(llama: Any, messages: list[dict[str, Any]]) -> PromptContractResolution:
+def resolve_prompt_contract(
+    llama: Any,
+    messages: list[dict[str, Any]],
+    *,
+    task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
+    chat_format_mode: ChatFormatMode = "structured",
+) -> PromptContractResolution:
     md = getattr(llama, "metadata", None) or {}
     if not isinstance(md, dict):
         md = {}
@@ -141,12 +152,27 @@ def resolve_prompt_contract(llama: Any, messages: list[dict[str, Any]]) -> Promp
         chat_template=tmpl,
     )
     if harmony is not None:
+        task_policy = policy_for_task(task)
         c = PromptContract(
             mode="rendered",
             chat_format=None,
-            prompt=render_harmony_final_prompt(msg_payload),
+            prompt=render_harmony_final_prompt(
+                msg_payload,
+                include_reply_guidance=task_policy.include_harmony_reply_guidance,
+                chat_format_mode=(
+                    chat_format_mode
+                    if task_policy.include_harmony_reply_guidance
+                    else "structured"
+                ),
+            ),
             messages=None,
-            stop=harmony_stops_for_contract(),
+            stop=harmony_stops_for_contract(
+                include_phrase_stops=(
+                    None
+                    if task_policy.include_harmony_phrase_stops
+                    else False
+                ),
+            ),
             template_source="fallback",
             confidence="high" if harmony.detection_method != "template" else "medium",
             protocol="harmony",

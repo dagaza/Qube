@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.chat_format_mode import ChatFormatMode
 from core.harmony_protocol import HARMONY_FINAL_ANCHOR
 from core.harmony_reply_guidance import merge_harmony_system_content
 
@@ -41,7 +42,12 @@ def _collapse_duplicate_user_tail(
     return dialogue
 
 
-def render_harmony_single_turn(payload: list[dict[str, Any]]) -> str:
+def render_harmony_single_turn(
+    payload: list[dict[str, Any]],
+    *,
+    include_reply_guidance: bool = True,
+    chat_format_mode: ChatFormatMode = "structured",
+) -> str:
     parts: list[str] = []
     system_chunks: list[str] = []
     for m in payload:
@@ -53,21 +59,26 @@ def render_harmony_single_turn(payload: list[dict[str, Any]]) -> str:
             system_chunks.append(content)
         else:
             parts.append(f"<|start|>user<|message|>{content}<|end|>")
-    if system_chunks:
+    system_body = merge_harmony_system_content(
+        system_chunks,
+        include_reply_guidance=include_reply_guidance,
+        chat_format_mode=chat_format_mode,
+    )
+    if system_body or include_reply_guidance:
         parts.insert(
             0,
-            f"<|start|>system<|message|>{merge_harmony_system_content(system_chunks)}<|end|>",
-        )
-    else:
-        parts.insert(
-            0,
-            f"<|start|>system<|message|>{merge_harmony_system_content([])}<|end|>",
+            f"<|start|>system<|message|>{system_body}<|end|>",
         )
     parts.append(HARMONY_FINAL_ANCHOR)
     return "\n".join(parts)
 
 
-def render_harmony_compact_multiturn(payload: list[dict[str, Any]]) -> str:
+def render_harmony_compact_multiturn(
+    payload: list[dict[str, Any]],
+    *,
+    include_reply_guidance: bool = True,
+    chat_format_mode: ChatFormatMode = "structured",
+) -> str:
     """
     One open final channel; prior turns live in a labeled user block.
 
@@ -89,14 +100,14 @@ def render_harmony_compact_multiturn(payload: list[dict[str, Any]]) -> str:
         else:
             dialogue.append(("User", content))
 
-    if system_chunks:
+    system_body = merge_harmony_system_content(
+        system_chunks,
+        include_reply_guidance=include_reply_guidance,
+        chat_format_mode=chat_format_mode,
+    )
+    if system_body or include_reply_guidance:
         parts.append(
-            f"<|start|>system<|message|>{merge_harmony_system_content(system_chunks)}<|end|>"
-        )
-    else:
-        parts.insert(
-            0,
-            f"<|start|>system<|message|>{merge_harmony_system_content([])}<|end|>",
+            f"<|start|>system<|message|>{system_body}<|end|>"
         )
 
     dialogue = _collapse_duplicate_user_tail(dialogue)
@@ -130,7 +141,12 @@ def render_harmony_compact_multiturn(payload: list[dict[str, Any]]) -> str:
     return "\n".join(parts)
 
 
-def render_harmony_final_prompt(messages: list[dict[str, Any]]) -> str:
+def render_harmony_final_prompt(
+    messages: list[dict[str, Any]],
+    *,
+    include_reply_guidance: bool = True,
+    chat_format_mode: ChatFormatMode = "structured",
+) -> str:
     """
     Render Harmony prompt with assistant pre-filled in the final channel.
 
@@ -139,5 +155,13 @@ def render_harmony_final_prompt(messages: list[dict[str, Any]]) -> str:
     """
     payload = _messages_payload(messages)
     if _harmony_has_prior_assistant(messages):
-        return render_harmony_compact_multiturn(payload)
-    return render_harmony_single_turn(payload)
+        return render_harmony_compact_multiturn(
+            payload,
+            include_reply_guidance=include_reply_guidance,
+            chat_format_mode=chat_format_mode,
+        )
+    return render_harmony_single_turn(
+        payload,
+        include_reply_guidance=include_reply_guidance,
+        chat_format_mode=chat_format_mode,
+    )

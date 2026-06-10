@@ -12,6 +12,7 @@ if _WS_ROOT not in sys.path:
 from core.discourse_intent import (  # noqa: E402
     FOLLOW_UP_SUPPRESS_THRESHOLD,
     FollowUpKind,
+    build_referent_salience_suffix,
     classify_follow_up,
 )
 from core.discourse_query import (  # noqa: E402
@@ -22,7 +23,15 @@ from core.discourse_query import (  # noqa: E402
     resolve_web_query,
     should_veto_ungrounded_web_follow_up,
 )
-from core.discourse_state import DiscourseState, update_discourse_state  # noqa: E402
+from core.discourse_patterns import is_deictic_prompt  # noqa: E402
+from core.discourse_query_rewrite import resolve_ambiguous_user_query  # noqa: E402
+from core.discourse_state import (  # noqa: E402
+    DiscourseState,
+    extract_assistant_referent,
+    is_deictic_topic_phrase,
+    promote_referent_after_assistant,
+    update_discourse_state,
+)
 
 
 class TestClassifyFollowUp(unittest.TestCase):
@@ -124,6 +133,95 @@ class TestDiscourseState(unittest.TestCase):
         state = update_discourse_state(history, None, "Let's talk about Dark Souls")
         self.assertIn("Dark Souls", state.active_topic or "")
 
+    def test_nepal_kathmandu_population_follow_up(self) -> None:
+        prior = update_discourse_state(
+            [
+                {"role": "user", "content": "What is the capital of Nepal?"},
+                {"role": "assistant", "content": "Kathmandu."},
+            ],
+            None,
+            "What is the capital of Nepal?",
+        )
+        history = [
+            {"role": "user", "content": "What is the capital of Nepal?"},
+            {"role": "assistant", "content": "Kathmandu."},
+            {"role": "user", "content": "What is the population of this city?"},
+        ]
+        state = update_discourse_state(
+            history,
+            prior,
+            "What is the population of this city?",
+        )
+        self.assertEqual(state.active_referent, "Kathmandu")
+        self.assertEqual(state.referent_type, "city")
+        self.assertNotEqual(state.active_topic, "the population of this city")
+
+    def test_deictic_what_is_does_not_set_topic(self) -> None:
+        state = update_discourse_state(
+            [],
+            None,
+            "What is the population of this city?",
+        )
+        self.assertNotEqual(state.active_topic, "the population of this city")
+        self.assertTrue(is_deictic_topic_phrase("the population of this city"))
+
+    def test_single_word_assistant_entity(self) -> None:
+        self.assertEqual(extract_assistant_referent("Kathmandu."), "Kathmandu")
+
+
+class TestReferentSalience(unittest.TestCase):
+    def test_referent_salience_suffix_wording(self) -> None:
+        suffix = build_referent_salience_suffix("Kathmandu", referent_type="city")
+        self.assertIn("Primary referent: Kathmandu (city)", suffix)
+        self.assertNotIn("Active conversation topic", suffix)
+        self.assertIn("Resolve follow-up references", suffix)
+
+    def test_nepal_follow_up_prompt_blocks_use_referent_not_deictic_topic(self) -> None:
+        from core.prompt_blocks import build_prompt_blocks
+        from core.prompt_renderers import render_system_ok_messages
+
+        prior = update_discourse_state(
+            [
+                {"role": "user", "content": "What is the capital of Nepal?"},
+                {"role": "assistant", "content": "Kathmandu."},
+            ],
+            None,
+            "What is the capital of Nepal?",
+        )
+        history = [
+            {"role": "user", "content": "What is the capital of Nepal?"},
+            {"role": "assistant", "content": "Kathmandu."},
+            {
+                "role": "user",
+                "content": (
+                    "[Referring to Kathmandu]\n\n"
+                    "What is the population of this city?"
+                ),
+            },
+        ]
+        state = update_discourse_state(
+            history,
+            prior,
+            "What is the population of this city?",
+        )
+        salience = build_referent_salience_suffix(
+            state.active_referent or "",
+            referent_type=state.referent_type,
+        )
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            conversation_history=history,
+            topic_salience_hint=salience,
+            follow_up_active=True,
+        )
+        messages = render_system_ok_messages(blocks)
+        system = messages[0]["content"]
+        self.assertIn("Primary referent: Kathmandu (city)", system)
+        self.assertNotIn("Active conversation topic: the population of this city", system)
+        self.assertIn("[Referring to Kathmandu]", messages[-1]["content"])
+
 
 class TestQueryExpansion(unittest.TestCase):
     def test_expands_with_active_topic(self) -> None:
@@ -164,6 +262,25 @@ class TestQueryExpansion(unittest.TestCase):
             )
         )
         self.assertTrue(should_veto_ungrounded_web_follow_up(fu, DiscourseState()))
+
+    def test_resolve_search_target_uses_referent(self) -> None:
+        from core.discourse_intent import FollowUpClassification
+
+        follow_up = FollowUpClassification(FollowUpKind.ANAPHORIC, 0.72)
+        state = DiscourseState(
+            active_referent="Kathmandu",
+            referent_type="city",
+            active_topic="the capital of Nepal",
+            confidence=0.8,
+        )
+        target = resolve_search_target(
+            "What is the population of this city?",
+            follow_up,
+            state,
+        )
+        self.assertEqual(target.rewrite_reason, "referent_expansion")
+        self.assertIn("Kathmandu", target.query)
+        self.assertFalse(target.query.startswith("Regarding the population of this city"))
 
 
 class TestMetaWebQueryRewrite(unittest.TestCase):
@@ -241,6 +358,72 @@ class TestMetaWebQueryRewrite(unittest.TestCase):
         ]
         prior = prior_substantive_user_query(history, history[-1]["content"])
         self.assertEqual(prior, "Why do birds take dust baths?")
+
+
+class TestDiscoursePhase15(unittest.TestCase):
+    def test_its_is_deictic_prompt(self) -> None:
+        self.assertTrue(is_deictic_prompt("And what is the size of its population?"))
+
+    def test_what_is_its_topic_not_stored_as_explicit(self) -> None:
+        state = update_discourse_state(
+            [],
+            None,
+            "And what is the size of its population?",
+        )
+        self.assertNotEqual(state.active_topic, "the size of its population")
+
+    def test_promote_after_assistant_capital_of_sentence(self) -> None:
+        prior = update_discourse_state(
+            [{"role": "user", "content": "What is the capital of Nepal?"}],
+            None,
+            "What is the capital of Nepal?",
+        )
+        promoted = promote_referent_after_assistant(
+            user_prompt="What is the capital of Nepal?",
+            assistant_text="Kathmandu is the capital of Nepal.",
+            prior=prior,
+        )
+        self.assertEqual(promoted.active_referent, "Kathmandu")
+        self.assertEqual(promoted.referent_type, "city")
+        self.assertEqual(promoted.referent_source, "assistant_pattern")
+        self.assertGreaterEqual(promoted.referent_confidence, 0.85)
+
+    def test_its_population_follow_up_resolves_kathmandu(self) -> None:
+        prior = update_discourse_state(
+            [{"role": "user", "content": "What is the capital of Nepal?"}],
+            None,
+            "What is the capital of Nepal?",
+        )
+        promoted = promote_referent_after_assistant(
+            user_prompt="What is the capital of Nepal?",
+            assistant_text="Kathmandu is the capital of Nepal.",
+            prior=prior,
+        )
+        history = [
+            {"role": "user", "content": "What is the capital of Nepal?"},
+            {"role": "assistant", "content": "Kathmandu is the capital of Nepal."},
+            {"role": "user", "content": "And what is the size of its population?"},
+        ]
+        state = update_discourse_state(
+            history,
+            promoted,
+            "And what is the size of its population?",
+        )
+        self.assertEqual(state.active_referent, "Kathmandu")
+        self.assertNotEqual(state.active_topic, "the size of its population")
+        follow_up = classify_follow_up(
+            "And what is the size of its population?",
+            history,
+            state,
+        )
+        self.assertTrue(follow_up.active)
+        resolved = resolve_ambiguous_user_query(
+            "And what is the size of its population?",
+            state,
+            follow_up,
+        )
+        self.assertTrue(resolved.succeeded)
+        self.assertIn("Kathmandu", resolved.resolved)
 
 
 if __name__ == "__main__":
