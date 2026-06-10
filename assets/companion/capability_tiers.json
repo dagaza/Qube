@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "basename_patterns": {
+    "0.5b": "micro",
+    "qwen2-0.5": "micro",
+    "qwen2-1.5": "small",
+    "1.5b": "small",
+    "1.7b": "small",
+    "qwen3-1.7": "small",
+    "3b": "medium",
+    "4b": "medium",
+    "7b": "medium",
+    "8b": "large",
+    "14b": "large",
+    "32b": "large",
+    "70b": "large"
+  },
+  "default_tier": "small"
+}

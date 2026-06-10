@@ -19,9 +19,25 @@ from core.app_settings import (
     get_internal_n_gpu_layers,
     get_internal_n_threads,
     get_internal_prompt_layout_override,
+    get_llm_chat_history_messages,
+    get_llm_context_limit,
+    get_llm_min_p,
+    get_llm_presence_penalty,
+    get_llm_repeat_penalty,
+    get_llm_temperature,
+    get_llm_top_k,
+    get_llm_top_p,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
+    set_llm_chat_history_messages,
+    set_llm_context_limit,
+    set_llm_min_p,
+    set_llm_presence_penalty,
+    set_llm_repeat_penalty,
+    set_llm_temperature,
+    set_llm_top_k,
+    set_llm_top_p,
 )
 from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
 from core.preference_formatters import format_web_snippets
@@ -31,32 +47,73 @@ from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
 from core.stream_repetition_guard import StreamRepetitionGuard
+from core.harmony_degeneration import (
+    harmony_tail_degenerate,
+    is_harmony_orphan_stream_fragment,
+    polish_harmony_visible_text,
+)
+from core.harmony_protocol import harmony_stream_parser_enabled, is_harmony_contract
+from core.chat_format_mode import resolve_chat_format_mode
+from core.llm_execution_contract import PrimaryEngineTask
+from core.harmony_stream_parser import HarmonyStreamParser
 from core.output_artifact_strip import strip_harmony_oss_artifacts
+from core.completion_output_trace import (
+    CompletionOutputSnapshot,
+    log_completion_output_trace,
+)
+from core.llm_debug_markers import (
+    log_chat_exchange_begin,
+    log_chat_exchange_end,
+    next_exchange_id,
+)
+from core.conversational_follow_up import preserve_streamed_follow_up
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
+    detect_explicit_web_request,
     detect_file_search_intent,
     detect_narrative_intent,
     is_assistant_failure_message,
     is_thin_content,
+    query_implies_live_web_intent,
+    should_run_internet_search_for_route,
 )
 from core.discourse_intent import (
     FOLLOW_UP_SUPPRESS_THRESHOLD,
     FollowUpClassification,
     FollowUpKind,
+    build_minimal_referent_fallback_suffix,
+    build_referent_salience_suffix,
     build_topic_salience_suffix,
     classify_follow_up,
     discourse_debug_enabled,
+    discourse_prompt_hint_enabled,
+)
+from core.discourse_query_rewrite import ResolvedUserQuery, resolve_ambiguous_user_query
+from core.discourse_telemetry import (
+    log_discourse_query_rewrite,
+    log_discourse_referent_trace,
 )
 from core.discourse_query import (
     resolve_retrieval_query,
     resolve_routing_query,
-    resolve_web_query,
+    resolve_search_target,
     should_veto_ungrounded_web_follow_up,
+    web_query_rewrite_failed,
 )
-from core.discourse_state import DiscourseState, update_discourse_state
+from core.retrieval_relevance import filter_web_results
+from core.discourse_state import (
+    DiscourseState,
+    is_deictic_topic_phrase,
+    promote_referent_after_assistant,
+    update_discourse_state,
+)
 from core.memory_usage_recorder import get_memory_usage_recorder, compute_query_fingerprint
-from core.app_settings import get_enable_memory_v7_salvage, get_discourse_grounding_enabled
+from core.app_settings import (
+    get_discourse_grounding_enabled,
+    get_enable_chat_personality_nudge,
+    get_enable_memory_v7_salvage,
+)
 from core.app_settings import get_sidecar_query_rewrite_enabled
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
@@ -100,9 +157,11 @@ routing_persist_logger = logging.getLogger("Qube.RoutingDebug")
 
 class LLMWorker(QThread):
     sentence_ready = pyqtSignal(str, str)
+    tts_turn_superseded = pyqtSignal(str)  # session_id — clear in-flight TTS after native retry
     token_streamed = pyqtSignal(str, str)  # session_id, token
     status_update = pyqtSignal(str)
     ttft_latency = pyqtSignal(float)
+    tps_metric = pyqtSignal(float)
     context_retrieved = pyqtSignal(bool)
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
@@ -113,6 +172,7 @@ class LLMWorker(QThread):
     # Emitted once per completed turn, before response_finished, so main.py can
     # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
     enrichment_context_ready = pyqtSignal(dict)
+    stream_replaced = pyqtSignal(str, str)  # session_id, full replacement text
 
     MAX_TOTAL_RETRIEVAL_CHARS = 4500
     MEMORY_BUDGET = 1500
@@ -138,6 +198,7 @@ class LLMWorker(QThread):
         self.db = db_manager
         self._native_engine = native_engine
         self._sidecar_client = sidecar_client
+        self._last_native_job_cancelled = False
         self.engine_mode = get_engine_mode()
 
         self.embedding_cache = EmbeddingCache(self.embedder)
@@ -167,10 +228,15 @@ class LLMWorker(QThread):
 
         # toggles
         self.mcp_auto_enabled = True
-        self.temperature = 0.7
-        self.context_window = 4096
+        self.temperature = get_llm_temperature()
+        self.context_window = get_llm_context_limit()
         # Sliding window: max DB messages to include in the chat completion (user-controlled).
-        self.max_history_messages = 10
+        self.max_history_messages = get_llm_chat_history_messages()
+        self.top_k = get_llm_top_k()
+        self.repeat_penalty = get_llm_repeat_penalty()
+        self.presence_penalty = get_llm_presence_penalty()
+        self.top_p = get_llm_top_p()
+        self.min_p = get_llm_min_p()
         self.mcp_rag_enabled = True
         self.mcp_strict_enabled = False
         self.mcp_internet_enabled = False
@@ -180,6 +246,25 @@ class LLMWorker(QThread):
         self._last_completed_llm_session_id = None
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
+        self._push_sampling_to_native()
+
+    def _sampling_payload(self) -> dict:
+        payload: dict = {
+            "top_p": self.top_p,
+            "repeat_penalty": self.repeat_penalty,
+            "presence_penalty": self.presence_penalty,
+        }
+        if self.top_k > 0:
+            payload["top_k"] = self.top_k
+        if self.min_p > 0:
+            payload["min_p"] = self.min_p
+        return payload
+
+    def _push_sampling_to_native(self) -> None:
+        engine = self._native_engine
+        if engine is None or not hasattr(engine, "set_sampling_overrides"):
+            return
+        engine.set_sampling_overrides(**self._sampling_payload())
 
     def _is_local_llm_service(self) -> bool:
         """Only localhost inference gets cache_prompt / flush hints (OpenAI cloud may 400 on extras)."""
@@ -597,15 +682,27 @@ class LLMWorker(QThread):
         retrieval_query: str,
         core_memory_suppressed: bool,
         retrieval_wrapper_mode: str,
+        inference_user_text: str = "",
+        resolved_query: ResolvedUserQuery | None = None,
     ) -> None:
         if not isinstance(decision, dict):
             return
         decision.update(follow_up.to_dict())
         if discourse_state is not None:
             decision.update(discourse_state.to_dict())
-        if routing_query != (self.prompt or "").strip():
+        original = (self.prompt or "").strip()
+        inference = (inference_user_text or original).strip()
+        if inference != original:
+            decision["inference_user_text"] = inference
+        if resolved_query is not None and resolved_query.succeeded:
+            decision["discourse_query_resolved"] = True
+            decision["discourse_rewrite_reason"] = resolved_query.rewrite_reason
+            decision["discourse_rewrite_confidence"] = round(
+                resolved_query.confidence, 3
+            )
+        if routing_query != original:
             decision["routing_query"] = routing_query
-        if retrieval_query != (self.prompt or "").strip():
+        if retrieval_query != original:
             decision["retrieval_query"] = retrieval_query
         decision["core_memory_suppressed"] = bool(core_memory_suppressed)
         decision["retrieval_wrapper_mode"] = retrieval_wrapper_mode
@@ -694,12 +791,23 @@ class LLMWorker(QThread):
         if not discourse_debug_enabled():
             return
         topic = discourse_state.active_topic if discourse_state else None
+        referent = discourse_state.active_referent if discourse_state else None
+        ref_source = (
+            discourse_state.referent_source if discourse_state else "none"
+        )
+        ref_conf = (
+            discourse_state.referent_confidence if discourse_state else 0.0
+        )
         logger.info(
-            "[Discourse] follow_up=%s conf=%.2f topic=%r wrapper=%s "
-            "core_memory_suppressed=%s roles=%s hist_chars=%d retrieval_chars=%d query_chars=%d",
+            "[Discourse] follow_up=%s conf=%.2f topic=%r referent=%r "
+            "source=%s ref_conf=%.2f wrapper=%s core_memory_suppressed=%s "
+            "roles=%s hist_chars=%d retrieval_chars=%d query_chars=%d",
             follow_up.kind.value,
             follow_up.confidence,
             topic,
+            referent,
+            ref_source,
+            ref_conf,
             retrieval_wrapper_mode,
             core_memory_suppressed,
             roles,
@@ -707,6 +815,33 @@ class LLMWorker(QThread):
             retrieval_chars,
             query_chars,
         )
+
+    def _promote_discourse_after_assistant(self, final_text: str) -> None:
+        if not get_discourse_grounding_enabled() or not self.session_id:
+            return
+        text = (final_text or "").strip()
+        if not text:
+            return
+        sid = str(self.session_id)
+        prior = self._discourse_by_session.get(sid)
+        promoted = promote_referent_after_assistant(
+            user_prompt=str(self.prompt or ""),
+            assistant_text=text,
+            prior=prior,
+        )
+        if promoted.active_referent and (
+            prior is None
+            or promoted.active_referent != prior.active_referent
+            or promoted.referent_source != prior.referent_source
+        ):
+            log_discourse_referent_trace(
+                referent=promoted.active_referent,
+                referent_source=promoted.referent_source,
+                referent_confidence=promoted.referent_confidence,
+                user_prompt_preview=str(self.prompt or ""),
+                assistant_preview=text,
+            )
+        self._discourse_by_session[sid] = promoted
 
     def _memory_query_fingerprint(
         self,
@@ -784,8 +919,14 @@ class LLMWorker(QThread):
         
         # Strip HTML and Citations (for RAG/Web)
         text = re.sub(r'<[^>]+>', '', text) 
-        text = re.sub(r'\[(\d+|W)\]', '', text) 
-        
+        text = re.sub(r'\[(\d+|W)\]', '', text)
+        text = re.sub(
+            r"\[\s*format\s+fallback\s+applied\s*\]",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
         cleaned = text.strip()
         
         # 🔑 THE ULTIMATE FAILSAFE: 
@@ -794,6 +935,42 @@ class LLMWorker(QThread):
             return ""
             
         return cleaned
+
+    def _reset_tts_dedupe_state(self) -> None:
+        self._tts_dedupe_keys: set[str] = set()
+
+    def _normalize_tts_key(self, text: str) -> str:
+        cleaned = self.clean_text_for_tts(text)
+        return re.sub(r"\s+", " ", cleaned).strip().lower()
+
+    def _queue_tts_sentence(self, raw: str, *, force: bool = False) -> None:
+        if bool(getattr(self, "_cancel_requested", False)):
+            return
+        cleaned = self.clean_text_for_tts(raw)
+        if not cleaned:
+            return
+        key = self._normalize_tts_key(cleaned)
+        if not key:
+            return
+        keys = getattr(self, "_tts_dedupe_keys", None)
+        if keys is None:
+            self._reset_tts_dedupe_state()
+            keys = self._tts_dedupe_keys
+        if not force and key in keys:
+            return
+        keys.add(key)
+        self.sentence_ready.emit(cleaned, self.session_id or "")
+
+    def _estimate_output_tokens(self, text: str) -> int:
+        """Approximate output token count for UX telemetry (non-billing metric)."""
+        return len(re.findall(r"\S+", (text or "").strip()))
+
+    def _emit_output_tps(self, token_count: int, first_token_ts: float | None) -> None:
+        if token_count <= 0 or first_token_ts is None:
+            self.tps_metric.emit(0.0)
+            return
+        elapsed = max(0.001, time.time() - float(first_token_ts))
+        self.tps_metric.emit(float(token_count) / elapsed)
 
     # ============================================================
     def generate_response(
@@ -819,25 +996,48 @@ class LLMWorker(QThread):
         self.start() # This automatically triggers the run() method
 
     # ============================================================
-    def generate(self, prompt: str) -> str:
+    def was_last_native_job_cancelled(self) -> bool:
+        return bool(getattr(self, "_last_native_job_cancelled", False))
+
+    def generate(
+        self,
+        *,
+        task: PrimaryEngineTask,
+        system: str,
+        user: str,
+        temperature: float = 0.1,
+        max_tokens: int = 1000,
+        debug_caller: str = "helper",
+    ) -> str:
+        self._last_native_job_cancelled = False
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             out: list = []
             ev = threading.Event()
             self._native_engine.enqueue_simple_completion(
-                [{"role": "user", "content": prompt}],
-                0.1,
-                1000,
+                messages,
+                temperature,
+                max_tokens,
                 out,
                 ev,
+                task=task,
+                debug_caller=debug_caller,
             )
             if not ev.wait(120):
                 return ""
-            return (out[0] if out else "") or ""
+            result = (out[0] if out else "") or ""
+            self._last_native_job_cancelled = bool(
+                self._native_engine.consume_last_job_cancelled()
+            )
+            return result
 
         payload = {
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "max_tokens": 1000,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "stream": False,
         }
         if self._is_local_llm_service():
@@ -859,10 +1059,22 @@ class LLMWorker(QThread):
         self._cancel_requested = False
         self._active_stream_response = None
         self._successfully_finished = False
+        self.tps_metric.emit(0.0)
         # T3.3: reset skip/mode flags before the turn begins; _execute_llm_turn
         # re-primes them at the very top but keeping it here is belt-and-braces
         # in case an early exception fires before that method is called.
         self._reset_turn_enrichment_flags()
+        self._completion_output_snapshot = None
+        self._turn_execution_route = ""
+        self._debug_exchange_id = next_exchange_id()
+        self._exchange_worker_started_at = time.monotonic()
+        self._engine_enqueue_at: float | None = None
+        log_chat_exchange_begin(
+            exchange_id=self._debug_exchange_id,
+            session_id=str(self.session_id or ""),
+            user_prompt=str(getattr(self, "_persist_content", None) or self.prompt or ""),
+            engine_mode=str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or ""),
+        )
         final_text_out = ""
         try:
             final_text_out = self._execute_llm_turn()
@@ -908,6 +1120,41 @@ class LLMWorker(QThread):
             except Exception:
                 logger.exception("[LLM] failed to emit enrichment context")
             final_text_out = strip_harmony_oss_artifacts(final_text_out or "")
+            log_completion_output_trace(
+                session_id=str(self.session_id or ""),
+                snapshot=getattr(self, "_completion_output_snapshot", None),
+                presented_text=final_text_out,
+            )
+            worker_prep_ms = None
+            engine_queue_wait_ms = None
+            engine_inference_ms = None
+            exchange_total_ms = None
+            enqueue_at = getattr(self, "_engine_enqueue_at", None)
+            started_at = getattr(self, "_exchange_worker_started_at", None)
+            if started_at is not None:
+                exchange_total_ms = max(
+                    0, int(round((time.monotonic() - started_at) * 1000))
+                )
+            if enqueue_at is not None and started_at is not None:
+                worker_prep_ms = max(0, int(round((enqueue_at - started_at) * 1000)))
+            native_engine = getattr(self, "_native_engine", None)
+            if native_engine is not None:
+                job_timing = native_engine.consume_last_job_timing()
+                if job_timing is not None:
+                    engine_queue_wait_ms = job_timing.queue_wait_ms
+                    engine_inference_ms = job_timing.inference_ms
+            log_chat_exchange_end(
+                exchange_id=self._debug_exchange_id,
+                session_id=str(self.session_id or ""),
+                route=str(getattr(self, "_turn_execution_route", "") or ""),
+                success=bool(self._successfully_finished),
+                presented_text=final_text_out,
+                worker_prep_ms=worker_prep_ms,
+                engine_queue_wait_ms=engine_queue_wait_ms,
+                engine_inference_ms=engine_inference_ms,
+                exchange_total_ms=exchange_total_ms,
+            )
+            self._completion_output_snapshot = None
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -940,6 +1187,8 @@ class LLMWorker(QThread):
         discourse_state: DiscourseState | None = None
         follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
         original_query = (self.prompt or "").strip()
+        resolved_query: ResolvedUserQuery | None = None
+        inference_user_text = original_query
         routing_query = original_query
         retrieval_query = original_query
         query_expansion: QueryExpansion | None = None
@@ -961,10 +1210,26 @@ class LLMWorker(QThread):
             if self.session_id:
                 self._discourse_by_session[str(self.session_id)] = discourse_state
             follow_up = classify_follow_up(self.prompt, history, discourse_state)
-            routing_query = resolve_routing_query(self.prompt, follow_up, discourse_state)
-            retrieval_query = resolve_retrieval_query(self.prompt, follow_up, discourse_state)
+            resolved_query = resolve_ambiguous_user_query(
+                self.prompt, discourse_state, follow_up
+            )
+            if resolved_query.succeeded:
+                inference_user_text = resolved_query.resolved
+                log_discourse_query_rewrite(
+                    original=resolved_query.original,
+                    resolved=resolved_query.resolved,
+                    substitutions=resolved_query.substitutions,
+                    confidence=resolved_query.confidence,
+                    rewrite_reason=resolved_query.rewrite_reason,
+                )
+            routing_query = resolve_routing_query(
+                inference_user_text, follow_up, discourse_state
+            )
+            retrieval_query = resolve_retrieval_query(
+                inference_user_text, follow_up, discourse_state
+            )
             query_expansion = propose_query_expansion(
-                original_query,
+                inference_user_text,
                 follow_up,
                 discourse_state,
                 history,
@@ -1247,10 +1512,12 @@ class LLMWorker(QThread):
         # ------------------------------------------------------------
         # Skipped on explicit-remember (write turn) and explicit file-search
         # (the user scoped this turn to the local library).
+        manual_web = False
+        auto_web = False
+        explicit_web_request = detect_explicit_web_request(clean_prompt)
         if not explicit_remember_active and not scoped_library_active:
-            # Manual trigger: user text contains known web commands
-            web_triggers = ["search the internet", "who won", "current news", "weather"]
-            manual_web = any(t in clean_prompt for t in web_triggers) and self.mcp_internet_enabled
+            # Manual trigger: user explicitly asked to search/check the web.
+            manual_web = explicit_web_request
 
             # Automatic trigger: cognitive router decides internet is needed
             auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
@@ -1328,9 +1595,19 @@ class LLMWorker(QThread):
         preference_policy = resolve_preference_policy(
             session_overrides=getattr(self, "_session_preference_overrides", None),
         )
-        web_capability_blocked = bool(
+        web_vetoed = bool(
             isinstance(decision, dict) and decision.get("web_vetoed_tool_disabled")
         )
+        web_capability_blocked = bool(
+            explicit_web_request and not self.mcp_internet_enabled
+        ) or bool(
+            web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
+        )
+        if web_vetoed and not web_capability_blocked:
+            logger.info(
+                "[LLM Worker] WEB route vetoed (internet disabled) but query has "
+                "no live-web intent; using plain chat prompt."
+            )
 
         # ============================================================
         # ROUTING START TIME (telemetry)
@@ -1348,6 +1625,8 @@ class LLMWorker(QThread):
             retrieval_query=retrieval_query,
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
+            inference_user_text=inference_user_text,
+            resolved_query=resolved_query,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -1518,27 +1797,77 @@ class LLMWorker(QThread):
                     self._turn_rag_chunk_ids.append(str(cid))
 
         # ---- WEB + HYBRID ----
-        if execution_route in ["WEB", "INTERNET", "HYBRID"] and (self.mcp_internet_enabled or force_web):
+        web_search_attempted = False
+        if should_run_internet_search_for_route(
+            execution_route,
+            clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
+            force_web=force_web,
+            manual_web=manual_web,
+            auto_web=auto_web,
+            composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
+        ) and (self.mcp_internet_enabled or force_web):
+            web_search_attempted = True
             self.status_update.emit("🌐 Searching the Web...")
 
-            web_semantic = (
-                resolve_web_query(self.prompt, follow_up, discourse_state)
-                if discourse_enabled
-                else (self.prompt or "").strip()
+            search_target = resolve_search_target(
+                self.prompt,
+                follow_up,
+                discourse_state,
+                history,
             )
+            web_semantic = search_target.query
             web_query = apply_tool_policy(
                 web_semantic,
                 preference_policy,
                 tool="internet",
             )
-            if web_semantic != (self.prompt or "").strip():
-                logger.info(
-                    "[Discourse] web search query expanded for follow-up "
-                    "(topic=%r)",
-                    discourse_state.active_topic if discourse_state else None,
-                )
-                if isinstance(decision, dict):
+            raw_prompt = (self.prompt or "").strip()
+            rewrite_failed = web_query_rewrite_failed(
+                self.prompt,
+                follow_up,
+                web_semantic,
+                explicit_web=explicit_web_request,
+            )
+            if isinstance(decision, dict):
+                decision["web_search_attempted"] = True
+                decision["web_query_raw"] = raw_prompt
+                decision["web_query_resolved"] = web_query
+                decision["web_query_rewrite_reason"] = search_target.rewrite_reason
+                decision["web_query_rewrite_failed"] = rewrite_failed
+                if search_target.rewritten:
                     decision["web_query"] = web_query
+                    if search_target.rewrite_reason == "topic_expansion":
+                        decision["discourse_web_query_expanded"] = True
+                    elif search_target.rewrite_reason == "meta_prior_turn":
+                        decision["web_query_rewritten_from_meta"] = True
+
+            if search_target.rewritten:
+                logger.info(
+                    "[WebPipeline] query_resolved raw=%r resolved=%r reason=%s",
+                    raw_prompt[:120],
+                    web_semantic[:120],
+                    search_target.rewrite_reason,
+                )
+                if search_target.rewrite_reason == "topic_expansion":
+                    logger.info(
+                        "[Discourse] web search query expanded for follow-up "
+                        "(topic=%r)",
+                        discourse_state.active_topic if discourse_state else None,
+                    )
+                elif search_target.rewrite_reason == "meta_prior_turn":
+                    logger.info(
+                        "[Discourse] web search query rewritten from meta "
+                        "web request (prior=%r)",
+                        web_semantic[:120],
+                    )
+            if rewrite_failed:
+                logger.warning(
+                    "[WebPipeline] unresolved meta web request; search may be "
+                    "off-topic (raw=%r)",
+                    raw_prompt[:120],
+                )
+
             web_results = search_internet(web_query)
 
             # Defensive guard: when search_internet fails (e.g. DNS /
@@ -1568,6 +1897,53 @@ class LLMWorker(QThread):
                     # mined as a user fact.
                     if execution_route in ("WEB", "INTERNET", "HYBRID"):
                         self._mark_skip_enrichment("web_tool_failure")
+                elif web_results:
+                    try:
+                        web_query_vector = self.embedding_cache.get_embedding(
+                            web_semantic or web_query
+                        )
+                    except Exception:
+                        web_query_vector = None
+                    filtered, rel_diag = filter_web_results(
+                        web_semantic or web_query,
+                        [r for r in web_results if isinstance(r, dict)],
+                        query_vector=web_query_vector,
+                        embed_text_fn=self.embedding_cache.get_embedding,
+                        use_embedding_gate=True,
+                    )
+                    if isinstance(decision, dict):
+                        decision.update(rel_diag)
+                    kept = rel_diag.get("web_results_kept_count", 0)
+                    dropped = len(rel_diag.get("web_relevance_dropped") or [])
+                    logger.info(
+                        "[WebPipeline] relevance_gate kept=%d dropped=%d "
+                        "min_overlap=%.2f",
+                        kept,
+                        dropped,
+                        rel_diag.get("web_relevance_min_overlap", 0.15),
+                    )
+                    if filtered:
+                        web_results = filtered
+                    else:
+                        logger.info(
+                            "[LLM Worker] Web results dropped (relevance gate); "
+                            "not injecting [W] context."
+                        )
+                        web_results = None
+                        if execution_route in ("WEB", "INTERNET", "HYBRID"):
+                            self._mark_skip_enrichment("web_tool_failure")
+                    if hasattr(self, "routing_debug_buffer"):
+                        try:
+                            self.routing_debug_buffer.merge_web_pipeline_into_latest(
+                                {
+                                    "web_query_resolved": web_query,
+                                    "web_query_rewrite_reason": search_target.rewrite_reason,
+                                    "web_query_rewrite_failed": rewrite_failed,
+                                    **rel_diag,
+                                }
+                            )
+                        except Exception:
+                            pass
 
             if web_results:
                 web_items: list[dict] = []
@@ -1671,10 +2047,17 @@ class LLMWorker(QThread):
         latency_ms = (time.time() - route_start) * 1000
 
         if self.USE_TELEMETRY:
+            web_hits = sum(
+                1
+                for s in all_ui_sources
+                if isinstance(s, dict) and s.get("type") == "web"
+            )
             self.telemetry.log({
                 "route": execution_route,
                 "memory_hits": len(mem_result.get("memory_sources", [])),
                 "rag_hits": len(rag_result.get("sources", [])),
+                "web_hits": web_hits,
+                "web_search_attempted": bool(web_search_attempted),
                 "latency_ms": latency_ms,
                 "memory_chars": len(memory_context),
                 "rag_chars": len(tool_context),
@@ -1811,6 +2194,15 @@ class LLMWorker(QThread):
                 "Do NOT invent facts or emit [W] citations without sources.]\n"
             )
 
+        explicit_web_empty_results = bool(
+            explicit_web_request
+            and web_search_attempted
+            and not all_ui_sources
+            and self.mcp_internet_enabled
+            and execution_route == "NONE"
+        )
+        self._turn_execution_route = execution_route
+
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
         # router's bounded adaptive calibration layer.
@@ -1938,24 +2330,40 @@ class LLMWorker(QThread):
                     "(omitted %d other messages from active session)",
                     len(history) - 1,
                 )
-        elif (
-            discourse_enabled
-            and follow_up.active
-            and history
-            and history[-1].get("role") == "user"
-        ):
+        elif discourse_enabled and history and history[-1].get("role") == "user":
             grounded = list(history)
             last = dict(grounded[-1])
-            if discourse_state and discourse_state.active_topic:
-                last["content"] = (
-                    f"[Continuing our discussion of {discourse_state.active_topic}]\n\n"
-                    f"{last.get('content') or ''}"
+            rewrite_ok = bool(
+                resolved_query is not None and resolved_query.succeeded
+            )
+            if rewrite_ok:
+                last["content"] = inference_user_text
+            elif follow_up.active:
+                referent = (
+                    (discourse_state.active_referent or "").strip()
+                    if discourse_state
+                    else ""
                 )
-            elif len(grounded) >= 2:
-                last["content"] = (
-                    "[Continuing from the conversation above]\n\n"
-                    f"{last.get('content') or ''}"
+                topic_anchor = (
+                    (discourse_state.active_topic or "").strip()
+                    if discourse_state
+                    else ""
                 )
+                if referent:
+                    last["content"] = (
+                        f"[Referring to {referent}]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
+                elif topic_anchor and not is_deictic_topic_phrase(topic_anchor):
+                    last["content"] = (
+                        f"[Continuing our discussion of {topic_anchor}]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
+                elif len(grounded) >= 2:
+                    last["content"] = (
+                        "[Continuing from the conversation above]\n\n"
+                        f"{last.get('content') or ''}"
+                    )
             grounded[-1] = last
             prompt_history = grounded
 
@@ -1989,6 +2397,8 @@ class LLMWorker(QThread):
             retrieval_query=retrieval_query,
             core_memory_suppressed=core_memory_suppressed,
             retrieval_wrapper_mode=retrieval_wrapper_mode,
+            inference_user_text=inference_user_text,
+            resolved_query=resolved_query,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -1998,16 +2408,32 @@ class LLMWorker(QThread):
         )
 
         topic_salience = ""
-        if (
+        rewrite_ok = bool(
             discourse_enabled
-            and follow_up.active
-            and discourse_state
-            and discourse_state.active_topic
-        ):
-            topic_salience = build_topic_salience_suffix(
-                discourse_state.active_topic,
-                topic_type=discourse_state.topic_type,
-            )
+            and resolved_query is not None
+            and resolved_query.succeeded
+        )
+        if discourse_enabled and follow_up.active and discourse_state:
+            referent = (discourse_state.active_referent or "").strip()
+            if rewrite_ok:
+                topic_salience = ""
+            elif referent:
+                if discourse_prompt_hint_enabled():
+                    token = "it"
+                    if resolved_query and resolved_query.substitutions:
+                        token = resolved_query.substitutions[0][0]
+                    topic_salience = build_minimal_referent_fallback_suffix(
+                        referent,
+                        token=token,
+                    )
+            elif (
+                discourse_state.active_topic
+                and not is_deictic_topic_phrase(discourse_state.active_topic)
+            ):
+                topic_salience = build_topic_salience_suffix(
+                    discourse_state.active_topic,
+                    topic_type=discourse_state.topic_type,
+                )
 
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
@@ -2022,6 +2448,7 @@ class LLMWorker(QThread):
             conversation_history=prompt_history,
             composer_conversation_ref=attachment_conversation_active,
             web_capability_blocked=web_capability_blocked,
+            explicit_web_empty_results=explicit_web_empty_results,
             preference_context=preference_policy.compact_prompt_context(
                 query=self.prompt,
                 route=execution_route,
@@ -2030,6 +2457,7 @@ class LLMWorker(QThread):
             retrieval_wrapper_mode=retrieval_wrapper_mode,
             topic_salience_hint=topic_salience,
             follow_up_active=follow_up.active,
+            chat_personality_enabled=get_enable_chat_personality_nudge(),
         )
         if prompt_blocks.no_sources_mode:
             logger.info(
@@ -2068,7 +2496,12 @@ class LLMWorker(QThread):
         final_text = ""
 
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
-            final_text = self._stream_via_native(messages, all_ui_sources)
+            final_text = self._stream_via_native(
+                messages,
+                all_ui_sources,
+                retrieval_context=retrieval_prompt_body,
+                execution_route=execution_route,
+            )
             return final_text
 
         payload = {
@@ -2076,6 +2509,7 @@ class LLMWorker(QThread):
             "temperature": self.temperature,
             "max_tokens": self.context_window,
             "stream": True,
+            **self._sampling_payload(),
         }
         if self._uses_external_http() and self._is_local_llm_service():
             # llama.cpp server: avoid unbounded prompt-prefix / KV reuse across unrelated requests
@@ -2085,6 +2519,9 @@ class LLMWorker(QThread):
         final_text = ""
         start = time.time()
         first_token = False
+        first_token_ts: float | None = None
+        output_token_count = 0
+        self._reset_tts_dedupe_state()
 
         try:
             self._active_stream_response = requests.post(
@@ -2125,16 +2562,15 @@ class LLMWorker(QThread):
                             if not first_token:
                                 self.ttft_latency.emit((time.time() - start) * 1000)
                                 first_token = True
+                                first_token_ts = time.time()
 
                             current_sentence += delta
                             final_text += delta
+                            output_token_count += self._estimate_output_tokens(delta)
                             self.token_streamed.emit(self.session_id or "", delta)
 
                             if any(p in delta for p in ".!?"):
-                                clean = self.clean_text_for_tts(current_sentence)
-                                if clean:
-                                    if not bool(getattr(self, "_cancel_requested", False)):
-                                        self.sentence_ready.emit(clean, self.session_id)
+                                self._queue_tts_sentence(current_sentence)
                                 current_sentence = ""
 
                             if repetition_guard.observe(delta):
@@ -2150,14 +2586,19 @@ class LLMWorker(QThread):
                     except json.JSONDecodeError:
                         continue
 
+            raw_external_text = final_text
             if final_text:
                 final_text = strip_harmony_oss_artifacts(final_text)
 
             if current_sentence.strip():
-                clean = self.clean_text_for_tts(current_sentence)
-                if clean:
-                    if not bool(getattr(self, "_cancel_requested", False)):
-                        self.sentence_ready.emit(clean, self.session_id)
+                self._queue_tts_sentence(current_sentence)
+
+            self._completion_output_snapshot = CompletionOutputSnapshot(
+                engine_mode="external",
+                raw_text=raw_external_text or "",
+                after_worker_filters=final_text or "",
+                worker_return_text=final_text or "",
+            )
 
             if self.session_id and final_text.strip():
                 src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
@@ -2165,6 +2606,7 @@ class LLMWorker(QThread):
                     self.session_id, "assistant", final_text, sources_json=src_payload
                 )
                 self._record_memory_citations(final_text, all_ui_sources)
+                self._promote_discourse_after_assistant(final_text)
 
             self._successfully_finished = True
 
@@ -2180,6 +2622,7 @@ class LLMWorker(QThread):
 
         finally:
             self._close_active_stream()
+            self._emit_output_tps(output_token_count, first_token_ts)
 
         self._persist_latest_routing_debug_record()
         return final_text
@@ -2192,34 +2635,67 @@ class LLMWorker(QThread):
         ctx = max(512, int(getattr(self, "context_window", 4096)))
         return min(4096, max(256, ctx // 2))
 
-    def _stream_via_native(self, messages: list[dict], all_ui_sources: list) -> str:
+    def _stream_via_native(
+        self,
+        messages: list[dict],
+        all_ui_sources: list,
+        *,
+        retrieval_context: str = "",
+        execution_route: str = "NONE",
+    ) -> str:
         """Stream native output after a small leading-meta/thinking gate.
 
         The first few chunks may contain "Provide final answer" / thinking tags; filters may
         briefly buffer those openers, but once real answer text starts, UI and TTS both stream
         the same cleaned fragments normally.
         """
+        self._reset_tts_dedupe_state()
         token_queue: queue.Queue = queue.Queue()
         done_event = threading.Event()
+        chat_format_mode = resolve_chat_format_mode(
+            execution_route=execution_route,
+            user_query=str(self.prompt or ""),
+        )
+        logger.info(
+            "[ChatFormatMode] mode=%s route=%s query_preview=%r",
+            chat_format_mode,
+            execution_route,
+            (str(self.prompt or "")[:80]),
+        )
+        self._engine_enqueue_at = time.monotonic()
         self._native_engine.enqueue_generation(
             messages,
             self.temperature,
             self._max_tokens_native_completion(),
             token_queue,
             done_event,
+            retrieval_context=(retrieval_context or "").strip(),
+            chat_format_mode=chat_format_mode,
+            debug_caller="chat",
+            debug_exchange_id=getattr(self, "_debug_exchange_id", None),
         )
 
         cot_filter = RedactedThinkingStreamFilter()
         meta_filter = LeadingMetaInstructionStripper()
         repetition_guard = StreamRepetitionGuard()
+        prompt_contract = getattr(self._native_engine, "_last_prompt_contract", None)
+        use_harmony_parser = bool(
+            is_harmony_contract(prompt_contract) and harmony_stream_parser_enabled()
+        )
+        harmony_parser = HarmonyStreamParser() if use_harmony_parser else None
         current_sentence = ""
         final_text = ""
         raw_parts: list[str] = []
         native_end_text = ""
         native_load_error_text = ""
+        stream_output_superseded = False
+        streamed_before_replace = ""
         start = time.time()
         first_token = False
+        first_token_ts: float | None = None
         stream_wall_start = time.time()
+        output_token_count = 0
+        harmony_cut_cancelled = False
 
         def _sanitize_complete_native_text(raw_text: str) -> str:
             if not raw_text:
@@ -2229,29 +2705,44 @@ class LLMWorker(QThread):
             cleaned = complete_cot.feed(raw_text)
             cleaned += complete_cot.flush()
             cleaned = complete_meta.feed(cleaned) + complete_meta.flush()
-            return strip_harmony_oss_artifacts(cleaned).strip()
+            return strip_harmony_oss_artifacts(
+                polish_harmony_visible_text(cleaned)
+            ).strip()
 
-        def _emit_filtered(fragment: str) -> None:
-            nonlocal current_sentence, final_text, first_token
+        def _abort_harmony_tts_tail() -> None:
+            nonlocal current_sentence
+            current_sentence = ""
+            self._reset_tts_dedupe_state()
+            self.tts_turn_superseded.emit(self.session_id or "")
+
+        def _emit_filtered(fragment: str, *, speak: bool = True) -> None:
+            nonlocal current_sentence, final_text, first_token, first_token_ts, output_token_count
             if not fragment:
                 return
-            fragment = strip_harmony_oss_artifacts(fragment)
+            if harmony_parser is not None and is_harmony_orphan_stream_fragment(fragment):
+                return
+            if harmony_parser is None:
+                fragment = strip_harmony_oss_artifacts(fragment)
             if not fragment:
                 return
             if not first_token:
                 self.ttft_latency.emit((time.time() - start) * 1000)
                 first_token = True
+                first_token_ts = time.time()
             final_text += fragment
+            output_token_count += self._estimate_output_tokens(fragment)
             self.token_streamed.emit(self.session_id or "", fragment)
             current_sentence += fragment
-            if any(p in fragment for p in ".!?"):
-                spoken = self.clean_text_for_tts(current_sentence)
-                if spoken and not bool(getattr(self, "_cancel_requested", False)):
-                    self.sentence_ready.emit(spoken, self.session_id)
+            if speak and any(p in fragment for p in ".!?"):
+                self._queue_tts_sentence(current_sentence)
                 current_sentence = ""
 
         def _flush_tail() -> None:
-            tail = cot_filter.flush()
+            tail = ""
+            if harmony_parser is not None:
+                tail = harmony_parser.flush()
+            tail = cot_filter.feed(tail)
+            tail += cot_filter.flush()
             tail = meta_filter.feed(tail) + meta_filter.flush()
             _emit_filtered(tail)
 
@@ -2274,8 +2765,25 @@ class LLMWorker(QThread):
                 raw = data
                 raw_text = str(raw or "")
                 raw_parts.append(raw_text)
-                clean_piece = meta_filter.feed(cot_filter.feed(raw_text))
+                if harmony_parser is not None:
+                    stream_in = harmony_parser.feed(raw_text)
+                else:
+                    stream_in = raw_text
+                clean_piece = meta_filter.feed(cot_filter.feed(stream_in))
                 _emit_filtered(clean_piece)
+                if harmony_parser is not None and final_text.strip():
+                    if harmony_parser.degeneration_detected or harmony_tail_degenerate(
+                        harmony_parser.raw_seen
+                    ):
+                        logger.info(
+                            "[LLM] Harmony degeneration detected; cancelling generation."
+                        )
+                        harmony_cut_cancelled = True
+                        self._mark_skip_enrichment("harmony_degeneration_cancelled")
+                        _abort_harmony_tts_tail()
+                        self._native_engine.request_cancel_generation()
+                        saw_end = True
+                        break
                 if clean_piece and repetition_guard.observe(clean_piece):
                     logger.error(
                         "[LLM] Native stream degeneration detected (%s); cancelling.",
@@ -2288,6 +2796,31 @@ class LLMWorker(QThread):
                     _flush_tail()
                     saw_end = True
                     break
+            elif kind == "recovery":
+                raw_text = str(data or "")
+                if raw_text:
+                    raw_parts.append(raw_text)
+                if harmony_parser is not None:
+                    stream_in = harmony_parser.feed(raw_text)
+                else:
+                    stream_in = raw_text
+                clean_piece = meta_filter.feed(cot_filter.feed(stream_in))
+                _emit_filtered(clean_piece, speak=False)
+            elif kind == "replace":
+                replacement = str(data or "").strip()
+                streamed_snapshot = strip_harmony_oss_artifacts(final_text).strip()
+                streamed_before_replace = streamed_snapshot
+                replacement = preserve_streamed_follow_up(replacement, streamed_snapshot)
+                stream_output_superseded = True
+                native_end_text = replacement
+                final_text = replacement
+                raw_parts.clear()
+                if replacement:
+                    raw_parts.append(replacement)
+                current_sentence = ""
+                self._reset_tts_dedupe_state()
+                self.tts_turn_superseded.emit(self.session_id or "")
+                self.stream_replaced.emit(self.session_id or "", replacement)
             elif kind == "error":
                 self.token_streamed.emit(self.session_id or "", f"\n\n*({data})*")
                 err_txt = str(data or "")
@@ -2298,9 +2831,7 @@ class LLMWorker(QThread):
                     native_load_error_text = err_txt.strip()
                     self._mark_skip_enrichment("native_model_not_loaded")
                     self.status_update.emit("Load a Model")
-                    spoken = self.clean_text_for_tts(err_txt)
-                    if spoken:
-                        self.sentence_ready.emit(spoken, self.session_id)
+                    self._queue_tts_sentence(err_txt)
             elif kind == "end":
                 native_end_text = str(data or "")
                 _flush_tail()
@@ -2310,34 +2841,61 @@ class LLMWorker(QThread):
         if not saw_end:
             _flush_tail()
 
-        if current_sentence.strip():
-            spoken = self.clean_text_for_tts(current_sentence)
-            if spoken and not bool(getattr(self, "_cancel_requested", False)):
-                self.sentence_ready.emit(spoken, self.session_id)
+        if (
+            not stream_output_superseded
+            and current_sentence.strip()
+            and not harmony_cut_cancelled
+        ):
+            self._queue_tts_sentence(current_sentence)
             current_sentence = ""
 
         emitted_text = strip_harmony_oss_artifacts(final_text).strip()
         raw_complete_text = native_end_text or "".join(raw_parts)
+        if harmony_parser is not None:
+            cut = harmony_parser.degeneration_cut
+            raw_for_parse = (
+                raw_complete_text[:cut] if cut is not None else raw_complete_text
+            )
+            replay = HarmonyStreamParser()
+            after_harmony_text = ""
+            for chunk in raw_for_parse:
+                after_harmony_text += replay.feed(chunk)
+            after_harmony_text += replay.flush()
+        else:
+            after_harmony_text = raw_complete_text
         authoritative_text = (
-            _sanitize_complete_native_text(raw_complete_text)
+            _sanitize_complete_native_text(after_harmony_text or raw_complete_text)
             if raw_complete_text
             else emitted_text
         )
-        if authoritative_text and authoritative_text != emitted_text:
-            if emitted_text and authoritative_text.startswith(emitted_text):
-                _emit_filtered(authoritative_text[len(emitted_text) :])
-            elif not emitted_text or not emitted_text.strip():
-                _emit_filtered(authoritative_text)
-            else:
-                # The UI will reconcile the bubble on response_finished; emitting here prevents
-                # "spoken but never printed" when native deltas only carried a meta preface.
-                _emit_filtered("\n" + authoritative_text)
-        if current_sentence.strip():
-            spoken = self.clean_text_for_tts(current_sentence)
-            if spoken and not bool(getattr(self, "_cancel_requested", False)):
-                self.sentence_ready.emit(spoken, self.session_id)
-            current_sentence = ""
-        final_text = authoritative_text or emitted_text
+        if stream_output_superseded:
+            # Engine ``end`` carries the unmerged retry; re-apply follow-up preservation.
+            final_text = preserve_streamed_follow_up(
+                authoritative_text or emitted_text,
+                streamed_before_replace or emitted_text,
+            )
+            if final_text.strip():
+                self._queue_tts_sentence(final_text)
+        else:
+            if harmony_parser is not None and authoritative_text:
+                # Prefer sanitized replay over a polluted incremental stream.
+                final_text = authoritative_text
+                current_sentence = ""
+            elif authoritative_text and authoritative_text != emitted_text:
+                if emitted_text and authoritative_text.startswith(emitted_text):
+                    _emit_filtered(authoritative_text[len(emitted_text) :], speak=True)
+                elif not emitted_text or not emitted_text.strip():
+                    _emit_filtered(authoritative_text, speak=True)
+                else:
+                    final_text = authoritative_text
+                    current_sentence = ""
+            elif authoritative_text:
+                final_text = authoritative_text
+            if current_sentence.strip():
+                self._queue_tts_sentence(current_sentence)
+                current_sentence = ""
+            if not (harmony_parser is not None and authoritative_text):
+                final_text = authoritative_text or emitted_text
         if not final_text.strip() and native_load_error_text:
             final_text = native_load_error_text
         if not final_text.strip():
@@ -2348,12 +2906,29 @@ class LLMWorker(QThread):
             final_text = empty_msg
             _emit_filtered(empty_msg)
 
+        self._completion_output_snapshot = CompletionOutputSnapshot(
+            engine_mode="internal",
+            raw_text=raw_complete_text or "",
+            after_harmony_parser=after_harmony_text or "",
+            after_worker_filters=authoritative_text or "",
+            streamed_incremental=emitted_text or "",
+            worker_return_text=final_text or "",
+            engine_end_text=native_end_text or "",
+            retry_replaced=bool(stream_output_superseded),
+            extra=(
+                {"harmony_parser": True, "harmony_channel": harmony_parser.current_channel}
+                if harmony_parser is not None
+                else {}
+            ),
+        )
+
         if self.session_id and final_text.strip():
             src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
             self._turn_last_assistant_msg_id = self.db.add_message(
                 self.session_id, "assistant", final_text, sources_json=src_payload
             )
             self._record_memory_citations(final_text, all_ui_sources)
+            self._promote_discourse_after_assistant(final_text)
 
         try:
             mr_trace = build_model_router_trace(self._native_engine)
@@ -2373,6 +2948,7 @@ class LLMWorker(QThread):
             self._persist_latest_routing_debug_record()
 
         self._successfully_finished = True
+        self._emit_output_tps(output_token_count, first_token_ts)
         return final_text
 
     # --- SETTERS FOR THE UI BLUEPRINT ---
@@ -2382,18 +2958,54 @@ class LLMWorker(QThread):
         logger.info(f"LLM Provider API URL updated to: {self.api_url}")
 
     def set_temperature(self, val: float):
-        self.temperature = val
-        logger.debug(f"Temperature updated to {val}")
+        self.temperature = max(0.0, min(2.0, float(val)))
+        set_llm_temperature(self.temperature)
+        logger.debug(f"Temperature updated to {self.temperature}")
 
     def set_context_window(self, val: int):
-        self.context_window = val
-        logger.debug(f"Context Window updated to {val}")
+        new_val = max(1024, min(128000, int(val)))
+        if new_val == self.context_window:
+            return
+        self.context_window = new_val
+        set_llm_context_limit(self.context_window)
+        logger.debug(f"Context Window updated to {self.context_window}")
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self.refresh_native_model_from_settings()
 
     def set_max_history_messages(self, val: int):
         self.max_history_messages = max(2, min(100, int(val)))
+        set_llm_chat_history_messages(self.max_history_messages)
         logger.debug(f"Max chat history messages updated to {self.max_history_messages}")
+
+    def set_top_k(self, val: int):
+        self.top_k = max(0, min(200, int(val)))
+        set_llm_top_k(self.top_k)
+        self._push_sampling_to_native()
+        logger.debug(f"Top-K updated to {self.top_k}")
+
+    def set_repeat_penalty(self, val: float):
+        self.repeat_penalty = max(0.0, min(2.0, float(val)))
+        set_llm_repeat_penalty(self.repeat_penalty)
+        self._push_sampling_to_native()
+        logger.debug(f"Repeat penalty updated to {self.repeat_penalty}")
+
+    def set_presence_penalty(self, val: float):
+        self.presence_penalty = max(0.0, min(2.0, float(val)))
+        set_llm_presence_penalty(self.presence_penalty)
+        self._push_sampling_to_native()
+        logger.debug(f"Presence penalty updated to {self.presence_penalty}")
+
+    def set_top_p(self, val: float):
+        self.top_p = max(0.0, min(1.0, float(val)))
+        set_llm_top_p(self.top_p)
+        self._push_sampling_to_native()
+        logger.debug(f"Top-P updated to {self.top_p}")
+
+    def set_min_p(self, val: float):
+        self.min_p = max(0.0, min(1.0, float(val)))
+        set_llm_min_p(self.min_p)
+        self._push_sampling_to_native()
+        logger.debug(f"Min-P updated to {self.min_p}")
 
     def set_mcp_rag(self, enabled: bool):
         self.mcp_rag_enabled = enabled

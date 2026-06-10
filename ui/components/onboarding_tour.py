@@ -157,11 +157,9 @@ class OnboardingCoachPanel(QFrame):
         return max(200, self.maximumWidth() - m.left() - m.right())
 
     def _label_wrapped_height(self, lbl: QLabel, content_w: int) -> int:
+        """Stable wrapped height — do not use heightForWidth after minimumHeight is set."""
         if not lbl.text().strip():
             return 0
-        h = lbl.heightForWidth(content_w)
-        if h > 0:
-            return h
         flags = int(Qt.TextFlag.TextWordWrap)
         rect = lbl.fontMetrics().boundingRect(
             0, 0, content_w, 10_000, flags, lbl.text()
@@ -173,8 +171,9 @@ class OnboardingCoachPanel(QFrame):
         content_w = self._content_inner_width()
         pad = self._TEXT_LABEL_VERTICAL_PAD
         for lbl in (self.title_lbl, self.body_lbl, self.hint_lbl):
+            lbl.setMinimumHeight(0)
+            lbl.setMaximumHeight(16_777_215)
             if lbl.isHidden() or not lbl.text().strip():
-                lbl.setMinimumHeight(0)
                 continue
             lbl.setMinimumHeight(self._label_wrapped_height(lbl, content_w) + pad)
         self.adjustSize()
@@ -283,6 +282,8 @@ class OnboardingTour:
         self._refresh_timer.setInterval(250)
         self._refresh_timer.timeout.connect(self._refresh_step_ui)
 
+        self._last_panel_content_key: tuple[str, ...] | None = None
+
     @property
     def is_active(self) -> bool:
         return self._active
@@ -292,6 +293,7 @@ class OnboardingTour:
             return
         self._active = True
         self._index = 0
+        self._last_panel_content_key = None
         self._overlay.setGeometry(self._host.rect())
         self._overlay.show()
         self._panel.show()
@@ -312,6 +314,7 @@ class OnboardingTour:
         if not self._active:
             return
         self._active = False
+        self._last_panel_content_key = None
         self._refresh_timer.stop()
         self._key_handler.remove()
         self._overlay.hide()
@@ -380,7 +383,16 @@ class OnboardingTour:
         self._panel.next_btn.setText(
             "Finish" if self._index >= total - 1 else "Next"
         )
-        self._panel.recalculate_content_size()
+        content_key = (
+            self._panel.step_lbl.text(),
+            self._panel.title_lbl.text(),
+            self._panel.body_lbl.text(),
+            self._panel.hint_lbl.text(),
+            str(self._panel.hint_lbl.isHidden()),
+        )
+        if content_key != self._last_panel_content_key:
+            self._last_panel_content_key = content_key
+            self._panel.recalculate_content_size()
         self._position_panel(_global_widget_rect(target) if target else QRect())
         self._panel.raise_()
 

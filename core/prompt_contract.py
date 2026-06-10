@@ -6,25 +6,26 @@ import os
 import re
 from typing import Any, Literal, Optional
 
+from core.harmony_protocol import (
+    detect_harmony_protocol,
+    harmony_stops_for_contract,
+    is_harmony_model_name,
+)
+from core.harmony_renderer import render_harmony_final_prompt
+from core.chat_format_mode import ChatFormatMode
+from core.llm_execution_contract import (
+    PrimaryEngineTask,
+    policy_for_task,
+)
 from core.native_llm_debug import reconstruct_formatted_prompt
 from core.template_safety import is_unsafe_chat_template
 
 PromptMode = Literal["messages", "rendered"]
 TemplateSource = Literal["gguf", "override", "fallback", "fallback_unsafe_gguf"]
+PromptProtocol = Literal["harmony"]
 
 logger = logging.getLogger("Qube.PromptContract")
 PromptConfidence = Literal["high", "medium", "low"]
-_HARMONY_FINAL_STOPS: list[str] = [
-    "<|return|>",
-    "\nWe need to",
-    " We need to",
-    "\nWe should",
-    " We should",
-    "\nWe have",
-    " We have",
-    "\nLet's",
-    " Let's",
-]
 
 _MARKER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\[INST\]|\[/INST\]", re.I),
@@ -42,6 +43,7 @@ class PromptContract:
     stop: list[str]
     template_source: TemplateSource
     confidence: PromptConfidence
+    protocol: Optional[PromptProtocol] = None
 
 
 @dataclass
@@ -72,36 +74,6 @@ def _messages_payload(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         out.append({"role": m.get("role", "user"), "content": m.get("content") or ""})
     return out
-
-
-def _is_gpt_oss_model(model_name: str) -> bool:
-    n = (model_name or "").lower()
-    return "gpt-oss" in n or ("gpt" in n and "oss" in n)
-
-
-def render_harmony_final_prompt(messages: list[dict[str, Any]]) -> str:
-    """
-    Render OpenAI gpt-oss / Harmony prompt with assistant pre-filled in final channel.
-
-    gpt-oss models are Harmony-trained and tend to emit free-text analysis when forced
-    through ChatML. Pre-filling the assistant final channel asks for the user-facing answer
-    directly while still using ``create_completion(prompt=...)``.
-    """
-    parts: list[str] = []
-    for m in _messages_payload(messages):
-        role = str(m.get("role") or "user").strip().lower()
-        content = str(m.get("content") or "").strip()
-        if not content:
-            continue
-        if role == "assistant":
-            role = "assistant"
-        elif role == "system":
-            role = "system"
-        else:
-            role = "user"
-        parts.append(f"<|start|>{role}<|message|>{content}<|end|>")
-    parts.append("<|start|>assistant<|channel|>final<|message|>")
-    return "\n".join(parts)
 
 
 def contains_template_markers(messages: list[dict[str, Any]]) -> bool:
@@ -158,7 +130,13 @@ def _format_supported(chat_format: str, handlers: set[str]) -> bool:
     return chat_format in {"chatml", "llama-2", "llama-3", "mistral-instruct"}
 
 
-def resolve_prompt_contract(llama: Any, messages: list[dict[str, Any]]) -> PromptContractResolution:
+def resolve_prompt_contract(
+    llama: Any,
+    messages: list[dict[str, Any]],
+    *,
+    task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
+    chat_format_mode: ChatFormatMode = "structured",
+) -> PromptContractResolution:
     md = getattr(llama, "metadata", None) or {}
     if not isinstance(md, dict):
         md = {}
@@ -166,20 +144,46 @@ def resolve_prompt_contract(llama: Any, messages: list[dict[str, Any]]) -> Promp
     model_name = _model_display_name(llama).lower()
     msg_payload = _messages_payload(messages)
 
-    if _is_gpt_oss_model(model_name):
+    tmpl_raw = md.get("tokenizer.chat_template")
+    tmpl = tmpl_raw if isinstance(tmpl_raw, str) else ""
+    harmony = detect_harmony_protocol(
+        model_name=model_name,
+        metadata=md,
+        chat_template=tmpl,
+    )
+    if harmony is not None:
+        task_policy = policy_for_task(task)
         c = PromptContract(
             mode="rendered",
             chat_format=None,
-            prompt=render_harmony_final_prompt(msg_payload),
+            prompt=render_harmony_final_prompt(
+                msg_payload,
+                include_reply_guidance=task_policy.include_harmony_reply_guidance,
+                chat_format_mode=(
+                    chat_format_mode
+                    if task_policy.include_harmony_reply_guidance
+                    else "structured"
+                ),
+            ),
             messages=None,
-            stop=list(_HARMONY_FINAL_STOPS),
+            stop=harmony_stops_for_contract(
+                include_phrase_stops=(
+                    None
+                    if task_policy.include_harmony_phrase_stops
+                    else False
+                ),
+            ),
             template_source="fallback",
-            confidence="medium",
+            confidence="high" if harmony.detection_method != "template" else "medium",
+            protocol="harmony",
         )
         assert_prompt_contract(c)
         return PromptContractResolution(
             contract=c,
-            warning="Using Harmony final-channel rendered prompt for gpt-oss.",
+            warning=(
+                f"Harmony protocol ({harmony.detection_method}): "
+                "final-channel rendered prompt."
+            ),
             handler_available=True,
             template_safety={"unsafe": False, "reasons": []},
         )
@@ -243,8 +247,12 @@ def resolve_prompt_contract(llama: Any, messages: list[dict[str, Any]]) -> Promp
         family_format = "chatml"
     elif "llama" in model_name:
         family_format = "llama-2"
+    elif is_harmony_model_name(model_name):
+        # Non-detected Harmony name edge case — still avoid llama-2.
+        family_format = "chatml"
+        family_source = "fallback"
+        family_conf = "medium"
     elif "oss" in model_name or "gpt" in model_name:
-        # Step 3: OSS/GPT new handling.
         family_format = "chatml"
         family_source = "fallback"
         family_conf = "medium"

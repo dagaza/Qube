@@ -540,6 +540,15 @@ class RegressionGuardTests(unittest.TestCase):
         self.assertGreater(d["web_score"], router.base_internet_threshold)
         self.assertEqual(d["route"], "web", str(d))
 
+    def test_embedding_web_blocked_when_chat_class_wins(self) -> None:
+        """General chat (joke) must not route WEB on embedding noise alone."""
+        router = CognitiveRouterV4()
+        _install_tier2_centroids(router)
+        router.set_chat_centroid(_pad6(_CHAT_AXIS))
+        v = _intent_vec(m=0.50, w=0.35, ch=0.75)
+        d = router.route("Tell me a joke.", intent_vector=v)
+        self.assertNotEqual(d["route"], "web", str(d))
+
     def test_explicit_memory_query_still_routes_to_memory(self) -> None:
         router = CognitiveRouterV4()
         _install_tier2_centroids(router)

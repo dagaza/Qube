@@ -12,6 +12,7 @@ from typing import Any, Literal
 RetrievalWrapperMode = Literal["grounded", "background", "none"]
 
 from core.memory_filters import (
+    CHAT_PERSONALITY_SUFFIX,
     CITATION_DISCIPLINE_SUFFIX,
     CONVERSATION_REF_SYSTEM_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
@@ -21,6 +22,7 @@ from core.memory_filters import (
     PREFERENCE_APPLICATION_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
     WEB_CAPABILITY_DISABLED_SUFFIX,
+    EXPLICIT_WEB_EMPTY_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -126,11 +128,13 @@ def build_prompt_blocks(
     conversation_history: list[dict[str, Any]] | None = None,
     composer_conversation_ref: bool = False,
     web_capability_blocked: bool = False,
+    explicit_web_empty_results: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
     retrieval_wrapper_mode: RetrievalWrapperMode | None = None,
     topic_salience_hint: str = "",
     follow_up_active: bool = False,
+    chat_personality_enabled: bool = False,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -158,6 +162,9 @@ def build_prompt_blocks(
     elif web_capability_blocked:
         persona = _BASE_PERSONA
         suffixes.append(WEB_CAPABILITY_DISABLED_SUFFIX)
+    elif explicit_web_empty_results:
+        persona = _BASE_PERSONA
+        suffixes.append(EXPLICIT_WEB_EMPTY_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True
@@ -192,6 +199,19 @@ def build_prompt_blocks(
         suffixes.append(
             _INTERNAL_ALIGN_NVIDIA if internal_nvidia_family else _INTERNAL_ALIGN_DEFAULT
         )
+
+    if (
+        chat_personality_enabled
+        and route == "NONE"
+        and not explicit_remember_active
+        and not web_capability_blocked
+        and not explicit_web_empty_results
+        and not file_search_active
+        and not narrative_active
+        and not has_retrieval_sources
+        and not no_sources
+    ):
+        suffixes.append(CHAT_PERSONALITY_SUFFIX)
 
     wrapper_mode = retrieval_wrapper_mode
     if wrapper_mode is None:

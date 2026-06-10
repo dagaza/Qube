@@ -3,6 +3,7 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 os.environ["QUBE_LLM_DEBUG"] = "1"
+os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
 
 from core.__version__ import __version__
 
@@ -16,6 +17,7 @@ from workers import AudioListenerWorker, STTWorker, LLMWorker, TTSWorker
 from workers.native_llama_engine import NativeLlamaEngine
 from workers.sidecar_llm_worker import SidecarLlmWorker
 from core.sidecar_llm import SidecarLlmClient
+from core.auxiliary_cognition import migrate_stale_sidecar_override
 from workers.ingestion_worker import IngestionWorker 
 from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
@@ -118,6 +120,7 @@ class Qube:
         self.native_llama_engine = NativeLlamaEngine()
         self.native_llama_engine.start()
 
+        migrate_stale_sidecar_override()
         self.sidecar_worker = SidecarLlmWorker(self.db_manager)
         self.sidecar_worker.start()
         self.sidecar_client = SidecarLlmClient(self.sidecar_worker)
@@ -247,7 +250,7 @@ class Qube:
         w = self.window
         
         # Global Shell Routing
-        self.audio_worker.status_update.connect(w.update_status)
+        self.audio_worker.status_update.connect(self._on_audio_status)
         self.stt_worker.status_update.connect(w.update_status)
         self.llm_worker.status_update.connect(w.update_status)
         self.native_llama_engine.status_update.connect(w.update_status)
@@ -293,12 +296,21 @@ class Qube:
             self.window.model_manager_view.native_library_changed.connect(
                 self.window.settings_view.refresh_native_local_library
             )
+        if (
+            hasattr(self.window, "model_manager_view")
+            and hasattr(self.window, "_companion_controller")
+            and self.window._companion_controller is not None
+            and hasattr(self.window.model_manager_view, "download_succeeded")
+        ):
+            self.window.model_manager_view.download_succeeded.connect(
+                self.window._companion_controller.on_model_download_complete
+            )
 
         # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.on_llm_token_streamed)
+        self.llm_worker.stream_replaced.connect(w.conversations_view.on_llm_stream_replaced)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
-        self.llm_worker.status_update.connect(w.conversations_view.update_action_placeholder)
         self.llm_worker.response_finished.connect(self._on_llm_response_finished)
         # Phase B memory enrichment: per-turn rich context (rag chunk ids +
         # message ids) is emitted just before response_finished. Capture it
@@ -309,11 +321,17 @@ class Qube:
 
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
-        self.audio_worker.wakeword_detected.connect(self._handle_user_interruption)
+        self.audio_worker.wakeword_detected.connect(
+            self._on_wakeword_detected,
+            QtCore.Qt.ConnectionType.BlockingQueuedConnection,
+        )
         self.stt_worker.transcription_ready.connect(self._handle_voice_prompt)
         
         # 🔑 UI BRIDGE: Ensure the session_id is passed from the LLM to the TTS
         self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
+        self.llm_worker.tts_turn_superseded.connect(
+            lambda _sid: self.tts_worker.stop_playback()
+        )
 
         # Library View Routing
         w.library_view.ingest_requested.connect(self._start_ingestion)
@@ -321,10 +339,32 @@ class Qube:
         # Telemetry View Routing
         if hasattr(self.stt_worker, 'stt_latency'):
             self.stt_worker.stt_latency.connect(w.update_stt_latency)
+            if hasattr(w, "conversations_view") and hasattr(
+                w.conversations_view, "update_stt_latency"
+            ):
+                self.stt_worker.stt_latency.connect(
+                    w.conversations_view.update_stt_latency
+                )
         if hasattr(self.llm_worker, 'ttft_latency'):
             self.llm_worker.ttft_latency.connect(w.update_ttft_latency)
+            if hasattr(w, "conversations_view") and hasattr(
+                w.conversations_view, "update_ttft_latency"
+            ):
+                self.llm_worker.ttft_latency.connect(
+                    w.conversations_view.update_ttft_latency
+                )
+        if hasattr(self.llm_worker, "tps_metric") and hasattr(
+            w, "conversations_view"
+        ) and hasattr(w.conversations_view, "update_tps"):
+            self.llm_worker.tps_metric.connect(w.conversations_view.update_tps)
         if hasattr(self.tts_worker, 'tts_latency'):
             self.tts_worker.tts_latency.connect(w.update_tts_latency)
+            if hasattr(w, "conversations_view") and hasattr(
+                w.conversations_view, "update_tts_latency"
+            ):
+                self.tts_worker.tts_latency.connect(
+                    w.conversations_view.update_tts_latency
+                )
         if hasattr(self.tts_worker, 'playback_level'):
             self.tts_worker.playback_level.connect(w.on_tts_playback_level)
         if hasattr(self.audio_worker, 'volume_update'):
@@ -446,33 +486,39 @@ class Qube:
             persist_content=cleaned.strip(),
         )
 
-    def _handle_user_interruption(self):
+    def _on_audio_status(self, message: str) -> None:
+        """Route audio-worker status; force-clear capture when the mic gate closes."""
+        force = (message or "").strip().casefold() == "voice capture idle"
+        self.window.update_status(message, force=force)
+
+    def _on_wakeword_detected(self) -> None:
+        """
+        Runs on the UI thread before the audio worker opens the capture buffer.
+
+        Only cancels an in-flight LLM/TTS turn (barge-in). Capture status is owned
+        by ``AudioListenerWorker`` (Listening → Voice capture idle / Thinking).
+        """
         logger = logging.getLogger("Qube.Main")
-        logger.info("User interruption detected! Slamming on the brakes.")
+        interrupted = False
 
         session_id = getattr(self, "_pending_turn_session_id", None)
         if session_id:
             self.window.notification_service.cancel_turn_complete(session_id)
 
-        interrupted = False
-        if hasattr(self, 'llm_worker') and self.llm_worker.isRunning():
+        if hasattr(self, "llm_worker") and self.llm_worker.isRunning():
             self.llm_worker.cancel_generation()
             interrupted = True
-        if hasattr(self, 'tts_worker') and getattr(self.tts_worker, 'is_playing', False):
+        if hasattr(self, "tts_worker") and getattr(self.tts_worker, "is_playing", False):
             self.tts_worker.stop_playback()
             interrupted = True
 
-        if interrupted and hasattr(self, 'window'):
-            self.window.update_status("Listening")
-            if hasattr(self.window.conversations_view, "on_generation_stopped"):
-                self.window.conversations_view.on_generation_stopped()
-            else:
-                # Backward-safe fallback
-                self.window.conversations_view.set_input_enabled(True)
-                if hasattr(self.window.conversations_view, "clear_stale_agent_pointer"):
-                    self.window.conversations_view.clear_stale_agent_pointer()
-
-        logger.debug("Deaf window closed. Ready to accept new voice commands.")
+        if interrupted:
+            logger.info("Wakeword barge-in: cancelled active generation or TTS.")
+            conv = getattr(self.window, "conversations_view", None)
+            if conv is not None and hasattr(conv, "on_generation_stopped"):
+                conv.on_generation_stopped()
+        else:
+            logger.info("Wakeword detected; voice capture will start on the audio thread.")
 
     def stop_active_response(self):
         """Manual UI stop: cancel voice capture, LLM, and/or TTS; unlock text input."""
@@ -631,8 +677,15 @@ class Qube:
             file_count = 1
         if file_count > 0:
             self.window.emit_notification(ingestion_complete_event(file_count=file_count))
+        # Clear background-busy before forcing Idle — otherwise BACKGROUND_BUSY wins
+        # over an idle bubble (see AssistantActivityReducer.reduce).
         self.window._activity_reducer.set_background_busy(False)
-        self.window._sync_tray_presence()
+        self.window.update_status("Idle", force=True)
+        if (
+            hasattr(self.window, "_companion_controller")
+            and self.window._companion_controller is not None
+        ):
+            self.window._companion_controller.on_ingestion_complete(file_count)
 
     # ------------------------------------------------------------------ #
     #  UI State Handlers                                                   #
@@ -687,6 +740,15 @@ class Qube:
     def _on_native_model_load_finished(self, ok: bool, message: str) -> None:
         """Update Think toggle when internal GGUF load completes."""
         self._refresh_conversations_think_toggle()
+        if ok and hasattr(self.window, "_companion_controller"):
+            ctrl = self.window._companion_controller
+            if ctrl is not None:
+                import os
+
+                path = getattr(self.native_llama_engine, "_model_path", "") or ""
+                basename = os.path.basename(path) if path else ""
+                if basename:
+                    ctrl.on_model_loaded(basename)
 
     def _refresh_conversations_think_toggle(self) -> None:
         cv = getattr(getattr(self, "window", None), "conversations_view", None)

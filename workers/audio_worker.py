@@ -222,6 +222,7 @@ class AudioListenerWorker(QThread):
                 try:
                     peak = np.max(np.abs(audio_data))
 
+                    # Calculate and emit during active recording
                     normalized_level = min(1.0, peak / 32767.0)
                     self.volume_update.emit(float(normalized_level))
 

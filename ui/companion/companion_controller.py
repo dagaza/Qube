@@ -14,9 +14,11 @@ from core import app_settings
 from core.assistant_presence import AssistantPresenceService, AssistantPresenceSnapshot
 from core.companion_policy import plan_companion_visibility
 from ui.companion.companion_window import CompanionWindow
+from ui.companion.companion_verbal_scheduler import CompanionVerbalScheduler
 
 
 _SNOOZE_ONE_HOUR_SEC = 3600
+_IDLE_CAPTION_TTL_SEC = 5.0
 
 
 class CompanionController(QObject):
@@ -44,9 +46,12 @@ class CompanionController(QObject):
         self._user_visible = True
         self._snooze_until = 0.0
         self._idle_since: float | None = time.time()
+        self._last_presence_activity = None
+        self._startup_idle_caption_pending = True
         self._fullscreen_detected = False
         self._companion_visible_for_policy = False
         self._shutting_down = False
+        self._verbal_scheduler: CompanionVerbalScheduler | None = None
 
         self._window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self._window.open_requested.connect(self.open_requested.emit)
@@ -103,11 +108,26 @@ class CompanionController(QObject):
         self._apply_reduced_motion()
         self._restore_position()
         self._window.set_persona(app_settings.get_companion_persona())
+        sidecar_client = getattr(main_window, "_sidecar_client", None)
+        sidecar_worker = getattr(main_window, "_sidecar_worker", None)
+        if sidecar_client is not None or app_settings.get_companion_cognition_v2_enabled():
+            self._verbal_scheduler = CompanionVerbalScheduler(
+                self,
+                self._presence,
+                sidecar_client,
+                sidecar_worker=sidecar_worker,
+                parent=self,
+            )
+            self._verbal_scheduler.start()
         self._visibility_timer.start()
         self._idle_timer.start()
         if app_settings.get_companion_suppress_on_fullscreen():
             self._fullscreen_timer.start()
         self._refresh_visibility()
+        if self._verbal_scheduler is not None:
+            # Startup gates read companion visibility; refresh before first emit.
+            QTimer.singleShot(0, self._emit_startup_cognition)
+        self._offer_transient_idle_caption(self._presence.snapshot())
 
     def apply_theme(self, is_dark: bool) -> None:
         self._window.apply_theme(is_dark)
@@ -125,7 +145,32 @@ class CompanionController(QObject):
         self._window.set_dock_mode(dock)
         self._window.set_persona(app_settings.get_companion_persona())
         self._window.set_snapshot(self._presence.snapshot())
+        if self._verbal_scheduler is not None:
+            self._verbal_scheduler.refresh_settings()
         self._refresh_visibility()
+
+    def on_ingestion_complete(self, file_count: int) -> None:
+        if self._verbal_scheduler is not None:
+            self._verbal_scheduler.on_ingestion_complete(file_count)
+
+    def on_model_download_complete(self, basename: str) -> None:
+        if self._verbal_scheduler is not None:
+            self._verbal_scheduler.on_model_download_complete(basename)
+
+    def on_model_loaded(self, basename: str) -> None:
+        if self._verbal_scheduler is not None:
+            self._verbal_scheduler.on_model_loaded(basename)
+
+    def _emit_startup_cognition(self) -> None:
+        from core.companion_cognition.usage_counters import record_session_start
+
+        milestone_id, counters = record_session_start()
+        if self._verbal_scheduler is None:
+            return
+        session_index = int(counters.get("session_count") or 1)
+        self._verbal_scheduler.on_startup(session_index=session_index)
+        if milestone_id:
+            self._verbal_scheduler.on_milestone(milestone_id)
 
     def set_user_enabled(self, enabled: bool) -> None:
         """Persist companion on/off from tray or settings; clears snooze when enabling."""
@@ -165,6 +210,27 @@ class CompanionController(QObject):
             reduced = os.environ.get("QUBE_REDUCED_MOTION", "").strip() in ("1", "true", "yes")
         self._window.set_reduced_motion(reduced)
 
+    def _offer_transient_idle_caption(self, snapshot: AssistantPresenceSnapshot) -> None:
+        from core.assistant_activity import AssistantActivity
+
+        if not app_settings.get_companion_show_caption():
+            return
+        if snapshot.activity != AssistantActivity.IDLE_LISTEN:
+            return
+        if self._window.banter_active:
+            return
+
+        prev = self._last_presence_activity
+        show = False
+        if self._startup_idle_caption_pending:
+            show = True
+            self._startup_idle_caption_pending = False
+        elif prev is not None and prev != AssistantActivity.IDLE_LISTEN:
+            show = True
+
+        if show:
+            self._window.show_transient_idle_caption(_IDLE_CAPTION_TTL_SEC)
+
     def _on_presence_changed(self, snapshot: AssistantPresenceSnapshot) -> None:
         if self._shutting_down:
             return
@@ -176,8 +242,14 @@ class CompanionController(QObject):
         else:
             self._idle_since = None
             self._window.set_idle_faded(False)
+            self._window.cancel_transient_idle_caption()
 
         self._window.set_snapshot(snapshot)
+        self._last_presence_activity = snapshot.activity
+
+        if snapshot.activity == AssistantActivity.IDLE_LISTEN:
+            self._offer_transient_idle_caption(snapshot)
+
         self._refresh_visibility()
 
     def _check_idle_fade(self) -> None:
@@ -342,5 +414,7 @@ class CompanionController(QObject):
         self._visibility_timer.stop()
         self._idle_timer.stop()
         self._fullscreen_timer.stop()
+        if self._verbal_scheduler is not None:
+            self._verbal_scheduler.stop()
         self._window.hide()
         self._window.close()

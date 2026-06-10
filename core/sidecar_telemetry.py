@@ -1,5 +1,5 @@
 """
-In-memory telemetry for the CPU sidecar (Qwen2-0.5B assistive cognition).
+In-memory telemetry for the CPU sidecar (Qwen3 1.7B assistive cognition).
 
 Observer-only aggregates for health, latency, and effectiveness proxies.
 """
@@ -159,6 +159,29 @@ class SidecarTelemetryBrain:
 
     def get_summary(self) -> dict[str, Any]:
         return self.summarize()
+
+    def companion_line_stats(self, *, window: int = 20) -> dict[str, Any]:
+        """Rolling ok-rate for companion_line task (expression capability downgrade)."""
+        with self._lock:
+            events = [
+                e
+                for e in self._events
+                if str(e.get("task") or "") == SidecarTask.companion_line.value
+            ][-window:]
+        total = len(events)
+        if not total:
+            return {"total": 0, "ok_rate": 1.0, "low_quality": 0}
+        ok = sum(1 for e in events if e.get("ok"))
+        low_q = sum(
+            1
+            for e in events
+            if str(e.get("reason") or "") in ("low_quality", "parse_fail", "skip")
+        )
+        return {
+            "total": total,
+            "ok_rate": ok / total,
+            "low_quality": low_q,
+        }
 
 
 def _debug_enabled() -> bool:
@@ -343,7 +366,7 @@ def _health_status(
     if not runtime.enabled:
         return "⚪ Disabled", "Sidecar disabled in settings or GGUF missing."
     if not runtime.model_on_disk:
-        return "⚪ No model", "Place qwen2-0_5b-instruct-q4_k_m.gguf under models/."
+        return "⚪ No model", "Place Qwen3-1.7B-Q6_K.gguf under models/cognition/."
     if runtime.degraded_reason:
         return "🔴 Degraded", runtime.degraded_reason
     if not runtime.model_loaded:
@@ -377,3 +400,8 @@ def get_sidecar_telemetry() -> SidecarTelemetryBrain:
         if _brain is None:
             _brain = SidecarTelemetryBrain()
         return _brain
+
+
+def get_sidecar_telemetry_brain() -> SidecarTelemetryBrain:
+    """Alias for companion cognition capability routing."""
+    return get_sidecar_telemetry()

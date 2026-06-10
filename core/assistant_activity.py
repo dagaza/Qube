@@ -26,6 +26,7 @@ _BUBBLE_STATE_TO_ACTIVITY: dict[str, AssistantActivity] = {
     "recording": AssistantActivity.CAPTURING,  # legacy QSS alias
     "speaking": AssistantActivity.SPEAKING,
     "thinking": AssistantActivity.WORKING,
+    "writing": AssistantActivity.WORKING,
     "needs_model": AssistantActivity.NEEDS_ATTENTION,
 }
 
@@ -56,42 +57,22 @@ def activity_from_bubble_state(state: str | None) -> AssistantActivity:
     return _BUBBLE_STATE_TO_ACTIVITY.get(str(state or "idle"), AssistantActivity.IDLE_LISTEN)
 
 
-def bubble_state_for_activity(activity: AssistantActivity) -> str:
+def bubble_state_for_activity(
+    activity: AssistantActivity,
+    *,
+    voice_output_muted: bool = False,
+) -> str:
+    if activity == AssistantActivity.WORKING:
+        return "writing" if voice_output_muted else "thinking"
     return _ACTIVITY_TO_BUBBLE_STATE.get(activity, "idle")
 
 
-def tray_tooltip_for_activity(activity: AssistantActivity, *, voice_paused: bool = False) -> str:
-    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
-        return "Qube — Assistant paused"
-    tips = {
-        AssistantActivity.IDLE_LISTEN: "Qube — Listening",
-        AssistantActivity.CAPTURING: "Qube — Listening to you…",
-        AssistantActivity.WORKING: "Qube — Working on your request…",
-        AssistantActivity.SPEAKING: "Qube — Speaking",
-        AssistantActivity.NEEDS_ATTENTION: "Qube — Needs your attention",
-        AssistantActivity.ERROR: "Qube — Something went wrong",
-        AssistantActivity.BACKGROUND_BUSY: "Qube — Working in background",
-    }
-    return tips.get(activity, "Qube")
-
-
-def menu_status_line(activity: AssistantActivity, *, voice_paused: bool = False) -> str:
-    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
-        return "Assistant paused"
-    lines = {
-        AssistantActivity.IDLE_LISTEN: "Listening",
-        AssistantActivity.CAPTURING: "Listening to you…",
-        AssistantActivity.WORKING: "Working on your request…",
-        AssistantActivity.SPEAKING: "Speaking",
-        AssistantActivity.NEEDS_ATTENTION: "Needs attention",
-        AssistantActivity.ERROR: "Something went wrong",
-        AssistantActivity.BACKGROUND_BUSY: "Working in background",
-    }
-    return lines.get(activity, "Idle")
-
-
-def user_presence_label(activity: AssistantActivity) -> str:
-    """User-facing presence line for the status bubble."""
+def user_presence_label(
+    activity: AssistantActivity,
+    *,
+    voice_output_muted: bool = False,
+) -> str:
+    """User-facing presence line (status bubble, tray, companion)."""
     if activity == AssistantActivity.ASSISTANT_OFF:
         return "Assistant paused"
     if activity == AssistantActivity.NEEDS_ATTENTION:
@@ -101,8 +82,31 @@ def user_presence_label(activity: AssistantActivity) -> str:
     if activity == AssistantActivity.SPEAKING:
         return "Speaking"
     if activity in (AssistantActivity.WORKING, AssistantActivity.BACKGROUND_BUSY):
-        return "Thinking"
+        return "Writing" if voice_output_muted else "Thinking"
     return "Idle"
+
+
+def tray_tooltip_for_activity(
+    activity: AssistantActivity,
+    *,
+    voice_output_muted: bool = False,
+    voice_paused: bool = False,
+) -> str:
+    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
+        return "Qube — Assistant paused"
+    label = user_presence_label(activity, voice_output_muted=voice_output_muted)
+    return f"Qube — {label}"
+
+
+def menu_status_line(
+    activity: AssistantActivity,
+    *,
+    voice_output_muted: bool = False,
+    voice_paused: bool = False,
+) -> str:
+    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
+        return "Assistant paused"
+    return user_presence_label(activity, voice_output_muted=voice_output_muted)
 
 
 def _is_voice_capture_message(msg_upper: str) -> bool:
@@ -115,6 +119,7 @@ class AssistantActivityReducer:
     def __init__(self) -> None:
         self._bubble_state = "idle"
         self._forced_activity: AssistantActivity | None = None
+        self._voice_output_muted = False
 
     @property
     def bubble_state(self) -> str:
@@ -125,6 +130,9 @@ class AssistantActivityReducer:
         if self._forced_activity is not None:
             return self._forced_activity
         return activity_from_bubble_state(self._bubble_state)
+
+    def set_voice_output_muted(self, muted: bool) -> None:
+        self._voice_output_muted = bool(muted)
 
     def set_forced_activity(self, activity: AssistantActivity | None) -> None:
         self._forced_activity = activity
@@ -151,7 +159,11 @@ class AssistantActivityReducer:
             elif self._forced_activity == AssistantActivity.ASSISTANT_OFF:
                 activity = AssistantActivity.ASSISTANT_OFF
             else:
-                activity = AssistantActivity.ASSISTANT_OFF if "DEACTIVATED" in msg_upper else AssistantActivity.IDLE_LISTEN
+                activity = (
+                    AssistantActivity.ASSISTANT_OFF
+                    if "DEACTIVATED" in msg_upper
+                    else AssistantActivity.IDLE_LISTEN
+                )
         elif _is_voice_capture_message(msg_upper):
             new_bubble = "listening"
             activity = AssistantActivity.CAPTURING
@@ -161,11 +173,22 @@ class AssistantActivityReducer:
         elif msg_upper == "LOAD A MODEL":
             new_bubble = "needs_model"
             activity = AssistantActivity.NEEDS_ATTENTION
-        elif any(k in msg_upper for k in ("THINKING", "GENERATING", "SYNTHESIZING", "TRANSCRIBING", "SEARCHING")):
-            new_bubble = "thinking"
+        elif any(
+            k in msg_upper
+            for k in (
+                "THINKING",
+                "GENERATING",
+                "SYNTHESIZING",
+                "TRANSCRIBING",
+                "SEARCHING",
+            )
+        ):
             activity = AssistantActivity.WORKING
+            new_bubble = (
+                "writing" if self._voice_output_muted else "thinking"
+            )
         elif "INGESTING" in msg_upper:
-            new_bubble = "thinking"
+            new_bubble = "writing" if self._voice_output_muted else "thinking"
             activity = AssistantActivity.BACKGROUND_BUSY
             self._forced_activity = AssistantActivity.BACKGROUND_BUSY
         else:
@@ -175,11 +198,12 @@ class AssistantActivityReducer:
         current_state = self._bubble_state
 
         # Block stray Idle from the always-on mic listener while the assistant
-        # is capturing, thinking, or speaking (audio_worker emits Idle every loop).
+        # is capturing, thinking, writing, or speaking.
         if new_bubble == "idle" and current_state in (
             "listening",
             "recording",
             "thinking",
+            "writing",
             "speaking",
         ):
             if not force and msg_upper != "VOICE CAPTURE IDLE":
@@ -201,7 +225,10 @@ class AssistantActivityReducer:
 
         if self._forced_activity == AssistantActivity.ASSISTANT_OFF:
             activity = AssistantActivity.ASSISTANT_OFF
-        elif self._forced_activity == AssistantActivity.BACKGROUND_BUSY and new_bubble == "idle":
+        elif (
+            self._forced_activity == AssistantActivity.BACKGROUND_BUSY
+            and new_bubble == "idle"
+        ):
             activity = AssistantActivity.BACKGROUND_BUSY
 
         display = self._format_display(msg_upper, new_bubble, activity)
@@ -212,8 +239,8 @@ class AssistantActivityReducer:
             blocked=False,
         )
 
-    @staticmethod
     def _format_display(
+        self,
         msg_upper: str,
         bubble_state: str,
         activity: AssistantActivity,
@@ -226,8 +253,7 @@ class AssistantActivityReducer:
             return " Voice input unavailable"
         if activity == AssistantActivity.ASSISTANT_OFF or "DEACTIVATED" in msg_upper:
             return " Assistant paused"
-        if activity == AssistantActivity.CAPTURING:
-            return " Listening"
-        if activity == AssistantActivity.SPEAKING:
-            return " Speaking"
-        return msg_upper
+        label = user_presence_label(
+            activity, voice_output_muted=self._voice_output_muted
+        )
+        return f" {label}"

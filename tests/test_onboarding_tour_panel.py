@@ -47,6 +47,20 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         )
         self.assertGreater(panel.height(), wrapped_h)
 
+    def test_recalculate_content_size_does_not_grow_on_repeat(self) -> None:
+        panel = OnboardingCoachPanel()
+        panel.body_lbl.setText(
+            "Pick a model that fits your GPU.\n"
+            "You can change it later from Settings or Model Manager."
+        )
+        panel.recalculate_content_size()
+        height0 = panel.height()
+        min_h0 = panel.body_lbl.minimumHeight()
+        for _ in range(40):
+            panel.recalculate_content_size()
+        self.assertEqual(panel.height(), height0)
+        self.assertEqual(panel.body_lbl.minimumHeight(), min_h0)
+
 
 if __name__ == "__main__":
     unittest.main()

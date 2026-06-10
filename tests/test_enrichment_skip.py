@@ -109,7 +109,7 @@ class _FakeLLM:
     def isRunning(self):
         return self._running
 
-    def generate(self, _prompt):
+    def generate(self, **_kwargs):
         self.generate_calls += 1
         return "[]"
 

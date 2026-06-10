@@ -1,0 +1,130 @@
+{
+  "pack": "fact",
+  "messages": [
+    {
+      "id": "fact_001",
+      "intent": "fact",
+      "text": "Quiet hours are good for deep work.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_002",
+      "intent": "fact",
+      "text": "Most desktops look calmer than they feel.",
+      "voice": "observational",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_003",
+      "intent": "fact",
+      "text": "Small pauses often help more than they seem.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_004",
+      "intent": "fact",
+      "text": "Focus and calm often travel together.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "observant"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "fact_005",
+      "intent": "fact",
+      "text": "The best routines are the ones you stop noticing.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "fact",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    }
+  ]
+}

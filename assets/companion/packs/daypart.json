@@ -1,0 +1,797 @@
+{
+  "pack": "daypart",
+  "messages": [
+    {
+      "id": "dp_001",
+      "intent": "atmosphere",
+      "text": "The day still seems to be getting organized.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_002",
+      "intent": "atmosphere",
+      "text": "Morning light on the desktop — unhurried.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_003",
+      "intent": "atmosphere",
+      "text": "Everything is still finding its pace.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_004",
+      "intent": "atmosphere",
+      "text": "The early hours hold a little extra room.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_005",
+      "intent": "atmosphere",
+      "text": "A quiet start from where I float.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_006",
+      "intent": "atmosphere",
+      "text": "The desk is waking up slowly.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "morning"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_007",
+      "intent": "atmosphere",
+      "text": "Midday feels steady from here.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_008",
+      "intent": "atmosphere",
+      "text": "The afternoon has settled into a rhythm.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_009",
+      "intent": "atmosphere",
+      "text": "Sunlit hours — nothing urgent.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_010",
+      "intent": "atmosphere",
+      "text": "A working sort of afternoon.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_011",
+      "intent": "atmosphere",
+      "text": "The day is in its middle stretch.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_012",
+      "intent": "atmosphere",
+      "text": "Afternoon patience on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "afternoon"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_013",
+      "intent": "atmosphere",
+      "text": "This feels like an evening sort of project.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_014",
+      "intent": "atmosphere",
+      "text": "Evening calm is creeping in.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_015",
+      "intent": "atmosphere",
+      "text": "The light is softer now.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_016",
+      "intent": "atmosphere",
+      "text": "Winding-down energy on the desktop.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_017",
+      "intent": "atmosphere",
+      "text": "The day is leaning toward quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_018",
+      "intent": "atmosphere",
+      "text": "Evening has a gentler tempo.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "evening"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_019",
+      "intent": "atmosphere",
+      "text": "Things are quieter at this hour.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_020",
+      "intent": "atmosphere",
+      "text": "The late hours feel unusually spacious.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_021",
+      "intent": "atmosphere",
+      "text": "Night mode for the desktop — softly.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_022",
+      "intent": "atmosphere",
+      "text": "Everything is hushed at this end of the day.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_023",
+      "intent": "atmosphere",
+      "text": "The small hours suit observing.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "dp_024",
+      "intent": "atmosphere",
+      "text": "Late night — still here, still quiet.",
+      "voice": "observational",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "daypart",
+      "ambient_moods": [
+        "observant",
+        "quiet"
+      ],
+      "dayparts": [
+        "late_night"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    }
+  ]
+}

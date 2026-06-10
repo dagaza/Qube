@@ -1,0 +1,40 @@
+{
+  "pack": "preview",
+  "messages": [
+    {
+      "id": "prev_001",
+      "intent": "wellbeing",
+      "text": "Preview — still floating nearby.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "settings_preview"
+      ],
+      "cooldown_hours": 1,
+      "min_warmth": 0.0
+    },
+    {
+      "id": "prev_002",
+      "intent": "self_expression",
+      "text": "Preview — good spot for observing.",
+      "voice": "cozy",
+      "mood": [
+        "calm",
+        "neutral",
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "settings_preview"
+      ],
+      "cooldown_hours": 1,
+      "min_warmth": 0.0
+    }
+  ]
+}

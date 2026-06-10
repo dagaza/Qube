@@ -19,6 +19,12 @@ from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal, Optional
 
+from core.harmony_protocol import HARMONY_FINAL_ANCHOR, HARMONY_PRIMARY_STOPS
+from core.llm_execution_contract import (
+    PrimaryEngineTask,
+    check_task_prompt_policy,
+)
+
 logger = logging.getLogger("Qube.NativeLLM.Debug")
 
 Verdict = Literal["OK", "SUSPECT", "BROKEN"]
@@ -101,6 +107,9 @@ def validate_chat_inference(
     reconstruction_ok: bool,
     model_reasoning_profile_detected: bool = False,
     execution_mode: str = "unknown",
+    task: PrimaryEngineTask | str | None = None,
+    harmony_reply_guidance_applied: bool | None = None,
+    harmony_phrase_stops_applied: bool | None = None,
 ) -> PromptValidationResult:
     """
     Structural checks on the same rendered prompt string the native engine would tokenize
@@ -109,6 +118,7 @@ def validate_chat_inference(
     flags: list[str] = []
     p = rendered_prompt or ""
     cf = (chat_format or "").strip().lower()
+    harmony_prompt = _is_harmony_rendered_prompt(p)
 
     # --- confidence ---
     if reconstruction_ok and p:
@@ -120,15 +130,20 @@ def validate_chat_inference(
         flags.append("prompt_reconstruction_missing")
 
     # --- assistant anchor (generation slot) ---
-    anchor = _has_assistant_anchor(p, cf)
+    anchor = _has_assistant_anchor(p, cf) or (
+        harmony_prompt and _has_harmony_final_anchor(p)
+    )
     if not anchor and p:
         flags.append("missing_assistant_generation_anchor")
     if not p:
         flags.append("empty_rendered_prompt")
 
     # --- user / role closure (template-family heuristics) ---
-    user_closed = _user_turn_closed_heuristic(p, cf)
-    if not user_closed and p and _expects_chatml_style(p, cf):
+    if harmony_prompt:
+        user_closed = _harmony_user_turns_closed(p)
+    else:
+        user_closed = _user_turn_closed_heuristic(p, cf)
+    if not user_closed and p and _expects_chatml_style(p, cf) and not harmony_prompt:
         flags.append("user_turn_may_be_unclosed")
 
     assist_term = _assistant_prefix_well_formed(p, cf)
@@ -146,7 +161,12 @@ def validate_chat_inference(
             flags.append("eos_token_not_in_merged_stops_list")
 
     # --- suspicious stops ---
-    suspicious = _stops_suspicious(merged_stop_tokens, eos_token_str, cf)
+    suspicious = _stops_suspicious(
+        merged_stop_tokens,
+        eos_token_str,
+        cf,
+        harmony_prompt=harmony_prompt,
+    )
     if suspicious:
         flags.append("stop_set_may_be_incomplete")
 
@@ -160,6 +180,11 @@ def validate_chat_inference(
         flags.append("possible_prompt_bleed_multi_turn")
     if suspicious and anchor:
         flags.append("possible_meta_output_weak_stops")
+
+    if task is not None:
+        flags.extend(
+            check_task_prompt_policy(task=task, rendered_prompt=p)
+        )
 
     verdict: Verdict = "OK"
     if not anchor or not p:
@@ -190,6 +215,29 @@ def _expects_chatml_style(p: str, cf: str) -> bool:
     return False
 
 
+def _is_harmony_rendered_prompt(p: str) -> bool:
+    return bool(p.strip()) and HARMONY_FINAL_ANCHOR in p
+
+
+def _has_harmony_final_anchor(p: str) -> bool:
+    return p.rstrip().endswith(HARMONY_FINAL_ANCHOR)
+
+
+def _harmony_user_turns_closed(p: str) -> bool:
+    """Each Harmony user/system segment should end with <|end|> before the final anchor."""
+    if not p.strip():
+        return False
+    body = p
+    if body.rstrip().endswith(HARMONY_FINAL_ANCHOR):
+        body = body[: body.rfind(HARMONY_FINAL_ANCHOR)]
+    for segment in re.split(r"<\|start\|>\s*(?:user|system)\s*<\|message\|>", body, flags=re.I):
+        if not segment.strip():
+            continue
+        if "<|end|>" not in segment:
+            return False
+    return True
+
+
 def _has_assistant_anchor(p: str, cf: str) -> bool:
     if not p.strip():
         return False
@@ -210,6 +258,9 @@ def _has_assistant_anchor(p: str, cf: str) -> bool:
             return True
     # Alpaca / generic: assistant slot
     if re.search(r"###\s*Response\s*\n?\s*$", p, re.I):
+        return True
+    # Harmony final-channel prefill
+    if _has_harmony_final_anchor(p):
         return True
     # Fallback: any 'assistant' role marker near end
     if "assistant" in tail.lower() and (
@@ -247,9 +298,17 @@ def _user_turn_closed_heuristic(p: str, cf: str) -> bool:
     return bool(re.search(r"<\|im_end\|>", last_user_block))
 
 
-def _stops_suspicious(stops: list[str], eos: str, cf: str) -> bool:
+def _stops_suspicious(
+    stops: list[str],
+    eos: str,
+    cf: str,
+    *,
+    harmony_prompt: bool = False,
+) -> bool:
     if not stops:
         return True
+    if harmony_prompt:
+        return not any(s in stops for s in HARMONY_PRIMARY_STOPS)
     if eos and not any(eos in s for s in stops):
         # Formatter may rely on token-id EOS only; flag for LM Studio string parity checks
         return True
@@ -336,6 +395,10 @@ def log_prompt_validation_jsonlines(
     chat_format: str,
     merged_stop_count: int,
     reconstruction_note: str,
+    task_type: str | None = None,
+    chat_format_mode: str | None = None,
+    harmony_reply_guidance_applied: bool | None = None,
+    harmony_phrase_stops_applied: bool | None = None,
 ) -> None:
     if not prompt_validation_log_enabled():
         return
@@ -356,6 +419,14 @@ def log_prompt_validation_jsonlines(
         "model_reasoning_profile_detected": result.model_reasoning_profile_detected,
         "execution_mode": result.execution_mode,
     }
+    if task_type is not None:
+        payload["task_type"] = task_type
+    if chat_format_mode is not None:
+        payload["chat_format_mode"] = chat_format_mode
+    if harmony_reply_guidance_applied is not None:
+        payload["harmony_reply_guidance_applied"] = harmony_reply_guidance_applied
+    if harmony_phrase_stops_applied is not None:
+        payload["harmony_phrase_stops_applied"] = harmony_phrase_stops_applied
     if parity is not None:
         payload["parity_score"] = parity.score
         payload["parity_differences"] = parity.differences

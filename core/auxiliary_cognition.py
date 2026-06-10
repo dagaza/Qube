@@ -1,11 +1,13 @@
 """
 Auxiliary cognition model resolution — runtime-independent GGUF selection.
 
-The bundled Qwen2-0.5B default is protected (not deletable). Optional swaps live
-under ``models/cognition/`` or the primary LLM library (size-gated).
+The bundled Qwen3 1.7B default lives under ``models/cognition/`` and is protected
+(not deletable). Optional swaps are additional ``models/cognition/*.gguf`` files
+or size-gated primary LLM library models.
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,12 +19,16 @@ from core.app_settings import (
 )
 from core.paths import models_root
 
-BUNDLED_DEFAULT_REL_PATH = os.path.join("models", "qwen2-0_5b-instruct-q4_k_m.gguf")
-BUNDLED_DEFAULT_ID = "qwen2-0.5b-instruct-q4_k_m"
-BUNDLED_DEFAULT_LABEL = "Qwen2 0.5B Instruct (bundled default)"
+logger = logging.getLogger("Qube.AuxiliaryCognition")
+
+BUNDLED_DEFAULT_REL_PATH = os.path.join(
+    "models", "cognition", "Qwen3-1.7B-Q6_K.gguf"
+)
+BUNDLED_DEFAULT_ID = "qwen3-1.7b-q6_k"
+BUNDLED_DEFAULT_LABEL = "Qwen3 1.7B (bundled default)"
 
 COGNITION_SUBDIR = os.path.join("models", "cognition")
-MAX_COGNITION_FILE_BYTES = int(1.2 * 1024 * 1024 * 1024)  # 1.2 GB
+MAX_COGNITION_FILE_BYTES = int(2.0 * 1024 * 1024 * 1024)  # 2.0 GB
 
 
 @dataclass(frozen=True)
@@ -134,6 +140,27 @@ def validate_cognition_model_path(path: str) -> tuple[bool, str]:
     )
 
 
+def migrate_stale_sidecar_override() -> bool:
+    """Clear an invalid persisted sidecar override (e.g. after bundled path move).
+
+    Returns True when a stale override was cleared.
+    """
+    override = (get_sidecar_model_path() or "").strip()
+    if not override:
+        return False
+    ok, _msg = validate_cognition_model_path(override)
+    if ok:
+        return False
+    from core.app_settings import set_sidecar_model_path
+
+    logger.info(
+        "[Sidecar] Clearing stale cognition model override (no longer valid): %s",
+        override,
+    )
+    set_sidecar_model_path("")
+    return True
+
+
 def list_selectable_cognition_models() -> list[CognitionModelEntry]:
     entries: list[CognitionModelEntry] = []
     bundled = bundled_default_path()
@@ -171,7 +198,10 @@ def list_selectable_cognition_models() -> list[CognitionModelEntry]:
 def cognition_n_ctx_for_path(path: str) -> int:
     """Heuristic context size for auxiliary models (CPU-only)."""
     name = os.path.basename(path or "").lower()
-    if any(tok in name for tok in ("1.5b", "1_5b", "2b", "2.5b", "3b", "3.8b")):
+    if any(
+        tok in name
+        for tok in ("1.5b", "1_5b", "1.7b", "1_7b", "2b", "2.5b", "3b", "3.8b")
+    ):
         return 4096
     return 2048
 
@@ -179,6 +209,7 @@ def cognition_n_ctx_for_path(path: str) -> int:
 def active_cognition_basename() -> str:
     path = resolve_active_cognition_path()
     return os.path.basename(path) if path else ""
+
 
 def is_active_cognition_bundled() -> bool:
     return is_protected_cognition_model(resolve_active_cognition_path())

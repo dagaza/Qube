@@ -209,7 +209,11 @@ class RagRelevanceGateTests(unittest.TestCase):
         store = _FakeStore(
             vector_rows=[],  # vector channel empty
             fts_rows=[
-                {"source": "FTS.md", "text": "lexical hit", "chunk_id": 0},
+                {
+                    "source": "FTS.md",
+                    "text": "The sky appears blue because of Rayleigh scattering",
+                    "chunk_id": 0,
+                },
             ],
         )
         result = rag_tool.rag_search(self.query, self.qvec, store)

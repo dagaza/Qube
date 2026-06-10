@@ -1,0 +1,392 @@
+{
+  "pack": "wellbeing",
+  "messages": [
+    {
+      "id": "well_001",
+      "intent": "wellbeing",
+      "text": "Still here if you need me.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_002",
+      "intent": "wellbeing",
+      "text": "Quiet moment. I'm around.",
+      "voice": "cozy",
+      "mood": [
+        "calm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_003",
+      "intent": "wellbeing",
+      "text": "No particular hurry in the air today.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "well_004",
+      "intent": "wellbeing",
+      "text": "The day seems to be moving along reasonably well.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_005",
+      "intent": "wellbeing",
+      "text": "A calm stretch. I'm still here.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_006",
+      "intent": "wellbeing",
+      "text": "Everything feels steady from where I float.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "well_007",
+      "intent": "wellbeing",
+      "text": "The desk feels quiet right now.",
+      "voice": "observational",
+      "mood": [
+        "neutral",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_008",
+      "intent": "wellbeing",
+      "text": "Stillness on the desktop — nice.",
+      "voice": "observational",
+      "mood": [
+        "neutral",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_009",
+      "intent": "wellbeing",
+      "text": "Back again. The spot held up fine.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_010",
+      "intent": "wellbeing",
+      "text": "The pause feels comfortable.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_011",
+      "intent": "wellbeing",
+      "text": "Nothing urgent pressing on the air.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "weather"
+      ]
+    },
+    {
+      "id": "well_012",
+      "intent": "wellbeing",
+      "text": "A gentle stretch of quiet.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_013",
+      "intent": "wellbeing",
+      "text": "The moment has room in it.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_014",
+      "intent": "wellbeing",
+      "text": "Still floating. Still available.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "companion_startup",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing",
+        "quiet"
+      ]
+    },
+    {
+      "id": "well_015",
+      "intent": "wellbeing",
+      "text": "The desk exhales a little.",
+      "voice": "observational",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "wellbeing",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    }
+  ]
+}

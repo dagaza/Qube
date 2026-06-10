@@ -124,16 +124,18 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 | C4.D2 | Core memory suppressed on follow-up | Stored tangential context memory matching "successful" | Same as C4.D1 | Turn 2 shows **0 sources** or background-only framing without cite-[1] wrapper; no life-advice pivot from memory | Memory sources with imperative "use sources" wrapper on follow-up |
 | C4.D3 | Explicit entity follow-up | Fresh thread | *"Give me 10 Slay the Spire tips for beginners"* (no prior turn) | Game-specific tips from model knowledge | N/A |
 | C4.D4 | Discourse debug telemetry | `QUBE_DISCOURSE_DEBUG=1` | Run C4.D1 | Logs include `[Discourse] follow_up=…`, `topic='Slay the Spire'`, `wrapper=background` or `core_memory_suppressed=True` | No discourse log lines |
-| C4.D5 | Follow-up WEB with topic expansion | Internet tool **enabled** | Same as C4.D1 with internet on | Turn 2 may stay **WEB**; log `[Discourse] web search query expanded for follow-up (topic='Slay the Spire')`; search uses expanded query; answer is **game-specific** tips (from web + thread), not generic life advice | Literal deictic query sent to search (`…successful at this?`) with unrelated snippets |
+| C4.D5 | Follow-up WEB with topic expansion | Internet tool **enabled** | Same as C4.D1 with internet on | Turn 2 may stay **WEB**; log `[WebPipeline] query_resolved … reason=topic_expansion` or `[Discourse] web search query expanded for follow-up (topic='Slay the Spire')`; search uses expanded query; answer is **game-specific** tips (from web + thread), not generic life advice | Literal deictic query sent to search (`…successful at this?`) with unrelated snippets; missing `[WebPipeline]` resolved-query log |
 | C4.D6 | Ungrounded follow-up WEB veto | Internet on; **no** prior topic in thread | Single message: *"Give me tips for this"* (no context) | **CHAT** (`route=NONE`); log `ungrounded follow-up (no topic); vetoing WEB` | Web search for meaningless deictic query |
+| C4.D7 | Meta web + concept topic | Internet on; discourse on | 1. *"Why do birds take dust baths?"* 2. *"Can you also do an online search for the answer?"* | Log `[WebPipeline] query_resolved … reason=meta_prior_turn`; search query is the bird question; `[WebPipeline] relevance_gate kept≥1`; answer uses web context or honest empty via `EXPLICIT_WEB_EMPTY_SUFFIX` | Raw meta phrase searched; `[WebPipeline] WARNING unresolved meta web request`; irrelevant snippets injected with `[W]` |
+| C4.D8 | Web relevance gate empty | Internet on | Force a query whose DDG hits fail token overlap (or mock filter) | Log `[WebPipeline] relevance_gate kept=0`; route downgrades or `EXPLICIT_WEB_EMPTY_SUFFIX`; no fake `[W]` on junk snippets | Irrelevant web snippets still injected; model claims offline despite WEB persona |
 
-### 4E — Sidecar cognition (Qwen2-0.5B CPU)
+### 4E — Sidecar cognition (Qwen3 1.7B CPU)
 
 **Capability tested:** Background memory judge / reflection / episodes and foreground assistive rewrite+digest do not block the primary LLM or change the user-visible utterance.
 
 | ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
 |----|------|---------------|-------|---------------|--------------|
-| C4.E1 | Enrichment during active chat | `qube.sidecar.enabled=true`; model at `models/qwen2-0_5b-instruct-q4_k_m.gguf` | Start a long chat turn; confirm enrichment runs while LLM streams | No `[Memory v5.1] Chat LLM still busy after 300s` for judge/episode paths; facts still store | 300s skip solely because primary model busy |
+| C4.E1 | Enrichment during active chat | `qube.sidecar.enabled=true`; model at `models/cognition/Qwen3-1.7B-Q6_K.gguf` | Start a long chat turn; confirm enrichment runs while LLM streams | No `[Memory v5.1] Chat LLM still busy after 300s` for judge/episode paths; facts still store | 300s skip solely because primary model busy |
 | C4.E2 | Hybrid rewrite telemetry | `qube.sidecar.query_rewrite_enabled=true`; C4.D1 thread | Run C4.D1 | Decision/routing debug includes `original_query`, optional `expanded_query`, `query_expansion_confidence`; user message text unchanged | Only expanded query shown to user |
 | C4.E3 | Source digest fallback | `qube.sidecar.source_digest_enabled=true` | MEMORY/RAG turn with sources; temporarily set `foreground_timeout_ms` very low | Chat completes with raw or digested sources; log `[Sidecar] memory digest applied` OR silent fallback | Hang waiting on sidecar |
 | C4.E4 | Ingest blurb | `qube.sidecar.ingest_blurb_enabled=true` | Ingest a short PDF/TXT | Library row tooltip or stats line shows one-sentence blurb within ~30s | No `summary_blurb` in SQLite |
@@ -147,7 +149,7 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 | ID | Test | Preconditions | Steps | Pass criteria | Fail signals |
 |----|------|---------------|-------|---------------|--------------|
 | C4.F1 | Advanced gate | Default install | Settings → Native Engine → enable **Show advanced engine settings** (toggle off/on again) | Red RAM warning dialog on **every** enable; cognition panel appears after confirm | Panel visible without confirm; blue dialog; no dialog on re-enable |
-| C4.F2 | Bundled default protected | Advanced unlocked | Select bundled Qwen2 0.5B → Delete | Delete blocked with message; **Reset to default** clears custom override only | Bundled file removed from disk |
+| C4.F2 | Bundled default protected | Advanced unlocked | Select bundled Qwen3 1.7B → Delete | Delete blocked with message; **Reset to default** clears custom override only | Bundled file removed from disk |
 | C4.F3 | Custom cognition swap | Copy small `.gguf` to `models/cognition/` | Select custom → **Use selected** | Telemetry/settings show custom basename; titling/judge still work after reload | Sidecar stuck degraded until restart |
 | C4.F4 | Reset to default | Custom model active | **Reset to default** | Active label shows bundled; `qube.sidecar.model_path` empty | Override persists |
 

@@ -14,6 +14,7 @@ class SidecarTask(str, Enum):
     query_rewrite = "query_rewrite"
     source_digest = "source_digest"
     ingest_blurb = "ingest_blurb"
+    companion_line = "companion_line"
 
 
 @dataclass

@@ -27,6 +27,8 @@ MAX_EPISODE_CHARS = 800
 SALVAGE_MAX_MESSAGES = 24
 SALVAGE_RATE_LIMIT_SEC = 5 * 60
 DAILY_ROLLUP_IDLE_SEC = 24 * 60 * 60
+MAX_EXTRACTION_RESCHEDULE_ATTEMPTS = 2
+EXTRACTION_RESCHEDULE_BACKOFF_SEC = 2.0
 from core.memory_usage_recorder import (
     KIND_CITED,
     KIND_RETRIEVED,
@@ -371,6 +373,30 @@ class EnrichmentWorker(QThread):
         with QMutexLocker(self._enabled_mutex):
             return self._is_enabled
 
+    def _extraction_was_preempted(self) -> bool:
+        checker = getattr(self.extraction_llm, "was_last_native_job_cancelled", None)
+        return bool(checker()) if callable(checker) else False
+
+    def _reschedule_turn(self, payload: dict) -> bool:
+        attempt = int(payload.get("reschedule_attempt") or 0)
+        session_id = str(payload.get("session_id") or "")
+        if attempt >= MAX_EXTRACTION_RESCHEDULE_ATTEMPTS:
+            logger.warning(
+                "[Memory v6] extraction preempted; reschedule cap reached session=%s",
+                session_id,
+            )
+            return False
+        retry = dict(payload)
+        retry["reschedule_attempt"] = attempt + 1
+        time.sleep(EXTRACTION_RESCHEDULE_BACKOFF_SEC)
+        self.queue.put(retry)
+        logger.info(
+            "[Memory v6] extraction preempted; rescheduled attempt=%d session=%s",
+            attempt + 1,
+            session_id,
+        )
+        return True
+
     def _wait_for_chat_llm_idle(self) -> bool:
         """
         Avoid concurrent blocking requests to the local LLM (single-slot servers).
@@ -518,6 +544,7 @@ class EnrichmentWorker(QThread):
             last_assistant_msg_id=last_assistant_msg_id,
             rag_chunk_ids=rag_chunk_ids,
             mode=mode,
+            reschedule_payload=payload,
         )
         stored = getattr(self, "_last_facts_stored", 0)
         self.extraction_finished.emit(session_id, int(stored))
@@ -647,6 +674,7 @@ Return JSON ONLY:
         last_assistant_msg_id,
         rag_chunk_ids: list[str],
         mode: str = "full",
+        reschedule_payload: dict | None = None,
     ) -> None:
         """Shared extraction path used by both whole-session and per-turn modes.
 
@@ -666,10 +694,13 @@ Return JSON ONLY:
             # Skip the extractor LLM call; only the bypass below seeds a fact.
             facts: list[dict] = []
         else:
-            prompt = self._build_prompt(messages)
-            raw = self._generate_memory(prompt)
-
-            facts = self._extract_json_facts(raw) if raw else []
+            raw = self._generate_memory(messages)
+            if not raw and self._extraction_was_preempted():
+                if reschedule_payload and self._reschedule_turn(reschedule_payload):
+                    return
+                facts = []
+            else:
+                facts = self._extract_json_facts(raw) if raw else []
 
         # Explicit "remember that ..." bypass. Even if the LLM extractor
         # returns nothing (or drops the user's explicit ask because
@@ -1013,13 +1044,8 @@ CONVERSATION:
     # PROMPT
     # ============================================================
 
-    def _build_prompt(self, messages: list) -> str:
-        scrubbed = self._scrub_assistant_failures(messages)
-        conversation = "\n".join(
-            [f"{m['role']}: {m['content']}" for m in scrubbed]
-        )
-
-        return f"""You extract DURABLE FACTS ABOUT THE USER from a conversation between the user and an AI assistant. Return a JSON array. If nothing qualifies, return an empty array [].
+    def _build_extraction_system_prompt(self) -> str:
+        return """You extract DURABLE FACTS ABOUT THE USER from a conversation between the user and an AI assistant. Return a JSON array. If nothing qualifies, return an empty array [].
 
 A durable fact about the user is something like:
 - a stable preference ("the user prefers dark mode")
@@ -1124,10 +1150,21 @@ POSITIVE EXAMPLES (illustrative only — do NOT copy these facts verbatim):
   ]
 
 ===== END OF EXAMPLES — everything below is the REAL conversation =====
-
-Conversation:
-{conversation}
 """
+
+    def _build_extraction_user_prompt(self, messages: list) -> str:
+        scrubbed = self._scrub_assistant_failures(messages)
+        conversation = "\n".join(
+            [f"{m['role']}: {m['content']}" for m in scrubbed]
+        )
+        return f"Conversation:\n{conversation}"
+
+    def _build_prompt(self, messages: list) -> str:
+        """Backward-compat single-string prompt (tests / diagnostics only)."""
+        return (
+            f"{self._build_extraction_system_prompt()}\n\n"
+            f"{self._build_extraction_user_prompt(messages)}"
+        )
 
     def _scrub_assistant_failures(self, messages: list) -> list:
         """Replace assistant refusal / limitation messages with a placeholder.
@@ -1152,9 +1189,16 @@ Conversation:
     # LLM CALL
     # ============================================================
 
-    def _generate_extraction(self, prompt: str) -> str:
+    def _generate_extraction(self, messages: list) -> str:
         try:
-            return self.extraction_llm.generate(prompt).strip()
+            from core.llm_execution_contract import PrimaryEngineTask
+
+            return self.extraction_llm.generate(
+                task=PrimaryEngineTask.memory_extraction,
+                system=self._build_extraction_system_prompt(),
+                user=self._build_extraction_user_prompt(messages),
+                debug_caller="memory_extraction",
+            ).strip()
         except Exception as e:
             logger.error(f"[Memory v5.1] extraction LLM error: {e}")
             return ""
@@ -1166,9 +1210,9 @@ Conversation:
             logger.error(f"[Memory v6] cognition LLM error: {e}")
             return ""
 
-    def _generate_memory(self, prompt: str) -> str:
+    def _generate_memory(self, messages: list) -> str:
         """Backward-compat alias for extraction paths."""
-        return self._generate_extraction(prompt)
+        return self._generate_extraction(messages)
 
     # ============================================================
     # JSON EXTRACTION

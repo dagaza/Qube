@@ -13,7 +13,14 @@ sees while the stream is still making real progress.
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
+
+_PUNCT_RUN = re.compile(r"[.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]{24,}")
+_PUNCT_CHARS_RE = re.compile(r"[.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]")
+_SPACED_PUNCT_TAIL_RE = re.compile(
+    r"[\s\u00a0\u202f\u2009\u200a\u2028.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]{28,}"
+)
 
 
 class StreamRepetitionGuard:
@@ -70,6 +77,16 @@ class StreamRepetitionGuard:
         self._buffer += delta
         if len(self._buffer) > self._tail_chars:
             self._buffer = self._buffer[-self._tail_chars:]
+
+        if _PUNCT_RUN.search(self._buffer):
+            self._tripped = True
+            self._trip_reason = "punctuation run degeneration in stream tail"
+            return True
+        spaced_tail = _SPACED_PUNCT_TAIL_RE.search(self._buffer)
+        if spaced_tail is not None and len(_PUNCT_CHARS_RE.findall(spaced_tail.group(0))) >= 12:
+            self._tripped = True
+            self._trip_reason = "spaced punctuation degeneration in stream tail"
+            return True
 
         atoms = self._buffer.split()
         if len(atoms) < self._min_repeats:

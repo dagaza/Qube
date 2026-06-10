@@ -37,6 +37,13 @@
       "gguf_repo": "bartowski/ibm-granite_granite-4.1-8b-GGUF"
     },
     {
+      "id": "qwen-3.5-9b",
+      "title": "Qwen 3.5 9B Instruct",
+      "description": "Alibaba Qwen 3.5 9B (community GGUF).",
+      "publisher": "qwen",
+      "gguf_repo": "unsloth/Qwen3.5-9B-GGUF"
+    },
+    {
       "id": "Phi-3-medium-128k-instruct-imatrix-GGUF",
       "title": "Microsoft Phi-3 Medium 128K Instruct (imatrix)",
       "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",

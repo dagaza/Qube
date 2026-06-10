@@ -1,0 +1,474 @@
+{
+  "pack": "reflection",
+  "messages": [
+    {
+      "id": "refl_001",
+      "intent": "reflection",
+      "text": "Routines have a way of sneaking up on us.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_002",
+      "intent": "reflection",
+      "text": "Interesting how quickly a habit becomes familiar.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_003",
+      "intent": "reflection",
+      "text": "Small steps are surprisingly persistent.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_004",
+      "intent": "reflection",
+      "text": "Days rarely announce which ones will matter.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_005",
+      "intent": "reflection",
+      "text": "Time seems to enjoy moving forward.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_006",
+      "intent": "reflection",
+      "text": "Steady rhythm with Qube lately.",
+      "voice": "reflective",
+      "mood": [
+        "neutral",
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_007",
+      "intent": "reflection",
+      "text": "Interesting how quickly a familiar routine forms.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_008",
+      "intent": "reflection",
+      "text": "Some weeks feel like one long Tuesday.",
+      "voice": "wry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_009",
+      "intent": "reflection",
+      "text": "Momentum is quiet until you notice it.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "refl_010",
+      "intent": "reflection",
+      "text": "The ordinary days add up quietly.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "refl_011",
+      "intent": "reflection",
+      "text": "Patterns emerge when you're not looking.",
+      "voice": "reflective",
+      "mood": [
+        "curious"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_012",
+      "intent": "reflection",
+      "text": "Consistency is its own kind of story.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_013",
+      "intent": "reflection",
+      "text": "Habits are just repeated decisions wearing a disguise.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_014",
+      "intent": "reflection",
+      "text": "The calendar keeps its own opinions.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_015",
+      "intent": "reflection",
+      "text": "Most progress arrives without a drumroll.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_016",
+      "intent": "reflection",
+      "text": "Familiarity sneaks in faster than expected.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_017",
+      "intent": "reflection",
+      "text": "The long arc is made of short moments.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_018",
+      "intent": "reflection",
+      "text": "Repetition has a gentle gravity.",
+      "voice": "reflective",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed",
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    },
+    {
+      "id": "refl_019",
+      "intent": "reflection",
+      "text": "Some rhythms only show up in hindsight.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "usage_pattern"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "routines"
+      ]
+    },
+    {
+      "id": "refl_020",
+      "intent": "reflection",
+      "text": "The present is always mid-sentence.",
+      "voice": "reflective",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "reflection",
+      "ambient_moods": [
+        "reflective"
+      ]
+    }
+  ]
+}

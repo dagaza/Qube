@@ -405,6 +405,7 @@ class ModelManagerView(QWidget):
     """Hub browser: search, README, file list, and GGUF downloads."""
 
     native_library_changed = pyqtSignal()
+    download_succeeded = pyqtSignal(str)  # basename of saved model file
 
     _HUB_LIST_MAX_LINES = 3
 
@@ -3226,6 +3227,7 @@ class ModelManagerView(QWidget):
                 self._publisher_guidance_service.record_provenance(resolved, repo)
             self.native_library_changed.emit()
             self._sync_download_action_state()
+            self.download_succeeded.emit(os.path.basename(resolved))
             return
 
         fname, sz = self._download_queue_paths[self._download_queue_index]
@@ -3273,6 +3275,7 @@ class ModelManagerView(QWidget):
         # Do not auto-load after download; user can manually select/load later.
         self.native_library_changed.emit()
         self._sync_download_action_state()
+        self.download_succeeded.emit(os.path.basename(resolved))
 
     def _on_download_failed(self, err: object) -> None:
         info = coerce_hub_error(err)

@@ -7,7 +7,9 @@ from pathlib import Path
 from unittest import mock
 
 from core.hf_publisher_branding import (
+    COMMUNITY_PUBLISHER_LOGOS,
     HuggingFaceBrandingResolver,
+    _community_logo_asset_path,
     _humanize_owner,
     _owner_from_repo_id,
 )
@@ -22,18 +24,40 @@ class TestVariantBranding(unittest.TestCase):
         self.assertEqual(_humanize_owner("unsloth"), "Unsloth")
         self.assertEqual(_humanize_owner("davidau"), "DavidAU")
 
+    def test_community_logo_unsloth(self) -> None:
+        self.assertIn("unsloth", COMMUNITY_PUBLISHER_LOGOS)
+        path = _community_logo_asset_path("unsloth")
+        self.assertIsNotNone(path)
+        assert path is not None
+        self.assertIn("unsloth.png", path)
+
+    def test_resolve_variant_bundled_community_skips_hf_api(self) -> None:
+        resolver = HuggingFaceBrandingResolver(timeout_s=1.0)
+        with (
+            mock.patch.object(resolver, "get_org_metadata") as org,
+            mock.patch.object(resolver, "get_user_metadata") as user,
+        ):
+            out = resolver.resolve_variant_branding("unsloth/gemma-GGUF")
+        org.assert_not_called()
+        user.assert_not_called()
+        self.assertIsNotNone(out)
+        assert out is not None
+        self.assertEqual(out["name"], "Unsloth")
+        self.assertEqual(out["owner"], "unsloth")
+        self.assertIn("unsloth.png", out["logo"])
+
     def test_resolve_variant_uses_org_name_and_hf_fallback_logo(self) -> None:
         resolver = HuggingFaceBrandingResolver(timeout_s=1.0)
         with (
-            mock.patch.object(resolver, "get_org_metadata", return_value={"fullname": "Unsloth AI"}),
+            mock.patch.object(resolver, "get_org_metadata", return_value={"fullname": "Bartowski"}),
             mock.patch.object(resolver, "get_user_metadata"),
             mock.patch.object(resolver, "_cache_avatar_file", return_value=None),
         ):
-            out = resolver.resolve_variant_branding("unsloth/gemma-GGUF")
+            out = resolver.resolve_variant_branding("bartowski/llama-GGUF")
         self.assertIsNotNone(out)
         assert out is not None
-        self.assertEqual(out["name"], "Unsloth AI")
-        self.assertEqual(out["owner"], "unsloth")
+        self.assertEqual(out["name"], "Bartowski")
+        self.assertEqual(out["owner"], "bartowski")
         self.assertTrue(out["logo"].endswith("hf-logo.svg") or "/hf-logo.svg" in out["logo"])
 
     def test_resolve_variant_cached_avatar_path(self) -> None:

@@ -526,9 +526,14 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 }
 
 #StatusBubble[state="listening"],
-#StatusBubble[state="recording"] { 
+#StatusBubble[state="recording"] {
     color: #f87171; /* Pastel Red */
     background-color: rgba(248, 113, 113, 0.15); 
+}
+
+#StatusBubble[state="writing"] {
+    color: #fbbf24; /* Pastel Amber */
+    background-color: rgba(251, 191, 36, 0.15);
 }
 
 #StatusBubble[state="thinking"] { 

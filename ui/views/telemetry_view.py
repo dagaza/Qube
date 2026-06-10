@@ -368,7 +368,7 @@ class TelemetryView(QWidget):
         header = QLabel("Sidecar Cognition")
         header.setProperty("class", "SectionHeaderLabel")
         header.setToolTip(
-            "CPU Qwen2-0.5B assist layer: health, queue depth, foreground latency, and rewrite/digest effectiveness."
+            "CPU Qwen3 1.7B assist layer: health, queue depth, foreground latency, and rewrite/digest effectiveness."
         )
         layout.addWidget(header)
 

@@ -25,6 +25,7 @@ KEY_MEMORY_PROMOTION_ACKNOWLEDGED = "qube.memory.promotion_acknowledged"
 KEY_MEMORY_PROMOTION_PRESET = "qube.memory.promotion_preset"
 KEY_MEMORY_CONSOLIDATION = "qube.memory.consolidation_enabled"
 KEY_DISCOURSE_GROUNDING = "qube.discourse.grounding_enabled"
+KEY_CHAT_PERSONALITY_NUDGE = "qube.chat.personality_nudge_enabled"
 KEY_SIDECAR_ENABLED = "qube.sidecar.enabled"
 KEY_SIDECAR_QUERY_REWRITE = "qube.sidecar.query_rewrite_enabled"
 KEY_SIDECAR_SOURCE_DIGEST = "qube.sidecar.source_digest_enabled"
@@ -51,6 +52,22 @@ KEY_ONBOARDING_LOCAL_LLM_TOUR = "qube.onboarding.localLlmTourCompleted"
 KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "qube.modelManager.hardwareSuggestions"
 KEY_MODELS_DIRECTORY = "qube.models.directory"
 KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
+KEY_LLM_TEMPERATURE = "qube.llm.temperature"
+KEY_LLM_CONTEXT_LIMIT = "qube.llm.contextLimit"
+KEY_LLM_CHAT_HISTORY = "qube.llm.chatHistoryMessages"
+KEY_LLM_TOP_K = "qube.llm.topK"
+KEY_LLM_REPEAT_PENALTY = "qube.llm.repeatPenalty"
+KEY_LLM_PRESENCE_PENALTY = "qube.llm.presencePenalty"
+KEY_LLM_TOP_P = "qube.llm.topP"
+KEY_LLM_MIN_P = "qube.llm.minP"
+DEFAULT_LLM_TEMPERATURE = 0.8
+DEFAULT_LLM_CONTEXT_LIMIT = 4096
+DEFAULT_LLM_CHAT_HISTORY = 10
+DEFAULT_LLM_TOP_K = 40
+DEFAULT_LLM_REPEAT_PENALTY = 1.1
+DEFAULT_LLM_PRESENCE_PENALTY = 0.0
+DEFAULT_LLM_TOP_P = 0.95
+DEFAULT_LLM_MIN_P = 0.05
 KEY_WAKEWORD_ACTIVE_ID = "qube.wakeword.activeId"
 KEY_WAKEWORD_THRESHOLDS = "qube.wakeword.thresholds"
 KEY_AUDIO_INPUT_DEVICE = "qube.audio.inputDeviceIndex"
@@ -87,6 +104,20 @@ KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
 KEY_COMPANION_PERSONA = "qube.companion.persona"
 KEY_COMPANION_IDLE_COLOR = "qube.companion.idleColor"
+KEY_COMPANION_VERBAL_ENABLED = "qube.companion.verbal.enabled"
+KEY_COMPANION_VERBAL_SYSTEM_PROMPT = "qube.companion.verbal.systemPrompt"
+KEY_COMPANION_VERBAL_TRAIT_PRESET = "qube.companion.verbal.traitPreset"
+KEY_COMPANION_VERBAL_FREQUENCY = "qube.companion.verbal.frequency"
+KEY_COMPANION_VERBAL_REACT_INGEST = "qube.companion.verbal.reactIngest"
+KEY_COMPANION_VERBAL_REACT_DOWNLOAD = "qube.companion.verbal.reactDownload"
+KEY_COMPANION_COGNITION_V2 = "qube.companion.cognition.v2"
+KEY_COMPANION_PERSONALITY_V2 = "qube.companion.personality.v2"
+KEY_COMPANION_EXPRESSION_FREEDOM = "qube.companion.expression.freedom"
+KEY_COMPANION_MOOD_DRIFT = "qube.companion.moodDrift.enabled"
+KEY_COMPANION_SEASONAL = "qube.companion.seasonal.enabled"
+KEY_COMPANION_SEASONAL_HEMISPHERE = "qube.companion.seasonal.hemisphere"
+KEY_COMPANION_MOTIFS = "qube.companion.motifs.enabled"
+COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN = 800
 
 
 def _store():
@@ -101,8 +132,8 @@ def default_llm_models_dir() -> str:
 
 
 def get_enable_memory_enrichment() -> bool:
-    """When True, memory extraction and reflection may run (higher RAM use). Default True."""
-    return bool(_store().get(KEY_MEMORY_ENRICHMENT, True))
+    """When True, memory extraction and reflection may run (higher RAM use). Default False."""
+    return bool(_store().get(KEY_MEMORY_ENRICHMENT, False))
 
 
 def set_enable_memory_enrichment(enabled: bool) -> None:
@@ -110,8 +141,8 @@ def set_enable_memory_enrichment(enabled: bool) -> None:
 
 
 def get_enable_memory_v7_salvage() -> bool:
-    """When True, enqueue salvage extraction when chat history is windowed. Default True."""
-    return bool(_store().get(KEY_MEMORY_V7_SALVAGE, True))
+    """When True, enqueue salvage extraction when chat history is windowed. Default False."""
+    return bool(_store().get(KEY_MEMORY_V7_SALVAGE, False))
 
 
 def set_enable_memory_v7_salvage(enabled: bool) -> None:
@@ -151,8 +182,8 @@ def set_memory_promotion_preset(preset: str) -> None:
 
 
 def get_enable_memory_consolidation() -> bool:
-    """When True, MemoryConsolidationWorker stages cross-day review rows. Default True."""
-    return bool(_store().get(KEY_MEMORY_CONSOLIDATION, True))
+    """When True, MemoryConsolidationWorker stages cross-day review rows. Default False."""
+    return bool(_store().get(KEY_MEMORY_CONSOLIDATION, False))
 
 
 def set_enable_memory_consolidation(enabled: bool) -> None:
@@ -166,6 +197,15 @@ def get_discourse_grounding_enabled() -> bool:
 
 def set_discourse_grounding_enabled(enabled: bool) -> None:
     _store().set(KEY_DISCOURSE_GROUNDING, enabled)
+
+
+def get_enable_chat_personality_nudge() -> bool:
+    """When True, plain CHAT turns get an optional follow-up nudge in the system prompt. Default True."""
+    return bool(_store().get(KEY_CHAT_PERSONALITY_NUDGE, True))
+
+
+def set_enable_chat_personality_nudge(enabled: bool) -> None:
+    _store().set(KEY_CHAT_PERSONALITY_NUDGE, enabled)
 
 
 def _sidecar_model_on_disk() -> bool:
@@ -541,6 +581,102 @@ def set_internal_n_threads(n: int) -> None:
     _store().set(KEY_NATIVE_CPU_THREADS, val)
 
 
+def get_llm_temperature() -> float:
+    v = _store().get(KEY_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE)
+    try:
+        return max(0.0, min(2.0, float(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_TEMPERATURE
+
+
+def set_llm_temperature(val: float) -> None:
+    _store().set(KEY_LLM_TEMPERATURE, max(0.0, min(2.0, float(val))))
+
+
+def get_llm_context_limit() -> int:
+    v = _store().get(KEY_LLM_CONTEXT_LIMIT, DEFAULT_LLM_CONTEXT_LIMIT)
+    try:
+        return max(1024, min(128000, int(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_CONTEXT_LIMIT
+
+
+def set_llm_context_limit(val: int) -> None:
+    _store().set(KEY_LLM_CONTEXT_LIMIT, max(1024, min(128000, int(val))))
+
+
+def get_llm_chat_history_messages() -> int:
+    v = _store().get(KEY_LLM_CHAT_HISTORY, DEFAULT_LLM_CHAT_HISTORY)
+    try:
+        return max(2, min(100, int(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_CHAT_HISTORY
+
+
+def set_llm_chat_history_messages(val: int) -> None:
+    _store().set(KEY_LLM_CHAT_HISTORY, max(2, min(100, int(val))))
+
+
+def get_llm_top_k() -> int:
+    v = _store().get(KEY_LLM_TOP_K, DEFAULT_LLM_TOP_K)
+    try:
+        return max(0, min(200, int(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_TOP_K
+
+
+def set_llm_top_k(val: int) -> None:
+    _store().set(KEY_LLM_TOP_K, max(0, min(200, int(val))))
+
+
+def get_llm_repeat_penalty() -> float:
+    v = _store().get(KEY_LLM_REPEAT_PENALTY, DEFAULT_LLM_REPEAT_PENALTY)
+    try:
+        return max(0.0, min(2.0, float(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_REPEAT_PENALTY
+
+
+def set_llm_repeat_penalty(val: float) -> None:
+    _store().set(KEY_LLM_REPEAT_PENALTY, max(0.0, min(2.0, float(val))))
+
+
+def get_llm_presence_penalty() -> float:
+    v = _store().get(KEY_LLM_PRESENCE_PENALTY, DEFAULT_LLM_PRESENCE_PENALTY)
+    try:
+        return max(0.0, min(2.0, float(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_PRESENCE_PENALTY
+
+
+def set_llm_presence_penalty(val: float) -> None:
+    _store().set(KEY_LLM_PRESENCE_PENALTY, max(0.0, min(2.0, float(val))))
+
+
+def get_llm_top_p() -> float:
+    v = _store().get(KEY_LLM_TOP_P, DEFAULT_LLM_TOP_P)
+    try:
+        return max(0.0, min(1.0, float(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_TOP_P
+
+
+def set_llm_top_p(val: float) -> None:
+    _store().set(KEY_LLM_TOP_P, max(0.0, min(1.0, float(val))))
+
+
+def get_llm_min_p() -> float:
+    v = _store().get(KEY_LLM_MIN_P, DEFAULT_LLM_MIN_P)
+    try:
+        return max(0.0, min(1.0, float(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_MIN_P
+
+
+def set_llm_min_p(val: float) -> None:
+    _store().set(KEY_LLM_MIN_P, max(0.0, min(1.0, float(val))))
+
+
 def get_llm_models_dir() -> str:
     v = _store().get(KEY_MODELS_DIRECTORY, "")
     p = str(v or "").strip()
@@ -869,7 +1005,7 @@ def set_companion_enabled(enabled: bool) -> None:
 
 
 def get_companion_show_when_tray_hidden() -> bool:
-    return bool(_store().get(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, True))
+    return bool(_store().get(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, False))
 
 
 def set_companion_show_when_tray_hidden(enabled: bool) -> None:
@@ -885,7 +1021,7 @@ def set_companion_show_while_window_open(enabled: bool) -> None:
 
 
 def get_companion_auto_hide_idle() -> bool:
-    return bool(_store().get(KEY_COMPANION_AUTO_HIDE_IDLE, True))
+    return bool(_store().get(KEY_COMPANION_AUTO_HIDE_IDLE, False))
 
 
 def set_companion_auto_hide_idle(enabled: bool) -> None:
@@ -915,7 +1051,7 @@ def set_companion_size_px(size: int) -> None:
 
 
 def get_companion_show_caption() -> bool:
-    return bool(_store().get(KEY_COMPANION_SHOW_CAPTION, True))
+    return bool(_store().get(KEY_COMPANION_SHOW_CAPTION, False))
 
 
 def set_companion_show_caption(enabled: bool) -> None:
@@ -923,7 +1059,7 @@ def set_companion_show_caption(enabled: bool) -> None:
 
 
 def get_companion_suppress_on_fullscreen() -> bool:
-    return bool(_store().get(KEY_COMPANION_SUPPRESS_FULLSCREEN, True))
+    return bool(_store().get(KEY_COMPANION_SUPPRESS_FULLSCREEN, False))
 
 
 def set_companion_suppress_on_fullscreen(enabled: bool) -> None:
@@ -1026,3 +1162,147 @@ def set_companion_position(
         if edge not in ("none", "left", "right", "bottom"):
             edge = "none"
         store.set(KEY_COMPANION_DOCK_EDGE, edge)
+
+
+def get_companion_verbal_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_ENABLED, False))
+
+
+def set_companion_verbal_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_ENABLED, bool(enabled))
+
+
+def get_companion_verbal_system_prompt() -> str:
+    raw = str(_store().get(KEY_COMPANION_VERBAL_SYSTEM_PROMPT, "") or "")
+    return raw[:COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN]
+
+
+def set_companion_verbal_system_prompt(text: str) -> None:
+    _store().set(
+        KEY_COMPANION_VERBAL_SYSTEM_PROMPT,
+        str(text or "")[:COMPANION_VERBAL_SYSTEM_PROMPT_MAX_LEN],
+    )
+
+
+def get_companion_verbal_trait_preset() -> str:
+    from core.companion_verbal_traits import (
+        DEFAULT_COMPANION_VERBAL_TRAIT,
+        normalize_companion_verbal_trait,
+    )
+
+    raw = _store().get(KEY_COMPANION_VERBAL_TRAIT_PRESET, DEFAULT_COMPANION_VERBAL_TRAIT.value)
+    return normalize_companion_verbal_trait(str(raw) if raw is not None else None).value
+
+
+def set_companion_verbal_trait_preset(preset: str) -> None:
+    from core.companion_verbal_traits import normalize_companion_verbal_trait
+
+    _store().set(
+        KEY_COMPANION_VERBAL_TRAIT_PRESET,
+        normalize_companion_verbal_trait(preset).value,
+    )
+
+
+def get_companion_verbal_frequency() -> str:
+    from core.companion_verbal_policy import (
+        DEFAULT_COMPANION_VERBAL_FREQUENCY,
+        normalize_companion_verbal_frequency,
+    )
+
+    raw = _store().get(KEY_COMPANION_VERBAL_FREQUENCY, DEFAULT_COMPANION_VERBAL_FREQUENCY.value)
+    return normalize_companion_verbal_frequency(str(raw) if raw is not None else None).value
+
+
+def set_companion_verbal_frequency(frequency: str) -> None:
+    from core.companion_verbal_policy import normalize_companion_verbal_frequency
+
+    _store().set(
+        KEY_COMPANION_VERBAL_FREQUENCY,
+        normalize_companion_verbal_frequency(frequency).value,
+    )
+
+
+def get_companion_verbal_react_ingest() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_REACT_INGEST, False))
+
+
+def set_companion_verbal_react_ingest(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_REACT_INGEST, bool(enabled))
+
+
+def get_companion_verbal_react_download() -> bool:
+    return bool(_store().get(KEY_COMPANION_VERBAL_REACT_DOWNLOAD, False))
+
+
+def set_companion_verbal_react_download(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_VERBAL_REACT_DOWNLOAD, bool(enabled))
+
+
+def get_companion_cognition_v2_enabled() -> bool:
+    import os
+
+    if os.environ.get("QUBE_COMPANION_COGNITION_V2", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    return bool(_store().get(KEY_COMPANION_COGNITION_V2, False))
+
+
+def set_companion_cognition_v2_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_COGNITION_V2, bool(enabled))
+
+
+def get_companion_personality_v2_json() -> str:
+    return str(_store().get(KEY_COMPANION_PERSONALITY_V2, "") or "")
+
+
+def set_companion_personality_v2_json(text: str) -> None:
+    _store().set(KEY_COMPANION_PERSONALITY_V2, str(text or ""))
+
+
+def get_companion_expression_freedom() -> str:
+    raw = str(_store().get(KEY_COMPANION_EXPRESSION_FREEDOM, "balanced") or "balanced").strip().lower()
+    if raw in ("conservative", "balanced", "expressive"):
+        return raw
+    return "balanced"
+
+
+def set_companion_expression_freedom(mode: str) -> None:
+    raw = str(mode or "balanced").strip().lower()
+    if raw not in ("conservative", "balanced", "expressive"):
+        raw = "balanced"
+    _store().set(KEY_COMPANION_EXPRESSION_FREEDOM, raw)
+
+
+def get_companion_mood_drift_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_MOOD_DRIFT, False))
+
+
+def set_companion_mood_drift_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_MOOD_DRIFT, bool(enabled))
+
+
+def get_companion_seasonal_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_SEASONAL, False))
+
+
+def set_companion_seasonal_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_SEASONAL, bool(enabled))
+
+
+def get_companion_seasonal_hemisphere() -> str:
+    raw = str(_store().get(KEY_COMPANION_SEASONAL_HEMISPHERE, "north") or "north").strip().lower()
+    return raw if raw in ("north", "south") else "north"
+
+
+def set_companion_seasonal_hemisphere(value: str) -> None:
+    raw = str(value or "north").strip().lower()
+    if raw not in ("north", "south"):
+        raw = "north"
+    _store().set(KEY_COMPANION_SEASONAL_HEMISPHERE, raw)
+
+
+def get_companion_motifs_enabled() -> bool:
+    return bool(_store().get(KEY_COMPANION_MOTIFS, False))
+
+
+def set_companion_motifs_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPANION_MOTIFS, bool(enabled))

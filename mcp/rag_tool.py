@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from core.retrieval_fusion import fuse_ranked_results
+from core.memory_retrieval_policy import fts_query_token_overlap
 
 logger = logging.getLogger("Qube.RAGTool")
 
@@ -122,6 +123,21 @@ def rag_search(
         vector_results = _filter_results_by_source(vector_results, source_filter or "")
         text_results = _filter_results_by_source(text_results, source_filter or "")
 
+        had_vector_candidates = bool(vector_results)
+        if not had_vector_candidates and text_results:
+            filtered_fts: list = []
+            for doc in text_results:
+                body = (doc.get("text") or "").strip()
+                if fts_query_token_overlap(query, body):
+                    filtered_fts.append(doc)
+                else:
+                    logger.info(
+                        "[RAG] dropped FTS hit below token overlap "
+                        "(source=%s)",
+                        doc.get("source") or doc.get("filename") or "?",
+                    )
+            text_results = filtered_fts
+
         # If everything fails, return safely
         if not vector_results and not text_results:
             if source_filter:
@@ -168,7 +184,6 @@ def rag_search(
         # exception path), we keep FTS as a fallback signal — the
         # gate only fires when vector results EXISTED.
         # ============================================================
-        had_vector_candidates = bool(vector_results)
         if had_vector_candidates:
             filtered_vector_results = []
             for doc in vector_results:

@@ -21,8 +21,8 @@ def native_chat_completion_kwargs(llama: Any) -> dict[str, Any]:
       without changing user-facing temperature
     """
     return {
-        "repeat_penalty": 1.0,
-        "top_p": 0.92,
+        "repeat_penalty": 1.1,
+        "top_p": 0.95,
     }
 
 

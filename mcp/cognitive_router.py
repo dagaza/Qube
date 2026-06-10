@@ -152,6 +152,10 @@ class CognitiveRouterV4:
         # T4.2: now USED. Recall must beat chat by this margin before
         # ``recall_active`` fires (see ``route(...)`` decision block).
         self.recall_margin_over_chat = 0.05
+        # T4.2 web gate: embedding-only WEB picks must clear the chat
+        # (negative) class by this margin, mirroring recall. Substring
+        # web triggers bypass the gate (high-precision keywords).
+        self.web_margin_over_chat = 0.05
 
         # Tier 2: per-lane embedding centroids (memory / rag / web).
         # Each is L2-normalized and built externally by LLMWorker via
@@ -355,7 +359,23 @@ class CognitiveRouterV4:
         # recall can light up a lane that the substring triggers miss.
         memory_enabled = memory_score_final > self.dynamic_memory_threshold
         rag_enabled = rag_score_final > (self.dynamic_rag_threshold + rag_penalty)
-        internet_enabled = web_score_final > self.dynamic_internet_threshold
+        web_lane_active = web_score_final > self.dynamic_internet_threshold
+        web_routing_allowed = (
+            web_score_source == "substring"
+            or (web_score_final - chat_score) >= self.web_margin_over_chat
+        )
+        internet_enabled = web_lane_active and web_routing_allowed
+
+        if web_lane_active and not web_routing_allowed:
+            logger.info(
+                "[RouterV4] web blocked by chat-class margin "
+                "(web=%.3f, chat=%.3f, margin=%.3f, required=%.3f, source=%s)",
+                web_score_final,
+                chat_score,
+                web_score_final - chat_score,
+                self.web_margin_over_chat,
+                web_score_source,
+            )
         
         # Drift reduces retrieval sensitivity
         if drift:

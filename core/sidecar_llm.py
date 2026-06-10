@@ -1,5 +1,5 @@
 """
-Sidecar LLM contracts — CPU-bound Qwen2-0.5B for structured async cognition.
+Sidecar LLM contracts — CPU-bound Qwen3 1.7B for structured async cognition.
 
 Pure types + client facade; inference runs on ``workers.sidecar_llm_worker``.
 """
@@ -145,9 +145,36 @@ class SidecarLlmClient:
         )
         return text
 
-    def enqueue_title(self, user_prompt: str, session_id: str) -> None:
+    def enqueue_title(
+        self,
+        user_prompt: str,
+        session_id: str,
+        *,
+        assistant_reply: str = "",
+    ) -> None:
         if self._worker is not None:
-            self._worker.enqueue_title(user_prompt, session_id)
+            self._worker.enqueue_title(
+                user_prompt,
+                session_id,
+                assistant_reply=assistant_reply,
+            )
+
+    def request_companion_line(self, payload: dict) -> bool:
+        """Fire-and-forget companion caption generation (queued on the sidecar thread)."""
+        if self._worker is None:
+            return False
+        enqueue = getattr(self._worker, "enqueue_companion_line", None)
+        if not callable(enqueue):
+            return False
+        return bool(enqueue(dict(payload or {})))
+
+    def preview_companion_line(self, **kwargs: Any) -> SidecarResult:
+        """Blocking preview for Settings test (bypasses queue-drop policy)."""
+        return self.complete(
+            SidecarTask.companion_line,
+            timeout_sec=90.0,
+            **kwargs,
+        )
 
 
 def merge_sidecar_enabled_setting() -> bool:

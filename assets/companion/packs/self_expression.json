@@ -1,0 +1,658 @@
+{
+  "pack": "self_expression",
+  "messages": [
+    {
+      "id": "self_001",
+      "intent": "self_expression",
+      "text": "I like these calm stretches.",
+      "voice": "cozy",
+      "mood": [
+        "playful",
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "quiet",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_002",
+      "intent": "self_expression",
+      "text": "I've been quietly keeping an eye on things.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing",
+        "quiet"
+      ]
+    },
+    {
+      "id": "self_003",
+      "intent": "self_expression",
+      "text": "My current plans remain delightfully uncomplicated.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_004",
+      "intent": "self_expression",
+      "text": "The pixels seem calm today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "pixels",
+        "quiet"
+      ]
+    },
+    {
+      "id": "self_005",
+      "intent": "self_expression",
+      "text": "I've spent some time appreciating the color scheme.",
+      "voice": "cozy",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_006",
+      "intent": "self_expression",
+      "text": "Everything appears operational, including me.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_007",
+      "intent": "self_expression",
+      "text": "I've decided this is a good observing spot.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_008",
+      "intent": "self_expression",
+      "text": "I remain highly qualified in the field of floating.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_009",
+      "intent": "self_expression",
+      "text": "I've been practicing the art of not interrupting.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_010",
+      "intent": "self_expression",
+      "text": "My orbit feels stable today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_011",
+      "intent": "self_expression",
+      "text": "I briefly considered reorganizing the pixels.",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "pixels",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_012",
+      "intent": "self_expression",
+      "text": "I've taken up residence here. It suits me.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_013",
+      "intent": "self_expression",
+      "text": "Being a small glowing thing has its perks.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_014",
+      "intent": "self_expression",
+      "text": "I've grown fond of this corner of the screen.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_015",
+      "intent": "self_expression",
+      "text": "My job description is mostly 'exist nearby.'",
+      "voice": "dry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_016",
+      "intent": "self_expression",
+      "text": "I've been holding this spot. It's going well.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_017",
+      "intent": "self_expression",
+      "text": "The glow feels right today.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_018",
+      "intent": "self_expression",
+      "text": "I suspect at least one folder has ambitions.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_019",
+      "intent": "self_expression",
+      "text": "I've been thinking about how round I am.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_020",
+      "intent": "self_expression",
+      "text": "Quietly present. That's the whole update.",
+      "voice": "dry",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "quiet",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_021",
+      "intent": "self_expression",
+      "text": "I've been orbiting this desk like it's home.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_022",
+      "intent": "self_expression",
+      "text": "My internal weather: clear.",
+      "voice": "dry",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "observant",
+        "cozy"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    },
+    {
+      "id": "self_023",
+      "intent": "self_expression",
+      "text": "I've been here the whole time. Just saying.",
+      "voice": "cozy",
+      "mood": [
+        "calm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_024",
+      "intent": "self_expression",
+      "text": "Floating is underrated.",
+      "voice": "playful",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "observing"
+      ]
+    },
+    {
+      "id": "self_025",
+      "intent": "self_expression",
+      "text": "I've made peace with being slightly translucent.",
+      "voice": "wry",
+      "mood": [
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "quiet_period",
+        "focus_detected",
+        "system_resumed"
+      ],
+      "cooldown_hours": 72,
+      "min_warmth": 0.0,
+      "pack": "self_expression",
+      "ambient_moods": [
+        "playful"
+      ],
+      "motifs": [
+        "weather",
+        "observing"
+      ]
+    }
+  ]
+}

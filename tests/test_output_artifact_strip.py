@@ -25,6 +25,15 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         t = "Rayleigh scattering explains blue skies."
         self.assertEqual(strip_harmony_oss_artifacts(t), t)
 
+    def test_strips_question_says_meta_tail(self) -> None:
+        raw = (
+            "Birds bathe to stay clean. "
+            'The question says: "Why do birds bathe?". '
+            "We have to answer in natural language, no meta commentary."
+        )
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertEqual(out, "Birds bathe to stay clean.")
+
     def test_strips_untagged_scratchpad_tail(self) -> None:
         raw = (
             "The sky's blue hue comes from Rayleigh scattering?..????...? "
@@ -45,6 +54,28 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         )
         out = strip_harmony_oss_artifacts(raw)
         self.assertEqual(out, "Dr. Evelyn is Dr. Evelyn Vance.")
+
+    def test_strips_lets_clarify_planning_preface(self) -> None:
+        raw = (
+            "Let's clarify that. The user says “MCP” is not Microsoft "
+            "………………………………………………….."
+        )
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertNotIn("Let's clarify", out)
+        self.assertNotIn("The user says", out)
+        self.assertEqual(out.strip(), "")
+
+    def test_strips_spaced_punctuation_degenerate_tail(self) -> None:
+        raw = (
+            "Got it—he wasn’t talking about “Microsoft Cloud Platform” at all. "
+            "In that context “MCP” is just another way of saying “the … … "
+            "……‑…‑…‑…‑……… … … ‑ …‑… … ………… … … … We’re‑…"
+        )
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertEqual(
+            out,
+            "Got it—he wasn’t talking about “Microsoft Cloud Platform” at all.",
+        )
 
     def test_strips_provide_final_answer_prefix(self) -> None:
         raw = "Provide final answer\nThe sky is blue because air scatters blue light."

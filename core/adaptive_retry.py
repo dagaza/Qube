@@ -5,6 +5,7 @@ from typing import Any
 from core.native_prompt_bos import prepare_completion_prompt
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.output_validation import OutputValidationResult, validate_output
+from core.harmony_protocol import is_harmony_contract
 from core.prompt_contract import PromptContract, assert_prompt_contract, stops_for_format
 from core.prompt_renderers import openai_messages_to_alpaca_prompt
 
@@ -77,6 +78,14 @@ def maybe_retry(
         or "role_confusion" in validation.issues
     )
     if not retry_worthy:
+        return output, contract, False
+
+    # Harmony models stay on the protocol path — no ChatML/Alpaca downgrade.
+    if is_harmony_contract(contract):
+        retried_output = _execute_contract_once(model, contract, messages)
+        second = validate_output(retried_output, contract)
+        if second.is_valid:
+            return retried_output, contract, True
         return output, contract, False
 
     retry_contract: PromptContract | None = None

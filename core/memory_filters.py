@@ -446,13 +446,133 @@ WEB_CAPABILITY_DISABLED_SUFFIX: str = (
     "internet access is disabled in Qube settings. In one or two sentences, "
     "say you cannot check live data right now because internet search is "
     "turned off. Do NOT invent current weather, news, prices, or other "
-    "live facts. Do NOT re-announce unrelated stored preferences."
+    "live facts. Do NOT emit bracket citation tokens such as [W]. "
+    "You may still answer from general knowledge when the request does not "
+    "require live data, without claiming you searched the web. "
+    "Do NOT re-announce unrelated stored preferences."
 )
+
+EXPLICIT_WEB_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user explicitly asked for an online/web search, but "
+    "no usable web results were returned this turn. Say that briefly. "
+    "Do NOT claim you lack internet access or cannot browse. "
+    "Do NOT emit bracket citation tokens such as [W]. "
+    "You may answer from general knowledge when appropriate."
+)
+
+# Substring triggers aligned with ``mcp.cognitive_router._WEB_TRIGGERS`` plus
+# manual web commands from ``LLMWorker``.
+_EXPLICIT_WEB_REQUEST_TRIGGERS: tuple[str, ...] = (
+    "look online",
+    "search online",
+    "search the web",
+    "search on the web",
+    "search on the internet",
+    "find on the internet",
+    "find online",
+    "google",
+    "check online",
+    "web search",
+    "on the internet",
+    "on the web",
+    "from the internet",
+    "from the web",
+    "browse the web",
+    "browse the internet",
+    "news",
+    "current",
+    "latest",
+    "today",
+    "right now",
+    "happening",
+    "weather",
+    "search the internet",
+    "who won",
+    "current news",
+)
+
+# Back-compat alias for live-web intent checks.
+_LIVE_WEB_QUERY_TRIGGERS = _EXPLICIT_WEB_REQUEST_TRIGGERS
+
+# Topic-agnostic: "<verb> … online", "online … <verb>", or "online for …".
+_EXPLICIT_WEB_VERB_ONLINE = re.compile(
+    r"(?:"
+    r"\b(?:search|look|find|check|get|browse|google)\b.{0,48}\bonline\b|"
+    r"\bonline\b.{0,48}\b(?:search|look|find|check|get|browse|google)\b|"
+    r"\bonline\s+for\b"
+    r")",
+    re.I,
+)
+
+
+def detect_explicit_web_request(query: str) -> bool:
+    """True when the user explicitly asked to search or check the web/internet."""
+    q = (query or "").lower().strip()
+    if not q:
+        return False
+    if any(t in q for t in _EXPLICIT_WEB_REQUEST_TRIGGERS):
+        return True
+    return bool(_EXPLICIT_WEB_VERB_ONLINE.search(q))
+
+
+def query_implies_live_web_intent(
+    query: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """True when the user message plausibly asks for live/real-time web data."""
+    if detect_explicit_web_request(query):
+        return True
+    q = (query or "").lower().strip()
+    if not q:
+        return False
+    if isinstance(decision, dict):
+        source = str(decision.get("web_score_source") or "").lower()
+        try:
+            score = float(decision.get("web_score_final") or 0.0)
+        except (TypeError, ValueError):
+            score = 0.0
+        if source == "substring" and score > 0.0:
+            return True
+    return False
+
+
+def should_run_internet_search_for_route(
+    execution_route: str,
+    query: str,
+    *,
+    decision: dict | None = None,
+    force_web: bool = False,
+    manual_web: bool = False,
+    auto_web: bool = False,
+    composer_internet: bool = False,
+) -> bool:
+    """WEB/INTERNET always search; HYBRID only when live-web intent is explicit."""
+    route = str(execution_route or "").upper()
+    if route in ("WEB", "INTERNET"):
+        return True
+    if route != "HYBRID":
+        return False
+    return bool(
+        force_web
+        or manual_web
+        or auto_web
+        or composer_internet
+        or query_implies_live_web_intent(query, decision=decision)
+    )
 
 PREFERENCE_APPLICATION_SUFFIX: str = (
     " Apply stored presentation preferences silently when formatting "
     "answers (units, locale, name, verbosity). Do NOT re-announce or "
     "re-acknowledge preferences unless the user explicitly asks."
+)
+
+CHAT_PERSONALITY_SUFFIX: str = (
+    " When the answer is open-ended (story, joke, explanation), you may "
+    "add one brief optional follow-up or invitation if it fits naturally. "
+    "Only apply section formatting when the answer requires multiple distinct "
+    "ideas or steps. Do not force section structure for single-fact or "
+    "single-sentence answers. No citations or meta commentary."
 )
 
 
@@ -615,7 +735,12 @@ __all__ = [
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
     "WEB_CAPABILITY_DISABLED_SUFFIX",
+    "EXPLICIT_WEB_EMPTY_SUFFIX",
+    "detect_explicit_web_request",
+    "query_implies_live_web_intent",
+    "should_run_internet_search_for_route",
     "PREFERENCE_APPLICATION_SUFFIX",
+    "CHAT_PERSONALITY_SUFFIX",
     "NARRATIVE_RECALL_SYSTEM_SUFFIX",
     "is_action_sensitive",
     "is_memory_actionable",

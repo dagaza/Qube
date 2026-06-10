@@ -26,3 +26,13 @@ class TestResponseQuality(unittest.TestCase):
         res = evaluate_response_quality(q, o)
         self.assertLess(res.score, 0.45)
         self.assertIn("low_utility", res.issues)
+
+    def test_retrieval_ignored_when_context_unused(self) -> None:
+        q = "Why do birds take dust baths?"
+        o = (
+            "Birds take dust baths to remove parasites and excess oil from "
+            "their feathers using fine dry particles."
+        )
+        ctx = "--- [1]: Dust bathing ---\nUnrelated stock market report for Tuesday."
+        res = evaluate_response_quality(q, o, context=ctx)
+        self.assertIn("retrieval_ignored", res.issues)

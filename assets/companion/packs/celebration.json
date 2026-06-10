@@ -1,0 +1,224 @@
+{
+  "pack": "celebration",
+  "messages": [
+    {
+      "id": "cel_001",
+      "intent": "celebration",
+      "text": "New model landed safely.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "playful"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_002",
+      "intent": "celebration",
+      "text": "That's ready when you are.",
+      "voice": "cozy",
+      "mood": [
+        "warm",
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_003",
+      "intent": "celebration",
+      "text": "Another piece of the toolkit, in place.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_004",
+      "intent": "celebration",
+      "text": "Download complete — the wait paid off.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_005",
+      "intent": "celebration",
+      "text": "Fresh weight on the drive. Nice.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "cel_006",
+      "intent": "celebration",
+      "text": "The new model settled in without fuss.",
+      "voice": "dry",
+      "mood": [
+        "neutral"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "observant"
+      ]
+    },
+    {
+      "id": "cel_007",
+      "intent": "celebration",
+      "text": "Ready to run when you are.",
+      "voice": "cozy",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "rare",
+      "contexts": [
+        "model_download_completed",
+        "model_ready",
+        "model_ready"
+      ],
+      "cooldown_hours": 168,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "cozy",
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_008",
+      "intent": "celebration",
+      "text": "Something new just joined the lineup.",
+      "voice": "playful",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "model_download_completed",
+        "model_ready"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "playful"
+      ]
+    },
+    {
+      "id": "cel_009",
+      "intent": "celebration",
+      "text": "A quiet milestone — still worth noting.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "uncommon",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "reflective"
+      ],
+      "motifs": [
+        "quiet"
+      ]
+    },
+    {
+      "id": "cel_010",
+      "intent": "celebration",
+      "text": "Showing up adds up. This is one of those marks.",
+      "voice": "reflective",
+      "mood": [
+        "warm"
+      ],
+      "energy": "low",
+      "rarity": "common",
+      "contexts": [
+        "usage_milestone"
+      ],
+      "cooldown_hours": 48,
+      "min_warmth": 0.0,
+      "pack": "celebration",
+      "ambient_moods": [
+        "reflective"
+      ]
+    }
+  ]
+}

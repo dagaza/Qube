@@ -83,6 +83,7 @@ class TrayController(QWidget):
         self._is_dark = True
         self._activity = AssistantActivity.IDLE_LISTEN
         self._voice_paused = False
+        self._voice_output_muted = False
         self._tray_logo_icon = build_tray_logo_icon(tray_logo_path)
         self._tray_available = QSystemTrayIcon.isSystemTrayAvailable()
         self._tray_icon: QSystemTrayIcon | None = None
@@ -118,9 +119,16 @@ class TrayController(QWidget):
                     f"QMenu::item:selected {{ background-color: {'#313244' if is_dark else '#e2e8f0'}; }}"
                 )
 
-    def set_activity(self, activity: AssistantActivity, *, voice_paused: bool = False) -> None:
+    def set_activity(
+        self,
+        activity: AssistantActivity,
+        *,
+        voice_paused: bool = False,
+        voice_output_muted: bool = False,
+    ) -> None:
         self._activity = activity
         self._voice_paused = voice_paused
+        self._voice_output_muted = voice_output_muted
         self._refresh_presence()
 
     def update_recent_notifications(self, items: list[tuple[str, str]]) -> None:
@@ -142,7 +150,7 @@ class TrayController(QWidget):
         self._tray_icon.setToolTip("Qube")
 
         menu = QMenu()
-        self._status_action = QAction("Listening", self)
+        self._status_action = QAction("Idle", self)
         self._status_action.setEnabled(False)
         menu.addAction(self._status_action)
         menu.addSeparator()
@@ -262,11 +270,21 @@ class TrayController(QWidget):
             self._tray_icon.show()
 
     def _refresh_presence(self) -> None:
-        line = menu_status_line(self._activity, voice_paused=self._voice_paused)
+        line = menu_status_line(
+            self._activity,
+            voice_paused=self._voice_paused,
+            voice_output_muted=self._voice_output_muted,
+        )
         if self._status_action is not None:
             self._status_action.setText(f"● {line}")
         if self._tray_icon is not None:
-            self._tray_icon.setToolTip(tray_tooltip_for_activity(self._activity, voice_paused=self._voice_paused))
+            self._tray_icon.setToolTip(
+                tray_tooltip_for_activity(
+                    self._activity,
+                    voice_paused=self._voice_paused,
+                    voice_output_muted=self._voice_output_muted,
+                )
+            )
 
     def refresh_icon(self) -> None:
         """Re-apply the static Qube logo tray icon."""
