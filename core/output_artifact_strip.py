@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 
+from core.gemma_output_strip import strip_gemma_output_artifacts
 from core.harmony_degeneration import polish_harmony_visible_text
 
 # Log-derived bridge: <|end|><|start|>assistant<|channel|>final<|message|>
@@ -110,7 +111,7 @@ def strip_harmony_oss_artifacts(text: str) -> str:
     t = strip_mistral_instruct_artifacts(t)
     if t and _PUNCT_ONLY_REMAINDER.match(t.strip()):
         return ""
-    return t
+    return strip_gemma_output_artifacts(t)
 
 
 def merge_user_visible_stream_tail(replacement: str, streamed: str) -> str:

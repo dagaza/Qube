@@ -56,7 +56,16 @@ class TestHarmonyDegeneration(unittest.TestCase):
         self.assertNotIn("2. **Pre", out)
         self.assertNotIn("We……", out)
 
-    def test_stream_parser_mutes_before_we_loop(self) -> None:
+    def test_trim_abrupt_generation_end_drops_partial_tail(self) -> None:
+        raw = (
+            "Kathmandu is home to religious minorities, including Muslims and Christians, "
+            "and followers of indigenous traditions such as the Newar people’s worship of local deities. "
+            "In addition, small pockets of Kirghiz add diversity, giving a vibrant, inclusive‑tied…"
+        )
+        out = polish_harmony_visible_text(raw)
+        self.assertIn("local deities.", out)
+        self.assertNotIn("Kirghiz", out)
+        self.assertNotIn("…", out)
         p = HarmonyStreamParser()
         emitted = ""
         for i in range(0, len(_LOG_DEGENERATE_TAIL), 40):

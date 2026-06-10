@@ -1,7 +1,7 @@
 """
 Observer-only completion output trace: raw model text vs worker-filtered vs UI-presented.
 
-Enable with QUBE_LOG_RAW_COMPLETION=1 (logs to Qube.NativeLLM.Debug -> logs/llm_debug.log).
+Enable with QUBE_LOG_RAW_COMPLETION=1 (logs to Qube.NativeLLM.Debug -> ~/.qube/logs/llm_debug.log).
 
 Optional: QUBE_LOG_RAW_COMPLETION_MAX_CHARS=N (default 0 = no truncation per field).
 """

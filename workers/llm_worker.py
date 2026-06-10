@@ -10,6 +10,7 @@ import uuid
 import os
 import queue
 import threading
+from typing import Any
 from urllib.parse import urlparse
 
 from core.app_settings import (
@@ -46,20 +47,49 @@ from core.prompt_renderers import render_messages
 from core.prompt_layout import PromptLayoutResolution, resolve_prompt_layout
 from core.redacted_thinking_filter import RedactedThinkingStreamFilter
 from core.native_meta_leading_strip import LeadingMetaInstructionStripper
-from core.stream_repetition_guard import StreamRepetitionGuard
+from core.output_degeneration import OutputDegenerationStreamObserver
+from core.stream_repetition_guard import create_stream_repetition_guard
 from core.harmony_degeneration import (
     harmony_tail_degenerate,
     is_harmony_orphan_stream_fragment,
     polish_harmony_visible_text,
 )
 from core.harmony_protocol import harmony_stream_parser_enabled, is_harmony_contract
-from core.chat_format_mode import resolve_chat_format_mode
+from core.llm_structured_log import structured_llm_log
+from core.conversation_health import (
+    ConversationHealthState,
+    TurnAnomalyOutcome,
+    initial_conversation_health,
+    resolve_conversation_health_policy,
+    update_conversation_health,
+)
+from core.conversation_health_telemetry import log_conversation_health_update
+from core.turn_context import TurnContext, resolve_turn_context
 from core.llm_execution_contract import PrimaryEngineTask
 from core.harmony_stream_parser import HarmonyStreamParser
+from core.gemma_output_strip import (
+    GemmaThoughtStreamFilter,
+    is_gemma_model_identity,
+    strip_gemma_output_artifacts,
+)
 from core.output_artifact_strip import strip_harmony_oss_artifacts
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
+)
+from core.llm_truth_diff import (
+    bind_llm_worker_truth_diff_hooks,
+    get_llm_truth_diff_logger,
+    llm_truth_diff_enabled,
+)
+from core.canonical_request import (
+    canonical_trace_export_enabled,
+    log_canonical_request_trace,
+)
+from core.golden_trace_capture import (
+    build_golden_trace,
+    golden_trace_capture_mode_enabled,
+    maybe_capture_golden_trace,
 )
 from core.llm_debug_markers import (
     log_chat_exchange_begin,
@@ -89,8 +119,28 @@ from core.discourse_intent import (
     discourse_debug_enabled,
     discourse_prompt_hint_enabled,
 )
+from core.collapse_diagnostics import compute_collapse_diagnostics
+from core.collapse_diagnostics_telemetry import log_collapse_diagnostics
+from core.generation_debug_capture import (
+    GenerationDebugRecorder,
+    apply_debug_sampling_overrides,
+    generation_debug_enabled,
+)
+from core.history_degeneration import resolve_assistant_history_content
+from core.history_degeneration_telemetry import log_history_degeneration_suppression
+from core.output_degeneration_telemetry import log_output_degeneration
+from core.prior_turn_reliability import (
+    build_prior_turn_unreliable_suffix,
+    history_contains_suppressed_assistant,
+)
 from core.discourse_query_rewrite import ResolvedUserQuery, resolve_ambiguous_user_query
+from core.discourse_prompt_rewrite import (
+    DiscoursePromptRewrite,
+    resolve_discourse_prompt_rewrite,
+    select_salience_anchor,
+)
 from core.discourse_telemetry import (
+    log_discourse_prompt_rewrite,
     log_discourse_query_rewrite,
     log_discourse_referent_trace,
 )
@@ -104,7 +154,6 @@ from core.discourse_query import (
 from core.retrieval_relevance import filter_web_results
 from core.discourse_state import (
     DiscourseState,
-    is_deictic_topic_phrase,
     promote_referent_after_assistant,
     update_discourse_state,
 )
@@ -200,6 +249,7 @@ class LLMWorker(QThread):
         self._sidecar_client = sidecar_client
         self._last_native_job_cancelled = False
         self.engine_mode = get_engine_mode()
+        self._bind_truth_diff_hooks()
 
         self.embedding_cache = EmbeddingCache(self.embedder)
 
@@ -246,6 +296,7 @@ class LLMWorker(QThread):
         self._last_completed_llm_session_id = None
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
+        self._conversation_health_by_session: dict[str, ConversationHealthState] = {}
         self._push_sampling_to_native()
 
     def _sampling_payload(self) -> dict:
@@ -684,6 +735,7 @@ class LLMWorker(QThread):
         retrieval_wrapper_mode: str,
         inference_user_text: str = "",
         resolved_query: ResolvedUserQuery | None = None,
+        prompt_rewrite: DiscoursePromptRewrite | None = None,
     ) -> None:
         if not isinstance(decision, dict):
             return
@@ -700,6 +752,8 @@ class LLMWorker(QThread):
             decision["discourse_rewrite_confidence"] = round(
                 resolved_query.confidence, 3
             )
+        if prompt_rewrite is not None:
+            decision.update(prompt_rewrite.trace_fields())
         if routing_query != original:
             decision["routing_query"] = routing_query
         if retrieval_query != original:
@@ -843,6 +897,70 @@ class LLMWorker(QThread):
             )
         self._discourse_by_session[sid] = promoted
 
+    def _persist_assistant_turn(self, final_text: str, all_ui_sources: list) -> None:
+        """Persist assistant output to SQLite with poisoned-history protection."""
+        if not self.session_id or not (final_text or "").strip():
+            return
+
+        history_content, degeneration = resolve_assistant_history_content(final_text)
+        self._turn_history_degeneration = degeneration
+        self._turn_stored_history_content = history_content
+
+        if degeneration.output_degeneration is not None:
+            log_output_degeneration(
+                session_id=str(self.session_id or ""),
+                result=degeneration.output_degeneration,
+                phase="persist",
+            )
+
+        src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
+        self._turn_last_assistant_msg_id = self.db.add_message(
+            self.session_id, "assistant", history_content, sources_json=src_payload
+        )
+
+        gen_debug = getattr(self, "_active_generation_debug_recorder", None)
+        if isinstance(gen_debug, GenerationDebugRecorder):
+            gen_debug.record_final_stored(history_content, ui_final=final_text)
+            self._active_generation_debug_recorder = None
+
+        try:
+            updated = self.routing_debug_buffer.merge_history_degeneration_into_latest(
+                degeneration.trace_fields()
+            )
+            if updated is not None:
+                self.routing_debug_record_added.emit(dataclasses.asdict(updated))
+                self._persist_routing_debug_record(updated)
+        except Exception:
+            logger.debug(
+                "[HistoryDegeneration] failed to merge routing debug record",
+                exc_info=True,
+            )
+
+        if degeneration.should_suppress:
+            self._mark_skip_enrichment("history_degeneration_suppressed")
+            od_fields = (
+                degeneration.output_degeneration.trace_fields()
+                if degeneration.output_degeneration is not None
+                else {}
+            )
+            log_history_degeneration_suppression(
+                session_id=str(self.session_id or ""),
+                score=degeneration.score,
+                flags=degeneration.flags,
+                presented_preview=final_text,
+                stored_content=history_content,
+                output_degeneration=od_fields,
+            )
+            logger.warning(
+                "[HistoryDegeneration] suppressed assistant turn score=%.2f flags=%s",
+                degeneration.score,
+                ",".join(degeneration.flags),
+            )
+            return
+
+        self._record_memory_citations(final_text, all_ui_sources)
+        self._promote_discourse_after_assistant(final_text)
+
     def _memory_query_fingerprint(
         self,
         query: str,
@@ -972,6 +1090,430 @@ class LLMWorker(QThread):
         elapsed = max(0.001, time.time() - float(first_token_ts))
         self.tps_metric.emit(float(token_count) / elapsed)
 
+    def _truth_diff_context(self) -> dict:
+        model_name = ""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
+            path = resolve_internal_model_path(get_internal_model_path() or "")
+            model_name = os.path.basename(path) if path else ""
+        else:
+            model_name = str(getattr(self, "api_url", "") or "external")
+        exchange_id = getattr(self, "_debug_exchange_id", None)
+        return {
+            "request_id": exchange_id,
+            "exchange_id": exchange_id,
+            "session_id": str(self.session_id or ""),
+            "model_name": model_name,
+        }
+
+    def _frontend_raw_request(self) -> dict:
+        attachments = getattr(self, "_turn_attachments", None) or []
+        return {
+            "prompt": self.prompt or "",
+            "persist_content": getattr(self, "_persist_content", None) or "",
+            "session_id": self.session_id or "",
+            "attachments": attachments,
+            "engine_mode": str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or ""),
+        }
+
+    def _truth_diff_l2_metadata(
+        self,
+        *,
+        template_source: str,
+        chat_format_mode: str,
+        execution_mode: str,
+        prompt_contract_mode: str,
+        **extra: Any,
+    ) -> dict:
+        return {
+            **self._truth_diff_context(),
+            "template_source": template_source,
+            "chat_format_mode": chat_format_mode,
+            "execution_mode": execution_mode,
+            "prompt_contract_mode": prompt_contract_mode,
+            **extra,
+        }
+
+    def _safe_truth_diff_l1_raw_request(self) -> None:
+        if not llm_truth_diff_enabled():
+            return
+        try:
+            get_llm_truth_diff_logger().log_l1_raw_request(
+                self._frontend_raw_request(),
+                self._truth_diff_context(),
+            )
+        except Exception:
+            logger.debug("[LLMTruthDiff] L1 raw request log failed", exc_info=True)
+
+    def _reset_turn_trace_capture_state(self) -> None:
+        self._turn_engine_request = None
+        self._turn_rendered_prompt = ""
+        self._turn_history_degeneration = None
+        self._turn_prompt_rewrite = None
+        self._turn_prior_turn_suppressed = False
+        self._turn_stored_history_content = ""
+        self._turn_context: TurnContext | None = None
+        self._turn_conversation_health: ConversationHealthState | None = None
+        self._turn_stream_degeneration_cancelled = False
+
+    def _remember_turn_engine_request(self, request: dict) -> None:
+        self._turn_engine_request = copy.deepcopy(request or {})
+
+    def _remember_turn_rendered_prompt(self, prompt: str) -> None:
+        self._turn_rendered_prompt = str(prompt or "")
+
+    def _conversation_health_for_session(self) -> ConversationHealthState:
+        sid = str(self.session_id or "")
+        if not sid:
+            return initial_conversation_health()
+        return self._conversation_health_by_session.get(sid) or initial_conversation_health()
+
+    def _mark_stream_degeneration_cancelled(self) -> None:
+        self._turn_stream_degeneration_cancelled = True
+
+    def _finalize_conversation_health_after_turn(self, final_text: str) -> None:
+        sid = str(self.session_id or "")
+        if not sid:
+            return
+        before = self._conversation_health_for_session()
+        degeneration = getattr(self, "_turn_history_degeneration", None)
+        deg_risk = "LOW"
+        history_suppressed = False
+        if degeneration is not None:
+            history_suppressed = bool(degeneration.should_suppress)
+            od = degeneration.output_degeneration
+            if od is not None:
+                deg_risk = str(od.risk)
+            elif degeneration.score >= 0.55:
+                deg_risk = "HIGH"
+            elif degeneration.score >= 0.35:
+                deg_risk = "MEDIUM"
+        elif (final_text or "").strip():
+            from core.output_degeneration import detect_output_degeneration
+
+            deg_risk = str(detect_output_degeneration(final_text).risk)
+
+        collapse_risk = "LOW"
+        if history_suppressed or deg_risk == "HIGH":
+            collapse_risk = "HIGH"
+        elif deg_risk == "MEDIUM":
+            collapse_risk = "MEDIUM"
+
+        outcome = TurnAnomalyOutcome(
+            degeneration_risk=deg_risk,
+            history_suppressed=history_suppressed,
+            collapse_risk=collapse_risk,
+            stream_degeneration_cancelled=bool(
+                getattr(self, "_turn_stream_degeneration_cancelled", False)
+            ),
+        )
+        after = update_conversation_health(before, outcome=outcome)
+        self._conversation_health_by_session[sid] = after
+        self._turn_conversation_health = after
+        try:
+            log_conversation_health_update(
+                session_id=sid,
+                before=before,
+                after=after,
+                outcome=outcome,
+            )
+        except Exception:
+            logger.debug("[ConversationHealth] structured log failed", exc_info=True)
+        if before.mode != after.mode or outcome.had_anomaly:
+            logger.info(
+                "[ConversationHealth] session=%s health %.2f→%.2f mode %s→%s penalty=%.2f",
+                sid[:8],
+                before.health_score,
+                after.health_score,
+                before.mode,
+                after.mode,
+                outcome.anomaly_penalty(),
+            )
+
+    def _infer_harmony_protocol(self) -> bool:
+        """Best-effort Harmony/gpt-oss detection for history-strategy telemetry."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
+            return False
+        try:
+            snap = self._native_engine.get_model_reasoning_telemetry() or {}
+            ident = (
+                f"{snap.get('model_name', '')} {snap.get('model_basename', '')}"
+            ).lower()
+            return "gpt-oss" in ident or "harmony" in ident
+        except Exception:
+            return False
+
+    def _resolve_turn_context_for_turn(
+        self,
+        *,
+        execution_route: str,
+        follow_up: FollowUpClassification,
+        prior_turn_unreliable: bool,
+        has_retrieval_sources: bool,
+        history_turn_count: int,
+        conversation_health: ConversationHealthState | None = None,
+    ) -> TurnContext:
+        turn_ctx = resolve_turn_context(
+            execution_route=execution_route,
+            user_query=str(self.prompt or ""),
+            follow_up=follow_up,
+            prior_turn_unreliable=prior_turn_unreliable,
+            has_retrieval_sources=has_retrieval_sources,
+            history_turn_count=history_turn_count,
+            use_harmony_protocol=self._infer_harmony_protocol(),
+            conversation_health=conversation_health,
+        )
+        self._turn_context = turn_ctx
+        try:
+            structured_llm_log(
+                "turn_context",
+                {
+                    "session_id": str(self.session_id or ""),
+                    **turn_ctx.trace_fields(),
+                },
+            )
+        except Exception:
+            logger.debug("[TurnContext] structured log failed", exc_info=True)
+        logger.info(
+            "[TurnContext] format=%s intent=%s risk=%s history=%s health=%s conflicts=%s",
+            turn_ctx.chat_format_mode,
+            turn_ctx.reply_shape.format_intent,
+            turn_ctx.generation_risk.risk_tier,
+            turn_ctx.history_strategy,
+            (
+                turn_ctx.conversation_health.mode
+                if turn_ctx.conversation_health is not None
+                else "normal"
+            ),
+            list(turn_ctx.reply_shape.instruction_conflicts),
+        )
+        return turn_ctx
+
+    def _generation_params_from_turn_context(
+        self,
+        turn_ctx: TurnContext,
+        *,
+        native: bool,
+    ) -> dict[str, Any]:
+        risk = turn_ctx.generation_risk
+        base_max = (
+            self._max_tokens_native_completion()
+            if native
+            else max(512, int(getattr(self, "context_window", 4096)))
+        )
+        sampling = self._sampling_payload()
+        sampling["repeat_penalty"] = risk.effective_repeat_penalty(
+            float(sampling.get("repeat_penalty", self.repeat_penalty))
+        )
+        return {
+            "temperature": risk.effective_temperature(self.temperature),
+            "max_tokens": risk.effective_max_tokens(base_max),
+            "sampling_overrides": sampling,
+        }
+
+    def build_last_turn_canonical_trace(
+        self,
+        *,
+        output: str,
+        extra_metadata: dict | None = None,
+    ):
+        """Build CanonicalTrace from the most recently completed turn capture state."""
+        engine_req = getattr(self, "_turn_engine_request", None)
+        if not engine_req:
+            return None
+        try:
+            snap = getattr(self, "_completion_output_snapshot", None)
+            engine_mode = (
+                str(getattr(snap, "engine_mode", "") or "")
+                if snap
+                else str(getattr(self, "engine_mode", "") or "")
+            )
+            from core.conversation_replay import qube_execution_path_for_engine_mode
+
+            metadata = {
+                **self._truth_diff_context(),
+                "engine_mode": engine_mode,
+                "execution_path": qube_execution_path_for_engine_mode(engine_mode),
+                "execution_route": str(getattr(self, "_turn_execution_route", "") or ""),
+                **(extra_metadata or {}),
+            }
+            degeneration = getattr(self, "_turn_history_degeneration", None)
+            if degeneration is not None:
+                metadata.update(degeneration.trace_fields())
+            prompt_rewrite = getattr(self, "_turn_prompt_rewrite", None)
+            rewrite_confidence = (
+                float(prompt_rewrite.rewrite_confidence) if prompt_rewrite else 0.0
+            )
+            collapse = compute_collapse_diagnostics(
+                prompt=str(getattr(self, "_turn_rendered_prompt", "") or ""),
+                output=str(output or ""),
+                user_query=str(self.prompt or ""),
+                rewrite_confidence=rewrite_confidence,
+                degeneration_score=(
+                    float(degeneration.score) if degeneration is not None else None
+                ),
+                degeneration_flags=degeneration.flags if degeneration else (),
+                turn_index=int(getattr(self, "_routing_debug_turn_seq", 0)),
+                prior_turn_suppressed=bool(
+                    getattr(self, "_turn_prior_turn_suppressed", False)
+                ),
+                active_referent=(
+                    str(
+                        getattr(
+                            self._discourse_by_session.get(str(self.session_id or "")),
+                            "active_referent",
+                            "",
+                        )
+                        or ""
+                    )
+                ),
+            )
+            metadata.update(collapse.trace_fields())
+            log_collapse_diagnostics(
+                session_id=str(self.session_id or ""),
+                turn_index=collapse.turn_index,
+                collapse_risk=collapse.collapse_risk,
+                collapse_score=collapse.collapse_score,
+                prompt_length=collapse.prompt_length,
+                output_length=collapse.output_length,
+                rewrite_confidence=collapse.rewrite_confidence,
+                degeneration_score=collapse.degeneration_score,
+                hallucination_score=collapse.hallucination_score,
+                format_drift_score=collapse.format_drift_score,
+                hallucination_flags=collapse.hallucination_flags,
+                format_drift_flags=collapse.format_drift_flags,
+                prior_turn_suppressed=collapse.prior_turn_suppressed,
+            )
+            if prompt_rewrite is not None:
+                metadata.update(prompt_rewrite.trace_fields())
+            turn_ctx = getattr(self, "_turn_context", None)
+            if turn_ctx is not None:
+                metadata.update(turn_ctx.trace_fields())
+            health_after = getattr(self, "_turn_conversation_health", None)
+            if health_after is not None:
+                metadata.update(health_after.trace_fields())
+            return build_golden_trace(
+                request=engine_req,
+                prompt=str(getattr(self, "_turn_rendered_prompt", "") or ""),
+                output=str(output or ""),
+                metadata=metadata,
+            )
+        except Exception:
+            logger.debug("[GoldenTraceCapture] build_last_turn_canonical_trace failed", exc_info=True)
+            return None
+
+    def _maybe_capture_golden_trace(self, *, output: str) -> None:
+        if not golden_trace_capture_mode_enabled():
+            return
+        try:
+            trace = self.build_last_turn_canonical_trace(output=output)
+            if trace is not None:
+                maybe_capture_golden_trace(trace)
+        except Exception:
+            logger.debug("[GoldenTraceCapture] worker capture failed", exc_info=True)
+
+    def _safe_log_canonical_request_trace(
+        self,
+        request: dict,
+        *,
+        extra_context: dict | None = None,
+    ) -> None:
+        if not canonical_trace_export_enabled():
+            return
+        try:
+            ctx = {**self._truth_diff_context(), **(extra_context or {})}
+            log_canonical_request_trace(request, context=ctx)
+        except Exception:
+            logger.debug("[CanonicalRequestTrace] log failed", exc_info=True)
+
+    def _safe_truth_diff_l1_engine_request(self, request: dict) -> None:
+        self._remember_turn_engine_request(request)
+        self._safe_log_canonical_request_trace(request)
+        if not llm_truth_diff_enabled():
+            return
+        try:
+            get_llm_truth_diff_logger().log_l1_engine_request(
+                request,
+                self._truth_diff_context(),
+            )
+        except Exception:
+            logger.debug("[LLMTruthDiff] L1 engine request log failed", exc_info=True)
+
+    def _safe_truth_diff_l2_prompt(self, prompt: str, metadata: dict) -> None:
+        self._remember_turn_rendered_prompt(prompt)
+        if not llm_truth_diff_enabled():
+            return
+        try:
+            get_llm_truth_diff_logger().log_l2_prompt(prompt, metadata)
+        except Exception:
+            logger.debug("[LLMTruthDiff] L2 prompt log failed", exc_info=True)
+
+    def _safe_truth_diff_l3(self, *, presented_text: str) -> None:
+        if not llm_truth_diff_enabled():
+            return
+        snap = getattr(self, "_completion_output_snapshot", None)
+        if snap is None:
+            return
+        try:
+            stages: list[str] = []
+            for value in (
+                snap.after_harmony_parser,
+                snap.after_worker_filters,
+                snap.streamed_incremental,
+                snap.worker_return_text,
+            ):
+                text = str(value or "")
+                if text and (not stages or stages[-1] != text):
+                    stages.append(text)
+            get_llm_truth_diff_logger().log_l3_model_io(
+                raw=str(snap.raw_text or ""),
+                after_stages=stages,
+                final=str(presented_text or ""),
+                metadata={
+                    **self._truth_diff_context(),
+                    "engine_mode": snap.engine_mode or "",
+                    "retry_replaced": bool(snap.retry_replaced),
+                },
+            )
+        except Exception:
+            logger.debug("[LLMTruthDiff] L3 model I/O log failed", exc_info=True)
+
+    def _native_execution_mode(self) -> str:
+        engine = getattr(self, "_native_engine", None)
+        if engine is None:
+            return ""
+        try:
+            pol = engine.get_execution_policy()
+            return str(getattr(pol, "execution_mode", "") or "")
+        except Exception:
+            return ""
+
+    def _bind_truth_diff_hooks(self) -> None:
+        bind_llm_worker_truth_diff_hooks(
+            l1_engine_request=self._truth_diff_hook_l1_engine_request,
+            l2_prompt=self._truth_diff_hook_l2_prompt,
+        )
+
+    def _truth_diff_hook_l1_engine_request(self, request: dict, context: dict) -> None:
+        self._remember_turn_engine_request(request)
+        self._safe_log_canonical_request_trace(request, extra_context=context)
+        if not llm_truth_diff_enabled():
+            return
+        try:
+            merged = {**self._truth_diff_context(), **(context or {})}
+            get_llm_truth_diff_logger().log_l1_engine_request(request, merged)
+        except Exception:
+            logger.debug("[LLMTruthDiff] L1 engine hook failed", exc_info=True)
+
+    def _truth_diff_hook_l2_prompt(self, prompt: str, metadata: dict) -> None:
+        self._remember_turn_rendered_prompt(prompt)
+        if not llm_truth_diff_enabled():
+            return
+        try:
+            merged = {**self._truth_diff_context(), **(metadata or {})}
+            get_llm_truth_diff_logger().log_l2_prompt(prompt, merged)
+        except Exception:
+            logger.debug("[LLMTruthDiff] L2 hook failed", exc_info=True)
+
     # ============================================================
     def generate_response(
         self,
@@ -993,6 +1535,8 @@ class LLMWorker(QThread):
         self._persist_content = (persist_content or self.prompt).strip()
         self._turn_attachments = list(attachments or [])
         self.session_id = session_id
+        self._debug_exchange_id = next_exchange_id()
+        self._safe_truth_diff_l1_raw_request()
         self.start() # This automatically triggers the run() method
 
     # ============================================================
@@ -1066,7 +1610,9 @@ class LLMWorker(QThread):
         self._reset_turn_enrichment_flags()
         self._completion_output_snapshot = None
         self._turn_execution_route = ""
-        self._debug_exchange_id = next_exchange_id()
+        self._reset_turn_trace_capture_state()
+        if getattr(self, "_debug_exchange_id", None) is None:
+            self._debug_exchange_id = next_exchange_id()
         self._exchange_worker_started_at = time.monotonic()
         self._engine_enqueue_at: float | None = None
         log_chat_exchange_begin(
@@ -1120,6 +1666,12 @@ class LLMWorker(QThread):
             except Exception:
                 logger.exception("[LLM] failed to emit enrichment context")
             final_text_out = strip_harmony_oss_artifacts(final_text_out or "")
+            try:
+                self._finalize_conversation_health_after_turn(final_text_out)
+            except Exception:
+                logger.debug("[ConversationHealth] finalize failed", exc_info=True)
+            self._safe_truth_diff_l3(presented_text=final_text_out)
+            self._maybe_capture_golden_trace(output=final_text_out)
             log_completion_output_trace(
                 session_id=str(self.session_id or ""),
                 snapshot=getattr(self, "_completion_output_snapshot", None),
@@ -1188,6 +1740,9 @@ class LLMWorker(QThread):
         follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
         original_query = (self.prompt or "").strip()
         resolved_query: ResolvedUserQuery | None = None
+        prompt_rewrite: DiscoursePromptRewrite | None = None
+        salience_anchor = ""
+        salience_reason = ""
         inference_user_text = original_query
         routing_query = original_query
         retrieval_query = original_query
@@ -1199,6 +1754,15 @@ class LLMWorker(QThread):
         digest_mem_applied = False
         digest_rag_attempted = False
         digest_rag_applied = False
+
+        conversation_health = self._conversation_health_for_session()
+        health_policy = resolve_conversation_health_policy(conversation_health)
+        if health_policy.mode != "normal":
+            logger.info(
+                "[ConversationHealth] entering turn mode=%s health=%.2f",
+                health_policy.mode,
+                health_policy.health_score,
+            )
 
         if discourse_enabled:
             prior = (
@@ -1213,7 +1777,8 @@ class LLMWorker(QThread):
             resolved_query = resolve_ambiguous_user_query(
                 self.prompt, discourse_state, follow_up
             )
-            if resolved_query.succeeded:
+            inference_user_text = original_query
+            if health_policy.allow_query_rewrite and resolved_query.succeeded:
                 inference_user_text = resolved_query.resolved
                 log_discourse_query_rewrite(
                     original=resolved_query.original,
@@ -1222,6 +1787,39 @@ class LLMWorker(QThread):
                     confidence=resolved_query.confidence,
                     rewrite_reason=resolved_query.rewrite_reason,
                 )
+            elif resolved_query.succeeded:
+                logger.info(
+                    "[ConversationHealth] skipped query rewrite mode=%s",
+                    health_policy.mode,
+                )
+            prompt_rewrite = resolve_discourse_prompt_rewrite(
+                user_message=original_query,
+                resolved_query=resolved_query,
+                follow_up=follow_up,
+                discourse=discourse_state,
+                allow_rewrite=health_policy.allow_discourse_rewrite,
+            )
+            self._turn_prompt_rewrite = prompt_rewrite
+            if (
+                health_policy.allow_salience_hints
+                and follow_up.active
+                and discourse_state
+            ):
+                salience_anchor, _, salience_reason = select_salience_anchor(
+                    discourse=discourse_state,
+                    user_message=original_query,
+                    resolved_query=resolved_query,
+                )
+            log_discourse_prompt_rewrite(
+                original=prompt_rewrite.original,
+                grounded=prompt_rewrite.grounded,
+                rewrite_anchor=prompt_rewrite.rewrite_anchor or "",
+                rewrite_confidence=prompt_rewrite.rewrite_confidence,
+                rewrite_reason=prompt_rewrite.rewrite_reason,
+                applied=prompt_rewrite.applied,
+                salience_anchor=salience_anchor,
+                salience_reason=salience_reason,
+            )
             routing_query = resolve_routing_query(
                 inference_user_text, follow_up, discourse_state
             )
@@ -1627,6 +2225,7 @@ class LLMWorker(QThread):
             retrieval_wrapper_mode=retrieval_wrapper_mode,
             inference_user_text=inference_user_text,
             resolved_query=resolved_query,
+            prompt_rewrite=prompt_rewrite,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -2333,37 +2932,8 @@ class LLMWorker(QThread):
         elif discourse_enabled and history and history[-1].get("role") == "user":
             grounded = list(history)
             last = dict(grounded[-1])
-            rewrite_ok = bool(
-                resolved_query is not None and resolved_query.succeeded
-            )
-            if rewrite_ok:
-                last["content"] = inference_user_text
-            elif follow_up.active:
-                referent = (
-                    (discourse_state.active_referent or "").strip()
-                    if discourse_state
-                    else ""
-                )
-                topic_anchor = (
-                    (discourse_state.active_topic or "").strip()
-                    if discourse_state
-                    else ""
-                )
-                if referent:
-                    last["content"] = (
-                        f"[Referring to {referent}]\n\n"
-                        f"{last.get('content') or ''}"
-                    )
-                elif topic_anchor and not is_deictic_topic_phrase(topic_anchor):
-                    last["content"] = (
-                        f"[Continuing our discussion of {topic_anchor}]\n\n"
-                        f"{last.get('content') or ''}"
-                    )
-                elif len(grounded) >= 2:
-                    last["content"] = (
-                        "[Continuing from the conversation above]\n\n"
-                        f"{last.get('content') or ''}"
-                    )
+            if prompt_rewrite is not None and prompt_rewrite.applied:
+                last["content"] = prompt_rewrite.grounded
             grounded[-1] = last
             prompt_history = grounded
 
@@ -2399,6 +2969,7 @@ class LLMWorker(QThread):
             retrieval_wrapper_mode=retrieval_wrapper_mode,
             inference_user_text=inference_user_text,
             resolved_query=resolved_query,
+            prompt_rewrite=prompt_rewrite,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -2408,32 +2979,39 @@ class LLMWorker(QThread):
         )
 
         topic_salience = ""
-        rewrite_ok = bool(
-            discourse_enabled
-            and resolved_query is not None
-            and resolved_query.succeeded
+        prior_turn_unreliable = ""
+        self._turn_prior_turn_suppressed = history_contains_suppressed_assistant(
+            prompt_history
         )
-        if discourse_enabled and follow_up.active and discourse_state:
-            referent = (discourse_state.active_referent or "").strip()
-            if rewrite_ok:
-                topic_salience = ""
-            elif referent:
-                if discourse_prompt_hint_enabled():
-                    token = "it"
-                    if resolved_query and resolved_query.substitutions:
-                        token = resolved_query.substitutions[0][0]
-                    topic_salience = build_minimal_referent_fallback_suffix(
-                        referent,
-                        token=token,
-                    )
-            elif (
-                discourse_state.active_topic
-                and not is_deictic_topic_phrase(discourse_state.active_topic)
-            ):
+        if self._turn_prior_turn_suppressed:
+            prior_turn_unreliable = build_prior_turn_unreliable_suffix()
+            logger.info(
+                "[HistoryDegeneration] prior assistant turn suppressed; "
+                "injecting reliability hint"
+            )
+        if discourse_enabled and follow_up.active and discourse_state and salience_anchor:
+            if salience_reason == "referent_salience" and discourse_prompt_hint_enabled():
+                token = "it"
+                if resolved_query and resolved_query.substitutions:
+                    token = resolved_query.substitutions[0][0]
+                topic_salience = build_minimal_referent_fallback_suffix(
+                    salience_anchor,
+                    token=token,
+                )
+            elif salience_reason == "topic_salience":
                 topic_salience = build_topic_salience_suffix(
-                    discourse_state.active_topic,
+                    salience_anchor,
                     topic_type=discourse_state.topic_type,
                 )
+
+        turn_ctx = self._resolve_turn_context_for_turn(
+            execution_route=execution_route,
+            follow_up=follow_up,
+            prior_turn_unreliable=bool(prior_turn_unreliable),
+            has_retrieval_sources=bool(all_ui_sources),
+            history_turn_count=len(prompt_history),
+            conversation_health=conversation_health,
+        )
 
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
@@ -2457,7 +3035,9 @@ class LLMWorker(QThread):
             retrieval_wrapper_mode=retrieval_wrapper_mode,
             topic_salience_hint=topic_salience,
             follow_up_active=follow_up.active,
+            prior_turn_unreliable_hint=prior_turn_unreliable,
             chat_personality_enabled=get_enable_chat_personality_nudge(),
+            reply_shape_hint=turn_ctx.reply_shape.system_reply_hint,
         )
         if prompt_blocks.no_sources_mode:
             logger.info(
@@ -2495,25 +3075,46 @@ class LLMWorker(QThread):
 
         final_text = ""
 
+        gen_params = self._generation_params_from_turn_context(
+            turn_ctx,
+            native=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal",
+        )
+
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal" and self._native_engine:
             final_text = self._stream_via_native(
                 messages,
                 all_ui_sources,
                 retrieval_context=retrieval_prompt_body,
                 execution_route=execution_route,
+                turn_ctx=turn_ctx,
+                gen_params=gen_params,
             )
             return final_text
 
+        chat_format_mode = turn_ctx.chat_format_mode
+        self._safe_truth_diff_l2_prompt(
+            json.dumps(messages, ensure_ascii=False),
+            self._truth_diff_l2_metadata(
+                template_source=f"worker_messages/{pl_res.layout}",
+                chat_format_mode=chat_format_mode,
+                execution_mode="",
+                prompt_contract_mode="messages",
+                prompt_layout=pl_res.layout,
+            ),
+        )
+
         payload = {
             "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": self.context_window,
+            "temperature": gen_params["temperature"],
+            "max_tokens": gen_params["max_tokens"],
             "stream": True,
-            **self._sampling_payload(),
+            **gen_params["sampling_overrides"],
         }
         if self._uses_external_http() and self._is_local_llm_service():
             # llama.cpp server: avoid unbounded prompt-prefix / KV reuse across unrelated requests
             payload["cache_prompt"] = False
+
+        self._safe_truth_diff_l1_engine_request(payload)
 
         current_sentence = ""
         final_text = ""
@@ -2535,7 +3136,13 @@ class LLMWorker(QThread):
             r.raise_for_status()
 
             stream_wall_start = time.time()
-            repetition_guard = StreamRepetitionGuard()
+            repetition_guard = create_stream_repetition_guard(turn_ctx.generation_risk)
+            _health = turn_ctx.conversation_health
+            degeneration_observer = OutputDegenerationStreamObserver(
+                rescore_every=(
+                    _health.degeneration_rescore_every if _health is not None else 120
+                )
+            )
 
             for line in r.iter_lines(decode_unicode=False):
                 if time.time() - stream_wall_start > self._MAX_STREAM_WALL_SECONDS:
@@ -2578,9 +3185,17 @@ class LLMWorker(QThread):
                                     "[LLM] SSE stream degeneration detected (%s); cancelling.",
                                     repetition_guard.trip_reason,
                                 )
-                                # T3.3: truncated / degenerate assistant text
-                                # must not be mined for memories.
+                                self._mark_stream_degeneration_cancelled()
                                 self._mark_skip_enrichment("stream_repetition_cancelled")
+                                break
+
+                            if degeneration_observer.observe(delta):
+                                logger.error(
+                                    "[LLM] Output degeneration HIGH during stream (%s); cancelling.",
+                                    degeneration_observer.trip_reason,
+                                )
+                                self._mark_stream_degeneration_cancelled()
+                                self._mark_skip_enrichment("output_degeneration_stream_cancelled")
                                 break
 
                     except json.JSONDecodeError:
@@ -2601,12 +3216,7 @@ class LLMWorker(QThread):
             )
 
             if self.session_id and final_text.strip():
-                src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
-                self._turn_last_assistant_msg_id = self.db.add_message(
-                    self.session_id, "assistant", final_text, sources_json=src_payload
-                )
-                self._record_memory_citations(final_text, all_ui_sources)
-                self._promote_discourse_after_assistant(final_text)
+                self._persist_assistant_turn(final_text, all_ui_sources)
 
             self._successfully_finished = True
 
@@ -2642,6 +3252,9 @@ class LLMWorker(QThread):
         *,
         retrieval_context: str = "",
         execution_route: str = "NONE",
+        turn_ctx: TurnContext | None = None,
+        gen_params: dict[str, Any] | None = None,
+        chat_format_mode: str | None = None,
     ) -> str:
         """Stream native output after a small leading-meta/thinking gate.
 
@@ -2652,32 +3265,85 @@ class LLMWorker(QThread):
         self._reset_tts_dedupe_state()
         token_queue: queue.Queue = queue.Queue()
         done_event = threading.Event()
-        chat_format_mode = resolve_chat_format_mode(
-            execution_route=execution_route,
+        if turn_ctx is not None:
+            chat_format_mode = turn_ctx.chat_format_mode
+        elif chat_format_mode is None:
+            turn_ctx = getattr(self, "_turn_context", None)
+            chat_format_mode = (
+                turn_ctx.chat_format_mode if turn_ctx else "structured"
+            )
+        if gen_params is None:
+            if turn_ctx is None:
+                turn_ctx = getattr(self, "_turn_context", None)
+            gen_params = (
+                self._generation_params_from_turn_context(turn_ctx, native=True)
+                if turn_ctx is not None
+                else {
+                    "temperature": self.temperature,
+                    "max_tokens": self._max_tokens_native_completion(),
+                    "sampling_overrides": self._sampling_payload(),
+                }
+            )
+        if generation_debug_enabled():
+            gen_params = apply_debug_sampling_overrides(gen_params)
+        turn_id = int(getattr(self, "_routing_debug_turn_seq", 0))
+        native_engine = self._native_engine
+        preflight = getattr(native_engine, "_last_trace_preflight", None) or {}
+        merged_stops = getattr(native_engine, "_last_merged_stops", None)
+        gen_debug = GenerationDebugRecorder.maybe_start(
+            turn_id=turn_id,
+            session_id=str(self.session_id or ""),
             user_query=str(self.prompt or ""),
+            gen_params=gen_params,
+            native_preflight=preflight,
+            merged_stops=list(merged_stops or []),
         )
+        self._active_generation_debug_recorder = gen_debug
         logger.info(
-            "[ChatFormatMode] mode=%s route=%s query_preview=%r",
+            "[ChatFormatMode] mode=%s route=%s query_preview=%r risk=%s",
             chat_format_mode,
             execution_route,
             (str(self.prompt or "")[:80]),
+            (
+                turn_ctx.generation_risk.risk_tier
+                if turn_ctx is not None
+                else "unknown"
+            ),
         )
         self._engine_enqueue_at = time.monotonic()
         self._native_engine.enqueue_generation(
             messages,
-            self.temperature,
-            self._max_tokens_native_completion(),
+            float(gen_params["temperature"]),
+            int(gen_params["max_tokens"]),
             token_queue,
             done_event,
             retrieval_context=(retrieval_context or "").strip(),
             chat_format_mode=chat_format_mode,
+            reply_shape_policy=(
+                turn_ctx.reply_shape if turn_ctx is not None else None
+            ),
+            sampling_overrides=gen_params.get("sampling_overrides"),
             debug_caller="chat",
             debug_exchange_id=getattr(self, "_debug_exchange_id", None),
+            debug_session_id=str(self.session_id or ""),
         )
 
         cot_filter = RedactedThinkingStreamFilter()
         meta_filter = LeadingMetaInstructionStripper()
-        repetition_guard = StreamRepetitionGuard()
+        _native_telemetry = self._native_engine.get_model_reasoning_telemetry() or {}
+        use_gemma_strip = is_gemma_model_identity(
+            model_name=str(_native_telemetry.get("model_name") or ""),
+            model_path=str(getattr(self._native_engine, "_model_path", "") or ""),
+        )
+        gemma_filter = GemmaThoughtStreamFilter() if use_gemma_strip else None
+        risk_profile = turn_ctx.generation_risk if turn_ctx is not None else None
+        repetition_guard = create_stream_repetition_guard(risk_profile)
+        _health = turn_ctx.conversation_health if turn_ctx is not None else None
+        degeneration_observer = OutputDegenerationStreamObserver(
+            rescore_every=(
+                _health.degeneration_rescore_every if _health is not None else 120
+            )
+        )
         prompt_contract = getattr(self._native_engine, "_last_prompt_contract", None)
         use_harmony_parser = bool(
             is_harmony_contract(prompt_contract) and harmony_stream_parser_enabled()
@@ -2705,8 +3371,10 @@ class LLMWorker(QThread):
             cleaned = complete_cot.feed(raw_text)
             cleaned += complete_cot.flush()
             cleaned = complete_meta.feed(cleaned) + complete_meta.flush()
-            return strip_harmony_oss_artifacts(
-                polish_harmony_visible_text(cleaned)
+            return strip_gemma_output_artifacts(
+                strip_harmony_oss_artifacts(
+                    polish_harmony_visible_text(cleaned)
+                )
             ).strip()
 
         def _abort_harmony_tts_tail() -> None:
@@ -2722,7 +3390,9 @@ class LLMWorker(QThread):
             if harmony_parser is not None and is_harmony_orphan_stream_fragment(fragment):
                 return
             if harmony_parser is None:
-                fragment = strip_harmony_oss_artifacts(fragment)
+                fragment = strip_gemma_output_artifacts(
+                    strip_harmony_oss_artifacts(fragment)
+                )
             if not fragment:
                 return
             if not first_token:
@@ -2741,6 +3411,9 @@ class LLMWorker(QThread):
             tail = ""
             if harmony_parser is not None:
                 tail = harmony_parser.flush()
+            if gemma_filter is not None:
+                tail = gemma_filter.feed(tail)
+                tail += gemma_filter.flush()
             tail = cot_filter.feed(tail)
             tail += cot_filter.flush()
             tail = meta_filter.feed(tail) + meta_filter.flush()
@@ -2769,8 +3442,29 @@ class LLMWorker(QThread):
                     stream_in = harmony_parser.feed(raw_text)
                 else:
                     stream_in = raw_text
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_in))
+                stream_piece = stream_in
+                if gemma_filter is not None:
+                    stream_piece = gemma_filter.feed(stream_in)
+                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
+                chunk_events: dict[str, Any] = {}
+                if gen_debug is not None:
+                    repair_triggers: list[str] = []
+                    if harmony_parser is not None and stream_in != raw_text:
+                        repair_triggers.append("harmony_parser")
+                    if gemma_filter is not None and stream_piece != stream_in:
+                        repair_triggers.append("gemma_thought_filter")
+                    if clean_piece != stream_in:
+                        repair_triggers.append("cot_or_meta_filter")
+                    if repair_triggers:
+                        chunk_events["repair_triggers"] = repair_triggers
                 _emit_filtered(clean_piece)
+                if gen_debug is not None:
+                    gen_debug.record_delta(
+                        delta=raw_text,
+                        cumulative_raw="".join(raw_parts),
+                        cumulative_filtered=final_text,
+                        events=chunk_events,
+                    )
                 if harmony_parser is not None and final_text.strip():
                     if harmony_parser.degeneration_detected or harmony_tail_degenerate(
                         harmony_parser.raw_seen
@@ -2779,6 +3473,9 @@ class LLMWorker(QThread):
                             "[LLM] Harmony degeneration detected; cancelling generation."
                         )
                         harmony_cut_cancelled = True
+                        if gen_debug is not None:
+                            gen_debug.note_stream_cancel("harmony_degeneration")
+                        self._mark_stream_degeneration_cancelled()
                         self._mark_skip_enrichment("harmony_degeneration_cancelled")
                         _abort_harmony_tts_tail()
                         self._native_engine.request_cancel_generation()
@@ -2789,11 +3486,29 @@ class LLMWorker(QThread):
                         "[LLM] Native stream degeneration detected (%s); cancelling.",
                         repetition_guard.trip_reason,
                     )
-                    # T3.3: truncated / degenerate assistant text must not be
-                    # mined for memories.
+                    if gen_debug is not None:
+                        gen_debug.note_stream_cancel(
+                            f"stream_repetition:{repetition_guard.trip_reason}"
+                        )
+                    self._mark_stream_degeneration_cancelled()
                     self._mark_skip_enrichment("stream_repetition_cancelled")
                     self._native_engine.request_cancel_generation()
                     _flush_tail()
+                    saw_end = True
+                    break
+                if clean_piece and degeneration_observer.observe(clean_piece):
+                    logger.error(
+                        "[LLM] Output degeneration HIGH during native stream (%s); cancelling.",
+                        degeneration_observer.trip_reason,
+                    )
+                    if gen_debug is not None:
+                        gen_debug.note_stream_cancel(
+                            f"output_degeneration:{degeneration_observer.trip_reason}"
+                        )
+                    self._mark_stream_degeneration_cancelled()
+                    self._mark_skip_enrichment("output_degeneration_stream_cancelled")
+                    self._native_engine.request_cancel_generation()
+                    _abort_harmony_tts_tail()
                     saw_end = True
                     break
             elif kind == "recovery":
@@ -2804,7 +3519,10 @@ class LLMWorker(QThread):
                     stream_in = harmony_parser.feed(raw_text)
                 else:
                     stream_in = raw_text
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_in))
+                stream_piece = stream_in
+                if gemma_filter is not None:
+                    stream_piece = gemma_filter.feed(stream_in)
+                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
                 _emit_filtered(clean_piece, speak=False)
             elif kind == "replace":
                 replacement = str(data or "").strip()
@@ -2901,7 +3619,7 @@ class LLMWorker(QThread):
         if not final_text.strip():
             empty_msg = (
                 "The model finished without producing any visible text. "
-                "Try sending again, adjust Think, or inspect logs/llm_debug.log."
+                "Try sending again, adjust Think, or inspect ~/.qube/logs/llm_debug.log."
             )
             final_text = empty_msg
             _emit_filtered(empty_msg)
@@ -2922,13 +3640,25 @@ class LLMWorker(QThread):
             ),
         )
 
-        if self.session_id and final_text.strip():
-            src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
-            self._turn_last_assistant_msg_id = self.db.add_message(
-                self.session_id, "assistant", final_text, sources_json=src_payload
+        if gen_debug is not None:
+            native_engine = self._native_engine
+            fresh_preflight = getattr(native_engine, "_last_trace_preflight", None) or {}
+            fresh_stops = list(getattr(native_engine, "_last_merged_stops", None) or [])
+            gen_debug.finalize_stream(
+                snapshot=self._completion_output_snapshot,
+                gt_token_ids=list(getattr(native_engine, "_gt_token_ids", []) or []),
+                gt_token_texts=list(getattr(native_engine, "_gt_token_texts", []) or []),
+                finish_reason=(
+                    "retry_replaced" if stream_output_superseded else gen_debug._finish_reason
+                ),
+                native_preflight=fresh_preflight,
+                merged_stops=fresh_stops,
             )
-            self._record_memory_citations(final_text, all_ui_sources)
-            self._promote_discourse_after_assistant(final_text)
+            if not (self.session_id and final_text.strip()):
+                gen_debug.write_artifacts(ui_final=final_text or "")
+
+        if self.session_id and final_text.strip():
+            self._persist_assistant_turn(final_text, all_ui_sources)
 
         try:
             mr_trace = build_model_router_trace(self._native_engine)

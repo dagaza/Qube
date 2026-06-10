@@ -135,6 +135,8 @@ def build_prompt_blocks(
     topic_salience_hint: str = "",
     follow_up_active: bool = False,
     chat_personality_enabled: bool = False,
+    prior_turn_unreliable_hint: str = "",
+    reply_shape_hint: str = "",
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -194,6 +196,14 @@ def build_prompt_blocks(
     salience = (topic_salience_hint or "").strip()
     if salience and not explicit_remember_active:
         suffixes.append(salience)
+
+    unreliable = (prior_turn_unreliable_hint or "").strip()
+    if unreliable and not explicit_remember_active:
+        suffixes.append(unreliable)
+
+    shape_hint = (reply_shape_hint or "").strip()
+    if shape_hint and not explicit_remember_active:
+        suffixes.append(f" {shape_hint}")
 
     if str(engine_mode or "").lower() == "internal":
         suffixes.append(

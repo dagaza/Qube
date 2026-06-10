@@ -1,6 +1,8 @@
 """
 Dedicated file sink for logger Qube.NativeLLM.Debug (LLM introspection JSON lines).
 
+Default path: ~/.qube/logs/llm_debug.log (see core.paths.logs_dir).
+
 Does not alter inference; routing only. Terminal stays quiet via propagate=False in bootstrap.
 """
 from __future__ import annotations

@@ -8,13 +8,15 @@ This document is the canonical reference for **where logs go**, **how to turn ob
 
 | Destination | Logger name | Default path | Terminal? | Always created? |
 |-------------|-------------|--------------|-----------|-----------------|
-| **LLM debug file** | `Qube.NativeLLM.Debug` | `<repo>/logs/llm_debug.log` | No (file only) | Yes (sink attached at boot) |
-| **Routing debug file** | `Qube.RoutingDebug` | `<repo>/logs/routing_debug.log` | No (file only) | Yes (sink attached at boot) |
+| **LLM debug file** | `Qube.NativeLLM.Debug` | `~/.qube/logs/llm_debug.log` | No (file only) | Yes (sink attached at boot) |
+| **Routing debug file** | `Qube.RoutingDebug` | `~/.qube/logs/routing_debug.log` | No (file only) | Yes (sink attached at boot) |
 | **General app log** | `Qube.*` (many) | stdout / terminal | Yes | Yes (`logging.basicConfig` in `main.py`) |
 
-**Important:** Log files live under the **Qube install / repo root** (`logs/`), **not** under `~/.qube`. User data (SQLite, LanceDB, exports, model overrides) uses `~/.qube` separately.
+**Important:** LLM and routing debug log files live under **`~/.qube/logs/`** (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/` — a stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app. Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.
 
 Rotating file sinks: **10 MB** per file, **5** backups (`core/llm_debug_sink.py`, `core/routing_debug_sink.py`).
+
+For the **canonical LLM trace debugging stack** (Truth Diff, golden traces, fingerprinting, trace diff UI), see **[canonical_llm_trace_debugging.md](canonical_llm_trace_debugging.md)**.
 
 ---
 
@@ -30,8 +32,8 @@ os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
 Also at startup:
 
 - `logging.basicConfig(level=logging.DEBUG, …)` — most `Qube.*` loggers print to the **terminal**
-- `init_llm_debug_logging()` — routes `Qube.NativeLLM.Debug` → `logs/llm_debug.log` only
-- `init_routing_debug_logging()` — routes `Qube.RoutingDebug` → `logs/routing_debug.log` only
+- `init_llm_debug_logging()` — routes `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log` only
+- `init_routing_debug_logging()` — routes `Qube.RoutingDebug` → `~/.qube/logs/routing_debug.log` only
 
 To **disable** hardcoded flags, remove or comment the `os.environ[…]` lines in `main.py`, or override in the shell **before** launch (later assignment in `main.py` wins if it runs first — edit `main.py` for a permanent off).
 
@@ -66,8 +68,8 @@ python3 tools/view_llm_logs.py --filter llm_prompt_validation --last 100
 Direct file access (equivalent):
 
 ```bash
-tail -f logs/llm_debug.log
-grep llm_completion_output_trace logs/llm_debug.log
+tail -f ~/.qube/logs/llm_debug.log
+grep llm_completion_output_trace ~/.qube/logs/llm_debug.log
 ```
 
 ### View routing debug log
@@ -106,7 +108,7 @@ python3 -m tools.run_ablation --model /path/to/model.gguf --message "Hello" --js
 |---------|---------------|---------------|
 | **Telemetry** screen | Always in nav | Hardware, pipeline latency, router metrics, sidecar summary |
 | **Routing Debug window** | `python3 main.py --routing-debug` | Per-turn routing records (in-memory buffer, up to 100 turns) |
-| **LLM debug log panel** | `QUBE_LLM_LOG_UI=1` + restart | Tail of `logs/llm_debug.log` on Telemetry screen (developer-only) |
+| **LLM debug log panel** | `QUBE_LLM_LOG_UI=1` + restart | Tail of `~/.qube/logs/llm_debug.log` on Telemetry screen (developer-only) |
 
 The Routing Debug **UI** and **file log** are independent: the UI works without `QUBE_ROUTING_DEBUG_LOG`; the file log requires that env var.
 
@@ -120,17 +122,17 @@ Truthy values are usually: `1`, `true`, `yes`, `on` (case-insensitive unless not
 
 | Variable | Default | Log destination | Purpose |
 |----------|---------|-----------------|---------|
-| `QUBE_LLM_DEBUG` | **`1` in `main.py`** | `logs/llm_debug.log` | Reconstructed prompts, stop merge, `[LLM-DEBUG]` blocks; enables prompt validation JSON when combined with inference |
+| `QUBE_LLM_DEBUG` | **`1` in `main.py`** | `~/.qube/logs/llm_debug.log` | Reconstructed prompts, stop merge, `[LLM-DEBUG]` blocks; enables prompt validation JSON when combined with inference |
 | `QUBE_LLM_DEBUG_FILE` | (unset) | **Additional file** you specify | Appends raw reconstructed prompt per native request |
-| `QUBE_LLM_PROMPT_VALIDATE` | off | `logs/llm_debug.log` | JSON `llm_prompt_validation` events (also on when `QUBE_LLM_DEBUG=1`) |
+| `QUBE_LLM_PROMPT_VALIDATE` | off | `~/.qube/logs/llm_debug.log` | JSON `llm_prompt_validation` events (also on when `QUBE_LLM_DEBUG=1`) |
 | `QUBE_LLM_REFERENCE_JSON` | (unset) | (read-only input) | LM Studio parity baseline path; used by validation / causality / counterfactual |
-| `QUBE_LOG_RAW_COMPLETION` | **`1` in `main.py`** | `logs/llm_debug.log` | JSON `llm_completion_output_trace` — raw vs filtered vs presented text |
+| `QUBE_LOG_RAW_COMPLETION` | **`1` in `main.py`** | `~/.qube/logs/llm_debug.log` | JSON `llm_completion_output_trace` — raw vs filtered vs presented text |
 | `QUBE_LOG_RAW_COMPLETION_MAX_CHARS` | `0` (unlimited) | same | Truncate each text field in completion trace; adds `*_full_len` metadata |
-| `QUBE_LLM_TOKEN_TRACE` | off | `logs/llm_debug.log` | Token-level JSON: `llm_token_trace`, `llm_token_trace_live`, `llm_token_trace_ground_truth` |
+| `QUBE_LLM_TOKEN_TRACE` | off | `~/.qube/logs/llm_debug.log` | Token-level JSON: `llm_token_trace`, `llm_token_trace_live`, `llm_token_trace_ground_truth` |
 | `QUBE_LLM_TOKEN_TRACE_N` | `20` | same | Max tokens in complete trace |
 | `QUBE_LLM_TOKEN_TRACE_EARLY` | `5` | same | Early-phase token trace threshold |
-| `QUBE_LLM_CAUSALITY` | off | `logs/llm_debug.log` | JSON `llm_execution_causality_report` (post-inference, observer-only) |
-| `QUBE_LLM_COUNTERFACTUAL` | off | `logs/llm_debug.log` | JSON `llm_counterfactual_simulation` (analytical, no extra inference) |
+| `QUBE_LLM_CAUSALITY` | off | `~/.qube/logs/llm_debug.log` | JSON `llm_execution_causality_report` (post-inference, observer-only) |
+| `QUBE_LLM_COUNTERFACTUAL` | off | `~/.qube/logs/llm_debug.log` | JSON `llm_counterfactual_simulation` (analytical, no extra inference) |
 | `QUBE_ENGINE_INPUT_TRACE` | off | Routing Debug record + `[LLM-DEBUG][engine_input]` preview | Captures llama.cpp `create_completion(prompt=…)` boundary; preview in llm_debug when `QUBE_LLM_DEBUG=1` |
 | `QUBE_LOG_NATIVE_CHAT` | off | **Terminal** (`Qube.NativeLlamaInference`) | Lightweight message summary per native chat call (not full prompt) |
 
@@ -141,7 +143,7 @@ Truthy values are usually: `1`, `true`, `yes`, `on` (case-insensitive unless not
 3. `QUBE_LLM_CAUSALITY` — influence scores, first-token cause  
 4. `QUBE_LLM_COUNTERFACTUAL` — one intervention at a time  
 
-Logger: `Qube.NativeLLM.Debug` → `logs/llm_debug.log`.
+Logger: `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log`.
 
 **Load-time only (not per chat turn):**
 
@@ -152,7 +154,7 @@ Logger: `Qube.NativeLLM.Debug` → `logs/llm_debug.log`.
 
 | Variable | Default | Log destination | Purpose |
 |----------|---------|-----------------|---------|
-| `QUBE_ROUTING_DEBUG_LOG` | off | `logs/routing_debug.log` | One compact JSONL record per turn (`schema_version`, route, tier signals, …) |
+| `QUBE_ROUTING_DEBUG_LOG` | off | `~/.qube/logs/routing_debug.log` | One compact JSONL record per turn (`schema_version`, route, tier signals, …) |
 | `QUBE_ROUTING_DEBUG_LOG_VERBOSE` | off | same | Larger payload in JSONL |
 | `QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY` | off | same | Replace query with `sha256:` digest in file log |
 
@@ -196,7 +198,7 @@ Sidecar aggregate summary is also shown on the **Telemetry** screen (no env var 
 
 ---
 
-## JSON events in `logs/llm_debug.log`
+## JSON events in `~/.qube/logs/llm_debug.log`
 
 | `event` field | Enabled by |
 |---------------|------------|
@@ -291,7 +293,7 @@ User query
     → LLMWorker executes tools + LLM
     → RoutingDebugBuffer (in-memory, max 100)
          ├─ Routing Debug UI (--routing-debug window)
-         └─ QUBE_ROUTING_DEBUG_LOG=1 → logs/routing_debug.log (JSONL)
+         └─ QUBE_ROUTING_DEBUG_LOG=1 → ~/.qube/logs/routing_debug.log (JSONL)
 ```
 
 Merge hooks also attach **model router**, **chat contract**, and **engine input trace** snapshots into the latest routing record when available.
@@ -324,7 +326,7 @@ Not log files, but relevant when debugging inference:
 
 1. `python3 main.py --routing-debug`  
 2. Optionally `export QUBE_ROUTING_DEBUG_LOG=1` for JSONL history  
-3. Inspect tier fields in the UI detail pane or `logs/routing_debug.log`  
+3. Inspect tier fields in the UI detail pane or `~/.qube/logs/routing_debug.log`  
 
 ### “Prompt doesn’t match LM Studio”
 
@@ -338,7 +340,7 @@ Not log files, but relevant when debugging inference:
 1. `export QUBE_LLM_TOKEN_TRACE=1`  
 2. `export QUBE_LLM_CAUSALITY=1`  
 3. Reproduce on **internal engine**  
-4. Filter `logs/llm_debug.log` for `llm_token_trace` and `llm_execution_causality_report`  
+4. Filter `~/.qube/logs/llm_debug.log` for `llm_token_trace` and `llm_execution_causality_report`  
 
 ### “Follow-up / discourse routing”
 
@@ -370,8 +372,8 @@ Not log files, but relevant when debugging inference:
 | Module | Role |
 |--------|------|
 | `core/logging_bootstrap.py` | Attaches file sinks at boot |
-| `core/llm_debug_sink.py` | `logs/llm_debug.log` rotating handler |
-| `core/routing_debug_sink.py` | `logs/routing_debug.log` rotating handler |
+| `core/llm_debug_sink.py` | `~/.qube/logs/llm_debug.log` rotating handler |
+| `core/routing_debug_sink.py` | `~/.qube/logs/routing_debug.log` rotating handler |
 | `core/native_llm_debug.py` | Prompt reconstruction logging |
 | `core/completion_output_trace.py` | Raw vs presented completion JSON |
 | `core/prompt_integrity_validator.py` | Prompt validation + LM Studio parity |

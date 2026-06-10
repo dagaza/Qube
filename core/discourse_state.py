@@ -14,6 +14,7 @@ from core.discourse_patterns import (
     is_deictic_prompt,
     is_deictic_topic_phrase,
 )
+from core.discourse_prompt_rewrite import validate_stored_discourse_topic
 
 TopicType = Literal["entity", "game", "concept", "task", "city", "person", "org", "unknown"]
 ReferentSource = Literal[
@@ -222,16 +223,18 @@ def _assistant_topic_hint(content: str) -> tuple[Optional[str], TopicType]:
         return None, "unknown"
     first = re.split(r"[.!?\n]", s, maxsplit=1)[0]
     topic, ttype = _extract_topic_from_text(first)
-    if topic:
+    if topic and validate_stored_discourse_topic(topic):
         return topic, ttype
     names = _PROPER_NAME.findall(first)
     if names:
         topic = names[0].strip()
-        return topic[:120], _infer_topic_type(topic, first)
+        if validate_stored_discourse_topic(topic):
+            return topic[:120], _infer_topic_type(topic, first)
     titles = _TITLE_CASE.findall(first)
     if titles:
         topic = titles[0]
-        return topic[:120], _infer_topic_type(topic, first)
+        if validate_stored_discourse_topic(topic):
+            return topic[:120], _infer_topic_type(topic, first)
     return None, "unknown"
 
 

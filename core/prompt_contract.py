@@ -13,6 +13,7 @@ from core.harmony_protocol import (
 )
 from core.harmony_renderer import render_harmony_final_prompt
 from core.chat_format_mode import ChatFormatMode
+from core.reply_shape_policy import ReplyShapePolicy
 from core.llm_execution_contract import (
     PrimaryEngineTask,
     policy_for_task,
@@ -136,6 +137,7 @@ def resolve_prompt_contract(
     *,
     task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
     chat_format_mode: ChatFormatMode = "structured",
+    reply_shape_policy: ReplyShapePolicy | None = None,
 ) -> PromptContractResolution:
     md = getattr(llama, "metadata", None) or {}
     if not isinstance(md, dict):
@@ -164,6 +166,7 @@ def resolve_prompt_contract(
                     if task_policy.include_harmony_reply_guidance
                     else "structured"
                 ),
+                reply_shape_policy=reply_shape_policy,
             ),
             messages=None,
             stop=harmony_stops_for_contract(

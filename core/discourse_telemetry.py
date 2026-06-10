@@ -1,11 +1,9 @@
 """Structured discourse observability events for llm_debug.log."""
 from __future__ import annotations
 
-import json
-import logging
 from typing import Any, Optional
 
-_logger = logging.getLogger("Qube.NativeLLM.Debug")
+from core.llm_structured_log import structured_llm_log
 
 
 def log_discourse_referent_trace(
@@ -18,7 +16,6 @@ def log_discourse_referent_trace(
     extra: Optional[dict[str, Any]] = None,
 ) -> None:
     payload: dict[str, Any] = {
-        "event": "discourse_referent_trace",
         "referent": referent,
         "referent_source": referent_source,
         "referent_confidence": round(referent_confidence, 3),
@@ -27,7 +24,7 @@ def log_discourse_referent_trace(
     }
     if extra:
         payload.update(extra)
-    _logger.info(json.dumps(payload, ensure_ascii=False))
+    structured_llm_log("discourse_referent_trace", payload)
 
 
 def log_discourse_query_rewrite(
@@ -38,12 +35,39 @@ def log_discourse_query_rewrite(
     confidence: float,
     rewrite_reason: str = "",
 ) -> None:
-    payload = {
-        "event": "discourse_query_rewrite",
-        "original": (original or "")[:300],
-        "resolved": (resolved or "")[:300],
-        "substitutions": [list(pair) for pair in substitutions],
-        "confidence": round(confidence, 3),
-        "rewrite_reason": rewrite_reason,
-    }
-    _logger.info(json.dumps(payload, ensure_ascii=False))
+    structured_llm_log(
+        "discourse_query_rewrite",
+        {
+            "original": (original or "")[:300],
+            "resolved": (resolved or "")[:300],
+            "substitutions": [list(pair) for pair in substitutions],
+            "confidence": round(confidence, 3),
+            "rewrite_reason": rewrite_reason,
+        },
+    )
+
+
+def log_discourse_prompt_rewrite(
+    *,
+    original: str,
+    grounded: str,
+    rewrite_anchor: str = "",
+    rewrite_confidence: float = 0.0,
+    rewrite_reason: str = "",
+    applied: bool = False,
+    salience_anchor: str = "",
+    salience_reason: str = "",
+) -> None:
+    structured_llm_log(
+        "discourse_prompt_rewrite",
+        {
+            "original": (original or "")[:300],
+            "grounded": (grounded or "")[:300],
+            "rewrite_anchor": rewrite_anchor or "",
+            "rewrite_confidence": round(rewrite_confidence, 3),
+            "rewrite_reason": rewrite_reason,
+            "applied": bool(applied),
+            "salience_anchor": salience_anchor or "",
+            "salience_reason": salience_reason or "",
+        },
+    )

@@ -1,0 +1,292 @@
+{
+  "turn_id": 4,
+  "session_id": "e9a64085-c3e3-4576-9b44-3432e1d4b048",
+  "chunk_count": 21,
+  "corruption_origin": {
+    "likely_stage": "none_detected",
+    "likely_cause": "unknown",
+    "postprocess_introduced_corruption": false,
+    "stage_signals": {
+      "raw_generation": {
+        "len": 74,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "after_harmony_parser": {
+        "len": 74,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "after_worker_filters": {
+        "len": 74,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "worker_return": {
+        "len": 74,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "history_stored": {
+        "len": 74,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      }
+    },
+    "raw_equals_stored": true,
+    "raw_equals_worker_return": true
+  },
+  "chunks": [
+    {
+      "chunk_index": 0,
+      "token": "Kath",
+      "cumulative_text": "Kath",
+      "cumulative_filtered": "Kath",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 1,
+      "token": "mandu",
+      "cumulative_text": "Kathmandu",
+      "cumulative_filtered": "Kathmandu",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 2,
+      "token": " covers",
+      "cumulative_text": "Kathmandu covers",
+      "cumulative_filtered": "Kathmandu covers",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 3,
+      "token": " roughly",
+      "cumulative_text": "Kathmandu covers roughly",
+      "cumulative_filtered": "Kathmandu covers roughly",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 4,
+      "token": " ",
+      "cumulative_text": "Kathmandu covers roughly ",
+      "cumulative_filtered": "Kathmandu covers roughly ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 5,
+      "token": "1",
+      "cumulative_text": "Kathmandu covers roughly 1",
+      "cumulative_filtered": "Kathmandu covers roughly ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 6,
+      "token": ",",
+      "cumulative_text": "Kathmandu covers roughly 1,",
+      "cumulative_filtered": "Kathmandu covers roughly ,",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 7,
+      "token": "200",
+      "cumulative_text": "Kathmandu covers roughly 1,200",
+      "cumulative_filtered": "Kathmandu covers roughly ,200",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 8,
+      "token": " ",
+      "cumulative_text": "Kathmandu covers roughly 1,200 ",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 9,
+      "token": "square",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 10,
+      "token": " ",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square ",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 11,
+      "token": "kil",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kil",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kil",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 12,
+      "token": "omet",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilomet",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilomet",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 13,
+      "token": "res",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 14,
+      "token": " (",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 15,
+      "token": "about",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 16,
+      "token": " ",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about ",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 17,
+      "token": "460",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about 460",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about 460",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 18,
+      "token": " square",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about 460 square",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about 460 square",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 19,
+      "token": " miles",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about 460 square miles",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 20,
+      "token": ").",
+      "cumulative_text": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).",
+      "cumulative_filtered": "Kathmandu covers roughly ,200 square kilometres (about 460 square miles).",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    }
+  ]
+}

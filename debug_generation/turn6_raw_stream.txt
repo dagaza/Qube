@@ -1,0 +1,138 @@
+=== chunk 0 ===
+delta: 'Kath'
+cumulative_raw_len: 4
+cumulative_raw:
+Kath
+
+=== chunk 1 ===
+delta: 'mandu'
+cumulative_raw_len: 9
+cumulative_raw:
+Kathmandu
+
+=== chunk 2 ===
+delta: '’s'
+cumulative_raw_len: 11
+cumulative_raw:
+Kathmandu’s
+
+=== chunk 3 ===
+delta: ' official'
+cumulative_raw_len: 20
+cumulative_raw:
+Kathmandu’s official
+
+=== chunk 4 ===
+delta: ' language'
+cumulative_raw_len: 29
+cumulative_raw:
+Kathmandu’s official language
+
+=== chunk 5 ===
+delta: ' is'
+cumulative_raw_len: 32
+cumulative_raw:
+Kathmandu’s official language is
+
+=== chunk 6 ===
+delta: ' Nep'
+cumulative_raw_len: 36
+cumulative_raw:
+Kathmandu’s official language is Nep
+
+=== chunk 7 ===
+delta: 'ali'
+cumulative_raw_len: 39
+cumulative_raw:
+Kathmandu’s official language is Nepali
+
+=== chunk 8 ===
+delta: ','
+cumulative_raw_len: 40
+cumulative_raw:
+Kathmandu’s official language is Nepali,
+
+=== chunk 9 ===
+delta: ' but'
+cumulative_raw_len: 44
+cumulative_raw:
+Kathmandu’s official language is Nepali, but
+
+=== chunk 10 ===
+delta: ' most'
+cumulative_raw_len: 49
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most
+
+=== chunk 11 ===
+delta: ' residents'
+cumulative_raw_len: 59
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents
+
+=== chunk 12 ===
+delta: ' also'
+cumulative_raw_len: 64
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also
+
+=== chunk 13 ===
+delta: ' speak'
+cumulative_raw_len: 70
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak
+
+=== chunk 14 ===
+delta: ' English'
+cumulative_raw_len: 78
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English
+
+=== chunk 15 ===
+delta: '‑'
+cumulative_raw_len: 79
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑
+
+=== chunk 16 ===
+delta: 'to'
+cumulative_raw_len: 81
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to
+
+=== chunk 17 ===
+delta: '‑'
+cumulative_raw_len: 82
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑
+
+=== chunk 18 ===
+delta: 'h'
+cumulative_raw_len: 83
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑h
+
+=== chunk 19 ===
+delta: 'mm'
+cumulative_raw_len: 85
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm
+
+=== chunk 20 ===
+delta: '…'
+cumulative_raw_len: 86
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm…
+
+=== chunk 21 ===
+delta: '…\n'
+cumulative_raw_len: 88
+cumulative_raw:
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+
+
+=== sampler_ground_truth (first tokens) ===
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+We have

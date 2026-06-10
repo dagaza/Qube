@@ -1,0 +1,18 @@
+--- raw_text (len=74) ---
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+
+--- after_harmony_parser (len=74) ---
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+
+--- after_worker_filters (len=74) ---
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+
+--- streamed_incremental (len=73) ---
+Kathmandu covers roughly ,200 square kilometres (about 460 square miles).
+
+--- worker_return_text (len=74) ---
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+
+--- engine_end_text (len=74) ---
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+

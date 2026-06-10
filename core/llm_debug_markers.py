@@ -1,5 +1,5 @@
 """
-Visual markers in logs/llm_debug.log to separate chat exchanges and inference calls.
+Visual markers in ~/.qube/logs/llm_debug.log to separate chat exchanges and inference calls.
 
 Observer-only; no inference or prompt changes. Gated by QUBE_LLM_DEBUG (same as
 core.native_llm_debug.llm_debug_enabled).

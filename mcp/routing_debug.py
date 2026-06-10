@@ -285,6 +285,38 @@ class RoutingDebugBuffer:
             self._deque[-1] = updated
             return updated
 
+    def merge_history_degeneration_into_latest(
+        self, degeneration: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach post-generation history degeneration diagnostics to the newest record."""
+        if not degeneration:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_decision = dict(last.decision)
+            new_decision.update(copy.deepcopy(degeneration))
+            new_trace = dict(last.trace)
+            new_trace["history_degeneration"] = copy.deepcopy(degeneration)
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=last.route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=new_decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
 
 def _coerce_float(v: Any) -> Optional[float]:
     if v is None:

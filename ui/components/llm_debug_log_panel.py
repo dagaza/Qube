@@ -1,5 +1,5 @@
 """
-Developer-only panel: tail of logs/llm_debug.log (Qube.NativeLLM.Debug).
+Developer-only panel: tail of ~/.qube/logs/llm_debug.log (Qube.NativeLLM.Debug).
 
 Shown only when QUBE_LLM_LOG_UI=1. Not part of chat UI.
 """
@@ -60,7 +60,7 @@ class LLMDebugLogPanel(QFrame):
 
         row = QHBoxLayout()
         self._btn = QPushButton("Refresh")
-        self._btn.setToolTip("Reload the latest lines from logs/llm_debug.log")
+        self._btn.setToolTip("Reload the latest lines from ~/.qube/logs/llm_debug.log")
         self._btn.clicked.connect(self._refresh)
         row.addWidget(self._btn)
         self._live = QCheckBox("Live tail (2s)")
@@ -77,7 +77,7 @@ class LLMDebugLogPanel(QFrame):
         if not mono.exactMatch():
             mono = QFont("Consolas", 10)
         self._text.setFont(mono)
-        self._text.setPlaceholderText("logs/llm_debug.log — enable native LLM debug env vars to populate.")
+        self._text.setPlaceholderText("~/.qube/logs/llm_debug.log — enable native LLM debug env vars to populate.")
         layout.addWidget(self._text)
 
         self._refresh()

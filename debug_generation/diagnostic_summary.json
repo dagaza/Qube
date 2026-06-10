@@ -1,0 +1,56 @@
+{
+  "output_dir": "debug_generation",
+  "turn_count": 4,
+  "first_collapse_turn": 6,
+  "dominant_likely_cause": "sampling_or_model_generation",
+  "recommended_next_steps": [
+    "Replay at temperature 0.0–0.3 and compare raw_stream; if collapse persists, inspect prompt length and context window pressure.",
+    "Run stop-mode A/B (full vs minimal) to rule out premature stop-token hits."
+  ],
+  "turns": [
+    {
+      "turn_id": 4,
+      "collapse_risk": "LOW",
+      "collapse_score": 0.0875,
+      "likely_cause": "unknown",
+      "likely_stage": "none_detected",
+      "finish_reason": "complete",
+      "stream_cancel_reason": "",
+      "temperature": 0.7360000000000001,
+      "stop_token_count": 23
+    },
+    {
+      "turn_id": 5,
+      "collapse_risk": "LOW",
+      "collapse_score": 0.0,
+      "likely_cause": "sampling_or_model_generation",
+      "likely_stage": "raw_generation",
+      "finish_reason": "complete",
+      "stream_cancel_reason": "",
+      "temperature": 0.7360000000000001,
+      "stop_token_count": 23
+    },
+    {
+      "turn_id": 6,
+      "collapse_risk": "MEDIUM",
+      "collapse_score": 0.2,
+      "likely_cause": "sampling_or_model_generation",
+      "likely_stage": "raw_generation",
+      "finish_reason": "complete",
+      "stream_cancel_reason": "",
+      "temperature": 0.8,
+      "stop_token_count": 23
+    },
+    {
+      "turn_id": 7,
+      "collapse_risk": "LOW",
+      "collapse_score": 0.0,
+      "likely_cause": "unknown",
+      "likely_stage": "none_detected",
+      "finish_reason": "complete",
+      "stream_cancel_reason": "",
+      "temperature": 0.656,
+      "stop_token_count": 23
+    }
+  ]
+}

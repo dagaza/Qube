@@ -83,6 +83,10 @@ from ui.components.text_document_height import (
     measure_wrapped_body_height,
     text_edit_chrome_vertical_px,
 )
+from ui.components.stream_markdown_split import (
+    compose_streaming_markdown,
+    split_stream_markdown_buffer,
+)
 from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
@@ -2294,6 +2298,20 @@ class ConversationsView(QWidget):
     def _schedule_coalesced_agent_markdown(self) -> None:
         self._agent_md_coalesce_timer.start(48)
 
+    def _prepare_agent_markdown_source(self, buf: str, *, finalize: bool) -> str:
+        prepared = _prepare_stream_for_qt_citation_links(buf)
+        rich_text = _re_cite.sub(
+            r"\[\s*(\d+|[wW])\s*\]",
+            _markdown_cite_link_replacement,
+            prepared,
+        )
+        if finalize or not rich_text:
+            return rich_text
+        stable, tail = split_stream_markdown_buffer(rich_text)
+        if not tail:
+            return rich_text
+        return compose_streaming_markdown(stable, tail)
+
     def _flush_coalesced_agent_markdown(self, *, finalize: bool = False) -> None:
         cur = getattr(self, "current_agent_msg", None)
         if cur is None:
@@ -2302,12 +2320,7 @@ class ConversationsView(QWidget):
         is_dark = True
         if self.window() and hasattr(self.window(), "_is_dark_theme"):
             is_dark = self.window()._is_dark_theme
-        prepared = _prepare_stream_for_qt_citation_links(buf)
-        rich_text = _re_cite.sub(
-            r"\[\s*(\d+|[wW])\s*\]",
-            _markdown_cite_link_replacement,
-            prepared,
-        )
+        rich_text = self._prepare_agent_markdown_source(buf, finalize=finalize)
         follow_stream_tail = self._is_transcript_scrolled_to_bottom()
         streaming = bool(getattr(self, "_llm_in_progress", False)) and not finalize
         try:
@@ -2381,8 +2394,8 @@ class ConversationsView(QWidget):
 
         self._agent_text_buffer += token
 
-        # Coalesce setMarkdown calls: Qt's GFM parser shows raw "| table |" lines until the separator
-        # row arrives during token streaming; reparsing on a short timer reduces visible markdown flashes.
+        # Hybrid streaming markdown: stable prefix is parsed as Markdown; the live tail is
+        # escaped so partial ** / list / table syntax renders literally until complete.
         self._schedule_coalesced_agent_markdown()
 
     def _clear_placeholders(self):

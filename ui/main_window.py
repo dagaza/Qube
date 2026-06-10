@@ -11,8 +11,9 @@ if __package__ in (None, ""):
 
 import psutil
 from PyQt6.QtWidgets import (
+    QApplication,
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QToolButton, QApplication, QLabel, QFrame,
+    QPushButton, QToolButton, QLabel, QFrame,
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar
 )
@@ -121,6 +122,10 @@ class MainWindow(QMainWindow):
         gpu_monitor,
         native_engine=None,
         enable_routing_debug_tool: bool = False,
+        enable_trace_diff_debug_tool: bool = False,
+        run_scenario_path: str = "",
+        scenario_backend: str = "qube",
+        compare_sessions: tuple[str, str] | None = None,
     ):
         super().__init__()
         self._project_root = install_root()
@@ -147,7 +152,17 @@ class MainWindow(QMainWindow):
         self._gpu_monitor  = gpu_monitor
         self._native_engine = native_engine
         self._enable_routing_debug_tool = bool(enable_routing_debug_tool)
+        self._enable_trace_diff_debug_tool = bool(enable_trace_diff_debug_tool)
+        self._run_scenario_path = str(run_scenario_path or "").strip()
+        self._scenario_backend = str(scenario_backend or "qube").strip().lower()
+        self._scenario_single_phase = False
+        self._compare_sessions: tuple[str, str] | None = compare_sessions
+        self._scenario_replay_started = False
+        self._scenario_qube_phase_done = False
+        self._scenario_workflow_dialog = None
+        self._scenario_workflow_dialog_open = False
         self.routing_debug_tool_view = None
+        self.canonical_trace_diff_view = None
         self._force_app_exit = False
         self._last_mic_notification_detail: str | None = None
         self._pending_native_model_path: str | None = None
@@ -190,6 +205,7 @@ class MainWindow(QMainWindow):
         if not getattr(self, "_onboarding_start_scheduled", False):
             self._onboarding_start_scheduled = True
             QTimer.singleShot(900, self._maybe_start_local_llm_onboarding)
+        QTimer.singleShot(1500, self.schedule_scenario_replay)
 
     def _maybe_start_local_llm_onboarding(self) -> None:
         if get_onboarding_local_llm_tour_completed():
@@ -380,6 +396,184 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self.refresh_toolbar_native_model_dropdown)
         if self._enable_routing_debug_tool:
             self._setup_routing_debug_tool_window()
+        if self._enable_trace_diff_debug_tool:
+            self._setup_trace_diff_debug_window()
+
+    def _setup_trace_diff_debug_window(self) -> None:
+        from ui.canonical_trace_diff import open_canonical_trace_diff_window
+
+        self.canonical_trace_diff_view = open_canonical_trace_diff_window(parent=self)
+        self.canonical_trace_diff_view.set_scenario_hooks(
+            scenario_runner=self._ui_run_scenario_serial,
+            session_comparer=self._ui_compare_sessions,
+            workflow_starter=self._ui_start_scenario_workflow,
+        )
+
+    def _ui_start_scenario_workflow(self, scenario_path: str, *, single_phase: bool = False) -> None:
+        self._open_scenario_workflow(scenario_path, single_phase=single_phase)
+
+    def _open_scenario_workflow(self, scenario_path: str, *, single_phase: bool | None = None) -> None:
+        if single_phase is None:
+            single_phase = bool(self._scenario_single_phase)
+
+        existing = self._scenario_workflow_dialog
+        if existing is not None and not existing.qube_phase_done():
+            existing.show()
+            existing.raise_()
+            existing.activateWindow()
+            self._scenario_workflow_dialog_open = True
+            return
+
+        from ui.canonical_trace_diff.scenario_workflow_dialog import (
+            open_scenario_comparison_workflow,
+        )
+        from core.scenario_workflow import qube_pathway_ready, suggested_external_model_name
+
+        dialog = open_scenario_comparison_workflow(
+            self,
+            scenario_path=scenario_path,
+            repo_root=self._project_root,
+            qube_ready=lambda: qube_pathway_ready(self),
+            run_qube=lambda path: self._ui_run_scenario_serial(path, "qube"),
+            compare_sessions=self._ui_compare_sessions,
+            model_hint=lambda scenario: suggested_external_model_name(self, scenario),
+            single_phase=single_phase,
+        )
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        dialog.qube_phase_completed.connect(self._on_scenario_qube_phase_completed)
+        dialog.finished.connect(self._on_scenario_workflow_finished)
+        self._scenario_workflow_dialog = dialog
+        self._scenario_workflow_dialog_open = True
+
+    def _on_scenario_qube_phase_completed(self) -> None:
+        self._scenario_qube_phase_done = True
+
+    def _on_scenario_workflow_finished(self, _result: int) -> None:
+        self._scenario_workflow_dialog_open = False
+        self._scenario_workflow_dialog = None
+
+    def _ui_run_scenario_serial(self, scenario_path: str, backend: str) -> str:
+        from core.conversation_replay import ConversationReplayEngine
+        from core.scenario_loader import load_scenario, run_scenario_serial
+
+        scenario = load_scenario(scenario_path)
+        engine = ConversationReplayEngine(
+            llm_worker=self._llm_worker if backend == "qube" else None,
+            db_manager=self.db if backend == "qube" else None,
+            backend=backend,  # type: ignore[arg-type]
+            process_events=lambda: QApplication.processEvents(),
+        )
+        result = run_scenario_serial(scenario, backend, engine, log_traces=True)
+        return str(result.output_path or "")
+
+    def _ui_compare_sessions(self, path_a: str, path_b: str):
+        from core.scenario_loader import compare_sessions
+
+        return compare_sessions(path_a, path_b, save=True)
+
+    def schedule_scenario_replay(self) -> None:
+        """Queue guided scenario workflow or offline session compare after startup."""
+        if self._compare_sessions and not self._scenario_replay_started:
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(250, self._execute_session_compare)
+            return
+        if not self._run_scenario_path or self._scenario_qube_phase_done:
+            return
+        if self._scenario_workflow_dialog is not None:
+            if not self._scenario_workflow_dialog.isVisible():
+                self._scenario_workflow_dialog.show()
+                self._scenario_workflow_dialog.raise_()
+            return
+        if self._scenario_workflow_dialog_open:
+            return
+        from PyQt6.QtCore import QTimer
+
+        QTimer.singleShot(2000, self._begin_scenario_workflow)
+
+    def _begin_scenario_workflow(self) -> None:
+        if not self._run_scenario_path or self._scenario_qube_phase_done:
+            return
+        if self._scenario_workflow_dialog is not None:
+            if not self._scenario_workflow_dialog.isVisible():
+                self._scenario_workflow_dialog.show()
+                self._scenario_workflow_dialog.raise_()
+            return
+        if self._scenario_workflow_dialog_open:
+            return
+        if not self.canonical_trace_diff_view:
+            self._setup_trace_diff_debug_window()
+        self._open_scenario_workflow(self._run_scenario_path)
+
+    def _execute_scenario_replay(self) -> None:
+        """Legacy single-backend replay (prefer guided workflow)."""
+        if not self._run_scenario_path or self._scenario_replay_started:
+            return
+        self._scenario_replay_started = True
+        path = self._run_scenario_path
+        backend = self._scenario_backend if self._scenario_backend in ("qube", "external") else "qube"
+        try:
+            from core.conversation_replay import ConversationReplayEngine
+            from core.scenario_loader import load_scenario, run_scenario_serial, session_file_path
+
+            scenario = load_scenario(path)
+            engine = ConversationReplayEngine(
+                llm_worker=self._llm_worker if backend == "qube" else None,
+                db_manager=self.db if backend == "qube" else None,
+                backend=backend,  # type: ignore[arg-type]
+                process_events=lambda: QApplication.processEvents(),
+            )
+            result = run_scenario_serial(scenario, backend, engine, log_traces=True)
+            logger.info(
+                "[ScenarioReplay] serial run %r backend=%s (%s turn(s)); log=%s",
+                scenario.name,
+                backend,
+                len(result.session.traces),
+                result.output_path,
+            )
+            expected = session_file_path(result.session.scenario_id, backend)
+            if backend == "qube":
+                logger.info(
+                    "[ScenarioReplay] Next: run LM Studio with "
+                    "'python3 -m tools.run_scenario_replay --scenario %s --backend external' "
+                    "then compare sessions or use Compare in the diff UI.",
+                    path,
+                )
+            self._notify_scenario_session_saved(str(result.output_path or expected))
+        except Exception:
+            logger.exception("[ScenarioReplay] failed for %s", path)
+
+    def _execute_session_compare(self) -> None:
+        if not self._compare_sessions or self._scenario_replay_started:
+            return
+        self._scenario_replay_started = True
+        path_a, path_b = self._compare_sessions
+        try:
+            from core.scenario_loader import compare_sessions
+            from ui.canonical_trace_diff import load_scenario_run_pair_view
+
+            pair = compare_sessions(path_a, path_b, save=True)
+            view = self.canonical_trace_diff_view
+            if view is None:
+                view = load_scenario_run_pair_view(pair, parent=self, show=True)
+                self.canonical_trace_diff_view = view
+            else:
+                view.load_scenario_run_pair(pair)
+                view.show()
+                view.raise_()
+            logger.info("[ScenarioReplay] compared sessions; diff ready in UI")
+        except Exception:
+            logger.exception("[ScenarioReplay] compare failed")
+
+    def _notify_scenario_session_saved(self, path: str) -> None:
+        if self.canonical_trace_diff_view is None:
+            return
+        try:
+            self.canonical_trace_diff_view.set_status_message(
+                f"Session saved: {path}. Run the other backend, then Compare sessions."
+            )
+        except Exception:
+            pass
 
     def _setup_routing_debug_tool_window(self) -> None:
         from ui.views.routing_debug_view import RoutingDebugView
@@ -1649,6 +1843,8 @@ class MainWindow(QMainWindow):
                 is_dark=is_dark,
             ).exec()
         self.refresh_toolbar_native_model_dropdown()
+        if ok and self._run_scenario_path and not self._scenario_qube_phase_done:
+            self.schedule_scenario_replay()
 
     # --- PRESTIGE MENU LOGIC ---
     def _build_prestige_menu(
@@ -2264,6 +2460,8 @@ class MainWindow(QMainWindow):
         else:
             if self.routing_debug_tool_view is not None:
                 self.routing_debug_tool_view.close()
+            if self.canonical_trace_diff_view is not None:
+                self.canonical_trace_diff_view.close()
             if hasattr(self, "_notification_service"):
                 self._notification_service.shutdown()
             if self._companion_controller is not None:

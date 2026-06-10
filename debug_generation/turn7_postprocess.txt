@@ -1,0 +1,18 @@
+--- raw_text (len=83) ---
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+
+--- after_harmony_parser (len=83) ---
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+
+--- after_worker_filters (len=83) ---
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+
+--- streamed_incremental (len=81) ---
+Kathmandu sits at an elevation of about ,400 meters (≈,600 feet) above sea level.
+
+--- worker_return_text (len=83) ---
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+
+--- engine_end_text (len=83) ---
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+

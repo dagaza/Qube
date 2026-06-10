@@ -68,6 +68,7 @@ from core.model_chat_contract import (
 )
 from core.prompt_template_router import RenderPromptBundle, build_prompt_bundle
 from core.chat_format_mode import ChatFormatMode
+from core.llm_truth_diff import emit_l1_engine_request, emit_l2_prompt
 from core.llm_execution_contract import (
     PrimaryEngineTask,
     check_task_prompt_policy,
@@ -143,6 +144,7 @@ from core.native_token_trace import (
     token_trace_early_n,
     token_trace_enabled,
 )
+from core.generation_debug_capture import apply_debug_stop_mode
 from core.native_engine_queue import (
     EnginePriority,
     PriorityCommandQueue,
@@ -520,8 +522,11 @@ class NativeLlamaEngine(QThread):
         retrieval_context: str = "",
         task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
         chat_format_mode: ChatFormatMode = "structured",
+        reply_shape_policy: Any = None,
+        sampling_overrides: dict[str, Any] | None = None,
         debug_caller: str = "chat",
         debug_exchange_id: int | None = None,
+        debug_session_id: str = "",
     ) -> None:
         self._cancel_behavior_profile.set()
         self._generation_epoch += 1
@@ -540,8 +545,11 @@ class NativeLlamaEngine(QThread):
                 "retrieval_context": self._last_retrieval_context,
                 "task": task,
                 "chat_format_mode": chat_format_mode,
+                "reply_shape_policy": reply_shape_policy,
+                "sampling_overrides": dict(sampling_overrides or {}),
                 "debug_caller": debug_caller,
                 "debug_exchange_id": debug_exchange_id,
+                "debug_session_id": debug_session_id,
                 "epoch": self._generation_epoch,
             },
             priority=EnginePriority.interactive,
@@ -1034,11 +1042,16 @@ class NativeLlamaEngine(QThread):
         *,
         task: PrimaryEngineTask | str = PrimaryEngineTask.chat,
         chat_format_mode: ChatFormatMode = "structured",
+        reply_shape_policy: Any = None,
+        turn_sampling_overrides: dict[str, Any] | None = None,
         debug_caller: str = "native",
         debug_exchange_id: int | None = None,
+        debug_session_id: str = "",
     ) -> tuple[PromptContract, dict[str, Any]]:
         """Resolve prompt contract, then emit prompt integrity validation + logs."""
         assert self._llama is not None
+        self._last_debug_exchange_id = debug_exchange_id
+        self._last_debug_session_id = debug_session_id
         self._last_render_bundle = None
         self._bundle_contract_id = None
         task_policy = policy_for_task(task)
@@ -1046,7 +1059,11 @@ class NativeLlamaEngine(QThread):
         self._last_task_policy = task_policy
         self._last_chat_format_mode = chat_format_mode
         messages = normalize_messages_for_task(messages, task_policy.task)
-        cc_kw = {**native_chat_completion_kwargs(self._llama), **self._sampling_overrides}
+        cc_kw = {
+            **native_chat_completion_kwargs(self._llama),
+            **self._sampling_overrides,
+            **(turn_sampling_overrides or {}),
+        }
         try:
             uq = extract_last_user_query(messages)
             ctx_blob = " ".join(
@@ -1077,6 +1094,7 @@ class NativeLlamaEngine(QThread):
             messages,
             task=task_policy.task,
             chat_format_mode=chat_format_mode,
+            reply_shape_policy=reply_shape_policy,
         )
         contract = contract_result.contract
         self._last_template_safety = getattr(contract_result, "template_safety", None)
@@ -1195,6 +1213,7 @@ class NativeLlamaEngine(QThread):
             self._last_render_bundle = bundle
             self._bundle_contract_id = id(contract)
         eos_s, _ = llama_eos_bos_strings(self._llama)
+        merged_stops = apply_debug_stop_mode(list(merged_stops or []), eos_s)
         _val_cf = (
             str(contract.chat_format or "").strip()
             if contract.mode == "messages" and contract.chat_format
@@ -1385,6 +1404,41 @@ class NativeLlamaEngine(QThread):
         assert_prompt_contract(contract)
         prompt_str, merged_stops = self._completion_prompt_and_stops(contract, messages)
         prompt_str = prepare_completion_prompt(self._llama, prompt_str)
+        pol = self.get_execution_policy()
+        td_ctx = {
+            "request_id": getattr(self, "_last_debug_exchange_id", None),
+            "exchange_id": getattr(self, "_last_debug_exchange_id", None),
+            "session_id": str(getattr(self, "_last_debug_session_id", "") or ""),
+            "model_name": os.path.basename(self._model_path or "") or "",
+        }
+        emit_l2_prompt(
+            prompt_str,
+            {
+                **td_ctx,
+                "template_source": str(getattr(contract, "template_source", "") or ""),
+                "chat_format_mode": str(getattr(self, "_last_chat_format_mode", "") or ""),
+                "execution_mode": str(getattr(pol, "execution_mode", "") or ""),
+                "prompt_contract_mode": str(getattr(contract, "mode", "") or ""),
+                "chat_format": str(getattr(contract, "chat_format", "") or ""),
+            },
+        )
+        cc_payload = {
+            k: v
+            for k, v in cc_kw.items()
+            if k not in ("messages",)
+        }
+        emit_l1_engine_request(
+            {
+                "prompt": prompt_str,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": stream,
+                "echo": False,
+                "stop": merged_stops,
+                **cc_payload,
+            },
+            td_ctx,
+        )
         out = self._llama.create_completion(
             prompt=prompt_str,
             temperature=temperature,
@@ -1460,8 +1514,11 @@ class NativeLlamaEngine(QThread):
                 stream=True,
                 task=cmd.get("task") or PrimaryEngineTask.chat,
                 chat_format_mode=cmd.get("chat_format_mode") or "structured",
+                reply_shape_policy=cmd.get("reply_shape_policy"),
+                turn_sampling_overrides=cmd.get("sampling_overrides"),
                 debug_caller=str(cmd.get("debug_caller") or "chat"),
                 debug_exchange_id=cmd.get("debug_exchange_id"),
+                debug_session_id=str(cmd.get("debug_session_id") or ""),
             )
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}

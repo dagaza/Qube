@@ -10,6 +10,7 @@ from typing import Any
 from core.chat_format_mode import ChatFormatMode
 from core.harmony_protocol import HARMONY_FINAL_ANCHOR
 from core.harmony_reply_guidance import merge_harmony_system_content
+from core.reply_shape_policy import ReplyShapePolicy
 
 
 def _messages_payload(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -47,6 +48,7 @@ def render_harmony_single_turn(
     *,
     include_reply_guidance: bool = True,
     chat_format_mode: ChatFormatMode = "structured",
+    reply_shape_policy: ReplyShapePolicy | None = None,
 ) -> str:
     parts: list[str] = []
     system_chunks: list[str] = []
@@ -63,6 +65,7 @@ def render_harmony_single_turn(
         system_chunks,
         include_reply_guidance=include_reply_guidance,
         chat_format_mode=chat_format_mode,
+        reply_shape_policy=reply_shape_policy,
     )
     if system_body or include_reply_guidance:
         parts.insert(
@@ -78,6 +81,7 @@ def render_harmony_compact_multiturn(
     *,
     include_reply_guidance: bool = True,
     chat_format_mode: ChatFormatMode = "structured",
+    reply_shape_policy: ReplyShapePolicy | None = None,
 ) -> str:
     """
     One open final channel; prior turns live in a labeled user block.
@@ -104,6 +108,7 @@ def render_harmony_compact_multiturn(
         system_chunks,
         include_reply_guidance=include_reply_guidance,
         chat_format_mode=chat_format_mode,
+        reply_shape_policy=reply_shape_policy,
     )
     if system_body or include_reply_guidance:
         parts.append(
@@ -146,6 +151,7 @@ def render_harmony_final_prompt(
     *,
     include_reply_guidance: bool = True,
     chat_format_mode: ChatFormatMode = "structured",
+    reply_shape_policy: ReplyShapePolicy | None = None,
 ) -> str:
     """
     Render Harmony prompt with assistant pre-filled in the final channel.
@@ -159,9 +165,11 @@ def render_harmony_final_prompt(
             payload,
             include_reply_guidance=include_reply_guidance,
             chat_format_mode=chat_format_mode,
+            reply_shape_policy=reply_shape_policy,
         )
     return render_harmony_single_turn(
         payload,
         include_reply_guidance=include_reply_guidance,
         chat_format_mode=chat_format_mode,
+        reply_shape_policy=reply_shape_policy,
     )

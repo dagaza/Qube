@@ -17,7 +17,7 @@ _ROUTING_DEBUG_INIT = False
 
 def init_llm_debug_logging() -> None:
     """
-    Route Qube.NativeLLM.Debug to logs/llm_debug.log (rotating) and keep the terminal clean.
+    Route Qube.NativeLLM.Debug to ~/.qube/logs/llm_debug.log (rotating) and keep the terminal clean.
 
     Safe to call multiple times (no duplicate file handlers). Call after logging.basicConfig
     if the root logger is already configured.

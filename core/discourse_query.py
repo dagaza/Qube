@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
+from core.discourse_prompt_rewrite import score_rewrite_anchor
 from core.discourse_state import DiscourseState, is_deictic_topic_phrase
 from core.memory_filters import detect_explicit_web_request
 
@@ -107,10 +108,14 @@ def resolve_search_target(
             referent = (discourse.active_referent or "").strip()
             topic = (discourse.active_topic or "").strip()
             if referent:
-                anchor = referent
-                rewrite_reason = "referent_expansion"
+                score = score_rewrite_anchor(referent, user_message=raw)
+                if score.usable:
+                    anchor = referent
+                    rewrite_reason = "referent_expansion"
             elif topic and not is_deictic_topic_phrase(topic):
-                anchor = topic
+                score = score_rewrite_anchor(topic, user_message=raw)
+                if score.usable:
+                    anchor = topic
         if anchor and anchor.lower() not in raw.lower():
             return SearchTargetResult(
                 f"Regarding {anchor}: {raw}",

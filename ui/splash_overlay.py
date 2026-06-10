@@ -292,6 +292,7 @@ class _PhasedQubeRunner(QObject):
         *,
         embedder: object,
         enable_routing_debug_tool: bool,
+        enable_trace_diff_debug_tool: bool = False,
         on_phase: SplashPhaseCallback,
         on_complete: Callable[[object], None],
     ) -> None:
@@ -299,6 +300,7 @@ class _PhasedQubeRunner(QObject):
         super().__init__(app if isinstance(app, QObject) else None)
         self._embedder = embedder
         self._enable_routing = enable_routing_debug_tool
+        self._enable_trace_diff = enable_trace_diff_debug_tool
         self._on_phase = on_phase
         self._on_complete = on_complete
         self._phase = 0
@@ -337,7 +339,7 @@ class _PhasedQubeRunner(QObject):
         elif phase == 2:
             qube._boot_memory_workers(noop_tick)  # type: ignore[attr-defined]
         elif phase == 3:
-            qube._boot_main_window(noop_tick, self._enable_routing)  # type: ignore[attr-defined]
+            qube._boot_main_window(noop_tick, self._enable_routing, self._enable_trace_diff)  # type: ignore[attr-defined]
         elif phase == 4:
             qube._boot_connect_and_sync(noop_tick)  # type: ignore[attr-defined]
         elif phase == 5:
@@ -350,6 +352,7 @@ def start_phased_qube_build(
     *,
     embedder: object,
     enable_routing_debug_tool: bool,
+    enable_trace_diff_debug_tool: bool = False,
     on_phase: SplashPhaseCallback,
     on_complete: Callable[[object], None],
 ) -> _PhasedQubeRunner:
@@ -357,6 +360,7 @@ def start_phased_qube_build(
     runner = _PhasedQubeRunner(
         embedder=embedder,
         enable_routing_debug_tool=enable_routing_debug_tool,
+        enable_trace_diff_debug_tool=enable_trace_diff_debug_tool,
         on_phase=on_phase,
         on_complete=on_complete,
     )

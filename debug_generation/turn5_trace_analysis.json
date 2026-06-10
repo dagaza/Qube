@@ -1,0 +1,428 @@
+{
+  "turn_id": 5,
+  "session_id": "5dde37e5-d00c-47d5-916c-3ff084d1f4ff",
+  "chunk_count": 33,
+  "corruption_origin": {
+    "likely_stage": "raw_generation",
+    "likely_cause": "sampling_or_model_generation",
+    "postprocess_introduced_corruption": false,
+    "stage_signals": {
+      "raw_generation": {
+        "len": 111,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_harmony_parser": {
+        "len": 111,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_worker_filters": {
+        "len": 45,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "worker_return": {
+        "len": 45,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      },
+      "history_stored": {
+        "len": 45,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      }
+    },
+    "raw_equals_stored": false,
+    "raw_equals_worker_return": false
+  },
+  "chunks": [
+    {
+      "chunk_index": 0,
+      "token": "Kath",
+      "cumulative_text": "Kath",
+      "cumulative_filtered": "Kath",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 1,
+      "token": "mandu",
+      "cumulative_text": "Kathmandu",
+      "cumulative_filtered": "Kathmandu",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 2,
+      "token": " lies",
+      "cumulative_text": "Kathmandu lies",
+      "cumulative_filtered": "Kathmandu lies",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 3,
+      "token": " in",
+      "cumulative_text": "Kathmandu lies in",
+      "cumulative_filtered": "Kathmandu lies in",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 4,
+      "token": " the",
+      "cumulative_text": "Kathmandu lies in the",
+      "cumulative_filtered": "Kathmandu lies in the",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 5,
+      "token": " temper",
+      "cumulative_text": "Kathmandu lies in the temper",
+      "cumulative_filtered": "Kathmandu lies in the temper",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 6,
+      "token": "ate",
+      "cumulative_text": "Kathmandu lies in the temperate",
+      "cumulative_filtered": "Kathmandu lies in the temperate",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 7,
+      "token": "‑",
+      "cumulative_text": "Kathmandu lies in the temperate‑",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 8,
+      "token": "cl",
+      "cumulative_text": "Kathmandu lies in the temperate‑cl",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑cl",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 9,
+      "token": "imate",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 10,
+      "token": " zone",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 11,
+      "token": ".",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 12,
+      "token": " ",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone. ",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone. ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 13,
+      "token": " It",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 14,
+      "token": " has",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 15,
+      "token": " a",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 16,
+      "token": " mild",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 17,
+      "token": ",",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild,",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild,",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 18,
+      "token": " semi",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 19,
+      "token": "‑",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 20,
+      "token": "humid",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 21,
+      "token": " climate",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 22,
+      "token": " with",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 23,
+      "token": " a",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 24,
+      "token": " short",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 25,
+      "token": "‐",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 26,
+      "token": "t",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐t",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐t",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 27,
+      "token": "ropical",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 28,
+      "token": "‑",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 29,
+      "token": "like",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 30,
+      "token": " ",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like ",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 31,
+      "token": "…",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 32,
+      "token": "  ",
+      "cumulative_text": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  ",
+      "cumulative_filtered": "Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  ",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    }
+  ]
+}

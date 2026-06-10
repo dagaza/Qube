@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-View logs/llm_debug.log (Qube.NativeLLM.Debug) without terminal spam.
+View ~/.qube/logs/llm_debug.log (Qube.NativeLLM.Debug) without terminal spam.
 
 Examples:
   python tools/view_llm_logs.py --last 200
@@ -75,7 +75,7 @@ def main() -> int:
         "--path",
         type=Path,
         default=None,
-        help="Override log file path (default: logs/llm_debug.log under repo root).",
+        help="Override log file path (default: ~/.qube/logs/llm_debug.log).",
     )
     args = ap.parse_args()
 

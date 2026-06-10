@@ -5,11 +5,13 @@ import unittest
 
 from core.harmony_reply_guidance import (
     HARMONY_BRIEF_REPLY_GUIDANCE,
+    HARMONY_ENUMERATION_REPLY_GUIDANCE,
     HARMONY_FINAL_REPLY_GUIDANCE,
     HARMONY_MIXED_REPLY_GUIDANCE,
     merge_harmony_system_content,
 )
 from core.harmony_renderer import render_harmony_final_prompt
+from core.reply_shape_policy import resolve_reply_shape_policy
 
 
 class TestHarmonyReplyGuidance(unittest.TestCase):
@@ -58,3 +60,15 @@ class TestHarmonyReplyGuidance(unittest.TestCase):
         )
         self.assertIn(HARMONY_MIXED_REPLY_GUIDANCE, merged)
         self.assertNotIn("2–4 short sections", merged)
+
+    def test_enumeration_policy_uses_list_guidance(self) -> None:
+        policy = resolve_reply_shape_policy(
+            execution_route="NONE",
+            user_query="List the major ethnic groups in Nepal",
+        )
+        merged = merge_harmony_system_content(
+            ["You are Qube."],
+            reply_shape_policy=policy,
+        )
+        self.assertIn(HARMONY_ENUMERATION_REPLY_GUIDANCE, merged)
+        self.assertNotIn(HARMONY_BRIEF_REPLY_GUIDANCE, merged)

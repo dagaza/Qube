@@ -1,0 +1,202 @@
+=== chunk 0 ===
+delta: 'Kath'
+cumulative_raw_len: 4
+cumulative_raw:
+Kath
+
+=== chunk 1 ===
+delta: 'mandu'
+cumulative_raw_len: 9
+cumulative_raw:
+Kathmandu
+
+=== chunk 2 ===
+delta: ' lies'
+cumulative_raw_len: 14
+cumulative_raw:
+Kathmandu lies
+
+=== chunk 3 ===
+delta: ' in'
+cumulative_raw_len: 17
+cumulative_raw:
+Kathmandu lies in
+
+=== chunk 4 ===
+delta: ' the'
+cumulative_raw_len: 21
+cumulative_raw:
+Kathmandu lies in the
+
+=== chunk 5 ===
+delta: ' temper'
+cumulative_raw_len: 28
+cumulative_raw:
+Kathmandu lies in the temper
+
+=== chunk 6 ===
+delta: 'ate'
+cumulative_raw_len: 31
+cumulative_raw:
+Kathmandu lies in the temperate
+
+=== chunk 7 ===
+delta: '‑'
+cumulative_raw_len: 32
+cumulative_raw:
+Kathmandu lies in the temperate‑
+
+=== chunk 8 ===
+delta: 'cl'
+cumulative_raw_len: 34
+cumulative_raw:
+Kathmandu lies in the temperate‑cl
+
+=== chunk 9 ===
+delta: 'imate'
+cumulative_raw_len: 39
+cumulative_raw:
+Kathmandu lies in the temperate‑climate
+
+=== chunk 10 ===
+delta: ' zone'
+cumulative_raw_len: 44
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone
+
+=== chunk 11 ===
+delta: '.'
+cumulative_raw_len: 45
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.
+
+=== chunk 12 ===
+delta: ' '
+cumulative_raw_len: 46
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone. 
+
+=== chunk 13 ===
+delta: ' It'
+cumulative_raw_len: 49
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It
+
+=== chunk 14 ===
+delta: ' has'
+cumulative_raw_len: 53
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has
+
+=== chunk 15 ===
+delta: ' a'
+cumulative_raw_len: 55
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a
+
+=== chunk 16 ===
+delta: ' mild'
+cumulative_raw_len: 60
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild
+
+=== chunk 17 ===
+delta: ','
+cumulative_raw_len: 61
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild,
+
+=== chunk 18 ===
+delta: ' semi'
+cumulative_raw_len: 66
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi
+
+=== chunk 19 ===
+delta: '‑'
+cumulative_raw_len: 67
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑
+
+=== chunk 20 ===
+delta: 'humid'
+cumulative_raw_len: 72
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid
+
+=== chunk 21 ===
+delta: ' climate'
+cumulative_raw_len: 80
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate
+
+=== chunk 22 ===
+delta: ' with'
+cumulative_raw_len: 85
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with
+
+=== chunk 23 ===
+delta: ' a'
+cumulative_raw_len: 87
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a
+
+=== chunk 24 ===
+delta: ' short'
+cumulative_raw_len: 93
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short
+
+=== chunk 25 ===
+delta: '‐'
+cumulative_raw_len: 94
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐
+
+=== chunk 26 ===
+delta: 't'
+cumulative_raw_len: 95
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐t
+
+=== chunk 27 ===
+delta: 'ropical'
+cumulative_raw_len: 102
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical
+
+=== chunk 28 ===
+delta: '‑'
+cumulative_raw_len: 103
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑
+
+=== chunk 29 ===
+delta: 'like'
+cumulative_raw_len: 107
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like
+
+=== chunk 30 ===
+delta: '\xa0'
+cumulative_raw_len: 108
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like 
+
+=== chunk 31 ===
+delta: '…'
+cumulative_raw_len: 109
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …
+
+=== chunk 32 ===
+delta: '  '
+cumulative_raw_len: 111
+cumulative_raw:
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  
+
+
+=== sampler_ground_truth (first tokens) ===
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  
+We need to

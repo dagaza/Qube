@@ -1,0 +1,159 @@
+=== chunk 0 ===
+delta: 'Kath'
+cumulative_raw_len: 4
+cumulative_raw:
+Kath
+
+=== chunk 1 ===
+delta: 'mandu'
+cumulative_raw_len: 9
+cumulative_raw:
+Kathmandu
+
+=== chunk 2 ===
+delta: ' sits'
+cumulative_raw_len: 14
+cumulative_raw:
+Kathmandu sits
+
+=== chunk 3 ===
+delta: ' at'
+cumulative_raw_len: 17
+cumulative_raw:
+Kathmandu sits at
+
+=== chunk 4 ===
+delta: ' an'
+cumulative_raw_len: 20
+cumulative_raw:
+Kathmandu sits at an
+
+=== chunk 5 ===
+delta: ' elevation'
+cumulative_raw_len: 30
+cumulative_raw:
+Kathmandu sits at an elevation
+
+=== chunk 6 ===
+delta: ' of'
+cumulative_raw_len: 33
+cumulative_raw:
+Kathmandu sits at an elevation of
+
+=== chunk 7 ===
+delta: ' about'
+cumulative_raw_len: 39
+cumulative_raw:
+Kathmandu sits at an elevation of about
+
+=== chunk 8 ===
+delta: '\u202f'
+cumulative_raw_len: 40
+cumulative_raw:
+Kathmandu sits at an elevation of about 
+
+=== chunk 9 ===
+delta: '1'
+cumulative_raw_len: 41
+cumulative_raw:
+Kathmandu sits at an elevation of about 1
+
+=== chunk 10 ===
+delta: ','
+cumulative_raw_len: 42
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,
+
+=== chunk 11 ===
+delta: '400'
+cumulative_raw_len: 45
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400
+
+=== chunk 12 ===
+delta: '\u202f'
+cumulative_raw_len: 46
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 
+
+=== chunk 13 ===
+delta: 'meters'
+cumulative_raw_len: 52
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters
+
+=== chunk 14 ===
+delta: ' ('
+cumulative_raw_len: 54
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (
+
+=== chunk 15 ===
+delta: '≈'
+cumulative_raw_len: 55
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈
+
+=== chunk 16 ===
+delta: '4'
+cumulative_raw_len: 56
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4
+
+=== chunk 17 ===
+delta: ','
+cumulative_raw_len: 57
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,
+
+=== chunk 18 ===
+delta: '600'
+cumulative_raw_len: 60
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600
+
+=== chunk 19 ===
+delta: '\u202f'
+cumulative_raw_len: 61
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 
+
+=== chunk 20 ===
+delta: 'feet'
+cumulative_raw_len: 65
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet
+
+=== chunk 21 ===
+delta: ')'
+cumulative_raw_len: 66
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet)
+
+=== chunk 22 ===
+delta: ' above'
+cumulative_raw_len: 72
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above
+
+=== chunk 23 ===
+delta: ' sea'
+cumulative_raw_len: 76
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea
+
+=== chunk 24 ===
+delta: ' level'
+cumulative_raw_len: 82
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level
+
+=== chunk 25 ===
+delta: '.'
+cumulative_raw_len: 83
+cumulative_raw:
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.
+
+
+=== sampler_ground_truth (first tokens) ===
+Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.

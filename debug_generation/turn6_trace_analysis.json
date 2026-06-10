@@ -1,0 +1,313 @@
+{
+  "turn_id": 6,
+  "session_id": "fafc9c37-03b4-49b3-b315-a60a59f108d7",
+  "chunk_count": 22,
+  "corruption_origin": {
+    "likely_stage": "raw_generation",
+    "likely_cause": "sampling_or_model_generation",
+    "postprocess_introduced_corruption": false,
+    "stage_signals": {
+      "raw_generation": {
+        "len": 88,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_harmony_parser": {
+        "len": 88,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_worker_filters": {
+        "len": 87,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "worker_return": {
+        "len": 87,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "history_stored": {
+        "len": 70,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0.45,
+        "format_drift_flags": [
+          "meta_preamble"
+        ],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      }
+    },
+    "raw_equals_stored": false,
+    "raw_equals_worker_return": false
+  },
+  "chunks": [
+    {
+      "chunk_index": 0,
+      "token": "Kath",
+      "cumulative_text": "Kath",
+      "cumulative_filtered": "Kath",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 1,
+      "token": "mandu",
+      "cumulative_text": "Kathmandu",
+      "cumulative_filtered": "Kathmandu",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 2,
+      "token": "’s",
+      "cumulative_text": "Kathmandu’s",
+      "cumulative_filtered": "Kathmandu’s",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 3,
+      "token": " official",
+      "cumulative_text": "Kathmandu’s official",
+      "cumulative_filtered": "Kathmandu’s official",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 4,
+      "token": " language",
+      "cumulative_text": "Kathmandu’s official language",
+      "cumulative_filtered": "Kathmandu’s official language",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 5,
+      "token": " is",
+      "cumulative_text": "Kathmandu’s official language is",
+      "cumulative_filtered": "Kathmandu’s official language is",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 6,
+      "token": " Nep",
+      "cumulative_text": "Kathmandu’s official language is Nep",
+      "cumulative_filtered": "Kathmandu’s official language is Nep",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 7,
+      "token": "ali",
+      "cumulative_text": "Kathmandu’s official language is Nepali",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 8,
+      "token": ",",
+      "cumulative_text": "Kathmandu’s official language is Nepali,",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali,",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 9,
+      "token": " but",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 10,
+      "token": " most",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 11,
+      "token": " residents",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 12,
+      "token": " also",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 13,
+      "token": " speak",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 14,
+      "token": " English",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 15,
+      "token": "‑",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 16,
+      "token": "to",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 17,
+      "token": "‑",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 18,
+      "token": "h",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑h",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑h",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 19,
+      "token": "mm",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 20,
+      "token": "…",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm…",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm…",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    },
+    {
+      "chunk_index": 21,
+      "token": "…\n",
+      "cumulative_text": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……\n",
+      "cumulative_filtered": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……\n",
+      "token_id": null,
+      "logit_probability": null,
+      "early_stop_triggers": [],
+      "repair_triggers": [],
+      "guard_events": []
+    }
+  ]
+}

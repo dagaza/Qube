@@ -58,12 +58,41 @@ def find_degeneration_start(text: str) -> Optional[int]:
     return earliest
 
 
+def trim_abrupt_generation_end(text: str) -> str:
+    """
+    Drop a trailing partial sentence when generation stopped mid-thought.
+
+    Common after harmony degeneration cancel leaves visible text ending in ``…``
+    or a hyphenated word fragment.
+    """
+    t = (text or "").strip()
+    if not t or t[-1] in ".!?":
+        return t
+    if not (t.endswith("…") or t.endswith("...") or t.endswith("\u2026")):
+        return t
+    core = t.rstrip(".…\u2026")
+    if not core:
+        return t
+    for sep in (". ", "! ", "? ", ".\n", "!\n", "?\n"):
+        idx = core.rfind(sep)
+        if idx >= 0:
+            candidate = core[: idx + 1].strip()
+            if len(candidate) >= 40:
+                return candidate
+    if ", " in core:
+        head = core.rsplit(", ", 1)[0].strip()
+        if len(head) >= 60 and head[-1] not in ".!?":
+            return f"{head}."
+    return t
+
+
 def polish_harmony_visible_text(text: str) -> str:
     """Truncate at degeneration, then drop common gpt-oss dangling clause tails."""
     t = truncate_at_degeneration(text)
     if not t:
         return t
     t = _DANGLING_CLAUSE_TAIL.sub("", t)
+    t = trim_abrupt_generation_end(t)
     return t.rstrip()
 
 

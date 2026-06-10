@@ -14,13 +14,79 @@ sees while the stream is still making real progress.
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from core.generation_risk_profile import GenerationRiskProfile
 
 _PUNCT_RUN = re.compile(r"[.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]{24,}")
 _PUNCT_CHARS_RE = re.compile(r"[.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]")
 _SPACED_PUNCT_TAIL_RE = re.compile(
     r"[\s\u00a0\u202f\u2009\u200a\u2028.…?\u2026\u2010\u2011\u2012\u2013\u2014\-]{28,}"
 )
+_BARE_NUMBERED_LINE = re.compile(r"^\s*(\d+)\.\s*(.*)$", re.M)
+
+
+def _numbered_list_loop_degenerate(tail: str) -> bool:
+    """Detect runaway or empty numbered-list generation in the stream tail."""
+    if not tail:
+        return False
+    window = tail[-500:]
+    bare_run: list[int] = []
+    item_run: list[str] = []
+    for line in window.splitlines():
+        m = _BARE_NUMBERED_LINE.match(line)
+        if not m:
+            if len(bare_run) >= 4:
+                recent = bare_run[-4:]
+                if recent == list(range(recent[0], recent[0] + 4)):
+                    return True
+            bare_run.clear()
+            item_run.clear()
+            continue
+        num = int(m.group(1))
+        item = (m.group(2) or "").strip()
+        bare_run.append(num)
+        item_run.append(item)
+        if len(bare_run) >= 4:
+            recent_nums = bare_run[-4:]
+            if recent_nums == list(range(recent_nums[0], recent_nums[0] + 4)):
+                recent_items = item_run[-4:]
+                if all(len(x) <= 2 for x in recent_items):
+                    return True
+        if len(item_run) >= 4:
+            recent_items = item_run[-4:]
+            if all(len(x) <= 2 for x in recent_items):
+                return True
+            if len(set(recent_items)) == 1 and recent_items[0]:
+                return True
+    if len(bare_run) >= 4:
+        recent = bare_run[-4:]
+        if recent == list(range(recent[0], recent[0] + 4)):
+            return True
+    return False
+
+
+def create_stream_repetition_guard(
+    profile: "GenerationRiskProfile | None" = None,
+    *,
+    min_repeats: int | None = None,
+    tail_chars: int | None = None,
+    enable_list_loop_guard: bool | None = None,
+) -> "StreamRepetitionGuard":
+    """Build a guard tuned to the turn's generation risk profile."""
+    kwargs: dict = {}
+    if profile is not None:
+        kwargs["min_repeats"] = profile.stream_guard_min_repeats
+        kwargs["tail_chars"] = profile.stream_guard_tail_chars
+        kwargs["enable_list_loop_guard"] = profile.enable_list_loop_guard
+    if min_repeats is not None:
+        kwargs["min_repeats"] = min_repeats
+    if tail_chars is not None:
+        kwargs["tail_chars"] = tail_chars
+    if enable_list_loop_guard is not None:
+        kwargs["enable_list_loop_guard"] = enable_list_loop_guard
+    return StreamRepetitionGuard(**kwargs)
 
 
 class StreamRepetitionGuard:
@@ -44,6 +110,7 @@ class StreamRepetitionGuard:
         "_min_repeats",
         "_max_atom_chars",
         "_min_atom_chars",
+        "_enable_list_loop_guard",
         "_tripped",
         "_trip_reason",
     )
@@ -55,12 +122,14 @@ class StreamRepetitionGuard:
         max_atom_chars: int = 12,
         min_atom_chars: int = 1,
         tail_chars: int = 600,
+        enable_list_loop_guard: bool = False,
     ) -> None:
         self._buffer: str = ""
         self._tail_chars: int = int(tail_chars)
         self._min_repeats: int = int(min_repeats)
         self._max_atom_chars: int = int(max_atom_chars)
         self._min_atom_chars: int = int(min_atom_chars)
+        self._enable_list_loop_guard: bool = bool(enable_list_loop_guard)
         self._tripped: bool = False
         self._trip_reason: Optional[str] = None
 
@@ -86,6 +155,11 @@ class StreamRepetitionGuard:
         if spaced_tail is not None and len(_PUNCT_CHARS_RE.findall(spaced_tail.group(0))) >= 12:
             self._tripped = True
             self._trip_reason = "spaced punctuation degeneration in stream tail"
+            return True
+
+        if self._enable_list_loop_guard and _numbered_list_loop_degenerate(self._buffer):
+            self._tripped = True
+            self._trip_reason = "numbered list loop degeneration in stream tail"
             return True
 
         atoms = self._buffer.split()

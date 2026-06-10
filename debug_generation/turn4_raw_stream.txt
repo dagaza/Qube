@@ -1,0 +1,129 @@
+=== chunk 0 ===
+delta: 'Kath'
+cumulative_raw_len: 4
+cumulative_raw:
+Kath
+
+=== chunk 1 ===
+delta: 'mandu'
+cumulative_raw_len: 9
+cumulative_raw:
+Kathmandu
+
+=== chunk 2 ===
+delta: ' covers'
+cumulative_raw_len: 16
+cumulative_raw:
+Kathmandu covers
+
+=== chunk 3 ===
+delta: ' roughly'
+cumulative_raw_len: 24
+cumulative_raw:
+Kathmandu covers roughly
+
+=== chunk 4 ===
+delta: '\u202f'
+cumulative_raw_len: 25
+cumulative_raw:
+Kathmandu covers roughly 
+
+=== chunk 5 ===
+delta: '1'
+cumulative_raw_len: 26
+cumulative_raw:
+Kathmandu covers roughly 1
+
+=== chunk 6 ===
+delta: ','
+cumulative_raw_len: 27
+cumulative_raw:
+Kathmandu covers roughly 1,
+
+=== chunk 7 ===
+delta: '200'
+cumulative_raw_len: 30
+cumulative_raw:
+Kathmandu covers roughly 1,200
+
+=== chunk 8 ===
+delta: '\u202f'
+cumulative_raw_len: 31
+cumulative_raw:
+Kathmandu covers roughly 1,200 
+
+=== chunk 9 ===
+delta: 'square'
+cumulative_raw_len: 37
+cumulative_raw:
+Kathmandu covers roughly 1,200 square
+
+=== chunk 10 ===
+delta: '\xa0'
+cumulative_raw_len: 38
+cumulative_raw:
+Kathmandu covers roughly 1,200 square 
+
+=== chunk 11 ===
+delta: 'kil'
+cumulative_raw_len: 41
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kil
+
+=== chunk 12 ===
+delta: 'omet'
+cumulative_raw_len: 45
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilomet
+
+=== chunk 13 ===
+delta: 'res'
+cumulative_raw_len: 48
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres
+
+=== chunk 14 ===
+delta: ' ('
+cumulative_raw_len: 50
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (
+
+=== chunk 15 ===
+delta: 'about'
+cumulative_raw_len: 55
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about
+
+=== chunk 16 ===
+delta: '\u202f'
+cumulative_raw_len: 56
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about 
+
+=== chunk 17 ===
+delta: '460'
+cumulative_raw_len: 59
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about 460
+
+=== chunk 18 ===
+delta: ' square'
+cumulative_raw_len: 66
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about 460 square
+
+=== chunk 19 ===
+delta: ' miles'
+cumulative_raw_len: 72
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles
+
+=== chunk 20 ===
+delta: ').'
+cumulative_raw_len: 74
+cumulative_raw:
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).
+
+
+=== sampler_ground_truth (first tokens) ===
+Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).

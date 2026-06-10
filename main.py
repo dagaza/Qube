@@ -73,7 +73,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 
-# LLM introspection (Qube.NativeLLM.Debug) -> logs/llm_debug.log only; not the terminal
+# LLM introspection (Qube.NativeLLM.Debug) -> ~/.qube/logs/llm_debug.log only; not the terminal
 init_llm_debug_logging()
 # Routing explainability (Qube.RoutingDebug) -> logs/routing_debug.log only; not the terminal
 init_routing_debug_logging()
@@ -86,6 +86,7 @@ class Qube:
     def __init__(
         self,
         enable_routing_debug_tool: bool = False,
+        enable_trace_diff_debug_tool: bool = False,
         *,
         embedder: EmbeddingModel | None = None,
         startup_tick: Callable[[str], None] | None = None,
@@ -94,7 +95,7 @@ class Qube:
         self._boot_storage(tick, embedder)  # startup_tick optional; splash uses a fixed label
         self._boot_core_workers(tick)
         self._boot_memory_workers(tick)
-        self._boot_main_window(tick, enable_routing_debug_tool)
+        self._boot_main_window(tick, enable_routing_debug_tool, enable_trace_diff_debug_tool)
         self._boot_connect_and_sync(tick)
         self._boot_autoload_model(tick)
         self._boot_runtime(tick)
@@ -183,6 +184,7 @@ class Qube:
         self,
         tick: Callable[[str], None],
         enable_routing_debug_tool: bool,
+        enable_trace_diff_debug_tool: bool,
     ) -> None:
         tick("Building interface…")
         self.window = MainWindow(
@@ -190,6 +192,7 @@ class Qube:
             gpu_monitor=self.gpu_monitor,
             native_engine=self.native_llama_engine,
             enable_routing_debug_tool=enable_routing_debug_tool,
+            enable_trace_diff_debug_tool=enable_trace_diff_debug_tool,
         )
 
     def _boot_connect_and_sync(self, tick: Callable[[str], None]) -> None:
@@ -980,6 +983,9 @@ if __name__ == "__main__":
         return start_phased_qube_build(
             embedder=embedder,
             enable_routing_debug_tool=bool(args.routing_debug),
+            enable_trace_diff_debug_tool=bool(
+                args.trace_diff_debug or args.run_scenario or args.compare_sessions
+            ),
             on_phase=on_phase,
             on_complete=on_complete,
         )
@@ -987,6 +993,28 @@ if __name__ == "__main__":
     def _on_qube_ready(qube: Qube) -> None:
         qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
         app.aboutToQuit.connect(qube._graceful_shutdown)
+        if args.run_scenario:
+            scenario_path = args.run_scenario
+            if not os.path.isabs(scenario_path):
+                scenario_path = os.path.join(str(repo_root), scenario_path)
+            qube.window._run_scenario_path = scenario_path
+            qube.window._scenario_backend = str(args.scenario_backend or "qube")
+            qube.window._scenario_single_phase = bool(
+                getattr(args, "scenario_single_phase", False)
+            )
+            if not qube.window.canonical_trace_diff_view:
+                qube.window._setup_trace_diff_debug_window()
+            qube.window.schedule_scenario_replay()
+        if getattr(args, "compare_sessions", None):
+            path_a, path_b = args.compare_sessions
+            if not os.path.isabs(path_a):
+                path_a = os.path.join(str(repo_root), path_a)
+            if not os.path.isabs(path_b):
+                path_b = os.path.join(str(repo_root), path_b)
+            qube.window._compare_sessions = (path_a, path_b)
+            if not qube.window.canonical_trace_diff_view:
+                qube.window._setup_trace_diff_debug_window()
+            qube.window.schedule_scenario_replay()
         qube.show()
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.

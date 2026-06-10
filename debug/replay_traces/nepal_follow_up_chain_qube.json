@@ -1,0 +1,1828 @@
+{
+  "schema": "qube.scenario_session.v1",
+  "captured_at": "2026-06-10T16:31:19.693+00:00",
+  "scenario_id": "nepal_follow_up_chain",
+  "scenario_name": "Nepal follow-up chain",
+  "backend": "qube",
+  "execution_path": "qube_native",
+  "scenario": {
+    "name": "Nepal follow-up chain",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the capital of Nepal?"
+      },
+      {
+        "role": "user",
+        "content": "And how about its population?"
+      },
+      {
+        "role": "user",
+        "content": "And its religious minorities?"
+      },
+      {
+        "role": "user",
+        "content": "And its surface area?"
+      },
+      {
+        "role": "user",
+        "content": "What climate zone is it in?"
+      },
+      {
+        "role": "user",
+        "content": "What languages are commonly spoken there?"
+      },
+      {
+        "role": "user",
+        "content": "What is its elevation above sea level?"
+      },
+      {
+        "role": "user",
+        "content": "What are its major tourist attractions?"
+      },
+      {
+        "role": "user",
+        "content": "Which UNESCO World Heritage sites are in the city?"
+      }
+    ],
+    "session_id": "conversation-replay",
+    "backend": "external",
+    "model": "",
+    "external_api_url": "http://localhost:1234/v1/chat/completions",
+    "temperature": 0.7,
+    "max_tokens": 2048,
+    "metadata": {
+      "topic": "kathmandu_follow_up_chain",
+      "stress_turns": 9,
+      "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json"
+    }
+  },
+  "traces": [
+    {
+      "turn_index": 0,
+      "user_message": "What is the capital of Nepal?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>What is the capital of Nepal?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>What is the capital of Nepal?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>What is the capital of Nepal?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu.",
+        "fingerprints": {
+          "request": {
+            "sha256": "857a35deec891798d105a21686d9f673b4b580d00e13abdd995b0d73178696ad",
+            "short": "857a35deec89",
+            "length": 1619
+          },
+          "prompt": {
+            "sha256": "6db367f392598a899f277a5289c96d1231d1037dcc80edf2c50e2cecf8339471",
+            "short": "6db367f39259",
+            "length": 940
+          },
+          "output": {
+            "sha256": "bed813a88f16eb4ca95820c163caff6cde9ac28a93a1d629299861b72a00500f",
+            "short": "bed813a88f16",
+            "length": 10
+          }
+        },
+        "metadata": {
+          "request_id": 1,
+          "exchange_id": 1,
+          "session_id": "c908613a-bffb-4851-8f3c-9efebddc39fd",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 0,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 0,
+          "collapse_prompt_length": 940,
+          "collapse_output_length": 10,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0.85,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [
+            "low_relevance",
+            "incomplete_answer",
+            "low_utility"
+          ],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.212,
+          "collapse_risk": "MEDIUM",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "not_follow_up",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "brief",
+          "format_intent": "brief",
+          "allow_structured_output": false,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [],
+          "generation_risk_tier": "low",
+          "generation_risk_score": 0,
+          "generation_risk_signals": [],
+          "temperature_multiplier": 1.0,
+          "repeat_penalty_adjust": 0.0,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 10,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu."
+    },
+    {
+      "turn_index": 1,
+      "user_message": "And how about its population?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\n\n[Current message]\nUser: how about Kathmandu's population?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\n\n[Current message]\nUser: how about Kathmandu's population?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\n\n[Current message]\nUser: how about Kathmandu's population?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.",
+        "fingerprints": {
+          "request": {
+            "sha256": "08e3b709f9d62e4db20f68e5160017f38aae2ac76990f4d5837060a3f5ef4f69",
+            "short": "08e3b709f9d6",
+            "length": 1804
+          },
+          "prompt": {
+            "sha256": "f47badb081d295cf6b99a8a8d93100db8b8b94d2740117dd0860537dc8a67bad",
+            "short": "f47badb081d2",
+            "length": 1120
+          },
+          "output": {
+            "sha256": "8631fe0b50aa30640f79587438849c0f8c6eabae803e2d6e6a2121f4a3321492",
+            "short": "8631fe0b50aa",
+            "length": 111
+          }
+        },
+        "metadata": {
+          "request_id": 2,
+          "exchange_id": 2,
+          "session_id": "2597b01d-7091-46ee-8455-e8a46c484a39",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 1,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 1,
+          "collapse_prompt_length": 1120,
+          "collapse_output_length": 111,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.0,
+          "collapse_risk": "LOW",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.82,
+          "rewrite_reason": "query_possessive_substitution",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "mixed",
+          "format_intent": "follow_up",
+          "allow_structured_output": true,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [
+            "relaxed_brief_to_mixed_for_follow_up"
+          ],
+          "generation_risk_tier": "low",
+          "generation_risk_score": 1,
+          "generation_risk_signals": [
+            "active_follow_up"
+          ],
+          "temperature_multiplier": 1.0,
+          "repeat_penalty_adjust": 0.0,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 10,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+    },
+    {
+      "turn_index": 2,
+      "user_message": "And its religious minorities?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\n\n[Current message]\nUser: And its religious minorities?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\n\n[Current message]\nUser: And its religious minorities?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\n\n[Current message]\nUser: And its religious minorities?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​",
+        "fingerprints": {
+          "request": {
+            "sha256": "2d1fafd5c2a18a7845deb656150f86c2d6fae51177d21e7464d02fb4cc0fb62a",
+            "short": "2d1fafd5c2a1",
+            "length": 1961
+          },
+          "prompt": {
+            "sha256": "f1dd9287cb8c67a22e87fb2e142d5e5d16fe01f284508a0ee5c9b3db251f6c11",
+            "short": "f1dd9287cb8c",
+            "length": 1275
+          },
+          "output": {
+            "sha256": "20c38a7053d57a63663b3a4f8e5dd347e19185c7a8f49ad6f0355d4842e7bb53",
+            "short": "20c38a7053d5",
+            "length": 102
+          }
+        },
+        "metadata": {
+          "request_id": 3,
+          "exchange_id": 3,
+          "session_id": "cfa2e01c-f420-41ff-a2d0-2221a57061a0",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 2,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 2,
+          "collapse_prompt_length": 1275,
+          "collapse_output_length": 102,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.0,
+          "collapse_risk": "LOW",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "anchor_rejected:low_relevance",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "mixed",
+          "format_intent": "follow_up",
+          "allow_structured_output": true,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [
+            "relaxed_brief_to_mixed_for_follow_up"
+          ],
+          "generation_risk_tier": "low",
+          "generation_risk_score": 1,
+          "generation_risk_signals": [
+            "active_follow_up"
+          ],
+          "temperature_multiplier": 1.0,
+          "repeat_penalty_adjust": 0.0,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 10,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+    },
+    {
+      "turn_index": 3,
+      "user_message": "And its surface area?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\n\n[Current message]\nUser: And its surface area?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.7360000000000001,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1300000000000001,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\n\n[Current message]\nUser: And its surface area?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\n\n[Current message]\nUser: And its surface area?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).",
+        "fingerprints": {
+          "request": {
+            "sha256": "9d950bd5e9f4377f6bfce020c88d73fdbd0033693019ac7c666af5aa9e3c8f58",
+            "short": "9d950bd5e9f4",
+            "length": 2135
+          },
+          "prompt": {
+            "sha256": "b421401e530a3ff21bf3879e891452101ff99e8ecdf0009180c39b0932886288",
+            "short": "b421401e530a",
+            "length": 1417
+          },
+          "output": {
+            "sha256": "d6f3525dfab2db6cdac1e4031a6ec7993a1230e8734733431f1520d7859e1292",
+            "short": "d6f3525dfab2",
+            "length": 74
+          }
+        },
+        "metadata": {
+          "request_id": 4,
+          "exchange_id": 4,
+          "session_id": "e9a64085-c3e3-4576-9b44-3432e1d4b048",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 3,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 3,
+          "collapse_prompt_length": 1417,
+          "collapse_output_length": 74,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0.35,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [
+            "low_relevance"
+          ],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.087,
+          "collapse_risk": "LOW",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "anchor_rejected:low_relevance",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "mixed",
+          "format_intent": "follow_up",
+          "allow_structured_output": true,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [
+            "relaxed_brief_to_mixed_for_follow_up"
+          ],
+          "generation_risk_tier": "medium",
+          "generation_risk_score": 2,
+          "generation_risk_signals": [
+            "active_follow_up",
+            "long_thread"
+          ],
+          "temperature_multiplier": 0.92,
+          "repeat_penalty_adjust": 0.03,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 8,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+    },
+    {
+      "turn_index": 4,
+      "user_message": "What climate zone is it in?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+        },
+        {
+          "role": "user",
+          "content": "What climate zone is it in?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\n\n[Current message]\nUser: What climate zone is it in?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu lies in the temperate‑climate zone.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.7360000000000001,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1300000000000001,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\n\n[Current message]\nUser: What climate zone is it in?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What is the capital of Nepal?\nAssistant: Kathmandu.\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\n\n[Current message]\nUser: What climate zone is it in?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu lies in the temperate‑climate zone.",
+        "fingerprints": {
+          "request": {
+            "sha256": "528938fef14d0bb02510527123655848d032e0507d4e088e4db4b5a54dfa6239",
+            "short": "528938fef14d",
+            "length": 2257
+          },
+          "prompt": {
+            "sha256": "11f840ad2a4abff67d23c168c515476433ec6e3e1f2cf0ae2cc044a6c5868574",
+            "short": "11f840ad2a4a",
+            "length": 1537
+          },
+          "output": {
+            "sha256": "d0fc42b83432fa7d167ae5a45033c343cb05cba1604cadb3c76e6baf959f224b",
+            "short": "d0fc42b83432",
+            "length": 45
+          }
+        },
+        "metadata": {
+          "request_id": 5,
+          "exchange_id": 5,
+          "session_id": "5dde37e5-d00c-47d5-916c-3ff084d1f4ff",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 4,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 4,
+          "collapse_prompt_length": 1537,
+          "collapse_output_length": 45,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.0,
+          "collapse_risk": "LOW",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "anchor_rejected:low_relevance",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "mixed",
+          "format_intent": "follow_up",
+          "allow_structured_output": true,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [
+            "relaxed_brief_to_mixed_for_follow_up"
+          ],
+          "generation_risk_tier": "medium",
+          "generation_risk_score": 2,
+          "generation_risk_signals": [
+            "active_follow_up",
+            "long_thread"
+          ],
+          "temperature_multiplier": 0.92,
+          "repeat_penalty_adjust": 0.03,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 8,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu lies in the temperate‑climate zone."
+    },
+    {
+      "turn_index": 5,
+      "user_message": "What languages are commonly spoken there?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+        },
+        {
+          "role": "user",
+          "content": "What climate zone is it in?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu lies in the temperate‑climate zone."
+        },
+        {
+          "role": "user",
+          "content": "What languages are commonly spoken there?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\n\n[Current message]\nUser: What languages are commonly spoken there?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\n\n[Current message]\nUser: What languages are commonly spoken there?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. Keep the response concise — typically one short paragraph or a few sentences. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nDo not use section formatting. Respond in a single concise answer.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And how about its population?\nAssistant: Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal.\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\n\n[Current message]\nUser: What languages are commonly spoken there?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……",
+        "fingerprints": {
+          "request": {
+            "sha256": "3a5448aea3af0cd88c5788baa245027656df1e52d79d3408fa93cc81dccfa2ef",
+            "short": "3a5448aea3af",
+            "length": 2203
+          },
+          "prompt": {
+            "sha256": "1df200fb9c2358be323a43e03dc7502bfca18a29d754e9ada58fdae3147eac30",
+            "short": "1df200fb9c23",
+            "length": 1513
+          },
+          "output": {
+            "sha256": "78da9ed88fee1459aca43f591892a74f3f7ee53963fde4f50d42af6d78208dd3",
+            "short": "78da9ed88fee",
+            "length": 87
+          }
+        },
+        "metadata": {
+          "request_id": 6,
+          "exchange_id": 6,
+          "session_id": "fafc9c37-03b4-49b3-b315-a60a59f108d7",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 5,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.55,
+          "history_degeneration_flags": [
+            "abrupt_cutoff"
+          ],
+          "history_degeneration_suspect": true,
+          "history_degeneration_suppressed": true,
+          "output_degeneration_score": 0.075,
+          "output_degeneration_risk": "HIGH",
+          "output_degeneration_flags": [
+            "truncation"
+          ],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.75
+          },
+          "output_degeneration_unreliable": true,
+          "collapse_turn_index": 5,
+          "collapse_prompt_length": 1513,
+          "collapse_output_length": 87,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.55,
+          "collapse_hallucination_score": 0.35,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [
+            "low_relevance"
+          ],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.253,
+          "collapse_risk": "HIGH",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "not_follow_up",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "brief",
+          "format_intent": "brief",
+          "allow_structured_output": false,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [],
+          "generation_risk_tier": "low",
+          "generation_risk_score": 1,
+          "generation_risk_signals": [
+            "long_thread"
+          ],
+          "temperature_multiplier": 1.0,
+          "repeat_penalty_adjust": 0.0,
+          "max_tokens_cap": null,
+          "stream_guard_min_repeats": 10,
+          "enable_list_loop_guard": false,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 0.65,
+          "conversation_health_mode": "warning",
+          "conversation_health_consecutive_anomalies": 1,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "[Previous assistant response suppressed due to degeneration detection]"
+    },
+    {
+      "turn_index": 6,
+      "user_message": "What is its elevation above sea level?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+        },
+        {
+          "role": "user",
+          "content": "What climate zone is it in?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu lies in the temperate‑climate zone."
+        },
+        {
+          "role": "user",
+          "content": "What languages are commonly spoken there?"
+        },
+        {
+          "role": "assistant",
+          "content": "[Previous assistant response suppressed due to degeneration detection]"
+        },
+        {
+          "role": "user",
+          "content": "What is its elevation above sea level?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: What is its elevation above sea level?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.656,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1600000000000001,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 1536,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: What is its elevation above sea level?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. This is a follow-up question; use prior conversation context to resolve pronouns and references. If uncertain about the referent, ask briefly rather than guessing. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nUse section formatting only if it improves clarity.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its religious minorities?\nAssistant: Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: What is its elevation above sea level?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.",
+        "fingerprints": {
+          "request": {
+            "sha256": "6f73eef2436c6cd485d2ad44f7f276ee7c0af398099ec99240ecf79a4391d68d",
+            "short": "6f73eef2436c",
+            "length": 2575
+          },
+          "prompt": {
+            "sha256": "22ff91e904fc61250b49f00228cd682005a673f51100c84c45c498a60800d558",
+            "short": "22ff91e904fc",
+            "length": 1868
+          },
+          "output": {
+            "sha256": "af75a787db0dadebb2155d5ba14845a7d4c24584a7a2c6a3182654ce8a887714",
+            "short": "af75a787db0d",
+            "length": 83
+          }
+        },
+        "metadata": {
+          "request_id": 7,
+          "exchange_id": 7,
+          "session_id": "20be45a3-9193-46ac-af99-e10ab17ac6d8",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 6,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.0,
+          "history_degeneration_flags": [],
+          "history_degeneration_suspect": false,
+          "history_degeneration_suppressed": false,
+          "output_degeneration_score": 0.0,
+          "output_degeneration_risk": "LOW",
+          "output_degeneration_flags": [],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.0,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.0
+          },
+          "output_degeneration_unreliable": false,
+          "collapse_turn_index": 6,
+          "collapse_prompt_length": 1868,
+          "collapse_output_length": 83,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.0,
+          "collapse_hallucination_score": 0.4,
+          "collapse_format_drift_score": 0,
+          "collapse_hallucination_flags": [
+            "prior_turn_suppressed_confabulation"
+          ],
+          "collapse_format_drift_flags": [],
+          "collapse_score": 0.1,
+          "collapse_risk": "MEDIUM",
+          "prior_turn_suppressed": true,
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "none",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "mixed",
+          "format_intent": "follow_up",
+          "allow_structured_output": true,
+          "require_list_format": false,
+          "instruction_conflicts": [],
+          "resolution_notes": [
+            "relaxed_brief_to_mixed_for_follow_up"
+          ],
+          "generation_risk_tier": "high",
+          "generation_risk_score": 4,
+          "generation_risk_signals": [
+            "prior_turn_unreliable",
+            "active_follow_up",
+            "long_thread"
+          ],
+          "temperature_multiplier": 0.82,
+          "repeat_penalty_adjust": 0.06,
+          "max_tokens_cap": 1536,
+          "stream_guard_min_repeats": 6,
+          "enable_list_loop_guard": true,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 1.0,
+          "conversation_health_mode": "normal",
+          "conversation_health_consecutive_anomalies": 0,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level."
+    },
+    {
+      "turn_index": 7,
+      "user_message": "What are its major tourist attractions?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+        },
+        {
+          "role": "user",
+          "content": "What climate zone is it in?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu lies in the temperate‑climate zone."
+        },
+        {
+          "role": "user",
+          "content": "What languages are commonly spoken there?"
+        },
+        {
+          "role": "assistant",
+          "content": "[Previous assistant response suppressed due to degeneration detection]"
+        },
+        {
+          "role": "user",
+          "content": "What is its elevation above sea level?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level."
+        },
+        {
+          "role": "user",
+          "content": "What are its major tourist attractions?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\n\n[Current message]\nUser: What are its major tourist attractions?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "Kathmandu’s most‑visited sights include:  \n\n1. **Pashupatinath Temple** – the city’s sacred Hindu shrine and a UNESCO World Heritage site, drawing pilgrims year after year.  \n2. **Swayambhun (Buddhist) Stupa** – also known as Boudhan or Saptarajee, it sits in Kathmandu valley and is an important Buddhist pilgrimage spot.  \n3.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.656,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1600000000000001,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\n\n[Current message]\nUser: What are its major tourist attractions?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: And its surface area?\nAssistant: Kathmandu covers roughly 1,200 square kilometres (about 460 square miles).\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\n\n[Current message]\nUser: What are its major tourist attractions?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "Kathmandu’s most‑visited sights include:  \n\n1. **Pashupatinath Temple** – the city’s sacred Hindu shrine and a UNESCO World Heritage site, drawing pilgrims year after year.  \n2. **Swayambhun (Buddhist) Stupa** – also known as Boudhan or Saptarajee, it sits in Kathmandu valley and is an important Buddhist pilgrimage spot.  \n3.",
+        "fingerprints": {
+          "request": {
+            "sha256": "f2d705ebf75773d18e572ff99eade4f3d3047c8df4d33dde7e7b1a118e63c180",
+            "short": "f2d705ebf757",
+            "length": 2328
+          },
+          "prompt": {
+            "sha256": "0ec1da72f7429a6c7321334412ec78479787f306aec22bfc76edc250773c5da7",
+            "short": "0ec1da72f742",
+            "length": 1621
+          },
+          "output": {
+            "sha256": "468809ec24ee941ded6029d6af51710d954291c9ff2f0561c05627f09ec7a284",
+            "short": "468809ec24ee",
+            "length": 321
+          }
+        },
+        "metadata": {
+          "request_id": 8,
+          "exchange_id": 8,
+          "session_id": "1a647f35-21e4-4691-b882-9ad426e1b090",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 7,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.55,
+          "history_degeneration_flags": [
+            "unfinished_numbering",
+            "abrupt_cutoff"
+          ],
+          "history_degeneration_suspect": true,
+          "history_degeneration_suppressed": true,
+          "output_degeneration_score": 0.24,
+          "output_degeneration_risk": "HIGH",
+          "output_degeneration_flags": [
+            "unfinished_bullet",
+            "truncation"
+          ],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.85,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.7
+          },
+          "output_degeneration_unreliable": true,
+          "collapse_turn_index": 7,
+          "collapse_prompt_length": 1621,
+          "collapse_output_length": 327,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.55,
+          "collapse_hallucination_score": 0.35,
+          "collapse_format_drift_score": 0.4,
+          "collapse_hallucination_flags": [
+            "low_relevance"
+          ],
+          "collapse_format_drift_flags": [
+            "broken_markdown_list"
+          ],
+          "collapse_score": 0.352,
+          "collapse_risk": "HIGH",
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "none",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "structured",
+          "format_intent": "enumeration",
+          "allow_structured_output": true,
+          "require_list_format": true,
+          "instruction_conflicts": [
+            "brief_vs_enumeration"
+          ],
+          "resolution_notes": [
+            "upgraded_brief_to_structured_for_enumeration"
+          ],
+          "generation_risk_tier": "high",
+          "generation_risk_score": 4,
+          "generation_risk_signals": [
+            "enumeration_intent",
+            "structured_reply_mode",
+            "active_follow_up",
+            "long_thread"
+          ],
+          "temperature_multiplier": 0.82,
+          "repeat_penalty_adjust": 0.06,
+          "max_tokens_cap": 2048,
+          "stream_guard_min_repeats": 6,
+          "enable_list_loop_guard": true,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 0.55,
+          "conversation_health_mode": "warning",
+          "conversation_health_consecutive_anomalies": 1,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "[Previous assistant response suppressed due to degeneration detection]"
+    },
+    {
+      "turn_index": 8,
+      "user_message": "Which UNESCO World Heritage sites are in the city?",
+      "input_state": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu."
+        },
+        {
+          "role": "user",
+          "content": "And how about its population?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu’s population is roughly 1.5 million people, giving it a rank of about the 20th‑largest city in Nepal."
+        },
+        {
+          "role": "user",
+          "content": "And its religious minorities?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu, like the rest of Nepal, is a melting‑pot of faiths.  In 2023 its **roughly 40 %** of the ​​"
+        },
+        {
+          "role": "user",
+          "content": "And its surface area?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu covers roughly 1,200 square kilometres (about 460 square miles)."
+        },
+        {
+          "role": "user",
+          "content": "What climate zone is it in?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu lies in the temperate‑climate zone."
+        },
+        {
+          "role": "user",
+          "content": "What languages are commonly spoken there?"
+        },
+        {
+          "role": "assistant",
+          "content": "[Previous assistant response suppressed due to degeneration detection]"
+        },
+        {
+          "role": "user",
+          "content": "What is its elevation above sea level?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level."
+        },
+        {
+          "role": "user",
+          "content": "What are its major tourist attractions?"
+        },
+        {
+          "role": "assistant",
+          "content": "[Previous assistant response suppressed due to degeneration detection]"
+        },
+        {
+          "role": "user",
+          "content": "Which UNESCO World Heritage sites are in the city?"
+        }
+      ],
+      "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\nUser: What are its major tourist attractions?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: Which UNESCO World Heritage sites are in the city?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+      "output": "In Kathmandu, the following sites are inscribed as UNESCO World Heritage places:\n\n1. **Kathmandu Durbar Square** – a historic citadel that includes palaces, temples and markets built in the 16th‑17th century.\n2.",
+      "backend_used": "qube",
+      "execution_path": "qube_native",
+      "trace": {
+        "request": {
+          "model": "",
+          "messages": [],
+          "sampling": {
+            "temperature": 0.656,
+            "top_p": 0.95,
+            "top_k": 40,
+            "repeat_penalty": 1.1600000000000001,
+            "presence_penalty": 0.0,
+            "frequency_penalty": null
+          },
+          "stop": [
+            "<|return|>",
+            "We need to",
+            "We need to",
+            "We should",
+            "We should",
+            "We have",
+            "We have",
+            "We have to",
+            "We have to",
+            "Let's",
+            "Let's",
+            "Let's clarify",
+            "Let's clarify",
+            "The user says",
+            "The user says",
+            "The question says",
+            "The question says",
+            "The user wants",
+            "The user wants",
+            "They may be asking",
+            "They may be asking",
+            "no meta commentary",
+            "no meta commentary"
+          ],
+          "metadata": {
+            "max_tokens": 2048,
+            "stream": true,
+            "echo": false,
+            "min_p": 0.05,
+            "input_mode": "completion_prompt",
+            "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\nUser: What are its major tourist attractions?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: Which UNESCO World Heritage sites are in the city?<|end|>\n<|start|>assistant<|channel|>final<|message|>"
+          }
+        },
+        "prompt": "<|start|>system<|message|>You are Qube, a highly capable offline AI assistant. Answer naturally and accurately.The immediately previous assistant reply was unreliable and has been removed from conversation history. Do not infer facts from that missing turn; answer from earlier reliable context and general knowledge only. If uncertain, say so. The user is asking for an enumeration. Provide a complete, well-organized list. Do not truncate to a single concise sentence. If you are not confident in a factual claim, say so rather than inventing details. Start directly with the answer content in natural language. Do not include preamble, planning, or meta commentary. Do not restate or analyze the user's request. Write only what the user should see. Keep the response natural and focused. When the answer is open-ended (story, joke, explanation), you may add one brief optional follow-up or invitation if it fits naturally. Only apply section formatting when the answer requires multiple distinct ideas or steps. Do not force section structure for single-fact or single-sentence answers. No citations or meta commentary.\n\nProvide a complete enumerated answer: a brief opening line, then numbered or bulleted items. Stop after the list is complete; do not repeat items or restart numbering.<|end|>\n<|start|>user<|message|>[Conversation so far]\nUser: What climate zone is it in?\nAssistant: Kathmandu lies in the temperate‑climate zone.\nUser: What languages are commonly spoken there?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\nUser: What is its elevation above sea level?\nAssistant: Kathmandu sits at an elevation of about 1,400 meters (≈4,600 feet) above sea level.\nUser: What are its major tourist attractions?\nAssistant: [Previous assistant response suppressed due to degeneration detection]\n\n[Current message]\nUser: Which UNESCO World Heritage sites are in the city?<|end|>\n<|start|>assistant<|channel|>final<|message|>",
+        "output": "In Kathmandu, the following sites are inscribed as UNESCO World Heritage places:\n\n1. **Kathmandu Durbar Square** – a historic citadel that includes palaces, temples and markets built in the 16th‑17th century.\n2.",
+        "fingerprints": {
+          "request": {
+            "sha256": "352c11a3803c1ef99ee1bc9bf76aa4456d37f7e59ceae394207a88f69dfe2a5c",
+            "short": "352c11a3803c",
+            "length": 2669
+          },
+          "prompt": {
+            "sha256": "14baefa1f3c9abefe66bb1daeec9fa89f646728100238c7aada95115afefc102",
+            "short": "14baefa1f3c9",
+            "length": 1962
+          },
+          "output": {
+            "sha256": "1bae827b907d08f4469035096e516b09e2e856c1acd3641e41d3378c169503d7",
+            "short": "1bae827b907d",
+            "length": 211
+          }
+        },
+        "metadata": {
+          "request_id": 9,
+          "exchange_id": 9,
+          "session_id": "4a080249-3adf-46df-b8a7-10b1eb2f38d5",
+          "model_name": "gpt-oss-20b-Q5_K_M.gguf",
+          "engine_mode": "internal",
+          "execution_path": "qube_native",
+          "execution_route": "NONE",
+          "scenario": "Nepal follow-up chain",
+          "turn_index": 8,
+          "backend": "qube",
+          "topic": "kathmandu_follow_up_chain",
+          "stress_turns": 9,
+          "source_file": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json",
+          "history_degeneration_score": 0.55,
+          "history_degeneration_flags": [
+            "unfinished_numbering",
+            "abrupt_cutoff"
+          ],
+          "history_degeneration_suspect": true,
+          "history_degeneration_suppressed": true,
+          "output_degeneration_score": 0.24,
+          "output_degeneration_risk": "HIGH",
+          "output_degeneration_flags": [
+            "unfinished_bullet",
+            "truncation"
+          ],
+          "output_degeneration_components": {
+            "repetition": 0.0,
+            "malformed_list": 0.0,
+            "self_correction": 0.0,
+            "meta_commentary": 0.0,
+            "unfinished_bullet": 0.85,
+            "punctuation_loop": 0.0,
+            "markdown_explosion": 0.0,
+            "entropy_collapse": 0.0,
+            "truncation": 0.7
+          },
+          "output_degeneration_unreliable": true,
+          "collapse_turn_index": 8,
+          "collapse_prompt_length": 1962,
+          "collapse_output_length": 211,
+          "collapse_rewrite_confidence": 0.0,
+          "collapse_degeneration_score": 0.55,
+          "collapse_hallucination_score": 0.4,
+          "collapse_format_drift_score": 0.4,
+          "collapse_hallucination_flags": [
+            "prior_turn_suppressed_confabulation"
+          ],
+          "collapse_format_drift_flags": [
+            "broken_markdown_list"
+          ],
+          "collapse_score": 0.365,
+          "collapse_risk": "HIGH",
+          "prior_turn_suppressed": true,
+          "rewrite_anchor": "",
+          "rewrite_confidence": 0.0,
+          "rewrite_reason": "not_follow_up",
+          "history_strategy": "harmony_compact",
+          "chat_format_mode": "structured",
+          "format_intent": "enumeration",
+          "allow_structured_output": true,
+          "require_list_format": true,
+          "instruction_conflicts": [
+            "brief_vs_enumeration"
+          ],
+          "resolution_notes": [
+            "upgraded_brief_to_structured_for_enumeration"
+          ],
+          "generation_risk_tier": "high",
+          "generation_risk_score": 5,
+          "generation_risk_signals": [
+            "prior_turn_unreliable",
+            "enumeration_intent",
+            "structured_reply_mode",
+            "long_thread"
+          ],
+          "temperature_multiplier": 0.82,
+          "repeat_penalty_adjust": 0.06,
+          "max_tokens_cap": 2048,
+          "stream_guard_min_repeats": 6,
+          "enable_list_loop_guard": true,
+          "conversation_health_policy_mode": "normal",
+          "conversation_health_score": 0.55,
+          "conversation_health_mode": "warning",
+          "conversation_health_consecutive_anomalies": 1,
+          "conversation_health_turn_count": 1,
+          "conversation_health_allow_discourse_rewrite": true,
+          "conversation_health_allow_query_rewrite": true,
+          "conversation_health_temperature_multiplier": 1.0,
+          "conversation_health_max_tokens_cap": null,
+          "conversation_health_stream_guard_min_repeats": 10,
+          "conversation_health_degeneration_rescore_every": 120
+        }
+      },
+      "history_output": "[Previous assistant response suppressed due to degeneration detection]"
+    }
+  ],
+  "metadata": {
+    "source_scenario": "/home/personax404/Documents/Git_Repo_Clones/Qube/test_scenarios/nepal_follow_up_chain.json"
+  }
+}

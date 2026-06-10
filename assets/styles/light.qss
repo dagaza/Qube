@@ -94,6 +94,25 @@ QToolTip {
     width: 1px;
 }
 
+#CanonicalTraceDiffWindow {
+    background-color: #f1f5f9;
+}
+#CanonicalTraceDiffSurface {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+}
+#CanonicalTraceDiffSummary {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+#CanonicalTraceDiffWindow QLabel,
+#CanonicalTraceDiffWindow QGroupBox,
+#CanonicalTraceDiffWindow QPushButton {
+    color: #1e293b;
+}
+
 #LibraryPreviewStage, #ChatStage, #SettingsScrollArea {
     background-color: #ffffff;
 }

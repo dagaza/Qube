@@ -1,0 +1,143 @@
+{
+  "turn_id": 6,
+  "session_id": "fafc9c37-03b4-49b3-b315-a60a59f108d7",
+  "user_query_preview": "What languages are commonly spoken there?",
+  "temperature": 0.8,
+  "top_k": 40,
+  "top_p": 0.95,
+  "repeat_penalty": 1.1,
+  "min_p": 0.05,
+  "presence_penalty": 0.0,
+  "max_tokens": 2048,
+  "stop_tokens": [
+    "<|return|>",
+    "\nWe need to",
+    " We need to",
+    "\nWe should",
+    " We should",
+    "\nWe have",
+    " We have",
+    "\nWe have to",
+    " We have to",
+    "\nLet's",
+    " Let's",
+    "\nLet's clarify",
+    "Let's clarify",
+    "\nThe user says",
+    "The user says",
+    "\nThe question says",
+    "The question says",
+    "\nThe user wants",
+    " The user wants",
+    "\nThey may be asking",
+    " They may be asking",
+    "\nno meta commentary",
+    " no meta commentary"
+  ],
+  "stop_token_count": 23,
+  "eos_token_str": "<|return|>",
+  "debug_stop_mode": "full",
+  "debug_temperature_override": null,
+  "debug_run": "",
+  "finish_reason": "complete",
+  "stream_cancel_reason": "",
+  "logits_available": false,
+  "logits_note": "Per-token logit probabilities are not captured by default. Enable llama.cpp logprobs in native engine if needed.",
+  "ground_truth_token_count": 24,
+  "ground_truth_token_ids_sample": [
+    153229,
+    125107,
+    802,
+    7313,
+    6439,
+    382,
+    46656,
+    3010,
+    11,
+    889,
+    1645,
+    15875,
+    1217,
+    10591,
+    7725,
+    50005,
+    935,
+    50005,
+    71,
+    4538,
+    1131,
+    4369,
+    2167,
+    679
+  ],
+  "history_suppressed": true,
+  "corruption_origin": {
+    "likely_stage": "raw_generation",
+    "likely_cause": "sampling_or_model_generation",
+    "postprocess_introduced_corruption": false,
+    "stage_signals": {
+      "raw_generation": {
+        "len": 88,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_harmony_parser": {
+        "len": 88,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "after_worker_filters": {
+        "len": 87,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "worker_return": {
+        "len": 87,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0,
+        "format_drift_flags": [],
+        "degeneration_score": 0.55,
+        "degeneration_flags": [
+          "abrupt_cutoff"
+        ]
+      },
+      "history_stored": {
+        "len": 70,
+        "malformed_list": false,
+        "token_soup": false,
+        "format_drift_score": 0.45,
+        "format_drift_flags": [
+          "meta_preamble"
+        ],
+        "degeneration_score": 0.0,
+        "degeneration_flags": []
+      }
+    },
+    "raw_equals_stored": false,
+    "raw_equals_worker_return": false
+  },
+  "collapse_risk": "MEDIUM",
+  "collapse_score": 0.2,
+  "format_drift_flags": [
+    "meta_preamble"
+  ]
+}

@@ -1,0 +1,21 @@
+--- raw_text (len=88) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+
+--- after_harmony_parser (len=88) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+
+--- after_worker_filters (len=87) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+--- streamed_incremental (len=87) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+--- worker_return_text (len=87) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+--- engine_end_text (len=88) ---
+Kathmandu’s official language is Nepali, but most residents also speak English‑to‑hmm……
+
+

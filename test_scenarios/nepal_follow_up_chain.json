@@ -1,0 +1,19 @@
+{
+  "name": "Nepal follow-up chain",
+  "description": "Multi-turn Kathmandu follow-ups (user-only script). Replay injects assistant replies from each captured turn — do not add assistant lines between user turns.",
+  "messages": [
+    { "role": "user", "content": "What is the capital of Nepal?" },
+    { "role": "user", "content": "And how about its population?" },
+    { "role": "user", "content": "And its religious minorities?" },
+    { "role": "user", "content": "And its surface area?" },
+    { "role": "user", "content": "What climate zone is it in?" },
+    { "role": "user", "content": "What languages are commonly spoken there?" },
+    { "role": "user", "content": "What is its elevation above sea level?" },
+    { "role": "user", "content": "What are its major tourist attractions?" },
+    { "role": "user", "content": "Which UNESCO World Heritage sites are in the city?" }
+  ],
+  "metadata": {
+    "topic": "kathmandu_follow_up_chain",
+    "stress_turns": 9
+  }
+}

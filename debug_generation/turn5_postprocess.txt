@@ -1,0 +1,18 @@
+--- raw_text (len=111) ---
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  
+
+--- after_harmony_parser (len=111) ---
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  
+
+--- after_worker_filters (len=45) ---
+Kathmandu lies in the temperate‑climate zone.
+
+--- streamed_incremental (len=109) ---
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …
+
+--- worker_return_text (len=45) ---
+Kathmandu lies in the temperate‑climate zone.
+
+--- engine_end_text (len=111) ---
+Kathmandu lies in the temperate‑climate zone.  It has a mild, semi‑humid climate with a short‐tropical‑like …  
+
