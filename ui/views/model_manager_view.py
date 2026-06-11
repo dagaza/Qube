@@ -512,6 +512,7 @@ class ModelManagerView(QWidget):
         self._search_visible_count: int = 0
         self._catalog_hardware_plan = None
         self._hardware_suggestions_enabled = get_model_manager_hardware_suggestions()
+        self._hardware_suggestions_dirty = False
         self._hub_probe_worker: HfConnectivityProbeWorker | None = None
         self._hub_reachable: bool | None = None
         self._hub_status_detail: str = ""
@@ -533,11 +534,16 @@ class ModelManagerView(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        enabled = get_model_manager_hardware_suggestions()
-        if enabled != self._hardware_suggestions_enabled:
-            self._hardware_suggestions_enabled = enabled
+        if getattr(self, "_hardware_suggestions_dirty", False):
+            self._hardware_suggestions_dirty = False
             if not self.hub_search_edit.text().strip():
                 self._populate_editors_picks()
+        else:
+            enabled = get_model_manager_hardware_suggestions()
+            if enabled != self._hardware_suggestions_enabled:
+                self._hardware_suggestions_enabled = enabled
+                if not self.hub_search_edit.text().strip():
+                    self._populate_editors_picks()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_list_surface(is_dark)
         self._apply_hub_metadata_styles(is_dark)
@@ -2331,6 +2337,9 @@ class ModelManagerView(QWidget):
     def refresh_hardware_suggestions(self) -> None:
         """Re-apply verified-list ordering when the Settings toggle changes."""
         self._hardware_suggestions_enabled = get_model_manager_hardware_suggestions()
+        if not self.isVisible():
+            self._hardware_suggestions_dirty = True
+            return
         if not self.hub_search_edit.text().strip():
             self._populate_editors_picks()
 
