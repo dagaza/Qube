@@ -912,9 +912,8 @@ class MainWindow(QMainWindow):
         # Helper to create consistent Nav Buttons
         def create_nav_btn(icon_name, index=None, size=24, tooltip=None):
             btn = QPushButton()
-            # Initial color is a muted gray; _route_view handles the active blue
-            btn.setIcon(qta.icon(icon_name, color='#64748b'))
-            btn.setIconSize(QSize(size, size))
+            btn._nav_fa_icon = icon_name
+            btn._nav_icon_size = size
             btn.setFixedSize(44, 44)
             btn.setCheckable(True)
             btn.setProperty("class", "NavButton")
@@ -928,8 +927,6 @@ class MainWindow(QMainWindow):
         self.nav_chat = create_nav_btn('fa5s.comment-alt', 0, tooltip="Conversations")
         self.nav_chat.setObjectName("NavChat")
         self.nav_chat.setChecked(True)
-        # Highlight the first one active by default
-        self.nav_chat.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa'))
 
         self.nav_library = create_nav_btn('fa5s.book', 1, tooltip="Library")
         self.nav_library.setObjectName("NavLibrary")
@@ -1003,7 +1000,10 @@ class MainWindow(QMainWindow):
             self.nav_models,
             self.nav_settings,
         ]
-        
+        self._nav_active_btn = self.nav_chat
+        for btn in self.nav_buttons:
+            self._refresh_nav_btn_icon(btn)
+
         return sidebar
     
     def _build_tools_pane(self) -> QFrame:
@@ -2027,20 +2027,45 @@ class MainWindow(QMainWindow):
         button.setText(label)
         callback(data)
 
+    def _nav_icon_colors(self) -> tuple[str, str]:
+        active = "#89b4fa"
+        inactive = "#cdd6f4" if self._is_dark_theme else "#64748b"
+        return active, inactive
+
+    def _refresh_nav_btn_icon(self, btn: QPushButton) -> None:
+        icon_name = getattr(btn, "_nav_fa_icon", None)
+        if not icon_name:
+            return
+        size = getattr(btn, "_nav_icon_size", 24)
+        active_color, inactive_color = self._nav_icon_colors()
+        color = active_color if btn.isChecked() else inactive_color
+        btn.setIcon(qta.icon(icon_name, color=color))
+        btn.setIconSize(QSize(size, size))
+
     def _route_view(self, index: int, active_button: QPushButton):
-        """Switches the QStackedWidget and manages button highlights."""
-        self.main_stage.setCurrentIndex(index)
-        for btn in self.nav_buttons:
-            if btn != active_button:
-                btn.setChecked(False)
-            
-            # Reset icon colors to default, then highlight the active one
-            if btn == self.nav_chat: btn.setIcon(qta.icon('fa5s.comment-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
-            elif btn == self.nav_library: btn.setIcon(qta.icon('fa5s.book', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
-            elif btn == self.nav_memory: btn.setIcon(qta.icon('fa5s.brain', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
-            elif btn == self.nav_telemetry: btn.setIcon(qta.icon('fa5s.tachometer-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
-            elif btn == self.nav_models: btn.setIcon(qta.icon('fa5s.microchip', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
-            elif btn == self.nav_settings: btn.setIcon(qta.icon('fa5s.cog', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+        """Switches the QStackedWidget and manages button highlights.
+
+        Updates icons only for the previous and newly active buttons to avoid
+        rebuilding all nav pixmaps each click (noticeable flicker on Windows).
+        """
+        prev_active = getattr(self, "_nav_active_btn", None)
+        stage = self.main_stage
+        stage.setUpdatesEnabled(False)
+        try:
+            stage.setCurrentIndex(index)
+            for btn in self.nav_buttons:
+                btn.setChecked(btn is active_button)
+            active_button.setChecked(True)
+            updated: set[QPushButton] = set()
+            if isinstance(prev_active, QPushButton) and prev_active in self.nav_buttons:
+                updated.add(prev_active)
+            updated.add(active_button)
+            for btn in updated:
+                self._refresh_nav_btn_icon(btn)
+            self._nav_active_btn = active_button
+        finally:
+            stage.setUpdatesEnabled(True)
+            stage.update()
 
     def _toggle_theme(self):
         """Toggles the global theme and resets the system palette to prevent 'Ghosting'."""
@@ -2144,6 +2169,9 @@ class MainWindow(QMainWindow):
             self.tray_controller.apply_theme(self._is_dark_theme)
         if self._companion_controller is not None:
             self._companion_controller.apply_theme(self._is_dark_theme)
+
+        for btn in getattr(self, "nav_buttons", ()):
+            self._refresh_nav_btn_icon(btn)
 
     def _setup_notification_service(self) -> None:
         self._notification_service.set_window_state_providers(
