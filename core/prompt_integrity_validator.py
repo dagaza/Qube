@@ -262,6 +262,9 @@ def _has_assistant_anchor(p: str, cf: str) -> bool:
     # Harmony final-channel prefill
     if _has_harmony_final_anchor(p):
         return True
+    # Gemma 4 turn-based chat template
+    if re.search(r"<\|turn>model\s*$", tail, re.I):
+        return True
     # Fallback: any 'assistant' role marker near end
     if "assistant" in tail.lower() and (
         "im_start" in tail or "header_id" in tail or "[/INST]" in tail[-80:]

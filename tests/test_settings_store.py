@@ -230,6 +230,14 @@ class TestAppSettingsWithJsonStore(unittest.TestCase):
         reset_settings_store_for_tests()
         self.assertTrue(app_settings.get_memory_promotion_acknowledged())
 
+    def test_mcp_rag_and_web_defaults_are_off_on_first_launch(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        self.assertFalse(app_settings.get_mcp_rag_enabled())
+        self.assertFalse(app_settings.get_mcp_rag_auto_activator_enabled())
+        self.assertFalse(app_settings.get_mcp_rag_strict_enabled())
+        self.assertFalse(app_settings.get_mcp_internet_hybrid_enabled())
+
 
 if __name__ == "__main__":
     unittest.main()

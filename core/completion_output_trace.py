@@ -17,6 +17,28 @@ logger = logging.getLogger("Qube.NativeLLM.Debug")
 
 _EVENT = "llm_completion_output_trace"
 
+_VALIDATION_TRACE_KEYS: tuple[str, ...] = (
+    "first_pass_raw_len",
+    "sanitized_len",
+    "validation_issues",
+    "validation_severity",
+    "raw_validation_issues",
+    "raw_validation_severity",
+    "retry_attempted",
+    "retry_used",
+    "retry_reason",
+    "retry_len",
+    "retry_max_tokens",
+    "original_max_tokens",
+    "original_format",
+    "final_format",
+    "replacement_suppressed",
+    "replacement_rejection_reason",
+    "streamed_visible_len",
+    "retry_replaced_stream",
+    "post_inference_ms",
+)
+
 
 def completion_output_trace_enabled() -> bool:
     return os.environ.get("QUBE_LOG_RAW_COMPLETION", "").strip().lower() in (
@@ -133,6 +155,9 @@ def build_completion_output_trace_payload(
         payload.update(full_lengths)
     if snapshot.extra:
         payload["extra"] = dict(snapshot.extra)
+        for key in _VALIDATION_TRACE_KEYS:
+            if key in snapshot.extra:
+                payload[key] = snapshot.extra[key]
     return payload
 
 

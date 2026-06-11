@@ -148,6 +148,37 @@ def build_minimal_referent_fallback_suffix(
     return text
 
 
+def build_entity_aspect_grounding_suffix(
+    entity: str,
+    *,
+    aspect: str = "",
+    entity_type: str = "unknown",
+    max_chars: int = 220,
+) -> str:
+    """Redundant lightweight grounding for follow-ups (entity + optional facet)."""
+    ent = (entity or "").strip()
+    if not ent:
+        return ""
+    asp = (aspect or "").strip()
+    type_hint = ""
+    if entity_type and entity_type not in ("unknown", ""):
+        type_hint = f" ({entity_type})"
+    if asp:
+        text = (
+            f" Conversation subject: {ent[:60]}{type_hint}. "
+            f"Current question concerns: {asp[:80]}. "
+            "Do not treat examples from the previous answer as the question subject."
+        )
+    else:
+        text = (
+            f" Conversation subject: {ent[:60]}{type_hint}. "
+            "Resolve follow-up pronouns to this subject unless the user introduces a new one."
+        )
+    if len(text) > max_chars:
+        text = text[: max_chars - 1].rstrip() + "."
+    return text
+
+
 def _token_count(text: str) -> int:
     return len(re.findall(r"\S+", (text or "").strip()))
 

@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Optional
 
 from core.discourse_patterns import has_possessive_anaphor, is_deictic_prompt
+from core.discourse_referent_policy import (
+    rewrite_referent_target,
+    validate_resolved_query,
+)
 
 if TYPE_CHECKING:
     from core.discourse_intent import FollowUpClassification
@@ -95,7 +99,7 @@ def resolve_ambiguous_user_query(
     if not original or discourse is None:
         return ResolvedUserQuery(original, original, (), 0.0, "none")
 
-    referent = (discourse.active_referent or "").strip()
+    referent = (rewrite_referent_target(discourse) or "").strip()
     if not referent:
         return ResolvedUserQuery(original, original, (), 0.0, "none")
 
@@ -117,12 +121,14 @@ def resolve_ambiguous_user_query(
     if _POPULATION_SIZE.search(working) or _POPULATION_FRAME.search(working):
         resolved = f"What is the population of {referent}?"
         subs.append(("its", referent))
-        return ResolvedUserQuery(original, resolved, tuple(subs), 0.88, "frame_template")
+        result = ResolvedUserQuery(original, resolved, tuple(subs), 0.88, "frame_template")
+        return _finalize_resolved_query(result, discourse)
 
     if _AREA_FRAME.search(working):
         resolved = f"What is the area of {referent}?"
         subs.append(("its", referent))
-        return ResolvedUserQuery(original, resolved, tuple(subs), 0.85, "frame_template")
+        result = ResolvedUserQuery(original, resolved, tuple(subs), 0.85, "frame_template")
+        return _finalize_resolved_query(result, discourse)
 
     if has_possessive_anaphor(working):
         def _repl(m: re.Match[str]) -> str:
@@ -163,4 +169,27 @@ def resolve_ambiguous_user_query(
     if reason == "none":
         return ResolvedUserQuery(original, original, (), 0.0, "none")
 
-    return ResolvedUserQuery(original, working, tuple(subs), confidence, reason)
+    return _finalize_resolved_query(
+        ResolvedUserQuery(original, working, tuple(subs), confidence, reason),
+        discourse,
+    )
+
+
+def _finalize_resolved_query(
+    result: ResolvedUserQuery,
+    discourse: Optional["DiscourseState"],
+) -> ResolvedUserQuery:
+    if not result.succeeded:
+        return result
+    ok, reject = validate_resolved_query(result.resolved, discourse)
+    if ok:
+        return result
+    from core.discourse_telemetry import log_discourse_rewrite_validation_failed
+
+    log_discourse_rewrite_validation_failed(
+        original=result.original,
+        resolved=result.resolved,
+        reject_reason=reject,
+        referent=(rewrite_referent_target(discourse) or ""),
+    )
+    return ResolvedUserQuery(result.original, result.original, (), 0.0, "none")

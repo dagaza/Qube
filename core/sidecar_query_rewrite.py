@@ -13,15 +13,28 @@ from core.app_settings import (
     get_sidecar_query_rewrite_enabled,
 )
 from core.discourse_intent import FollowUpClassification
+from core.discourse_referent_policy import rewrite_referent_target
 from core.discourse_state import DiscourseState
 from core.sidecar_types import QueryExpansion, SidecarTask
 
 logger = logging.getLogger("Qube.SidecarQueryRewrite")
 
+# Aligned with core/discourse_state.py — avoid pseudo-entities from list clauses.
 _PROPER_NAME = re.compile(
     r"\b((?:The\s+)?[A-Z][a-z0-9]+"
-    r"(?:\s+(?:the|of|and|a|in)\s+[A-Za-z][a-z0-9]+|\s+[A-Z][a-z0-9]+)+)\b"
+    r"(?:\s+(?:the|of|and)\s+[A-Za-z][a-z0-9]+|\s+[A-Z][a-z0-9]+)+)\b"
 )
+
+
+def resolve_sidecar_discourse_context(
+    discourse: DiscourseState | None,
+) -> tuple[str, str]:
+    """Return (durable entity, current aspect) for assistive sidecar expansion."""
+    if discourse is None:
+        return "", ""
+    entity = (rewrite_referent_target(discourse) or "").strip()
+    aspect = (discourse.active_aspect or "").strip()
+    return entity, aspect
 
 
 def _history_tail(history: list[dict[str, Any]], max_chars: int = 1200) -> str:
@@ -39,11 +52,27 @@ def _anchor_blob(*parts: str) -> str:
     return " ".join(p for p in parts if p).lower()
 
 
+def _phrase_anchored(phrase: str, blob: str, anchors: tuple[str, ...]) -> bool:
+    p = (phrase or "").strip()
+    if not p:
+        return True
+    pl = p.lower()
+    if pl in blob:
+        return True
+    for anchor in anchors:
+        a = (anchor or "").strip().lower()
+        if not a:
+            continue
+        if a in pl or pl in a:
+            return True
+    return False
+
+
 def expansion_adds_unanchored_proper_nouns(expanded: str, *anchors: str) -> bool:
     """True when expansion introduces a proper-noun phrase absent from anchors."""
     blob = _anchor_blob(*anchors)
     for phrase in _PROPER_NAME.findall(expanded or ""):
-        if phrase.strip() and phrase.lower() not in blob:
+        if phrase.strip() and not _phrase_anchored(phrase, blob, anchors):
             return True
     return False
 
@@ -68,11 +97,7 @@ def propose_query_expansion(
     if hasattr(sidecar_client, "available") and not sidecar_client.available:
         return None
 
-    topic = (
-        (discourse.active_referent if discourse else None)
-        or (discourse.active_topic if discourse else None)
-        or ""
-    )
+    entity, aspect = resolve_sidecar_discourse_context(discourse)
     tail = _history_tail(history or [])
 
     timeout = get_sidecar_foreground_timeout_ms() / 1000.0
@@ -81,7 +106,8 @@ def propose_query_expansion(
             SidecarTask.query_rewrite,
             timeout_sec=timeout,
             original_query=text,
-            topic=topic,
+            topic=entity,
+            active_aspect=aspect,
             follow_up_kind=follow_up.kind.value,
             history_tail=tail,
         )
@@ -104,7 +130,7 @@ def propose_query_expansion(
         )
         return None
 
-    if expansion_adds_unanchored_proper_nouns(expanded, text, topic, tail):
+    if expansion_adds_unanchored_proper_nouns(expanded, text, entity, aspect, tail):
         logger.info("[Sidecar] rewrite rejected (unanchored proper noun)")
         return None
 

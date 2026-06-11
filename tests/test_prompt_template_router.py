@@ -5,7 +5,11 @@ from unittest.mock import patch
 
 from core.execution_policy import ExecutionPolicy
 from core.model_reasoning_profile import ModelReasoningProfile
-from core.prompt_template_router import build_prompt_bundle
+from core.prompt_template_router import (
+    apply_reasoning_injection,
+    build_prompt_bundle,
+    infer_template_type,
+)
 
 
 class _F:
@@ -140,6 +144,26 @@ class TestBuildPromptBundle(unittest.TestCase):
             )
         self.assertNotIn("<|assistant|>", bundle.prompt)
         self.assertTrue(bundle.prompt.rstrip().endswith("[/INST]"))
+
+    def test_gemma_disabled_reasoning_injection_before_turn_model_anchor(self) -> None:
+        prompt = (
+            "<bos><|turn>system\nYou are Qube.<turn|>\n"
+            "<|turn>user\nWhy is the sky blue?<turn|>\n"
+            "<|turn>model\n"
+        )
+        out = apply_reasoning_injection(prompt, "gemma", "disabled")
+        self.assertIn("Write only the user-facing response.", out)
+        self.assertLess(out.index("Write only the user-facing response."), out.rindex("<|turn>model"))
+        self.assertNotIn("<|assistant|>", out)
+        self.assertTrue(out.rstrip().endswith("<|turn>model"))
+
+    def test_infer_template_type_detects_gemma_turn_markers(self) -> None:
+        llama = _F()
+        llama.metadata = {
+            "tokenizer.chat_template": "{{ '<|turn>user' }}",
+            "general.name": "other-model",
+        }
+        self.assertEqual(infer_template_type(llama), "gemma")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,9 @@ if _WS_ROOT not in sys.path:
 from core.output_degeneration import (  # noqa: E402
     OutputDegenerationStreamObserver,
     detect_output_degeneration,
+    detect_stream_pathology,
     should_mark_turn_unreliable,
+    should_suppress_history,
 )
 
 _LOG_DEGENERATE_TAIL = (
@@ -30,6 +32,25 @@ _VALID_TWO_POINT = (
     "Birds bathe for hygiene and comfort.\n\n"
     "1. **Cleaning** – Removes dirt and parasites from feathers.\n\n"
     "2. **Temperature** – Splashing helps birds cool down on hot days.\n"
+)
+
+# Truncated mid-list from exchange 15 (gemma-4 Nepal arts analysis).
+_EXCHANGE_15_PARTIAL = (
+    "Here is a comprehensive analysis of Nepal's music and arts scene, presented using "
+    "tables, diagrams, and lists.\n\n"
+    "### Musical Landscape Overview\n\n"
+    "| Genre Category | Key Characteristics | Influences & Sound Palette | "
+    "Prominent Examples/Styles |\n"
+    "| :--- | :--- | :--- | :--- |\n"
+    "| **Traditional Folk** | Storytelling through song; strong community roots. | "
+    "Newari, Rai, Limbu traditions; regional dialects. | *Bhajan*, traditional wedding "
+    "songs, ritualistic music. |\n"
+    "| **Modern Pop/Rock** | Driven by urban youth culture. | Western pop structures. | "
+    "Urban contemporary singers. |\n\n"
+    "***\n\n"
+    "### Visual & Performing Arts Scene Analysis\n\n"
+    "#### Artistic Medium Breakdown (List Format)\n\n"
+    "*   **"
 )
 
 
@@ -97,6 +118,31 @@ class TestOutputDegenerationDetector(unittest.TestCase):
                 tripped = True
                 break
         self.assertTrue(tripped)
+
+    def test_stream_pathology_does_not_trip_on_exchange_15_partial(self) -> None:
+        result = detect_stream_pathology(_EXCHANGE_15_PARTIAL)
+        self.assertEqual(result.risk, "LOW")
+        observer = OutputDegenerationStreamObserver(rescore_every=80, min_buffer=160)
+        tripped = any(
+            observer.observe(_EXCHANGE_15_PARTIAL[i : i + 20])
+            for i in range(0, len(_EXCHANGE_15_PARTIAL), 20)
+        )
+        self.assertFalse(tripped)
+
+    def test_stream_observer_trips_on_repetition_loop(self) -> None:
+        text = " ".join(["[W]"] * 42)
+        observer = OutputDegenerationStreamObserver(rescore_every=80, min_buffer=160)
+        tripped = observer.observe(text)
+        self.assertTrue(tripped)
+
+    def test_should_suppress_history_class_b_after_cancel(self) -> None:
+        result = detect_output_degeneration(_EXCHANGE_15_PARTIAL)
+        self.assertEqual(result.risk, "HIGH")
+        self.assertFalse(should_suppress_history(result, stream_cancelled=True))
+
+    def test_should_suppress_history_pathology_after_cancel(self) -> None:
+        result = detect_output_degeneration(_LOG_DEGENERATE_TAIL)
+        self.assertTrue(should_suppress_history(result, stream_cancelled=True))
 
     def test_trace_fields(self) -> None:
         result = detect_output_degeneration(_LOG_DEGENERATE_TAIL)

@@ -93,6 +93,19 @@ class TestConversationHealth(unittest.TestCase):
         self.assertLess(merged.temperature_multiplier, base.temperature_multiplier)
         self.assertIn("conversation_health_warning", merged.signals)
 
+    def test_self_inflicted_stream_cancel_does_not_degrade_health(self) -> None:
+        after = update_conversation_health(
+            initial_conversation_health(),
+            outcome=TurnAnomalyOutcome(
+                degeneration_risk="HIGH",
+                history_suppressed=False,
+                stream_degeneration_cancelled=True,
+            ),
+        )
+        self.assertEqual(after.health_score, 1.0)
+        self.assertEqual(after.mode, "normal")
+        self.assertEqual(after.consecutive_anomalies, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

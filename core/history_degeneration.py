@@ -13,7 +13,7 @@ from core.output_degeneration import (
     HISTORY_SUPPRESSION_PLACEHOLDER,
     OutputDegenerationResult,
     detect_output_degeneration,
-    should_mark_turn_unreliable,
+    should_suppress_history,
 )
 
 HISTORY_DEGENERATION_THRESHOLD = 0.55
@@ -74,10 +74,14 @@ def _legacy_flags(result: OutputDegenerationResult) -> tuple[str, ...]:
     return tuple(out)
 
 
-def score_history_degeneration(text: str) -> HistoryDegenerationResult:
+def score_history_degeneration(
+    text: str,
+    *,
+    stream_cancelled: bool = False,
+) -> HistoryDegenerationResult:
     """Score assistant text for history-poisoning degeneration markers."""
     detected = detect_output_degeneration(text)
-    suspect = should_mark_turn_unreliable(detected)
+    suspect = should_suppress_history(detected, stream_cancelled=stream_cancelled)
     score = detected.composite_score
     if suspect and score < HIGH_THRESHOLD:
         score = HIGH_THRESHOLD
@@ -91,9 +95,28 @@ def score_history_degeneration(text: str) -> HistoryDegenerationResult:
 
 def resolve_assistant_history_content(
     text: str,
+    *,
+    stream_cancelled: bool = False,
 ) -> tuple[str, HistoryDegenerationResult]:
     """Return the assistant content to store in session history."""
-    result = score_history_degeneration(text)
+    result = score_history_degeneration(text, stream_cancelled=stream_cancelled)
     if result.should_suppress:
         return HISTORY_SUPPRESSION_PLACEHOLDER, result
     return (text or "").strip(), result
+
+
+def history_suppression_reason(
+    result: HistoryDegenerationResult,
+    *,
+    stream_cancelled: bool = False,
+) -> str:
+    """Telemetry label for why history was or was not suppressed."""
+    if not result.should_suppress:
+        if stream_cancelled and result.output_degeneration is not None:
+            od = result.output_degeneration
+            if od.risk == "HIGH":
+                return "self_inflicted_class_b_skipped"
+        return "not_suppressed"
+    if stream_cancelled:
+        return "pathology"
+    return "natural_incomplete"

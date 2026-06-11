@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 
 from core.discourse_patterns import has_possessive_anaphor, is_deictic_prompt, is_deictic_topic_phrase
 from core.discourse_query_rewrite import REWRITE_CONFIDENCE_MIN, ResolvedUserQuery
+from core.discourse_referent_policy import fallback_referent
 
 if TYPE_CHECKING:
     from core.discourse_intent import FollowUpClassification
@@ -290,17 +291,17 @@ def select_salience_anchor(
     resolved_query: ResolvedUserQuery | None,
 ) -> tuple[Optional[str], float, str]:
     """Pick a validated anchor for system salience suffix, if any."""
-    if resolved_query is not None and resolved_query.succeeded:
-        return None, 0.0, "query_resolved"
-
     if discourse is None:
         return None, 0.0, "none"
 
-    referent = (discourse.active_referent or "").strip()
+    referent = (fallback_referent(discourse) or "").strip()
     if referent:
         score = score_rewrite_anchor(referent, user_message=user_message)
         if score.usable and score.confidence >= REWRITE_CONFIDENCE_MIN:
-            return referent, score.confidence, "referent_salience"
+            reason = "referent_salience"
+            if resolved_query is not None and resolved_query.succeeded:
+                reason = "referent_salience_with_rewrite"
+            return referent, score.confidence, reason
 
     topic = (discourse.active_topic or "").strip()
     if topic and not is_deictic_topic_phrase(topic):

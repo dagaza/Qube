@@ -40,6 +40,15 @@ def detect_template_override(model_name: str, tokenizer_info: dict[str, Any]) ->
             enforce_assistant_anchor=True,
         )
 
+    if "gemma" in name:
+        # Do not add <|end|> as a stop — it can truncate multi-section Gemma replies.
+        return TemplateOverride(
+            template_type="gemma",
+            force_prefix="",
+            extra_stops=[],
+            enforce_assistant_anchor=True,
+        )
+
     if "nemotron" in name or "nvidia" in name:
         return TemplateOverride(
             template_type="chatml",

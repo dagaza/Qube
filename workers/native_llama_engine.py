@@ -83,8 +83,8 @@ from core.prompt_contract import (
     resolve_prompt_contract,
     stops_for_format,
 )
-from core.output_validation import validate_output
-from core.adaptive_retry import maybe_retry
+from core.output_validation_flow import run_output_validation_and_retry
+from core.output_validation import OutputValidationResult
 from core.engine_input_trace import (
     EngineInputTrace,
     EngineInputTracer,
@@ -524,6 +524,8 @@ class NativeLlamaEngine(QThread):
         chat_format_mode: ChatFormatMode = "structured",
         reply_shape_policy: Any = None,
         sampling_overrides: dict[str, Any] | None = None,
+        output_token_limit_enabled: bool = True,
+        context_window: int = 4096,
         debug_caller: str = "chat",
         debug_exchange_id: int | None = None,
         debug_session_id: str = "",
@@ -547,6 +549,8 @@ class NativeLlamaEngine(QThread):
                 "chat_format_mode": chat_format_mode,
                 "reply_shape_policy": reply_shape_policy,
                 "sampling_overrides": dict(sampling_overrides or {}),
+                "output_token_limit_enabled": bool(output_token_limit_enabled),
+                "context_window": int(context_window),
                 "debug_caller": debug_caller,
                 "debug_exchange_id": debug_exchange_id,
                 "debug_session_id": debug_session_id,
@@ -1058,6 +1062,7 @@ class NativeLlamaEngine(QThread):
         self._last_execution_task = task_policy.task
         self._last_task_policy = task_policy
         self._last_chat_format_mode = chat_format_mode
+        self._last_reply_shape_policy = reply_shape_policy
         messages = normalize_messages_for_task(messages, task_policy.task)
         cc_kw = {
             **native_chat_completion_kwargs(self._llama),
@@ -1465,11 +1470,12 @@ class NativeLlamaEngine(QThread):
         Adapter consumed by adaptive_retry.maybe_retry().
         Uses conservative defaults for a one-shot retry.
         """
+        retry_budget = int(getattr(self, "_adaptive_retry_max_tokens", None) or 512)
         r = self._execute_from_contract(
             contract,
             messages,
             temperature=0.2,
-            max_tokens=512,
+            max_tokens=max(retry_budget, 512),
             cc_kw=native_chat_completion_kwargs(self._llama),
             stream=False,
         )
@@ -1482,6 +1488,9 @@ class NativeLlamaEngine(QThread):
         messages = normalize_chat_messages(raw_messages)
         temperature = float(cmd.get("temperature", 0.7))
         max_tokens = int(cmd.get("max_tokens", 512))
+        output_token_limit_enabled = bool(cmd.get("output_token_limit_enabled", True))
+        context_window = int(cmd.get("context_window") or 4096)
+        effective_max_tokens = max_tokens
 
         if self._llama is None:
             token_queue.put(("error", "Native model not loaded, please load a model first or use the external server mode"))
@@ -1520,11 +1529,39 @@ class NativeLlamaEngine(QThread):
                 debug_exchange_id=cmd.get("debug_exchange_id"),
                 debug_session_id=str(cmd.get("debug_session_id") or ""),
             )
+            from core.native_sampler_gt import build_prompt_tokens_for_completion
+            from core.output_token_budget import clamp_max_tokens_to_context
+
+            if (self._last_formatted_prompt or "").strip():
+                prompt_tokens_for_budget = build_prompt_tokens_for_completion(
+                    self._llama, self._last_formatted_prompt or ""
+                )
+                n_ctx = int(
+                    getattr(self._llama, "n_ctx", 0) or context_window or 4096
+                )
+                clamped_max = clamp_max_tokens_to_context(
+                    n_ctx=n_ctx,
+                    prompt_token_count=len(prompt_tokens_for_budget),
+                    requested_max_tokens=max_tokens,
+                    limit_enabled=output_token_limit_enabled,
+                )
+                if clamped_max != max_tokens:
+                    logger.info(
+                        "[OutputTokenBudget] max_tokens %s -> %s (prompt=%s n_ctx=%s limit_enabled=%s)",
+                        max_tokens,
+                        clamped_max,
+                        len(prompt_tokens_for_budget),
+                        n_ctx,
+                        output_token_limit_enabled,
+                    )
+                    max_tokens = clamped_max
+            effective_max_tokens = max_tokens
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}
 
             gt_early_sent = False
             chunk_count = 0
+            stream_finish_reason = ""
 
             if token_trace_enabled():
                 live_trace = LiveStreamTokenTrace(
@@ -1592,12 +1629,35 @@ class NativeLlamaEngine(QThread):
                         final_text += delta
                         token_queue.put(("delta", delta))
                     if finish_reason in ("stop", "length"):
+                        stream_finish_reason = str(finish_reason or "")
                         break
                 cmd["inference_finished_at"] = time.monotonic()
                 log_inference_token_end(
                     caller=str(cmd.get("debug_caller") or "chat"),
                     exchange_id=cmd.get("debug_exchange_id"),
                 )
+                if (
+                    not self._cancel_generation
+                    and (final_text or "").strip()
+                ):
+                    from core.output_token_budget import probable_max_tokens_truncation
+
+                    trunc_reason = probable_max_tokens_truncation(
+                        final_text,
+                        stream_finish_reason=stream_finish_reason,
+                        max_tokens=effective_max_tokens,
+                        limit_enabled=output_token_limit_enabled,
+                    )
+                    if trunc_reason:
+                        token_queue.put(
+                            (
+                                "notice",
+                                {"kind": "max_tokens", "reason": trunc_reason},
+                            )
+                        )
+                    cmd["truncation_notice_reason"] = trunc_reason
+                cmd["stream_finish_reason"] = stream_finish_reason
+                cmd["effective_max_tokens"] = effective_max_tokens
 
             if self._cancel_generation:
                 token_queue.put(("end", final_text))
@@ -1647,28 +1707,55 @@ class NativeLlamaEngine(QThread):
                     )
 
             if not self._cancel_generation:
-                validation = validate_output(final_text, contract)
-                retried_text, final_contract, retry_used = maybe_retry(
-                    self,
-                    messages,
-                    contract,
-                    final_text,
-                    validation,
-                )
+
+                def _turn_notice(kind: str, payload: dict | None = None) -> None:
+                    body: dict = {"kind": kind}
+                    if payload:
+                        body.update(payload)
+                    token_queue.put(("notice", body))
+
+                self._turn_notice_hook = _turn_notice
+                try:
+                    final_text, final_contract, val_trace, validation = (
+                        run_output_validation_and_retry(
+                            self,
+                            final_text=final_text,
+                            contract=contract,
+                            messages=messages,
+                            max_tokens=max_tokens,
+                            session_id=str(cmd.get("debug_session_id") or ""),
+                            phase="post_stream",
+                            inference_finished_at=cmd.get("inference_finished_at"),
+                            stream_finish_reason=str(
+                                cmd.get("stream_finish_reason") or ""
+                            ),
+                            truncation_notice_reason=cmd.get(
+                                "truncation_notice_reason"
+                            ),
+                            effective_max_tokens=int(
+                                cmd.get("effective_max_tokens") or max_tokens
+                            ),
+                        )
+                    )
+                finally:
+                    if hasattr(self, "_turn_notice_hook"):
+                        delattr(self, "_turn_notice_hook")
+                retry_used = val_trace.retry_used
                 logger.info(
-                    "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
+                    "[OutputValidation] validation_issues=%s severity=%s retry_attempted=%s retry_used=%s retry_reason=%s post_inference_ms=%s original_format=%s final_format=%s sanitized_len=%d raw_len=%d",
                     validation.issues,
                     validation.severity,
+                    val_trace.retry_attempted,
                     retry_used,
-                    1 if retry_used else 0,
-                    contract.chat_format or contract.mode,
-                    final_contract.chat_format or final_contract.mode,
+                    val_trace.retry_reason,
+                    val_trace.post_inference_ms,
+                    val_trace.original_format,
+                    val_trace.final_format,
+                    val_trace.sanitized_len,
+                    val_trace.first_pass_raw_len,
                 )
-                if retry_used and retried_text and retried_text != final_text:
-                    # First-pass streaming may already have reached UI/TTS; replace with the
-                    # validated retry output (matches non-stream chat_once behavior).
-                    token_queue.put(("replace", retried_text))
-                    final_text = retried_text
+                if val_trace.retry_replaced_stream:
+                    token_queue.put(("replace", final_text))
                 self._last_prompt_contract = final_contract
                 latest_user_query = ""
                 for _m in reversed(messages):
@@ -1883,25 +1970,31 @@ class NativeLlamaEngine(QThread):
                 text = ""
                 out.append("")
             else:
-                validation = validate_output(text, contract)
-                retried_text, final_contract, retry_used = maybe_retry(
+                text, final_contract, val_trace, validation = run_output_validation_and_retry(
                     self,
-                    messages,
-                    contract,
-                    text,
-                    validation,
+                    final_text=text,
+                    contract=contract,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    session_id=str(cmd.get("debug_session_id") or ""),
+                    phase="chat_once",
+                    inference_finished_at=cmd.get("inference_finished_at"),
                 )
+                retry_used = val_trace.retry_used
                 logger.info(
-                    "[OutputValidation] validation_issues=%s severity=%s retry_used=%s retry_count=%d original_format=%s final_format=%s",
+                    "[OutputValidation] validation_issues=%s severity=%s retry_attempted=%s retry_used=%s retry_reason=%s post_inference_ms=%s original_format=%s final_format=%s sanitized_len=%d raw_len=%d",
                     validation.issues,
                     validation.severity,
+                    val_trace.retry_attempted,
                     retry_used,
-                    1 if retry_used else 0,
-                    contract.chat_format or contract.mode,
-                    final_contract.chat_format or final_contract.mode,
+                    val_trace.retry_reason,
+                    val_trace.post_inference_ms,
+                    val_trace.original_format,
+                    val_trace.final_format,
+                    val_trace.sanitized_len,
+                    val_trace.first_pass_raw_len,
                 )
                 self._last_prompt_contract = final_contract
-                text = retried_text
                 latest_user_query = ""
                 for _m in reversed(messages):
                     if str((_m or {}).get("role", "")).lower() == "user":

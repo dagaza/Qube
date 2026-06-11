@@ -174,6 +174,55 @@ def ingestion_complete_event(*, file_count: int) -> NotificationEvent:
     )
 
 
+def output_truncated_max_tokens_event(*, session_id: str) -> NotificationEvent:
+    return NotificationEvent(
+        title="Response truncated",
+        body=(
+            "The model reached its maximum length for this reply. "
+            "The answer may be incomplete — try a shorter question or ask for a specific section."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="turn",
+        auto_dismiss_ms=10_000,
+        dedupe_key=f"max_tokens:{session_id}",
+        rate_limit_key="max_tokens_truncated",
+        rate_limit_sec=5.0,
+    )
+
+
+def format_retry_in_progress_event(
+    *,
+    session_id: str,
+    issues: list[str] | None = None,
+) -> NotificationEvent:
+    issue_set = {str(i) for i in (issues or [])}
+    if "degeneration" in issue_set:
+        detail = (
+            "Output quality checks flagged possible repetition or formatting issues."
+        )
+    elif "template_leakage" in issue_set:
+        detail = "Template artifacts were detected in the raw output."
+    elif "role_confusion" in issue_set:
+        detail = "The reply looked like a dialog leak rather than a single answer."
+    elif "meta_preamble" in issue_set:
+        detail = "The reply looked like internal planning text rather than a final answer."
+    else:
+        detail = "Output quality checks flagged a formatting issue."
+    return NotificationEvent(
+        title="Improving response",
+        body=(
+            f"Qube is re-generating this answer for better formatting. {detail} "
+            "This may take a minute."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="turn",
+        auto_dismiss_ms=12_000,
+        dedupe_key=f"format_retry:{session_id}",
+        rate_limit_key="format_retry_in_progress",
+        rate_limit_sec=5.0,
+    )
+
+
 def enrichment_complete_event(*, session_id: str, facts_stored: int) -> NotificationEvent:
     if facts_stored <= 0:
         return NotificationEvent(

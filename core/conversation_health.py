@@ -86,7 +86,14 @@ class TurnAnomalyOutcome:
     def had_anomaly(self) -> bool:
         return self.anomaly_penalty() > 0.0
 
+    @property
+    def self_inflicted_stream_cancel(self) -> bool:
+        """Worker cancelled the stream but post-turn review found no Class A pathology."""
+        return bool(self.stream_degeneration_cancelled and not self.history_suppressed)
+
     def anomaly_penalty(self) -> float:
+        if self.self_inflicted_stream_cancel:
+            return 0.0
         penalty = 0.0
         if self.history_suppressed or self.degeneration_risk == "HIGH":
             penalty = max(penalty, HIGH_ANOMALY_PENALTY)
@@ -220,6 +227,12 @@ def merge_generation_risk_with_health(
     signals = list(risk.signals)
     signals.append(f"conversation_health_{health.mode}")
 
+    enumeration_intent = "enumeration_intent" in risk.signals
+    list_guard = (
+        (risk.enable_list_loop_guard or health.enable_list_loop_guard)
+        and not enumeration_intent
+    )
+
     return replace(
         risk,
         risk_tier=tier,
@@ -227,6 +240,6 @@ def merge_generation_risk_with_health(
         max_tokens_cap=tokens_cap,
         stream_guard_min_repeats=min_repeats,
         stream_guard_tail_chars=tail_chars,
-        enable_list_loop_guard=risk.enable_list_loop_guard or health.enable_list_loop_guard,
+        enable_list_loop_guard=list_guard,
         signals=tuple(signals),
     )

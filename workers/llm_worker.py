@@ -23,22 +23,34 @@ from core.app_settings import (
     get_llm_chat_history_messages,
     get_llm_context_limit,
     get_llm_min_p,
+    get_llm_output_token_limit,
+    get_llm_output_token_limit_enabled,
     get_llm_presence_penalty,
     get_llm_repeat_penalty,
     get_llm_temperature,
     get_llm_top_k,
     get_llm_top_p,
+    get_mcp_internet_hybrid_enabled,
+    get_mcp_rag_auto_activator_enabled,
+    get_mcp_rag_enabled,
+    get_mcp_rag_strict_enabled,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
     set_llm_chat_history_messages,
     set_llm_context_limit,
     set_llm_min_p,
+    set_llm_output_token_limit,
+    set_llm_output_token_limit_enabled,
     set_llm_presence_penalty,
     set_llm_repeat_penalty,
     set_llm_temperature,
     set_llm_top_k,
     set_llm_top_p,
+    set_mcp_internet_hybrid_enabled,
+    set_mcp_rag_auto_activator_enabled,
+    set_mcp_rag_enabled,
+    set_mcp_rag_strict_enabled,
 )
 from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
 from core.preference_formatters import format_web_snippets
@@ -97,6 +109,13 @@ from core.llm_debug_markers import (
     next_exchange_id,
 )
 from core.conversational_follow_up import preserve_streamed_follow_up
+from core.output_token_budget import (
+    probable_max_tokens_truncation,
+    resolve_output_token_budget,
+)
+from core.output_validation_sanitize import sanitize_output_for_validation
+from core.output_validation_trace import log_output_validation_trace
+from core.stream_replace_policy import resolve_stream_replacement
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
@@ -112,6 +131,7 @@ from core.discourse_intent import (
     FOLLOW_UP_SUPPRESS_THRESHOLD,
     FollowUpClassification,
     FollowUpKind,
+    build_entity_aspect_grounding_suffix,
     build_minimal_referent_fallback_suffix,
     build_referent_salience_suffix,
     build_topic_salience_suffix,
@@ -126,7 +146,10 @@ from core.generation_debug_capture import (
     apply_debug_sampling_overrides,
     generation_debug_enabled,
 )
-from core.history_degeneration import resolve_assistant_history_content
+from core.history_degeneration import (
+    history_suppression_reason,
+    resolve_assistant_history_content,
+)
 from core.history_degeneration_telemetry import log_history_degeneration_suppression
 from core.output_degeneration_telemetry import log_output_degeneration
 from core.prior_turn_reliability import (
@@ -222,6 +245,7 @@ class LLMWorker(QThread):
     # forward a rich payload to EnrichmentWorker.enqueue(payload=...).
     enrichment_context_ready = pyqtSignal(dict)
     stream_replaced = pyqtSignal(str, str)  # session_id, full replacement text
+    turn_notice = pyqtSignal(str, dict)  # session_id, {"kind": "max_tokens"|"format_retry", ...}
 
     MAX_TOTAL_RETRIEVAL_CHARS = 4500
     MEMORY_BUDGET = 1500
@@ -274,12 +298,15 @@ class LLMWorker(QThread):
         self.USE_COGNITIVE_ROUTER = True
         self.USE_ADAPTIVE_ROUTER = True
         self.USE_TELEMETRY = True
-        self.USE_COGNITIVE_ROUTER_INTERNET = True # For hybrid internet mode
+        _internet_hybrid = get_mcp_internet_hybrid_enabled()
+        self.USE_COGNITIVE_ROUTER_INTERNET = _internet_hybrid
 
         # toggles
-        self.mcp_auto_enabled = True
+        self.mcp_auto_enabled = get_mcp_rag_auto_activator_enabled()
         self.temperature = get_llm_temperature()
         self.context_window = get_llm_context_limit()
+        self.output_token_limit_enabled = get_llm_output_token_limit_enabled()
+        self.output_token_limit = get_llm_output_token_limit()
         # Sliding window: max DB messages to include in the chat completion (user-controlled).
         self.max_history_messages = get_llm_chat_history_messages()
         self.top_k = get_llm_top_k()
@@ -287,9 +314,9 @@ class LLMWorker(QThread):
         self.presence_penalty = get_llm_presence_penalty()
         self.top_p = get_llm_top_p()
         self.min_p = get_llm_min_p()
-        self.mcp_rag_enabled = True
-        self.mcp_strict_enabled = False
-        self.mcp_internet_enabled = False
+        self.mcp_rag_enabled = get_mcp_rag_enabled()
+        self.mcp_strict_enabled = get_mcp_rag_strict_enabled()
+        self.mcp_internet_enabled = _internet_hybrid
         self._force_web_next_turn = False
 
         # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
@@ -902,7 +929,12 @@ class LLMWorker(QThread):
         if not self.session_id or not (final_text or "").strip():
             return
 
-        history_content, degeneration = resolve_assistant_history_content(final_text)
+        history_content, degeneration = resolve_assistant_history_content(
+            final_text,
+            stream_cancelled=bool(
+                getattr(self, "_turn_stream_degeneration_cancelled", False)
+            ),
+        )
         self._turn_history_degeneration = degeneration
         self._turn_stored_history_content = history_content
 
@@ -950,6 +982,15 @@ class LLMWorker(QThread):
                 presented_preview=final_text,
                 stored_content=history_content,
                 output_degeneration=od_fields,
+                stream_cancelled=bool(
+                    getattr(self, "_turn_stream_degeneration_cancelled", False)
+                ),
+                suppression_reason=history_suppression_reason(
+                    degeneration,
+                    stream_cancelled=bool(
+                        getattr(self, "_turn_stream_degeneration_cancelled", False)
+                    ),
+                ),
             )
             logger.warning(
                 "[HistoryDegeneration] suppressed assistant turn score=%.2f flags=%s",
@@ -1193,10 +1234,15 @@ class LLMWorker(QThread):
             deg_risk = str(detect_output_degeneration(final_text).risk)
 
         collapse_risk = "LOW"
-        if history_suppressed or deg_risk == "HIGH":
-            collapse_risk = "HIGH"
-        elif deg_risk == "MEDIUM":
-            collapse_risk = "MEDIUM"
+        stream_cancelled = bool(
+            getattr(self, "_turn_stream_degeneration_cancelled", False)
+        )
+        self_inflicted = stream_cancelled and not history_suppressed
+        if not self_inflicted:
+            if history_suppressed or deg_risk == "HIGH":
+                collapse_risk = "HIGH"
+            elif deg_risk == "MEDIUM":
+                collapse_risk = "MEDIUM"
 
         outcome = TurnAnomalyOutcome(
             degeneration_risk=deg_risk,
@@ -1296,9 +1342,7 @@ class LLMWorker(QThread):
     ) -> dict[str, Any]:
         risk = turn_ctx.generation_risk
         base_max = (
-            self._max_tokens_native_completion()
-            if native
-            else max(512, int(getattr(self, "context_window", 4096)))
+            self._max_tokens_completion(native=native)
         )
         sampling = self._sampling_payload()
         sampling["repeat_penalty"] = risk.effective_repeat_penalty(
@@ -2990,13 +3034,18 @@ class LLMWorker(QThread):
                 "injecting reliability hint"
             )
         if discourse_enabled and follow_up.active and discourse_state and salience_anchor:
-            if salience_reason == "referent_salience" and discourse_prompt_hint_enabled():
-                token = "it"
-                if resolved_query and resolved_query.substitutions:
-                    token = resolved_query.substitutions[0][0]
-                topic_salience = build_minimal_referent_fallback_suffix(
+            if discourse_prompt_hint_enabled() and salience_reason.startswith(
+                "referent_salience"
+            ):
+                topic_salience = build_referent_salience_suffix(
                     salience_anchor,
-                    token=token,
+                    referent_type=discourse_state.referent_type,
+                )
+            elif salience_reason.startswith("referent_salience"):
+                topic_salience = build_entity_aspect_grounding_suffix(
+                    salience_anchor,
+                    aspect=(discourse_state.active_aspect or ""),
+                    entity_type=discourse_state.referent_type,
                 )
             elif salience_reason == "topic_salience":
                 topic_salience = build_topic_salience_suffix(
@@ -3118,6 +3167,7 @@ class LLMWorker(QThread):
 
         current_sentence = ""
         final_text = ""
+        external_finish_reason = ""
         start = time.time()
         first_token = False
         first_token_ts: float | None = None
@@ -3163,7 +3213,11 @@ class LLMWorker(QThread):
 
                     try:
                         packet = json.loads(chunk)
-                        delta = packet["choices"][0].get("delta", {}).get("content", "")
+                        choice0 = packet["choices"][0]
+                        delta = choice0.get("delta", {}).get("content", "")
+                        finish = choice0.get("finish_reason")
+                        if finish:
+                            external_finish_reason = str(finish)
 
                         if delta:
                             if not first_token:
@@ -3205,6 +3259,22 @@ class LLMWorker(QThread):
             if final_text:
                 final_text = strip_harmony_oss_artifacts(final_text)
 
+            if final_text.strip():
+                trunc_reason = probable_max_tokens_truncation(
+                    final_text,
+                    stream_finish_reason=str(external_finish_reason or ""),
+                    max_tokens=int(gen_params.get("max_tokens", 0) or 0),
+                    limit_enabled=bool(
+                        getattr(self, "output_token_limit_enabled", True)
+                    ),
+                    completion_token_count=output_token_count or None,
+                )
+                if trunc_reason:
+                    self.turn_notice.emit(
+                        self.session_id or "",
+                        {"kind": "max_tokens", "reason": trunc_reason},
+                    )
+
             if current_sentence.strip():
                 self._queue_tts_sentence(current_sentence)
 
@@ -3237,13 +3307,16 @@ class LLMWorker(QThread):
         self._persist_latest_routing_debug_record()
         return final_text
 
+    def _max_tokens_completion(self, *, native: bool) -> int:
+        """Budget for new completion tokens (not n_ctx). Native reclamps after prompt."""
+        return resolve_output_token_budget(
+            context_window=max(512, int(getattr(self, "context_window", 4096))),
+            limit_enabled=bool(getattr(self, "output_token_limit_enabled", True)),
+            user_limit=int(getattr(self, "output_token_limit", 4096)),
+        )
+
     def _max_tokens_native_completion(self) -> int:
-        """
-        Budget for *new* completion tokens in create_chat_completion (not n_ctx).
-        Passing the full context window as max_tokens harms quality and can stall streaming.
-        """
-        ctx = max(512, int(getattr(self, "context_window", 4096)))
-        return min(4096, max(256, ctx // 2))
+        return self._max_tokens_completion(native=True)
 
     def _stream_via_native(
         self,
@@ -3323,6 +3396,10 @@ class LLMWorker(QThread):
                 turn_ctx.reply_shape if turn_ctx is not None else None
             ),
             sampling_overrides=gen_params.get("sampling_overrides"),
+            output_token_limit_enabled=bool(
+                getattr(self, "output_token_limit_enabled", True)
+            ),
+            context_window=int(getattr(self, "context_window", 4096)),
             debug_caller="chat",
             debug_exchange_id=getattr(self, "_debug_exchange_id", None),
             debug_session_id=str(self.session_id or ""),
@@ -3364,18 +3441,7 @@ class LLMWorker(QThread):
         harmony_cut_cancelled = False
 
         def _sanitize_complete_native_text(raw_text: str) -> str:
-            if not raw_text:
-                return ""
-            complete_cot = RedactedThinkingStreamFilter()
-            complete_meta = LeadingMetaInstructionStripper()
-            cleaned = complete_cot.feed(raw_text)
-            cleaned += complete_cot.flush()
-            cleaned = complete_meta.feed(cleaned) + complete_meta.flush()
-            return strip_gemma_output_artifacts(
-                strip_harmony_oss_artifacts(
-                    polish_harmony_visible_text(cleaned)
-                )
-            ).strip()
+            return sanitize_output_for_validation(raw_text)
 
         def _abort_harmony_tts_tail() -> None:
             nonlocal current_sentence
@@ -3528,7 +3594,25 @@ class LLMWorker(QThread):
                 replacement = str(data or "").strip()
                 streamed_snapshot = strip_harmony_oss_artifacts(final_text).strip()
                 streamed_before_replace = streamed_snapshot
-                replacement = preserve_streamed_follow_up(replacement, streamed_snapshot)
+                resolved, rejection = resolve_stream_replacement(
+                    replacement, streamed_snapshot
+                )
+                val_trace = getattr(
+                    self._native_engine, "_last_output_validation_trace", None
+                )
+                if val_trace is not None:
+                    val_trace.streamed_visible_len = len(streamed_snapshot)
+                if rejection:
+                    if val_trace is not None:
+                        val_trace.replacement_suppressed = True
+                        val_trace.replacement_rejection_reason = rejection
+                        log_output_validation_trace(
+                            session_id=str(self.session_id or ""),
+                            trace=val_trace,
+                            phase="stream_replace",
+                        )
+                    continue
+                replacement = resolved
                 stream_output_superseded = True
                 native_end_text = replacement
                 final_text = replacement
@@ -3539,6 +3623,9 @@ class LLMWorker(QThread):
                 self._reset_tts_dedupe_state()
                 self.tts_turn_superseded.emit(self.session_id or "")
                 self.stream_replaced.emit(self.session_id or "", replacement)
+            elif kind == "notice":
+                payload = data if isinstance(data, dict) else {"kind": str(data or "")}
+                self.turn_notice.emit(self.session_id or "", payload)
             elif kind == "error":
                 self.token_streamed.emit(self.session_id or "", f"\n\n*({data})*")
                 err_txt = str(data or "")
@@ -3624,6 +3711,18 @@ class LLMWorker(QThread):
             final_text = empty_msg
             _emit_filtered(empty_msg)
 
+        trace_extra: dict = {}
+        val_trace = getattr(self._native_engine, "_last_output_validation_trace", None)
+        if val_trace is not None:
+            trace_extra.update(val_trace.trace_fields())
+        if harmony_parser is not None:
+            trace_extra.update(
+                {
+                    "harmony_parser": True,
+                    "harmony_channel": harmony_parser.current_channel,
+                }
+            )
+
         self._completion_output_snapshot = CompletionOutputSnapshot(
             engine_mode="internal",
             raw_text=raw_complete_text or "",
@@ -3633,11 +3732,7 @@ class LLMWorker(QThread):
             worker_return_text=final_text or "",
             engine_end_text=native_end_text or "",
             retry_replaced=bool(stream_output_superseded),
-            extra=(
-                {"harmony_parser": True, "harmony_channel": harmony_parser.current_channel}
-                if harmony_parser is not None
-                else {}
-            ),
+            extra=trace_extra,
         )
 
         if gen_debug is not None:
@@ -3702,6 +3797,18 @@ class LLMWorker(QThread):
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             self.refresh_native_model_from_settings()
 
+    def set_output_token_limit_enabled(self, enabled: bool) -> None:
+        self.output_token_limit_enabled = bool(enabled)
+        set_llm_output_token_limit_enabled(self.output_token_limit_enabled)
+        logger.debug(
+            "Output token limit enabled=%s", self.output_token_limit_enabled
+        )
+
+    def set_output_token_limit(self, val: int) -> None:
+        self.output_token_limit = max(256, min(32768, int(val)))
+        set_llm_output_token_limit(self.output_token_limit)
+        logger.debug("Output token limit updated to %s", self.output_token_limit)
+
     def set_max_history_messages(self, val: int):
         self.max_history_messages = max(2, min(100, int(val)))
         set_llm_chat_history_messages(self.max_history_messages)
@@ -3738,14 +3845,17 @@ class LLMWorker(QThread):
         logger.debug(f"Min-P updated to {self.min_p}")
 
     def set_mcp_rag(self, enabled: bool):
-        self.mcp_rag_enabled = enabled
+        self.mcp_rag_enabled = bool(enabled)
+        set_mcp_rag_enabled(self.mcp_rag_enabled)
 
     def set_mcp_strict(self, enabled: bool):
-        self.mcp_strict_enabled = enabled
+        self.mcp_strict_enabled = bool(enabled)
+        set_mcp_rag_strict_enabled(self.mcp_strict_enabled)
         logger.debug(f"Strict Isolation Mode set to: {enabled}")
 
     def set_mcp_auto(self, enabled: bool):
-        self.mcp_auto_enabled = enabled
+        self.mcp_auto_enabled = bool(enabled)
+        set_mcp_rag_auto_activator_enabled(self.mcp_auto_enabled)
         logger.debug(f"NLP Auto-Activator set to: {enabled}")
 
     def refresh_rag_triggers(self) -> None:
@@ -3762,7 +3872,14 @@ class LLMWorker(QThread):
         )
         
     def set_mcp_internet(self, enabled: bool):
+        self.set_mcp_internet_hybrid(enabled)
+
+    def set_mcp_internet_hybrid(self, enabled: bool) -> None:
+        """Enable web search tool and cognitive auto-web routing together."""
+        enabled = bool(enabled)
         self.mcp_internet_enabled = enabled
+        self.USE_COGNITIVE_ROUTER_INTERNET = enabled
+        set_mcp_internet_hybrid_enabled(enabled)
 
     def set_force_web_next_turn(self, enabled: bool) -> None:
         """One-shot UI override for the next user prompt."""

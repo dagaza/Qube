@@ -117,19 +117,24 @@ def build_prompt_for_task(
 
     if task == SidecarTask.query_rewrite:
         original = (kwargs.get("original_query") or "").strip()
-        topic = (kwargs.get("topic") or "").strip()
+        entity = (kwargs.get("topic") or "").strip()
+        aspect = (kwargs.get("active_aspect") or "").strip()
         kind = (kwargs.get("follow_up_kind") or "none").strip()
         tail = (kwargs.get("history_tail") or "").strip()[:1200]
         system = (
-            "Expand deictic follow-up queries using the active topic ONLY. "
-            "Do NOT invent levels, bosses, names, or facts not in the topic or history. "
+            "Expand deictic follow-up queries using the conversation entity ONLY. "
+            "The entity is the durable subject (city, person, game); the aspect is "
+            "the current facet being discussed. Do NOT invent names or latch onto "
+            "examples from prior assistant replies. "
             "If unsure, set expanded_query to the original and confidence below 0.5. "
             "Return STRICT JSON only: "
             '{"expanded_query":"...","confidence":0.0,"topic_source":"discourse_state|none"}'
         )
+        aspect_line = f"current_aspect: {aspect}\n" if aspect else ""
         user = (
             f"original_query: {original}\n"
-            f"active_topic: {topic or '(none)'}\n"
+            f"conversation_entity: {entity or '(none)'}\n"
+            f"{aspect_line}"
             f"follow_up_kind: {kind}\n"
             f"recent_turns:\n{tail}"
         )

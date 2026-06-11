@@ -123,6 +123,10 @@ def resolve_generation_risk_profile(
         temp_mult = min(temp_mult, 0.88)
         rp_adj = max(rp_adj, 0.04)
 
+    enumeration_requested = require_list_format or detect_enumeration_intent(user_query)
+    if enumeration_requested:
+        list_guard = False
+
     return GenerationRiskProfile(
         risk_tier=tier,
         risk_score=score,

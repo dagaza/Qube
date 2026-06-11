@@ -35,8 +35,7 @@ data/**/*
 *.pt
 *.gguf
 
-# --- Configuration & Logs ---
-*.log
+# --- Configuration ---
 # Keep project-level JSON configs, ignore deep model/metadata JSONs
 models/**/*.json
 
@@ -66,7 +65,11 @@ tools/test_outputs/
 # --- Clinerules ---
 .clinerules
 
-# --- Logs ---
+# --- Logs (runtime files stay local; app writes to ~/.qube/logs/) ---
+*.log
+*.log.*
 logs/
 logs/**/*
 !logs/**/.gitkeep
+# Runtime golden-trace captures (GOLDEN_TRACE_CAPTURE_MODE=1)
+debug/golden_traces/

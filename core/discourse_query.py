@@ -9,6 +9,7 @@ from typing import Any
 
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
 from core.discourse_prompt_rewrite import score_rewrite_anchor
+from core.discourse_referent_policy import fallback_referent
 from core.discourse_state import DiscourseState, is_deictic_topic_phrase
 from core.memory_filters import detect_explicit_web_request
 
@@ -105,8 +106,9 @@ def resolve_search_target(
         anchor = ""
         rewrite_reason = "topic_expansion"
         if discourse:
-            referent = (discourse.active_referent or "").strip()
+            referent = (fallback_referent(discourse) or "").strip()
             topic = (discourse.active_topic or "").strip()
+            aspect = (discourse.active_aspect or "").strip()
             if referent:
                 score = score_rewrite_anchor(referent, user_message=raw)
                 if score.usable:
@@ -117,8 +119,11 @@ def resolve_search_target(
                 if score.usable:
                     anchor = topic
         if anchor and anchor.lower() not in raw.lower():
+            expansion = raw
+            if aspect and aspect.lower() not in raw.lower():
+                expansion = f"{aspect}: {raw}"
             return SearchTargetResult(
-                f"Regarding {anchor}: {raw}",
+                f"Regarding {anchor}: {expansion}",
                 rewrite_reason,
             )
 

@@ -15,6 +15,12 @@ from core.history_degeneration import (  # noqa: E402
     score_history_degeneration,
 )
 
+_EXCHANGE_15_PARTIAL = (
+    "Here is a comprehensive analysis of Nepal's music and arts scene.\n\n"
+    "#### Artistic Medium Breakdown (List Format)\n\n"
+    "*   **"
+)
+
 _LOG_DEGENERATE_TAIL = (
     "Birds take to‑bath in a few different ways, and the reasons are pretty practical.  \n"
     "1. **Cleaning** – The most obvious reason is to keep their feathers clean and free "
@@ -75,6 +81,25 @@ class TestHistoryDegeneration(unittest.TestCase):
         self.assertTrue(fields["history_degeneration_suspect"])
         self.assertTrue(fields["history_degeneration_suppressed"])
         self.assertGreater(float(fields["history_degeneration_score"]), 0.5)
+
+    def test_exchange_15_partial_not_suppressed_after_cancel(self) -> None:
+        result = score_history_degeneration(_EXCHANGE_15_PARTIAL, stream_cancelled=True)
+        self.assertFalse(result.should_suppress)
+        stored, resolved = resolve_assistant_history_content(
+            _EXCHANGE_15_PARTIAL,
+            stream_cancelled=True,
+        )
+        self.assertEqual(stored, _EXCHANGE_15_PARTIAL.strip())
+        self.assertFalse(resolved.should_suppress)
+
+    def test_degenerate_tail_still_suppressed_after_cancel(self) -> None:
+        result = score_history_degeneration(_LOG_DEGENERATE_TAIL, stream_cancelled=True)
+        self.assertTrue(result.should_suppress)
+        stored, _ = resolve_assistant_history_content(
+            _LOG_DEGENERATE_TAIL,
+            stream_cancelled=True,
+        )
+        self.assertEqual(stored, HISTORY_SUPPRESSION_PLACEHOLDER)
 
 
 if __name__ == "__main__":

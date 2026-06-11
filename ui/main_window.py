@@ -48,6 +48,10 @@ from core.app_settings import (
     get_llm_context_limit,
     get_llm_models_dir,
     get_llm_temperature,
+    get_mcp_internet_hybrid_enabled,
+    get_mcp_rag_auto_activator_enabled,
+    get_mcp_rag_enabled,
+    get_mcp_rag_strict_enabled,
     get_onboarding_local_llm_tour_completed,
     is_secondary_gguf_shard,
     resolve_internal_model_path,
@@ -1275,12 +1279,17 @@ class MainWindow(QMainWindow):
             "Higher values (0.7-1.0) make Qube more creative."
         )
         desc_ctx = (
-            "Memory Wall: Sets the absolute maximum number of tokens Qube is allowed to output in a single turn."
+            "Total token budget per turn: instructions, chat history, your message, "
+            "and the reply share one window. On the local engine this sets n_ctx "
+            "(reloads the model); higher values use more RAM/VRAM. Max reply tokens "
+            "are in Settings → AI — both draw from the same pool."
         )
         desc_history = (
-            "Short-Term Memory: How many past messages to send to the AI. Higher values give the AI "
-            "better context but consume significantly more system RAM (VRAM). Qube's background "
-            "Long-Term Memory will still remember important facts even if this is set low."
+            "How many recent user/assistant messages to include in each prompt. "
+            "More history improves continuity but uses more context window space "
+            "for the prompt, leaving less room for long replies. Also uses more "
+            "RAM/VRAM during inference. Long-term memory still covers facts dropped "
+            "from this window."
         )
 
         self.temp_spin = NoScrollDoubleSpinBox()
@@ -1344,9 +1353,15 @@ class MainWindow(QMainWindow):
         
         desc_strict = "Lawyer Mode: Forces Qube to ONLY use your files. It will refuse to guess or use its general knowledge if the answer isn't in the documents."
         
-        local_row, self.tool_rag_toggle = create_toggle_row("Local Knowledge Base", desc_kb, checked=True)
-        auto_row, self.rag_auto_toggle = create_toggle_row("NLP Auto-Activator", desc_auto, checked=True) 
-        strict_row, self.rag_strict_toggle = create_toggle_row("Strict Isolation Mode", desc_strict)
+        local_row, self.tool_rag_toggle = create_toggle_row(
+            "Local Knowledge Base", desc_kb, checked=get_mcp_rag_enabled()
+        )
+        auto_row, self.rag_auto_toggle = create_toggle_row(
+            "NLP Auto-Activator", desc_auto, checked=get_mcp_rag_auto_activator_enabled()
+        )
+        strict_row, self.rag_strict_toggle = create_toggle_row(
+            "Strict Isolation Mode", desc_strict, checked=get_mcp_rag_strict_enabled()
+        )
         
         rag_layout.addLayout(local_row)
         rag_layout.addLayout(auto_row) 
@@ -1362,7 +1377,9 @@ class MainWindow(QMainWindow):
 
         # 🔑 NEW: Cognitive/Hybrid Internet Mode
         desc_hybrid = "Hybrid Mode: Let Qube automatically decide when to search the internet based on context and cognitive routing."
-        hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row("Hybrid Internet Mode", desc_hybrid, checked=True)
+        hybrid_row, self.tool_internet_hybrid_toggle = create_toggle_row(
+            "Hybrid Internet Mode", desc_hybrid, checked=get_mcp_internet_hybrid_enabled()
+        )
         tools_layout.addLayout(hybrid_row)
         main_layout.addLayout(tools_layout)
         outer_layout.addWidget(self.tools_content)
@@ -1397,10 +1414,9 @@ class MainWindow(QMainWindow):
             # 🔑 THE NEW AUTO-ACTIVATOR WIRE
             self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
 
-            # Hybrid toggle now controls both base internet capability and hybrid routing.
+            # Hybrid toggle controls web search + cognitive auto-web routing.
             def on_hybrid_toggled(checked: bool):
-                self._llm_worker.set_mcp_internet(checked)
-                self._llm_worker.USE_COGNITIVE_ROUTER_INTERNET = checked
+                self._llm_worker.set_mcp_internet_hybrid(checked)
 
             self.tool_internet_hybrid_toggle.toggled.connect(on_hybrid_toggled)
             # Seed worker state from the current toggle value.

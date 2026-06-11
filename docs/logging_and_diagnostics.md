@@ -172,6 +172,15 @@ Logger: `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log`.
 |----------|---------|-----------------|---------|
 | `QUBE_DISCOURSE_DEBUG` | off | **Terminal** (`Qube.LLM`) | `[Discourse] follow_up=… topic=… wrapper=… core_memory_suppressed=…` per turn |
 
+Structured discourse events in `llm_debug.log` (always when discourse grounding runs):
+
+- `discourse_referent_trace` — referent promoted after assistant reply
+- `discourse_referent_rejected` — promotion/history candidate rejected (`reject_reason`, `prior_referent`)
+- `discourse_rewrite_validation_failed` — possessive rewrite rejected after substitution
+- `discourse_query_rewrite` / `discourse_prompt_rewrite` — inference grounding applied
+
+See `docs/discourse_grounding_referent_stability_plan.md` for QA scenarios.
+
 ### Sidecar (CPU assistive cognition)
 
 | Variable | Default | Log destination | Purpose |
@@ -212,6 +221,11 @@ Sidecar aggregate summary is also shown on the **Telemetry** screen (no env var 
 | `llm_engine_job_timing` | `QUBE_LLM_DEBUG` — per native-engine job (chat + background) |
 | `llm_engine_background_job_timing` | `QUBE_LLM_DEBUG` — background `chat_once` jobs (e.g. memory extraction) |
 | `llm_engine_queue_snapshot` | `QUBE_LLM_DEBUG` — queue depth on each enqueue |
+| `discourse_referent_trace` | Referent promoted after assistant turn |
+| `discourse_referent_rejected` | Candidate referent rejected by stability/validation policy |
+| `discourse_rewrite_validation_failed` | Inference query rewrite failed post-substitution sanity check |
+| `discourse_query_rewrite` | Successful deictic/possessive query substitution |
+| `discourse_prompt_rewrite` | Prompt grounding prefix or resolved user line applied |
 
 **Exchange timing fields** (`llm_debug_exchange_end`, when `QUBE_LLM_DEBUG=1`):
 

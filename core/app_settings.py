@@ -54,14 +54,22 @@ KEY_MODELS_DIRECTORY = "qube.models.directory"
 KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
 KEY_LLM_TEMPERATURE = "qube.llm.temperature"
 KEY_LLM_CONTEXT_LIMIT = "qube.llm.contextLimit"
+KEY_LLM_OUTPUT_TOKEN_LIMIT_ENABLED = "qube.llm.outputTokenLimitEnabled"
+KEY_LLM_OUTPUT_TOKEN_LIMIT = "qube.llm.outputTokenLimit"
 KEY_LLM_CHAT_HISTORY = "qube.llm.chatHistoryMessages"
 KEY_LLM_TOP_K = "qube.llm.topK"
 KEY_LLM_REPEAT_PENALTY = "qube.llm.repeatPenalty"
 KEY_LLM_PRESENCE_PENALTY = "qube.llm.presencePenalty"
 KEY_LLM_TOP_P = "qube.llm.topP"
 KEY_LLM_MIN_P = "qube.llm.minP"
+KEY_MCP_RAG_ENABLED = "qube.mcp.ragEnabled"
+KEY_MCP_RAG_AUTO_ACTIVATOR = "qube.mcp.ragAutoActivator"
+KEY_MCP_RAG_STRICT = "qube.mcp.ragStrictIsolation"
+KEY_MCP_INTERNET_HYBRID = "qube.mcp.internetHybrid"
 DEFAULT_LLM_TEMPERATURE = 0.8
 DEFAULT_LLM_CONTEXT_LIMIT = 4096
+DEFAULT_LLM_OUTPUT_TOKEN_LIMIT_ENABLED = True
+DEFAULT_LLM_OUTPUT_TOKEN_LIMIT = 4096
 DEFAULT_LLM_CHAT_HISTORY = 10
 DEFAULT_LLM_TOP_K = 40
 DEFAULT_LLM_REPEAT_PENALTY = 1.1
@@ -603,6 +611,67 @@ def get_llm_context_limit() -> int:
 
 def set_llm_context_limit(val: int) -> None:
     _store().set(KEY_LLM_CONTEXT_LIMIT, max(1024, min(128000, int(val))))
+
+
+def get_llm_output_token_limit_enabled() -> bool:
+    return bool(
+        _store().get(
+            KEY_LLM_OUTPUT_TOKEN_LIMIT_ENABLED,
+            DEFAULT_LLM_OUTPUT_TOKEN_LIMIT_ENABLED,
+        )
+    )
+
+
+def set_llm_output_token_limit_enabled(enabled: bool) -> None:
+    _store().set(KEY_LLM_OUTPUT_TOKEN_LIMIT_ENABLED, bool(enabled))
+
+
+def get_llm_output_token_limit() -> int:
+    v = _store().get(KEY_LLM_OUTPUT_TOKEN_LIMIT, DEFAULT_LLM_OUTPUT_TOKEN_LIMIT)
+    try:
+        return max(256, min(32768, int(v)))
+    except (TypeError, ValueError):
+        return DEFAULT_LLM_OUTPUT_TOKEN_LIMIT
+
+
+def set_llm_output_token_limit(val: int) -> None:
+    _store().set(KEY_LLM_OUTPUT_TOKEN_LIMIT, max(256, min(32768, int(val))))
+
+
+def get_mcp_rag_enabled() -> bool:
+    """Local Knowledge Base (document RAG) master switch. Default False."""
+    return bool(_store().get(KEY_MCP_RAG_ENABLED, False))
+
+
+def set_mcp_rag_enabled(enabled: bool) -> None:
+    _store().set(KEY_MCP_RAG_ENABLED, bool(enabled))
+
+
+def get_mcp_rag_auto_activator_enabled() -> bool:
+    """NLP custom-phrase RAG auto-activator. Default False."""
+    return bool(_store().get(KEY_MCP_RAG_AUTO_ACTIVATOR, False))
+
+
+def set_mcp_rag_auto_activator_enabled(enabled: bool) -> None:
+    _store().set(KEY_MCP_RAG_AUTO_ACTIVATOR, bool(enabled))
+
+
+def get_mcp_rag_strict_enabled() -> bool:
+    """Strict Isolation Mode (RAG-only answers). Default False."""
+    return bool(_store().get(KEY_MCP_RAG_STRICT, False))
+
+
+def set_mcp_rag_strict_enabled(enabled: bool) -> None:
+    _store().set(KEY_MCP_RAG_STRICT, bool(enabled))
+
+
+def get_mcp_internet_hybrid_enabled() -> bool:
+    """Hybrid internet search + cognitive auto-web routing. Default False."""
+    return bool(_store().get(KEY_MCP_INTERNET_HYBRID, False))
+
+
+def set_mcp_internet_hybrid_enabled(enabled: bool) -> None:
+    _store().set(KEY_MCP_INTERNET_HYBRID, bool(enabled))
 
 
 def get_llm_chat_history_messages() -> int:

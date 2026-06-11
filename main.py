@@ -50,7 +50,9 @@ from core.app_settings import (
 )
 from core.notification_types import (
     enrichment_complete_event,
+    format_retry_in_progress_event,
     ingestion_complete_event,
+    output_truncated_max_tokens_event,
     stt_failed_event,
     turn_complete_event,
 )
@@ -315,6 +317,7 @@ class Qube:
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.response_finished.connect(self._on_llm_response_finished)
+        self.llm_worker.turn_notice.connect(self._on_llm_turn_notice)
         # Phase B memory enrichment: per-turn rich context (rag chunk ids +
         # message ids) is emitted just before response_finished. Capture it
         # on self and hand it to the enrichment worker in
@@ -411,6 +414,19 @@ class Qube:
         connections so a plain attribute assignment is safe.
         """
         self._pending_enrichment_context = payload or {}
+
+    def _on_llm_turn_notice(self, session_id: str, payload: dict) -> None:
+        kind = str((payload or {}).get("kind") or "")
+        sid = str(session_id or "")
+        if kind == "max_tokens":
+            self.window.emit_notification(
+                output_truncated_max_tokens_event(session_id=sid)
+            )
+        elif kind == "format_retry":
+            issues = list((payload or {}).get("issues") or [])
+            self.window.emit_notification(
+                format_retry_in_progress_event(session_id=sid, issues=issues)
+            )
 
     def _on_llm_response_finished(self, session_id: str, text: str) -> None:
         """Unlock chat, queue memory extraction, and mark end of LLM turn for TTS (sentinel)."""
@@ -761,7 +777,7 @@ class Qube:
     def on_rag_toggle_changed(self, is_enabled: bool):
         """Updates the LLM worker when the user flips the RAG switch."""
         if hasattr(self, 'llm_worker'):
-            self.llm_worker.mcp_rag_enabled = is_enabled
+            self.llm_worker.set_mcp_rag(is_enabled)
             logger.debug(f"RAG Engine manually set to: {is_enabled}")
 
     # ------------------------------------------------------------------ #

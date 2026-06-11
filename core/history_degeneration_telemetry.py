@@ -12,6 +12,8 @@ def log_history_degeneration_suppression(
     presented_preview: str = "",
     stored_content: str = "",
     output_degeneration: dict | None = None,
+    stream_cancelled: bool = False,
+    suppression_reason: str = "pathology",
 ) -> None:
     payload: dict = {
         "session_id": session_id,
@@ -20,6 +22,8 @@ def log_history_degeneration_suppression(
         "history_degeneration_suppressed": True,
         "presented_preview": (presented_preview or "")[:300],
         "stored_content": (stored_content or "")[:200],
+        "stream_cancelled": bool(stream_cancelled),
+        "suppression_reason": suppression_reason,
     }
     if output_degeneration:
         payload.update(output_degeneration)

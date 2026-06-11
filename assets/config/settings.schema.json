@@ -175,7 +175,19 @@
     "minimum": 1024,
     "maximum": 128000,
     "default": 4096,
-    "description": "Maximum output tokens allowed per assistant turn."
+    "description": "Model context window (n_ctx): total tokens shared by prompt and reply."
+  },
+  "qube.llm.outputTokenLimitEnabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, cap each assistant reply at outputTokenLimit tokens."
+  },
+  "qube.llm.outputTokenLimit": {
+    "type": "integer",
+    "minimum": 256,
+    "maximum": 32768,
+    "default": 4096,
+    "description": "Maximum new tokens per assistant reply when outputTokenLimitEnabled is true."
   },
   "qube.llm.chatHistoryMessages": {
     "type": "integer",
@@ -218,6 +230,26 @@
     "maximum": 1,
     "default": 0.05,
     "description": "Min-P sampling floor; 0 disables min-P filtering."
+  },
+  "qube.mcp.ragEnabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, Qube may search and cite your local Knowledge Base during chat."
+  },
+  "qube.mcp.ragAutoActivator": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, custom NLP trigger phrases can wake the Knowledge Base for a single turn even if the master RAG switch is off."
+  },
+  "qube.mcp.ragStrictIsolation": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, Qube must answer only from retrieved documents and refuses general-knowledge guesses."
+  },
+  "qube.mcp.internetHybrid": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, Qube may search the web and use cognitive routing to decide when live internet results are needed."
   },
   "qube.models.directory": {
     "type": "string",

@@ -47,7 +47,33 @@ class CompletionOutputTraceTests(unittest.TestCase):
         self.assertGreater(payload["removed_char_count"], 0)
         self.assertTrue(payload["stream_incremental_diverged_from_filters"])
 
-    def test_truncation_metadata(self) -> None:
+    def test_promotes_validation_fields_from_extra(self) -> None:
+        snap = CompletionOutputSnapshot(
+            engine_mode="internal",
+            raw_text="Hello.",
+            extra={
+                "validation_issues": ["template_leakage"],
+                "validation_severity": "high",
+                "first_pass_raw_len": 120,
+                "sanitized_len": 100,
+                "retry_used": True,
+                "retry_attempted": True,
+                "retry_reason": "second_validation_failed",
+                "post_inference_ms": 42,
+            },
+        )
+        payload = build_completion_output_trace_payload(
+            session_id="sess-v",
+            snapshot=snap,
+            presented_text="Hello.",
+        )
+        self.assertEqual(payload["validation_issues"], ["template_leakage"])
+        self.assertEqual(payload["first_pass_raw_len"], 120)
+        self.assertTrue(payload["retry_used"])
+        self.assertTrue(payload["retry_attempted"])
+        self.assertEqual(payload["retry_reason"], "second_validation_failed")
+        self.assertEqual(payload["post_inference_ms"], 42)
+
         with patch.dict(
             os.environ,
             {"QUBE_LOG_RAW_COMPLETION_MAX_CHARS": "5"},

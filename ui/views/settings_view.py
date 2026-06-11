@@ -66,13 +66,17 @@ from core.app_settings import (
     set_sidecar_chat_format,
     get_llm_temperature,
     get_llm_context_limit,
+    get_llm_output_token_limit,
+    get_llm_output_token_limit_enabled,
     get_llm_chat_history_messages,
     get_llm_top_k,
     get_llm_repeat_penalty,
     get_llm_presence_penalty,
     get_llm_top_p,
     get_llm_min_p,
+    get_mcp_rag_auto_activator_enabled,
 )
+from core.output_token_budget import describe_output_token_budget
 from core.auxiliary_cognition import (
     get_cognition_models_dir,
     is_protected_cognition_model,
@@ -330,13 +334,31 @@ class SettingsView(QWidget):
             "Higher values (0.7–1.0) make Qube more creative."
         )
         _gen_ctx_tip = (
-            "Memory wall: sets the absolute maximum number of tokens Qube is allowed to "
-            "output in a single turn."
+            "Total token budget for one turn: instructions, retrieved documents, "
+            "chat history, your message, and the reply all share this window. "
+            "On the local GGUF engine this sets n_ctx and reloads the model when "
+            "changed; higher values use more RAM/VRAM. Reply length is capped "
+            "separately below — both settings draw from the same pool."
+        )
+        _gen_output_limit_tip = (
+            "When enabled, each reply stops after the max reply tokens you set "
+            "(the model's max_tokens). When disabled, the reply may grow until the "
+            "context window is full minus whatever the prompt already used. Chat "
+            "history (toolbar) and retrieval consume prompt space, so long threads "
+            "can shorten replies even with this off."
+        )
+        _gen_output_tokens_tip = (
+            "Upper bound on new tokens per assistant reply when the limit above is "
+            "on. This does not add extra capacity — prompt tokens (chat history, "
+            "RAG, system text) are counted first inside the context window. For "
+            "very long answers, turn the limit off or lower chat history in the toolbar."
         )
         _gen_history_tip = (
-            "Short-term memory: how many past messages to send to the AI. Higher values "
-            "give the AI better context but consume more system RAM (VRAM). Qube's "
-            "long-term memory still remembers important facts even when this is set low."
+            "How many recent user/assistant messages to include in each prompt. "
+            "More history improves continuity but uses more of the context window "
+            "for the prompt, leaving less room for long replies. Also increases "
+            "RAM/VRAM during inference. Long-term memory still covers facts dropped "
+            "from this sliding window."
         )
         _gen_top_k_tip = (
             "Top-K sampling: only the K most likely next tokens are considered. "
@@ -371,11 +393,43 @@ class SettingsView(QWidget):
         self.llm_ctx_spin.setValue(get_llm_context_limit())
         self._add_generation_form_row(ai_form, "Context limit", _gen_ctx_tip, self.llm_ctx_spin)
 
+        self.llm_output_limit_cb = QCheckBox("Limit maximum reply length")
+        self.llm_output_limit_cb.setChecked(get_llm_output_token_limit_enabled())
+        self.llm_output_limit_cb.setToolTip(_gen_output_limit_tip)
+        output_limit_row = QWidget()
+        output_limit_layout = QHBoxLayout(output_limit_row)
+        output_limit_layout.setContentsMargins(0, 0, 0, 0)
+        output_limit_layout.setSpacing(6)
+        output_limit_layout.addWidget(self.llm_output_limit_cb)
+        output_limit_layout.addWidget(self._make_settings_info_button(_gen_output_limit_tip))
+        output_limit_layout.addStretch(1)
+        ai_form.addRow("", output_limit_row)
+
+        self.llm_output_limit_spin = NoScrollSpinBox()
+        self.llm_output_limit_spin.setRange(256, 32768)
+        self.llm_output_limit_spin.setSingleStep(256)
+        self.llm_output_limit_spin.setValue(get_llm_output_token_limit())
+        self._add_generation_form_row(
+            ai_form,
+            "Max reply tokens",
+            _gen_output_tokens_tip,
+            self.llm_output_limit_spin,
+        )
+
+        self.llm_output_limit_hint = QLabel()
+        self.llm_output_limit_hint.setWordWrap(True)
+        self.llm_output_limit_hint.setProperty("class", "SettingsHint")
+        ai_form.addRow("", self.llm_output_limit_hint)
+        self._refresh_output_token_limit_hint()
+
         self.llm_history_spin = NoScrollSpinBox()
         self.llm_history_spin.setRange(2, 100)
         self.llm_history_spin.setSingleStep(2)
         self.llm_history_spin.setValue(get_llm_chat_history_messages())
         self._add_generation_form_row(ai_form, "Chat history", _gen_history_tip, self.llm_history_spin)
+        self.llm_history_spin.valueChanged.connect(
+            lambda _v: self._refresh_output_token_limit_hint()
+        )
 
         self.llm_top_k_spin = NoScrollSpinBox()
         self.llm_top_k_spin.setRange(0, 200)
@@ -1436,12 +1490,66 @@ class SettingsView(QWidget):
         form.addRow(label, row)
         self._generation_spinboxes.append(spinbox)
 
+    def _refresh_output_token_limit_hint(self) -> None:
+        hint = getattr(self, "llm_output_limit_hint", None)
+        if hint is None:
+            return
+        ctx_spin = getattr(self, "llm_ctx_spin", None)
+        ctx = int(ctx_spin.value()) if ctx_spin is not None else get_llm_context_limit()
+        limit_cb = getattr(self, "llm_output_limit_cb", None)
+        limit_enabled = (
+            bool(limit_cb.isChecked())
+            if limit_cb is not None
+            else get_llm_output_token_limit_enabled()
+        )
+        limit_spin = getattr(self, "llm_output_limit_spin", None)
+        user_limit = (
+            int(limit_spin.value())
+            if limit_spin is not None
+            else get_llm_output_token_limit()
+        )
+        history_spin = getattr(self, "llm_history_spin", None)
+        chat_history = (
+            int(history_spin.value())
+            if history_spin is not None
+            else get_llm_chat_history_messages()
+        )
+        hint.setText(
+            describe_output_token_budget(
+                context_window=ctx,
+                limit_enabled=limit_enabled,
+                user_limit=user_limit,
+                chat_history_messages=chat_history,
+            )
+        )
+
+    def _sync_output_limit_controls(self) -> None:
+        enabled = bool(
+            getattr(self, "llm_output_limit_cb", None).isChecked()
+            if hasattr(self, "llm_output_limit_cb")
+            else True
+        )
+        spin = getattr(self, "llm_output_limit_spin", None)
+        if spin is not None:
+            spin.setEnabled(enabled)
+        self._refresh_output_token_limit_hint()
+
     def _wire_llm_generation_settings(self) -> None:
         llm = self.llm_worker
         if llm is None:
             return
         self.llm_temp_spin.valueChanged.connect(llm.set_temperature)
         self.llm_ctx_spin.valueChanged.connect(llm.set_context_window)
+        self.llm_ctx_spin.valueChanged.connect(
+            lambda _v: self._refresh_output_token_limit_hint()
+        )
+        self.llm_output_limit_cb.toggled.connect(llm.set_output_token_limit_enabled)
+        self.llm_output_limit_cb.toggled.connect(self._sync_output_limit_controls)
+        self.llm_output_limit_spin.valueChanged.connect(llm.set_output_token_limit)
+        self.llm_output_limit_spin.valueChanged.connect(
+            lambda _v: self._refresh_output_token_limit_hint()
+        )
+        self._sync_output_limit_controls()
         self.llm_history_spin.valueChanged.connect(llm.set_max_history_messages)
         self.llm_top_k_spin.valueChanged.connect(llm.set_top_k)
         self.llm_repeat_penalty_spin.valueChanged.connect(llm.set_repeat_penalty)
@@ -2242,7 +2350,7 @@ class SettingsView(QWidget):
 
         # 🔑 NEW: Master Checkbox
         self.auto_activator_cb = QCheckBox("Enable NLP Auto-Activator")
-        self.auto_activator_cb.setChecked(True)
+        self.auto_activator_cb.setChecked(get_mcp_rag_auto_activator_enabled())
         self.auto_activator_cb.setToolTip(
             "When enabled, custom trigger phrases can search your Knowledge Base for a single turn, "
             "even if the master RAG switch is off. Add magic words below."

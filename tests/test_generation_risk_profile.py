@@ -27,7 +27,7 @@ class TestGenerationRiskProfile(unittest.TestCase):
         self.assertEqual(profile.risk_tier, "high")
         self.assertLess(profile.temperature_multiplier, 1.0)
         self.assertGreater(profile.repeat_penalty_adjust, 0.0)
-        self.assertTrue(profile.enable_list_loop_guard)
+        self.assertFalse(profile.enable_list_loop_guard)
         self.assertEqual(profile.stream_guard_min_repeats, 6)
 
     def test_effective_temperature_respects_bounds(self) -> None:
@@ -41,6 +41,14 @@ class TestGenerationRiskProfile(unittest.TestCase):
         )
         self.assertGreaterEqual(profile.effective_temperature(0.7), 0.05)
         self.assertLessEqual(profile.effective_temperature(0.7), 2.0)
+
+    def test_enumeration_query_disables_list_loop_guard(self) -> None:
+        profile = resolve_generation_risk_profile(
+            user_query="List the major ethnic groups in Nepal",
+            chat_format_mode="structured",
+        )
+        self.assertIn("enumeration_intent", profile.signals)
+        self.assertFalse(profile.enable_list_loop_guard)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,15 @@ _COMPOSITE_WEIGHTS: dict[str, float] = {
     "truncation": 0.10,
 }
 
+# Class B: normal incremental markdown state during streaming — never live-cancel.
+CLASS_B_DEGENERATION_FLAGS: frozenset[str] = frozenset(
+    {
+        "unfinished_bullet",
+        "truncation",
+        "markdown_explosion",
+    }
+)
+
 _SELF_CORRECTION = re.compile(
     r"(?i)(?:^|\n)\s*(?:"
     r"wait,?\s*(?:actually|no)|"
@@ -121,6 +130,32 @@ class OutputDegenerationResult:
 def should_mark_turn_unreliable(result: OutputDegenerationResult) -> bool:
     """True when the turn must not be trusted in future session history."""
     return result.should_mark_unreliable
+
+
+def has_class_a_pathology_flags(flags: tuple[str, ...]) -> bool:
+    """True when any scored flag indicates generation pathology (not structural incompleteness)."""
+    return any(f not in CLASS_B_DEGENERATION_FLAGS for f in flags)
+
+
+def should_suppress_history(
+    result: OutputDegenerationResult,
+    *,
+    stream_cancelled: bool = False,
+) -> bool:
+    """
+    Whether assistant text should be replaced with the history suppression placeholder.
+
+    After a worker-initiated stream cancel, Class-B-only artifacts (unfinished bullets,
+    tables, headings) must not poison session history.
+    """
+    if result.risk != "HIGH":
+        return False
+    if not stream_cancelled:
+        return True
+    return (
+        _critical_stream_pathology(result.components)
+        or has_class_a_pathology_flags(result.flags)
+    )
 
 
 def _clamp01(value: float) -> float:
@@ -346,21 +381,57 @@ def _composite_score(components: OutputDegenerationComponents) -> float:
     )
 
 
-def _critical_degeneration(components: OutputDegenerationComponents) -> bool:
-    """Any one severe marker is enough to mark the turn unreliable."""
+def _critical_stream_pathology(components: OutputDegenerationComponents) -> bool:
+    """Class A: severe markers that justify live stream cancellation."""
     return (
         components.malformed_list >= 0.85
         or components.punctuation_loop >= 0.85
-        or components.unfinished_bullet >= 0.75
         or components.repetition >= 0.75
         or components.entropy_collapse >= 0.90
         or (
             components.entropy_collapse >= 0.85
             and (components.repetition >= 0.45 or components.punctuation_loop >= 0.45)
         )
-        or components.truncation >= 0.70
         or max(components.meta_commentary, components.self_correction) >= 0.85
     )
+
+
+def _moderate_pathology_signal_count(components: OutputDegenerationComponents) -> int:
+    """Count independent Class A signals at moderate severity."""
+    count = 0
+    if components.repetition >= 0.45:
+        count += 1
+    if components.punctuation_loop >= 0.45:
+        count += 1
+    if components.malformed_list >= 0.45:
+        count += 1
+    if max(components.meta_commentary, components.self_correction) >= 0.65:
+        count += 1
+    return count
+
+
+def _critical_degeneration(components: OutputDegenerationComponents) -> bool:
+    """Any one severe marker is enough to mark the turn unreliable (post-turn)."""
+    return (
+        _critical_stream_pathology(components)
+        or components.unfinished_bullet >= 0.75
+        or components.truncation >= 0.70
+    )
+
+
+def _stream_pathology_risk_tier(
+    score: float,
+    components: OutputDegenerationComponents,
+) -> OutputDegenerationRisk:
+    if _critical_stream_pathology(components):
+        return "HIGH"
+    if _moderate_pathology_signal_count(components) >= 2:
+        return "HIGH"
+    if score >= HIGH_THRESHOLD:
+        return "HIGH"
+    if score >= MEDIUM_THRESHOLD:
+        return "MEDIUM"
+    return "LOW"
 
 
 def _risk_tier(score: float, components: OutputDegenerationComponents) -> OutputDegenerationRisk:
@@ -417,12 +488,43 @@ def detect_output_degeneration(text: str) -> OutputDegenerationResult:
     )
 
 
+def detect_stream_pathology(text: str) -> OutputDegenerationResult:
+    """
+    Live-stream scoring: Class A pathology only.
+
+    Structural incompleteness (unfinished bullets, truncation, markdown headers)
+    is expected during incremental generation and must not trigger cancellation.
+    """
+    t = (text or "").strip()
+    if not t:
+        components = OutputDegenerationComponents(0, 0, 0, 0, 0, 0, 0, 0, 0)
+        return OutputDegenerationResult(0.0, "LOW", components, ())
+
+    components = OutputDegenerationComponents(
+        repetition=_score_repetition(t),
+        malformed_list=_score_malformed_list(t),
+        self_correction=_score_self_correction(t),
+        meta_commentary=_score_meta_commentary(t),
+        unfinished_bullet=0.0,
+        punctuation_loop=_score_punctuation_loop(t),
+        markdown_explosion=0.0,
+        entropy_collapse=_score_entropy_collapse(t),
+        truncation=0.0,
+    )
+    composite = _composite_score(components)
+    return OutputDegenerationResult(
+        composite_score=composite,
+        risk=_stream_pathology_risk_tier(composite, components),
+        components=components,
+        flags=_collect_flags(components),
+    )
+
+
 def detect_stream_degeneration(text: str) -> OutputDegenerationResult:
     """
-    Stricter streaming-only scoring: ignore entropy/truncation on partial text.
+    Legacy streaming scorer — prefer :func:`detect_stream_pathology` for live cancel.
 
-    Used to abort live generation without false positives on numeric prose or
-    incomplete sentences still being written.
+    Retained for callers that need the older mixed Class A/B stream scoring.
     """
     t = (text or "").strip()
     if not t:
@@ -451,9 +553,10 @@ def detect_stream_degeneration(text: str) -> OutputDegenerationResult:
 
 class OutputDegenerationStreamObserver:
     """
-    Incrementally rescores streamed output; trips once composite risk is HIGH.
+    Incrementally rescores streamed output for Class A pathology; trips once HIGH.
 
-    Observer-only: does not mutate visible tokens.
+    Observer-only: does not mutate visible tokens. Structural markdown
+    incompleteness (lists, tables, headings mid-write) does not trip.
     """
 
     __slots__ = (
@@ -486,13 +589,13 @@ class OutputDegenerationStreamObserver:
             return False
         if len(self._buffer) < self._rescore_every:
             return False
-        result = detect_stream_degeneration(self._buffer)
+        result = detect_stream_pathology(self._buffer)
         self._last_result = result
         self._last_score = result.composite_score
         if result.risk == "HIGH":
             self._tripped = True
             self._trip_reason = (
-                f"output degeneration HIGH ({result.composite_score:.2f}; "
+                f"stream pathology HIGH ({result.composite_score:.2f}; "
                 f"flags={','.join(result.flags)})"
             )
             return True

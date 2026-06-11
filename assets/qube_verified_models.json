@@ -58,20 +58,6 @@
       "gguf_repo": "unsloth/gemma-4-12b-it-GGUF"
     },
     {
-      "id": "gpt-oss-20b",
-      "title": "GPT-OSS 20B",
-      "description": "OpenAI's open-weights MoE model (community GGUF). Extreme speed.",
-      "publisher": "openai",
-      "gguf_repo": "unsloth/gpt-oss-20b-GGUF"
-    },
-    {
-      "id": "gpt-oss-20b-uncensored",
-      "title": "GPT-OSS 20B Moderate Uncensored",
-      "description": "Moderately uncensored fine-tune of OpenAI's open-weights MoE model. Uncensored models can be used for creative writing and other purposes, but may hallucinate more often or behave in unexpected ways. Fast, lightweight, and completely unfiltered for old or low-VRAM devices.",
-      "publisher": "openai",
-      "gguf_repo": "DavidAU/OpenAi-GPT-oss-20b-MODERATE-uncensored-NEO-Imatrix-gguf"
-    },
-    {
       "id": "mistral-small-24b-instruct",
       "title": "Mistral Small 24B Instruct",
       "description": "Mistral Small 24B architecture, tailored heavily for tool use and structured data (community GGUF).",

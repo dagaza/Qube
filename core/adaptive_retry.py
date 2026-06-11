@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from core.native_prompt_bos import prepare_completion_prompt
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.output_validation import OutputValidationResult, validate_output
+from core.output_validation_sanitize import sanitize_output_for_validation
 from core.harmony_protocol import is_harmony_contract
 from core.prompt_contract import PromptContract, assert_prompt_contract, stops_for_format
 from core.prompt_renderers import openai_messages_to_alpaca_prompt
+
+
+@dataclass(frozen=True)
+class AdaptiveRetryOutcome:
+    text: str
+    contract: PromptContract
+    retry_attempted: bool = False
+    retry_used: bool = False
+    retry_reason: str | None = None
 
 
 def simple_instruction_format(messages: list[dict]) -> str:
@@ -15,7 +26,54 @@ def simple_instruction_format(messages: list[dict]) -> str:
     return openai_messages_to_alpaca_prompt(messages)
 
 
-def _execute_contract_once(model: Any, contract: PromptContract, messages: list[dict]) -> str:
+def skip_retry_for_structured_enumeration_degeneration(
+    validation: OutputValidationResult,
+    *,
+    format_intent: str = "",
+    require_list_format: bool = False,
+) -> str | None:
+    """
+    Return a skip reason when enumeration turns should not pay for format retry.
+
+    Only blocks medium-severity degeneration on structured list/table answers.
+    """
+    if validation.severity != "medium":
+        return None
+    if "degeneration" not in validation.issues:
+        return None
+    if format_intent == "enumeration" or require_list_format:
+        return "structured_enumeration_medium_degeneration"
+    return None
+
+
+def _enumeration_context(model: Any) -> tuple[str, bool]:
+    policy = getattr(model, "_last_reply_shape_policy", None)
+    if policy is None:
+        return "", False
+    return (
+        str(getattr(policy, "format_intent", "") or ""),
+        bool(getattr(policy, "require_list_format", False)),
+    )
+
+
+def _retry_max_tokens(model: Any, max_tokens: int) -> int:
+    override = getattr(model, "_adaptive_retry_max_tokens", None)
+    if override is not None:
+        try:
+            return max(512, int(override))
+        except (TypeError, ValueError):
+            pass
+    return max(512, int(max_tokens))
+
+
+def _execute_contract_once(
+    model: Any,
+    contract: PromptContract,
+    messages: list[dict],
+    *,
+    max_tokens: int = 512,
+) -> str:
+    budget = _retry_max_tokens(model, max_tokens)
     exec_once = getattr(model, "execute_from_contract", None)
     if callable(exec_once):
         return str(exec_once(contract, messages) or "")
@@ -40,7 +98,7 @@ def _execute_contract_once(model: Any, contract: PromptContract, messages: list[
         r = model.create_completion(
             prompt=prompt_txt,
             temperature=0.2,
-            max_tokens=512,
+            max_tokens=budget,
             stream=False,
             echo=False,
             stop=list(merged),
@@ -51,12 +109,18 @@ def _execute_contract_once(model: Any, contract: PromptContract, messages: list[
     r = model.create_completion(
         prompt=prompt_txt,
         temperature=0.2,
-        max_tokens=512,
+        max_tokens=budget,
         stream=False,
         echo=False,
         stop=list(contract.stop or []),
     )
     return str((r.get("choices") or [{}])[0].get("text") or "")
+
+
+def _emit_adaptive_retry_notice(model: Any, issues: list[str]) -> None:
+    hook = getattr(model, "_turn_notice_hook", None)
+    if callable(hook):
+        hook("format_retry", {"issues": list(issues)})
 
 
 def maybe_retry(
@@ -65,10 +129,16 @@ def maybe_retry(
     contract: PromptContract,
     output: str,
     validation: OutputValidationResult,
-) -> tuple[str, PromptContract, bool]:
+    *,
+    max_tokens: int = 512,
+) -> AdaptiveRetryOutcome:
     # Retry only for invalid medium/high with substantive format issues.
     if validation.is_valid or validation.severity not in ("medium", "high"):
-        return output, contract, False
+        return AdaptiveRetryOutcome(
+            output,
+            contract,
+            retry_reason="validation_passed_or_low_severity",
+        )
 
     retry_worthy = (
         validation.severity == "high"
@@ -78,15 +148,39 @@ def maybe_retry(
         or "role_confusion" in validation.issues
     )
     if not retry_worthy:
-        return output, contract, False
+        return AdaptiveRetryOutcome(output, contract, retry_reason="not_retry_worthy")
+
+    format_intent, require_list_format = _enumeration_context(model)
+    skip_reason = skip_retry_for_structured_enumeration_degeneration(
+        validation,
+        format_intent=format_intent,
+        require_list_format=require_list_format,
+    )
+    if skip_reason:
+        return AdaptiveRetryOutcome(output, contract, retry_reason=skip_reason)
 
     # Harmony models stay on the protocol path — no ChatML/Alpaca downgrade.
     if is_harmony_contract(contract):
-        retried_output = _execute_contract_once(model, contract, messages)
-        second = validate_output(retried_output, contract)
+        _emit_adaptive_retry_notice(model, validation.issues)
+        retried_output = _execute_contract_once(
+            model, contract, messages, max_tokens=max_tokens
+        )
+        second = validate_output(
+            sanitize_output_for_validation(retried_output), contract
+        )
         if second.is_valid:
-            return retried_output, contract, True
-        return output, contract, False
+            return AdaptiveRetryOutcome(
+                retried_output,
+                contract,
+                retry_attempted=True,
+                retry_used=True,
+            )
+        return AdaptiveRetryOutcome(
+            output,
+            contract,
+            retry_attempted=True,
+            retry_reason="second_validation_failed",
+        )
 
     retry_contract: PromptContract | None = None
 
@@ -114,11 +208,26 @@ def maybe_retry(
         )
 
     if retry_contract is None:
-        return output, contract, False
+        return AdaptiveRetryOutcome(output, contract, retry_reason="no_fallback_contract")
 
     assert_prompt_contract(retry_contract)
-    retried_output = _execute_contract_once(model, retry_contract, messages)
-    second = validate_output(retried_output, retry_contract)
+    _emit_adaptive_retry_notice(model, validation.issues)
+    retried_output = _execute_contract_once(
+        model, retry_contract, messages, max_tokens=max_tokens
+    )
+    second = validate_output(
+        sanitize_output_for_validation(retried_output), retry_contract
+    )
     if second.is_valid:
-        return retried_output, retry_contract, True
-    return output, contract, False
+        return AdaptiveRetryOutcome(
+            retried_output,
+            retry_contract,
+            retry_attempted=True,
+            retry_used=True,
+        )
+    return AdaptiveRetryOutcome(
+        output,
+        contract,
+        retry_attempted=True,
+        retry_reason="second_validation_failed",
+    )

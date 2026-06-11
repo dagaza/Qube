@@ -10,10 +10,13 @@
     { "role": "user", "content": "What languages are commonly spoken there?" },
     { "role": "user", "content": "What is its elevation above sea level?" },
     { "role": "user", "content": "What are its major tourist attractions?" },
-    { "role": "user", "content": "Which UNESCO World Heritage sites are in the city?" }
+    { "role": "user", "content": "Which UNESCO World Heritage sites are in the city?" },
+    { "role": "user", "content": "What about Kathmandu's flora and fauna?" },
+    { "role": "user", "content": "Ok, how about its music and arts scene?" }
   ],
   "metadata": {
     "topic": "kathmandu_follow_up_chain",
-    "stress_turns": 9
+    "stress_turns": 11,
+    "regression": "discourse_referent_stability_flora_to_music"
   }
 }

@@ -29,6 +29,44 @@ _ABRUPT_END = re.compile(r"(?:\.\.\.|[,;:\-\(\[])\s*$")
 _STOP_ARTIFACT_END = re.compile(r"(?:<\|im_end\|>|\[/INST\]|\[INST\])\s*$", re.I)
 _TOKENISH = re.compile(r"[a-zA-Z0-9]")
 _WORD = re.compile(r"[a-zA-Z0-9]{2,}")
+_STRUCTURED_BULLET_LINE = re.compile(
+    r"^\s*[-*+]\s+\*\*.+?\*\*\s*[—\-–:]\s*.+",
+    re.M,
+)
+_TABLE_SEPARATOR = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$")
+
+
+def _structured_list_or_table_heavy(text: str) -> bool:
+    bullets = len(_STRUCTURED_BULLET_LINE.findall(text))
+    table_rows = sum(
+        1
+        for line in text.splitlines()
+        if line.strip().startswith("|") and not _TABLE_SEPARATOR.match(line.strip())
+    )
+    return bullets >= 6 or table_rows >= 6 or (bullets >= 3 and table_rows >= 3)
+
+
+def _prose_for_degeneration_check(text: str) -> str:
+    """Strip repeated markdown scaffolding before n-gram loop detection."""
+    parts: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        bullet = re.match(r"^[-*+]\s+\*\*(.+?)\*\*\s*[—\-–:]\s*(.*)$", line)
+        if bullet:
+            parts.append(f"{bullet.group(1)} {bullet.group(2)}")
+            continue
+        if line.startswith("|"):
+            cells = [
+                cell.strip()
+                for cell in line.split("|")
+                if cell.strip() and not re.fullmatch(r":?-{3,}:?", cell.strip())
+            ]
+            parts.extend(cells)
+            continue
+        parts.append(line)
+    return " ".join(parts)
 
 
 @dataclass
@@ -93,18 +131,21 @@ def _degeneration(text: str) -> bool:
     # obvious token loops
     if re.search(r"(\[[^\]]+\])\1\1", low):
         return True
-    words = _WORD.findall(low)
+    analysis = _prose_for_degeneration_check(t).lower()
+    words = _WORD.findall(analysis)
     if len(words) < 8:
         return False
-    # repeated short phrase
-    for size in (2, 3, 4):
+    list_heavy = _structured_list_or_table_heavy(t)
+    chunk_sizes = (4,) if list_heavy else (2, 3, 4)
+    repeat_threshold = 6 if list_heavy else 4
+    for size in chunk_sizes:
         chunks = [" ".join(words[i : i + size]) for i in range(0, max(0, len(words) - size + 1))]
         if not chunks:
             continue
         freq: dict[str, int] = {}
         for c in chunks:
             freq[c] = freq.get(c, 0) + 1
-            if freq[c] >= 4:
+            if freq[c] >= repeat_threshold:
                 return True
     return False
 

@@ -33,10 +33,12 @@ _POLICY_DISABLED_EXTRA_STOPS: tuple[str, ...] = (
 )
 
 _PHI_ASSISTANT = "<|assistant|>"
+_GEMMA_MODEL_ANCHOR = "<|turn>model"
 
 _ASSISTANT_ANCHOR_SUFFIXES: tuple[str, ...] = (
     "<|assistant|>",
     "<|im_start|>assistant",
+    _GEMMA_MODEL_ANCHOR,
     "[INST]",
     "[/INST]",
 )
@@ -52,6 +54,9 @@ def _prompt_has_generation_anchor(prompt: str, template_type: str) -> bool:
     tt = (template_type or "fallback").lower()
     if tt == "mistral":
         return bool(_MISTRAL_CLOSE_INST_RE.search(p)) or p.endswith("[INST]")
+    if tt == "gemma":
+        tail = p.rstrip()
+        return tail.endswith(_GEMMA_MODEL_ANCHOR) or tail.endswith(f"{_GEMMA_MODEL_ANCHOR}\n")
     return p.endswith(_ASSISTANT_ANCHOR_SUFFIXES)
 
 
@@ -69,6 +74,8 @@ def _maybe_append_assistant_anchor(
     tt = (template_type or "fallback").lower()
     if tt == "mistral":
         return prompt, False
+    if tt == "gemma":
+        return (prompt or "") + f"\n{_GEMMA_MODEL_ANCHOR}\n", True
     return (prompt or "") + "\n<|assistant|>\n", True
 
 
@@ -123,9 +130,14 @@ class RenderPromptBundle:
 def infer_template_type(llama: Any) -> str:
     """Classify template routing key from GGUF tokenizer.chat_template string and chat_format."""
     md = getattr(llama, "metadata", None) or {}
+    name = _llama_display_name(llama).lower()
+    if "gemma" in name:
+        return "gemma"
     tmpl = md.get("tokenizer.chat_template")
     if isinstance(tmpl, str) and tmpl.strip():
         t = tmpl
+        if "<|turn>" in t or "<turn|>" in t:
+            return "gemma"
         if "<|im_start|>" in t:
             return "chatml"
         if "start_header_id" in t:
@@ -216,6 +228,19 @@ def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: s
         if reasoning_mode == "soft":
             return (prompt or "") + "\n(Use internal reasoning. Do not expose it.)"
         return (prompt or "") + "\n" + (suffix or "Write only the user-facing response.")
+
+    if tt == "gemma":
+        if reasoning_mode == "soft":
+            return _insert_before_last_anchor(
+                prompt or "",
+                _GEMMA_MODEL_ANCHOR,
+                "Keep hidden reasoning private. Write only the user-facing response.",
+            )
+        return _insert_before_last_anchor(
+            prompt or "",
+            _GEMMA_MODEL_ANCHOR,
+            suffix or "Write only the user-facing response.",
+        )
 
     return (prompt or "") + "\n" + (suffix or "Write only the user-facing response.")
 

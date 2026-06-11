@@ -15,16 +15,14 @@ from core.discourse_patterns import (
     is_deictic_topic_phrase,
 )
 from core.discourse_prompt_rewrite import validate_stored_discourse_topic
+from core.discourse_referent_policy import (
+    EntityAspectParse,
+    extract_entity_and_aspect,
+    should_replace_referent,
+    validate_referent_candidate,
+)
 
-TopicType = Literal["entity", "game", "concept", "task", "city", "person", "org", "unknown"]
-ReferentSource = Literal[
-    "assistant_answer",
-    "assistant_pattern",
-    "prior_session",
-    "user_question",
-    "history_scan",
-    "none",
-]
+from core.discourse_types import ReferentSource, TopicType
 
 _GAME_HINTS = re.compile(
     r"\b(game|video game|roguelike|deckbuilder|playthrough|boss fight|card game)\b",
@@ -43,7 +41,14 @@ _TITLE_CASE = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b")
 # Names with internal articles: Slay the Spire, Legend of Zelda, The Witcher
 _PROPER_NAME = re.compile(
     r"\b((?:The\s+)?[A-Z][a-z0-9]+"
-    r"(?:\s+(?:the|of|and|a|in)\s+[A-Za-z][a-z0-9]+|\s+[A-Z][a-z0-9]+)+)\b"
+    r"(?:\s+(?:the|of|and)\s+[A-Za-z][a-z0-9]+|\s+[A-Z][a-z0-9]+)+)\b"
+)
+_LIST_INTRODUCER = re.compile(
+    r"\b(?:such as|like|including|featuring|e\.g\.|for example)\s+",
+    re.I,
+)
+_FIRST_SENTENCE_SUBJECT = re.compile(
+    r"^([A-Z][a-zA-Z''\u2019-]+)\s+is\b",
 )
 _TOPIC_CHANGE = re.compile(
     r"\b(?:let'?s talk about|switch(?:ing)? to|change topic to|new topic:?)\s+(.{2,80})",
@@ -72,6 +77,7 @@ _CITY_HINT = re.compile(r"\b(?:city|cities|town)\b", re.I)
 class DiscourseState:
     active_topic: Optional[str] = None
     topic_type: TopicType = "unknown"
+    active_aspect: Optional[str] = None
     active_referent: Optional[str] = None
     referent_type: TopicType = "unknown"
     referent_source: ReferentSource = "none"
@@ -93,6 +99,7 @@ class DiscourseState:
         return {
             "discourse_topic": self.active_topic,
             "discourse_topic_type": self.topic_type,
+            "discourse_aspect": self.active_aspect,
             "discourse_topic_confidence": round(self.confidence, 3),
             "discourse_last_explicit_turn_index": self.last_explicit_turn_index,
             "discourse_referent": self.active_referent,
@@ -139,6 +146,10 @@ def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
     s = (text or "").strip()
     if not s:
         return None, "unknown"
+
+    parsed = extract_entity_and_aspect(s)
+    if parsed.entity and parsed.aspect:
+        return parsed.aspect[:120], parsed.topic_type
 
     m = _TOPIC_CHANGE.search(s)
     if m:
@@ -193,6 +204,15 @@ def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
     return None, "unknown"
 
 
+def _strip_list_clause(text: str) -> str:
+    """Remove list-example tails so NER does not latch onto enumeration items."""
+    s = (text or "").strip()
+    m = _LIST_INTRODUCER.search(s)
+    if m:
+        return s[: m.start()].strip(" ,;:")
+    return s
+
+
 def extract_assistant_referent(content: str) -> Optional[str]:
     """Extract a primary entity referent from a short assistant answer."""
     s = (content or "").strip()
@@ -204,15 +224,40 @@ def extract_assistant_referent(content: str) -> Optional[str]:
 
     m = _SINGLE_PROPER_REFERENT.match(first)
     if m:
-        return m.group(1).strip()[:120]
+        candidate = m.group(1).strip()[:120]
+        usable, _ = validate_referent_candidate(
+            candidate, assistant_text=s, source="assistant_answer"
+        )
+        if usable:
+            return candidate
 
-    names = _PROPER_NAME.findall(first)
+    subject = _FIRST_SENTENCE_SUBJECT.match(first)
+    if subject:
+        candidate = subject.group(1).strip()[:120]
+        usable, _ = validate_referent_candidate(
+            candidate, assistant_text=s, source="assistant_answer"
+        )
+        if usable:
+            return candidate
+
+    scan = _strip_list_clause(first)
+    names = _PROPER_NAME.findall(scan)
     if names:
-        return max(names, key=len).strip()[:120]
+        candidate = max(names, key=len).strip()[:120]
+        usable, _ = validate_referent_candidate(
+            candidate, assistant_text=s, source="assistant_answer"
+        )
+        if usable:
+            return candidate
 
-    titles = _TITLE_CASE.findall(first)
+    titles = _TITLE_CASE.findall(scan)
     if titles:
-        return max(titles, key=len).strip()[:120]
+        candidate = max(titles, key=len).strip()[:120]
+        usable, _ = validate_referent_candidate(
+            candidate, assistant_text=s, source="assistant_answer"
+        )
+        if usable:
+            return candidate
 
     return None
 
@@ -225,12 +270,13 @@ def _assistant_topic_hint(content: str) -> tuple[Optional[str], TopicType]:
     topic, ttype = _extract_topic_from_text(first)
     if topic and validate_stored_discourse_topic(topic):
         return topic, ttype
-    names = _PROPER_NAME.findall(first)
+    scan = _strip_list_clause(first)
+    names = _PROPER_NAME.findall(scan)
     if names:
         topic = names[0].strip()
         if validate_stored_discourse_topic(topic):
             return topic[:120], _infer_topic_type(topic, first)
-    titles = _TITLE_CASE.findall(first)
+    titles = _TITLE_CASE.findall(scan)
     if titles:
         topic = titles[0]
         if validate_stored_discourse_topic(topic):
@@ -258,11 +304,20 @@ def _last_assistant_before_current(turns: list[dict[str, Any]]) -> tuple[Optiona
     return None, ""
 
 
+def _user_history_texts(history: list[dict[str, Any]]) -> tuple[str, ...]:
+    return tuple(
+        str(msg.get("content") or "").strip()
+        for msg in history
+        if str(msg.get("role", "")).lower() == "user" and str(msg.get("content") or "").strip()
+    )
+
+
 def _referent_from_assistant_content(
     asst_content: str,
     *,
     prior_user: str = "",
     current_prompt: str = "",
+    user_history: tuple[str, ...] = (),
 ) -> tuple[Optional[str], TopicType, ReferentSource, float]:
     from core.discourse_answer_patterns import extract_referent_from_assistant_answer
 
@@ -274,17 +329,26 @@ def _referent_from_assistant_content(
 
     referent = extract_assistant_referent(asst_content)
     if referent:
-        return (
+        usable, _ = validate_referent_candidate(
             referent,
-            _infer_referent_type(
-                referent,
-                prior_user=prior_user,
-                current_prompt=current_prompt,
-                assistant_context=asst_content,
-            ),
-            "assistant_answer",
-            0.80,
+            user_prompt=prior_user,
+            user_message=current_prompt,
+            assistant_text=asst_content,
+            source="assistant_answer",
+            user_history=user_history,
         )
+        if usable:
+            return (
+                referent,
+                _infer_referent_type(
+                    referent,
+                    prior_user=prior_user,
+                    current_prompt=current_prompt,
+                    assistant_context=asst_content,
+                ),
+                "assistant_answer",
+                0.80,
+            )
     return None, "unknown", "none", 0.0
 
 
@@ -294,25 +358,40 @@ def _resolve_referent_from_history(
     current_prompt: str,
     current_idx: int,
 ) -> tuple[Optional[str], TopicType, ReferentSource, float]:
+    user_history = _user_history_texts(history)
+
+    # Prefer sticky prior entity over fresh assistant NER.
+    if prior.active_referent and prior.last_explicit_turn_index >= 0:
+        gap = current_idx - prior.last_explicit_turn_index
+        if gap <= 6:
+            usable, _ = validate_referent_candidate(
+                prior.active_referent,
+                user_message=current_prompt,
+                source=prior.referent_source,
+                user_history=user_history,
+            )
+            if usable:
+                return (
+                    prior.active_referent,
+                    prior.referent_type,
+                    prior.referent_source if prior.referent_source != "none" else "prior_session",
+                    prior.referent_confidence or prior.confidence,
+                )
+
     asst_content, prior_user = _last_assistant_before_current(history)
     if asst_content:
         referent, rtype, source, ref_conf = _referent_from_assistant_content(
             asst_content,
             prior_user=prior_user,
             current_prompt=current_prompt,
+            user_history=user_history,
         )
         if referent:
-            return referent, rtype, source, ref_conf
-
-    if prior.active_referent and prior.last_explicit_turn_index >= 0:
-        gap = current_idx - prior.last_explicit_turn_index
-        if gap <= 6:
-            return (
-                prior.active_referent,
-                prior.referent_type,
-                prior.referent_source if prior.referent_source != "none" else "prior_session",
-                prior.referent_confidence or prior.confidence,
+            allow, _ = should_replace_referent(
+                prior, referent, source, ref_conf, user_prompt=current_prompt
             )
+            if allow:
+                return referent, rtype, source, ref_conf
 
     if (
         prior.active_topic
@@ -321,15 +400,21 @@ def _resolve_referent_from_history(
     ):
         gap = current_idx - prior.last_explicit_turn_index
         if gap <= 6:
-            rtype: TopicType = prior.topic_type
-            if rtype in ("entity", "game", "city", "person", "org"):
-                return prior.active_topic, rtype, "prior_session", prior.confidence
+            rtype: TopicType = prior.referent_type if prior.active_referent else prior.topic_type
+            entity = (prior.active_referent or prior.active_topic or "").strip()
+            if entity and rtype in ("entity", "game", "city", "person", "org"):
+                return entity, rtype, "prior_session", prior.referent_confidence or prior.confidence
 
     for i in range(len(history) - 2, -1, -1):
         msg = history[i]
         if str(msg.get("role", "")).lower() != "user":
             continue
         content = str(msg.get("content") or "")
+        parsed = extract_entity_and_aspect(content)
+        if parsed.entity:
+            etype = parsed.topic_type
+            if etype in ("entity", "game", "city", "person", "org"):
+                return parsed.entity, etype, "history_scan", 0.75
         topic, ttype = _extract_topic_from_text(content)
         if topic and not is_deictic_topic_phrase(topic):
             if i + 1 < len(history) and str(history[i + 1].get("role", "")).lower() == "assistant":
@@ -343,6 +428,42 @@ def _resolve_referent_from_history(
     return None, "unknown", "none", 0.0
 
 
+def _state_with_entity_aspect(
+    *,
+    entity: str,
+    aspect: Optional[str],
+    entity_type: TopicType,
+    last_explicit_turn_index: int,
+    confidence: float,
+    referent_source: ReferentSource = "user_question",
+    referent_confidence: float = 0.0,
+) -> DiscourseState:
+    ent = (entity or "").strip()[:120]
+    asp = (aspect or "").strip()[:120] or None
+    topic = asp or ent
+    ttype = entity_type if asp else entity_type
+    ref_source: ReferentSource = "none"
+    ref_conf = 0.0
+    active_referent: Optional[str] = None
+    referent_type: TopicType = "unknown"
+    if entity_type in ("entity", "game", "city", "person", "org"):
+        active_referent = ent
+        referent_type = entity_type
+        ref_source = referent_source
+        ref_conf = referent_confidence or confidence
+    return DiscourseState(
+        active_topic=topic,
+        topic_type=ttype,
+        active_aspect=asp,
+        active_referent=active_referent,
+        referent_type=referent_type,
+        referent_source=ref_source,
+        referent_confidence=ref_conf,
+        last_explicit_turn_index=last_explicit_turn_index,
+        confidence=confidence,
+    )
+
+
 def _state_with_topic(
     topic: str,
     ttype: TopicType,
@@ -351,7 +472,21 @@ def _state_with_topic(
     confidence: float,
     referent_source: ReferentSource = "user_question",
     referent_confidence: float = 0.0,
+    active_aspect: Optional[str] = None,
+    entity_override: Optional[str] = None,
+    entity_type_override: Optional[TopicType] = None,
 ) -> DiscourseState:
+    if entity_override:
+        return _state_with_entity_aspect(
+            entity=entity_override,
+            aspect=active_aspect or topic,
+            entity_type=entity_type_override or ttype,
+            last_explicit_turn_index=last_explicit_turn_index,
+            confidence=confidence,
+            referent_source=referent_source,
+            referent_confidence=referent_confidence,
+        )
+
     active_referent: Optional[str] = None
     referent_type: TopicType = "unknown"
     ref_source: ReferentSource = "none"
@@ -364,6 +499,7 @@ def _state_with_topic(
     return DiscourseState(
         active_topic=topic,
         topic_type=ttype,
+        active_aspect=active_aspect,
         active_referent=active_referent,
         referent_type=referent_type,
         referent_source=ref_source,
@@ -391,11 +527,29 @@ def promote_referent_after_assistant(
         asst,
         prior_user=user_prompt,
         current_prompt=user_prompt,
+        user_history=(user_prompt,),
     )
     if not referent:
         return prior
 
+    allow, reject_reason = should_replace_referent(
+        prior, referent, source, ref_conf, user_prompt=user_prompt
+    )
+    if not allow:
+        from core.discourse_telemetry import log_discourse_referent_rejected
+
+        log_discourse_referent_rejected(
+            candidate=referent,
+            candidate_source=source,
+            reject_reason=reject_reason,
+            prior_referent=prior.active_referent or "",
+            user_prompt_preview=user_prompt,
+            assistant_preview=asst,
+        )
+        return prior
+
     preserved_topic = prior.active_topic
+    preserved_aspect = prior.active_aspect
     if preserved_topic and is_deictic_topic_phrase(preserved_topic):
         preserved_topic = None
 
@@ -404,8 +558,9 @@ def promote_referent_after_assistant(
         topic_type = "city"
 
     return DiscourseState(
-        active_topic=preserved_topic or referent,
+        active_topic=preserved_topic or prior.active_aspect or referent,
         topic_type=topic_type if preserved_topic else rtype,
+        active_aspect=preserved_aspect,
         active_referent=referent,
         referent_type=rtype,
         referent_source=source,
@@ -413,6 +568,46 @@ def promote_referent_after_assistant(
         last_explicit_turn_index=prior.last_explicit_turn_index,
         confidence=max(prior.confidence, ref_conf),
     )
+
+
+def _explicit_state_from_prompt(
+    current: str,
+    current_idx: int,
+    parsed: EntityAspectParse,
+    explicit: Optional[str],
+    etype: TopicType,
+) -> DiscourseState:
+    if parsed.entity and parsed.aspect:
+        return _state_with_entity_aspect(
+            entity=parsed.entity,
+            aspect=parsed.aspect,
+            entity_type=parsed.topic_type,
+            last_explicit_turn_index=current_idx,
+            confidence=0.85,
+            referent_source="user_question",
+            referent_confidence=0.85,
+        )
+    return _state_with_topic(
+        explicit or "",
+        etype,
+        last_explicit_turn_index=current_idx,
+        confidence=0.85,
+        referent_source="user_question",
+        referent_confidence=0.85,
+    )
+
+
+def _aspect_from_deictic_prompt(current: str, prior: DiscourseState) -> Optional[str]:
+    m = re.search(
+        r"\b(?:its|their|his|her|your|our)\s+(.+?)\??\s*$",
+        (current or "").strip(),
+        re.I,
+    )
+    if m:
+        aspect = m.group(1).strip(" .?!")[:120]
+        if aspect and len(aspect) >= 2:
+            return aspect
+    return prior.active_aspect
 
 
 def update_discourse_state(
@@ -428,20 +623,17 @@ def update_discourse_state(
     current_idx = len(turns) - 1 if turns else -1
     current = (current_prompt or "").strip()
 
+    parsed = extract_entity_and_aspect(current)
     explicit, etype = _extract_topic_from_text(current)
     if (
         explicit
         and not is_deictic_topic_phrase(explicit)
         and not has_possessive_anaphor(explicit)
     ):
-        return _state_with_topic(
-            explicit,
-            etype,
-            last_explicit_turn_index=current_idx,
-            confidence=0.85,
-            referent_source="user_question",
-            referent_confidence=0.85,
-        )
+        return _explicit_state_from_prompt(current, current_idx, parsed, explicit, etype)
+
+    if parsed.entity and parsed.aspect and not is_deictic_prompt(current):
+        return _explicit_state_from_prompt(current, current_idx, parsed, explicit, etype)
 
     deictic_turn = bool(
         explicit and (is_deictic_topic_phrase(explicit) or has_possessive_anaphor(explicit))
@@ -454,11 +646,13 @@ def update_discourse_state(
             preserved_topic = prior.active_topic
             if preserved_topic and is_deictic_topic_phrase(preserved_topic):
                 preserved_topic = None
-            active_topic = preserved_topic or referent
-            topic_type = prior.topic_type if preserved_topic else rtype
+            aspect = _aspect_from_deictic_prompt(current, prior)
+            active_topic = aspect or preserved_topic or referent
+            topic_type = prior.topic_type if preserved_topic or aspect else rtype
             return DiscourseState(
                 active_topic=active_topic,
                 topic_type=topic_type,
+                active_aspect=aspect,
                 active_referent=referent,
                 referent_type=rtype,
                 referent_source=ref_source,
@@ -478,6 +672,17 @@ def update_discourse_state(
         role = str(msg.get("role", "")).lower()
         content = str(msg.get("content") or "")
         if role == "user":
+            user_parsed = extract_entity_and_aspect(content)
+            if user_parsed.entity and user_parsed.aspect:
+                return _state_with_entity_aspect(
+                    entity=user_parsed.entity,
+                    aspect=user_parsed.aspect,
+                    entity_type=user_parsed.topic_type,
+                    last_explicit_turn_index=i,
+                    confidence=0.70,
+                    referent_source="user_question",
+                    referent_confidence=0.75,
+                )
             topic, ttype = _extract_topic_from_text(content)
             if topic and not is_deictic_topic_phrase(topic):
                 if i + 1 < len(turns) and str(turns[i + 1].get("role", "")).lower() == "assistant":
