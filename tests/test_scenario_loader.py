@@ -53,7 +53,7 @@ class ScenarioLoaderFileTests(unittest.TestCase):
         self.assertTrue(path.is_file(), f"missing fixture: {path}")
         scenario = load_scenario(path)
         self.assertEqual(scenario.name, "Nepal follow-up chain")
-        self.assertEqual(len(scenario.messages), 9)
+        self.assertEqual(len(scenario.messages), 11)
 
     def test_list_scenario_files_includes_fixture(self) -> None:
         files = list_scenario_files()

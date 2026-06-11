@@ -11,6 +11,7 @@ import types
 from core.model_chat_contract import ChatContract
 from core.prompt_template_router import RenderPromptBundle
 from core.prompt_contract import PromptContract, PromptContractResolution, stops_for_format
+from core.adaptive_retry import AdaptiveRetryOutcome
 
 
 def _fake_build_prompt_bundle(
@@ -136,6 +137,12 @@ class _FakeLlama:
 
     def create_completion(self, **kwargs):
         self.calls.append(("completion", kwargs))
+        if kwargs.get("stream"):
+            def _chunks():
+                yield {"choices": [{"text": "ok", "finish_reason": None}]}
+                yield {"choices": [{"text": "", "finish_reason": "stop"}]}
+
+            return _chunks()
         return {"choices": [{"text": "ok"}]}
 
 
@@ -245,8 +252,14 @@ class TestNativePromptContractRuntime(unittest.TestCase):
             "native_llama_engine_test_module.resolve_prompt_contract",
             return_value=PromptContractResolution(contract=base),
         ), patch(
-            "native_llama_engine_test_module.maybe_retry",
-            return_value=("retry answer", retried, True),
+            "core.output_validation_flow.maybe_retry",
+            return_value=AdaptiveRetryOutcome(
+                text="retry answer",
+                contract=retried,
+                retry_attempted=True,
+                retry_used=True,
+                retry_reason="test",
+            ),
         ), patch(
             "native_llama_engine_test_module.build_prompt_bundle",
             side_effect=_fake_build_prompt_bundle("<<stub>>"),
