@@ -223,6 +223,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_local_llm_tour"):
             self._local_llm_tour.start()
 
+    def focus_chat_composer_if_ready(self) -> None:
+        if hasattr(self, "conversations_view"):
+            self.conversations_view.focus_composer_if_ready()
+
     def _resolve_logo_asset(self, name: str) -> Path | None:
         """Resolve logo paths across new and legacy asset directories."""
         for parts in (
@@ -2041,6 +2045,8 @@ class MainWindow(QMainWindow):
             elif btn == self.nav_telemetry: btn.setIcon(qta.icon('fa5s.tachometer-alt', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_models: btn.setIcon(qta.icon('fa5s.microchip', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
             elif btn == self.nav_settings: btn.setIcon(qta.icon('fa5s.cog', color='#89b4fa' if btn.isChecked() else '#cdd6f4'))
+        if index == 0 and hasattr(self, "conversations_view"):
+            QTimer.singleShot(0, self.conversations_view.focus_composer_if_ready)
 
     def _toggle_theme(self):
         """Toggles the global theme and resets the system palette to prevent 'Ghosting'."""

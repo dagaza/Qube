@@ -29,6 +29,21 @@ _ROOT_ROWS = (
 
 _ROOT_ROW_HEIGHT = 56
 _DRILL_LIST_HEIGHT = 220
+_TYPEAHEAD_RESET_MS = 900
+
+
+def root_row_index_for_query(query: str) -> int:
+    """Best root-menu row for a type-ahead prefix (0-based index into _ROOT_ROWS)."""
+    q = (query or "").strip().lower()
+    if not q:
+        return 0
+    matches: list[int] = []
+    for idx, (kind, title, _subtitle, _icon) in enumerate(_ROOT_ROWS):
+        title_l = title.lower()
+        kind_l = kind.lower()
+        if title_l.startswith(q) or kind_l.startswith(q):
+            matches.append(idx)
+    return matches[0] if matches else 0
 
 
 class ComposerMentionPopup(QWidget):
@@ -49,6 +64,10 @@ class ComposerMentionPopup(QWidget):
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self._run_search)
+        self._type_buffer = ""
+        self._type_reset_timer = QTimer(self)
+        self._type_reset_timer.setSingleShot(True)
+        self._type_reset_timer.timeout.connect(self._clear_type_buffer)
 
         shell = QFrame(self)
         shell.setObjectName("ComposerMentionShell")
@@ -155,18 +174,65 @@ class ComposerMentionPopup(QWidget):
         self._mode = None
         self._filter.hide()
         self._filter.clear()
+        self._clear_type_buffer()
         self.hide()
+
+    def _clear_type_buffer(self) -> None:
+        self._type_buffer = ""
+        self._type_reset_timer.stop()
+
+    def seed_type_buffer(self, text: str) -> None:
+        """Seed prefix matcher (e.g. pasted ``@Files``) and highlight."""
+        cleaned = "".join(ch for ch in (text or "").lower() if ch.isalpha())
+        self._type_buffer = cleaned
+        if self._type_buffer:
+            self._type_reset_timer.start(_TYPEAHEAD_RESET_MS)
+        self._apply_type_buffer()
+
+    def _append_type_char(self, ch: str) -> None:
+        self._type_buffer += ch.lower()
+        self._type_reset_timer.start(_TYPEAHEAD_RESET_MS)
+        self._apply_type_buffer()
+
+    def _pop_type_char(self) -> None:
+        if self._type_buffer:
+            self._type_buffer = self._type_buffer[:-1]
+            self._type_reset_timer.start(_TYPEAHEAD_RESET_MS)
+        self._apply_type_buffer()
+
+    def _apply_type_buffer(self) -> None:
+        if self._mode is not None or not self.isVisible():
+            return
+        idx = root_row_index_for_query(self._type_buffer)
+        if idx < 0 or idx >= self._list.count():
+            return
+        item = self._list.item(idx)
+        if item is None or not (item.flags() & Qt.ItemFlag.ItemIsEnabled):
+            return
+        self._list.setCurrentRow(idx)
+        self._list.scrollToItem(item)
 
     def show_root(self, global_pos) -> None:
         self._anchor_global_pos = QPoint(global_pos)
         self._mode = None
         self._filter.hide()
         self._filter.clear()
+        self._clear_type_buffer()
         self._rebuild_visible_list()
         self._select_first_actionable_row()
         self._position_at(self._anchor_global_pos)
         self.show()
         self._list.setFocus()
+
+    def apply_root_query(self, query: str) -> None:
+        """Legacy hook: seed the popup type-ahead buffer from composer ``@`` suffix."""
+        if self._mode is not None or not self.isVisible():
+            return
+        if query:
+            self.seed_type_buffer(query)
+        else:
+            self._clear_type_buffer()
+            self._select_first_actionable_row()
 
     def show_drill_down(self, kind: str, global_pos, *, query: str = "") -> None:
         if global_pos is not None:
@@ -423,6 +489,8 @@ class ComposerMentionPopup(QWidget):
                 active = parent._active_mention_query()
                 if active:
                     query = active[1]
+            if not query and self._type_buffer:
+                query = self._type_buffer
             # Reuse composer caret anchor — not popup bottom-left (drifts off-window).
             anchor = self._anchor_global_pos
             if anchor is None and parent is not None and hasattr(parent, "_mention_global_pos"):
@@ -490,7 +558,19 @@ class ComposerMentionPopup(QWidget):
                 self._navigate_to_root()
                 event.accept()
                 return True
-            return False
+            if self._type_buffer:
+                self._pop_type_char()
+                event.accept()
+                return True
+            self.hide()
+            event.accept()
+            return True
+
+        if self._mode is None and self._try_typeahead_key(event):
+            return True
+
+        if self._mode is None and self._try_activate_root_by_number(key, event):
+            return True
 
         if key == Qt.Key.Key_Escape:
             if self._mode is not None:
@@ -527,6 +607,40 @@ class ComposerMentionPopup(QWidget):
             return True
 
         return False
+
+    def _try_typeahead_key(self, event: QKeyEvent) -> bool:
+        """Root menu: letter keys build a prefix buffer and highlight the best row."""
+        if event.modifiers() & (
+            Qt.KeyboardModifier.ControlModifier
+            | Qt.KeyboardModifier.AltModifier
+            | Qt.KeyboardModifier.MetaModifier
+        ):
+            return False
+        text = event.text()
+        if not text or len(text) != 1 or not text.isalpha():
+            return False
+        self._append_type_char(text)
+        event.accept()
+        return True
+
+    def _try_activate_root_by_number(self, key: int, event: QKeyEvent) -> bool:
+        """Root menu: ``1``–``4`` activate Files / Conversations / Tools / Commands."""
+        idx = -1
+        if Qt.Key.Key_1 <= key <= Qt.Key.Key_4:
+            idx = key - Qt.Key.Key_1
+        else:
+            keypad = getattr(Qt.Key, "Keypad1", None)
+            if keypad is not None and Qt.Key.Keypad1 <= key <= Qt.Key.Keypad4:
+                idx = key - Qt.Key.Keypad1
+        if idx < 0 or idx >= self._list.count():
+            return False
+        item = self._list.item(idx)
+        if item is None or not (item.flags() & Qt.ItemFlag.ItemIsEnabled):
+            return False
+        self._list.setCurrentRow(idx)
+        self._activate_current_item()
+        event.accept()
+        return True
 
     def hideEvent(self, event):
         super().hideEvent(event)

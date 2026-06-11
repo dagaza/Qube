@@ -36,6 +36,7 @@ class PrestigeDialog(QDialog):
         dialog_width: int | None = None,
         confirm_text: str = "CONFIRM",
         cancel_text: str = "CANCEL",
+        show_cancel: bool = True,
     ):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -170,7 +171,8 @@ class PrestigeDialog(QDialog):
         con_b.clicked.connect(self.accept)
 
         btns.addStretch()
-        btns.addWidget(cancel_btn)
+        if show_cancel:
+            btns.addWidget(cancel_btn)
         btns.addWidget(con_b)
         c_layout.addLayout(btns)
 

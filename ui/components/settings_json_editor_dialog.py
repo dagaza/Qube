@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher, pyqtSignal, QSize
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog,
@@ -24,6 +24,8 @@ from core.settings_store import (
 )
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.prestige_dialog import PrestigeDialog
+
+import qtawesome as qta
 
 logger = logging.getLogger("Qube.UI.SettingsJsonEditor")
 
@@ -75,6 +77,7 @@ class SettingsJsonEditorDialog(QDialog):
         root.setSpacing(12)
 
         header_row = QHBoxLayout()
+        header_row.setSpacing(12)
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
         self.header_title_lbl = QLabel("USER SETTINGS")
@@ -84,13 +87,15 @@ class SettingsJsonEditorDialog(QDialog):
         self.path_lbl.setWordWrap(True)
         title_col.addWidget(self.header_title_lbl)
         title_col.addWidget(self.path_lbl)
-        self.close_btn = QPushButton("✕")
+        self.close_btn = QPushButton()
         self.close_btn.setObjectName("SettingsJsonEditorClose")
-        self.close_btn.setFixedSize(30, 30)
+        self.close_btn.setFixedSize(32, 32)
+        self.close_btn.setFlat(True)
         self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.setToolTip("Close")
         self.close_btn.clicked.connect(self.close)
         header_row.addLayout(title_col, 1)
-        header_row.addWidget(self.close_btn, 0, Qt.AlignmentFlag.AlignTop)
+        header_row.addWidget(self.close_btn, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         root.addLayout(header_row)
 
         self.external_banner = QLabel("")
@@ -202,13 +207,19 @@ class SettingsJsonEditorDialog(QDialog):
                 color: {fg};
                 border: 1px solid {border};
                 border-radius: 8px;
-                font-size: 14px;
+                padding: 0px;
+                min-width: 32px;
+                max-width: 32px;
+                min-height: 32px;
+                max-height: 32px;
             }}
             QPushButton#SettingsJsonEditorClose:hover {{
                 background: rgba(255, 255, 255, 0.06);
             }}
         """
         )
+        self.close_btn.setIcon(qta.icon("fa5s.times", color=fg))
+        self.close_btn.setIconSize(QSize(14, 14))
         btn_style = f"""
             QPushButton {{
                 padding: 10px 16px;

@@ -1032,6 +1032,9 @@ if __name__ == "__main__":
                 qube.window._setup_trace_diff_debug_window()
             qube.window.schedule_scenario_replay()
         qube.show()
+        from PyQt6.QtCore import QTimer
+
+        QTimer.singleShot(250, qube.window.focus_chat_composer_if_ready)
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
     app._startup_splash_controller = bootstrap_with_splash(

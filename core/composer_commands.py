@@ -15,6 +15,9 @@ class ComposerCommand:
     id: str
     label: str
     description: str
+    requires_confirmation: bool = False
+    confirmation_title: str = ""
+    confirmation_message: str = ""
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,14 @@ COMPOSER_COMMANDS: tuple[ComposerCommand, ...] = (
         id="reset_help_guidance",
         label="Reset Help & Guidance",
         description="Run setup tour on next launch; turn off Model Manager hints",
+        requires_confirmation=True,
+        confirmation_title="Reset Help & Guidance",
+        confirmation_message=(
+            "This will restore Help & Guidance to defaults:\n\n"
+            "• The Local LLM setup tour will run on next launch\n"
+            "• Model Manager hardware suggestions will be turned off\n\n"
+            "Click Confirm to apply. You'll then be offered Restart now to run the tour immediately."
+        ),
     ),
 )
 
@@ -42,12 +53,6 @@ def execute_composer_command(command_id: str, *, window: Any | None = None) -> C
         _sync_help_guidance_ui(window)
         return ComposerCommandResult(
             ok=True,
-            dialog_title="Command complete",
-            dialog_message=(
-                "Help & Guidance restored to defaults.\n\n"
-                "• The Local LLM setup tour will run on next launch\n"
-                "• Model Manager hardware suggestions are off"
-            ),
             notification=AppNotificationRequest(
                 title="Restart to apply",
                 body=restart_prompt_body(purpose="run the setup tour immediately"),

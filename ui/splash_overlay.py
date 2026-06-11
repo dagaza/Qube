@@ -110,10 +110,15 @@ class StartupSplashController(QObject):
         self._card.spinner.advance(float(self._spinner_timer.interval()))
 
     def _on_phase(self, step_index: int, percent: int) -> None:
-        if step_index > 0:
-            self._card.complete_step(step_index - 1)
-        self._card.set_active_step(step_index)
-        self._card.set_progress_percent(percent)
+        self._card.setUpdatesEnabled(False)
+        try:
+            if step_index > 0:
+                self._card.complete_step(step_index - 1)
+            self._card.set_active_step(step_index)
+            self._card.set_progress_percent(percent)
+        finally:
+            self._card.setUpdatesEnabled(True)
+            self._card.update()
         app = QApplication.instance()
         if app is not None:
             app.processEvents()

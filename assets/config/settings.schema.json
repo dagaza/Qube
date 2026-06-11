@@ -266,6 +266,11 @@
     "default": false,
     "description": "Whether the first-run local LLM setup tour has been completed."
   },
+  "qube.composer.atMentionDiscovered": {
+    "type": "boolean",
+    "default": false,
+    "description": "User has seen the first-run @ mention shortcut discovery toast in the chat composer."
+  },
   "qube.wakeword.activeId": {
     "type": "string",
     "default": "",
