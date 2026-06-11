@@ -38,7 +38,7 @@ class StreamRepetitionGuardTests(unittest.TestCase):
             "numbered list loop degeneration in stream tail",
         )
 
-    def test_create_from_risk_profile_enables_list_guard(self) -> None:
+    def test_create_from_risk_profile_disables_list_guard_for_enumeration(self) -> None:
         profile = resolve_generation_risk_profile(
             user_query="List major sites",
             chat_format_mode="structured",
@@ -47,7 +47,7 @@ class StreamRepetitionGuardTests(unittest.TestCase):
             history_turn_count=8,
         )
         guard = create_stream_repetition_guard(profile)
-        self.assertTrue(guard.observe("1.\n2.\n3.\n4.\n"))
+        self.assertFalse(guard.observe("1.\n2.\n3.\n4.\n"))
 
 
 if __name__ == "__main__":

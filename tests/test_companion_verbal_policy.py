@@ -111,7 +111,9 @@ class TestCompanionVerbalPolicy(unittest.TestCase):
             main_window_minimized=False,
             now=now,
         )
-        with mock.patch("core.companion_verbal_policy.app_settings") as mock_settings:
+        with mock.patch("core.companion_verbal_policy.app_settings") as mock_settings, mock.patch(
+            "core.companion_policy.app_settings", mock_settings
+        ):
             mock_settings.get_companion_enabled.return_value = True
             mock_settings.get_companion_verbal_enabled.return_value = True
             mock_settings.get_companion_verbal_frequency.return_value = "normal"

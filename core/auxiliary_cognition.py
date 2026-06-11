@@ -40,7 +40,7 @@ class CognitionModelEntry:
 
 
 def bundled_default_path() -> str:
-    return str(models_root() / Path(BUNDLED_DEFAULT_REL_PATH).name)
+    return str(models_root() / "cognition" / Path(BUNDLED_DEFAULT_REL_PATH).name)
 
 
 def get_cognition_models_dir() -> str:

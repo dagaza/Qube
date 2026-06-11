@@ -36,13 +36,15 @@ class NativeLoadErrorPersistenceContractTests(unittest.TestCase):
         )
 
     def test_db_write_follows_final_text_assignment(self) -> None:
-        assign_idx = self.src.find("final_text = native_load_error_text")
+        assign_idx = self.src.find(
+            "if not final_text.strip() and native_load_error_text:"
+        )
         self.assertGreater(assign_idx, 0)
-        db_idx = self.src.find("self.db.add_message(", assign_idx)
+        persist_idx = self.src.find("_persist_assistant_turn(final_text", assign_idx)
         self.assertGreater(
-            db_idx,
+            persist_idx,
             assign_idx,
-            "Expected add_message to run after the no-model fallback assignment.",
+            "Expected _persist_assistant_turn to run after the no-model fallback assignment.",
         )
 
     def test_native_load_error_skips_enrichment(self) -> None:

@@ -11,10 +11,15 @@ from core import auxiliary_cognition as ac
 
 def _run_in_tmp(fn):
     with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
         prev = os.getcwd()
         os.chdir(tmp)
         try:
-            fn(Path(tmp))
+            with patch(
+                "core.auxiliary_cognition.models_root",
+                return_value=tmp_path / "models",
+            ):
+                fn(tmp_path)
         finally:
             os.chdir(prev)
 
