@@ -5,6 +5,7 @@ import unittest
 
 from core.output_token_budget import (
     clamp_max_tokens_to_context,
+    count_prompt_tokens_for_budget,
     describe_output_token_budget,
     probable_max_tokens_truncation,
     resolve_output_token_budget,
@@ -112,6 +113,23 @@ class TestOutputTokenBudget(unittest.TestCase):
                 completion_token_count=500,
             )
         )
+
+    def test_count_prompt_tokens_for_budget_empty(self) -> None:
+        self.assertEqual(count_prompt_tokens_for_budget(None, "hello"), 0)
+        self.assertEqual(count_prompt_tokens_for_budget(object(), ""), 0)
+
+
+def test_is_native_empty_visible_output_notice() -> None:
+    from workers.llm_worker import (
+        NATIVE_EMPTY_VISIBLE_OUTPUT_MSG,
+        is_native_empty_visible_output_notice,
+    )
+
+    assert is_native_empty_visible_output_notice(NATIVE_EMPTY_VISIBLE_OUTPUT_MSG)
+    assert is_native_empty_visible_output_notice(
+        NATIVE_EMPTY_VISIBLE_OUTPUT_MSG + NATIVE_EMPTY_VISIBLE_OUTPUT_MSG
+    )
+    assert not is_native_empty_visible_output_notice("Kathmandu is the capital.")
 
 
 if __name__ == "__main__":

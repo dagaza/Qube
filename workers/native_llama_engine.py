@@ -536,6 +536,8 @@ class NativeLlamaEngine(QThread):
         self._purge_pending_profile_ops()
         self.request_cancel_generation()
         self._last_retrieval_context = (retrieval_context or "").strip()
+        # Clear cancel before queueing so a job picked up immediately is not aborted.
+        self._cancel_generation = False
         stamped = self._stamp_enqueue_meta(
             {
                 "op": "generate",
@@ -558,7 +560,6 @@ class NativeLlamaEngine(QThread):
             },
             priority=EnginePriority.interactive,
         )
-        self._cancel_generation = False
         _ = stamped
 
     def enqueue_simple_completion(
@@ -805,6 +806,7 @@ class NativeLlamaEngine(QThread):
                 )
             except Exception as e:
                 logger.debug("[ModelRouter] upsert_profile_from_loaded_model failed: %s", e)
+            self._cancel_generation = False
             self.load_finished.emit(True, os.path.basename(path))
             self.status_update.emit(f"Native model ready: {os.path.basename(path)}")
             # Behavior profiling runs on a separate queued op so chat/generate is not
@@ -1500,6 +1502,11 @@ class NativeLlamaEngine(QThread):
             return
 
         if self._cancel_generation:
+            _debug_logger.warning(
+                "[Native] generate aborted before prompt prep (cancelled=%s exchange=%s)",
+                True,
+                cmd.get("debug_exchange_id"),
+            )
             token_queue.put(("end", ""))
             self._end_active_job(cmd)
             done_event.set()
@@ -1529,32 +1536,41 @@ class NativeLlamaEngine(QThread):
                 debug_exchange_id=cmd.get("debug_exchange_id"),
                 debug_session_id=str(cmd.get("debug_session_id") or ""),
             )
-            from core.native_sampler_gt import build_prompt_tokens_for_completion
-            from core.output_token_budget import clamp_max_tokens_to_context
+            from core.output_token_budget import (
+                clamp_max_tokens_to_context,
+                count_prompt_tokens_for_budget,
+            )
 
             if (self._last_formatted_prompt or "").strip():
-                prompt_tokens_for_budget = build_prompt_tokens_for_completion(
-                    self._llama, self._last_formatted_prompt or ""
-                )
-                n_ctx = int(
-                    getattr(self._llama, "n_ctx", 0) or context_window or 4096
-                )
-                clamped_max = clamp_max_tokens_to_context(
-                    n_ctx=n_ctx,
-                    prompt_token_count=len(prompt_tokens_for_budget),
-                    requested_max_tokens=max_tokens,
-                    limit_enabled=output_token_limit_enabled,
-                )
-                if clamped_max != max_tokens:
-                    logger.info(
-                        "[OutputTokenBudget] max_tokens %s -> %s (prompt=%s n_ctx=%s limit_enabled=%s)",
-                        max_tokens,
-                        clamped_max,
-                        len(prompt_tokens_for_budget),
-                        n_ctx,
-                        output_token_limit_enabled,
+                try:
+                    prompt_tokens_for_budget = count_prompt_tokens_for_budget(
+                        self._llama, self._last_formatted_prompt or ""
                     )
-                    max_tokens = clamped_max
+                    n_ctx = int(
+                        getattr(self._llama, "n_ctx", 0) or context_window or 4096
+                    )
+                    clamped_max = clamp_max_tokens_to_context(
+                        n_ctx=n_ctx,
+                        prompt_token_count=prompt_tokens_for_budget,
+                        requested_max_tokens=max_tokens,
+                        limit_enabled=output_token_limit_enabled,
+                    )
+                    if clamped_max != max_tokens:
+                        _debug_logger.info(
+                            "[OutputTokenBudget] max_tokens %s -> %s (prompt=%s n_ctx=%s limit_enabled=%s)",
+                            max_tokens,
+                            clamped_max,
+                            prompt_tokens_for_budget,
+                            n_ctx,
+                            output_token_limit_enabled,
+                        )
+                        max_tokens = clamped_max
+                except Exception as exc:
+                    _debug_logger.warning(
+                        "[OutputTokenBudget] clamp skipped: %s (using max_tokens=%s)",
+                        exc,
+                        max_tokens,
+                    )
             effective_max_tokens = max_tokens
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}
@@ -1660,6 +1676,14 @@ class NativeLlamaEngine(QThread):
                 cmd["effective_max_tokens"] = effective_max_tokens
 
             if self._cancel_generation:
+                _debug_logger.warning(
+                    "[Native] generate aborted after prompt prep without token stream "
+                    "(cancelled=%s exchange=%s inference_started=%s chunks=%s)",
+                    True,
+                    cmd.get("debug_exchange_id"),
+                    bool(cmd.get("inference_started_at")),
+                    chunk_count,
+                )
                 token_queue.put(("end", final_text))
             elif not (final_text or "").strip():
                 logger.warning(
@@ -1836,6 +1860,7 @@ class NativeLlamaEngine(QThread):
                 token_queue.put(("end", final_text))
         except Exception as e:
             logger.exception("[Native] Generation error: %s", e)
+            _debug_logger.exception("[Native] Generation error: %s", e)
             token_queue.put(("error", str(e)))
             self._emit_token_trace_safe(
                 final_text,

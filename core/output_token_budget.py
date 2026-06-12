@@ -9,6 +9,21 @@ PROMPT_MARGIN_WHEN_KNOWN = 64
 DEFAULT_OUTPUT_TOKEN_LIMIT = 4096
 
 
+def count_prompt_tokens_for_budget(llama: object, prompt: str) -> int:
+    """Best-effort prompt token count for max_tokens clamping (no EOS suffix)."""
+    text = (prompt or "").strip()
+    if not text or llama is None:
+        return 0
+    try:
+        tokenize = getattr(llama, "tokenize", None)
+        if not callable(tokenize):
+            return 0
+        ids = tokenize(text.encode("utf-8"), add_bos=False, special=True)
+        return len(ids or [])
+    except Exception:
+        return 0
+
+
 def resolve_output_token_budget(
     *,
     context_window: int,

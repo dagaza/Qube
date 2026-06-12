@@ -174,7 +174,7 @@
     "type": "integer",
     "minimum": 1024,
     "maximum": 128000,
-    "default": 4096,
+    "default": 32000,
     "description": "Model context window (n_ctx): total tokens shared by prompt and reply."
   },
   "qube.llm.outputTokenLimitEnabled": {

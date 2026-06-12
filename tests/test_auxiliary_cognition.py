@@ -23,6 +23,22 @@ def _bundled_path(root: Path) -> Path:
     return root / ac.BUNDLED_DEFAULT_REL_PATH
 
 
+def test_bundled_default_path_uses_cognition_subdir():
+    def body(root: Path) -> None:
+        cog_dir = root / "models" / "cognition"
+        cog_dir.mkdir(parents=True, exist_ok=True)
+        bundled = cog_dir / Path(ac.BUNDLED_DEFAULT_REL_PATH).name
+        bundled.write_bytes(b"x")
+        with patch(
+            "core.auxiliary_cognition.get_cognition_models_dir",
+            return_value=str(cog_dir),
+        ):
+            assert ac.bundled_default_path() == str(bundled.resolve())
+            assert ac.cognition_model_available() is True
+
+    _run_in_tmp(body)
+
+
 def test_bundled_default_is_protected():
     def body(root: Path) -> None:
         bundled = _bundled_path(root)

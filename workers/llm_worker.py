@@ -226,6 +226,20 @@ from mcp.router_lane_stats import RouteFeedbackEvent
 logger = logging.getLogger("Qube.LLM")
 routing_persist_logger = logging.getLogger("Qube.RoutingDebug")
 
+NATIVE_EMPTY_VISIBLE_OUTPUT_MSG = (
+    "The model finished without producing any visible text. "
+    "Try sending again, adjust Think, or inspect ~/.qube/logs/llm_debug.log."
+)
+
+
+def is_native_empty_visible_output_notice(text: str) -> bool:
+    """True for the UI placeholder when native streaming produced no visible text."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    msg = NATIVE_EMPTY_VISIBLE_OUTPUT_MSG
+    return t == msg or t == msg + msg
+
 
 class LLMWorker(QThread):
     sentence_ready = pyqtSignal(str, str)
@@ -927,6 +941,9 @@ class LLMWorker(QThread):
     def _persist_assistant_turn(self, final_text: str, all_ui_sources: list) -> None:
         """Persist assistant output to SQLite with poisoned-history protection."""
         if not self.session_id or not (final_text or "").strip():
+            return
+        if is_native_empty_visible_output_notice(final_text):
+            self._mark_skip_enrichment("empty_visible_output")
             return
 
         history_content, degeneration = resolve_assistant_history_content(
@@ -3704,12 +3721,7 @@ class LLMWorker(QThread):
         if not final_text.strip() and native_load_error_text:
             final_text = native_load_error_text
         if not final_text.strip():
-            empty_msg = (
-                "The model finished without producing any visible text. "
-                "Try sending again, adjust Think, or inspect ~/.qube/logs/llm_debug.log."
-            )
-            final_text = empty_msg
-            _emit_filtered(empty_msg)
+            _emit_filtered(NATIVE_EMPTY_VISIBLE_OUTPUT_MSG)
 
         trace_extra: dict = {}
         val_trace = getattr(self._native_engine, "_last_output_validation_trace", None)

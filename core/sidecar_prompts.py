@@ -77,10 +77,11 @@ def build_prompt_for_task(
         assistant_reply = (kwargs.get("assistant_reply") or "").strip()
         system = (
             "You name chat conversations for a sidebar history list. Read the user's "
-            "first message and the assistant's reply, then write a short topic title "
-            "(2-5 words) that summarizes what the chat is about. Do not quote, copy, "
-            "or paraphrase the user's opening sentence. No quotes, punctuation-only "
-            "lines, or meta commentary. Output ONLY the title on one line."
+            "first message and the assistant's reply, then write a short topic label "
+            "(2-5 words) for the subject — like a folder name, not a sentence. "
+            "Use the core topic name when obvious (e.g. 'Lord of the Rings', "
+            "'Nginx Reverse Proxy'). Do not describe plot, list characters, or write "
+            "meta commentary. No quotes. Output ONLY the title on one line."
         )
         return _prompt(
             system,
@@ -214,6 +215,20 @@ _TITLE_STOPWORDS = frozenset({
     "this", "that", "these", "those", "what", "which", "who", "whom", "whose",
     "when", "where", "why", "how", "please", "help", "tell", "explain", "show",
     "write", "give", "make", "need", "want", "like", "just", "also", "about",
+    "generate", "comprehensive", "detailed", "overview", "summary", "story",
+})
+_TITLE_FRAGMENT_VERBS = frozenset({
+    "follows", "explains", "describes", "discusses", "covers", "explores",
+    "begins", "starts", "tells", "walks", "details", "summarizes", "outlines",
+    "lets", "involves", "features", "centers", "focuses", "revolves",
+})
+_TITLE_SMALL_WORDS = frozenset({"of", "the", "and", "in", "a", "an", "for", "to"})
+_OF_THE_PHRASE_RE = re.compile(
+    r"\b([A-Z][\w']+\s+of\s+the\s+[A-Z][\w']+(?:\s+[A-Z][\w']+)?)\b"
+)
+_PHRASE_LEAD_SKIP = frozenset({
+    "generate", "comprehensive", "detailed", "explanation", "overview", "summary",
+    "describe", "discuss", "tell", "write", "give", "provide", "create",
 })
 
 
@@ -243,27 +258,80 @@ def _title_is_verbatim_of_prompt(title: str, user_prompt: str) -> bool:
         return False
     if title_norm == prompt_norm:
         return True
-    if len(title_norm) >= 12 and (
-        title_norm in prompt_norm or prompt_norm.startswith(title_norm)
-    ):
-        return True
     title_words = _TITLE_WORD_RE.findall(title_norm)
     prompt_words = _TITLE_WORD_RE.findall(prompt_norm)
-    if len(title_words) >= 3 and title_words == prompt_words[: len(title_words)]:
+    # Reject long openings copied from the user message, not short embedded topic names.
+    if len(title_words) >= 5 and title_words == prompt_words[: len(title_words)]:
         return True
+    if len(title_norm) >= max(24, int(len(prompt_norm) * 0.65)):
+        if title_norm in prompt_norm or prompt_norm.startswith(title_norm):
+            return True
     return False
 
 
+def _contains_title_fragment_verb(text: str) -> bool:
+    words = {w.lower() for w in _TITLE_WORD_RE.findall(text or "")}
+    return bool(words & _TITLE_FRAGMENT_VERBS)
+
+
+def _format_title_display(line: str) -> str:
+    words = line.split()
+    if not words:
+        return ""
+    if any(len(w) > 1 and w[1:].islower() and w[0].isupper() for w in words[1:]):
+        return line
+    formatted: list[str] = []
+    for i, word in enumerate(words):
+        if i > 0 and word.lower() in _TITLE_SMALL_WORDS:
+            formatted.append(word.lower())
+        else:
+            formatted.append(word.capitalize())
+    return " ".join(formatted)
+
+
+def _title_from_proper_phrases(text: str) -> str:
+    candidates: list[tuple[str, int]] = []
+    for match in _OF_THE_PHRASE_RE.finditer(text or ""):
+        phrase = re.sub(r"\s+", " ", match.group(1)).strip(" \"'.,!?;:")
+        lead = phrase.split()[0].lower() if phrase else ""
+        if lead in _PHRASE_LEAD_SKIP:
+            continue
+        polished = _polish_title_candidate(phrase)
+        if polished:
+            candidates.append((polished, len(polished.split())))
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda item: (-item[1], item[0]))
+    return candidates[0][0]
+
+
 def _topic_words_from_text(text: str, *, max_words: int = 5) -> list[str]:
-    words = _TITLE_WORD_RE.findall((text or "").strip())
+    text = (text or "").strip()
+    for match in _OF_THE_PHRASE_RE.finditer(text):
+        phrase_words = _TITLE_WORD_RE.findall(match.group(1))
+        if 2 <= len(phrase_words) <= max_words:
+            return phrase_words[:max_words]
+
+    words = _TITLE_WORD_RE.findall(text)
     picked: list[str] = []
-    for word in words:
+    i = 0
+    while i < len(words) and len(picked) < max_words:
+        word = words[i]
         low = word.lower()
         if low in _TITLE_STOPWORDS:
+            if (
+                low in _TITLE_SMALL_WORDS
+                and picked
+                and i + 1 < len(words)
+                and words[i + 1].lower() not in _TITLE_STOPWORDS
+            ):
+                picked.append(word)
+            i += 1
             continue
         picked.append(word)
-        if len(picked) >= max_words:
-            break
+        i += 1
+    if len(picked) < 2:
+        picked = [w for w in words if w.lower() not in _TITLE_STOPWORDS][:max_words]
     if len(picked) < 2:
         picked = words[:max_words]
     return picked[:max_words]
@@ -278,7 +346,9 @@ def _polish_title_candidate(candidate: str) -> str:
         return ""
     if _META_TITLE_LINE.search(line):
         return ""
-    return line.title()
+    if _contains_title_fragment_verb(line):
+        return ""
+    return _format_title_display(line)
 
 
 def _fallback_title_from_exchange(
@@ -286,6 +356,13 @@ def _fallback_title_from_exchange(
     *,
     assistant_reply: str = "",
 ) -> str:
+    for source in ((user_prompt or "").strip(), (assistant_reply or "").strip()):
+        if not source:
+            continue
+        labeled = _title_from_proper_phrases(source)
+        if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
+            return labeled
+
     for source in ((assistant_reply or "").strip(), (user_prompt or "").strip()):
         if not source:
             continue
@@ -295,7 +372,7 @@ def _fallback_title_from_exchange(
         snippet = " ".join(topic_words)
         if len(snippet) > 48:
             snippet = snippet[:48].rsplit(" ", 1)[0] or snippet[:48]
-        polished = _polish_title_candidate(snippet) or snippet.title()
+        polished = _polish_title_candidate(snippet) or _format_title_display(snippet)
         if polished and not _title_is_verbatim_of_prompt(polished, user_prompt):
             return polished
     return ""
@@ -361,6 +438,9 @@ def _finalize_title_text(
         accepted = _accept_title_candidate(line, user_prompt=user_prompt)
         if accepted:
             return accepted
+        labeled = _title_from_proper_phrases(line)
+        if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
+            return labeled
         coerced_words = _topic_words_from_text(line)
         if len(coerced_words) >= 2:
             coerced = _accept_title_candidate(

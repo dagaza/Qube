@@ -30,6 +30,39 @@ class TestSidecarPrompts(unittest.TestCase):
         self.assertIn("project alpha", r.parsed.get("summary", ""))
         self.assertIn("alpha", r.parsed.get("topics", []))
 
+    def test_title_lotr_request_uses_topic_not_plot(self) -> None:
+        user = "Generate a comprehensive explanation of the Lord of the Rings story"
+        assistant = (
+            "The Lord of the Rings is an epic fantasy saga by J.R.R. Tolkien. "
+            "The story follows Frodo Baggins, a hobbit who inherits the One Ring."
+        )
+        raw = (
+            "The Lord of the Rings follows Frodo Baggins on his quest to "
+            "destroy the One Ring"
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            raw,
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = r.parsed.get("title") or ""
+        self.assertEqual(title, "Lord of the Rings")
+        self.assertNotIn("follows", title.lower())
+        self.assertNotIn("frodo", title.lower())
+
+    def test_title_accepts_embedded_topic_from_user_prompt(self) -> None:
+        user = "Generate a comprehensive explanation of the Lord of the Rings story"
+        r = parse_task_output(
+            SidecarTask.title,
+            "Lord of the Rings",
+            user_prompt=user,
+            assistant_reply="Epic fantasy by Tolkien.",
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "Lord of the Rings")
+
     def test_title_strips_quotes(self) -> None:
         r = parse_task_output(SidecarTask.title, '"Sky Color"')
         self.assertEqual(r.parsed.get("title"), "Sky Color")

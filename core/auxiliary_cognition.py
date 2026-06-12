@@ -40,7 +40,8 @@ class CognitionModelEntry:
 
 
 def bundled_default_path() -> str:
-    return str(models_root() / Path(BUNDLED_DEFAULT_REL_PATH).name)
+    """Bundled Qwen3 default under ``~/.qube/models/cognition/`` (see BUNDLED_DEFAULT_REL_PATH)."""
+    return str(Path(get_cognition_models_dir()) / Path(BUNDLED_DEFAULT_REL_PATH).name)
 
 
 def get_cognition_models_dir() -> str:
