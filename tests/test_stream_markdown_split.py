@@ -4,6 +4,8 @@ from __future__ import annotations
 from ui.components.stream_markdown_split import (
     compose_streaming_markdown,
     escape_markdown_literal,
+    normalize_inline_markdown_structure,
+    peel_unclosed_markdown_fence,
     split_stream_markdown_buffer,
 )
 
@@ -48,3 +50,64 @@ def test_escape_ordered_list_line_start():
     out = escape_markdown_literal("1. Item text")
     assert out.startswith("1\\.")
     assert "Item text" in out
+
+
+def test_peel_unclosed_markdown_fence():
+    wrapped = "```markdown\n# Title\n\n**Bold** paragraph."
+    assert peel_unclosed_markdown_fence(wrapped) == "# Title\n\n**Bold** paragraph."
+
+
+def test_peel_plain_fence_when_inner_is_prose():
+    wrapped = "```\n# Title\n\nBody"
+    assert peel_unclosed_markdown_fence(wrapped) == "# Title\n\nBody"
+
+
+def test_peel_leaves_python_fence_alone():
+    wrapped = "```python\ndef answer():\n    return 1"
+    assert peel_unclosed_markdown_fence(wrapped) == wrapped
+
+
+def test_split_unclosed_markdown_fence_renders_headers_live():
+    wrapped = "```markdown\n# Title\n\n## Section\n\nSome **bold** text."
+    stable, tail = split_stream_markdown_buffer(wrapped)
+    assert stable == "# Title\n\n## Section\n\nSome **bold** text."
+    assert tail == ""
+
+
+def test_normalize_glued_llama_heading():
+    raw = (
+        "Human problem solving has evolved significantly throughout history, driven by a "
+        "complex array of social, economic, technological, and environmental pressures. "
+        "From the earliest prehistoric societies to modern AI-assisted decision making, "
+        "human problem solving has adapted to meet the challenges of each era.##Prehistoric "
+        "SocietiesIn prehistoric societies, human problem solving was largely"
+    )
+    out = normalize_inline_markdown_structure(raw)
+    assert "era.\n\n## Prehistoric Societies\n\nIn prehistoric societies" in out
+    assert ".##" not in out
+    assert "SocietiesIn" not in out
+
+
+def test_normalize_spaced_inline_heading():
+    raw = (
+        "human problem solving has adapted to meet the challenges of each era## Prehistoric "
+        "Societies In prehistoric societies, human problem solving was largely focused on "
+        "survival in harsh environments Early humans developed innovative solutions"
+    )
+    out = normalize_inline_markdown_structure(raw)
+    assert "era\n\n## Prehistoric Societies\n\nIn prehistoric societies" in out
+    assert "era##" not in out
+    assert "environments\n\nEarly humans" in out
+
+
+def test_normalize_multiple_inline_headings():
+    raw = "Intro paragraph.##First SectionMore text.##Second SectionBody"
+    out = normalize_inline_markdown_structure(raw)
+    assert out.count("## First Section") == 1
+    assert out.count("## Second Section") == 1
+    assert ".##" not in out
+
+
+def test_normalize_leaves_fenced_code_untouched():
+    raw = "````\nfoo.##NotAHeading\n````".replace("````", "```")
+    assert normalize_inline_markdown_structure(raw) == raw

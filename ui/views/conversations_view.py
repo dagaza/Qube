@@ -98,6 +98,7 @@ from ui.components.text_document_height import (
 )
 from ui.components.stream_markdown_split import (
     compose_streaming_markdown,
+    normalize_inline_markdown_structure,
     split_stream_markdown_buffer,
 )
 from ui.components.composer_mention_popup import ComposerMentionPopup
@@ -2484,10 +2485,12 @@ class ConversationsView(QWidget):
 
     def _prepare_agent_markdown_source(self, buf: str, *, finalize: bool) -> str:
         prepared = _prepare_stream_for_qt_citation_links(buf)
-        rich_text = _re_cite.sub(
-            r"\[\s*(\d+|[wW])\s*\]",
-            _markdown_cite_link_replacement,
-            prepared,
+        rich_text = normalize_inline_markdown_structure(
+            _re_cite.sub(
+                r"\[\s*(\d+|[wW])\s*\]",
+                _markdown_cite_link_replacement,
+                prepared,
+            )
         )
         if finalize or not rich_text:
             return rich_text

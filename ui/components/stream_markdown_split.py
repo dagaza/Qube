@@ -11,6 +11,110 @@ import re
 _ORDERED_LIST_LINE = re.compile(r"^\s*\d+\.\s")
 _TABLE_ROW = re.compile(r"^\s*\|")
 _LINK_DEST = re.compile(r"\]\([^\)]*$")
+_MARKDOWN_FENCE_INFO = frozenset({"markdown", "md", "text", "txt"})
+_PROSE_LINE = re.compile(r"^(\#{1,6}\s|(\*\*|__)|[-*+]\s|\d+\.\s)")
+# Llama-family models glue headings into prose: ``...era## Prehistoric Societies In ...``
+_INLINE_HEADING = re.compile(r"(?<=[^\n#])(#{1,6})\s*(?=[A-Za-z])")
+_HEADER_PREFIX = re.compile(r"^(#{1,6})([A-Za-z].+)$")
+_HEADER_WITH_BODY = re.compile(r"^(#{1,6}\s+)(.+)$")
+_GLUED_HEADER_BODY = re.compile(r"([a-z])([A-Z][a-z]+\s+[a-z])")
+_BODY_START_WORDS = (
+    "In",
+    "The",
+    "For",
+    "Early",
+    "During",
+    "While",
+    "This",
+    "These",
+    "Human",
+    "From",
+    "One",
+    "Many",
+    "Most",
+    "Some",
+    "Such",
+    "As",
+    "When",
+    "Where",
+    "Although",
+    "However",
+    "After",
+    "Before",
+    "With",
+    "By",
+    "On",
+    "At",
+    "It",
+    "They",
+    "We",
+    "You",
+    "A",
+    "An",
+)
+_HEADER_TITLE_BODY = re.compile(
+    r"^(#{1,6}\s+)"
+    r"((?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*))"
+    r"\s+(" + "|".join(re.escape(w) for w in _BODY_START_WORDS) + r")\b"
+)
+_PROSE_SENTENCE_BREAK = re.compile(
+    r"(\b[a-z]{4,}\b) (" + "|".join(re.escape(w) for w in _BODY_START_WORDS) + r") (?=[a-z])"
+)
+
+
+def normalize_inline_markdown_structure(text: str) -> str:
+    """
+    Repair common LLM markdown glitches before Qt parses the buffer.
+
+    Many local models glue headings into prose (``...era.##SectionTitleBody``) so
+    CommonMark never sees line-start ``##`` and the UI shows literal hash marks.
+    """
+    if not text:
+        return text
+
+    out: list[str] = []
+    in_fence = False
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if in_fence:
+            out.append(line)
+            continue
+        expanded = _INLINE_HEADING.sub(r"\n\n\1", line)
+        for subline in expanded.split("\n"):
+            if subline == "":
+                out.append("")
+            else:
+                out.append(_normalize_prose_or_header_line(subline))
+    return "\n".join(out)
+
+
+def peel_unclosed_markdown_fence(text: str) -> str:
+    """
+    Llama-family models often wrap the whole reply in `` ```markdown `` while streaming.
+
+    An unclosed fence makes ``split_stream_markdown_buffer`` treat the entire buffer as
+    a literal tail (raw ``#`` / ``**`` on screen). Peel the wrapper so inner prose can
+    render live; leave real code fences (``python``, etc.) untouched.
+    """
+    if not text or text.count("```") != 1:
+        return text
+    stripped = text.lstrip("\ufeff")
+    if not stripped.startswith("```"):
+        return text
+    first_nl = stripped.find("\n")
+    if first_nl < 0:
+        return text
+    info = stripped[3:first_nl].strip().lower()
+    inner = stripped[first_nl + 1 :]
+    if info in _MARKDOWN_FENCE_INFO:
+        return inner
+    if info == "" and _inner_looks_like_markdown_prose(inner):
+        return inner
+    return text
 
 
 def split_stream_markdown_buffer(text: str) -> tuple[str, str]:
@@ -20,6 +124,8 @@ def split_stream_markdown_buffer(text: str) -> tuple[str, str]:
     """
     if not text:
         return "", ""
+
+    text = peel_unclosed_markdown_fence(text)
 
     split = len(text)
     split = min(split, _split_before_unclosed_delimiter(text, "**"))
@@ -132,3 +238,46 @@ def _split_before_incomplete_fence(text: str) -> int:
         return len(text)
     pos = text.rfind("```")
     return pos if pos >= 0 else len(text)
+
+
+def _inner_looks_like_markdown_prose(inner: str) -> bool:
+    for line in inner.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        return bool(_PROSE_LINE.match(s))
+    return False
+
+
+def _normalize_prose_or_header_line(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("#"):
+        m = _HEADER_PREFIX.match(stripped)
+        if not m:
+            return line
+        normalized = f"{m.group(1)} {m.group(2)}"
+        return _split_glued_header_body_line(normalized)
+    return _normalize_prose_line(line)
+
+
+def _normalize_prose_line(line: str) -> str:
+    return _PROSE_SENTENCE_BREAK.sub(r"\1\n\n\2 ", line)
+
+
+def _split_glued_header_body_line(line: str) -> str:
+    stripped = line.strip()
+    m = _HEADER_WITH_BODY.match(stripped)
+    if not m:
+        return line
+    prefix, body = m.group(1), m.group(2)
+    split_body = _GLUED_HEADER_BODY.sub(r"\1\n\n\2", body, count=1)
+    if split_body != body:
+        title_part, rest = split_body.split("\n\n", 1)
+        return f"{prefix}{title_part}\n\n{_normalize_prose_line(rest)}"
+    title_body = _HEADER_TITLE_BODY.match(stripped)
+    if title_body:
+        title = title_body.group(2)
+        rest = body[len(title) :].lstrip()
+        if rest:
+            return f"{prefix}{title}\n\n{_normalize_prose_line(rest)}"
+    return prefix + body
