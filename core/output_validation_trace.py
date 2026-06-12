@@ -36,6 +36,9 @@ class OutputValidationTrace:
     degeneration_retry_eligible: bool | None = None
     degeneration_top_offender: str | None = None
     degeneration_clustered: bool | None = None
+    markdown_heading_count: int | None = None
+    bold_section_title_count: int | None = None
+    heading_style_ratio: float | None = None
 
     def trace_fields(self) -> dict[str, Any]:
         return asdict(self)

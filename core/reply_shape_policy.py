@@ -23,7 +23,10 @@ FormatIntent = Literal[
 
 _STRUCTURED_HINT = (
     " When the user asks for a list, comparison, or step-by-step explanation, "
-    "use clear structure (bullets or numbered items as appropriate). "
+    "use clear Markdown structure (bullets, numbered lists, or tables as appropriate). "
+    "For substantial multi-section answers, prefer Markdown headings (##, ###) "
+    "over bold-only section labels. "
+    "Skip headings for single-sentence or single-fact answers. "
     "Do not force a single sentence when more structure improves clarity."
 )
 

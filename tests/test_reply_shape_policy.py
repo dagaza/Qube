@@ -46,6 +46,28 @@ class TestReplyShapePolicy(unittest.TestCase):
         )
         self.assertEqual(policy.format_intent, "structured")
 
+    def test_structured_intent_includes_markdown_heading_guidance(self) -> None:
+        policy = resolve_reply_shape_policy(
+            execution_route="NONE",
+            user_query="Explain how photosynthesis works.",
+        )
+        self.assertEqual(policy.format_intent, "structured")
+        hint = policy.system_reply_hint.lower()
+        self.assertIn("substantial multi-section", hint)
+        self.assertIn("##", policy.system_reply_hint)
+        self.assertIn("bold-only", hint)
+        self.assertIn("skip headings", hint)
+
+    def test_brief_lookup_omits_structured_heading_guidance(self) -> None:
+        policy = resolve_reply_shape_policy(
+            execution_route="NONE",
+            user_query="What is the capital of France?",
+        )
+        self.assertEqual(policy.format_intent, "brief")
+        self.assertNotIn("substantial multi-section", policy.system_reply_hint.lower())
+        self.assertNotIn("bold-only", policy.system_reply_hint.lower())
+        self.assertNotIn("##", policy.system_reply_hint)
+
     def test_anaphoric_follow_up_mixed_or_follow_up(self) -> None:
         fu = FollowUpClassification(FollowUpKind.ANAPHORIC, 0.7, ("anaphoric",))
         policy = resolve_reply_shape_policy(

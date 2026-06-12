@@ -5,6 +5,7 @@ import time
 from typing import Any
 
 from core.adaptive_retry import maybe_retry
+from core.heading_style_metrics import analyze_heading_style
 from core.output_validation import OutputValidationResult, validate_output
 from core.output_validation_sanitize import sanitize_output_for_validation
 from core.output_validation_trace import (
@@ -62,6 +63,10 @@ def run_output_validation_and_retry(
         degeneration_top_offender=_truncate_offender(validation),
         degeneration_clustered=validation.degeneration_clustered,
     )
+    heading_metrics = analyze_heading_style(sanitized)
+    trace.markdown_heading_count = heading_metrics.markdown_heading_count
+    trace.bold_section_title_count = heading_metrics.bold_section_title_count
+    trace.heading_style_ratio = heading_metrics.heading_style_ratio
 
     setattr(engine, "_adaptive_retry_max_tokens", retry_budget)
     try:

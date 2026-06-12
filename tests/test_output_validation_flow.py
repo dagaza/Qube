@@ -114,6 +114,23 @@ class TestOutputValidationFlow(unittest.TestCase):
         self.assertNotIn("degeneration", validation.issues)
         self.assertFalse(trace.retry_attempted)
         self.assertEqual(out, essay)
+        self.assertEqual(trace.markdown_heading_count, 0)
+        self.assertEqual(trace.bold_section_title_count, 4)
+        self.assertEqual(trace.heading_style_ratio, 0.0)
+
+    def test_heading_style_metrics_on_markdown_sections(self) -> None:
+        text = "## Overview\n\nIntro.\n\n### Details\n\nMore."
+        model = _FakeModel(outputs=["unused"])
+        _, _, trace, _ = run_output_validation_and_retry(
+            model,
+            final_text=text,
+            contract=_contract(),
+            messages=[{"role": "user", "content": "Explain the topic"}],
+            max_tokens=2048,
+        )
+        self.assertEqual(trace.markdown_heading_count, 2)
+        self.assertEqual(trace.bold_section_title_count, 0)
+        self.assertEqual(trace.heading_style_ratio, 1.0)
 
 
 def _kathmandu_bullets() -> str:
