@@ -1,5 +1,7 @@
 """Tests for assistant activity reducer."""
 
+from unittest.mock import patch
+
 from core.assistant_activity import (
     AssistantActivity,
     AssistantActivityReducer,
@@ -136,15 +138,17 @@ def test_companion_status_caption_maps_activity():
 
 def test_presence_service_auto_caption_while_thinking():
     service = AssistantPresenceService()
-    service.reduce("Thinking...")
-    assert service.snapshot().caption_text == "Thinking"
+    with patch("core.app_settings.get_companion_show_caption", return_value=True):
+        service.reduce("Thinking...")
+        assert service.snapshot().caption_text == "Thinking"
 
 
 def test_presence_service_writing_caption_when_muted():
     service = AssistantPresenceService()
     service.set_voice_output_muted(True)
-    service.reduce("Thinking...")
-    assert service.snapshot().caption_text == "Writing"
+    with patch("core.app_settings.get_companion_show_caption", return_value=True):
+        service.reduce("Thinking...")
+        assert service.snapshot().caption_text == "Writing"
 
 
 def test_presence_service_caption_roundtrip():
