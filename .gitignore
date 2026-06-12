@@ -17,6 +17,10 @@ __pycache__/
 models/**/*
 !models/**/.gitkeep
 
+# --- Router eval generated LanceDB ---
+eval/.lancedb/
+eval/cache/
+
 # --- Qube Architecture: Data ---
 # Ignore all LanceDB / Vector storage files
 data/**/*

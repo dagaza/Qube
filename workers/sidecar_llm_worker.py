@@ -1,12 +1,11 @@
 """
-CPU-bound auxiliary cognition — serial task queue for async sidecar inference.
+CPU-bound auxiliary cognition — priority task queue for async sidecar inference.
 """
 from __future__ import annotations
 
 import gc
 import logging
 import os
-import queue
 import threading
 import time
 from typing import Any, Optional
@@ -21,6 +20,12 @@ from core.cognition_prompt_adapter import (
     apply_qwen3_no_think_to_prompt,
     cognition_stop_tokens,
     resolve_cognition_chat_format,
+)
+from core.sidecar_engine_queue import (
+    INGEST_BLURB_MAX_QUEUED,
+    SidecarCommandQueue,
+    should_defer_companion_line,
+    should_drop_ingest_blurb,
 )
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.sidecar_prompts import (
@@ -37,6 +42,19 @@ try:
 except ImportError:
     Llama = None  # type: ignore
 
+try:
+    import queue as _queue_mod
+except ImportError:
+    _queue_mod = None  # type: ignore
+
+
+def _queue_wait_ms(cmd: dict) -> float:
+    submitted = cmd.get("submitted_at")
+    dequeued = cmd.get("dequeued_at")
+    if submitted is None or dequeued is None:
+        return 0.0
+    return max(0.0, (float(dequeued) - float(submitted)) * 1000.0)
+
 
 class SidecarLlmWorker(QThread):
     """Owns a single Llama instance; all inference runs on this thread."""
@@ -50,7 +68,7 @@ class SidecarLlmWorker(QThread):
     def __init__(self, db_manager=None, parent=None) -> None:
         super().__init__(parent)
         self.db = db_manager
-        self._cmd_queue: queue.Queue = queue.Queue()
+        self._cmd_queue = SidecarCommandQueue()
         self._stop = threading.Event()
         self._reloading = False
         self.model = None
@@ -62,7 +80,7 @@ class SidecarLlmWorker(QThread):
 
     def reload_from_settings(self) -> None:
         """Enqueue hot-reload of the cognition model from current settings."""
-        self._cmd_queue.put({"op": "reload"})
+        self._put_cmd({"op": "reload"})
 
     def enqueue_task(
         self,
@@ -71,7 +89,7 @@ class SidecarLlmWorker(QThread):
         out: list,
         done_event: threading.Event,
     ) -> None:
-        self._cmd_queue.put(
+        self._put_cmd(
             {
                 "op": "task",
                 "task": task,
@@ -89,7 +107,7 @@ class SidecarLlmWorker(QThread):
         *,
         timeout_hint: float = 120.0,
     ) -> None:
-        self._cmd_queue.put(
+        self._put_cmd(
             {
                 "op": "raw",
                 "prompt": prompt,
@@ -107,7 +125,7 @@ class SidecarLlmWorker(QThread):
         *,
         assistant_reply: str = "",
     ) -> None:
-        self._cmd_queue.put(
+        self._put_cmd(
             {
                 "op": "title",
                 "user_prompt": user_prompt,
@@ -118,8 +136,43 @@ class SidecarLlmWorker(QThread):
 
     def enqueue_ingest_blurb(
         self, filename: str, sample_text: str, out: list | None = None
-    ) -> None:
-        self._cmd_queue.put(
+    ) -> bool:
+        """Queue ingest blurb; coalesces per filename and caps pending blurbs."""
+        filename = str(filename or "")
+        if not filename:
+            return False
+
+        removed = self._cmd_queue.purge(
+            lambda c: c.get("op") == "ingest_blurb" and c.get("filename") == filename
+        )
+        if removed:
+            self.telemetry.record(
+                SidecarTask.ingest_blurb,
+                ok=True,
+                latency_ms=0.0,
+                foreground=False,
+                reason="coalesced",
+                meta={"replaced_pending": removed, "filename": filename},
+            )
+
+        if should_drop_ingest_blurb(
+            self._cmd_queue.count(lambda c: c.get("op") == "ingest_blurb")
+        ):
+            self.telemetry.record(
+                SidecarTask.ingest_blurb,
+                ok=False,
+                latency_ms=0.0,
+                foreground=False,
+                reason="ingest_queue_saturated",
+                meta={"filename": filename, "max_queued": INGEST_BLURB_MAX_QUEUED},
+            )
+            logger.info(
+                "[Sidecar] ingest blurb dropped (queue saturated) file=%s",
+                filename,
+            )
+            return False
+
+        self._put_cmd(
             {
                 "op": "ingest_blurb",
                 "filename": filename,
@@ -127,17 +180,48 @@ class SidecarLlmWorker(QThread):
                 "out": out,
             }
         )
+        return True
 
     def enqueue_companion_line(self, payload: dict) -> bool:
-        """Fire-and-forget companion caption; queues behind other sidecar work."""
+        """Fire-and-forget companion caption; deferred when queue is deep."""
         if self._reloading or not self.model_loaded:
             return False
-        self._cmd_queue.put({"op": "companion_line", "payload": dict(payload or {})})
+        depth = self._cmd_queue.qsize()
+        if should_defer_companion_line(depth):
+            trigger = str((payload or {}).get("trigger") or "idle")
+            self.telemetry.record(
+                SidecarTask.companion_line,
+                ok=False,
+                latency_ms=0.0,
+                foreground=False,
+                reason="queue_deferred",
+                meta={"queue_depth": depth, "trigger": trigger},
+            )
+            logger.info(
+                "[Sidecar] companion line deferred trigger=%s depth=%d",
+                trigger,
+                depth,
+            )
+            return False
+        self._put_cmd({"op": "companion_line", "payload": dict(payload or {})})
         return True
 
     def stop_engine(self) -> None:
         self._stop.set()
-        self._cmd_queue.put({"op": "shutdown"})
+        self._put_cmd({"op": "shutdown"})
+
+    def _put_cmd(self, cmd: dict) -> dict:
+        stamped = self._cmd_queue.put(cmd)
+        self._sync_queue_telemetry()
+        return stamped
+
+    def _sync_queue_telemetry(self) -> None:
+        try:
+            snap = self._cmd_queue.snapshot()
+            self.telemetry.set_queue_depth(int(snap.get("depth_total") or 0))
+            self.telemetry.set_queue_snapshot(snap)
+        except Exception:
+            self.telemetry.set_queue_depth(0)
 
     def _sync_telemetry_runtime(self, *, degraded_reason: str = "") -> None:
         from core.auxiliary_cognition import (
@@ -151,10 +235,7 @@ class SidecarLlmWorker(QThread):
             active_model_basename=active_cognition_basename(),
             is_bundled_default=is_active_cognition_bundled(),
         )
-        try:
-            self.telemetry.set_queue_depth(self._cmd_queue.qsize())
-        except Exception:
-            self.telemetry.set_queue_depth(0)
+        self._sync_queue_telemetry()
         try:
             self.sidecar_telemetry_updated.emit(self.telemetry.summarize())
         except Exception as e:
@@ -235,11 +316,14 @@ class SidecarLlmWorker(QThread):
         while not self._stop.is_set():
             try:
                 cmd = self._cmd_queue.get(timeout=0.2)
-            except queue.Empty:
-                self.telemetry.set_queue_depth(self._cmd_queue.qsize())
-                continue
+            except Exception as exc:
+                if _queue_mod is not None and isinstance(exc, _queue_mod.Empty):
+                    self._sync_queue_telemetry()
+                    continue
+                raise
 
-            self.telemetry.set_queue_depth(self._cmd_queue.qsize())
+            cmd["_queue_wait_ms"] = _queue_wait_ms(cmd)
+            self._sync_queue_telemetry()
             op = cmd.get("op")
             if op == "shutdown":
                 break
@@ -273,6 +357,7 @@ class SidecarLlmWorker(QThread):
                                 ok=False,
                                 error=str(e),
                                 task=cmd.get("task"),
+                                queue_wait_ms=float(cmd.get("_queue_wait_ms") or 0),
                             )
                         )
                     ev = cmd.get("done_event")
@@ -294,8 +379,10 @@ class SidecarLlmWorker(QThread):
         while not self._stop.is_set():
             try:
                 cmd = self._cmd_queue.get(timeout=0.2)
-            except queue.Empty:
-                continue
+            except Exception as exc:
+                if _queue_mod is not None and isinstance(exc, _queue_mod.Empty):
+                    continue
+                raise
             if cmd.get("op") == "shutdown":
                 break
             if cmd.get("op") == "reload":
@@ -306,12 +393,14 @@ class SidecarLlmWorker(QThread):
     def _fail_command(self, cmd: dict, reason: str) -> None:
         op = cmd.get("op")
         task = cmd.get("task")
+        wait_ms = float(cmd.get("_queue_wait_ms") or _queue_wait_ms(cmd))
         if op == "task" and task is not None:
             self.telemetry.record(
                 task,
                 ok=False,
                 latency_ms=0.0,
-                foreground=False,
+                wait_ms=wait_ms,
+                foreground=task in (SidecarTask.query_rewrite, SidecarTask.source_digest),
                 reason=reason,
             )
         elif op == "title":
@@ -319,6 +408,7 @@ class SidecarLlmWorker(QThread):
                 SidecarTask.title,
                 ok=False,
                 latency_ms=0.0,
+                wait_ms=wait_ms,
                 foreground=False,
                 reason=reason,
             )
@@ -327,6 +417,7 @@ class SidecarLlmWorker(QThread):
                 SidecarTask.ingest_blurb,
                 ok=False,
                 latency_ms=0.0,
+                wait_ms=wait_ms,
                 foreground=False,
                 reason=reason,
             )
@@ -335,6 +426,7 @@ class SidecarLlmWorker(QThread):
                 SidecarTask.companion_line,
                 ok=False,
                 latency_ms=0.0,
+                wait_ms=wait_ms,
                 foreground=False,
                 reason=reason,
             )
@@ -346,6 +438,7 @@ class SidecarLlmWorker(QThread):
                         ok=False,
                         error=reason,
                         task=cmd.get("task"),
+                        queue_wait_ms=wait_ms,
                     )
                 )
             ev = cmd.get("done_event")
@@ -388,6 +481,8 @@ class SidecarLlmWorker(QThread):
     def _do_task(self, cmd: dict) -> None:
         task: SidecarTask = cmd["task"]
         payload = cmd.get("payload") or {}
+        wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
+        t0 = time.perf_counter()
         params = task_inference_params(task)
         prompt = build_prompt_for_task(
             task,
@@ -400,7 +495,10 @@ class SidecarLlmWorker(QThread):
             max_tokens=int(params.get("max_tokens", 128)),
             temperature=float(params.get("temperature", 0.2)),
         )
+        inference_ms = (time.perf_counter() - t0) * 1000.0
         result = parse_task_output(task, raw, **payload)
+        result.queue_wait_ms = wait_ms
+        result.inference_ms = inference_ms
         out = cmd.get("out")
         if isinstance(out, list):
             out.append(result)
@@ -410,10 +508,21 @@ class SidecarLlmWorker(QThread):
         self._sync_telemetry_runtime()
 
     def _do_raw(self, cmd: dict) -> None:
+        t0 = time.perf_counter()
         raw = self._complete_prompt(
             cmd.get("prompt") or "",
             max_tokens=int(cmd.get("max_tokens", 256)),
             temperature=float(cmd.get("temperature", 0.2)),
+        )
+        inference_ms = (time.perf_counter() - t0) * 1000.0
+        wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
+        self.telemetry.record(
+            "raw_prompt",
+            ok=bool(raw),
+            latency_ms=inference_ms,
+            wait_ms=wait_ms,
+            foreground=False,
+            reason="" if raw else "empty",
         )
         out = cmd.get("out")
         if isinstance(out, list):
@@ -426,6 +535,7 @@ class SidecarLlmWorker(QThread):
         session_id = str(cmd.get("session_id") or "")
         user_prompt = cmd.get("user_prompt") or ""
         assistant_reply = cmd.get("assistant_reply") or ""
+        wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
         t0 = time.perf_counter()
         title_params = task_inference_params(SidecarTask.title)
         raw_title = self._complete_prompt(
@@ -439,6 +549,7 @@ class SidecarLlmWorker(QThread):
             max_tokens=int(title_params.get("max_tokens", 128)),
             temperature=float(title_params.get("temperature", 0.1)),
         )
+        inference_ms = (time.perf_counter() - t0) * 1000.0
         result = parse_task_output(
             SidecarTask.title,
             raw_title,
@@ -466,7 +577,8 @@ class SidecarLlmWorker(QThread):
         self.telemetry.record(
             SidecarTask.title,
             ok=ok,
-            latency_ms=(time.perf_counter() - t0) * 1000,
+            latency_ms=inference_ms,
+            wait_ms=wait_ms,
             foreground=False,
             reason="" if ok else (result.error or "empty"),
         )
@@ -475,6 +587,7 @@ class SidecarLlmWorker(QThread):
     def _do_ingest_blurb(self, cmd: dict) -> None:
         filename = str(cmd.get("filename") or "")
         sample = cmd.get("sample_text") or ""
+        wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
         t0 = time.perf_counter()
         result = parse_task_output(
             SidecarTask.ingest_blurb,
@@ -489,6 +602,7 @@ class SidecarLlmWorker(QThread):
                 temperature=0.2,
             ),
         )
+        inference_ms = (time.perf_counter() - t0) * 1000.0
         blurb = (result.parsed or {}).get("blurb") or result.text
         ok = bool(blurb)
         if blurb and filename:
@@ -499,7 +613,8 @@ class SidecarLlmWorker(QThread):
         self.telemetry.record(
             SidecarTask.ingest_blurb,
             ok=ok,
-            latency_ms=(time.perf_counter() - t0) * 1000,
+            latency_ms=inference_ms,
+            wait_ms=wait_ms,
             foreground=False,
             reason="" if ok else "empty",
         )
@@ -508,6 +623,7 @@ class SidecarLlmWorker(QThread):
     def _do_companion_line(self, cmd: dict) -> None:
         payload = dict(cmd.get("payload") or {})
         trigger = str(payload.get("trigger") or "idle")
+        wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
         t0 = time.perf_counter()
         params = task_inference_params(SidecarTask.companion_line)
         prompt = build_prompt_for_task(
@@ -521,6 +637,7 @@ class SidecarLlmWorker(QThread):
             max_tokens=int(params.get("max_tokens", 64)),
             temperature=float(params.get("temperature", 0.35)),
         )
+        inference_ms = (time.perf_counter() - t0) * 1000.0
         result = parse_task_output(SidecarTask.companion_line, raw, **payload)
         ok = bool(result.ok)
         if ok:
@@ -531,7 +648,8 @@ class SidecarLlmWorker(QThread):
         self.telemetry.record(
             SidecarTask.companion_line,
             ok=ok,
-            latency_ms=(time.perf_counter() - t0) * 1000,
+            latency_ms=inference_ms,
+            wait_ms=wait_ms,
             foreground=False,
             reason="" if ok else (result.error or "skip"),
         )

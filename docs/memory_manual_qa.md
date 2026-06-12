@@ -138,9 +138,11 @@ Use this document as a **repeatable manual QA checklist** after memory changes. 
 | C4.E1 | Enrichment during active chat | `qube.sidecar.enabled=true`; model at `models/cognition/Qwen3-1.7B-Q6_K.gguf` | Start a long chat turn; confirm enrichment runs while LLM streams | No `[Memory v5.1] Chat LLM still busy after 300s` for judge/episode paths; facts still store | 300s skip solely because primary model busy |
 | C4.E2 | Hybrid rewrite telemetry | `qube.sidecar.query_rewrite_enabled=true`; C4.D1 thread | Run C4.D1 | Decision/routing debug includes `original_query`, optional `expanded_query`, `query_expansion_confidence`; user message text unchanged | Only expanded query shown to user |
 | C4.E3 | Source digest fallback | `qube.sidecar.source_digest_enabled=true` | MEMORY/RAG turn with sources; temporarily set `foreground_timeout_ms` very low | Chat completes with raw or digested sources; log `[Sidecar] memory digest applied` OR silent fallback | Hang waiting on sidecar |
+| C4.E3b | Source digest threshold | `source_digest_enabled=true`; `source_digest_min_chars=4096` | Same MEMORY/RAG turn with **small** context (&lt;4k chars) | Digest skipped (`below_threshold`); raw sources in prompt; telemetry `memory_skipped_below_threshold` increments | Sidecar still compresses tiny contexts |
+| C4.E3c | Source digest on/off QA | Run same RAG/MEMORY query twice: digest on vs off | Compare answer fidelity and citation accuracy; check telemetry avg chars before/after when digest applies | Subjective pass: digest-on not worse on clean retrieval; digest-on helps on noisy/long retrieval | Systematic nuance loss with digest on clean hits |
 | C4.E4 | Ingest blurb | `qube.sidecar.ingest_blurb_enabled=true` | Ingest a short PDF/TXT | Library row tooltip or stats line shows one-sentence blurb within ~30s | No `summary_blurb` in SQLite |
 
-**Settings keys:** `qube.sidecar.enabled`, `query_rewrite_enabled`, `source_digest_enabled`, `min_rewrite_confidence`, `foreground_timeout_ms`, `ingest_blurb_enabled`.
+**Settings keys:** `qube.sidecar.enabled`, `query_rewrite_enabled`, `source_digest_enabled`, `source_digest_min_chars`, `min_rewrite_confidence`, `foreground_timeout_ms`, `ingest_blurb_enabled`.
 
 ### 4F — Pluggable auxiliary cognition model (advanced)
 

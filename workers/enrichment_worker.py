@@ -843,12 +843,23 @@ Return JSON ONLY:
         if not conversation.strip():
             return
 
-        prompt = self._build_episode_prompt(conversation)
-        raw = self._generate_cognition(prompt)
-        if not raw:
+        try:
+            from core.sidecar_types import SidecarTask
+
+            result = self.cognition_llm.complete(
+                SidecarTask.episode_summary,
+                timeout_sec=120.0,
+                conversation=conversation,
+            )
+        except Exception as e:
+            logger.debug("[Memory v6] episode summariser failed: %s", e)
             return
 
-        summary, topics = self._parse_episode_response(raw)
+        if not result.ok or not result.parsed:
+            return
+
+        summary = str(result.parsed.get("summary") or "").strip()
+        topics = list(result.parsed.get("topics") or [])
         if not summary:
             logger.debug("[Memory v6] episode summariser returned no SUMMARY line")
             return
@@ -897,64 +908,6 @@ Return JSON ONLY:
             reason=reason,
             turn_count=len(window) // 2,
         )
-
-    def _build_episode_prompt(self, conversation: str) -> str:
-        return f"""You are writing a single-paragraph summary of the recent conversation below.
-
-Goal: capture what the user was DOING or DECIDING in this session, so the assistant can later answer "what have we been working on?" or "recap this conversation".
-
-STRICT RULES:
-- One paragraph. <= 120 words. Plain English prose.
-- Describe the USER's project / goal / decisions / open questions. Never describe the assistant.
-- Never invent facts that are not in the conversation.
-- If the conversation is small talk, trivial, or has no narrative arc, output EXACTLY:
-  SUMMARY: SKIP
-  TOPICS:
-- Otherwise output EXACTLY this format (two labeled lines):
-
-SUMMARY: <one paragraph summary>
-TOPICS: <comma-separated short topic keywords>
-
-CONVERSATION:
-{conversation}
-"""
-
-    def _parse_episode_response(self, raw: str) -> tuple[str, list[str]]:
-        """Extract (summary, topics) from the episode LLM output.
-
-        Tolerates extra whitespace / leading markdown / casing. Returns
-        ``("", [])`` on anything unexpected so the caller can bail out.
-        """
-        if not raw:
-            return "", []
-        text = raw.strip()
-
-        summary = ""
-        topics: list[str] = []
-
-        # Pull SUMMARY: line (may wrap onto subsequent lines until TOPICS).
-        m_sum = re.search(
-            r"SUMMARY\s*:\s*(.*?)(?:\n\s*TOPICS\s*:|$)",
-            text,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        if m_sum:
-            summary = re.sub(r"\s+", " ", m_sum.group(1)).strip()
-
-        m_top = re.search(
-            r"TOPICS\s*:\s*(.*?)$",
-            text,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        if m_top:
-            raw_topics = m_top.group(1).strip()
-            topics = [
-                t.strip().lower()
-                for t in re.split(r"[,\n]", raw_topics)
-                if t.strip()
-            ][:6]
-
-        return summary, topics
 
     def _replace_episode_row(
         self,
@@ -1201,13 +1154,6 @@ POSITIVE EXAMPLES (illustrative only — do NOT copy these facts verbatim):
             ).strip()
         except Exception as e:
             logger.error(f"[Memory v5.1] extraction LLM error: {e}")
-            return ""
-
-    def _generate_cognition(self, prompt: str) -> str:
-        try:
-            return (self.cognition_llm.generate(prompt) or "").strip()
-        except Exception as e:
-            logger.error(f"[Memory v6] cognition LLM error: {e}")
             return ""
 
     def _generate_memory(self, messages: list) -> str:

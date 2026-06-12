@@ -25,6 +25,8 @@ class SidecarResult:
     ok: bool = False
     error: str = ""
     task: Optional[SidecarTask] = None
+    queue_wait_ms: float = 0.0
+    inference_ms: float = 0.0
 
 
 @dataclass
@@ -33,3 +35,5 @@ class QueryExpansion:
     expanded_query: str
     confidence: float
     topic_source: str = "discourse_state"
+    # Telemetry only — never used for routing decisions.
+    recommended_target: str = ""

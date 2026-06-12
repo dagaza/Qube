@@ -116,6 +116,13 @@ from core.output_token_budget import (
 from core.output_validation_sanitize import sanitize_output_for_validation
 from core.output_validation_trace import log_output_validation_trace
 from core.stream_replace_policy import resolve_stream_replacement
+from core.router_centroid_examples import (
+    CHAT_INTENT_EXAMPLES as _CHAT_INTENT_EXAMPLES,
+    MEMORY_INTENT_EXAMPLES as _MEMORY_INTENT_EXAMPLES,
+    RAG_INTENT_EXAMPLES as _RAG_INTENT_EXAMPLES,
+    RECALL_INTENT_EXAMPLES as _RECALL_INTENT_EXAMPLES,
+    WEB_INTENT_EXAMPLES as _WEB_INTENT_EXAMPLES,
+)
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
@@ -189,6 +196,12 @@ from core.app_settings import (
 from core.app_settings import get_sidecar_query_rewrite_enabled
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
+from core.shadow_retrieval_policy import (
+    build_shadow_state_from_worker,
+    compute_retrieval_policy,
+    get_shadow_retrieval_telemetry,
+    shadow_retrieval_policy_enabled,
+)
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.source_digest import digest_memory_context, digest_rag_context
 from core.sidecar_types import QueryExpansion
@@ -214,6 +227,7 @@ from mcp.routing_debug import (
     build_engine_input_trace,
     build_model_router_trace,
     build_record,
+    build_retrieval_outcome_snapshot,
     routing_debug_log_enabled,
     routing_debug_log_redact_query,
     routing_debug_log_verbose,
@@ -304,6 +318,7 @@ class LLMWorker(QThread):
         # ================================
         self.cognitive_router = CognitiveRouterV4()
         self.telemetry = RouterTelemetryBrain()
+        self._shadow_retrieval_telemetry = get_shadow_retrieval_telemetry()
         self.router_tuner = AdaptiveRouterSelfTunerV2()
         self.routing_debug_buffer = RoutingDebugBuffer()
         self._routing_debug_turn_seq = 0
@@ -508,89 +523,6 @@ class LLMWorker(QThread):
             if isinstance(src, dict):
                 src["id"] = i
 
-    # Phase B: curated recall examples used to build the semantic centroid
-    # consumed by ``CognitiveRouterV4._score_recall_intent``. Kept short so
-    # the one-time embedding pass at first use is cheap.
-    _RECALL_INTENT_EXAMPLES = (
-        "tell me about Alice",
-        "who is John Smith?",
-        "what do you know about my brother?",
-        "remind me about the project deadline",
-        "what did we say about the proposal yesterday?",
-        "summarize what you know about the trip plans",
-        "do you remember anything about my coffee preference?",
-        "refresh my memory on the Berlin meeting",
-        "recall what I told you about my thesis",
-        "what is the user's preferred coding style?",
-    )
-
-    # T4.2: curated chat / general-knowledge examples used to build the
-    # NEGATIVE-class centroid consumed by
-    # ``CognitiveRouterV4._score_chat_intent``. Deliberately avoids
-    # "remember" / "recall" / "tell me about" / "who is" tokens so the
-    # centroid sits visibly away from the recall centroid in embedding
-    # space. Mix is factual / general-knowledge / chitchat / task /
-    # coding, 10 short prompts (≤ ~60 chars each) to mirror the shape of
-    # ``_RECALL_INTENT_EXAMPLES``.
-    _CHAT_INTENT_EXAMPLES = (
-        "Why is the sky blue?",
-        "How does photosynthesis work?",
-        "What is the speed of light in a vacuum?",
-        "Explain how a transformer neural network works.",
-        "Write me a haiku about the sea.",
-        "Give me a Python snippet to reverse a string.",
-        "Translate 'good morning' into Spanish.",
-        "What's the capital of Australia?",
-        "Summarize the plot of Macbeth in two sentences.",
-        "How do I convert 32 degrees Fahrenheit to Celsius?",
-    )
-
-    # Tier 2: curated phrase sets used to build the per-lane embedding
-    # centroids consumed by ``CognitiveRouterV4._score_*_intent_embedding``.
-    # Kept at ~10 short prompts each to mirror the recall/chat sets and
-    # keep the one-time embedding pass cheap. Each set deliberately uses
-    # vocabulary that the substring trigger lists DO NOT cover, so the
-    # ``max(substring, embedding)`` fusion adds genuine semantic recall
-    # rather than echoing the keyword list.
-    _MEMORY_INTENT_EXAMPLES = (
-        "what did I tell you about my work last week?",
-        "do you recall the name of my dog?",
-        "bring up what we agreed on yesterday",
-        "what are my dietary restrictions?",
-        "what timezone do I live in again?",
-        "what was the address I gave you?",
-        "show me the notes I shared earlier",
-        "what's the password hint I told you?",
-        "what's my usual sleep schedule?",
-        "remind me of my favorite movies list",
-    )
-
-    _RAG_INTENT_EXAMPLES = (
-        "summarize the attached PDF",
-        "what does the contract say about termination?",
-        "according to the report, what is the revenue?",
-        "in the document, find the section about safety",
-        "quote the relevant passage from the manual",
-        "what does the spec define for retry behavior?",
-        "based on the file I uploaded, who are the authors?",
-        "find the clause about confidentiality in the agreement",
-        "extract the conclusions from the paper",
-        "what does chapter three of the book cover?",
-    )
-
-    _WEB_INTENT_EXAMPLES = (
-        "search the internet for the latest iPhone release date",
-        "look up today's weather in Madrid",
-        "what's currently trending on Hacker News?",
-        "find recent news about the federal reserve",
-        "google the price of bitcoin right now",
-        "what's the live score of the soccer match?",
-        "look online for flight delays at JFK today",
-        "search for recent reviews of this restaurant",
-        "what is the current exchange rate for USD to EUR?",
-        "fetch the latest stock price of Tesla",
-    )
-
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
         corresponding memory rows.
@@ -683,12 +615,12 @@ class LLMWorker(QThread):
             from workers.intent_router import build_centroid
             if self.cognitive_router.recall_centroid is None:
                 self.cognitive_router.set_recall_centroid(
-                    build_centroid(embedder, list(self._RECALL_INTENT_EXAMPLES))
+                    build_centroid(embedder, list(_RECALL_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Recall centroid installed.")
             if self.cognitive_router.chat_centroid is None:
                 self.cognitive_router.set_chat_centroid(
-                    build_centroid(embedder, list(self._CHAT_INTENT_EXAMPLES))
+                    build_centroid(embedder, list(_CHAT_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Chat centroid installed.")
             # Tier 2: install the per-lane embedding centroids. Each
@@ -700,17 +632,17 @@ class LLMWorker(QThread):
             # gate in ``CognitiveRouterV4.route(...)``.
             if self.cognitive_router.memory_centroid is None:
                 self.cognitive_router.set_memory_centroid(
-                    build_centroid(embedder, list(self._MEMORY_INTENT_EXAMPLES))
+                    build_centroid(embedder, list(_MEMORY_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Memory centroid installed.")
             if self.cognitive_router.rag_centroid is None:
                 self.cognitive_router.set_rag_centroid(
-                    build_centroid(embedder, list(self._RAG_INTENT_EXAMPLES))
+                    build_centroid(embedder, list(_RAG_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] RAG centroid installed.")
             if self.cognitive_router.web_centroid is None:
                 self.cognitive_router.set_web_centroid(
-                    build_centroid(embedder, list(self._WEB_INTENT_EXAMPLES))
+                    build_centroid(embedder, list(_WEB_INTENT_EXAMPLES))
                 )
                 logger.info("[LLM Worker] Web centroid installed.")
         except Exception:
@@ -818,6 +750,8 @@ class LLMWorker(QThread):
             decision["query_expansion_confidence"] = round(expansion.confidence, 3)
             decision["query_expansion_source"] = expansion.topic_source
             decision["sidecar_rewrite_applied"] = True
+            if expansion.recommended_target:
+                decision["sidecar_recommended_target"] = expansion.recommended_target
         elif retrieval_query != original_query:
             decision["sidecar_rewrite_applied"] = False
 
@@ -1887,19 +1821,6 @@ class LLMWorker(QThread):
             retrieval_query = resolve_retrieval_query(
                 inference_user_text, follow_up, discourse_state
             )
-            query_expansion = propose_query_expansion(
-                inference_user_text,
-                follow_up,
-                discourse_state,
-                history,
-                self._sidecar_client,
-            )
-            if query_expansion:
-                logger.info(
-                    "[Sidecar] assistive expansion conf=%.2f expanded=%r",
-                    query_expansion.confidence,
-                    query_expansion.expanded_query[:120],
-                )
             if follow_up.active:
                 logger.info(
                     "[Discourse] follow_up=%s conf=%.2f topic=%r",
@@ -2275,6 +2196,23 @@ class LLMWorker(QThread):
 
         logger.info(f"[Router] route={execution_route}")
 
+        query_expansion = propose_query_expansion(
+            inference_user_text,
+            follow_up,
+            discourse_state if discourse_enabled else None,
+            history,
+            self._sidecar_client,
+            tentative_route=execution_route.lower(),
+            retrieval_query=retrieval_query,
+        )
+        if query_expansion:
+            logger.info(
+                "[Sidecar] assistive expansion conf=%.2f expanded=%r route=%s",
+                query_expansion.confidence,
+                query_expansion.expanded_query[:120],
+                execution_route,
+            )
+
         retrieval_wrapper_mode = "none"
         self._stamp_discourse_on_decision(
             decision,
@@ -2308,6 +2246,56 @@ class LLMWorker(QThread):
             self.routing_debug_record_added.emit(dataclasses.asdict(record))
         except Exception as e:
             logger.warning("[RoutingDebug] failed to record turn: %s", e)
+
+        # ============================================================
+        # SHADOW RETRIEVAL POLICY (observational — no routing/retrieval change)
+        # ============================================================
+        if shadow_retrieval_policy_enabled():
+            try:
+                shadow_state = build_shadow_state_from_worker(
+                    execution_route=execution_route,
+                    decision=decision if isinstance(decision, dict) else {},
+                    prompt=clean_prompt,
+                    follow_up=follow_up,
+                    discourse_state=discourse_state if discourse_enabled else None,
+                    memory_enabled=True,
+                    rag_enabled=bool(self.mcp_auto_enabled),
+                )
+                shadow_policy = compute_retrieval_policy(shadow_state)
+                baseline_route_norm = str(execution_route or "NONE").strip().lower()
+                shadow_route = shadow_policy.get("shadow_decision", "none")
+                route_divergence = baseline_route_norm != shadow_route
+                if self.USE_TELEMETRY:
+                    self.telemetry.log({
+                        "route": execution_route,
+                        "baseline_route": execution_route,
+                        "shadow_retrieval_policy": shadow_policy,
+                        "baseline_recall_fusion": shadow_policy.get(
+                            "baseline_recall_fusion"
+                        ),
+                        "shadow_route": shadow_route,
+                        "route_divergence": route_divergence,
+                        "latency_ms": 0.0,
+                        "memory_hits": 0,
+                        "rag_hits": 0,
+                        "web_hits": 0,
+                    })
+                self._shadow_retrieval_telemetry.record(
+                    baseline_route=execution_route,
+                    shadow_policy=shadow_policy,
+                    prompt=clean_prompt,
+                )
+                logger.info(
+                    "[ShadowRetrievalPolicy] baseline=%s shadow=%s fusion=%s "
+                    "propensity=%.3f divergence=%s",
+                    execution_route,
+                    shadow_route,
+                    shadow_policy.get("baseline_recall_fusion"),
+                    float(shadow_policy.get("retrieval_propensity_score") or 0.0),
+                    route_divergence,
+                )
+            except Exception as exc:
+                logger.debug("[ShadowRetrievalPolicy] observation failed: %s", exc)
 
         # ============================================================
         # 2. TOOL EXECUTION
@@ -2660,41 +2648,81 @@ class LLMWorker(QThread):
                     len(web_context),
                 )
 
-        digest_mem_attempted = bool(
+        digest_mem_eligible = bool(
             memory_context and mem_result.get("memory_sources")
         )
+        digest_mem_attempted = False
         digest_mem_applied = False
-        if digest_mem_attempted:
-            digested, applied = digest_memory_context(
+        digest_mem_chars_before = 0
+        digest_mem_chars_after = 0
+        digest_mem_source_count = 0
+        digest_mem_skip_reason = ""
+        if digest_mem_eligible:
+            mem_digest = digest_memory_context(
                 memory_context,
                 mem_result.get("memory_sources") or [],
                 self._sidecar_client,
             )
-            digest_mem_applied = bool(applied)
-            if applied:
+            digest_mem_chars_before = mem_digest.chars_before
+            digest_mem_chars_after = mem_digest.chars_after
+            digest_mem_source_count = mem_digest.source_count
+            digest_mem_skip_reason = mem_digest.skip_reason
+            digest_mem_attempted = digest_mem_eligible and mem_digest.skip_reason not in (
+                "disabled",
+                "below_threshold",
+                "no_context",
+            )
+            digest_mem_applied = bool(mem_digest.applied)
+            memory_context = mem_digest.text
+            if digest_mem_applied:
                 logger.info(
-                    "[Sidecar] memory digest applied chars %d -> %d",
-                    len(memory_context),
-                    len(digested),
+                    "[Sidecar] memory digest applied chars %d -> %d (sources=%d)",
+                    digest_mem_chars_before,
+                    digest_mem_chars_after,
+                    digest_mem_source_count,
                 )
-                memory_context = digested
+            elif digest_mem_skip_reason == "below_threshold":
+                logger.debug(
+                    "[Sidecar] memory digest skipped below_threshold chars=%d",
+                    digest_mem_chars_before,
+                )
 
-        digest_rag_attempted = bool(tool_context and rag_result.get("sources"))
+        digest_rag_eligible = bool(tool_context and rag_result.get("sources"))
+        digest_rag_attempted = False
         digest_rag_applied = False
-        if digest_rag_attempted:
-            digested_rag, applied_rag = digest_rag_context(
+        digest_rag_chars_before = 0
+        digest_rag_chars_after = 0
+        digest_rag_source_count = 0
+        digest_rag_skip_reason = ""
+        if digest_rag_eligible:
+            rag_digest = digest_rag_context(
                 tool_context,
                 rag_result.get("sources") or [],
                 self._sidecar_client,
             )
-            digest_rag_applied = bool(applied_rag)
-            if applied_rag:
+            digest_rag_chars_before = rag_digest.chars_before
+            digest_rag_chars_after = rag_digest.chars_after
+            digest_rag_source_count = rag_digest.source_count
+            digest_rag_skip_reason = rag_digest.skip_reason
+            digest_rag_attempted = digest_rag_eligible and rag_digest.skip_reason not in (
+                "disabled",
+                "below_threshold",
+                "no_context",
+            )
+            digest_rag_applied = bool(rag_digest.applied)
+            tool_context = rag_digest.text
+            if digest_rag_applied:
                 logger.info(
-                    "[Sidecar] RAG digest applied chars %d -> %d",
-                    len(tool_context),
-                    len(digested_rag),
+                    "[Sidecar] RAG digest applied chars %d -> %d (sources=%d)",
+                    digest_rag_chars_before,
+                    digest_rag_chars_after,
+                    digest_rag_source_count,
                 )
-                tool_context = digested_rag
+            elif digest_rag_skip_reason == "below_threshold":
+                logger.debug(
+                    "[Sidecar] RAG digest skipped below_threshold chars=%d",
+                    digest_rag_chars_before,
+                )
 
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)
@@ -2706,17 +2734,20 @@ class LLMWorker(QThread):
         # ============================================================
         latency_ms = (time.time() - route_start) * 1000
 
+        memory_hits_count = len(mem_result.get("memory_sources", []))
+        rag_hits_count = len(rag_result.get("sources", []))
+        web_hits_count = sum(
+            1
+            for s in all_ui_sources
+            if isinstance(s, dict) and s.get("type") == "web"
+        )
+
         if self.USE_TELEMETRY:
-            web_hits = sum(
-                1
-                for s in all_ui_sources
-                if isinstance(s, dict) and s.get("type") == "web"
-            )
             self.telemetry.log({
                 "route": execution_route,
-                "memory_hits": len(mem_result.get("memory_sources", [])),
-                "rag_hits": len(rag_result.get("sources", [])),
-                "web_hits": web_hits,
+                "memory_hits": memory_hits_count,
+                "rag_hits": rag_hits_count,
+                "web_hits": web_hits_count,
                 "web_search_attempted": bool(web_search_attempted),
                 "latency_ms": latency_ms,
                 "memory_chars": len(memory_context),
@@ -2725,8 +2756,8 @@ class LLMWorker(QThread):
 
             self.router_tuner.observe({
                 "route": execution_route,
-                "memory_hits": len(mem_result.get("memory_sources", [])),
-                "rag_hits": len(rag_result.get("sources", [])),
+                "memory_hits": memory_hits_count,
+                "rag_hits": rag_hits_count,
                 "latency_ms": latency_ms,
             })
             
@@ -2736,35 +2767,6 @@ class LLMWorker(QThread):
                 self.router_telemetry_updated.emit(summary, tuner_state)
             except Exception as e:
                 logger.error(f"Failed to emit router telemetry: {e}")
-
-        try:
-            rewrite_attempted = bool(
-                discourse_enabled
-                and get_sidecar_query_rewrite_enabled()
-                and follow_up.active
-            )
-            get_sidecar_telemetry().record_turn(
-                rewrite_attempted=rewrite_attempted,
-                rewrite_applied=query_expansion is not None,
-                rewrite_confidence=(
-                    float(query_expansion.confidence)
-                    if query_expansion is not None
-                    else 0.0
-                ),
-                digest_memory_attempted=digest_mem_attempted,
-                digest_memory_applied=digest_mem_applied,
-                digest_rag_attempted=digest_rag_attempted,
-                digest_rag_applied=digest_rag_applied,
-                hybrid_extra_memory=int(
-                    getattr(self, "_sidecar_hybrid_extra_memory", 0) or 0
-                ),
-                hybrid_extra_rag=int(
-                    getattr(self, "_sidecar_hybrid_extra_rag", 0) or 0
-                ),
-            )
-            self.sidecar_telemetry_updated.emit(get_sidecar_telemetry().summarize())
-        except Exception as e:
-            logger.debug("Failed to emit sidecar telemetry: %s", e)
 
         # 🔑 NEW: Feed the Cognitive V4 Router its learning data!
         if self.USE_COGNITIVE_ROUTER and hasattr(self, 'cognitive_router'):
@@ -2825,6 +2827,9 @@ class LLMWorker(QThread):
         # where the assistant said "I can't check without internet
         # access" should not be mined for user facts.
         # ============================================================
+        execution_route_pre_downgrade = execution_route
+        tier3_success_flag: bool | None = None
+
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
@@ -2899,26 +2904,20 @@ class LLMWorker(QThread):
             is_drift = bool(decision.get("drift", False))
             if not is_drift and original_route != "none":
                 try:
-                    memory_hits = len(mem_result.get("memory_sources", []))
-                    rag_hits   = len(rag_result.get("sources", []))
-                    web_hits   = sum(
-                        1
-                        for s in all_ui_sources
-                        if isinstance(s, dict) and s.get("type") == "web"
-                    )
-
                     per_lane_hits = {
-                        "memory": memory_hits,
-                        "rag":    rag_hits,
-                        "web":    web_hits,
+                        "memory": memory_hits_count,
+                        "rag":    rag_hits_count,
+                        "web":    web_hits_count,
                     }
 
                     if original_route == "hybrid":
-                        success_flag = (memory_hits > 0) or (rag_hits > 0)
+                        success_flag = (memory_hits_count > 0) or (rag_hits_count > 0)
                     elif original_route in ("memory", "rag", "web"):
                         success_flag = per_lane_hits[original_route] > 0
                     else:
                         success_flag = False
+
+                    tier3_success_flag = bool(success_flag)
 
                     feedback_event = RouteFeedbackEvent(
                         route=original_route,
@@ -2933,6 +2932,80 @@ class LLMWorker(QThread):
                     self.cognitive_router.observe_feedback(feedback_event)
                 except Exception as e:
                     logger.warning(f"[Tier3 Feedback] Failed to emit RouteFeedbackEvent: {e}")
+
+        retrieval_outcome_snapshot: dict | None = None
+        try:
+            if isinstance(decision, dict):
+                retrieval_outcome_snapshot = build_retrieval_outcome_snapshot(
+                    decision=decision,
+                    execution_route_pre_downgrade=str(execution_route_pre_downgrade),
+                    execution_route_final=str(execution_route),
+                    memory_hits=memory_hits_count,
+                    rag_hits=rag_hits_count,
+                    web_hits=web_hits_count,
+                    hybrid_extra_memory=int(
+                        getattr(self, "_sidecar_hybrid_extra_memory", 0) or 0
+                    ),
+                    hybrid_extra_rag=int(
+                        getattr(self, "_sidecar_hybrid_extra_rag", 0) or 0
+                    ),
+                    tier3_success=tier3_success_flag,
+                )
+                updated = self.routing_debug_buffer.merge_retrieval_outcome_into_latest(
+                    retrieval_outcome_snapshot
+                )
+                if updated:
+                    self.routing_debug_record_added.emit(dataclasses.asdict(updated))
+                    self._persist_routing_debug_record(updated)
+        except Exception as e:
+            logger.warning("[RoutingDebug] failed to merge retrieval outcome: %s", e)
+
+        try:
+            rewrite_attempted = bool(
+                discourse_enabled
+                and get_sidecar_query_rewrite_enabled()
+                and follow_up.active
+            )
+            retrieval_meta: dict = {}
+            if isinstance(retrieval_outcome_snapshot, dict):
+                retrieval_meta = {
+                    "router_route": retrieval_outcome_snapshot.get("router_route"),
+                    "execution_route_final": retrieval_outcome_snapshot.get(
+                        "execution_route_final"
+                    ),
+                    "downgrade_fired": retrieval_outcome_snapshot.get("downgrade_fired"),
+                    "memory_hits": retrieval_outcome_snapshot.get("memory_hits"),
+                    "rag_hits": retrieval_outcome_snapshot.get("rag_hits"),
+                }
+            get_sidecar_telemetry().record_turn(
+                rewrite_attempted=rewrite_attempted,
+                rewrite_applied=query_expansion is not None,
+                rewrite_confidence=(
+                    float(query_expansion.confidence)
+                    if query_expansion is not None
+                    else 0.0
+                ),
+                digest_memory_attempted=digest_mem_attempted,
+                digest_memory_applied=digest_mem_applied,
+                digest_rag_attempted=digest_rag_attempted,
+                digest_rag_applied=digest_rag_applied,
+                digest_memory_chars_before=digest_mem_chars_before,
+                digest_memory_chars_after=digest_mem_chars_after,
+                digest_rag_chars_before=digest_rag_chars_before,
+                digest_rag_chars_after=digest_rag_chars_after,
+                digest_memory_skip_reason=digest_mem_skip_reason,
+                digest_rag_skip_reason=digest_rag_skip_reason,
+                hybrid_extra_memory=int(
+                    getattr(self, "_sidecar_hybrid_extra_memory", 0) or 0
+                ),
+                hybrid_extra_rag=int(
+                    getattr(self, "_sidecar_hybrid_extra_rag", 0) or 0
+                ),
+                meta=retrieval_meta or None,
+            )
+            self.sidecar_telemetry_updated.emit(get_sidecar_telemetry().summarize())
+        except Exception as e:
+            logger.debug("Failed to emit sidecar telemetry: %s", e)
 
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)

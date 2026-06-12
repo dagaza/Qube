@@ -23,6 +23,7 @@ from mcp.routing_debug import (
     build_engine_input_trace,
     build_model_router_trace,
     build_record,
+    build_retrieval_outcome_snapshot,
     build_route_summary,
     routing_debug_log_enabled,
     routing_debug_log_redact_query,
@@ -331,7 +332,7 @@ class RoutingDebugSerializeForLogTests(unittest.TestCase):
 
     def test_compact_schema_and_optional_blocks(self) -> None:
         payload = serialize_record_for_log(self._record(), verbose=False, redact_query=False)
-        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["schema_version"], 2)
         self.assertEqual(payload["session_id"], "s1")
         self.assertIn("tier3_lane_bias", payload)
         self.assertIn("model_router", payload)
@@ -653,6 +654,79 @@ class EngineInputTraceRoutingTests(unittest.TestCase):
         snap = buf.snapshot()
         self.assertEqual(snap[-1].trace.get("engine_input_trace"), patch_ei)
         self.assertEqual(snap[-1].turn_id, 3)
+
+
+class RetrievalOutcomeTests(unittest.TestCase):
+    def test_build_snapshot_downgrade_fired(self) -> None:
+        decision = {
+            "route": "rag",
+            "top_intent": "rag",
+            "top_score": 0.55,
+            "confidence_margin": 0.2,
+            "chat_score": 0.4,
+            "retrieval_query": "why is the sky blue",
+        }
+        snap = build_retrieval_outcome_snapshot(
+            decision=decision,
+            execution_route_pre_downgrade="RAG",
+            execution_route_final="none",
+            memory_hits=0,
+            rag_hits=0,
+            web_hits=0,
+        )
+        self.assertTrue(snap["downgrade_fired"])
+        self.assertEqual(snap["router_route"], "rag")
+        self.assertEqual(snap["execution_route_final"], "none")
+
+    def test_merge_updates_route_to_final(self) -> None:
+        buf = RoutingDebugBuffer()
+        d = {"route": "rag", "strategy": "adaptive_v4", "trace": _base_trace()}
+        rec = build_record(
+            query="q",
+            decision=d,
+            session_id="s",
+            turn_id=1,
+            effective_route="rag",
+        )
+        buf.append(rec)
+        outcome = build_retrieval_outcome_snapshot(
+            decision=d,
+            execution_route_pre_downgrade="rag",
+            execution_route_final="none",
+            memory_hits=0,
+            rag_hits=0,
+            web_hits=0,
+        )
+        updated = buf.merge_retrieval_outcome_into_latest(outcome)
+        assert updated is not None
+        self.assertEqual(updated.route, "none")
+        self.assertEqual(updated.trace["retrieval_outcome"]["downgrade_fired"], True)
+
+    def test_serialize_includes_retrieval_outcome(self) -> None:
+        trace = _base_trace()
+        trace["retrieval_outcome"] = {
+            "downgrade_fired": True,
+            "memory_hits": 0,
+            "rag_hits": 0,
+        }
+        rec = RoutingDebugRecord(
+            timestamp=1.0,
+            session_id="s",
+            turn_id=1,
+            query="q",
+            route="none",
+            route_pre_policy="rag",
+            strategy="adaptive_v4",
+            trace_level="full",
+            top_intent="rag",
+            top_score=0.5,
+            summary="",
+            trace=trace,
+            decision={},
+        )
+        payload = serialize_record_for_log(rec, verbose=False)
+        self.assertIn("retrieval_outcome", payload)
+        self.assertTrue(payload["retrieval_outcome"]["downgrade_fired"])
 
 
 if __name__ == "__main__":

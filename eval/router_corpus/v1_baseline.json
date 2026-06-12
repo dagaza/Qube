@@ -1,0 +1,1114 @@
+{
+  "schema": "qube.router_corpus.v1",
+  "version": 2,
+  "description": "Baseline router evaluation corpus (125 prompts incl. retrieval-tempting GK)",
+  "cases": [
+    {
+      "id": "gk_001",
+      "prompt": "Why is the sky blue?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "Rayleigh scattering"
+    },
+    {
+      "id": "gk_002",
+      "prompt": "How does photosynthesis work?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "plants convert light"
+    },
+    {
+      "id": "gk_003",
+      "prompt": "What is the speed of light in a vacuum?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "physics constant"
+    },
+    {
+      "id": "gk_004",
+      "prompt": "Explain how a transformer neural network works.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "ML architecture"
+    },
+    {
+      "id": "gk_005",
+      "prompt": "Write me a haiku about the sea.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "creative, no retrieval"
+    },
+    {
+      "id": "gk_006",
+      "prompt": "Give me a Python snippet to reverse a string.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "coding task"
+    },
+    {
+      "id": "gk_007",
+      "prompt": "Translate 'good morning' into Spanish.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "translation"
+    },
+    {
+      "id": "gk_008",
+      "prompt": "What's the capital of Australia?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "factual geography"
+    },
+    {
+      "id": "gk_009",
+      "prompt": "Summarize the plot of Macbeth in two sentences.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "literature"
+    },
+    {
+      "id": "gk_010",
+      "prompt": "How do I convert 32 degrees Fahrenheit to Celsius?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "unit conversion"
+    },
+    {
+      "id": "gk_011",
+      "prompt": "What causes seasons on Earth?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "axial tilt"
+    },
+    {
+      "id": "gk_012",
+      "prompt": "Define entropy in thermodynamics.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "physics definition"
+    },
+    {
+      "id": "gk_013",
+      "prompt": "What is a binary search algorithm?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "CS concept"
+    },
+    {
+      "id": "gk_014",
+      "prompt": "How many planets are in the solar system?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "astronomy"
+    },
+    {
+      "id": "gk_015",
+      "prompt": "What is the difference between HTTP and HTTPS?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "networking"
+    },
+    {
+      "id": "gk_016",
+      "prompt": "Explain recursion with a simple example.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "CS teaching"
+    },
+    {
+      "id": "gk_017",
+      "prompt": "What is the chemical formula for water?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "chemistry"
+    },
+    {
+      "id": "gk_018",
+      "prompt": "How do vaccines train the immune system?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "biology"
+    },
+    {
+      "id": "gk_019",
+      "prompt": "What does GDP measure?",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "economics"
+    },
+    {
+      "id": "gk_020",
+      "prompt": "Compare SQL and NoSQL databases briefly.",
+      "expected_route": "none",
+      "category": "general_knowledge",
+      "notes": "tech comparison"
+    },
+    {
+      "id": "mem_001",
+      "prompt": "What do you remember about my coffee preference?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "preference recall",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_002",
+      "prompt": "Do I like metric or imperial units?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "settings recall",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_003",
+      "prompt": "What is my dog's name?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "personal fact",
+      "flags": {
+        "memory_type": "personal_fact"
+      }
+    },
+    {
+      "id": "mem_004",
+      "prompt": "Remind me what timezone I told you I live in.",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "timezone",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_005",
+      "prompt": "What did I say my favorite editor was?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "tool preference",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_006",
+      "prompt": "Do you remember my wife's name?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "family fact",
+      "flags": {
+        "memory_type": "relationship"
+      }
+    },
+    {
+      "id": "mem_007",
+      "prompt": "What allergies did I mention?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "health preference",
+      "flags": {
+        "memory_type": "personal_fact"
+      }
+    },
+    {
+      "id": "mem_008",
+      "prompt": "Recall my usual bedtime.",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "habit",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_009",
+      "prompt": "What am I allergic to?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "memory substring trigger",
+      "flags": {
+        "memory_type": "personal_fact"
+      }
+    },
+    {
+      "id": "mem_010",
+      "prompt": "Tell me about my brother Mark.",
+      "expected_route": "hybrid",
+      "category": "memory_recall",
+      "notes": "recall fusion candidate",
+      "flags": {
+        "memory_type": "relationship"
+      }
+    },
+    {
+      "id": "mem_011",
+      "prompt": "Who is Dr. Evelyn according to what you know about me?",
+      "expected_route": "hybrid",
+      "category": "memory_recall",
+      "notes": "hybrid recall",
+      "flags": {
+        "memory_type": "relationship"
+      }
+    },
+    {
+      "id": "mem_012",
+      "prompt": "Remind me about the Berlin meeting.",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "meeting memory",
+      "flags": {
+        "memory_type": "episodic"
+      }
+    },
+    {
+      "id": "mem_013",
+      "prompt": "What did we agree on about code review?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "agreement",
+      "flags": {
+        "memory_type": "episodic"
+      }
+    },
+    {
+      "id": "mem_014",
+      "prompt": "Do you know my preferred programming language?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "preference",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "mem_015",
+      "prompt": "Refresh my memory on my thesis topic.",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "thesis",
+      "flags": {
+        "memory_type": "personal_fact"
+      }
+    },
+    {
+      "id": "mem_016",
+      "prompt": "What notes did I share about the trip?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "trip notes",
+      "flags": {
+        "memory_type": "episodic"
+      }
+    },
+    {
+      "id": "mem_017",
+      "prompt": "Remember what I said about my mom's name?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "explicit remember substring but recall read",
+      "flags": {
+        "memory_type": "relationship"
+      }
+    },
+    {
+      "id": "mem_018",
+      "prompt": "Anything about me and vegetarian food?",
+      "expected_route": "memory",
+      "category": "memory_recall",
+      "notes": "diet",
+      "flags": {
+        "memory_type": "preference"
+      }
+    },
+    {
+      "id": "rag_001",
+      "prompt": "Summarize the attached PDF about quarterly revenue.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "doc summary"
+    },
+    {
+      "id": "rag_002",
+      "prompt": "According to my notes, what is the project deadline?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "notes lookup"
+    },
+    {
+      "id": "rag_003",
+      "prompt": "In my library, find mentions of confidentiality.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "library search"
+    },
+    {
+      "id": "rag_004",
+      "prompt": "What does the contract say about termination?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "contract"
+    },
+    {
+      "id": "rag_005",
+      "prompt": "Quote the safety section from the uploaded manual.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "manual"
+    },
+    {
+      "id": "rag_006",
+      "prompt": "Based on the file I uploaded, who are the authors?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "authorship"
+    },
+    {
+      "id": "rag_007",
+      "prompt": "Search my documents for Rayleigh scattering explanation.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "file search phrasing"
+    },
+    {
+      "id": "rag_008",
+      "prompt": "Look into my files and tell me if Dr. Evelyn is mentioned.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "file search override"
+    },
+    {
+      "id": "rag_009",
+      "prompt": "Check my documents for API retry behavior.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "spec"
+    },
+    {
+      "id": "rag_010",
+      "prompt": "In the report, what is the revenue figure?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "report"
+    },
+    {
+      "id": "rag_011",
+      "prompt": "Find the clause about indemnification in my agreement.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "legal doc"
+    },
+    {
+      "id": "rag_012",
+      "prompt": "What does chapter three of the book cover?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "book"
+    },
+    {
+      "id": "rag_013",
+      "prompt": "Extract conclusions from the paper I ingested.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "paper"
+    },
+    {
+      "id": "rag_014",
+      "prompt": "According to the PDF, list the main risks.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "risk section"
+    },
+    {
+      "id": "rag_015",
+      "prompt": "In my notes on Kubernetes, what did I write about ingress?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "notes"
+    },
+    {
+      "id": "rag_016",
+      "prompt": "Does my document mention GDPR retention periods?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "compliance doc"
+    },
+    {
+      "id": "rag_017",
+      "prompt": "Summarize the meeting minutes file.",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "minutes"
+    },
+    {
+      "id": "rag_018",
+      "prompt": "From the spec document, what is the max payload size?",
+      "expected_route": "rag",
+      "category": "rag_retrieval",
+      "notes": "spec detail"
+    },
+    {
+      "id": "web_001",
+      "prompt": "Search the web for today's weather in Copenhagen.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "explicit web",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_002",
+      "prompt": "Look online for the latest iPhone release date.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "product launch",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_003",
+      "prompt": "Google the current price of bitcoin.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "finance",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_004",
+      "prompt": "What's the weather in Madrid today?",
+      "expected_route": "none",
+      "category": "web_retrieval",
+      "notes": "weather substring"
+    },
+    {
+      "id": "web_005",
+      "prompt": "Find recent news about the Federal Reserve.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "news",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_006",
+      "prompt": "Check online for flight delays at JFK today.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "travel",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_007",
+      "prompt": "What is happening in the stock market right now?",
+      "expected_route": "none",
+      "category": "web_retrieval",
+      "notes": "live markets"
+    },
+    {
+      "id": "web_008",
+      "prompt": "Search for live score of today's Champions League match.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "sports",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_009",
+      "prompt": "Look up the current USD to EUR exchange rate.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "forex",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_010",
+      "prompt": "What's trending on Hacker News right now?",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "trending",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_011",
+      "prompt": "Find on the internet reviews of Noma restaurant.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "reviews",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_012",
+      "prompt": "What's the latest news about OpenAI?",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "company news",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_013",
+      "prompt": "Weather today in Tokyo \u2014 look it up online.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "explicit+weather",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "web_014",
+      "prompt": "Current air quality in Delhi today?",
+      "expected_route": "none",
+      "category": "web_retrieval",
+      "notes": "environment"
+    },
+    {
+      "id": "web_015",
+      "prompt": "Search the web for Tesla stock price right now.",
+      "expected_route": "web",
+      "category": "web_retrieval",
+      "notes": "ticker",
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "fu_001",
+      "prompt": "What about its music and arts scene?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "Kathmandu follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu is the capital of Nepal."
+        },
+        {
+          "role": "user",
+          "content": "What about Kathmandu's flora and fauna?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu has urban parks with marigolds and jasmine."
+        }
+      ]
+    },
+    {
+      "id": "fu_002",
+      "prompt": "And its population?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "population follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "Tell me about Nepal."
+        },
+        {
+          "role": "assistant",
+          "content": "Nepal is a landlocked country in South Asia."
+        },
+        {
+          "role": "user",
+          "content": "What is the capital of Nepal?"
+        },
+        {
+          "role": "assistant",
+          "content": "Kathmandu is the capital."
+        }
+      ]
+    },
+    {
+      "id": "fu_003",
+      "prompt": "What about its music scene?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "Slay the Spire style",
+      "history": [
+        {
+          "role": "user",
+          "content": "I'm playing Slay the Spire."
+        },
+        {
+          "role": "assistant",
+          "content": "Slay the Spire is a roguelike deckbuilder."
+        }
+      ]
+    },
+    {
+      "id": "fu_004",
+      "prompt": "Tips for this?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "deictic tips",
+      "history": [
+        {
+          "role": "user",
+          "content": "I'm learning Python decorators."
+        },
+        {
+          "role": "assistant",
+          "content": "Decorators wrap functions to add behavior."
+        }
+      ]
+    },
+    {
+      "id": "fu_005",
+      "prompt": "Who is she?",
+      "expected_route": "hybrid",
+      "category": "follow_up",
+      "notes": "pronoun follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "Tell me about Marie Curie."
+        },
+        {
+          "role": "assistant",
+          "content": "Marie Curie pioneered research on radioactivity."
+        }
+      ]
+    },
+    {
+      "id": "fu_006",
+      "prompt": "Search the web for more on this.",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "meta web follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is quantum entanglement?"
+        },
+        {
+          "role": "assistant",
+          "content": "Quantum entanglement links particle states."
+        }
+      ],
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "fu_007",
+      "prompt": "What else did the document say about that?",
+      "expected_route": "rag",
+      "category": "follow_up",
+      "notes": "rag follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "Summarize my uploaded safety manual."
+        },
+        {
+          "role": "assistant",
+          "content": "The manual covers PPE and evacuation routes."
+        }
+      ]
+    },
+    {
+      "id": "fu_008",
+      "prompt": "Do I still prefer that?",
+      "expected_route": "memory",
+      "category": "follow_up",
+      "notes": "memory follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "I prefer dark mode in all apps."
+        },
+        {
+          "role": "assistant",
+          "content": "Noted your dark mode preference."
+        }
+      ]
+    },
+    {
+      "id": "fu_009",
+      "prompt": "How about hotels there?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "travel follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "I'm planning a trip to Lisbon."
+        },
+        {
+          "role": "assistant",
+          "content": "Lisbon is Portugal's coastal capital."
+        }
+      ]
+    },
+    {
+      "id": "fu_010",
+      "prompt": "And the second point?",
+      "expected_route": "none",
+      "category": "follow_up",
+      "notes": "list follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "Give me three benefits of exercise."
+        },
+        {
+          "role": "assistant",
+          "content": "1) Cardiovascular health 2) Mood 3) Sleep quality"
+        }
+      ]
+    },
+    {
+      "id": "fu_011",
+      "prompt": "Remind me what we decided about that?",
+      "expected_route": "memory",
+      "category": "follow_up",
+      "notes": "decision follow-up",
+      "history": [
+        {
+          "role": "user",
+          "content": "We discussed using PostgreSQL for the project."
+        },
+        {
+          "role": "assistant",
+          "content": "PostgreSQL offers strong relational features."
+        }
+      ]
+    },
+    {
+      "id": "fu_012",
+      "prompt": "Look it up online for the answer.",
+      "expected_route": "web",
+      "category": "follow_up",
+      "notes": "deictic web",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the population of Iceland?"
+        },
+        {
+          "role": "assistant",
+          "content": "Iceland has around 380,000 people."
+        }
+      ],
+      "flags": {
+        "internet_enabled": true
+      }
+    },
+    {
+      "id": "amb_001",
+      "prompt": "Tell me more.",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "underspecified"
+    },
+    {
+      "id": "amb_002",
+      "prompt": "What about that?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "deictic only"
+    },
+    {
+      "id": "amb_003",
+      "prompt": "Can you help?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "generic"
+    },
+    {
+      "id": "amb_004",
+      "prompt": "Continue.",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "continuation"
+    },
+    {
+      "id": "amb_005",
+      "prompt": "Is it good?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "vague quality"
+    },
+    {
+      "id": "amb_006",
+      "prompt": "What should I do next?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "planning"
+    },
+    {
+      "id": "amb_007",
+      "prompt": "Explain.",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "single word"
+    },
+    {
+      "id": "amb_008",
+      "prompt": "More details please.",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "generic expansion"
+    },
+    {
+      "id": "amb_009",
+      "prompt": "Why?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "minimal"
+    },
+    {
+      "id": "amb_010",
+      "prompt": "Thoughts?",
+      "expected_route": "none",
+      "category": "ambiguous",
+      "notes": "opinion ask"
+    },
+    {
+      "id": "adv_001",
+      "prompt": "The weather today was lovely on our hike.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "weather word, not live query"
+    },
+    {
+      "id": "adv_002",
+      "prompt": "I read the news today oh boy.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "news substring"
+    },
+    {
+      "id": "adv_003",
+      "prompt": "Remember to buy milk on the way home.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "remember imperative not memory read"
+    },
+    {
+      "id": "adv_004",
+      "prompt": "Please remember that my QA codename is Nightjar.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "explicit remember write"
+    },
+    {
+      "id": "adv_005",
+      "prompt": "My notes app crashed again.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "notes word not RAG"
+    },
+    {
+      "id": "adv_006",
+      "prompt": "What is the library function strlen in C?",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "library CS term"
+    },
+    {
+      "id": "adv_007",
+      "prompt": "Google is a search company founded in 1998.",
+      "expected_route": "none",
+      "category": "adversarial",
+      "notes": "Google as noun"
+    },
+    {
+      "id": "gk_rt_001",
+      "prompt": "Tell me about Linux.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "open-ended OS topic"
+    },
+    {
+      "id": "gk_rt_002",
+      "prompt": "Explain TCP.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "networking protocol"
+    },
+    {
+      "id": "gk_rt_003",
+      "prompt": "What is Kubernetes?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "infra buzzword"
+    },
+    {
+      "id": "gk_rt_004",
+      "prompt": "Explain machine learning.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "broad ML topic"
+    },
+    {
+      "id": "gk_rt_005",
+      "prompt": "What causes tides?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "earth science"
+    },
+    {
+      "id": "gk_rt_006",
+      "prompt": "What is photosynthesis?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "biology overlap with gk_002"
+    },
+    {
+      "id": "gk_rt_007",
+      "prompt": "Explain the French Revolution.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "history topic"
+    },
+    {
+      "id": "gk_rt_008",
+      "prompt": "Tell me about quantum computing.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "physics/CS crossover"
+    },
+    {
+      "id": "gk_rt_009",
+      "prompt": "What is Docker?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "dev tooling"
+    },
+    {
+      "id": "gk_rt_010",
+      "prompt": "Explain object-oriented programming.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "CS concept"
+    },
+    {
+      "id": "gk_rt_011",
+      "prompt": "What is climate change?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "environmental science"
+    },
+    {
+      "id": "gk_rt_012",
+      "prompt": "Tell me about Shakespeare.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "literature recall bait"
+    },
+    {
+      "id": "gk_rt_013",
+      "prompt": "Explain how vaccines work.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "medicine"
+    },
+    {
+      "id": "gk_rt_014",
+      "prompt": "What is inflation?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "economics"
+    },
+    {
+      "id": "gk_rt_015",
+      "prompt": "Tell me about World War II.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "history recall bait"
+    },
+    {
+      "id": "gk_rt_016",
+      "prompt": "Explain recursion in programming.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "CS recall bait"
+    },
+    {
+      "id": "gk_rt_017",
+      "prompt": "What is DNA?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "biology"
+    },
+    {
+      "id": "gk_rt_018",
+      "prompt": "Tell me about Beethoven.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "biography recall bait"
+    },
+    {
+      "id": "gk_rt_019",
+      "prompt": "Explain supply and demand.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "economics"
+    },
+    {
+      "id": "gk_rt_020",
+      "prompt": "What is electricity?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "physics"
+    },
+    {
+      "id": "gk_rt_021",
+      "prompt": "Tell me about the Roman Empire.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "history"
+    },
+    {
+      "id": "gk_rt_022",
+      "prompt": "Explain HTTP and HTTPS.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "web protocols"
+    },
+    {
+      "id": "gk_rt_023",
+      "prompt": "What is evolution?",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "biology"
+    },
+    {
+      "id": "gk_rt_024",
+      "prompt": "Tell me about black holes.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "astronomy recall bait"
+    },
+    {
+      "id": "gk_rt_025",
+      "prompt": "Explain sorting algorithms.",
+      "expected_route": "none",
+      "category": "general_knowledge_retrieval_tempting",
+      "notes": "CS algorithms"
+    }
+  ]
+}

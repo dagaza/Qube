@@ -19,7 +19,7 @@ from core.engine_input_trace import (
 from mcp.cognitive_router import AMBIGUITY_MARGIN, MIN_CONFIDENCE_FLOOR
 
 MAX_RECORDS: int = 100
-ROUTING_DEBUG_SCHEMA_VERSION: int = 1
+ROUTING_DEBUG_SCHEMA_VERSION: int = 2
 
 
 @dataclass
@@ -131,6 +131,10 @@ def serialize_record_for_log(
     engine_input = trace.get("engine_input_trace")
     if isinstance(engine_input, dict):
         payload["engine_input_trace"] = copy.deepcopy(engine_input)
+
+    retrieval_outcome = trace.get("retrieval_outcome")
+    if isinstance(retrieval_outcome, dict):
+        payload["retrieval_outcome"] = copy.deepcopy(retrieval_outcome)
 
     if verbose:
         payload["trace"] = copy.deepcopy(record.trace)
@@ -316,6 +320,121 @@ class RoutingDebugBuffer:
             )
             self._deque[-1] = updated
             return updated
+
+    def merge_retrieval_outcome_into_latest(
+        self, outcome: Optional[dict[str, Any]]
+    ) -> Optional[RoutingDebugRecord]:
+        """Attach post-retrieval outcome diagnostics to the newest record."""
+        if not outcome:
+            return None
+        with self._lock:
+            if not self._deque:
+                return None
+            last = self._deque[-1]
+            new_decision = dict(last.decision)
+            new_decision.update(copy.deepcopy(outcome))
+            new_trace = dict(last.trace)
+            new_trace["retrieval_outcome"] = copy.deepcopy(outcome)
+            final_route = str(
+                outcome.get("execution_route_final") or last.route
+            ).lower()
+            updated = RoutingDebugRecord(
+                timestamp=last.timestamp,
+                session_id=last.session_id,
+                turn_id=last.turn_id,
+                query=last.query,
+                route=final_route,
+                route_pre_policy=last.route_pre_policy,
+                strategy=last.strategy,
+                trace_level=last.trace_level,
+                top_intent=last.top_intent,
+                top_score=last.top_score,
+                summary=last.summary,
+                trace=new_trace,
+                decision=new_decision,
+            )
+            self._deque[-1] = updated
+            return updated
+
+
+_RETRIEVAL_ROUTES: frozenset[str] = frozenset(
+    {"memory", "rag", "hybrid", "web", "internet"}
+)
+
+
+def build_retrieval_outcome_snapshot(
+    *,
+    decision: dict[str, Any],
+    execution_route_pre_downgrade: str,
+    execution_route_final: str,
+    memory_hits: int,
+    rag_hits: int,
+    web_hits: int,
+    hybrid_extra_memory: int = 0,
+    hybrid_extra_rag: int = 0,
+    tier3_success: Optional[bool] = None,
+) -> dict[str, Any]:
+    """Build a JSON-safe post-retrieval outcome dict for routing-debug telemetry."""
+    pre = str(execution_route_pre_downgrade or "none").lower()
+    final = str(execution_route_final or "none").lower()
+    downgrade_fired = (
+        pre in _RETRIEVAL_ROUTES
+        and final == "none"
+        and (memory_hits + rag_hits + web_hits) == 0
+    )
+
+    def _i(key: str) -> int:
+        try:
+            return int(decision.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _f(key: str) -> Optional[float]:
+        v = decision.get(key)
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _b(key: str) -> bool:
+        return bool(decision.get(key))
+
+    web_dropped = decision.get("web_relevance_dropped")
+    web_dropped_count = len(web_dropped) if isinstance(web_dropped, list) else 0
+
+    snapshot: dict[str, Any] = {
+        "router_route": str(decision.get("route") or "none").lower(),
+        "execution_route_pre_downgrade": pre,
+        "execution_route_final": final,
+        "downgrade_fired": downgrade_fired,
+        "memory_hits": int(memory_hits),
+        "rag_hits": int(rag_hits),
+        "web_hits": int(web_hits),
+        "routing_query": str(decision.get("routing_query") or ""),
+        "retrieval_query": str(decision.get("retrieval_query") or ""),
+        "expanded_query": str(decision.get("expanded_query") or ""),
+        "sidecar_rewrite_applied": _b("sidecar_rewrite_applied"),
+        "query_expansion_confidence": _f("query_expansion_confidence"),
+        "sidecar_recommended_target": str(
+            decision.get("sidecar_recommended_target") or ""
+        ).lower(),
+        "discourse_rewrite_reason": str(
+            decision.get("discourse_rewrite_reason") or ""
+        ),
+        "hybrid_extra_memory": int(hybrid_extra_memory),
+        "hybrid_extra_rag": int(hybrid_extra_rag),
+        "top_intent": str(decision.get("top_intent") or ""),
+        "top_score": _f("top_score"),
+        "confidence_margin": _f("confidence_margin"),
+        "chat_score": _f("chat_score"),
+        "recall_fusion": _b("recall_fusion"),
+        "web_vetoed_tool_disabled": _b("web_vetoed_tool_disabled"),
+        "web_relevance_dropped_count": web_dropped_count,
+        "tier3_success": tier3_success,
+    }
+    return snapshot
 
 
 def _coerce_float(v: Any) -> Optional[float]:

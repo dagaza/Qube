@@ -377,6 +377,7 @@ Not log files, but relevant when debugging inference:
 | `Cognitive router picked WEB but internet tool is disabled` | Web veto (also in llm_debug if router logs there) |
 | `[Discourse]` | Follow-up classification |
 | `[SidecarTelemetry]` | Sidecar task detail (`QUBE_SIDECAR_DEBUG=1`) |
+| `retrieval_outcome` | Per-turn JSONL block: router vs final route, hits, downgrade, sidecar rewrite |
 | `[PromptLayout]` | Rendered layout + roles per turn |
 
 ---
@@ -400,6 +401,9 @@ Not log files, but relevant when debugging inference:
 | `workers/native_llama_engine.py` | Post-inference debug hooks |
 | `tools/view_llm_logs.py` | Tail/filter LLM debug file |
 | `tools/view_routing_logs.py` | Tail/filter routing debug file |
+| `tools/analyze_routing_outcomes.py` | Summarize joined `retrieval_outcome` telemetry (schema v2) |
+| `tools/evaluate_router.py` | Offline router eval against labeled corpus; CSV + regression `run.json` |
+| `tools/seed_router_eval_library.py` | Index `eval/fixtures` into isolated LanceDB for automated retrieval eval |
 | `tools/llm_prompt_diff.py` | Unified diff for prompt dumps |
 | `tools/run_ablation.py` | Offline ablation CLI |
 

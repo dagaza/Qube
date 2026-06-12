@@ -29,6 +29,7 @@ KEY_CHAT_PERSONALITY_NUDGE = "qube.chat.personality_nudge_enabled"
 KEY_SIDECAR_ENABLED = "qube.sidecar.enabled"
 KEY_SIDECAR_QUERY_REWRITE = "qube.sidecar.query_rewrite_enabled"
 KEY_SIDECAR_SOURCE_DIGEST = "qube.sidecar.source_digest_enabled"
+KEY_SIDECAR_SOURCE_DIGEST_MIN_CHARS = "qube.sidecar.source_digest_min_chars"
 KEY_SIDECAR_MIN_REWRITE_CONFIDENCE = "qube.sidecar.min_rewrite_confidence"
 KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
 KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
@@ -247,6 +248,23 @@ def get_sidecar_source_digest_enabled() -> bool:
     return get_sidecar_enabled() and bool(
         _store().get(KEY_SIDECAR_SOURCE_DIGEST, True)
     )
+
+
+DEFAULT_SIDECAR_SOURCE_DIGEST_MIN_CHARS = 4096
+
+
+def get_sidecar_source_digest_min_chars() -> int:
+    """Min retrieved context length before sidecar digest runs (skip when smaller)."""
+    try:
+        v = int(
+            _store().get(
+                KEY_SIDECAR_SOURCE_DIGEST_MIN_CHARS,
+                DEFAULT_SIDECAR_SOURCE_DIGEST_MIN_CHARS,
+            )
+        )
+    except (TypeError, ValueError):
+        v = DEFAULT_SIDECAR_SOURCE_DIGEST_MIN_CHARS
+    return max(0, min(50000, v))
 
 
 def get_sidecar_min_rewrite_confidence() -> float:

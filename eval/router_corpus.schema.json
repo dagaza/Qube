@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qube.local/schemas/router_corpus.v1.json",
+  "title": "Qube Router Evaluation Corpus",
+  "type": "object",
+  "required": ["schema", "cases"],
+  "properties": {
+    "schema": {
+      "const": "qube.router_corpus.v1"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "prompt", "expected_route", "category"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_route": {
+            "type": "string",
+            "enum": ["none", "chat", "memory", "rag", "web", "hybrid", "internet"]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notes": {
+            "type": "string"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["role", "content"],
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": ["user", "assistant", "system"]
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "flags": {
+            "type": "object",
+            "properties": {
+              "internet_enabled": { "type": "boolean" },
+              "internet_hybrid_auto": { "type": "boolean" },
+              "discourse_enabled": { "type": "boolean" },
+              "mcp_auto_enabled": { "type": "boolean" },
+              "custom_rag_triggers": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

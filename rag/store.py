@@ -22,13 +22,14 @@ SCHEMA = pa.schema([
 ])
 
 class DocumentStore:
-    def __init__(self):
-        # 1. Print the exact path for debugging
-        print(f"\n🔍 VECTOR STORE DIAGNOSTIC")
-        print(f"📍 Database Absolute Path: {DB_PATH}")
-        
-        DB_PATH.mkdir(parents=True, exist_ok=True)
-        self.db = lancedb.connect(str(DB_PATH))
+    def __init__(self, db_path: Path | os.PathLike[str] | None = None, *, quiet: bool = False):
+        self.db_path = Path(db_path) if db_path is not None else DB_PATH
+        if not quiet:
+            print(f"\n🔍 VECTOR STORE DIAGNOSTIC")
+            print(f"📍 Database Absolute Path: {self.db_path}")
+
+        self.db_path.mkdir(parents=True, exist_ok=True)
+        self.db = lancedb.connect(str(self.db_path))
         
         if TABLE_NAME in self.db.table_names():
             self.table = self.db.open_table(TABLE_NAME)

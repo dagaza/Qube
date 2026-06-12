@@ -97,14 +97,16 @@ EPISODE_SUMMARY_TURN_CADENCE = _ew_module.EPISODE_SUMMARY_TURN_CADENCE
 class _FakeLLM:
     def __init__(self, response: str = ""):
         self.response = response
-        self.calls: list[str] = []
+        self.calls: list[dict] = []
 
     def isRunning(self):
         return False
 
-    def generate(self, prompt):
-        self.calls.append(prompt)
-        return self.response
+    def complete(self, task, **kwargs):
+        self.calls.append({"task": task, **kwargs})
+        from core.sidecar_prompts import parse_task_output
+
+        return parse_task_output(task, self.response, **kwargs)
 
 
 class _FakeDB:
