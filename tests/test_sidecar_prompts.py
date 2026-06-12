@@ -154,6 +154,57 @@ class TestSidecarPrompts(unittest.TestCase):
         )
         self.assertFalse(r.ok)
 
+    def test_title_essay_request_uses_topic_not_format(self) -> None:
+        user = (
+            "Write a comprehensive, scholarly essay of at least 1,000 words "
+            "on the evolution of human problem solving throughout history."
+        )
+        assistant = (
+            "The evolution of human problem solving spans millennia, "
+            "from early tool use to formal mathematics."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "Scholarly Essay Least 1000",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = (r.parsed.get("title") or "").lower()
+        self.assertNotIn("1000", title)
+        self.assertNotIn("least", title)
+        self.assertNotIn("essay", title)
+        self.assertTrue(
+            "problem" in title or "evolution" in title or "solving" in title,
+            msg=f"expected topic title, got {title!r}",
+        )
+
+    def test_title_essay_prefers_markdown_heading(self) -> None:
+        user = (
+            "Write a detailed essay of at least 500 words on renewable energy policy."
+        )
+        assistant = (
+            "# Renewable Energy Policy\n\n"
+            "Governments worldwide are revisiting subsidies and grid integration rules."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "Essay Least 500 Words",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertIn("renewable", (r.parsed.get("title") or "").lower())
+
+    def test_title_prompt_mentions_writing_task_examples(self) -> None:
+        prompt = build_prompt_for_task(
+            SidecarTask.title,
+            user_prompt="Write an essay on climate change",
+            assistant_reply="Climate change affects weather patterns globally.",
+        )
+        self.assertIn("Climate Change", prompt)
+        self.assertIn("ignore word counts", prompt)
+
     def test_companion_line_parses_json(self) -> None:
         raw = '{"line":"Still here.","kind":"idle_quip"}'
         r = parse_task_output(SidecarTask.companion_line, raw)

@@ -78,10 +78,16 @@ def build_prompt_for_task(
         system = (
             "You name chat conversations for a sidebar history list. Read the user's "
             "first message and the assistant's reply, then write a short topic label "
-            "(2-5 words) for the subject — like a folder name, not a sentence. "
+            "(2-5 words) for the SUBJECT — like a folder name, not a sentence. "
+            "Name the topic, not the assignment: ignore word counts, format requirements, "
+            "and task verbs (write, essay, comprehensive, draft). "
             "Use the core topic name when obvious (e.g. 'Lord of the Rings', "
-            "'Nginx Reverse Proxy'). Do not describe plot, list characters, or write "
-            "meta commentary. No quotes. Output ONLY the title on one line."
+            "'Nginx Reverse Proxy', 'Human Problem Solving'). "
+            "Examples: "
+            "'Write a 1000-word essay on climate change' → Climate Change; "
+            "'Draft a scholarly paper on quantum tunneling' → Quantum Tunneling. "
+            "Do not describe plot, list characters, or write meta commentary. "
+            "No quotes. Output ONLY the title on one line."
         )
         return _prompt(
             system,
@@ -230,6 +236,37 @@ _PHRASE_LEAD_SKIP = frozenset({
     "generate", "comprehensive", "detailed", "explanation", "overview", "summary",
     "describe", "discuss", "tell", "write", "give", "provide", "create",
 })
+_TITLE_INSTRUCTION_WORDS = frozenset({
+    "essay", "scholarly", "comprehensive", "least", "words", "word", "pages", "page",
+    "minimum", "maximum", "paragraph", "paragraphs", "draft", "approximately",
+    "roughly", "assignment", "paper",
+})
+_TITLE_TASK_VERBS = frozenset({
+    "write", "compose", "draft", "generate", "create", "produce", "prepare",
+})
+_TITLE_FORMAT_CUES = frozenset({
+    "words", "word", "pages", "page", "least", "minimum", "essay", "paper",
+})
+_SUBJECT_CLAUSE_RE = re.compile(
+    r"\b(?:on|about|regarding|concerning)\s+(.+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+_MARKDOWN_HEADING_RE = re.compile(r"^#+\s+(.+)$", re.MULTILINE)
+_TITLE_MIN_ACCEPT_SCORE = 4.0
+_TITLE_SOURCE_BASE_SCORE: dict[str, float] = {
+    "assistant_heading": 12.0,
+    "subject_clause": 11.0,
+    "subject_clause_snippet": 10.0,
+    "assistant_proper_phrase": 9.0,
+    "assistant_topic": 7.0,
+    "sidecar_proper_phrase": 6.0,
+    "sidecar_line": 5.0,
+    "user_proper_phrase": 4.0,
+    "post_think_tail": 4.0,
+    "think_interior": 2.0,
+    "sidecar_coerced": 1.0,
+    "user_topic": 1.0,
+}
 
 
 def format_title_exchange_context(
@@ -328,6 +365,9 @@ def _topic_words_from_text(text: str, *, max_words: int = 5) -> list[str]:
                 picked.append(word)
             i += 1
             continue
+        if low in _TITLE_FRAGMENT_VERBS:
+            i += 1
+            continue
         picked.append(word)
         i += 1
     if len(picked) < 2:
@@ -351,31 +391,244 @@ def _polish_title_candidate(candidate: str) -> str:
     return _format_title_display(line)
 
 
+def _is_task_wrapper_prompt(user_prompt: str) -> bool:
+    words = {w.lower() for w in _TITLE_WORD_RE.findall(user_prompt or "")}
+    if not words & _TITLE_TASK_VERBS:
+        return False
+    if words & _TITLE_FORMAT_CUES:
+        return True
+    return bool(_SUBJECT_CLAUSE_RE.search(user_prompt or ""))
+
+
+def _subject_clause_from_user_prompt(user_prompt: str) -> str:
+    text = (user_prompt or "").strip()
+    match = _SUBJECT_CLAUSE_RE.search(text)
+    if not match:
+        return ""
+    clause = match.group(1).strip().strip(".,!?;:\"'")
+    if len(clause) > 96:
+        clause = clause[:96].rsplit(" ", 1)[0] or clause[:96]
+    return clause
+
+
+def _title_from_markdown_heading(text: str) -> str:
+    for match in _MARKDOWN_HEADING_RE.finditer(text or ""):
+        heading = re.sub(r"\s+", " ", match.group(1)).strip(" \"'.,!?;:")
+        if heading:
+            return heading
+    return ""
+
+
+def _title_is_instruction_like(title: str) -> bool:
+    words = [w.lower() for w in _TITLE_WORD_RE.findall(title or "")]
+    instruction_count = sum(1 for word in words if word in _TITLE_INSTRUCTION_WORDS)
+    if instruction_count >= 2:
+        return True
+    if re.search(r"\b\d{3,}\b", title or ""):
+        return True
+    if re.search(r"\b\d+\s*(?:words?|pages?|paragraphs?)\b", title or "", re.IGNORECASE):
+        return True
+    if instruction_count >= 1 and re.search(r"\d", title or ""):
+        return True
+    return False
+
+
+def _prepare_title_candidate(candidate: str, *, user_prompt: str) -> str:
+    polished = _polish_title_candidate(candidate)
+    if not polished:
+        return ""
+    if _title_is_verbatim_of_prompt(polished, user_prompt):
+        return ""
+    if _title_is_instruction_like(polished):
+        return ""
+    return polished
+
+
+def _score_title_candidate(
+    title: str,
+    *,
+    source: str,
+    user_prompt: str,
+    assistant_reply: str,
+    task_wrapper: bool,
+) -> float:
+    score = _TITLE_SOURCE_BASE_SCORE.get(source, 0.0)
+    words = [w.lower() for w in _TITLE_WORD_RE.findall(title)]
+    word_count = len(words)
+
+    if task_wrapper:
+        if source.startswith("assistant") or source == "assistant_heading":
+            score += 8.0
+        elif source.startswith("subject"):
+            score += 10.0
+        elif source == "user_topic":
+            score -= 12.0
+        elif source.startswith("sidecar"):
+            score -= 6.0
+
+    if 2 <= word_count <= 5:
+        score += 4.0
+    elif word_count > 6:
+        score -= 3.0
+
+    for word in words:
+        if word in _TITLE_INSTRUCTION_WORDS:
+            score -= 10.0
+
+    if re.search(r"\d", title):
+        if re.search(r"\b\d{3,}\b", title):
+            score -= 15.0
+        else:
+            score -= 4.0
+
+    assistant_words = {
+        w.lower()
+        for w in _topic_words_from_text(assistant_reply, max_words=8)
+    }
+    title_words = set(words)
+    overlap = len(title_words & assistant_words)
+    if source not in {
+        "assistant_topic",
+        "assistant_proper_phrase",
+        "assistant_heading",
+    }:
+        if overlap >= 2:
+            score += 6.0
+        elif overlap == 1:
+            score += 2.0
+
+    if task_wrapper and source.startswith("sidecar") and overlap == 0:
+        score -= 8.0
+
+    embedded = _title_from_proper_phrases(user_prompt)
+    if source.startswith("sidecar") and embedded:
+        if _normalize_title_compare(title) == _normalize_title_compare(embedded):
+            score += 5.0
+
+    return score
+
+
+def _collect_title_candidates(
+    raw_s: str,
+    *,
+    user_prompt: str,
+    assistant_reply: str,
+) -> list[tuple[str, str]]:
+    by_key: dict[str, tuple[str, str]] = {}
+
+    def add(raw: str, source: str) -> None:
+        title = _prepare_title_candidate(raw, user_prompt=user_prompt)
+        if not title:
+            return
+        key = _normalize_title_compare(title)
+        existing = by_key.get(key)
+        if existing is not None and _TITLE_SOURCE_BASE_SCORE.get(source, 0) <= _TITLE_SOURCE_BASE_SCORE.get(
+            existing[1], 0
+        ):
+            return
+        by_key[key] = (title, source)
+
+    subject_clause = _subject_clause_from_user_prompt(user_prompt)
+    if subject_clause:
+        add(subject_clause, "subject_clause")
+        clause_words = _topic_words_from_text(subject_clause)
+        if len(clause_words) >= 2:
+            add(" ".join(clause_words), "subject_clause_snippet")
+
+    heading = _title_from_markdown_heading(assistant_reply)
+    if heading:
+        add(heading, "assistant_heading")
+
+    for source_text, source in (
+        (assistant_reply, "assistant_proper_phrase"),
+        (user_prompt, "user_proper_phrase"),
+    ):
+        labeled = _title_from_proper_phrases(source_text)
+        if labeled:
+            add(labeled, source)
+
+    for source_text, source in (
+        (assistant_reply, "assistant_topic"),
+        (user_prompt, "user_topic"),
+    ):
+        topic_words = _topic_words_from_text(source_text)
+        if len(topic_words) >= 2:
+            snippet = " ".join(topic_words)
+            if len(snippet) > 48:
+                snippet = snippet[:48].rsplit(" ", 1)[0] or snippet[:48]
+            add(snippet, source)
+
+    if raw_s:
+        cleaned = _normalize_sidecar_completion_text(raw_s)
+        lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
+        for line in reversed(lines):
+            add(line, "sidecar_line")
+            labeled = _title_from_proper_phrases(line)
+            if labeled:
+                add(labeled, "sidecar_proper_phrase")
+            coerced_words = _topic_words_from_text(line)
+            if len(coerced_words) >= 2:
+                add(" ".join(coerced_words), "sidecar_coerced")
+
+        post_think = _title_from_post_think_tail(raw_s)
+        if post_think:
+            add(post_think, "post_think_tail")
+
+        think_match = _THINK_INTERIOR_RE.search(raw_s)
+        if think_match:
+            interior_lines = [
+                ln.strip()
+                for ln in think_match.group(1).splitlines()
+                if ln.strip()
+            ]
+            for line in sorted(interior_lines, key=lambda ln: len(ln.split())):
+                add(line, "think_interior")
+
+    return list(by_key.values())
+
+
+def _select_best_title(
+    candidates: list[tuple[str, str]],
+    *,
+    user_prompt: str,
+    assistant_reply: str,
+) -> str:
+    if not candidates:
+        return ""
+    task_wrapper = _is_task_wrapper_prompt(user_prompt)
+    best_title = ""
+    best_score = float("-inf")
+    for title, source in candidates:
+        score = _score_title_candidate(
+            title,
+            source=source,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+            task_wrapper=task_wrapper,
+        )
+        if score > best_score:
+            best_score = score
+            best_title = title
+    if best_score < _TITLE_MIN_ACCEPT_SCORE:
+        return ""
+    return best_title
+
+
 def _fallback_title_from_exchange(
     user_prompt: str,
     *,
     assistant_reply: str = "",
 ) -> str:
-    for source in ((user_prompt or "").strip(), (assistant_reply or "").strip()):
-        if not source:
-            continue
-        labeled = _title_from_proper_phrases(source)
-        if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
-            return labeled
-
-    for source in ((assistant_reply or "").strip(), (user_prompt or "").strip()):
-        if not source:
-            continue
-        topic_words = _topic_words_from_text(source)
-        if len(topic_words) < 2:
-            continue
-        snippet = " ".join(topic_words)
-        if len(snippet) > 48:
-            snippet = snippet[:48].rsplit(" ", 1)[0] or snippet[:48]
-        polished = _polish_title_candidate(snippet) or _format_title_display(snippet)
-        if polished and not _title_is_verbatim_of_prompt(polished, user_prompt):
-            return polished
-    return ""
+    candidates = _collect_title_candidates(
+        "",
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
+    return _select_best_title(
+        candidates,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
 
 
 def _fallback_title_from_user_prompt(user_prompt: str) -> str:
@@ -394,29 +647,12 @@ def _title_from_post_think_tail(raw: str) -> str:
     return ""
 
 
-def _title_from_think_interior(raw: str) -> str:
-    m = _THINK_INTERIOR_RE.search(raw or "")
-    if not m:
-        return ""
-    lines = [ln.strip() for ln in m.group(1).splitlines() if ln.strip()]
-    for line in sorted(lines, key=lambda ln: len(ln.split())):
-        polished = _polish_title_candidate(line)
-        if polished:
-            return polished
-    return ""
-
-
 def _accept_title_candidate(
     candidate: str,
     *,
     user_prompt: str,
 ) -> str:
-    polished = _polish_title_candidate(candidate)
-    if not polished:
-        return ""
-    if _title_is_verbatim_of_prompt(polished, user_prompt):
-        return ""
-    return polished
+    return _prepare_title_candidate(candidate, user_prompt=user_prompt)
 
 
 def _finalize_title_text(
@@ -427,44 +663,16 @@ def _finalize_title_text(
 ) -> str:
     """Single-line title after stripping Qwen3 / R1-style reasoning blocks."""
     raw_s = (raw or "").strip()
-    if not raw_s:
-        return _fallback_title_from_exchange(
-            user_prompt, assistant_reply=assistant_reply
-        )
-
-    cleaned = _normalize_sidecar_completion_text(raw_s)
-    lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
-    for line in reversed(lines):
-        accepted = _accept_title_candidate(line, user_prompt=user_prompt)
-        if accepted:
-            return accepted
-        labeled = _title_from_proper_phrases(line)
-        if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
-            return labeled
-        coerced_words = _topic_words_from_text(line)
-        if len(coerced_words) >= 2:
-            coerced = _accept_title_candidate(
-                " ".join(coerced_words), user_prompt=user_prompt
-            )
-            if coerced:
-                return coerced
-
-    for extractor in (_title_from_post_think_tail,):
-        polished = extractor(raw_s)
-        if polished and not _title_is_verbatim_of_prompt(polished, user_prompt):
-            return polished
-
-    fallback = _fallback_title_from_exchange(
-        user_prompt, assistant_reply=assistant_reply
+    candidates = _collect_title_candidates(
+        raw_s,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
     )
-    if fallback:
-        return fallback
-
-    interior = _title_from_think_interior(raw_s)
-    if interior and not _title_is_verbatim_of_prompt(interior, user_prompt):
-        return interior
-
-    return ""
+    return _select_best_title(
+        candidates,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
 
 
 def parse_task_output(task: SidecarTask, raw: str, **kwargs: Any) -> SidecarResult:
