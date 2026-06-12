@@ -17,9 +17,13 @@ __pycache__/
 models/**/*
 !models/**/.gitkeep
 
-# --- Router eval generated LanceDB ---
+# --- Router eval generated / local outputs ---
 eval/.lancedb/
 eval/cache/
+# Local eval runs (regenerate via tools/evaluate_router.py)
+eval/runs/*
+!eval/runs/shadow_policy_baseline_v1/
+!eval/runs/shadow_policy_baseline_v1/**
 
 # --- Qube Architecture: Data ---
 # Ignore all LanceDB / Vector storage files
