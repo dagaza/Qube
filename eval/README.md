@@ -95,6 +95,56 @@ Artifacts per run (under `eval/runs/<run_id>/`):
 - `results.csv` — per-case metrics
 - `run.json` — full run + summary (schema `qube.router_eval_run.v1`)
 
+### Eval artifacts policy
+
+**What belongs in git**
+
+| Path | Why |
+|------|-----|
+| `router_corpus/` | Labeled test inputs — source of truth |
+| `fixtures/` | Seeded RAG/memory content for `--eval-fixtures` |
+| `eval/runs/shadow_policy_baseline_v1/` | **Canonical regression baseline** (full-stack shadow eval) |
+
+**What stays local** (gitignored under `eval/runs/*`)
+
+- Smoke runs, experiments, and re-runs you create locally
+- Perturbation/hysteresis/canonicalization JSON exports from ad-hoc `--run-id` values
+
+Forks and contributors should **regenerate** local runs rather than clone every
+experiment artifact. Compare against the committed baseline or your own saved
+`run.json` via `--baseline eval/runs/shadow_policy_baseline_v1/run.json`.
+
+**Reproduce the canonical baseline**
+
+```bash
+venv/bin/python tools/evaluate_router.py \
+  --eval-fixtures \
+  --with-retrieval \
+  --route-perturbation-analysis \
+  --shadow-retrieval-policy-analysis \
+  --retrieval-propensity-analysis \
+  --simulate-hysteresis \
+  --canonicalization-analysis \
+  --continuous-pilot-routing \
+  --continuous-arch-validation \
+  --report \
+  --run-id shadow_policy_baseline_v1
+```
+
+Optional offline 2D frontier (after perturbation artifacts exist):
+
+```bash
+venv/bin/python -c "
+from pathlib import Path
+from eval.shadow_retrieval_frontier import run_frontier_from_run_dir, export_frontier_json
+d = Path('eval/runs/shadow_policy_baseline_v1')
+export_frontier_json(d / 'frontier_2d.json', run_frontier_from_run_dir(d))
+"
+```
+
+**When to update the committed baseline:** after intentional router or shadow-policy
+changes that should shift regression expectations — not after every local smoke test.
+
 ## Metrics captured
 
 | Column | Meaning |
@@ -290,10 +340,11 @@ Live turns log `shadow_retrieval_policy` via `RouterTelemetryBrain` when
 
 ## Regression workflow
 
-1. Establish baseline: `python3 tools/evaluate_router.py --no-embeddings --run-id baseline`
-2. Change router code
-3. Re-run and compare: `--baseline eval/runs/baseline/run.json --fail-on-regression`
-4. Commit corpus + baseline run JSON in CI or store baseline as a release artifact
+1. Compare against canonical baseline: `--baseline eval/runs/shadow_policy_baseline_v1/run.json`
+2. Change router or shadow-policy code
+3. Re-run locally (any `--run-id`; outputs stay gitignored unless promoted)
+4. Use `--fail-on-regression` to gate CI or pre-merge checks
+5. Promote a new baseline only when metrics should change — replace `shadow_policy_baseline_v1/` in a dedicated commit
 
 ## Related
 
