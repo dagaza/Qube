@@ -32,6 +32,7 @@ from PyQt6.QtGui import (
     QPixmap,
     QPainter,
     QFont,
+    QKeyEvent,
 )
 from PyQt6.QtCore import (
     Qt,
@@ -61,8 +62,19 @@ from core.citation_normalize import (
 )
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
 from core.composer_commands import execute_composer_command
-from core.conversation_export import export_conversation_markdown, export_folder_zip, sanitize_export_filename
-from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
+from core.composer_mention_trigger import (
+    escape_strip_index,
+    is_valid_mention_anchor,
+    menu_trigger_strip_index,
+    mention_query_suffix,
+    resolve_mention_release,
+)
+from core.app_settings import (
+    get_composer_at_mention_discovered,
+    get_engine_mode,
+    set_composer_at_mention_discovered,
+    set_native_reasoning_display_enabled,
+)
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
@@ -88,8 +100,8 @@ from ui.components.stream_markdown_split import (
     split_stream_markdown_buffer,
 )
 from ui.components.composer_mention_popup import ComposerMentionPopup
+from ui.components.hidden_feature_discovery import present_composer_at_mention_discovery
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
-from core.app_settings import get_engine_mode, set_native_reasoning_display_enabled
 
 logger = logging.getLogger("Qube.UI.Conversations")
 
@@ -1034,6 +1046,12 @@ class ChatComposerEdit(QPlainTextEdit):
         self._mention_host = None
         self._mention_popup: ComposerMentionPopup | None = None
         self._mention_start_pos = -1
+        self._mention_session_active = False
+        self._mention_armed = False
+        self._mention_arm_at = -1
+        self._mention_arm_count = 0
+        self._mention_arm_modifiers = Qt.KeyboardModifier.NoModifier
+        self._mention_arm_trigger_key = Qt.Key.Key_unknown
 
     def bind_mention_host(self, host) -> None:
         """Attach ConversationsView (or compatible) for db/session/store context."""
@@ -1091,26 +1109,137 @@ class ChatComposerEdit(QPlainTextEdit):
             return None
         return start, match.group(1)
 
+    def _remove_composer_range(self, start: int, end: int) -> None:
+        cursor = self.textCursor()
+        cursor.beginEditBlock()
+        cursor.setPosition(max(0, start))
+        cursor.setPosition(min(end, len(self.toPlainText())), QTextCursor.MoveMode.KeepAnchor)
+        cursor.removeSelectedText()
+        cursor.endEditBlock()
+        self.setTextCursor(cursor)
+
+    def _disarm_mention_trigger(self) -> None:
+        self._mention_armed = False
+        self._mention_arm_at = -1
+        self._mention_arm_count = 0
+        self._mention_arm_modifiers = Qt.KeyboardModifier.NoModifier
+        self._mention_arm_trigger_key = Qt.Key.Key_unknown
+
+    @staticmethod
+    def _modifier_flag_for_key(key: int) -> Qt.KeyboardModifier | None:
+        if key in (
+            Qt.Key.Key_Shift,
+            getattr(Qt.Key, "Key_ShiftRight", Qt.Key.Key_unknown),
+        ):
+            return Qt.KeyboardModifier.ShiftModifier
+        if key in (
+            Qt.Key.Key_Control,
+            getattr(Qt.Key, "Key_ControlRight", Qt.Key.Key_unknown),
+        ):
+            return Qt.KeyboardModifier.ControlModifier
+        if key in (
+            Qt.Key.Key_Alt,
+            getattr(Qt.Key, "Key_AltGr", Qt.Key.Key_unknown),
+        ):
+            return Qt.KeyboardModifier.AltModifier
+        if key in (
+            Qt.Key.Key_Meta,
+            getattr(Qt.Key, "Key_MetaRight", Qt.Key.Key_unknown),
+        ):
+            return Qt.KeyboardModifier.MetaModifier
+        return None
+
+    def _should_complete_mention_arm(self, event: QKeyEvent) -> bool:
+        if not self._mention_armed:
+            return False
+        key = event.key()
+        if self._mention_arm_modifiers == Qt.KeyboardModifier.NoModifier:
+            return key == self._mention_arm_trigger_key
+        mod = self._modifier_flag_for_key(key)
+        return bool(mod and (self._mention_arm_modifiers & mod))
+
+    def _open_mention_menu(self, arm_at: int, query: str | None = None) -> None:
+        popup = self._mention_popup
+        if popup is None:
+            return
+        text = self.toPlainText()
+        if query is None:
+            query = mention_query_suffix(text, arm_at)
+        strip_idx = menu_trigger_strip_index(text, arm_at)
+        if strip_idx < 0:
+            return
+        self._sync_mention_context()
+        self._remove_composer_range(strip_idx, strip_idx + 1)
+        self._mention_start_pos = self.textCursor().position()
+        self._mention_session_active = True
+        gpos = self._mention_global_pos()
+        popup.show_root(gpos)
+        if query:
+            popup.seed_type_buffer(query)
+        self._maybe_show_at_discovery(popup)
+
+    def _complete_mention_arm(self) -> None:
+        if not self._mention_armed:
+            return
+        text = self.toPlainText()
+        at_pos = self._mention_arm_at
+        arm_count = self._mention_arm_count
+        self._disarm_mention_trigger()
+        action = resolve_mention_release(arm_count)
+        if action == "invalid":
+            return
+        if action == "escape":
+            strip_idx = escape_strip_index(text, at_pos)
+            if strip_idx >= 0:
+                self._remove_composer_range(strip_idx, strip_idx + 1)
+            return
+        query = mention_query_suffix(text, at_pos)
+        self._open_mention_menu(at_pos, query)
+
+    def _maybe_show_at_discovery(self, popup: ComposerMentionPopup) -> None:
+        if get_composer_at_mention_discovered():
+            return
+        set_composer_at_mention_discovered(True)
+        win = self.window()
+        if win is None or popup is None:
+            return
+        QTimer.singleShot(
+            80,
+            lambda: present_composer_at_mention_discovery(
+                win,
+                popup,
+                on_finished=lambda: popup._list.setFocus(),
+            ),
+        )
+
     def _on_text_changed_mention(self) -> None:
         if not self._mention_popup:
             return
+        popup = self._mention_popup
+        if self._mention_armed:
+            return
         active = self._active_mention_query()
         if active is None:
-            self._mention_popup.close_mention()
+            if self._mention_session_active and popup.isVisible():
+                return
+            self._mention_session_active = False
+            popup.close_mention()
             self._mention_start_pos = -1
             return
         start, query = active
-        self._mention_start_pos = start
         self._sync_mention_context()
-        gpos = self._mention_global_pos()
-        if not self._mention_popup.isVisible() or self._mention_popup._mode is None:
-            self._mention_popup.show_root(gpos)
-        else:
-            self._mention_popup._filter.setText(query)
-            self._mention_popup._run_search()
-            if not self._mention_popup.isVisible():
-                self._mention_popup.show()
-                self._mention_popup._filter.setFocus()
+        if popup._mode is not None:
+            popup._filter.setText(query)
+            popup._run_search()
+            if not popup.isVisible():
+                popup.show()
+                popup._filter.setFocus()
+            return
+        if query:
+            if not popup.isVisible():
+                self._open_mention_menu(start, query)
+            elif popup._mode is None:
+                popup.seed_type_buffer(query)
 
     def _insert_mention_token(self, attachment) -> None:
         if attachment.kind == "file" and not validate_file_token(attachment.id):
@@ -1128,7 +1257,9 @@ class ChatComposerEdit(QPlainTextEdit):
             cursor.removeSelectedText()
         cursor.insertText(token + " ")
         self.setTextCursor(cursor)
+        self._mention_session_active = False
         self._mention_start_pos = -1
+        self._disarm_mention_trigger()
         if self._mention_popup:
             self._mention_popup.hide()
 
@@ -1144,41 +1275,60 @@ class ChatComposerEdit(QPlainTextEdit):
             cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
             cursor.removeSelectedText()
             self.setTextCursor(cursor)
+        self._mention_session_active = False
         self._mention_start_pos = -1
+        self._disarm_mention_trigger()
         if self._mention_popup:
             self._mention_popup.hide()
 
     def _run_composer_command(self, command) -> None:
         self._clear_mention_trigger()
         win = self.window()
-        result = execute_composer_command(command.id, window=win)
         if win is None:
             return
+        is_dark = getattr(win, "_is_dark_theme", True)
+
+        if command.requires_confirmation:
+            confirmed = PrestigeDialog(
+                win,
+                command.confirmation_title or "Confirm",
+                command.confirmation_message or "Continue?",
+                is_dark=is_dark,
+                confirm_text="Confirm",
+                cancel_text="Cancel",
+            ).exec()
+            if not confirmed:
+                self.setFocus()
+                return
+
+        result = execute_composer_command(command.id, window=win)
         if result.dialog_message:
-            is_dark = getattr(win, "_is_dark_theme", True)
             PrestigeDialog(
                 win,
                 result.dialog_title or ("Command complete" if result.ok else "Command failed"),
                 result.dialog_message,
                 is_dark=is_dark,
+                confirm_text="OK",
+                show_cancel=False,
             ).exec()
-        showed_notification = False
         if result.ok and result.notification and hasattr(win, "show_app_notification"):
             win.show_app_notification(result.notification)
-            showed_notification = True
         elif not result.ok and not result.dialog_message:
-            is_dark = getattr(win, "_is_dark_theme", True)
             PrestigeDialog(
                 win,
                 result.dialog_title or "Command failed",
                 "The command could not be completed.",
                 is_dark=is_dark,
+                confirm_text="OK",
+                show_cancel=False,
             ).exec()
-        if not showed_notification:
+        else:
             self.setFocus()
 
     def _on_mention_dismissed(self) -> None:
+        self._mention_session_active = False
         self._mention_start_pos = -1
+        self._disarm_mention_trigger()
         self.setFocus()
 
     def keyPressEvent(self, event):
@@ -1189,6 +1339,17 @@ class ChatComposerEdit(QPlainTextEdit):
         if self._mention_popup and self._mention_popup.isVisible():
             if self._mention_popup.handle_key(event):
                 return
+        if event.text() == "@":
+            before = self.toPlainText()[: self.textCursor().position()]
+            if is_valid_mention_anchor(before):
+                if self._mention_armed:
+                    self._mention_arm_count += 1
+                else:
+                    self._mention_armed = True
+                    self._mention_arm_at = self.textCursor().position()
+                    self._mention_arm_count = 1
+                    self._mention_arm_modifiers = event.modifiers()
+                    self._mention_arm_trigger_key = event.key()
         key = event.key()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
@@ -1198,6 +1359,13 @@ class ChatComposerEdit(QPlainTextEdit):
             self.submit_requested.emit()
             return
         super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if self._should_complete_mention_arm(event):
+            self._complete_mention_arm()
+            event.accept()
+            return
+        super().keyReleaseEvent(event)
 
     def _line_step_px(self) -> int:
         """One text line in px (prefer font height so ~7 lines match visible rows)."""
@@ -1308,6 +1476,21 @@ class ConversationsView(QWidget):
 
         self._setup_ui()
         self._start_new_chat()
+
+    def focus_composer_if_ready(self) -> None:
+        """Give the chat composer keyboard focus when the view is ready."""
+        if not hasattr(self, "text_input") or not self.text_input.isEnabled():
+            return
+        win = self.window()
+        if win is not None:
+            tour = getattr(win, "_local_llm_tour", None)
+            if tour is not None and getattr(tour, "is_active", False):
+                return
+            if getattr(win, "_composer_at_mention_discovery", None) is not None:
+                return
+            if not win.isActiveWindow():
+                win.activateWindow()
+        self.text_input.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def _notify_llm_active_session_changed(self) -> None:
         """Tell the LLM worker the focused thread changed so the local server can drop stale KV/prompt cache."""
@@ -2990,6 +3173,7 @@ class ConversationsView(QWidget):
         self.refresh_think_toggle()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_history_list_surface(is_dark)
+        QTimer.singleShot(0, self.focus_composer_if_ready)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

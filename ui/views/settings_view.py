@@ -8,9 +8,9 @@ from PyQt6.QtWidgets import (
     QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
     QToolButton,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
-    QButtonGroup, QPlainTextEdit,
+    QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect,
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QShowEvent
 
 from core.audio_utils import get_input_devices, get_output_devices
@@ -100,6 +100,11 @@ from ui.components.selector_button import SelectorButton
 logger = logging.getLogger("Qube.UI.Settings")
 LOCAL_GGUF_SHARD_PATHS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 COGNITION_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+_SETTINGS_STATUS_BASE_HOLD_MS = 1800
+_SETTINGS_STATUS_MS_PER_CHAR = 75
+_SETTINGS_STATUS_MIN_HOLD_MS = 2500
+_SETTINGS_STATUS_MAX_HOLD_MS = 8000
+_SETTINGS_STATUS_FADE_MS = 500
 
 
 class NoScrollSpinBox(QSpinBox):
@@ -1435,6 +1440,8 @@ class SettingsView(QWidget):
         self.open_settings_json_btn.clicked.connect(self._on_open_settings_json_clicked)
         self.settings_file_status_lbl = QLabel("")
         self.settings_file_status_lbl.setProperty("class", "ToolsPaneControl")
+        self._settings_file_status_sequence = 0
+        self._settings_file_status_fade_anim: QPropertyAnimation | None = None
         json_settings_layout.addWidget(self.settings_json_hint_lbl)
         json_settings_layout.addWidget(
             self.open_settings_json_btn,
@@ -2952,7 +2959,7 @@ class SettingsView(QWidget):
             win.notification_service.history.clear()
             if hasattr(win, "tray_controller") and win.tray_controller is not None:
                 win.tray_controller.update_recent_notifications([])
-        self.settings_file_status_lbl.setText("Notification history cleared.")
+        self._show_settings_file_status("Notification history cleared.")
 
     # --------------------------------------------------------- #
     #  THE PRESTIGE MENU LOGIC                                  #
@@ -3264,6 +3271,60 @@ class SettingsView(QWidget):
             return
         self._settings_reload_timer.start()
 
+    def _settings_file_status_hold_ms(self, message: str) -> int:
+        chars = len(message.strip())
+        ms = _SETTINGS_STATUS_BASE_HOLD_MS + chars * _SETTINGS_STATUS_MS_PER_CHAR
+        return min(
+            _SETTINGS_STATUS_MAX_HOLD_MS,
+            max(_SETTINGS_STATUS_MIN_HOLD_MS, ms),
+        )
+
+    def _cancel_settings_file_status_fade(self) -> None:
+        self._settings_file_status_sequence += 1
+        if self._settings_file_status_fade_anim is not None:
+            self._settings_file_status_fade_anim.stop()
+            self._settings_file_status_fade_anim = None
+        if hasattr(self, "settings_file_status_lbl"):
+            self.settings_file_status_lbl.setGraphicsEffect(None)
+
+    def _show_settings_file_status(self, message: str, *, persistent: bool = False) -> None:
+        self._cancel_settings_file_status_fade()
+        self.settings_file_status_lbl.setText(message)
+        if persistent or not message.strip():
+            return
+        seq = self._settings_file_status_sequence
+        QTimer.singleShot(
+            self._settings_file_status_hold_ms(message),
+            lambda: self._begin_settings_file_status_fade(seq),
+        )
+
+    def _begin_settings_file_status_fade(self, seq: int) -> None:
+        if seq != self._settings_file_status_sequence:
+            return
+        lbl = self.settings_file_status_lbl
+        if not lbl.text().strip():
+            return
+        eff = lbl.graphicsEffect()
+        if not isinstance(eff, QGraphicsOpacityEffect):
+            eff = QGraphicsOpacityEffect(lbl)
+            lbl.setGraphicsEffect(eff)
+        eff.setOpacity(1.0)
+        anim = QPropertyAnimation(eff, b"opacity", self)
+        anim.setDuration(_SETTINGS_STATUS_FADE_MS)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(lambda: self._finish_settings_file_status_fade(seq))
+        self._settings_file_status_fade_anim = anim
+        anim.start()
+
+    def _finish_settings_file_status_fade(self, seq: int) -> None:
+        if seq != self._settings_file_status_sequence:
+            return
+        self.settings_file_status_lbl.clear()
+        self.settings_file_status_lbl.setGraphicsEffect(None)
+        self._settings_file_status_fade_anim = None
+
     def _on_open_settings_json_clicked(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         if self._settings_json_dialog is None:
@@ -3277,13 +3338,16 @@ class SettingsView(QWidget):
         self._settings_json_dialog.show()
         self._settings_json_dialog.raise_()
         self._settings_json_dialog.activateWindow()
-        self.settings_file_status_lbl.setText("Editing settings.json in the built-in editor.")
+        self._show_settings_file_status(
+            "Editing settings.json in the built-in editor.",
+            persistent=True,
+        )
 
     def _on_settings_editor_applied(self, changed: set) -> None:
         if not changed:
             return
         self._sync_ui_from_persisted_settings()
-        self.settings_file_status_lbl.setText(
+        self._show_settings_file_status(
             f"Applied {len(changed)} setting(s) from settings.json."
         )
         self.external_settings_reloaded.emit(changed)
@@ -3301,7 +3365,9 @@ class SettingsView(QWidget):
                 result.parse_error or "The file could not be parsed.",
                 is_dark=is_dark,
             ).exec()
-            self.settings_file_status_lbl.setText("settings.json has errors — fix JSON and save again.")
+            self._show_settings_file_status(
+                "settings.json has errors — fix JSON and save again."
+            )
             return
         if result.skipped_keys:
             skipped = ", ".join(result.skipped_keys[:5])
@@ -3311,7 +3377,7 @@ class SettingsView(QWidget):
         if not result.changed_keys:
             return
         self._sync_ui_from_persisted_settings()
-        self.settings_file_status_lbl.setText(
+        self._show_settings_file_status(
             f"Reloaded {len(result.changed_keys)} setting(s) from settings.json."
         )
         self.external_settings_reloaded.emit(set(result.changed_keys))

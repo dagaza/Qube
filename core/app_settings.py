@@ -49,6 +49,7 @@ KEY_NATIVE_CHAT_FORMAT = "qube.native.chatFormat"
 KEY_NATIVE_PROMPT_LAYOUT = "qube.native.promptLayout"
 KEY_NATIVE_AUTO_LOAD_ON_STARTUP = "qube.native.autoLoadOnStartup"
 KEY_ONBOARDING_LOCAL_LLM_TOUR = "qube.onboarding.localLlmTourCompleted"
+KEY_COMPOSER_AT_MENTION_DISCOVERED = "qube.composer.atMentionDiscovered"
 KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "qube.modelManager.hardwareSuggestions"
 KEY_MODELS_DIRECTORY = "qube.models.directory"
 KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
@@ -769,6 +770,14 @@ def get_onboarding_local_llm_tour_completed() -> bool:
 
 def set_onboarding_local_llm_tour_completed(completed: bool) -> None:
     _store().set(KEY_ONBOARDING_LOCAL_LLM_TOUR, completed)
+
+
+def get_composer_at_mention_discovered() -> bool:
+    return bool(_store().get(KEY_COMPOSER_AT_MENTION_DISCOVERED, False))
+
+
+def set_composer_at_mention_discovered(discovered: bool) -> None:
+    _store().set(KEY_COMPOSER_AT_MENTION_DISCOVERED, bool(discovered))
 
 
 def get_model_manager_hardware_suggestions() -> bool:

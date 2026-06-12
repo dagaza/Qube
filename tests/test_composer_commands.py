@@ -12,6 +12,9 @@ class TestComposerCommands(unittest.TestCase):
     def test_reset_help_guidance_command_registered(self) -> None:
         ids = {c.id for c in COMPOSER_COMMANDS}
         self.assertIn("reset_help_guidance", ids)
+        cmd = next(c for c in COMPOSER_COMMANDS if c.id == "reset_help_guidance")
+        self.assertTrue(cmd.requires_confirmation)
+        self.assertIn("Confirm", cmd.confirmation_message)
 
     @patch("core.composer_commands.reset_help_guidance_settings")
     def test_execute_reset_help_guidance(self, mock_reset: MagicMock) -> None:
@@ -29,7 +32,7 @@ class TestComposerCommands(unittest.TestCase):
         cb.setChecked.assert_called_with(False)
         window.model_manager_view.refresh_hardware_suggestions.assert_called_once()
         self.assertTrue(result.ok)
-        self.assertIn("defaults", result.dialog_message.lower())
+        self.assertFalse(result.dialog_message)
         self.assertIsNotNone(result.notification)
         assert result.notification is not None
         self.assertEqual(result.notification.action_id, "restart_app")
