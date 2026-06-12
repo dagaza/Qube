@@ -46,6 +46,19 @@ def skip_retry_for_structured_enumeration_degeneration(
     return None
 
 
+def skip_retry_for_medium_degeneration(validation: OutputValidationResult) -> str | None:
+    """Block retry when degeneration is advisory-only (medium / not retry-eligible)."""
+    if "degeneration" not in validation.issues:
+        return None
+    if validation.degeneration_retry_eligible is True:
+        return None
+    if validation.severity == "medium":
+        return "medium_degeneration_no_retry"
+    if validation.degeneration_retry_eligible is False:
+        return "medium_degeneration_no_retry"
+    return None
+
+
 def _enumeration_context(model: Any) -> tuple[str, bool]:
     policy = getattr(model, "_last_reply_shape_policy", None)
     if policy is None:
@@ -140,24 +153,31 @@ def maybe_retry(
             retry_reason="validation_passed_or_low_severity",
         )
 
+    format_intent, require_list_format = _enumeration_context(model)
+    if "degeneration" in validation.issues and validation.degeneration_retry_eligible is not True:
+        skip_reason = skip_retry_for_structured_enumeration_degeneration(
+            validation,
+            format_intent=format_intent,
+            require_list_format=require_list_format,
+        )
+        if skip_reason:
+            return AdaptiveRetryOutcome(output, contract, retry_reason=skip_reason)
+        skip_reason = skip_retry_for_medium_degeneration(validation)
+        if skip_reason:
+            return AdaptiveRetryOutcome(output, contract, retry_reason=skip_reason)
+
     retry_worthy = (
         validation.severity == "high"
         or "template_leakage" in validation.issues
-        or "degeneration" in validation.issues
+        or (
+            "degeneration" in validation.issues
+            and validation.degeneration_retry_eligible is True
+        )
         or "meta_preamble" in validation.issues
         or "role_confusion" in validation.issues
     )
     if not retry_worthy:
         return AdaptiveRetryOutcome(output, contract, retry_reason="not_retry_worthy")
-
-    format_intent, require_list_format = _enumeration_context(model)
-    skip_reason = skip_retry_for_structured_enumeration_degeneration(
-        validation,
-        format_intent=format_intent,
-        require_list_format=require_list_format,
-    )
-    if skip_reason:
-        return AdaptiveRetryOutcome(output, contract, retry_reason=skip_reason)
 
     # Harmony models stay on the protocol path — no ChatML/Alpaca downgrade.
     if is_harmony_contract(contract):

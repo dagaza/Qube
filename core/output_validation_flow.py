@@ -14,6 +14,15 @@ from core.output_validation_trace import (
 from core.prompt_contract import PromptContract
 
 
+def _truncate_offender(validation: OutputValidationResult, *, limit: int = 80) -> str | None:
+    offender = validation.degeneration_top_offender
+    if not offender:
+        return None
+    if len(offender) <= limit:
+        return offender
+    return offender[: limit - 3] + "..."
+
+
 def run_output_validation_and_retry(
     engine: Any,
     *,
@@ -48,6 +57,10 @@ def run_output_validation_and_retry(
         stream_finish_reason=str(stream_finish_reason or ""),
         truncation_notice_reason=truncation_notice_reason,
         effective_max_tokens=effective_max_tokens,
+        degeneration_score=validation.degeneration_score,
+        degeneration_retry_eligible=validation.degeneration_retry_eligible,
+        degeneration_top_offender=_truncate_offender(validation),
+        degeneration_clustered=validation.degeneration_clustered,
     )
 
     setattr(engine, "_adaptive_retry_max_tokens", retry_budget)

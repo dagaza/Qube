@@ -60,6 +60,7 @@ from core.citation_normalize import (
     markdown_for_external_clipboard,
     normalize_labeled_citation_tokens,
 )
+from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
 from core.composer_commands import execute_composer_command
 from core.composer_mention_trigger import (

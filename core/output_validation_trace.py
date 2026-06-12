@@ -32,6 +32,10 @@ class OutputValidationTrace:
     stream_finish_reason: str = ""
     truncation_notice_reason: str | None = None
     effective_max_tokens: int | None = None
+    degeneration_score: float | None = None
+    degeneration_retry_eligible: bool | None = None
+    degeneration_top_offender: str | None = None
+    degeneration_clustered: bool | None = None
 
     def trace_fields(self) -> dict[str, Any]:
         return asdict(self)

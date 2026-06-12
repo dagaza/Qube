@@ -4,6 +4,7 @@ import unittest
 
 from core.adaptive_retry import (
     maybe_retry,
+    skip_retry_for_medium_degeneration,
     skip_retry_for_structured_enumeration_degeneration,
 )
 from core.output_validation import OutputValidationResult
@@ -180,6 +181,47 @@ class TestAdaptiveRetry(unittest.TestCase):
         self.assertTrue(outcome.retry_used)
         self.assertEqual(len(model.calls), 1)
 
+    def test_skips_retry_for_medium_degeneration_only(self) -> None:
+        model = _FakeModel(outputs=["Should not run."])
+        c = _contract("gguf", "chat_template.default")
+        v = OutputValidationResult(
+            is_valid=False,
+            issues=["degeneration"],
+            severity="medium",
+            degeneration_retry_eligible=False,
+        )
+        outcome = maybe_retry(
+            model,
+            [{"role": "user", "content": "Write an essay"}],
+            c,
+            "Some prose with mild repetition.",
+            v,
+        )
+        self.assertFalse(outcome.retry_attempted)
+        self.assertEqual(outcome.retry_reason, "medium_degeneration_no_retry")
+        self.assertEqual(model.calls, [])
+
+    def test_retries_high_confidence_degeneration(self) -> None:
+        model = _FakeModel(outputs=["Safe final answer."])
+        c = _contract("gguf", "chat_template.default")
+        v = OutputValidationResult(
+            is_valid=False,
+            issues=["degeneration"],
+            severity="high",
+            degeneration_retry_eligible=True,
+            degeneration_score=0.95,
+        )
+        outcome = maybe_retry(
+            model,
+            [{"role": "user", "content": "Hello"}],
+            c,
+            "loop loop loop loop loop loop",
+            v,
+        )
+        self.assertTrue(outcome.retry_attempted)
+        self.assertTrue(outcome.retry_used)
+        self.assertEqual(len(model.calls), 1)
+
 
 class TestStructuredEnumerationSkipHelper(unittest.TestCase):
     def test_skip_reason_only_for_medium_degeneration(self) -> None:
@@ -195,6 +237,29 @@ class TestStructuredEnumerationSkipHelper(unittest.TestCase):
                 high, format_intent="enumeration", require_list_format=True
             )
         )
+
+
+class TestMediumDegenerationSkipHelper(unittest.TestCase):
+    def test_medium_degeneration_skip_reason(self) -> None:
+        v = OutputValidationResult(
+            is_valid=False,
+            issues=["degeneration"],
+            severity="medium",
+            degeneration_retry_eligible=False,
+        )
+        self.assertEqual(
+            skip_retry_for_medium_degeneration(v),
+            "medium_degeneration_no_retry",
+        )
+
+    def test_high_confidence_degeneration_not_skipped(self) -> None:
+        v = OutputValidationResult(
+            is_valid=False,
+            issues=["degeneration"],
+            severity="high",
+            degeneration_retry_eligible=True,
+        )
+        self.assertIsNone(skip_retry_for_medium_degeneration(v))
 
 
 if __name__ == "__main__":
