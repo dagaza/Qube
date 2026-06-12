@@ -774,10 +774,14 @@ class TelemetryView(QWidget):
 
         fg = summary.get("foreground") or {}
         p95 = float(fg.get("p95_latency_ms") or 0.0)
+        p95_wait = float(fg.get("p95_wait_ms") or 0.0)
         timeout_rate = float(fg.get("timeout_rate") or 0.0)
-        self.sidecar_fg_p95_val.setText(
-            f"{p95:.0f} ms" + (f" · timeout {timeout_rate:.0%}" if fg.get("attempts") else "")
-        )
+        fg_label = f"{p95:.0f} ms"
+        if p95_wait > 0 and fg.get("attempts"):
+            fg_label += f" · wait {p95_wait:.0f}ms"
+        if fg.get("attempts"):
+            fg_label += f" · timeout {timeout_rate:.0%}"
+        self.sidecar_fg_p95_val.setText(fg_label if fg.get("attempts") else "—")
 
         rewrite = summary.get("rewrite") or {}
         attempted = int(rewrite.get("attempted") or 0)

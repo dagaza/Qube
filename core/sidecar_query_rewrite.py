@@ -83,6 +83,9 @@ def propose_query_expansion(
     discourse: DiscourseState | None,
     history: list[dict[str, Any]] | None,
     sidecar_client: Any,
+    *,
+    tentative_route: str = "",
+    retrieval_query: str = "",
 ) -> Optional[QueryExpansion]:
     """
     Best-effort sidecar expansion. Returns None to keep regex-only retrieval.
@@ -110,6 +113,8 @@ def propose_query_expansion(
             active_aspect=aspect,
             follow_up_kind=follow_up.kind.value,
             history_tail=tail,
+            tentative_route=(tentative_route or "").strip().lower(),
+            retrieval_query=(retrieval_query or text).strip(),
         )
     except Exception as e:
         logger.debug("[Sidecar] query rewrite failed: %s", e)
@@ -135,9 +140,13 @@ def propose_query_expansion(
         return None
 
     topic_source = str(result.parsed.get("topic_source") or "discourse_state")
+    recommended_target = str(
+        result.parsed.get("recommended_target") or ""
+    ).strip().lower()
     return QueryExpansion(
         original_query=text,
         expanded_query=expanded,
         confidence=conf,
         topic_source=topic_source,
+        recommended_target=recommended_target,
     )

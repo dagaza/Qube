@@ -117,10 +117,26 @@ def build_prompt_for_task(
         prebuilt = kwargs.get("prompt")
         if prebuilt:
             return _finish(str(prebuilt))
-        return _prompt(
-            "Summarize the conversation per instructions.",
-            (kwargs.get("conversation") or "")[:6000],
+        conversation = (kwargs.get("conversation") or "")[:6000]
+        system = (
+            "You are writing a single-paragraph summary of the recent conversation below.\n\n"
+            "Goal: capture what the user was DOING or DECIDING in this session, so the "
+            'assistant can later answer "what have we been working on?" or '
+            '"recap this conversation".\n\n'
+            "STRICT RULES:\n"
+            "- One paragraph. <= 120 words. Plain English prose.\n"
+            "- Describe the USER's project / goal / decisions / open questions. "
+            "Never describe the assistant.\n"
+            "- Never invent facts that are not in the conversation.\n"
+            "- If the conversation is small talk, trivial, or has no narrative arc, "
+            "output EXACTLY:\n"
+            "  SUMMARY: SKIP\n"
+            "  TOPICS:\n"
+            "- Otherwise output EXACTLY this format (two labeled lines):\n\n"
+            "SUMMARY: <one paragraph summary>\n"
+            "TOPICS: <comma-separated short topic keywords>"
         )
+        return _prompt(system, conversation)
 
     if task == SidecarTask.query_rewrite:
         original = (kwargs.get("original_query") or "").strip()
@@ -128,18 +144,28 @@ def build_prompt_for_task(
         aspect = (kwargs.get("active_aspect") or "").strip()
         kind = (kwargs.get("follow_up_kind") or "none").strip()
         tail = (kwargs.get("history_tail") or "").strip()[:1200]
+        tentative_route = (kwargs.get("tentative_route") or "none").strip().lower()
+        retrieval_query = (kwargs.get("retrieval_query") or original).strip()
         system = (
             "Expand deictic follow-up queries using the conversation entity ONLY. "
             "The entity is the durable subject (city, person, game); the aspect is "
             "the current facet being discussed. Do NOT invent names or latch onto "
             "examples from prior assistant replies. "
+            "tentative_route and retrieval_query are read-only context from the "
+            "cognitive router — do NOT override routing; only improve the search query. "
             "If unsure, set expanded_query to the original and confidence below 0.5. "
+            "recommended_target is optional telemetry (chat|memory|rag|web); "
+            "echo tentative_route when unsure. "
             "Return STRICT JSON only: "
-            '{"expanded_query":"...","confidence":0.0,"topic_source":"discourse_state|none"}'
+            '{"expanded_query":"...","confidence":0.0,'
+            '"topic_source":"discourse_state|none",'
+            '"recommended_target":"chat|memory|rag|web|none"}'
         )
         aspect_line = f"current_aspect: {aspect}\n" if aspect else ""
         user = (
             f"original_query: {original}\n"
+            f"retrieval_query: {retrieval_query}\n"
+            f"tentative_route: {tentative_route}\n"
             f"conversation_entity: {entity or '(none)'}\n"
             f"{aspect_line}"
             f"follow_up_kind: {kind}\n"
@@ -869,10 +895,14 @@ def _parse_query_rewrite_json(raw: str) -> Optional[dict[str, Any]]:
         conf = 0.0
     conf = max(0.0, min(1.0, conf))
     topic_source = str(obj.get("topic_source") or "discourse_state").strip() or "discourse_state"
+    recommended_target = str(obj.get("recommended_target") or "").strip().lower()
+    if recommended_target not in ("chat", "memory", "rag", "web", "none", ""):
+        recommended_target = ""
     return {
         "expanded_query": expanded,
         "confidence": conf,
         "topic_source": topic_source,
+        "recommended_target": recommended_target,
     }
 
 

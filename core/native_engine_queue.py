@@ -106,6 +106,10 @@ class PriorityCommandQueue:
         with self._lock:
             return len(self._heap)
 
+    def count(self, predicate: Callable[[dict], bool]) -> int:
+        with self._lock:
+            return sum(1 for entry in self._heap if predicate(entry.cmd))
+
     def depth_by_priority(self) -> dict[str, int]:
         with self._lock:
             counts: dict[str, int] = {}

@@ -1,0 +1,142 @@
+{
+  "schema": "qube.router_eval_memories.v1",
+  "description": "Synthetic memories aligned with eval/router_corpus memory_recall cases",
+  "memories": [
+    {
+      "id": "mem_seed_coffee",
+      "tier": "preference",
+      "key": "coffee",
+      "category": "preference",
+      "content": "The user prefers black coffee with no sugar every morning.",
+      "maps_to": ["mem_001"]
+    },
+    {
+      "id": "mem_seed_units",
+      "tier": "preference",
+      "key": "units",
+      "category": "preference",
+      "content": "The user prefers metric units for distance and temperature.",
+      "maps_to": ["mem_002"]
+    },
+    {
+      "id": "mem_seed_dog",
+      "tier": "knowledge",
+      "key": "dog",
+      "category": "knowledge",
+      "content": "The user's dog is named Luna.",
+      "maps_to": ["mem_003"]
+    },
+    {
+      "id": "mem_seed_timezone",
+      "tier": "preference",
+      "key": "timezone",
+      "category": "preference",
+      "content": "The user lives in the Europe/Copenhagen timezone.",
+      "maps_to": ["mem_004"]
+    },
+    {
+      "id": "mem_seed_editor",
+      "tier": "preference",
+      "key": "editor",
+      "category": "preference",
+      "content": "The user's favorite code editor is Neovim.",
+      "maps_to": ["mem_005"]
+    },
+    {
+      "id": "mem_seed_wife",
+      "tier": "knowledge",
+      "key": "wife",
+      "category": "knowledge",
+      "content": "The user's wife is named Sarah.",
+      "maps_to": ["mem_006"]
+    },
+    {
+      "id": "mem_seed_allergies",
+      "tier": "knowledge",
+      "key": "allergies",
+      "category": "knowledge",
+      "content": "The user is allergic to peanuts and shellfish.",
+      "maps_to": ["mem_007", "mem_009"]
+    },
+    {
+      "id": "mem_seed_bedtime",
+      "tier": "preference",
+      "key": "bedtime",
+      "category": "preference",
+      "content": "The user's usual bedtime is 10:30 PM.",
+      "maps_to": ["mem_008"]
+    },
+    {
+      "id": "mem_seed_mark",
+      "tier": "knowledge",
+      "key": "brother_mark",
+      "category": "knowledge",
+      "content": "The user's brother Mark works as a civil engineer in Portland.",
+      "maps_to": ["mem_010"]
+    },
+    {
+      "id": "mem_seed_evelyn",
+      "tier": "knowledge",
+      "key": "dr_evelyn",
+      "category": "knowledge",
+      "content": "Dr. Evelyn is the user's former thesis advisor in atmospheric physics.",
+      "maps_to": ["mem_011"]
+    },
+    {
+      "id": "mem_seed_berlin",
+      "tier": "context",
+      "key": "berlin_meeting",
+      "category": "context",
+      "content": "The Berlin meeting with transit partners is scheduled for April 12.",
+      "maps_to": ["mem_012"]
+    },
+    {
+      "id": "mem_seed_code_review",
+      "tier": "context",
+      "key": "code_review",
+      "category": "context",
+      "content": "We agreed that every pull request needs two approvals before merge.",
+      "maps_to": ["mem_013"]
+    },
+    {
+      "id": "mem_seed_language",
+      "tier": "preference",
+      "key": "language",
+      "category": "preference",
+      "content": "The user's preferred programming language is Python.",
+      "maps_to": ["mem_014"]
+    },
+    {
+      "id": "mem_seed_thesis",
+      "tier": "knowledge",
+      "key": "thesis",
+      "category": "knowledge",
+      "content": "The user's thesis topic is urban aerosol optical depth trends.",
+      "maps_to": ["mem_015"]
+    },
+    {
+      "id": "mem_seed_trip",
+      "tier": "context",
+      "key": "trip",
+      "category": "context",
+      "content": "Trip notes: flying LH401, hotel near Berlin Hauptbahnhof.",
+      "maps_to": ["mem_016"]
+    },
+    {
+      "id": "mem_seed_mom",
+      "tier": "knowledge",
+      "key": "mom",
+      "category": "knowledge",
+      "content": "The user's mother's name is Cornelia.",
+      "maps_to": ["mem_017"]
+    },
+    {
+      "id": "mem_seed_vegetarian",
+      "tier": "preference",
+      "key": "vegetarian",
+      "category": "preference",
+      "content": "The user follows a vegetarian diet and avoids meat.",
+      "maps_to": ["mem_018"]
+    }
+  ]
+}

@@ -42,6 +42,7 @@ class SidecarTelemetryBrain:
         self._turn_events: deque[dict] = deque(maxlen=_MAX_TURN_EVENTS)
         self._runtime = SidecarRuntimeState()
         self._queue_depth = 0
+        self._queue_snapshot: dict[str, Any] = {}
 
     def set_runtime_state(
         self,
@@ -68,6 +69,10 @@ class SidecarTelemetryBrain:
     def set_queue_depth(self, depth: int) -> None:
         with self._lock:
             self._queue_depth = max(0, int(depth))
+
+    def set_queue_snapshot(self, snapshot: dict[str, Any] | None) -> None:
+        with self._lock:
+            self._queue_snapshot = dict(snapshot or {})
 
     def record(
         self,
@@ -109,6 +114,12 @@ class SidecarTelemetryBrain:
         digest_memory_applied: bool = False,
         digest_rag_attempted: bool = False,
         digest_rag_applied: bool = False,
+        digest_memory_chars_before: int = 0,
+        digest_memory_chars_after: int = 0,
+        digest_rag_chars_before: int = 0,
+        digest_rag_chars_after: int = 0,
+        digest_memory_skip_reason: str = "",
+        digest_rag_skip_reason: str = "",
         foreground_sidecar_ms: float = 0.0,
         hybrid_extra_memory: int = 0,
         hybrid_extra_rag: int = 0,
@@ -124,6 +135,12 @@ class SidecarTelemetryBrain:
             "digest_memory_applied": digest_memory_applied,
             "digest_rag_attempted": digest_rag_attempted,
             "digest_rag_applied": digest_rag_applied,
+            "digest_memory_chars_before": int(digest_memory_chars_before),
+            "digest_memory_chars_after": int(digest_memory_chars_after),
+            "digest_rag_chars_before": int(digest_rag_chars_before),
+            "digest_rag_chars_after": int(digest_rag_chars_after),
+            "digest_memory_skip_reason": str(digest_memory_skip_reason or ""),
+            "digest_rag_skip_reason": str(digest_rag_skip_reason or ""),
             "foreground_sidecar_ms": round(float(foreground_sidecar_ms), 2),
             "hybrid_extra_memory": int(hybrid_extra_memory),
             "hybrid_extra_rag": int(hybrid_extra_rag),
@@ -154,8 +171,9 @@ class SidecarTelemetryBrain:
                 is_bundled_default=self._runtime.is_bundled_default,
             )
             queue_depth = self._queue_depth
+            queue_snapshot = dict(self._queue_snapshot)
 
-        return _build_summary(events, turns, runtime, queue_depth)
+        return _build_summary(events, turns, runtime, queue_depth, queue_snapshot)
 
     def get_summary(self) -> dict[str, Any]:
         return self.summarize()
@@ -206,6 +224,7 @@ def _build_summary(
     turns: list[dict],
     runtime: SidecarRuntimeState,
     queue_depth: int,
+    queue_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     by_task: dict[str, dict[str, Any]] = {}
     for e in events:
@@ -249,6 +268,25 @@ def _build_summary(
         for e in events
         if not e.get("foreground")
     ]
+    fg_wait_ms = [
+        float(e.get("wait_ms") or 0)
+        for e in events
+        if e.get("foreground") and float(e.get("wait_ms") or 0) > 0
+    ]
+    bg_wait_ms = [
+        float(e.get("wait_ms") or 0)
+        for e in events
+        if not e.get("foreground") and float(e.get("wait_ms") or 0) > 0
+    ]
+    companion_deferred = sum(
+        1 for e in events if str(e.get("reason") or "") == "queue_deferred"
+    )
+    ingest_coalesced = sum(
+        1 for e in events if str(e.get("reason") or "") == "coalesced"
+    )
+    ingest_saturated = sum(
+        1 for e in events if str(e.get("reason") or "") == "ingest_queue_saturated"
+    )
 
     rewrite_attempts = sum(1 for t in turns if t.get("rewrite_attempted"))
     rewrite_applied = sum(1 for t in turns if t.get("rewrite_applied"))
@@ -256,6 +294,32 @@ def _build_summary(
     digest_mem_applied = sum(1 for t in turns if t.get("digest_memory_applied"))
     digest_rag_attempts = sum(1 for t in turns if t.get("digest_rag_attempted"))
     digest_rag_applied = sum(1 for t in turns if t.get("digest_rag_applied"))
+    digest_mem_skipped_threshold = sum(
+        1 for t in turns if t.get("digest_memory_skip_reason") == "below_threshold"
+    )
+    digest_rag_skipped_threshold = sum(
+        1 for t in turns if t.get("digest_rag_skip_reason") == "below_threshold"
+    )
+    mem_chars_before = [
+        int(t.get("digest_memory_chars_before") or 0)
+        for t in turns
+        if int(t.get("digest_memory_chars_before") or 0) > 0
+    ]
+    mem_chars_after = [
+        int(t.get("digest_memory_chars_after") or 0)
+        for t in turns
+        if t.get("digest_memory_applied")
+    ]
+    rag_chars_before = [
+        int(t.get("digest_rag_chars_before") or 0)
+        for t in turns
+        if int(t.get("digest_rag_chars_before") or 0) > 0
+    ]
+    rag_chars_after = [
+        int(t.get("digest_rag_chars_after") or 0)
+        for t in turns
+        if t.get("digest_rag_applied")
+    ]
     hybrid_mem_extra = sum(int(t.get("hybrid_extra_memory") or 0) for t in turns)
     hybrid_rag_extra = sum(int(t.get("hybrid_extra_rag") or 0) for t in turns)
     fg_turn_ms = [float(t.get("foreground_sidecar_ms") or 0) for t in turns]
@@ -269,8 +333,10 @@ def _build_summary(
         total_attempts,
         total_ok,
         fg_latencies,
+        fg_wait_ms,
         rewrite_attempts,
         rewrite_applied,
+        companion_deferred,
     )
 
     return {
@@ -284,6 +350,12 @@ def _build_summary(
             "status": _status_label(runtime, queue_depth),
         },
         "queue_depth": queue_depth,
+        "queue": {
+            "depth_by_priority": dict((queue_snapshot or {}).get("depth_by_priority") or {}),
+            "companion_deferred": companion_deferred,
+            "ingest_coalesced": ingest_coalesced,
+            "ingest_queue_saturated": ingest_saturated,
+        },
         "total_invocations": total_attempts,
         "success_rate": (total_ok / total_attempts) if total_attempts else 0.0,
         "by_task": {
@@ -311,11 +383,13 @@ def _build_summary(
                 else 0.0
             ),
             "p95_latency_ms": _percentile(fg_latencies, 95),
+            "p95_wait_ms": _percentile(fg_wait_ms, 95),
             "p95_turn_ms": _percentile(fg_turn_ms, 95),
         },
         "background": {
             "attempts": len(bg_latencies),
             "p95_latency_ms": _percentile(bg_latencies, 95),
+            "p95_wait_ms": _percentile(bg_wait_ms, 95),
         },
         "turns_sampled": len(turns),
         "rewrite": {
@@ -328,8 +402,22 @@ def _build_summary(
         "digest": {
             "memory_attempted": digest_mem_attempts,
             "memory_applied": digest_mem_applied,
+            "memory_skipped_below_threshold": digest_mem_skipped_threshold,
             "rag_attempted": digest_rag_attempts,
             "rag_applied": digest_rag_applied,
+            "rag_skipped_below_threshold": digest_rag_skipped_threshold,
+            "memory_avg_chars_before": (
+                sum(mem_chars_before) / len(mem_chars_before) if mem_chars_before else 0.0
+            ),
+            "memory_avg_chars_after": (
+                sum(mem_chars_after) / len(mem_chars_after) if mem_chars_after else 0.0
+            ),
+            "rag_avg_chars_before": (
+                sum(rag_chars_before) / len(rag_chars_before) if rag_chars_before else 0.0
+            ),
+            "rag_avg_chars_after": (
+                sum(rag_chars_after) / len(rag_chars_after) if rag_chars_after else 0.0
+            ),
         },
         "hybrid": {
             "extra_memory_hits": hybrid_mem_extra,
@@ -360,8 +448,10 @@ def _health_status(
     total_attempts: int,
     total_ok: int,
     fg_latencies: list[float],
+    fg_wait_ms: list[float],
     rewrite_attempts: int,
     rewrite_applied: int,
+    companion_deferred: int,
 ) -> tuple[str, str]:
     if not runtime.enabled:
         return "⚪ Disabled", "Sidecar disabled in settings or GGUF missing."
@@ -379,9 +469,15 @@ def _health_status(
         fail_rate = 1.0 - (total_ok / total_attempts)
         if fail_rate > 0.25:
             tips.append(f"Failure rate {fail_rate:.0%} over last {total_attempts} calls.")
-    fg_timeouts = sum(1 for _ in fg_latencies)  # placeholder — recalc in summarize if needed
     if fg_latencies and _percentile(fg_latencies, 95) > 1200:
         tips.append("Foreground sidecar p95 > 1.2s — consider raising timeout or disabling digest.")
+    if fg_wait_ms and _percentile(fg_wait_ms, 95) > 750:
+        tips.append(
+            f"Foreground queue wait p95 {_percentile(fg_wait_ms, 95):.0f}ms — "
+            "background burst may be starving hot-path tasks."
+        )
+    if companion_deferred >= 3:
+        tips.append(f"Companion captions deferred {companion_deferred}× (queue depth cap).")
 
     if tips:
         return "🟡 Watch", " ".join(tips)

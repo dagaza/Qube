@@ -61,6 +61,13 @@
     "default": true,
     "description": "Best-effort compression of retrieved sources before the primary model prompt (bounded timeout; falls back to raw sources)."
   },
+  "qube.sidecar.source_digest_min_chars": {
+    "type": "integer",
+    "default": 4096,
+    "minimum": 0,
+    "maximum": 50000,
+    "description": "Only run source digest when retrieved context is at least this many characters; smaller contexts pass through unchanged."
+  },
   "qube.sidecar.min_rewrite_confidence": {
     "type": "number",
     "default": 0.6,

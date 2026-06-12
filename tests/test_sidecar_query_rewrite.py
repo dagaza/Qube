@@ -146,13 +146,59 @@ class TestSidecarQueryRewrite(unittest.TestCase):
             "core.sidecar_query_rewrite.get_sidecar_min_rewrite_confidence",
             return_value=0.6,
         ):
-            out = propose_query_expansion(music_user, follow, state, history, client)
+            out = propose_query_expansion(
+                music_user,
+                follow,
+                state,
+                history,
+                client,
+                tentative_route="hybrid",
+                retrieval_query=music_user,
+            )
 
         self.assertIsNotNone(out)
         self.assertIn("Kathmandu", out.expanded_query)
         call_kwargs = client.complete.call_args.kwargs
         self.assertEqual(call_kwargs.get("topic"), "Kathmandu")
         self.assertIn("music", (call_kwargs.get("active_aspect") or "").lower())
+        self.assertEqual(call_kwargs.get("tentative_route"), "hybrid")
+        self.assertIn("music", (call_kwargs.get("retrieval_query") or "").lower())
+
+    def test_recommended_target_parsed_telemetry_only(self) -> None:
+        client = mock.Mock()
+        client.available = True
+        client.complete.return_value = SidecarResult(
+            ok=True,
+            parsed={
+                "expanded_query": "Regarding Slay the Spire: tips",
+                "confidence": 0.88,
+                "topic_source": "discourse_state",
+                "recommended_target": "rag",
+            },
+            confidence=0.88,
+            task=SidecarTask.query_rewrite,
+        )
+        follow = FollowUpClassification(FollowUpKind.TIPS_FOR_THIS, 0.8)
+        state = DiscourseState(active_topic="Slay the Spire", confidence=0.8)
+        with mock.patch(
+            "core.sidecar_query_rewrite.get_sidecar_query_rewrite_enabled",
+            return_value=True,
+        ), mock.patch(
+            "core.sidecar_query_rewrite.get_sidecar_min_rewrite_confidence",
+            return_value=0.6,
+        ):
+            out = propose_query_expansion(
+                "tips for this",
+                follow,
+                state,
+                [],
+                client,
+                tentative_route="rag",
+                retrieval_query="tips for this",
+            )
+        self.assertIsNotNone(out)
+        assert out is not None
+        self.assertEqual(out.recommended_target, "rag")
 
 
 if __name__ == "__main__":

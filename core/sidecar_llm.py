@@ -95,16 +95,22 @@ class SidecarLlmClient:
             tel.record(
                 task,
                 ok=False,
-                latency_ms=(time.perf_counter() - t0) * 1000,
+                latency_ms=max(0.0, (time.perf_counter() - t0) * 1000),
+                wait_ms=0.0,
                 foreground=foreground,
                 reason="timeout",
             )
             return SidecarResult(ok=False, error="timeout", task=task)
         result = out[0] if out else SidecarResult(ok=False, error="empty", task=task)
+        wait_ms = float(getattr(result, "queue_wait_ms", 0.0) or 0.0)
+        inference_ms = float(getattr(result, "inference_ms", 0.0) or 0.0)
+        if inference_ms <= 0.0:
+            inference_ms = max(0.0, (time.perf_counter() - t0) * 1000 - wait_ms)
         tel.record(
             task,
             ok=bool(result.ok),
-            latency_ms=(time.perf_counter() - t0) * 1000,
+            latency_ms=inference_ms,
+            wait_ms=wait_ms,
             foreground=foreground,
             reason="" if result.ok else (result.error or "fail"),
         )

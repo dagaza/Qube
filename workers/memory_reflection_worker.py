@@ -53,10 +53,20 @@ logger = logging.getLogger("Qube.MemoryReflectionWorker")
 
 # Cadence / batching defaults (constants so unit tests can monkeypatch).
 REFLECT_INTERVAL_SEC = 6 * 60 * 60.0
+REFLECT_INTERVAL_IDLE_SEC = 24 * 60 * 60.0
 BATCH_SIZE = 10
 MIN_REFLECT_AGE_SEC = 7 * 24 * 60 * 60.0   # 7 days
 LOOP_TICK_SEC = 30.0
 SCAN_LIMIT = 500   # Cap rows pulled into the reflection candidate scan.
+
+def reflection_candidate_priority(payload: dict) -> tuple[int, int, float]:
+    """Sort key: never-reflected first, then ``unclear``, then oldest audit."""
+    last = float(payload.get("last_reflected_at") or 0)
+    label = str(payload.get("reflection_label") or "").strip().lower()
+    never_reflected = 0 if last <= 0 else 1
+    unclear = 0 if label == "unclear" else 1
+    return (never_reflected, unclear, last)
+
 
 VALID_LABELS = {
     "durable_user_fact",
@@ -112,8 +122,8 @@ class MemoryReflectionWorker(QThread):
             try:
                 now = time.time()
                 if now >= self._next_run_at and self._is_enabled_read():
-                    self._run_cycle()
-                    self._next_run_at = time.time() + REFLECT_INTERVAL_SEC
+                    interval = self._run_cycle()
+                    self._next_run_at = time.time() + float(interval)
             except Exception as e:
                 logger.exception("[MemoryReflection] cycle failed: %s", e)
 
@@ -125,16 +135,20 @@ class MemoryReflectionWorker(QThread):
 
     # ------------------------- cycle -------------------------
 
-    def _run_cycle(self) -> None:
+    def _run_cycle(self) -> float:
+        """Run one reflection batch. Returns seconds until the next wake."""
         if self.store is None or getattr(self.store, "table", None) is None:
-            return
+            return REFLECT_INTERVAL_IDLE_SEC
         if self.llm is None:
-            return
+            return REFLECT_INTERVAL_IDLE_SEC
 
         candidates = self._fetch_candidates(BATCH_SIZE)
         if not candidates:
-            logger.info("[MemoryReflection] no candidates this cycle")
-            return
+            logger.info(
+                "[MemoryReflection] no candidates this cycle; sleeping %dh",
+                int(REFLECT_INTERVAL_IDLE_SEC // 3600),
+            )
+            return REFLECT_INTERVAL_IDLE_SEC
 
         logger.info(
             "[MemoryReflection] reflecting on %d memories",
@@ -142,7 +156,7 @@ class MemoryReflectionWorker(QThread):
         )
         for cand in candidates:
             if not self._running:
-                return
+                return REFLECT_INTERVAL_SEC
             try:
                 self._reflect_one(cand)
             except Exception as e:
@@ -151,6 +165,7 @@ class MemoryReflectionWorker(QThread):
                     cand.get("id"),
                     e,
                 )
+        return REFLECT_INTERVAL_SEC
 
     # ------------------------- candidate selection -------------------------
 
@@ -207,8 +222,9 @@ class MemoryReflectionWorker(QThread):
                 "payload": payload,
             })
 
-        # Oldest-reflected first.
-        out.sort(key=lambda c: float((c.get("payload") or {}).get("last_reflected_at") or 0))
+        out.sort(
+            key=lambda cand: reflection_candidate_priority(cand.get("payload") or {})
+        )
         return out[:n]
 
     # ------------------------- per-row reflection -------------------------
