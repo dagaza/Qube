@@ -738,6 +738,21 @@ class RetrievalOutcomeTests(unittest.TestCase):
         self.assertIn("retrieval_outcome", payload)
         self.assertTrue(payload["retrieval_outcome"]["downgrade_fired"])
 
+    def test_merge_skills_into_latest(self) -> None:
+        buf = RoutingDebugBuffer()
+        d = {"route": "none", "strategy": "adaptive_v4"}
+        rec = build_record(query="break down this bug", decision=d, session_id="s", turn_id=1)
+        buf.append(rec)
+        payload = {
+            "skills_active": [{"id": "task_decomposition", "score": 0.72, "signals": []}],
+            "skills_prompt_chars": 120,
+            "skills_skipped_reason": None,
+        }
+        updated = buf.merge_skills_into_latest(payload)
+        assert updated is not None
+        self.assertEqual(updated.trace["skills"]["skills_prompt_chars"], 120)
+        self.assertEqual(updated.decision["skills_active"][0]["id"], "task_decomposition")
+
 
 if __name__ == "__main__":
     unittest.main()

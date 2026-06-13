@@ -6,7 +6,7 @@ This document lists every job the CPU sidecar performs in Qube, as defined by th
 
 - Runs on CPU only (`n_gpu_layers=0`); does not contend with the primary chat model for GPU.
 - Priority command queue — one inference at a time; foreground tasks preempt background work.
-- Assistive only — never chooses cognitive routes; never changes user-visible chat text.
+- Assistive only — never chooses cognitive routes; never changes user-visible chat text. See [ADR 001](adr/001-skills-orthogonal-to-routing.md) for why the sidecar must not become the primary tool router.
 - Foreground tasks honor `qube.sidecar.foreground_timeout_ms` (default 1500 ms) and fall back on timeout/failure.
 
 **Canonical task enum:** `core/sidecar_types.py` → `SidecarTask` (8 values).

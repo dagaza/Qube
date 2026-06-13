@@ -44,6 +44,12 @@ KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
+KEY_SKILLS_ENABLED = "qube.skills.enabled"
+KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
+KEY_SKILLS_MAX_ACTIVE = "qube.skills.max_active_skills"
+KEY_SKILLS_PROMPT_CHAR_BUDGET = "qube.skills.total_prompt_char_budget"
+KEY_SKILLS_EMBEDDING_BOOST = "qube.skills.embedding_boost_enabled"
+KEY_SKILLS_DEBUG_LOG_ENABLED = "qube.skills.debug_log_enabled"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
@@ -235,6 +241,65 @@ def get_routing_debug_log_enabled() -> bool:
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_skills_enabled() -> bool:
+    """When True, compositional reasoning skills inject non-authoritative prompt guidance."""
+    return bool(_store().get(KEY_SKILLS_ENABLED, False))
+
+
+def set_skills_enabled(enabled: bool) -> None:
+    _store().set(KEY_SKILLS_ENABLED, enabled)
+
+
+def get_skills_min_activation_score() -> float:
+    raw = _store().get(KEY_SKILLS_MIN_ACTIVATION_SCORE, 0.55)
+    try:
+        return max(0.0, min(1.0, float(raw)))
+    except (TypeError, ValueError):
+        return 0.55
+
+
+def get_skills_max_active_skills() -> int:
+    raw = _store().get(KEY_SKILLS_MAX_ACTIVE, 3)
+    try:
+        return max(1, min(10, int(raw)))
+    except (TypeError, ValueError):
+        return 3
+
+
+def get_skills_total_prompt_char_budget() -> int:
+    raw = _store().get(KEY_SKILLS_PROMPT_CHAR_BUDGET, 1200)
+    try:
+        return max(0, min(8000, int(raw)))
+    except (TypeError, ValueError):
+        return 1200
+
+
+def get_skills_embedding_boost_enabled() -> bool:
+    return bool(_store().get(KEY_SKILLS_EMBEDDING_BOOST, True))
+
+
+def get_skills_debug_log_enabled() -> bool:
+    return bool(_store().get(KEY_SKILLS_DEBUG_LOG_ENABLED, False))
+
+
+def set_skills_debug_log_enabled(enabled: bool) -> None:
+    _store().set(KEY_SKILLS_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_skill_settings():
+    """Bundle skill settings for ``activate_skills``."""
+    from core.skills.types import SkillSettings
+
+    return SkillSettings(
+        enabled=get_skills_enabled(),
+        min_activation_score=get_skills_min_activation_score(),
+        max_active_skills=get_skills_max_active_skills(),
+        total_prompt_char_budget=get_skills_total_prompt_char_budget(),
+        embedding_boost_enabled=get_skills_embedding_boost_enabled(),
+        debug_log_enabled=get_skills_debug_log_enabled(),
+    )
 
 
 def _sidecar_model_on_disk() -> bool:

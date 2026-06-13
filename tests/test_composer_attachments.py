@@ -50,6 +50,10 @@ class TestComposerAttachments(unittest.TestCase):
         raw = "@[file:a.pdf] What is X?"
         self.assertEqual(strip_tokens_for_display(raw), "What is X?")
 
+    def test_strip_skill_tokens(self):
+        raw = "@[skill:decision_analysis] What is X?"
+        self.assertEqual(strip_tokens_for_display(raw), "What is X?")
+
     def test_validate_file_token_rejects_bracket(self):
         self.assertFalse(validate_file_token("bad].pdf"))
         self.assertTrue(validate_file_token("good.pdf"))

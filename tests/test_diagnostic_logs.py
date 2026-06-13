@@ -18,7 +18,7 @@ from core.diagnostic_logs import (
 class DiagnosticLogsTests(unittest.TestCase):
     def test_catalog_contains_expected_logs(self) -> None:
         ids = {spec.id for spec in iter_diagnostic_logs()}
-        self.assertEqual(ids, {"llm_debug", "routing_debug"})
+        self.assertEqual(ids, {"llm_debug", "routing_debug", "skills_debug"})
 
     def test_routing_log_supports_recording_toggle(self) -> None:
         spec = get_diagnostic_log("routing_debug")
@@ -59,6 +59,12 @@ class DiagnosticLogsTests(unittest.TestCase):
             describe_log_file(Path("/tmp/qube-missing-log-for-test.log")),
             "Not created yet",
         )
+
+    def test_skills_debug_log_spec(self) -> None:
+        spec = get_diagnostic_log("skills_debug")
+        assert spec is not None
+        self.assertTrue(spec.supports_recording_toggle)
+        self.assertIn("skill", spec.description.lower())
 
     @patch("core.routing_debug_sink.logs_dir")
     @patch("core.llm_debug_sink.logs_dir")

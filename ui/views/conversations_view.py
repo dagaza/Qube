@@ -62,6 +62,7 @@ from core.citation_normalize import (
 )
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
+from core.composer_skills import format_skill_token, parse_composer_input
 from core.composer_commands import execute_composer_command
 from core.composer_mention_trigger import (
     escape_strip_index,
@@ -1061,6 +1062,7 @@ class ChatComposerEdit(QPlainTextEdit):
         if self._mention_popup is None:
             self._mention_popup = ComposerMentionPopup(self)
             self._mention_popup.item_selected.connect(self._insert_mention_token)
+            self._mention_popup.skill_selected.connect(self._insert_skill_token)
             self._mention_popup.command_selected.connect(self._run_composer_command)
             self._mention_popup.dismissed.connect(self._on_mention_dismissed)
         self._sync_mention_context()
@@ -1247,6 +1249,26 @@ class ChatComposerEdit(QPlainTextEdit):
         if attachment.kind == "file" and not validate_file_token(attachment.id):
             return
         token = format_token(attachment)
+        cursor = self.textCursor()
+        text = self.toPlainText()
+        if self._mention_start_pos >= 0:
+            start = self._mention_start_pos
+            end = min(cursor.position(), len(text))
+            while end < len(text) and text[end] not in (" ", "\n"):
+                end += 1
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.removeSelectedText()
+        cursor.insertText(token + " ")
+        self.setTextCursor(cursor)
+        self._mention_session_active = False
+        self._mention_start_pos = -1
+        self._disarm_mention_trigger()
+        if self._mention_popup:
+            self._mention_popup.hide()
+
+    def _insert_skill_token(self, mention) -> None:
+        token = format_skill_token(mention.id)
         cursor = self.textCursor()
         text = self.toPlainText()
         if self._mention_start_pos >= 0:
@@ -2647,7 +2669,7 @@ class ConversationsView(QWidget):
         raw = self.text_input.toPlainText().strip()
         if not raw:
             return
-        clean, attachments = parse_attachments(raw)
+        clean, attachments, enforced_skills = parse_composer_input(raw)
         self.text_input.clear()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
@@ -2673,6 +2695,7 @@ class ConversationsView(QWidget):
                 prompt,
                 self.active_session_id,
                 attachments=attachments,
+                enforced_skills=enforced_skills,
                 persist_content=raw,
             )
 

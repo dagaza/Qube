@@ -34,6 +34,7 @@ from core.app_settings import (
     set_enable_memory_consolidation,
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
+    get_skills_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -298,6 +299,10 @@ class PersistenceHandlersMixin:
             self.chat_personality_toggle.blockSignals(True)
             self.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())
             self.chat_personality_toggle.blockSignals(False)
+        if hasattr(self, "skills_enabled_toggle"):
+            self.skills_enabled_toggle.blockSignals(True)
+            self.skills_enabled_toggle.setChecked(get_skills_enabled())
+            self.skills_enabled_toggle.blockSignals(False)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_toggle.blockSignals(True)
             self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())

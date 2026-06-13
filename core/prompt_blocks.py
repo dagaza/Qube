@@ -88,6 +88,7 @@ class PromptBlocks:
     retrieval_wrapper_mode: RetrievalWrapperMode = "none"
     topic_salience_hint: str = ""
     follow_up_active: bool = False
+    skill_guidance: str = ""
 
 
 def resolve_retrieval_wrapper_mode(
@@ -137,6 +138,7 @@ def build_prompt_blocks(
     chat_personality_enabled: bool = False,
     prior_turn_unreliable_hint: str = "",
     reply_shape_hint: str = "",
+    skill_guidance: str = "",
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -186,6 +188,10 @@ def build_prompt_blocks(
         suffixes.append(CITATION_DISCIPLINE_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
+
+    skill_block = (skill_guidance or "").strip()
+    if skill_block and not explicit_remember_active:
+        suffixes.append(f" {skill_block}")
 
     if apply_preference_suffix and not explicit_remember_active:
         suffixes.append(PREFERENCE_APPLICATION_SUFFIX)

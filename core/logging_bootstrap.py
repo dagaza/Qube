@@ -10,9 +10,14 @@ from core.routing_debug_sink import (
     attach_routing_debug_file_sink,
     quiet_routing_debug_logger_for_terminal,
 )
+from core.skills.debug_sink import (
+    attach_skills_debug_file_sink,
+    quiet_skills_debug_logger_for_terminal,
+)
 
 _LLM_DEBUG_INIT = False
 _ROUTING_DEBUG_INIT = False
+_SKILLS_DEBUG_INIT = False
 
 
 def init_llm_debug_logging() -> None:
@@ -53,6 +58,26 @@ def init_routing_debug_logging() -> None:
 
 def routing_debug_logging_initialized() -> bool:
     return _ROUTING_DEBUG_INIT
+
+
+def init_skills_debug_logging() -> None:
+    """
+    Route Qube.SkillsDebug to logs/skills_debug.log (rotating) and keep terminal clean.
+
+    Safe to call multiple times (no duplicate file handlers). Call after logging.basicConfig
+    if the root logger is already configured.
+    """
+    global _SKILLS_DEBUG_INIT
+    if _SKILLS_DEBUG_INIT:
+        return
+
+    attach_skills_debug_file_sink()
+    quiet_skills_debug_logger_for_terminal()
+    _SKILLS_DEBUG_INIT = True
+
+
+def skills_debug_logging_initialized() -> bool:
+    return _SKILLS_DEBUG_INIT
 
 
 def ensure_root_logging_minimal() -> None:

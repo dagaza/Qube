@@ -34,6 +34,8 @@ from core.app_settings import (
     set_enable_memory_consolidation,
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
+    get_skills_enabled,
+    set_skills_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -714,3 +716,17 @@ class AiModelsHandlersMixin:
 
     def _on_chat_personality_toggled(self, checked: bool) -> None:
         set_enable_chat_personality_nudge(checked)
+
+    def _on_skills_enabled_toggled(self, checked: bool) -> None:
+        set_skills_enabled(checked)
+        if checked:
+            message = (
+                "Reasoning skills are now on. Auto-detected skills inject guidance "
+                "after routing; use @ in the composer to force a skill."
+            )
+        else:
+            message = (
+                "Reasoning skills auto-detection is off. "
+                "@[skill:…] tokens in the composer still work."
+            )
+        self._show_settings_file_status(message, persistent=True)

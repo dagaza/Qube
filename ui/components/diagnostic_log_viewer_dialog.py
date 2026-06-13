@@ -20,10 +20,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.app_settings import get_routing_debug_log_enabled
+from core.app_settings import (
+    get_routing_debug_log_enabled,
+    get_skills_debug_log_enabled,
+)
 from core.diagnostic_logs import (
     DiagnosticLogSpec,
-    describe_log_file,
+    describe_log_status,
     open_path_in_system,
     read_log_tail,
 )
@@ -72,9 +75,12 @@ class DiagnosticLogViewerDialog(QDialog):
     def sync_recording_toggle(self) -> None:
         if self._recording_toggle is None:
             return
-        env_override = routing_debug_log_env_override()
+        env_override = routing_debug_log_env_override() if self._spec.id == "routing_debug" else None
         self._recording_toggle.blockSignals(True)
-        self._recording_toggle.setChecked(get_routing_debug_log_enabled())
+        if self._spec.id == "skills_debug":
+            self._recording_toggle.setChecked(get_skills_debug_log_enabled())
+        else:
+            self._recording_toggle.setChecked(get_routing_debug_log_enabled())
         self._recording_toggle.blockSignals(False)
         if env_override is None:
             self._recording_toggle.setEnabled(True)
@@ -135,7 +141,8 @@ class DiagnosticLogViewerDialog(QDialog):
         if self._spec.supports_recording_toggle:
             recording_row = QHBoxLayout()
             recording_row.setSpacing(10)
-            recording_lbl = QLabel("Record routing decisions to this log")
+            recording_label = self._spec.recording_toggle_label or "Record entries to this log"
+            recording_lbl = QLabel(recording_label)
             recording_lbl.setObjectName("DiagnosticLogViewerDescription")
             self._recording_toggle = PrestigeToggle()
             self._recording_toggle.setToolTip(
@@ -286,12 +293,7 @@ class DiagnosticLogViewerDialog(QDialog):
     def _refresh(self) -> None:
         path = self._spec.path_fn()
         self._text.setPlainText(read_log_tail(path))
-        if self._spec.id == "routing_debug":
-            from core.diagnostic_logs import describe_routing_log_status
-
-            self.status_lbl.setText(describe_routing_log_status(path))
-        else:
-            self.status_lbl.setText(describe_log_file(path))
+        self.status_lbl.setText(describe_log_status(self._spec))
 
     def _on_live_toggled(self, enabled: bool) -> None:
         if enabled:

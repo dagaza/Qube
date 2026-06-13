@@ -143,6 +143,42 @@
     "default": false,
     "description": "When true, append one JSON line per chat turn to routing_debug.log for troubleshooting."
   },
+  "qube.skills.enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, compositional reasoning skills inject non-authoritative prompt guidance after routing (does not change routes or tools)."
+  },
+  "qube.skills.min_activation_score": {
+    "type": "number",
+    "default": 0.55,
+    "minimum": 0,
+    "maximum": 1,
+    "description": "Minimum per-skill activation score (0–1) to include in the prompt."
+  },
+  "qube.skills.max_active_skills": {
+    "type": "integer",
+    "default": 3,
+    "minimum": 1,
+    "maximum": 10,
+    "description": "Maximum number of skills composited into one turn."
+  },
+  "qube.skills.total_prompt_char_budget": {
+    "type": "integer",
+    "default": 1200,
+    "minimum": 0,
+    "maximum": 8000,
+    "description": "Character budget for all skill guidance blocks combined."
+  },
+  "qube.skills.embedding_boost_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, optional embedding centroid similarity may boost skill scores (substring remains primary)."
+  },
+  "qube.skills.debug_log_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, append per-turn skill activation JSONL to skills_debug.log."
+  },
   "qube.stt.modelPath": {
     "type": "string",
     "default": "",

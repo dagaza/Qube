@@ -67,7 +67,11 @@ from workers.internet_worker import InternetWorker
 
 import logging
 
-from core.logging_bootstrap import init_llm_debug_logging, init_routing_debug_logging
+from core.logging_bootstrap import (
+    init_llm_debug_logging,
+    init_routing_debug_logging,
+    init_skills_debug_logging,
+)
 from core.boot_args import parse_boot_args
 from core.paths import install_root, resource_path
 
@@ -82,6 +86,8 @@ logging.basicConfig(
 init_llm_debug_logging()
 # Routing explainability (Qube.RoutingDebug) -> logs/routing_debug.log only; not the terminal
 init_routing_debug_logging()
+# Skill activation telemetry (Qube.SkillsDebug) -> logs/skills_debug.log only; not the terminal
+init_skills_debug_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
@@ -573,15 +579,16 @@ class Qube:
         # 🔑 FIX: Lock the UI while processing a voice command
         self.window.conversations_view.set_input_enabled(False)
 
-        from core.composer_attachments import parse_attachments
+        from core.composer_skills import parse_composer_input
 
         self.window.conversations_view.log_user_message(text, pending_assistant=True)
-        clean, attachments = parse_attachments(cleaned)
+        clean, attachments, enforced_skills = parse_composer_input(cleaned)
         prompt = clean if clean else cleaned
         self.llm_worker.generate_response(
             prompt,
             session_id,
             attachments=attachments,
+            enforced_skills=enforced_skills,
             persist_content=cleaned.strip(),
         )
 

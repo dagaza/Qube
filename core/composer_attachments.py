@@ -99,7 +99,10 @@ def parse_attachments(text: str) -> tuple[str, list[ComposerAttachment]]:
 
 def strip_tokens_for_display(text: str) -> str:
     """Remove attachment tokens for compact display."""
-    return re.sub(r"\s+", " ", _TOKEN_RE.sub("", text or "")).strip()
+    from core.composer_skills import strip_skill_tokens
+
+    _enforced, without_skills = strip_skill_tokens(text or "")
+    return re.sub(r"\s+", " ", _TOKEN_RE.sub("", without_skills)).strip()
 
 
 def attachment_summary(attachments: list[ComposerAttachment]) -> str:

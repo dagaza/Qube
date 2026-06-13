@@ -33,6 +33,7 @@ from core.app_settings import (
     get_llm_temperature,
     get_llm_top_k,
     get_llm_top_p,
+    get_skills_enabled,
     set_auto_load_last_model_on_startup,
 )
 from core.auxiliary_cognition import get_cognition_models_dir
@@ -367,6 +368,34 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.chat_personality_toggle.blockSignals(False)
     host.chat_personality_toggle.toggled.connect(host._on_chat_personality_toggled)
     ai_form.addRow("", chat_personality_row)
+
+    # --- Reasoning skills ---
+    add_subsection_to_form(ai_form, "Reasoning skills", anchor="skills")
+
+    host.skills_enabled_toggle = PrestigeToggle()
+    host.skills_enabled_label = QLabel("Enable compositional reasoning skills")
+    host.skills_enabled_label.setWordWrap(True)
+    _skills_enabled_tip = (
+        "When enabled, Qube auto-detects up to three reasoning skills per turn and "
+        "injects non-authoritative prompt guidance after routing (does not change "
+        "routes or tools). Type @ in the composer to force a specific skill with "
+        "@[skill:skill_id] — forced skills work even when this toggle is off. "
+        "Off by default."
+    )
+    host.skills_enabled_toggle.setToolTip(_skills_enabled_tip)
+    host.skills_enabled_label.setToolTip(_skills_enabled_tip)
+    skills_row = QWidget()
+    skills_row_layout = QHBoxLayout(skills_row)
+    skills_row_layout.setContentsMargins(0, 0, 0, 0)
+    skills_row_layout.addWidget(
+        host.skills_enabled_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    skills_row_layout.addWidget(host.skills_enabled_label, stretch=1)
+    host.skills_enabled_toggle.blockSignals(True)
+    host.skills_enabled_toggle.setChecked(get_skills_enabled())
+    host.skills_enabled_toggle.blockSignals(False)
+    host.skills_enabled_toggle.toggled.connect(host._on_skills_enabled_toggled)
+    ai_form.addRow("", skills_row)
 
     # --- Hardware tuning ---
     track_internal_ai_label(

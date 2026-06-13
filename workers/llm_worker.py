@@ -53,6 +53,8 @@ from core.app_settings import (
     set_mcp_rag_strict_enabled,
 )
 from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
+from core.skills import activate_skills, build_skill_context
+from core.app_settings import get_skill_settings, get_skills_debug_log_enabled
 from core.preference_formatters import format_web_snippets
 from core.preference_policy import apply_tool_policy, resolve_preference_policy
 from core.prompt_renderers import render_messages
@@ -1512,6 +1514,7 @@ class LLMWorker(QThread):
         session_id: str,
         *,
         attachments: list | None = None,
+        enforced_skills: tuple[str, ...] | list[str] | None = None,
         persist_content: str | None = None,
     ):
         """Sets the parameters and starts the thread work."""
@@ -1525,6 +1528,7 @@ class LLMWorker(QThread):
         self.prompt = (text or "").strip()
         self._persist_content = (persist_content or self.prompt).strip()
         self._turn_attachments = list(attachments or [])
+        self._turn_enforced_skills = tuple(enforced_skills or ())
         self.session_id = session_id
         self._debug_exchange_id = next_exchange_id()
         self._safe_truth_diff_l1_raw_request()
@@ -3159,6 +3163,48 @@ class LLMWorker(QThread):
             conversation_health=conversation_health,
         )
 
+        skill_ctx = build_skill_context(
+            user_query=self.prompt,
+            clean_query=clean_prompt,
+            execution_route=execution_route,
+            all_ui_sources=all_ui_sources,
+            follow_up_active=follow_up.active,
+            explicit_remember_active=explicit_remember_active,
+            file_search_active=file_search_active,
+            narrative_active=narrative_active,
+            decision=decision if isinstance(decision, dict) else None,
+            query_embedding=(
+                query_vector if query_vector is not None else intent_vector
+            ),
+            web_capability_blocked=web_capability_blocked,
+            explicit_web_empty_results=explicit_web_empty_results,
+        )
+        skill_result = activate_skills(
+            skill_ctx,
+            settings=get_skill_settings(),
+            forced_skill_ids=tuple(
+                getattr(self, "_turn_enforced_skills", ()) or ()
+            ),
+        )
+        if get_skills_debug_log_enabled():
+            from core.skills.debug_sink import attach_skills_debug_file_sink, log_skill_activation
+
+            attach_skills_debug_file_sink()
+            log_skill_activation(
+                {
+                    "query": (clean_prompt or "")[:200],
+                    "route": execution_route,
+                    **skill_result.telemetry_dict(),
+                }
+            )
+        if hasattr(self, "routing_debug_buffer"):
+            updated_skills = self.routing_debug_buffer.merge_skills_into_latest(
+                skill_result.telemetry_dict()
+            )
+            if updated_skills is not None:
+                self.routing_debug_record_added.emit(dataclasses.asdict(updated_skills))
+                self._persist_routing_debug_record(updated_skills)
+
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
             explicit_remember_active=explicit_remember_active,
@@ -3184,6 +3230,7 @@ class LLMWorker(QThread):
             prior_turn_unreliable_hint=prior_turn_unreliable,
             chat_personality_enabled=get_enable_chat_personality_nudge(),
             reply_shape_hint=turn_ctx.reply_shape.system_reply_hint,
+            skill_guidance=skill_result.prompt_block,
         )
         if prompt_blocks.no_sources_mode:
             logger.info(

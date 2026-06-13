@@ -6,7 +6,7 @@ This document explains how Qube chooses a **knowledge pathway** before the prima
 
 **Router implementation:** `mcp/cognitive_router.py` → `CognitiveRouterV4`.
 
-**Assistive layers (never authoritative for routing):** discourse grounding, sidecar query rewrite, source digest. The sidecar LLM does **not** pick routes; see [`docs/sidecar_tasks.md`](sidecar_tasks.md).
+**Assistive layers (never authoritative for routing):** discourse grounding, sidecar query rewrite, source digest, reasoning skills. The sidecar LLM and skills layer do **not** pick routes; see [`docs/sidecar_tasks.md`](sidecar_tasks.md) and [ADR 001](adr/001-skills-orthogonal-to-routing.md).
 
 ---
 

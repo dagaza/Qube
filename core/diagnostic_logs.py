@@ -11,6 +11,7 @@ from typing import Callable, Iterable
 from core.llm_debug_sink import default_llm_debug_log_path
 from core.paths import logs_dir
 from core.routing_debug_sink import default_routing_debug_log_path
+from core.skills.debug_sink import default_skills_debug_log_path
 
 logger = logging.getLogger("Qube.DiagnosticLogs")
 
@@ -25,6 +26,7 @@ class DiagnosticLogSpec:
     path_fn: PathFn
     note: str = ""
     supports_recording_toggle: bool = False
+    recording_toggle_label: str = ""
 
 
 DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
@@ -46,6 +48,18 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
         ),
         path_fn=default_routing_debug_log_path,
         supports_recording_toggle=True,
+        recording_toggle_label="Record routing decisions to this log",
+    ),
+    DiagnosticLogSpec(
+        id="skills_debug",
+        title="Skills debug log",
+        description=(
+            "Per-turn skill activation scores and prompt injection telemetry. "
+            "Enable recording below, then send a chat message to capture entries."
+        ),
+        path_fn=default_skills_debug_log_path,
+        supports_recording_toggle=True,
+        recording_toggle_label="Record skill activation to this log",
     ),
 )
 
@@ -108,9 +122,18 @@ def describe_routing_log_status(path: Path) -> str:
     return f"{recording} · {describe_log_file(path)}"
 
 
+def describe_skills_log_status(path: Path) -> str:
+    from core.app_settings import get_skills_debug_log_enabled
+
+    recording = "Recording on" if get_skills_debug_log_enabled() else "Recording off"
+    return f"{recording} · {describe_log_file(path)}"
+
+
 def describe_log_status(spec: DiagnosticLogSpec) -> str:
     if spec.id == "routing_debug":
         return describe_routing_log_status(spec.path_fn())
+    if spec.id == "skills_debug":
+        return describe_skills_log_status(spec.path_fn())
     return describe_log_file(spec.path_fn())
 
 

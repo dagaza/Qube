@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import logging
 
-from core.app_settings import get_routing_debug_log_enabled, set_routing_debug_log_enabled
+from core.app_settings import (
+    get_routing_debug_log_enabled,
+    get_skills_debug_log_enabled,
+    set_routing_debug_log_enabled,
+    set_skills_debug_log_enabled,
+)
 from core.diagnostic_logs import (
     describe_log_status,
     get_diagnostic_log,
     open_logs_folder,
 )
+from core.logging_bootstrap import init_skills_debug_logging
 from mcp.routing_debug import routing_debug_log_env_override
 from ui.components.diagnostic_log_viewer_dialog import DiagnosticLogViewerDialog
 from ui.components.prestige_dialog import PrestigeDialog
@@ -26,16 +32,22 @@ class DiagnosticsHandlersMixin:
         return dialogs
 
     def _sync_routing_debug_log_ui(self) -> None:
+        self._sync_diagnostic_log_ui("routing_debug")
+
+    def _sync_skills_debug_log_ui(self) -> None:
+        self._sync_diagnostic_log_ui("skills_debug")
+
+    def _sync_diagnostic_log_ui(self, log_id: str) -> None:
         status_labels = getattr(self, "diagnostic_log_status_labels", None)
         if isinstance(status_labels, dict):
-            spec = get_diagnostic_log("routing_debug")
-            label = status_labels.get("routing_debug")
+            spec = get_diagnostic_log(log_id)
+            label = status_labels.get(log_id)
             if spec is not None and label is not None:
                 label.setText(describe_log_status(spec))
 
         dialogs = getattr(self, "_diagnostic_log_dialogs", None)
         if isinstance(dialogs, dict):
-            dialog = dialogs.get("routing_debug")
+            dialog = dialogs.get(log_id)
             if dialog is not None:
                 dialog.sync_recording_toggle()
                 dialog._refresh()
@@ -70,6 +82,23 @@ class DiagnosticsHandlersMixin:
             message = "Routing debug recording is now off. New chat turns will not be added."
         self._show_settings_file_status(message, persistent=True)
 
+    def _on_skills_debug_log_recording_toggled(self, enabled: bool) -> None:
+        if enabled == get_skills_debug_log_enabled():
+            return
+
+        set_skills_debug_log_enabled(enabled)
+        if enabled:
+            init_skills_debug_logging()
+        self._sync_skills_debug_log_ui()
+        if enabled:
+            message = (
+                "Skills debug recording is now on. Send a chat message and refresh "
+                "this log to see activation entries."
+            )
+        else:
+            message = "Skills debug recording is now off. New chat turns will not be added."
+        self._show_settings_file_status(message, persistent=True)
+
     def _on_view_diagnostic_log_clicked(self, log_id: str) -> None:
         spec = get_diagnostic_log(log_id)
         if spec is None:
@@ -82,7 +111,10 @@ class DiagnosticsHandlersMixin:
         if dialog is None:
             on_recording_toggle = None
             if spec.supports_recording_toggle:
-                on_recording_toggle = self._on_routing_debug_log_recording_toggled
+                if log_id == "skills_debug":
+                    on_recording_toggle = self._on_skills_debug_log_recording_toggled
+                else:
+                    on_recording_toggle = self._on_routing_debug_log_recording_toggled
             dialog = DiagnosticLogViewerDialog(
                 spec,
                 self,

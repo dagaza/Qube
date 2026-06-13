@@ -19,11 +19,13 @@ import qtawesome as qta
 
 from core.composer_attachments import COMPOSER_TOOLS, ComposerAttachment
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
+from core.composer_skills import ComposerSkillMention, list_skill_mentions_for_palette
 
 _ROOT_ROWS = (
     ("file", "Files", "Reference a library document", "fa5s.file-alt"),
     ("conversation", "Conversations", "Reference another chat", "fa5s.comments"),
     ("tool", "Tools", "Internet, library, or memory", "fa5s.tools"),
+    ("skill", "Skills", "Reasoning frameworks", "fa5s.brain"),
     ("command", "Commands", "App actions and guidance", "fa5s.terminal"),
 )
 
@@ -50,6 +52,7 @@ class ComposerMentionPopup(QWidget):
     """Frameless popup: root categories or searchable drill-down list."""
 
     item_selected = pyqtSignal(object)  # ComposerAttachment
+    skill_selected = pyqtSignal(object)  # ComposerSkillMention
     command_selected = pyqtSignal(object)  # ComposerCommand
     dismissed = pyqtSignal()
 
@@ -244,6 +247,7 @@ class ComposerMentionPopup(QWidget):
             "file": "Search documents…",
             "conversation": "Search conversations…",
             "tool": "Filter tools…",
+            "skill": "Search skills…",
             "command": "Filter commands…",
         }
         self._filter.setPlaceholderText(placeholders.get(kind, "Filter…"))
@@ -331,6 +335,8 @@ class ComposerMentionPopup(QWidget):
             self._populate_conversations()
         elif self._mode == "tool":
             self._populate_tools()
+        elif self._mode == "skill":
+            self._populate_skills()
         elif self._mode == "command":
             self._populate_commands()
 
@@ -460,6 +466,21 @@ class ComposerMentionPopup(QWidget):
             )
             self._list.addItem(row)
 
+    def _populate_skills(self) -> None:
+        q = self._filter.text().strip()
+        from core.skills.registry import get_skill
+
+        mentions = list_skill_mentions_for_palette(query=q)
+        for mention in mentions:
+            skill = get_skill(mention.id)
+            desc = skill.description if skill is not None else ""
+            text = f"{mention.label} — {desc}" if desc else mention.label
+            row = QListWidgetItem(text)
+            row.setData(Qt.ItemDataRole.UserRole, mention)
+            self._list.addItem(row)
+        if self._list.count() == 0:
+            self._add_empty_row("No matching skills")
+
     def _populate_commands(self) -> None:
         q = self._filter.text().strip().lower()
         for command in COMPOSER_COMMANDS:
@@ -499,6 +520,10 @@ class ComposerMentionPopup(QWidget):
             return
         if isinstance(data, ComposerCommand):
             self.command_selected.emit(data)
+            self.hide()
+            return
+        if isinstance(data, ComposerSkillMention):
+            self.skill_selected.emit(data)
             self.hide()
             return
         if isinstance(data, ComposerAttachment):

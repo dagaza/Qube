@@ -252,6 +252,31 @@ class TestPromptBlocks(unittest.TestCase):
         messages = render_system_ok_messages(blocks)
         self.assertEqual(messages[-1]["content"], "Hi")
 
+    def test_skill_guidance_injected_after_route_suffixes(self) -> None:
+        guidance = (
+            "=== REASONING GUIDANCE (non-authoritative) ===\n"
+            "[Task decomposition] Break it down.\n"
+            "=== END REASONING GUIDANCE ==="
+        )
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            skill_guidance=guidance,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn("REASONING GUIDANCE", sys_p)
+        self.assertIn("You are Qube", sys_p)
+
+    def test_skill_guidance_skipped_on_explicit_remember(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=True,
+            explicit_remember_body="My cat is Rex",
+            skill_guidance="=== REASONING GUIDANCE ===",
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertNotIn("REASONING GUIDANCE", sys_p)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,8 +22,10 @@ class TestRootRowIndexForQuery(unittest.TestCase):
         self.assertEqual(root_row_index_for_query("Conversations"), 1)
         self.assertEqual(root_row_index_for_query("too"), 2)
         self.assertEqual(root_row_index_for_query("Tools"), 2)
-        self.assertEqual(root_row_index_for_query("com"), 3)
-        self.assertEqual(root_row_index_for_query("Commands"), 3)
+        self.assertEqual(root_row_index_for_query("ski"), 3)
+        self.assertEqual(root_row_index_for_query("Skills"), 3)
+        self.assertEqual(root_row_index_for_query("com"), 4)
+        self.assertEqual(root_row_index_for_query("Commands"), 4)
 
     def test_co_prefix_still_prefers_conversations(self) -> None:
         self.assertEqual(root_row_index_for_query("co"), 1)
