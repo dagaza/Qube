@@ -45,11 +45,17 @@ class WebVetoFallbackTests(unittest.TestCase):
             )
         )
 
-    def test_substring_web_score_implies_live_intent(self):
-        self.assertTrue(
+    def test_substring_web_score_requires_non_temporal_tokens(self):
+        self.assertFalse(
             query_implies_live_web_intent(
                 "Tell me a joke.",
                 decision={"web_score_source": "substring", "web_score_final": 0.2},
+            )
+        )
+        self.assertTrue(
+            query_implies_live_web_intent(
+                "Find recent news about the Federal Reserve.",
+                decision={"web_score_source": "substring", "web_score_final": 0.077},
             )
         )
 

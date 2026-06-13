@@ -11,7 +11,7 @@ from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassifi
 from core.discourse_prompt_rewrite import score_rewrite_anchor
 from core.discourse_referent_policy import fallback_referent
 from core.discourse_state import DiscourseState, is_deictic_topic_phrase
-from core.memory_filters import detect_explicit_web_request
+from core.memory_filters import detect_hard_explicit_web_request
 
 # Deictic follow-ups that ask for web search without restating the topic.
 _DEICTIC_META_WEB = re.compile(
@@ -61,7 +61,7 @@ def resolve_retrieval_query(
 def is_deictic_meta_web_request(prompt: str) -> bool:
     """True when the user asks for web search but refers to a prior answer/topic deictically."""
     text = (prompt or "").strip()
-    if not text or not detect_explicit_web_request(text):
+    if not text or not detect_hard_explicit_web_request(text):
         return False
     return bool(_DEICTIC_META_WEB.search(text))
 

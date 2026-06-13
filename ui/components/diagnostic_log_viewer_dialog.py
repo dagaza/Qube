@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 import qtawesome as qta
 from PyQt6.QtCore import Qt, QTimer, QSize
@@ -19,12 +20,16 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from core.app_settings import get_routing_debug_log_enabled
 from core.diagnostic_logs import (
     DiagnosticLogSpec,
     describe_log_file,
     open_path_in_system,
     read_log_tail,
 )
+from mcp.routing_debug import routing_debug_log_env_override
+from ui.components.toggle import PrestigeToggle
+
 logger = logging.getLogger("Qube.UI.DiagnosticLogViewer")
 
 
@@ -35,12 +40,16 @@ class DiagnosticLogViewerDialog(QDialog):
         parent=None,
         *,
         is_dark: bool | None = None,
+        on_recording_toggle: Callable[[bool], None] | None = None,
     ) -> None:
         super().__init__(parent)
         if is_dark is None:
             is_dark = getattr(parent.window() if parent else None, "_is_dark_theme", True)
         self._spec = spec
         self._is_dark = is_dark
+        self._on_recording_toggle = on_recording_toggle
+        self._recording_toggle: PrestigeToggle | None = None
+        self._recording_note_lbl: QLabel | None = None
 
         self.setWindowTitle(spec.title)
         self.setModal(False)
@@ -59,6 +68,27 @@ class DiagnosticLogViewerDialog(QDialog):
     def refresh_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
         self._apply_theme_styles()
+
+    def sync_recording_toggle(self) -> None:
+        if self._recording_toggle is None:
+            return
+        env_override = routing_debug_log_env_override()
+        self._recording_toggle.blockSignals(True)
+        self._recording_toggle.setChecked(get_routing_debug_log_enabled())
+        self._recording_toggle.blockSignals(False)
+        if env_override is None:
+            self._recording_toggle.setEnabled(True)
+            if self._recording_note_lbl is not None:
+                self._recording_note_lbl.hide()
+        else:
+            self._recording_toggle.setEnabled(False)
+            self._recording_toggle.setChecked(bool(env_override))
+            if self._recording_note_lbl is not None:
+                self._recording_note_lbl.setText(
+                    "Recording for this log is controlled by how Qube was launched. "
+                    "Use Settings here when no launch override is present."
+                )
+                self._recording_note_lbl.show()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -102,7 +132,29 @@ class DiagnosticLogViewerDialog(QDialog):
             desc.setObjectName("DiagnosticLogViewerDescription")
             root.addWidget(desc)
 
-        if self._spec.note:
+        if self._spec.supports_recording_toggle:
+            recording_row = QHBoxLayout()
+            recording_row.setSpacing(10)
+            recording_lbl = QLabel("Record routing decisions to this log")
+            recording_lbl.setObjectName("DiagnosticLogViewerDescription")
+            self._recording_toggle = PrestigeToggle()
+            self._recording_toggle.setToolTip(
+                "When enabled, Qube appends one JSON line per chat turn on your next message."
+            )
+            self._recording_toggle.toggled.connect(self._on_recording_toggle_changed)
+            recording_row.addWidget(recording_lbl)
+            recording_row.addWidget(self._recording_toggle)
+            recording_row.addStretch()
+            root.addLayout(recording_row)
+
+            self._recording_note_lbl = QLabel("")
+            self._recording_note_lbl.setWordWrap(True)
+            self._recording_note_lbl.setObjectName("DiagnosticLogViewerNote")
+            self._recording_note_lbl.hide()
+            root.addWidget(self._recording_note_lbl)
+            self.sync_recording_toggle()
+
+        elif self._spec.note:
             note = QLabel(self._spec.note)
             note.setWordWrap(True)
             note.setObjectName("DiagnosticLogViewerNote")
@@ -227,10 +279,19 @@ class DiagnosticLogViewerDialog(QDialog):
         for btn in (self.refresh_btn, self.external_btn):
             btn.setStyleSheet(btn_style)
 
+    def _on_recording_toggle_changed(self, enabled: bool) -> None:
+        if self._on_recording_toggle is not None:
+            self._on_recording_toggle(enabled)
+
     def _refresh(self) -> None:
         path = self._spec.path_fn()
         self._text.setPlainText(read_log_tail(path))
-        self.status_lbl.setText(describe_log_file(path))
+        if self._spec.id == "routing_debug":
+            from core.diagnostic_logs import describe_routing_log_status
+
+            self.status_lbl.setText(describe_routing_log_status(path))
+        else:
+            self.status_lbl.setText(describe_log_file(path))
 
     def _on_live_toggled(self, enabled: bool) -> None:
         if enabled:

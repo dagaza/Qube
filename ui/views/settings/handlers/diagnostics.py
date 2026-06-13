@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from core.diagnostic_logs import get_diagnostic_log, open_logs_folder
+from core.app_settings import get_routing_debug_log_enabled, set_routing_debug_log_enabled
+from core.diagnostic_logs import (
+    describe_log_status,
+    get_diagnostic_log,
+    open_logs_folder,
+)
+from mcp.routing_debug import routing_debug_log_env_override
 from ui.components.diagnostic_log_viewer_dialog import DiagnosticLogViewerDialog
 from ui.components.prestige_dialog import PrestigeDialog
 
@@ -19,6 +25,21 @@ class DiagnosticsHandlersMixin:
             self._diagnostic_log_dialogs = dialogs
         return dialogs
 
+    def _sync_routing_debug_log_ui(self) -> None:
+        status_labels = getattr(self, "diagnostic_log_status_labels", None)
+        if isinstance(status_labels, dict):
+            spec = get_diagnostic_log("routing_debug")
+            label = status_labels.get("routing_debug")
+            if spec is not None and label is not None:
+                label.setText(describe_log_status(spec))
+
+        dialogs = getattr(self, "_diagnostic_log_dialogs", None)
+        if isinstance(dialogs, dict):
+            dialog = dialogs.get("routing_debug")
+            if dialog is not None:
+                dialog.sync_recording_toggle()
+                dialog._refresh()
+
     def _on_open_logs_folder_clicked(self) -> None:
         if open_logs_folder():
             self._show_settings_file_status("Opened the logs folder in your file manager.")
@@ -31,6 +52,24 @@ class DiagnosticsHandlersMixin:
             is_dark=is_dark,
         ).exec()
 
+    def _on_routing_debug_log_recording_toggled(self, enabled: bool) -> None:
+        if routing_debug_log_env_override() is not None:
+            self._sync_routing_debug_log_ui()
+            return
+        if enabled == get_routing_debug_log_enabled():
+            return
+
+        set_routing_debug_log_enabled(enabled)
+        self._sync_routing_debug_log_ui()
+        if enabled:
+            message = (
+                "Routing debug recording is now on. Send a chat message and refresh "
+                "this log to see new entries."
+            )
+        else:
+            message = "Routing debug recording is now off. New chat turns will not be added."
+        self._show_settings_file_status(message, persistent=True)
+
     def _on_view_diagnostic_log_clicked(self, log_id: str) -> None:
         spec = get_diagnostic_log(log_id)
         if spec is None:
@@ -41,10 +80,20 @@ class DiagnosticsHandlersMixin:
         dialogs = self._ensure_diagnostic_log_dialogs()
         dialog = dialogs.get(log_id)
         if dialog is None:
-            dialog = DiagnosticLogViewerDialog(spec, self, is_dark=is_dark)
+            on_recording_toggle = None
+            if spec.supports_recording_toggle:
+                on_recording_toggle = self._on_routing_debug_log_recording_toggled
+            dialog = DiagnosticLogViewerDialog(
+                spec,
+                self,
+                is_dark=is_dark,
+                on_recording_toggle=on_recording_toggle,
+            )
             dialogs[log_id] = dialog
         else:
             dialog.refresh_theme(is_dark)
+            if spec.supports_recording_toggle:
+                dialog.sync_recording_toggle()
 
         dialog._refresh()
         dialog.show()

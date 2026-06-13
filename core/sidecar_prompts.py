@@ -294,11 +294,22 @@ _SUBJECT_CLAUSE_RE = re.compile(
     r"\b(?:on|about|regarding|concerning)\s+(.+)$",
     re.IGNORECASE | re.DOTALL,
 )
+_EXPLAIN_TOPIC_RE = re.compile(
+    r"\b(?:"
+    r"explain(?:\s+to\s+me)?|tell\s+me\s+about|describe|"
+    r"what\s+is|what's|what\s+are|how\s+does|how\s+do"
+    r")\s+(.+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+_TOPIC_TAIL_GENERIC = frozenset({
+    "work", "works", "function", "mean", "means", "do", "does",
+})
 _MARKDOWN_HEADING_RE = re.compile(r"^#+\s+(.+)$", re.MULTILINE)
 _TITLE_MIN_ACCEPT_SCORE = 4.0
 _TITLE_SOURCE_BASE_SCORE: dict[str, float] = {
     "assistant_heading": 12.0,
     "subject_clause": 11.0,
+    "user_explain_phrase": 10.5,
     "subject_clause_snippet": 10.0,
     "assistant_proper_phrase": 9.0,
     "assistant_topic": 7.0,
@@ -514,6 +525,33 @@ def _subject_clause_from_user_prompt(user_prompt: str) -> str:
     return clause
 
 
+def _user_topic_phrase_from_prompt(user_prompt: str) -> str:
+    """Trailing topic from explain / tell-me / what-is style user prompts."""
+    text = (user_prompt or "").strip()
+    match = _EXPLAIN_TOPIC_RE.search(text)
+    if not match:
+        return ""
+    clause = match.group(1).strip().strip(".,!?;:\"'")
+    if len(clause) > 96:
+        clause = clause[:96].rsplit(" ", 1)[0] or clause[:96]
+    return clause
+
+
+def _title_is_incomplete_vs_user_topic(title: str, user_prompt: str) -> bool:
+    """Reject a one-word title that only names the first word of a richer user topic."""
+    title_words = _TITLE_WORD_RE.findall(title or "")
+    if len(title_words) != 1:
+        return False
+    topic_words = _topic_words_from_text(user_prompt, max_words=6)
+    if len(topic_words) < 2:
+        return False
+    if topic_words[1].lower() in _TOPIC_TAIL_GENERIC:
+        return False
+    title_norm = title_words[0].lower().rstrip("s")
+    first_norm = topic_words[0].lower().rstrip("s")
+    return title_norm == first_norm
+
+
 def _title_from_markdown_heading(text: str) -> str:
     for match in _MARKDOWN_HEADING_RE.finditer(text or ""):
         heading = re.sub(r"\s+", " ", match.group(1)).strip(" \"'.,!?;:")
@@ -543,6 +581,8 @@ def _prepare_title_candidate(candidate: str, *, user_prompt: str) -> str:
     if _title_is_verbatim_of_prompt(polished, user_prompt):
         return ""
     if _title_is_instruction_like(polished):
+        return ""
+    if _title_is_incomplete_vs_user_topic(polished, user_prompt):
         return ""
     return polished
 
@@ -637,6 +677,10 @@ def _collect_title_candidates(
         clause_words = _topic_words_from_text(subject_clause)
         if len(clause_words) >= 2:
             add(" ".join(clause_words), "subject_clause_snippet")
+
+    explain_phrase = _user_topic_phrase_from_prompt(user_prompt)
+    if explain_phrase:
+        add(explain_phrase, "user_explain_phrase")
 
     heading = _title_from_markdown_heading(assistant_reply)
     if heading:
@@ -814,6 +858,12 @@ def _finalize_title_text(
     post_think = _title_from_post_think_tail(raw_s)
     if post_think and not _title_is_verbatim_of_prompt(post_think, user_prompt):
         return post_think, _model_selection_detail(post_think, "post_think_tail")
+
+    explain_phrase = _user_topic_phrase_from_prompt(user_prompt)
+    if explain_phrase:
+        accepted = _accept_title_candidate(explain_phrase, user_prompt=user_prompt)
+        if accepted:
+            return accepted, _model_selection_detail(accepted, "user_explain_phrase")
 
     return _fallback_title_from_exchange(
         user_prompt,

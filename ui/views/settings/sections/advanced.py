@@ -5,7 +5,7 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from core.diagnostic_logs import describe_log_file, iter_diagnostic_logs
+from core.diagnostic_logs import describe_log_status, iter_diagnostic_logs
 from core.paths import logs_dir
 from core.settings_store import default_user_settings_path
 from ui.components.brand_buttons import apply_brand_primary
@@ -95,7 +95,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
             note.setProperty("class", "ToolsPaneControl")
             row.addWidget(note)
 
-        status = QLabel(describe_log_file(spec.path_fn()))
+        status = QLabel(describe_log_status(spec))
         status.setProperty("class", "ToolsPaneControl")
         host.diagnostic_log_status_labels[spec.id] = status
         row.addWidget(status)

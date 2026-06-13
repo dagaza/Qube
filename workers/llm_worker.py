@@ -125,7 +125,7 @@ from core.router_centroid_examples import (
 from core.memory_filters import (
     detect_recall_intent,
     detect_explicit_remember,
-    detect_explicit_web_request,
+    detect_hard_explicit_web_request,
     detect_file_search_intent,
     detect_narrative_intent,
     is_assistant_failure_message,
@@ -2093,16 +2093,21 @@ class LLMWorker(QThread):
         # (the user scoped this turn to the local library).
         manual_web = False
         auto_web = False
-        explicit_web_request = detect_explicit_web_request(clean_prompt)
+        hard_web = detect_hard_explicit_web_request(clean_prompt)
+        live_web = query_implies_live_web_intent(
+            clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
+        )
+        explicit_web_request = hard_web or live_web
         if not explicit_remember_active and not scoped_library_active:
             # Manual trigger: user explicitly asked to search/check the web.
-            manual_web = explicit_web_request
+            manual_web = hard_web
 
             # Automatic trigger: cognitive router decides internet is needed
             auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
 
             # Final execution decision for WEB
-            if force_web or manual_web or auto_web:
+            if force_web or manual_web or auto_web or (live_web and not hard_web):
                 execution_route = "WEB"
 
             # ------------------------------------------------------------

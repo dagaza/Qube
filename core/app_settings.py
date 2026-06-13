@@ -43,6 +43,7 @@ KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
 KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
+KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
@@ -225,6 +226,15 @@ def get_enable_chat_personality_nudge() -> bool:
 
 def set_enable_chat_personality_nudge(enabled: bool) -> None:
     _store().set(KEY_CHAT_PERSONALITY_NUDGE, enabled)
+
+
+def get_routing_debug_log_enabled() -> bool:
+    """When True, append per-turn routing JSONL to ~/.qube/logs/routing_debug.log."""
+    return bool(_store().get(KEY_ROUTING_DEBUG_LOG_ENABLED, False))
+
+
+def set_routing_debug_log_enabled(enabled: bool) -> None:
+    _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
 
 
 def _sidecar_model_on_disk() -> bool:

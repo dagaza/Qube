@@ -20,6 +20,12 @@ class DiagnosticLogsTests(unittest.TestCase):
         ids = {spec.id for spec in iter_diagnostic_logs()}
         self.assertEqual(ids, {"llm_debug", "routing_debug"})
 
+    def test_routing_log_supports_recording_toggle(self) -> None:
+        spec = get_diagnostic_log("routing_debug")
+        assert spec is not None
+        self.assertTrue(spec.supports_recording_toggle)
+        self.assertNotIn("QUBE_", spec.description)
+
     def test_get_diagnostic_log(self) -> None:
         spec = get_diagnostic_log("llm_debug")
         self.assertIsNotNone(spec)

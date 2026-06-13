@@ -274,6 +274,26 @@ class TestSidecarPrompts(unittest.TestCase):
         selection = r.parsed.get("selection") or {}
         self.assertEqual(selection.get("path"), "model_line")
 
+    def test_title_explain_prompt_rejects_truncated_model_word(self) -> None:
+        user = "Please explain to me Actor-Network Theory"
+        assistant = (
+            "Actor-Network Theory (ANT) is a sociological framework developed by "
+            "Bruno Latour and others."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "Actors",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = r.parsed.get("title") or ""
+        self.assertIn("network", title.lower())
+        self.assertIn("theory", title.lower())
+        self.assertNotEqual(title.lower(), "actors")
+        selection = r.parsed.get("selection") or {}
+        self.assertNotEqual(selection.get("path"), "model_line")
+
     def test_title_selection_includes_fallback_scores(self) -> None:
         r = parse_task_output(
             SidecarTask.title,

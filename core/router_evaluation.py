@@ -459,14 +459,18 @@ def simulate_execution_route(
             )
             override_reason = override_reason or "custom_rag_trigger"
 
-    from core.memory_filters import detect_explicit_web_request
+    from core.memory_filters import (
+        detect_hard_explicit_web_request,
+        query_implies_live_web_intent,
+    )
 
-    explicit_web_request = detect_explicit_web_request(clean_prompt)
-    manual_web = explicit_web_request
+    hard_web = detect_hard_explicit_web_request(clean_prompt)
+    live_web = query_implies_live_web_intent(clean_prompt, decision=decision)
+    manual_web = hard_web
     auto_web = internet_hybrid_auto and bool(decision.get("internet_enabled"))
 
     if not explicit_remember_active and not scoped_library_active:
-        if manual_web or auto_web:
+        if manual_web or auto_web or (live_web and not hard_web):
             execution_route = "WEB"
             override_reason = override_reason or "web_trigger"
 

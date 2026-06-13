@@ -460,14 +460,14 @@ EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     "You may answer from general knowledge when appropriate."
 )
 
-# Substring triggers aligned with ``mcp.cognitive_router._WEB_TRIGGERS`` plus
-# manual web commands from ``LLMWorker``.
-_EXPLICIT_WEB_REQUEST_TRIGGERS: tuple[str, ...] = (
+# Hard internet/tool-use commands — the user explicitly ordered a web search.
+_HARD_EXPLICIT_WEB_TRIGGERS: tuple[str, ...] = (
     "look online",
     "search online",
     "search the web",
     "search on the web",
     "search on the internet",
+    "search the internet",
     "find on the internet",
     "find online",
     "google",
@@ -479,20 +479,14 @@ _EXPLICIT_WEB_REQUEST_TRIGGERS: tuple[str, ...] = (
     "from the web",
     "browse the web",
     "browse the internet",
-    "news",
-    "current",
-    "latest",
-    "today",
-    "right now",
-    "happening",
-    "weather",
-    "search the internet",
-    "who won",
-    "current news",
 )
 
-# Back-compat alias for live-web intent checks.
-_LIVE_WEB_QUERY_TRIGGERS = _EXPLICIT_WEB_REQUEST_TRIGGERS
+# Router substring tokens that must not alone imply live-web intent (see
+# ``mcp.cognitive_router._WEB_TRIGGERS`` — duplicated here to avoid import
+# cycles with ``cognitive_router``).
+_TEMPORAL_WEB_SUBSTRINGS: frozenset[str] = frozenset(
+    {"today", "latest", "current", "right now"}
+)
 
 # Topic-agnostic: "<verb> … online", "online … <verb>", or "online for …".
 _EXPLICIT_WEB_VERB_ONLINE = re.compile(
@@ -504,15 +498,111 @@ _EXPLICIT_WEB_VERB_ONLINE = re.compile(
     re.I,
 )
 
+# Live-world retrieval patterns (not explicit web commands).
+_LIVE_WEATHER_RE = re.compile(
+    r"\b(?:"
+    r"today'?s?\s+weather|weather\s+(?:in|for|today|forecast|this)|"
+    r"(?:latest|current)\s+weather(?:\s+forecast)?|"
+    r"what(?:'s|\s+is)\s+(?:the\s+)?weather|"
+    r"how(?:'s|\s+is)\s+(?:the\s+)?weather"
+    r")\b",
+    re.I,
+)
+_LIVE_NEWS_RE = re.compile(
+    r"\b(?:"
+    r"(?:recent|latest|current)\s+news|news\s+about|trending\s+on|"
+    r"what(?:'s|\s+is)\s+trending"
+    r")\b",
+    re.I,
+)
+_LIVE_DATA_TOPIC_RES: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.I)
+    for p in (
+        r"\bwho\s+won\b",
+        r"\blive\s+score\b",
+        r"\bexchange\s+rate\b",
+        r"\bair\s+quality\b",
+        r"\bwhat\s+is\s+happening\b.*\b(?:market|stock)\b",
+        r"\bhappening\b.*\b(?:market|stock)\b",
+        r"\bstock\s+market\b.*\bright\s+now\b",
+    )
+)
+_LIVE_NARRATIVE_BLOCK_RE = re.compile(
+    r"\b(?:"
+    r"i\s+read\s+the\s+news|"
+    r"(?:was|were)\s+(?:lovely|nice|great|bad|cold|hot|warm|awful|fine|good|perfect)"
+    r")\b",
+    re.I,
+)
+_ROUTER_WEB_SUBSTRING_TRIGGERS: tuple[str, ...] = (
+    "look online",
+    "search the web",
+    "find on the internet",
+    "google",
+    "check online",
+    "web search",
+    "news",
+    "current",
+    "latest",
+    "today",
+    "right now",
+    "happening",
+    "weather",
+)
 
-def detect_explicit_web_request(query: str) -> bool:
-    """True when the user explicitly asked to search or check the web/internet."""
+
+def detect_hard_explicit_web_request(query: str) -> bool:
+    """True when the user explicitly instructed the assistant to use the internet."""
     q = (query or "").lower().strip()
     if not q:
         return False
-    if any(t in q for t in _EXPLICIT_WEB_REQUEST_TRIGGERS):
+    if any(t in q for t in _HARD_EXPLICIT_WEB_TRIGGERS):
         return True
     return bool(_EXPLICIT_WEB_VERB_ONLINE.search(q))
+
+
+def _router_substring_tokens(query: str) -> list[str]:
+    q = (query or "").lower()
+    return [t for t in _ROUTER_WEB_SUBSTRING_TRIGGERS if t in q]
+
+
+def _router_substring_implies_live_intent(query: str, decision: dict) -> bool:
+    """Router substring score > 0, excluding bare temporal-only hits."""
+    lower = (query or "").lower()
+    if _LIVE_NARRATIVE_BLOCK_RE.search(lower):
+        return False
+    source = str(decision.get("web_score_source") or "").lower()
+    try:
+        score = float(decision.get("web_score_final") or 0.0)
+    except (TypeError, ValueError):
+        score = 0.0
+    if source != "substring" or score <= 0.0:
+        return False
+    tokens = _router_substring_tokens(query)
+    if not tokens:
+        return False
+    if all(t in _TEMPORAL_WEB_SUBSTRINGS for t in tokens):
+        return False
+    return True
+
+
+def _implies_live_data_topic(query: str) -> bool:
+    q = (query or "").strip()
+    if not q:
+        return False
+    lower = q.lower()
+    if _LIVE_NARRATIVE_BLOCK_RE.search(lower):
+        return False
+    if _LIVE_WEATHER_RE.search(q):
+        return True
+    if _LIVE_NEWS_RE.search(q):
+        return True
+    for pattern in _LIVE_DATA_TOPIC_RES:
+        if pattern.search(q):
+            return True
+    if lower.strip().endswith("?") and re.search(r"\bnews\b", lower):
+        return True
+    return False
 
 
 def query_implies_live_web_intent(
@@ -520,21 +610,25 @@ def query_implies_live_web_intent(
     *,
     decision: dict | None = None,
 ) -> bool:
-    """True when the user message plausibly asks for live/real-time web data."""
-    if detect_explicit_web_request(query):
+    """True when the message plausibly needs live/public retrieval (not a hard web command)."""
+    if detect_hard_explicit_web_request(query):
         return True
-    q = (query or "").lower().strip()
-    if not q:
-        return False
-    if isinstance(decision, dict):
-        source = str(decision.get("web_score_source") or "").lower()
-        try:
-            score = float(decision.get("web_score_final") or 0.0)
-        except (TypeError, ValueError):
-            score = 0.0
-        if source == "substring" and score > 0.0:
-            return True
+    if _implies_live_data_topic(query):
+        return True
+    if isinstance(decision, dict) and _router_substring_implies_live_intent(query, decision):
+        return True
     return False
+
+
+def detect_explicit_web_request(
+    query: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """True for hard web commands or plausibly-live retrieval (UX / empty-results)."""
+    if detect_hard_explicit_web_request(query):
+        return True
+    return query_implies_live_web_intent(query, decision=decision)
 
 
 def should_run_internet_search_for_route(
@@ -736,6 +830,7 @@ __all__ = [
     "NO_SOURCES_SYSTEM_SUFFIX",
     "WEB_CAPABILITY_DISABLED_SUFFIX",
     "EXPLICIT_WEB_EMPTY_SUFFIX",
+    "detect_hard_explicit_web_request",
     "detect_explicit_web_request",
     "query_implies_live_web_intent",
     "should_run_internet_search_for_route",

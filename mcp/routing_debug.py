@@ -40,7 +40,27 @@ class RoutingDebugRecord:
 
 
 def routing_debug_log_enabled() -> bool:
-    return str(os.getenv("QUBE_ROUTING_DEBUG_LOG", "0")).strip().lower() in {
+    env = _env_truthy_flag("QUBE_ROUTING_DEBUG_LOG")
+    if env is not None:
+        return env
+    try:
+        from core.app_settings import get_routing_debug_log_enabled
+
+        return get_routing_debug_log_enabled()
+    except Exception:
+        return False
+
+
+def routing_debug_log_env_override() -> bool | None:
+    """When set at launch, overrides the in-app Settings toggle."""
+    return _env_truthy_flag("QUBE_ROUTING_DEBUG_LOG")
+
+
+def _env_truthy_flag(name: str) -> bool | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {
         "1",
         "true",
         "yes",

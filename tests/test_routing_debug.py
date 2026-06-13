@@ -373,6 +373,16 @@ class RoutingDebugEnvFlagsTests(unittest.TestCase):
         self.assertTrue(routing_debug_log_verbose())
         self.assertTrue(routing_debug_log_redact_query())
 
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("core.app_settings.get_routing_debug_log_enabled", return_value=True)
+    def test_settings_toggle_when_env_unset(self, _getter) -> None:
+        self.assertTrue(routing_debug_log_enabled())
+
+    @patch.dict(os.environ, {"QUBE_ROUTING_DEBUG_LOG": "0"}, clear=True)
+    @patch("core.app_settings.get_routing_debug_log_enabled", return_value=True)
+    def test_env_override_wins_over_settings(self, _getter) -> None:
+        self.assertFalse(routing_debug_log_enabled())
+
 
 class RoutingDebugSinkTests(unittest.TestCase):
     def tearDown(self) -> None:

@@ -24,6 +24,7 @@ class DiagnosticLogSpec:
     description: str
     path_fn: PathFn
     note: str = ""
+    supports_recording_toggle: bool = False
 
 
 DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
@@ -40,11 +41,11 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
         id="routing_debug",
         title="Routing debug log",
         description=(
-            "Per-turn routing explainability as compact JSONL. The log file is always "
-            "created; turn records are written when QUBE_ROUTING_DEBUG_LOG=1."
+            "Per-turn routing explainability as compact JSONL. Enable recording below "
+            "to capture new chat turns; existing lines stay in the log file."
         ),
         path_fn=default_routing_debug_log_path,
-        note="Set QUBE_ROUTING_DEBUG_LOG=1 and restart to populate routing records.",
+        supports_recording_toggle=True,
     ),
 )
 
@@ -93,6 +94,24 @@ def describe_log_file(path: Path) -> str:
         return "Unavailable"
     updated = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
     return f"{_format_bytes(stat.st_size)} · updated {updated}"
+
+
+def describe_routing_log_status(path: Path) -> str:
+    from core.app_settings import get_routing_debug_log_enabled
+    from mcp.routing_debug import routing_debug_log_env_override, routing_debug_log_enabled
+
+    if routing_debug_log_env_override() is not None:
+        recording = "Recording on" if routing_debug_log_enabled() else "Recording off"
+        recording += " (launch setting)"
+    else:
+        recording = "Recording on" if get_routing_debug_log_enabled() else "Recording off"
+    return f"{recording} · {describe_log_file(path)}"
+
+
+def describe_log_status(spec: DiagnosticLogSpec) -> str:
+    if spec.id == "routing_debug":
+        return describe_routing_log_status(spec.path_fn())
+    return describe_log_file(spec.path_fn())
 
 
 def open_path_in_system(path: Path) -> bool:
