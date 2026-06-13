@@ -15,10 +15,12 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QToolButton, QLabel, QFrame,
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
-    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar
+    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
-from PyQt6.QtGui import QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics
+from PyQt6.QtGui import (
+    QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics, QScreen,
+)
 import qtawesome as qta
 from core.paths import install_root, resource_path
 from ui.views.conversations_view import ConversationsView
@@ -67,6 +69,13 @@ from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
 
 logger = logging.getLogger("Qube.UI")
+
+# Restore/maximize tuning for portrait and narrow monitors (width <= default layout minimum).
+_RESTORE_MARGIN_PX = 24
+_RESTORE_WIDTH_RATIO = 0.90
+_RESTORE_HEIGHT_RATIO = 0.82
+_ABSOLUTE_MIN_WIDTH = 640
+_ABSOLUTE_MIN_HEIGHT = 480
 
 class VUMeter(QWidget):
     """A sleek, custom-painted VU meter with a Green-Yellow-Red gradient."""
@@ -138,8 +147,17 @@ class MainWindow(QMainWindow):
         if logo_icon_path is not None:
             self.setWindowIcon(QIcon(str(logo_icon_path)))
         self.setWindowTitle("Qube - Workspace")
-        self.setMinimumSize(1200, 800)
-        self.resize(1200, 800) 
+        self._default_minimum_size = QSize(1200, 800)
+        self.setMinimumSize(self._default_minimum_size)
+        self.resize(self._default_minimum_size)
+
+        # Custom maximize: Qt's showMaximized() is unreliable for frameless windows on
+        # secondary/portrait monitors (sets maximized state without resizing, which also
+        # hides QSizeGrip). Track geometry ourselves against the screen under the window.
+        self._workspace_maximized = False
+        self._pre_maximize_geometry: QRect | None = None
+        self._pending_restore_geometry: QRect | None = None
+        self._geometry_update_depth = 0
 
         self.workers = workers
         self.db = workers.get("db") # Ensure your DB manager is in the workers dict
@@ -610,6 +628,22 @@ class MainWindow(QMainWindow):
         cb.setChecked(checked)
         cb.blockSignals(False)
 
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        if self._geometry_update_depth:
+            return
+        self._sync_minimum_size_for_screen()
+
+    def minimumSizeHint(self) -> QSize:
+        """Keep child layout hints from blocking restore on narrow/portrait monitors."""
+        screen = self._screen_for_window()
+        if self._workspace_maximized:
+            return self._layout_minimum_size(screen)
+        geo = self._screen_available_geometry(screen)
+        if geo is not None and geo.width() <= self._default_minimum_size.width():
+            return self._restorable_minimum_size(screen)
+        return self._default_minimum_size
+
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
         super().resizeEvent(event)
@@ -886,22 +920,239 @@ class MainWindow(QMainWindow):
 
         self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px;")
     
-    def _toggle_maximize(self):
-        """Toggles between maximized and normal window states."""
-        if self.isMaximized():
+    def _screen_for_window(self) -> QScreen | None:
+        """Return the monitor that contains most of the window (not always primary)."""
+        center = self.frameGeometry().center()
+        return QApplication.screenAt(center) or QApplication.primaryScreen()
+
+    def _screen_available_geometry(self, screen: QScreen | None = None) -> QRect | None:
+        screen = screen or self._screen_for_window()
+        return screen.availableGeometry() if screen is not None else None
+
+    def _layout_minimum_size(self, screen: QScreen | None = None) -> QSize:
+        """Ideal layout minimum, capped when the active monitor is smaller than the design target."""
+        screen = screen or self._screen_for_window()
+        if screen is None:
+            return self._default_minimum_size
+        geo = screen.availableGeometry()
+        return QSize(
+            min(self._default_minimum_size.width(), geo.width()),
+            min(self._default_minimum_size.height(), geo.height()),
+        )
+
+    def _restorable_minimum_size(self, screen: QScreen | None = None) -> QSize:
+        """Minimum allowed while restored; must permit a visibly smaller-than-fullscreen window."""
+        screen = screen or self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return QSize(_ABSOLUTE_MIN_WIDTH, _ABSOLUTE_MIN_HEIGHT)
+
+        layout_min = self._layout_minimum_size(screen)
+        if geo.width() > self._default_minimum_size.width():
+            return layout_min
+
+        return QSize(
+            max(
+                _ABSOLUTE_MIN_WIDTH,
+                min(int(geo.width() * 0.55), geo.width() - _RESTORE_MARGIN_PX * 2),
+            ),
+            max(
+                _ABSOLUTE_MIN_HEIGHT,
+                min(int(geo.height() * 0.30), geo.height() - _RESTORE_MARGIN_PX * 2),
+            ),
+        )
+
+    def _geometry_is_monitor_filling(self, rect: QRect, screen: QScreen | None = None) -> bool:
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return False
+        return (
+            rect.width() >= geo.width() - _RESTORE_MARGIN_PX
+            and rect.height() >= geo.height() - _RESTORE_MARGIN_PX
+        )
+
+    def _restore_target_geometry(self, screen: QScreen | None = None) -> QRect:
+        """Compute a centered restored size that is clearly smaller than the full monitor."""
+        screen = screen or self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return QRect(0, 0, self._default_minimum_size.width(), self._default_minimum_size.height())
+
+        rest_min = self._restorable_minimum_size(screen)
+        width = min(
+            geo.width() - _RESTORE_MARGIN_PX * 2,
+            max(rest_min.width(), int(geo.width() * _RESTORE_WIDTH_RATIO)),
+        )
+        height = min(
+            geo.height() - _RESTORE_MARGIN_PX * 2,
+            max(rest_min.height(), int(geo.height() * _RESTORE_HEIGHT_RATIO)),
+        )
+        x = geo.left() + (geo.width() - width) // 2
+        y = geo.top() + (geo.height() - height) // 2
+        return QRect(x, y, width, height)
+
+    def _clamp_geometry_to_screen(
+        self,
+        rect: QRect,
+        screen: QScreen | None = None,
+        *,
+        min_size: QSize | None = None,
+    ) -> QRect:
+        screen = screen or self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return rect
+        floor = min_size or self._restorable_minimum_size(screen)
+        width = max(floor.width(), min(rect.width(), geo.width()))
+        height = max(floor.height(), min(rect.height(), geo.height()))
+        x = max(geo.left(), min(rect.x(), geo.right() - width + 1))
+        y = max(geo.top(), min(rect.y(), geo.bottom() - height + 1))
+        return QRect(x, y, width, height)
+
+    def _clear_platform_maximized_state(self) -> None:
+        """Drop WM/Qt maximized flags so custom geometry is not immediately reverted."""
+        state = self.windowState()
+        if state & Qt.WindowState.WindowMaximized:
             self.showNormal()
-            # Update to 'Maximize' icon
-            self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
-            self.max_btn.setToolTip("Maximize window")
-            # Restore rounded corners
-            self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;"))
-        else:
-            self.showMaximized()
-            # Update to 'Restore' icon
-            self.max_btn.setIcon(qta.icon('fa5s.compress-arrows-alt'))
+
+    def _unlock_window_size(self) -> None:
+        self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))
+
+    def _apply_maximize_chrome(self, maximized: bool) -> None:
+        if maximized:
+            self.max_btn.setIcon(qta.icon("fa5s.compress-arrows-alt"))
             self.max_btn.setToolTip("Restore window")
-            # Flatten corners for full-screen look
-            self.main_container.setStyleSheet(self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;"))
+            self.main_container.setStyleSheet(
+                self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;")
+            )
+            if hasattr(self, "grip"):
+                self.grip.setVisible(False)
+        else:
+            self.max_btn.setIcon(qta.icon("fa5s.expand-arrows-alt"))
+            self.max_btn.setToolTip("Maximize window")
+            self.main_container.setStyleSheet(
+                self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;")
+            )
+            if hasattr(self, "grip"):
+                self.grip.setVisible(True)
+
+    def _save_pre_maximize_geometry(self, screen: QScreen | None = None) -> None:
+        screen = screen or self._screen_for_window()
+        current = self.geometry()
+        if screen is not None and not self._geometry_is_monitor_filling(current, screen):
+            self._pre_maximize_geometry = current
+        else:
+            self._pre_maximize_geometry = self._restore_target_geometry(screen)
+
+    def _maximize_to_current_screen(self) -> None:
+        screen = self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return
+        if not self._workspace_maximized:
+            self._save_pre_maximize_geometry(screen)
+        self._pending_restore_geometry = None
+        self._geometry_update_depth += 1
+        try:
+            self._clear_platform_maximized_state()
+            self._unlock_window_size()
+            self.setMinimumSize(self._layout_minimum_size(screen))
+            self.setFixedSize(geo.size())
+            self.move(geo.topLeft())
+        finally:
+            self._geometry_update_depth -= 1
+        self._workspace_maximized = True
+        self._apply_maximize_chrome(True)
+
+    def _restore_workspace_geometry(self) -> None:
+        screen = self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            self._workspace_maximized = False
+            self._apply_maximize_chrome(False)
+            return
+
+        target = self._restore_target_geometry(screen)
+        if self._pre_maximize_geometry is not None:
+            candidate = self._clamp_geometry_to_screen(
+                self._pre_maximize_geometry,
+                screen,
+                min_size=self._restorable_minimum_size(screen),
+            )
+            if not self._geometry_is_monitor_filling(candidate, screen):
+                target = candidate
+
+        if self._geometry_is_monitor_filling(target, screen):
+            target = self._restore_target_geometry(screen)
+
+        rest_min = self._restorable_minimum_size(screen)
+        self._pending_restore_geometry = target
+        self._geometry_update_depth += 1
+        try:
+            self._clear_platform_maximized_state()
+            self._unlock_window_size()
+            self.setMinimumSize(rest_min)
+            self.setFixedSize(target.size())
+            self.move(target.topLeft())
+            self._unlock_window_size()
+            self.setMinimumSize(rest_min)
+            self.resize(target.size())
+            self.move(target.topLeft())
+        finally:
+            self._geometry_update_depth -= 1
+
+        self._workspace_maximized = False
+        self._apply_maximize_chrome(False)
+        QTimer.singleShot(0, self._ensure_restored_geometry)
+
+    def _ensure_restored_geometry(self) -> None:
+        """Re-apply restore if the WM or layout ignored the first resize."""
+        if self._workspace_maximized or self._pending_restore_geometry is None:
+            return
+        screen = self._screen_for_window()
+        if screen is None:
+            return
+        current = self.geometry()
+        target = self._pending_restore_geometry
+        if (
+            self._geometry_is_monitor_filling(current, screen)
+            or abs(current.width() - target.width()) > 4
+            or abs(current.height() - target.height()) > 4
+        ):
+            rest_min = self._restorable_minimum_size(screen)
+            self._geometry_update_depth += 1
+            try:
+                self._clear_platform_maximized_state()
+                self._unlock_window_size()
+                self.setMinimumSize(rest_min)
+                self.setFixedSize(target.size())
+                self.move(target.topLeft())
+                self._unlock_window_size()
+                self.setMinimumSize(rest_min)
+                self.resize(target.size())
+                self.move(target.topLeft())
+            finally:
+                self._geometry_update_depth -= 1
+
+    def _sync_minimum_size_for_screen(self) -> None:
+        """Keep resize limits sensible when the window moves between monitors."""
+        if self._workspace_maximized or self._geometry_update_depth:
+            return
+        screen = self._screen_for_window()
+        geo = self._screen_available_geometry(screen)
+        if geo is None:
+            return
+        if geo.width() > self._default_minimum_size.width():
+            self.setMinimumSize(self._default_minimum_size)
+        else:
+            self.setMinimumSize(self._restorable_minimum_size(screen))
+
+    def _toggle_maximize(self):
+        """Toggle fit-to-monitor vs the last normal window geometry."""
+        if self._workspace_maximized:
+            self._restore_workspace_geometry()
+        else:
+            self._maximize_to_current_screen()
 
     def _build_nav_sidebar(self) -> QFrame:
         """Global Left Navigation: Switches views and shows mini-telemetry."""
@@ -2483,6 +2734,8 @@ class MainWindow(QMainWindow):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self.top_bar.underMouse():
+            if self._workspace_maximized:
+                return
             self._old_pos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
