@@ -234,9 +234,16 @@ class TestAppSettingsWithJsonStore(unittest.TestCase):
         with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
             SettingsStore(user_path=self.user_path)
         self.assertFalse(app_settings.get_mcp_rag_enabled())
-        self.assertFalse(app_settings.get_mcp_rag_auto_activator_enabled())
+        self.assertTrue(app_settings.get_mcp_rag_auto_activator_enabled())
         self.assertFalse(app_settings.get_mcp_rag_strict_enabled())
         self.assertFalse(app_settings.get_mcp_internet_hybrid_enabled())
+
+    def test_companion_visibility_defaults_are_on_on_first_launch(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        self.assertTrue(app_settings.get_companion_enabled())
+        self.assertTrue(app_settings.get_companion_show_when_tray_hidden())
+        self.assertTrue(app_settings.get_companion_show_while_window_open())
 
 
 if __name__ == "__main__":

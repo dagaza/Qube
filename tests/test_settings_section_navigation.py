@@ -21,11 +21,13 @@ class SettingsRegistryTests(unittest.TestCase):
     def test_resolve_legacy_titles(self) -> None:
         self.assertEqual(resolve_section_id("AI MODELS & ROUTING"), "ai.models")
         self.assertEqual(resolve_section_id("NATIVE ENGINE & LOCAL LIBRARY"), "ai.models")
-        self.assertEqual(resolve_section_id("NLP RAG TRIGGERS"), "memory.knowledge")
+        self.assertEqual(resolve_section_id("NLP RAG TRIGGERS"), "knowledge")
+        self.assertEqual(resolve_section_id("Memory & Knowledge"), "memory")
         self.assertEqual(resolve_section_id("JSON SETTINGS"), "advanced")
+        self.assertEqual(resolve_section_id("HELP & GUIDANCE"), "help")
 
-    def test_six_sections_registered(self) -> None:
-        self.assertEqual(len(SETTINGS_SECTIONS), 6)
+    def test_eight_sections_registered(self) -> None:
+        self.assertEqual(len(SETTINGS_SECTIONS), 8)
 
     def test_get_section_returns_def(self) -> None:
         sec = get_section("notifications")

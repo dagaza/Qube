@@ -3,15 +3,42 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from ui.components.toggle import PrestigeToggle
+
+
+class SettingsSectionDivider(QWidget):
+    """Full-width horizontal rule; custom-painted so it stays visible in QFormLayout."""
+
+    _MARGIN_TOP = 20
+    _LINE_HEIGHT = 2
+
+    def __init__(self, *, is_dark: bool = True, parent=None):
+        super().__init__(parent)
+        self.setObjectName("SettingsSectionDivider")
+        self.setFixedHeight(self._MARGIN_TOP + self._LINE_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._is_dark = is_dark
+
+    def apply_theme(self, is_dark: bool) -> None:
+        if is_dark != self._is_dark:
+            self._is_dark = is_dark
+            self.update()
+
+    def paintEvent(self, event) -> None:
+        del event
+        color = QColor("#585b70" if self._is_dark else "#cbd5e1")
+        painter = QPainter(self)
+        painter.fillRect(0, self._MARGIN_TOP, self.width(), self._LINE_HEIGHT, color)
 
 
 def make_subsection_label(text: str, *, anchor: str | None = None) -> QLabel:
@@ -36,6 +63,13 @@ def add_subsection_to_layout(
     lbl = make_subsection_label(text, anchor=anchor)
     layout.addWidget(lbl)
     return lbl
+
+
+def add_section_divider_to_form(form: QFormLayout, *, is_dark: bool = True) -> SettingsSectionDivider:
+    """Full-width horizontal rule separating major settings blocks."""
+    divider = SettingsSectionDivider(is_dark=is_dark)
+    form.addRow(divider)
+    return divider
 
 
 def wrap_subsection(content: QWidget, *, anchor: str | None = None) -> QWidget:
@@ -82,31 +116,6 @@ def make_disclosure_row(
     panel_layout.setContentsMargins(0, 8, 0, 0)
     panel_layout.setSpacing(12)
     return toggle, row, panel
-
-
-def make_ai_status_strip(host) -> QLabel:
-    """Read-only status bar for AI & Models section."""
-    strip = QLabel("")
-    strip.setObjectName("SettingsStatusStrip")
-    strip.setWordWrap(True)
-    strip.setProperty("class", "SettingsHint")
-    host._ai_status_strip = strip
-    return strip
-
-
-def update_ai_status_strip(host) -> None:
-    strip = getattr(host, "_ai_status_strip", None)
-    if strip is None:
-        return
-    from core.app_settings import get_engine_mode
-
-    mode = get_engine_mode()
-    engine = "Internal" if mode == "internal" else "External"
-    model_lbl = getattr(host, "active_native_model_lbl", None)
-    model_text = model_lbl.text() if model_lbl is not None else "—"
-    ctx_spin = getattr(host, "llm_ctx_spin", None)
-    ctx = str(ctx_spin.value()) if ctx_spin is not None else "—"
-    strip.setText(f"Engine: {engine}  ·  Model: {model_text}  ·  Context: {ctx}")
 
 
 def register_theme_button(host, button) -> None:

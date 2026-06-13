@@ -108,6 +108,46 @@
     "default": false,
     "description": "User acknowledged RAM impact warning for advanced engine / cognition settings."
   },
+  "qube.settings.advanced_embedding_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Knowledge settings including optional embedding model swap."
+  },
+  "qube.embedding.modelPath": {
+    "type": "string",
+    "default": "",
+    "description": "Absolute path to optional embedding GGUF; empty uses bundled Nomic Embed v1.5 in models/embedding/."
+  },
+  "qube.settings.advanced_stt_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Voice settings for optional STT model swap."
+  },
+  "qube.settings.advanced_tts_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Voice settings for optional TTS model swap."
+  },
+  "qube.settings.advanced_hardware_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced AI & Models hardware tuning (GPU layers and CPU threads)."
+  },
+  "qube.settings.advanced_chat_template_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced AI & Models chat template override for the native engine."
+  },
+  "qube.stt.modelPath": {
+    "type": "string",
+    "default": "",
+    "description": "Absolute path to optional CTranslate2 Whisper folder under models/stt/; empty uses bundled Whisper small."
+  },
+  "qube.tts.modelPath": {
+    "type": "string",
+    "default": "",
+    "description": "Absolute path to optional TTS .onnx under models/tts/; empty uses bundled Kokoro v1.0."
+  },
   "qube.profile.units": {
     "type": ["string", "null"],
     "enum": ["metric", "imperial", null],
@@ -245,7 +285,7 @@
   },
   "qube.mcp.ragAutoActivator": {
     "type": "boolean",
-    "default": false,
+    "default": true,
     "description": "When enabled, custom NLP trigger phrases can wake the Knowledge Base for a single turn even if the master RAG switch is off."
   },
   "qube.mcp.ragStrictIsolation": {
@@ -365,17 +405,17 @@
   },
   "qube.companion.enabled": {
     "type": "boolean",
-    "default": false,
+    "default": true,
     "description": "Show the floating desktop companion when Qube is tray-hidden."
   },
   "qube.companion.showWhenTrayHidden": {
     "type": "boolean",
-    "default": false,
+    "default": true,
     "description": "Show companion while the main window is hidden to the system tray."
   },
   "qube.companion.showWhileWindowOpen": {
     "type": "boolean",
-    "default": false,
+    "default": true,
     "description": "Keep companion visible even when the main window is open."
   },
   "qube.companion.autoHideIdle": {

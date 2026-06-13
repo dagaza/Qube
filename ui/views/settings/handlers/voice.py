@@ -5,6 +5,7 @@ from __future__ import annotations
 # Shared imports from settings shell (handlers use ``self`` as SettingsView).
 import os
 import logging
+import shutil
 from pathlib import Path
 import qtawesome as qta
 from PyQt6.QtWidgets import (
@@ -78,8 +79,29 @@ from core.app_settings import (
     get_llm_top_p,
     get_llm_min_p,
     get_mcp_rag_auto_activator_enabled,
+    get_advanced_stt_unlocked,
+    set_advanced_stt_unlocked,
+    get_advanced_tts_unlocked,
+    set_advanced_tts_unlocked,
+    set_stt_model_path,
+    set_tts_model_path,
 )
-from core.output_token_budget import describe_output_token_budget
+from core.tts_voice_preview import next_tts_voice_preview_phrase
+from core.stt_models import (
+    BUNDLED_STT_MODEL_ID,
+    get_stt_models_dir,
+    is_protected_stt_model,
+    list_selectable_stt_models,
+    resolve_active_stt_model_spec,
+    validate_stt_model_path,
+)
+from core.tts_models import (
+    get_tts_models_dir,
+    is_protected_tts_model,
+    list_selectable_tts_models,
+    resolve_active_tts_path,
+    validate_tts_model_path,
+)
 from core.auxiliary_cognition import (
     get_cognition_models_dir,
     is_protected_cognition_model,
@@ -107,18 +129,20 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
 )
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
-from ui.views.settings.widgets import update_ai_status_strip
 from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
-    memory_knowledge,
+    help,
+    knowledge,
+    memory,
     notifications,
     voice_audio,
 )
 logger = logging.getLogger("Qube.UI.Settings")
 LOCAL_GGUF_SHARD_PATHS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 COGNITION_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+SPEECH_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 4
 _SETTINGS_STATUS_BASE_HOLD_MS = 1800
 _SETTINGS_STATUS_MS_PER_CHAR = 75
 _SETTINGS_STATUS_MIN_HOLD_MS = 2500
@@ -127,9 +151,11 @@ _SETTINGS_STATUS_FADE_MS = 500
 _SECTION_BUILDERS = {
     "voice.audio": voice_audio.build_section,
     "ai.models": ai_models.build_section,
-    "memory.knowledge": memory_knowledge.build_section,
+    "memory": memory.build_section,
+    "knowledge": knowledge.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
+    "help": help.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -274,3 +300,357 @@ class VoiceHandlersMixin:
         set_audio_output_device_index(idx)
         if self.tts_worker:
             self.tts_worker.set_device(idx)
+
+    def _on_audio_input_hint_clicked(self) -> None:
+        self.mic_vu_hint_requested.emit()
+
+    def _play_tts_voice_preview(self) -> None:
+        if not self.tts_worker or not getattr(self.tts_worker, "active_adapter", None):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Voice preview unavailable",
+                "Load a text-to-speech model before previewing voices.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        phrase, next_index = next_tts_voice_preview_phrase(
+            getattr(self, "_tts_voice_preview_phrase_index", 0)
+        )
+        self._tts_voice_preview_phrase_index = next_index
+        self.tts_worker.queue_voice_preview(phrase)
+
+    def _on_advanced_stt_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced STT settings",
+                "Swapping the speech-to-text model affects voice input transcription.\n\n"
+                "Place CTranslate2 Whisper folders (with model.bin) under models/stt/. "
+                "The bundled Whisper small default cannot be deleted.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                self.advanced_stt_toggle.blockSignals(True)
+                self.advanced_stt_toggle.setChecked(False)
+                self.advanced_stt_toggle.blockSignals(False)
+                return
+        set_advanced_stt_unlocked(bool(checked))
+        if hasattr(self, "advanced_stt_panel"):
+            self.advanced_stt_panel.setVisible(bool(checked))
+
+    def _on_advanced_tts_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced TTS settings",
+                "Swapping the text-to-speech model affects spoken replies.\n\n"
+                "Place .onnx files under models/tts/ (Kokoro also needs voices-v1.0.bin "
+                "in the same folder). The bundled Kokoro v1.0 default cannot be deleted.\n\n"
+                "Continue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                self.advanced_tts_toggle.blockSignals(True)
+                self.advanced_tts_toggle.setChecked(False)
+                self.advanced_tts_toggle.blockSignals(False)
+                return
+        set_advanced_tts_unlocked(bool(checked))
+        if hasattr(self, "advanced_tts_panel"):
+            self.advanced_tts_panel.setVisible(bool(checked))
+
+    def _sync_stt_models_dir_label(self) -> None:
+        if hasattr(self, "stt_dir_label"):
+            self.stt_dir_label.setText(get_stt_models_dir())
+
+    def _sync_tts_models_dir_label(self) -> None:
+        if hasattr(self, "tts_dir_label"):
+            self.tts_dir_label.setText(get_tts_models_dir())
+
+    def _refresh_stt_model_list(self) -> None:
+        if not hasattr(self, "stt_model_list"):
+            return
+        self.stt_model_list.clear()
+        active = resolve_active_stt_model_spec()
+        for entry in list_selectable_stt_models():
+            item = QListWidgetItem(entry.display_name)
+            item.setData(Qt.ItemDataRole.UserRole, entry.path)
+            item.setData(SPEECH_ENTRY_DELETABLE_ROLE, entry.is_deletable)
+            self.stt_model_list.addItem(item)
+            if entry.path == active or (
+                entry.is_bundled_default and active == BUNDLED_STT_MODEL_ID
+            ):
+                self.stt_model_list.setCurrentItem(item)
+
+    def _refresh_tts_model_list(self) -> None:
+        if not hasattr(self, "tts_model_list"):
+            return
+        self.tts_model_list.clear()
+        active = resolve_active_tts_path()
+        try:
+            active_norm = str(Path(active).resolve()) if active else ""
+        except OSError:
+            active_norm = active or ""
+        for entry in list_selectable_tts_models():
+            item = QListWidgetItem(entry.display_name)
+            item.setData(Qt.ItemDataRole.UserRole, entry.path)
+            item.setData(SPEECH_ENTRY_DELETABLE_ROLE, entry.is_deletable)
+            self.tts_model_list.addItem(item)
+            try:
+                if active_norm and str(Path(entry.path).resolve()) == active_norm:
+                    self.tts_model_list.setCurrentItem(item)
+            except OSError:
+                if entry.path == active:
+                    self.tts_model_list.setCurrentItem(item)
+
+    def _sync_active_stt_label(self) -> None:
+        if not hasattr(self, "active_stt_model_lbl"):
+            return
+        spec = resolve_active_stt_model_spec()
+        if is_protected_stt_model(spec):
+            self.active_stt_model_lbl.setText(f"{BUNDLED_STT_MODEL_ID} (bundled default)")
+        elif spec and os.path.isdir(spec):
+            self.active_stt_model_lbl.setText(f"{os.path.basename(spec)} (custom)")
+        else:
+            self.active_stt_model_lbl.setText("— (bundled default missing)")
+
+    def _sync_active_tts_label(self) -> None:
+        if not hasattr(self, "active_tts_model_lbl"):
+            return
+        path = resolve_active_tts_path()
+        if not path or not os.path.isfile(path):
+            self.active_tts_model_lbl.setText("— (bundled default missing)")
+            return
+        base = os.path.basename(path)
+        if is_protected_tts_model(path):
+            self.active_tts_model_lbl.setText(f"{base} (bundled default)")
+        else:
+            self.active_tts_model_lbl.setText(f"{base} (custom)")
+
+    def _on_refresh_stt_models_clicked(self) -> None:
+        self._sync_stt_models_dir_label()
+        self._refresh_stt_model_list()
+        self._sync_active_stt_label()
+
+    def _on_refresh_tts_models_clicked(self) -> None:
+        self._sync_tts_models_dir_label()
+        self._refresh_tts_model_list()
+        self._sync_active_tts_label()
+
+    def _reload_stt_from_settings(self) -> None:
+        self.stt_model_changed.emit()
+
+    def _reload_tts_from_settings(self) -> None:
+        self.tts_model_changed.emit()
+
+    def _apply_selected_stt_model(self) -> None:
+        item = self.stt_model_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select an STT model from the list.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        spec = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_stt_model(spec):
+            set_stt_model_path("")
+        else:
+            ok, msg = validate_stt_model_path(spec)
+            if not ok:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                PrestigeDialog(
+                    self.window(),
+                    "Invalid STT model",
+                    msg or "That folder cannot be used as the STT model.",
+                    is_dark=is_dark,
+                ).exec()
+                return
+            set_stt_model_path(spec)
+        self._sync_active_stt_label()
+        self._reload_stt_from_settings()
+
+    def _reset_stt_to_default(self) -> None:
+        set_stt_model_path("")
+        self._refresh_stt_model_list()
+        self._sync_active_stt_label()
+        self._reload_stt_from_settings()
+
+    def _delete_selected_stt_model(self) -> None:
+        item = self.stt_model_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select an STT model folder to delete.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_stt_model(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Protected model",
+                "The bundled Whisper small default cannot be deleted.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        if not item.data(SPEECH_ENTRY_DELETABLE_ROLE):
+            return
+        if not path or not os.path.isdir(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Missing folder",
+                "That folder is not available on disk.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        name = os.path.basename(path)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Delete STT model",
+            f'Permanently delete the folder "{name}" from models/stt/? '
+            "This cannot be undone.",
+            is_dark=is_dark,
+        )
+        if not dlg.exec():
+            return
+        try:
+            shutil.rmtree(path)
+        except OSError as e:
+            logger.error("Failed to delete STT model folder %s: %s", path, e)
+            PrestigeDialog(
+                self.window(),
+                "Delete failed",
+                str(e),
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        active = resolve_active_stt_model_spec()
+        try:
+            was_active = str(Path(active).resolve()) == str(Path(path).resolve())
+        except OSError:
+            was_active = active == path
+        if was_active:
+            set_stt_model_path("")
+            self._reload_stt_from_settings()
+        self._sync_active_stt_label()
+        self._refresh_stt_model_list()
+
+    def _apply_selected_tts_model(self) -> None:
+        item = self.tts_model_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a TTS model from the list.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_tts_model(path):
+            set_tts_model_path("")
+        else:
+            ok, msg = validate_tts_model_path(path)
+            if not ok:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                PrestigeDialog(
+                    self.window(),
+                    "Invalid TTS model",
+                    msg or "That file cannot be used as the TTS model.",
+                    is_dark=is_dark,
+                ).exec()
+                return
+            set_tts_model_path(path)
+        self._sync_active_tts_label()
+        self._reload_tts_from_settings()
+
+    def _reset_tts_to_default(self) -> None:
+        set_tts_model_path("")
+        self._refresh_tts_model_list()
+        self._sync_active_tts_label()
+        self._reload_tts_from_settings()
+
+    def _delete_selected_tts_model(self) -> None:
+        item = self.tts_model_list.currentItem()
+        if not item:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "No model",
+                "Select a TTS model to delete.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if is_protected_tts_model(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Protected model",
+                "The bundled Kokoro v1.0 default cannot be deleted.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        if not item.data(SPEECH_ENTRY_DELETABLE_ROLE):
+            return
+        if not path or not os.path.isfile(path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Missing file",
+                "That file is not available on disk.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        name = os.path.basename(path)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Delete TTS model",
+            f'Permanently delete "{name}" from models/tts/? This cannot be undone.',
+            is_dark=is_dark,
+        )
+        if not dlg.exec():
+            return
+        paths_to_remove = [path]
+        json_sidecar = path + ".json"
+        if os.path.isfile(json_sidecar):
+            paths_to_remove.append(json_sidecar)
+        for target in paths_to_remove:
+            try:
+                os.remove(target)
+            except OSError as e:
+                logger.error("Failed to delete TTS file %s: %s", target, e)
+                PrestigeDialog(
+                    self.window(),
+                    "Delete failed",
+                    str(e),
+                    is_dark=is_dark,
+                ).exec()
+                return
+
+        active = resolve_active_tts_path()
+        try:
+            was_active = str(Path(active).resolve()) == str(Path(path).resolve())
+        except OSError:
+            was_active = active == path
+        if was_active:
+            set_tts_model_path("")
+            self._reload_tts_from_settings()
+        self._sync_active_tts_label()
+        self._refresh_tts_model_list()

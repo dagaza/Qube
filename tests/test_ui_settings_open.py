@@ -32,10 +32,15 @@ def test_settings_search_filters_to_voice_section(main_window, qtbot):
 def test_select_settings_section_by_id(main_window, qtbot):
     settings = main_window.settings_view
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
-    settings.select_settings_section("memory.knowledge")
+    settings.select_settings_section("memory")
     assert (
         settings.settings_section_list.currentRow()
-        == settings._section_row_by_id["memory.knowledge"]
+        == settings._section_row_by_id["memory"]
+    )
+    settings.select_settings_section("knowledge")
+    assert (
+        settings.settings_section_list.currentRow()
+        == settings._section_row_by_id["knowledge"]
     )
     settings.select_settings_section("AI MODELS & ROUTING")
     assert (

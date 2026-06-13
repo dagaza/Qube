@@ -62,6 +62,11 @@ from core.app_settings import (
     get_audio_output_device_index,
     set_audio_output_device_index,
     get_advanced_engine_unlocked,
+    get_advanced_embedding_unlocked,
+    get_advanced_stt_unlocked,
+    get_advanced_hardware_unlocked,
+    get_advanced_chat_template_unlocked,
+    get_advanced_tts_unlocked,
     set_advanced_engine_unlocked,
     get_sidecar_model_path,
     set_sidecar_model_path,
@@ -107,12 +112,13 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
 )
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
-from ui.views.settings.widgets import update_ai_status_strip
 from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
-    memory_knowledge,
+    help,
+    knowledge,
+    memory,
     notifications,
     voice_audio,
 )
@@ -127,9 +133,11 @@ _SETTINGS_STATUS_FADE_MS = 500
 _SECTION_BUILDERS = {
     "voice.audio": voice_audio.build_section,
     "ai.models": ai_models.build_section,
-    "memory.knowledge": memory_knowledge.build_section,
+    "memory": memory.build_section,
+    "knowledge": knowledge.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
+    "help": help.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -374,6 +382,53 @@ class PersistenceHandlersMixin:
             self.advanced_engine_toggle.blockSignals(False)
             if hasattr(self, "advanced_engine_panel"):
                 self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
+
+        if hasattr(self, "advanced_embedding_toggle"):
+            self.advanced_embedding_toggle.blockSignals(True)
+            self.advanced_embedding_toggle.setChecked(get_advanced_embedding_unlocked())
+            self.advanced_embedding_toggle.blockSignals(False)
+            if hasattr(self, "advanced_embedding_panel"):
+                self.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
+
+        self._sync_embedding_models_dir_label()
+        self._refresh_embedding_gguf_list()
+        self._sync_active_embedding_label()
+
+        if hasattr(self, "advanced_stt_toggle"):
+            self.advanced_stt_toggle.blockSignals(True)
+            self.advanced_stt_toggle.setChecked(get_advanced_stt_unlocked())
+            self.advanced_stt_toggle.blockSignals(False)
+            if hasattr(self, "advanced_stt_panel"):
+                self.advanced_stt_panel.setVisible(get_advanced_stt_unlocked())
+
+        if hasattr(self, "advanced_tts_toggle"):
+            self.advanced_tts_toggle.blockSignals(True)
+            self.advanced_tts_toggle.setChecked(get_advanced_tts_unlocked())
+            self.advanced_tts_toggle.blockSignals(False)
+            if hasattr(self, "advanced_tts_panel"):
+                self.advanced_tts_panel.setVisible(get_advanced_tts_unlocked())
+
+        if hasattr(self, "advanced_hardware_toggle"):
+            self.advanced_hardware_toggle.blockSignals(True)
+            self.advanced_hardware_toggle.setChecked(get_advanced_hardware_unlocked())
+            self.advanced_hardware_toggle.blockSignals(False)
+
+        if hasattr(self, "advanced_chat_template_toggle"):
+            self.advanced_chat_template_toggle.blockSignals(True)
+            self.advanced_chat_template_toggle.setChecked(
+                get_advanced_chat_template_unlocked()
+            )
+            self.advanced_chat_template_toggle.blockSignals(False)
+
+        if hasattr(self, "_sync_hardware_chat_template_panels"):
+            self._sync_hardware_chat_template_panels()
+
+        self._sync_stt_models_dir_label()
+        self._sync_tts_models_dir_label()
+        self._refresh_stt_model_list()
+        self._refresh_tts_model_list()
+        self._sync_active_stt_label()
+        self._sync_active_tts_label()
 
         self.auto_load_last_model_cb.blockSignals(True)
         checked = get_auto_load_last_model_on_startup()

@@ -75,7 +75,7 @@ venv/bin/python tools/evaluate_router.py \
 # Substring-only router (no embedder GGUF required)
 python3 tools/evaluate_router.py --no-embeddings
 
-# Full Tier-2 centroids (requires venv + models/nomic-embed-text-v1.5.Q4_K_M.gguf)
+# Full Tier-2 centroids (requires venv + ~/.qube/models/embedding/nomic-embed-text-v1.5.Q4_K_M.gguf)
 venv/bin/python tools/evaluate_router.py
 
 # With LanceDB retrieval hit counts (user DB: ~/.qube/data/lancedb)

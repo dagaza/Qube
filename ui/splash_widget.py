@@ -17,14 +17,14 @@ from PyQt6.QtWidgets import (
 
 # Startup steps shown beside the spinner (index must match splash_overlay phase order).
 SPLASH_STEP_LABELS: tuple[str, ...] = (
-    "nomic-embed-text-v1.5.Q4_K_M.gguf",
+    "Embedding model (Nomic v1.5)",
     "Document store & qube_data.db",
     "Audio, STT, native LLM, sidecar",
     "Memory enrichment workers",
     "Main window UI",
     "Service connections & sync",
     "Language model (optional)",
-    "kokoro-v1.0.onnx & audio runtime",
+    "Kokoro TTS & audio runtime",
 )
 
 

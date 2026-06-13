@@ -1,4 +1,4 @@
-"""Memory & Knowledge settings section."""
+"""Memory settings section."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from core.app_settings import (
 )
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
-from ui.views.settings.widgets import add_subsection_to_form, add_subsection_to_layout
+from ui.views.settings.widgets import add_subsection_to_form
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -140,10 +140,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     memory_form.addRow("", promo_preset_row)
     memory_form.addRow("", consolidate_row)
     layout.addWidget(memory_widget)
-
-    # --- Library search phrases ---
-    add_subsection_to_layout(layout, "Library search phrases", anchor="triggers")
-    layout.addWidget(host._build_triggers_manager())
 
     # --- Personalization ---
     personal_widget = QWidget()

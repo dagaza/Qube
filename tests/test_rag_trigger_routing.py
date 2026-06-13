@@ -7,7 +7,9 @@ import re
 import unittest
 
 from core.rag_trigger_routing import (
+    DEFAULT_RAG_TRIGGERS,
     apply_custom_rag_trigger_route,
+    is_operational_library_prompt,
     matches_custom_rag_trigger,
 )
 
@@ -35,6 +37,54 @@ class MatchesCustomRagTriggerTests(unittest.TestCase):
                 ("search my files",),
             )
         )
+
+
+class OperationalLibraryPromptTests(unittest.TestCase):
+    def test_blocks_library_management_how_to(self) -> None:
+        prompts = (
+            "how can i remove entries from my library",
+            "how do i delete files from my library in spotify",
+            "how to add documents to my knowledge base",
+            "how does the library work in qube",
+            "how can i upload a pdf to my library",
+        )
+        triggers = DEFAULT_RAG_TRIGGERS
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertTrue(is_operational_library_prompt(prompt.lower()))
+                self.assertFalse(matches_custom_rag_trigger(prompt.lower(), triggers))
+
+    def test_allows_retrieval_from_my_phrases(self) -> None:
+        prompts = (
+            "summarize the policy from my library",
+            "what does it say from my knowledge base about refunds",
+            "pull the answer from my files about Q3",
+            "find the onboarding doc from my pdf",
+        )
+        triggers = DEFAULT_RAG_TRIGGERS
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertFalse(is_operational_library_prompt(prompt.lower()))
+                self.assertTrue(matches_custom_rag_trigger(prompt.lower(), triggers))
+
+    def test_default_triggers_avoid_web_tokens(self) -> None:
+        from mcp.cognitive_router import _WEB_TRIGGERS
+
+        for phrase in DEFAULT_RAG_TRIGGERS:
+            lowered = phrase.lower()
+            for token in _WEB_TRIGGERS:
+                with self.subTest(phrase=phrase, token=token):
+                    self.assertNotIn(token, lowered)
+
+
+class DefaultRagTriggersTests(unittest.TestCase):
+    def test_includes_from_my_phrases(self) -> None:
+        for phrase in (
+            "from my files",
+            "from my library",
+            "from my knowledge base",
+        ):
+            self.assertIn(phrase, DEFAULT_RAG_TRIGGERS)
 
 
 class ApplyCustomRagTriggerRouteTests(unittest.TestCase):
@@ -90,7 +140,7 @@ class LLMWorkerRagTriggerContractTests(unittest.TestCase):
         self.assertRegex(
             self.src,
             r'execution_route in \["RAG", "HYBRID"\] and \(\s*'
-            r"self\.mcp_rag_enabled or force_rag_via_trigger",
+            r"self\.mcp_rag_enabled\s*\n\s*or force_rag_via_trigger\s*\n\s*or scoped_library_active",
         )
 
     def test_does_not_blindly_assign_rag_on_trigger(self) -> None:

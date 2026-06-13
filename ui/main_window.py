@@ -10,16 +10,18 @@ if __package__ in (None, ""):
         sys.path.insert(0, str(_repo_root))
 
 import psutil
+import math
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QToolButton, QLabel, QFrame,
     QSizeGrip, QMenu, QSystemTrayIcon, QStackedWidget, QSizePolicy,
-    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX
+    QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX,
+    QGraphicsDropShadowEffect,
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
 from PyQt6.QtGui import (
-    QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics, QScreen,
+    QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics, QScreen, QPen,
 )
 import qtawesome as qta
 from core.paths import install_root, resource_path
@@ -80,15 +82,80 @@ _ABSOLUTE_MIN_HEIGHT = 480
 
 class VUMeter(QWidget):
     """A sleek, custom-painted VU meter with a Green-Yellow-Red gradient."""
+    _ATTENTION_TICK_MS = 50
+    _ATTENTION_DEFAULT_MS = 8000
+    _ATTENTION_LEVEL_STOP = 0.08
+    _ATTENTION_LEVEL_STOP_DELAY_MS = 2000
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(100, 6) # Thin, modern horizontal bar
         self._level = 0.0 # Range: 0.0 to 1.0
+        self._attention_pulse = False
+        self._pulse_phase = 0.0
+        self._attention_timer = QTimer(self)
+        self._attention_timer.setInterval(self._ATTENTION_TICK_MS)
+        self._attention_timer.timeout.connect(self._on_attention_tick)
+        self._attention_remaining_ms = 0
+        self._attention_elapsed_ms = 0
+        self._glow_effect = QGraphicsDropShadowEffect(self)
+        self._glow_effect.setBlurRadius(12)
+        self._glow_effect.setOffset(0, 0)
+        self._glow_effect.setColor(QColor(0, 0, 0, 0))
+        self.setGraphicsEffect(self._glow_effect)
+
+    def start_attention_pulse(self, duration_ms: int | None = None) -> None:
+        """Pulse a glow around the meter so users notice the live input level bar."""
+        ms = self._ATTENTION_DEFAULT_MS if duration_ms is None else max(500, int(duration_ms))
+        self._attention_pulse = True
+        self._attention_remaining_ms = ms
+        self._attention_elapsed_ms = 0
+        if not self._attention_timer.isActive():
+            self._attention_timer.start()
+        self._sync_attention_glow()
+        self.raise_()
+
+    def _stop_attention_pulse(self) -> None:
+        self._attention_pulse = False
+        self._attention_remaining_ms = 0
+        self._attention_elapsed_ms = 0
+        self._attention_timer.stop()
+        self._glow_effect.setColor(QColor(0, 0, 0, 0))
+        self.update()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.update()
+
+    def _sync_attention_glow(self) -> None:
+        glow_alpha = int(120 + 135 * (0.5 + 0.5 * math.sin(self._pulse_phase)))
+        glow = QColor("#8b5cf6")
+        glow.setAlpha(glow_alpha)
+        self._glow_effect.setColor(glow)
+        self.update()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.update()
+
+    def _on_attention_tick(self) -> None:
+        self._pulse_phase += 0.22
+        self._attention_remaining_ms -= self._ATTENTION_TICK_MS
+        self._attention_elapsed_ms += self._ATTENTION_TICK_MS
+        if self._attention_remaining_ms <= 0:
+            self._stop_attention_pulse()
+            return
+        self._sync_attention_glow()
 
     def set_level(self, level: float):
         """Updates the visual level and triggers a repaint."""
         # Clamp the value between 0.0 and 1.0 for safety
-        self._level = max(0.0, min(1.0, float(level)))
+        level = max(0.0, min(1.0, float(level)))
+        if (
+            self._attention_pulse
+            and level >= self._ATTENTION_LEVEL_STOP
+            and self._attention_elapsed_ms >= self._ATTENTION_LEVEL_STOP_DELAY_MS
+        ):
+            self._stop_attention_pulse()
+        self._level = level
         self.update() 
 
     def paintEvent(self, event):
@@ -96,9 +163,26 @@ class VUMeter(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # 1. Draw the dark background track
-        painter.setBrush(QColor("#313244"))
+        track_color = QColor("#45475a" if self._attention_pulse else "#313244")
+        painter.setBrush(track_color)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 3, 3)
+
+        if self._attention_pulse:
+            overlay_alpha = int(40 + 35 * (0.5 + 0.5 * math.sin(self._pulse_phase * 0.9)))
+            overlay = QColor("#8b5cf6")
+            overlay.setAlpha(overlay_alpha)
+            painter.setBrush(overlay)
+            painter.drawRoundedRect(self.rect(), 3, 3)
+
+            # In-bounds purple rim so the highlight reads even when the outer blur is tight.
+            rim_alpha = int(90 + 80 * (0.5 + 0.5 * math.sin(self._pulse_phase * 1.2)))
+            rim = QColor("#a78bfa")
+            rim.setAlpha(rim_alpha)
+            painter.setPen(QPen(rim, 1))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 3, 3)
+            painter.setPen(Qt.PenStyle.NoPen)
 
         if self._level > 0:
             # 2. Calculate how far the bar should fill
@@ -114,6 +198,13 @@ class VUMeter(QWidget):
             # 4. Paint the active level
             painter.setBrush(gradient)
             painter.drawRoundedRect(active_rect, 3, 3)
+        elif self._attention_pulse:
+            # Subtle idle shimmer so the bar is noticeable before the user speaks.
+            shimmer_alpha = int(80 + 70 * (0.5 + 0.5 * math.sin(self._pulse_phase * 1.4)))
+            shimmer = QColor("#c4b5fd")
+            shimmer.setAlpha(shimmer_alpha)
+            painter.setBrush(shimmer)
+            painter.drawRoundedRect(QRect(0, 0, max(16, self.width() // 4), self.height()), 3, 3)
 
 class NoScrollSpinBox(QSpinBox):
     def wheelEvent(self, event):
@@ -366,6 +457,19 @@ class MainWindow(QMainWindow):
         self.settings_view.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
         self.audio_extra_controls.setVisible(
             self.settings_view.pin_audio_cb.isChecked()
+        )
+
+        # 1b. Toolbar TTS voice selector visibility ↔ Settings pin option
+        self.settings_view.tts_voice_pin_toggle.connect(
+            self.global_voice_selector.setVisible
+        )
+        self.global_voice_selector.setVisible(
+            self.settings_view.pin_tts_voice_cb.isChecked()
+        )
+
+        # 1c. Settings Audio Input hint → top-bar mic level meter highlight
+        self.settings_view.mic_vu_hint_requested.connect(
+            self.pulse_mic_vu_meter_attention
         )
 
         # 2. Sync Settings -> Toolbar
@@ -693,9 +797,16 @@ class MainWindow(QMainWindow):
             self.app_logo.setStyleSheet("font-size: 18px;")
 
         # Mic icon, VU meter, and chevron mic selector
-        mic_icon = QLabel()
-        mic_icon.setPixmap(qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14)))
+        self.topbar_mic_icon = QLabel()
+        self.topbar_mic_icon.setPixmap(
+            qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14))
+        )
         self.vu_meter = VUMeter()
+        self._topbar_mic_attention_phase = 0.0
+        self._topbar_mic_attention_ms = 0
+        self._topbar_mic_attention_timer = QTimer(self)
+        self._topbar_mic_attention_timer.setInterval(VUMeter._ATTENTION_TICK_MS)
+        self._topbar_mic_attention_timer.timeout.connect(self._on_topbar_mic_attention_tick)
 
         self.mic_selector_btn = QToolButton()
         self.mic_selector_btn.setObjectName("TopBarMicSelector")
@@ -710,7 +821,7 @@ class MainWindow(QMainWindow):
         self._apply_topbar_mic_chevron_style()
 
         left_layout.addWidget(self.app_logo)
-        left_layout.addWidget(mic_icon)
+        left_layout.addWidget(self.topbar_mic_icon)
         left_layout.addWidget(self.vu_meter)
         left_layout.addWidget(self.mic_selector_btn)
         left_layout.addStretch()
@@ -930,6 +1041,32 @@ class MainWindow(QMainWindow):
         """
         if hasattr(self, 'vu_meter'):
             self.vu_meter.set_level(level)
+
+    def pulse_mic_vu_meter_attention(self, duration_ms: int = 8000) -> None:
+        """Highlight the top-bar mic level meter (Settings → Audio Input hint)."""
+        if hasattr(self, "vu_meter"):
+            self.vu_meter.start_attention_pulse(duration_ms)
+        if hasattr(self, "topbar_mic_icon"):
+            self._start_topbar_mic_attention(duration_ms)
+
+    def _start_topbar_mic_attention(self, duration_ms: int) -> None:
+        self._topbar_mic_attention_ms = max(500, int(duration_ms))
+        if not self._topbar_mic_attention_timer.isActive():
+            self._topbar_mic_attention_timer.start()
+        self._on_topbar_mic_attention_tick()
+
+    def _on_topbar_mic_attention_tick(self) -> None:
+        self._topbar_mic_attention_phase += 0.25
+        self._topbar_mic_attention_ms -= VUMeter._ATTENTION_TICK_MS
+        if self._topbar_mic_attention_ms <= 0:
+            self._topbar_mic_attention_timer.stop()
+            color = "#64748b"
+        else:
+            pulse = 0.5 + 0.5 * math.sin(self._topbar_mic_attention_phase)
+            color = "#8b5cf6" if pulse >= 0.5 else "#eab308"
+        self.topbar_mic_icon.setPixmap(
+            qta.icon("fa5s.microphone", color=color).pixmap(QSize(14, 14))
+        )
     
     def set_rag_state(self, state: str) -> None:
         """Manages the Traffic Light colors of the RAG indicator."""
@@ -1252,9 +1389,12 @@ class MainWindow(QMainWindow):
         layout.setSpacing(25)
 
         # Helper to create consistent Nav Buttons
-        def create_nav_btn(icon_name, index=None, size=24, tooltip=None):
+        def create_nav_btn(icon_name=None, index=None, size=24, tooltip=None, svg_icon=None):
             btn = QPushButton()
-            btn._nav_fa_icon = icon_name
+            if svg_icon is not None:
+                btn._nav_svg_icon = svg_icon
+            else:
+                btn._nav_fa_icon = icon_name
             btn._nav_icon_size = size
             btn.setFixedSize(44, 44)
             btn.setCheckable(True)
@@ -1272,11 +1412,16 @@ class MainWindow(QMainWindow):
 
         self.nav_library = create_nav_btn('fa5s.book', 1, tooltip="Library")
         self.nav_library.setObjectName("NavLibrary")
-        self.nav_memory = create_nav_btn('fa5s.brain', 2, size=22, tooltip="Memory Manager")
+        self.nav_memory = create_nav_btn('fa5s.memory', 2, size=22, tooltip="Memory Manager")
         self.nav_memory.setObjectName("NavMemory")
         self.nav_telemetry = create_nav_btn('fa5s.tachometer-alt', 3, tooltip="Telemetry")
         self.nav_telemetry.setObjectName("NavTelemetry")
-        self.nav_models = create_nav_btn('fa5s.microchip', 4, size=20, tooltip="Model Manager")
+        self.nav_models = create_nav_btn(
+            index=4,
+            size=24,
+            tooltip="Model Manager",
+            svg_icon=resource_path("assets", "icons", "ai.svg"),
+        )
         self.nav_models.setObjectName("NavModels")
 
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -1617,8 +1762,10 @@ class MainWindow(QMainWindow):
         param_layout.addWidget(p_title)
 
         desc_temp = (
-            "Creativity Slider: Lower values (0.1-0.3) produce strict, factual answers. "
-            "Higher values (0.7-1.0) make Qube more creative."
+            "Creativity Slider: Lower values (0.1-0.3) produce strict, factual answers,  "
+            "but will make the answers sound more robotic and less natural. "
+            "Higher values (0.7-1.0) make Qube more creative and will make the answers sound more natural. "
+            "It is recommended to keep the temperature around 0.7 - 0.8 for balanced performance."
         )
         desc_ctx = (
             "Total token budget per turn: instructions, chat history, your message, "
@@ -2403,13 +2550,37 @@ class MainWindow(QMainWindow):
         inactive = "#cdd6f4" if self._is_dark_theme else "#64748b"
         return active, inactive
 
+    def _make_tinted_svg_icon(self, svg_path, color_hex: str, size: int) -> QIcon:
+        pixmap = QPixmap(str(svg_path))
+        if pixmap.isNull():
+            return QIcon(str(svg_path))
+        target_size = QSize(size, size)
+        pixmap = pixmap.scaled(
+            target_size,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        tinted = QPixmap(pixmap.size())
+        tinted.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(tinted)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), QColor(color_hex))
+        painter.end()
+        return QIcon(tinted)
+
     def _refresh_nav_btn_icon(self, btn: QPushButton) -> None:
-        icon_name = getattr(btn, "_nav_fa_icon", None)
-        if not icon_name:
-            return
         size = getattr(btn, "_nav_icon_size", 24)
         active_color, inactive_color = self._nav_icon_colors()
         color = active_color if btn.isChecked() else inactive_color
+        svg_path = getattr(btn, "_nav_svg_icon", None)
+        if svg_path is not None:
+            btn.setIcon(self._make_tinted_svg_icon(svg_path, color, size))
+            btn.setIconSize(QSize(size, size))
+            return
+        icon_name = getattr(btn, "_nav_fa_icon", None)
+        if not icon_name:
+            return
         btn.setIcon(qta.icon(icon_name, color=color))
         btn.setIconSize(QSize(size, size))
 
@@ -3028,17 +3199,48 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'telemetry_view'):
             self.telemetry_view.update_tts_latency(ms)
 
-    def update_global_voice_dropdown(self, model_name: str, voices: list) -> None:
-        """Receives loaded voices from the TTS worker and populates the global toolbar."""
+    def _sync_tts_voice_selector_labels(self, voice_name: str) -> None:
+        if hasattr(self, "global_voice_selector"):
+            self.global_voice_selector.setText(voice_name)
+        settings = getattr(self, "settings_view", None)
+        if settings is not None and hasattr(settings, "voice_selector"):
+            settings.voice_selector.setText(voice_name)
+            settings.voice_selector.update()
+
+    def _on_tts_voice_selected(self, voice_name: str) -> None:
+        if self._tts_worker:
+            self._tts_worker.set_voice(voice_name)
+        self._sync_tts_voice_selector_labels(voice_name)
+
+    def update_tts_voice_dropdowns(self, model_name: str, voices: list) -> None:
+        """Populate Settings and toolbar TTS voice selectors when voices load."""
+        _ = model_name
         if not voices:
             return
 
+        active = (
+            self._tts_worker.active_voice_name
+            if self._tts_worker and hasattr(self._tts_worker, "active_voice_name")
+            else voices[0]
+        )
+        if active not in voices:
+            active = voices[0]
+
+        menu_items = [(v, v) for v in voices]
         self._build_prestige_menu(
             self.global_voice_selector,
-            [(v, v) for v in voices],
-            lambda v: self._tts_worker.set_voice(v) if self._tts_worker else None
+            menu_items,
+            self._on_tts_voice_selected,
         )
-        
-        self.global_voice_selector.setText(voices[0])
-        if self._tts_worker:
-            self._tts_worker.set_voice(voices[0])
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "voice_selector"):
+            self.settings_view._build_prestige_menu(
+                self.settings_view.voice_selector,
+                menu_items,
+                self._on_tts_voice_selected,
+            )
+
+        self._on_tts_voice_selected(active)
+
+    def update_global_voice_dropdown(self, model_name: str, voices: list) -> None:
+        """Backward-compatible alias for TTS voice menu population."""
+        self.update_tts_voice_dropdowns(model_name, voices)

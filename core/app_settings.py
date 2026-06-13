@@ -37,6 +37,15 @@ KEY_SIDECAR_MODEL_PATH = "qube.sidecar.model_path"
 KEY_SIDECAR_CHAT_FORMAT = "qube.sidecar.chat_format"
 KEY_ADVANCED_ENGINE_UNLOCKED = "qube.settings.advanced_engine_unlocked"
 KEY_ADVANCED_ENGINE_ACKNOWLEDGED = "qube.settings.advanced_engine_acknowledged"
+KEY_ADVANCED_EMBEDDING_UNLOCKED = "qube.settings.advanced_embedding_unlocked"
+KEY_ADVANCED_SPEECH_MODELS_UNLOCKED = "qube.settings.advanced_speech_models_unlocked"
+KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
+KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
+KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
+KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
+KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
+KEY_STT_MODEL_PATH = "qube.stt.modelPath"
+KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -303,6 +312,131 @@ def get_advanced_engine_acknowledged() -> bool:
 
 def set_advanced_engine_acknowledged(acknowledged: bool) -> None:
     _store().set(KEY_ADVANCED_ENGINE_ACKNOWLEDGED, bool(acknowledged))
+
+
+def get_advanced_embedding_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_EMBEDDING_UNLOCKED, False))
+
+
+def set_advanced_embedding_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_EMBEDDING_UNLOCKED, bool(unlocked))
+
+
+def get_embedding_model_path() -> str:
+    return str(_store().get(KEY_EMBEDDING_MODEL_PATH, "") or "").strip()
+
+
+def set_embedding_model_path(path: str) -> None:
+    from core.embedding_models import validate_embedding_model_path
+
+    cleaned = str(path or "").strip()
+    if not cleaned:
+        _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+        return
+    ok, _msg = validate_embedding_model_path(cleaned)
+    if ok:
+        try:
+            cleaned = str(Path(cleaned).resolve())
+        except OSError:
+            cleaned = os.path.abspath(cleaned)
+        _store().set(KEY_EMBEDDING_MODEL_PATH, cleaned)
+    else:
+        _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+
+
+def get_advanced_speech_models_unlocked() -> bool:
+    """Legacy combined flag; true when either STT or TTS advanced panel is unlocked."""
+    return get_advanced_stt_unlocked() or get_advanced_tts_unlocked()
+
+
+def set_advanced_speech_models_unlocked(unlocked: bool) -> None:
+    set_advanced_stt_unlocked(unlocked)
+    set_advanced_tts_unlocked(unlocked)
+
+
+def get_advanced_stt_unlocked() -> bool:
+    store = _store()
+    if bool(store.get(KEY_ADVANCED_STT_UNLOCKED, False)):
+        return True
+    return bool(store.get(KEY_ADVANCED_SPEECH_MODELS_UNLOCKED, False))
+
+
+def set_advanced_stt_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_STT_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_tts_unlocked() -> bool:
+    store = _store()
+    if bool(store.get(KEY_ADVANCED_TTS_UNLOCKED, False)):
+        return True
+    return bool(store.get(KEY_ADVANCED_SPEECH_MODELS_UNLOCKED, False))
+
+
+def set_advanced_tts_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_TTS_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_hardware_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_HARDWARE_UNLOCKED, False))
+
+
+def set_advanced_hardware_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_HARDWARE_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_chat_template_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED, False))
+
+
+def set_advanced_chat_template_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED, bool(unlocked))
+
+
+def get_stt_model_path() -> str:
+    return str(_store().get(KEY_STT_MODEL_PATH, "") or "").strip()
+
+
+def set_stt_model_path(path: str) -> None:
+    from core.stt_models import is_protected_stt_model, validate_stt_model_path
+
+    cleaned = str(path or "").strip()
+    if not cleaned:
+        _store().set(KEY_STT_MODEL_PATH, "")
+        return
+    ok, _msg = validate_stt_model_path(cleaned)
+    if ok:
+        if is_protected_stt_model(cleaned):
+            _store().set(KEY_STT_MODEL_PATH, "")
+            return
+        try:
+            cleaned = str(Path(cleaned).resolve())
+        except OSError:
+            cleaned = os.path.abspath(cleaned)
+        _store().set(KEY_STT_MODEL_PATH, cleaned)
+    else:
+        _store().set(KEY_STT_MODEL_PATH, "")
+
+
+def get_tts_model_path() -> str:
+    return str(_store().get(KEY_TTS_MODEL_PATH, "") or "").strip()
+
+
+def set_tts_model_path(path: str) -> None:
+    from core.tts_models import validate_tts_model_path
+
+    cleaned = str(path or "").strip()
+    if not cleaned:
+        _store().set(KEY_TTS_MODEL_PATH, "")
+        return
+    ok, _msg = validate_tts_model_path(cleaned)
+    if ok:
+        try:
+            cleaned = str(Path(cleaned).resolve())
+        except OSError:
+            cleaned = os.path.abspath(cleaned)
+        _store().set(KEY_TTS_MODEL_PATH, cleaned)
+    else:
+        _store().set(KEY_TTS_MODEL_PATH, "")
 
 
 def get_sidecar_model_path() -> str:
@@ -667,8 +801,8 @@ def set_mcp_rag_enabled(enabled: bool) -> None:
 
 
 def get_mcp_rag_auto_activator_enabled() -> bool:
-    """NLP custom-phrase RAG auto-activator. Default False."""
-    return bool(_store().get(KEY_MCP_RAG_AUTO_ACTIVATOR, False))
+    """NLP custom-phrase RAG auto-activator. Default True."""
+    return bool(_store().get(KEY_MCP_RAG_AUTO_ACTIVATOR, True))
 
 
 def set_mcp_rag_auto_activator_enabled(enabled: bool) -> None:
@@ -1093,7 +1227,7 @@ def get_companion_enabled() -> bool:
 
     if os.environ.get("QUBE_COMPANION", "").strip().lower() in ("1", "true", "yes"):
         return True
-    return bool(_store().get(KEY_COMPANION_ENABLED, False))
+    return bool(_store().get(KEY_COMPANION_ENABLED, True))
 
 
 def set_companion_enabled(enabled: bool) -> None:
@@ -1101,7 +1235,7 @@ def set_companion_enabled(enabled: bool) -> None:
 
 
 def get_companion_show_when_tray_hidden() -> bool:
-    return bool(_store().get(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, False))
+    return bool(_store().get(KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN, True))
 
 
 def set_companion_show_when_tray_hidden(enabled: bool) -> None:
@@ -1109,7 +1243,7 @@ def set_companion_show_when_tray_hidden(enabled: bool) -> None:
 
 
 def get_companion_show_while_window_open() -> bool:
-    return bool(_store().get(KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN, False))
+    return bool(_store().get(KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN, True))
 
 
 def set_companion_show_while_window_open(enabled: bool) -> None:

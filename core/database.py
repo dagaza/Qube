@@ -15,6 +15,7 @@ from core.library_folder_policy import (
     is_qube_managed_document_filename,
 )
 from core.paths import default_db_path
+from core.rag_trigger_routing import DEFAULT_RAG_TRIGGERS
 
 logger = logging.getLogger("Qube.Database")
 
@@ -109,19 +110,14 @@ class DatabaseManager:
                 # 🔑 7. SEED DEFAULT TRIGGERS (If table is empty)
                 cursor.execute("SELECT COUNT(*) FROM rag_triggers")
                 if cursor.fetchone()[0] == 0:
-                    default_triggers = [
-                        "search my files",
-                        "in my documents",
-                        "according to my knowledge base",
-                        "based on my files",
-                        "check my library"
-                    ]
-                    for trigger in default_triggers:
+                    for trigger in DEFAULT_RAG_TRIGGERS:
                         cursor.execute(
                             "INSERT INTO rag_triggers (id, phrase) VALUES (?, ?)",
-                            (str(uuid.uuid4()), trigger)
+                            (str(uuid.uuid4()), trigger),
                         )
                     logger.info("Seeded default RAG triggers into database.")
+                else:
+                    self._ensure_default_rag_triggers(conn)
 
                 # 8. Sidebar folder tables (Conversations + Library)
                 cursor.execute("""
@@ -189,6 +185,20 @@ class DatabaseManager:
         )
         self._migrate_qube_managed_documents_to_qube_folder(conn, lib_main, lib_qube)
         conn.commit()
+
+    def _ensure_default_rag_triggers(self, conn: sqlite3.Connection) -> None:
+        """Backfill any newly shipped default trigger phrases for existing installs."""
+        cursor = conn.cursor()
+        added = 0
+        for trigger in DEFAULT_RAG_TRIGGERS:
+            cur = cursor.execute(
+                "INSERT OR IGNORE INTO rag_triggers (id, phrase) VALUES (?, ?)",
+                (str(uuid.uuid4()), trigger),
+            )
+            added += cur.rowcount
+        if added:
+            conn.commit()
+            logger.info("Backfilled %d default RAG trigger phrase(s).", added)
 
     def _ensure_main_folder_row(
         self, conn: sqlite3.Connection, table: str, name: str

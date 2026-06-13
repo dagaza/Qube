@@ -18,6 +18,9 @@ from workers.native_llama_engine import NativeLlamaEngine
 from workers.sidecar_llm_worker import SidecarLlmWorker
 from core.sidecar_llm import SidecarLlmClient
 from core.auxiliary_cognition import migrate_stale_sidecar_override
+from core.embedding_models import migrate_stale_embedding_override
+from core.stt_models import migrate_stale_stt_override
+from core.tts_models import migrate_legacy_tts_layout, migrate_stale_tts_override, resolve_active_tts_path
 from workers.ingestion_worker import IngestionWorker 
 from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
@@ -124,6 +127,10 @@ class Qube:
         self.native_llama_engine.start()
 
         migrate_stale_sidecar_override()
+        migrate_stale_embedding_override()
+        migrate_stale_stt_override()
+        migrate_legacy_tts_layout()
+        migrate_stale_tts_override()
         self.sidecar_worker = SidecarLlmWorker(self.db_manager)
         self.sidecar_worker.start()
         self.sidecar_client = SidecarLlmClient(self.sidecar_worker)
@@ -216,8 +223,7 @@ class Qube:
     def _boot_runtime(self, tick: Callable[[str], None]) -> None:
         tick("Starting audio and voice…")
         self.audio_worker.start()
-        tts_path = os.path.join("models", "tts", "kokoro-v1.0.onnx")
-        self.tts_worker.load_voice(tts_path)
+        self.tts_worker.load_voice(resolve_active_tts_path())
         tick("Ready")
         self._pending_enrichment_context = {}
         self._pending_turn_session_id: str | None = None
@@ -251,6 +257,60 @@ class Qube:
         else:
             self.window.notification_service.emit(event)
 
+    def _reload_embedder_from_settings(self) -> None:
+        """Reload the global embedder after Settings → Knowledge model swap."""
+        from workers.intent_router import EmbeddingCache
+
+        try:
+            self.embedder.reload()
+        except Exception as e:
+            logger.error("Embedding model reload failed: %s", e)
+            return
+
+        self.llm_worker.embedder = self.embedder
+        self.llm_worker.embedding_cache = EmbeddingCache(self.embedder)
+        self.enrichment_worker.embedder = self.embedder
+
+        w = self.window
+        if isinstance(getattr(w, "workers", None), dict):
+            w.workers["embedder"] = self.embedder
+        mmv = getattr(w, "memory_manager_view", None)
+        if mmv is not None:
+            mmv.embedder = self.embedder
+            worker = getattr(mmv, "worker", None)
+            if worker is not None:
+                worker.embedder = self.embedder
+
+        if hasattr(w, "settings_view"):
+            sv = w.settings_view
+            if hasattr(sv, "_sync_active_embedding_label"):
+                sv._sync_active_embedding_label()
+            if hasattr(sv, "_refresh_embedding_gguf_list"):
+                sv._refresh_embedding_gguf_list()
+
+    def _reload_stt_from_settings(self) -> None:
+        if hasattr(self.stt_worker, "reload_from_settings"):
+            self.stt_worker.reload_from_settings()
+        w = self.window
+        if hasattr(w, "settings_view"):
+            sv = w.settings_view
+            if hasattr(sv, "_sync_active_stt_label"):
+                sv._sync_active_stt_label()
+            if hasattr(sv, "_refresh_stt_model_list"):
+                sv._refresh_stt_model_list()
+
+    def _reload_tts_from_settings(self) -> None:
+        from core.tts_models import resolve_active_tts_path
+
+        self.tts_worker.load_voice(resolve_active_tts_path())
+        w = self.window
+        if hasattr(w, "settings_view"):
+            sv = w.settings_view
+            if hasattr(sv, "_sync_active_tts_label"):
+                sv._sync_active_tts_label()
+            if hasattr(sv, "_refresh_tts_model_list"):
+                sv._refresh_tts_model_list()
+
     def _connect_signals(self):
         w = self.window
         
@@ -269,7 +329,7 @@ class Qube:
         self.tts_worker.turn_settled.connect(w.conversations_view.on_tts_turn_settled)
 
         # Settings View Routing
-        self.tts_worker.model_loaded.connect(self.window.update_global_voice_dropdown)
+        self.tts_worker.model_loaded.connect(self.window.update_tts_voice_dropdowns)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_toggle'):
             self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
@@ -292,6 +352,24 @@ class Qube:
         ):
             self.window.settings_view.external_settings_reloaded.connect(
                 self._on_external_settings_reloaded
+            )
+        if hasattr(self.window, "settings_view") and hasattr(
+            self.window.settings_view, "embedding_model_changed"
+        ):
+            self.window.settings_view.embedding_model_changed.connect(
+                self._reload_embedder_from_settings
+            )
+        if hasattr(self.window, "settings_view") and hasattr(
+            self.window.settings_view, "stt_model_changed"
+        ):
+            self.window.settings_view.stt_model_changed.connect(
+                self._reload_stt_from_settings
+            )
+        if hasattr(self.window, "settings_view") and hasattr(
+            self.window.settings_view, "tts_model_changed"
+        ):
+            self.window.settings_view.tts_model_changed.connect(
+                self._reload_tts_from_settings
             )
         self.native_llama_engine.load_finished.connect(self._on_native_model_load_finished)
         if (

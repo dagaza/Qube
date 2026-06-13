@@ -2421,7 +2421,9 @@ class LLMWorker(QThread):
 
         # ---- RAG ----
         if execution_route in ["RAG", "HYBRID"] and (
-            self.mcp_rag_enabled or force_rag_via_trigger
+            self.mcp_rag_enabled
+            or force_rag_via_trigger
+            or scoped_library_active
         ):
             rag_q = decision.get("rag_query") or retrieval_query
             rag_result = self._rag_search_hybrid(

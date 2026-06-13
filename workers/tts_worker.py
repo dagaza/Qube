@@ -12,6 +12,8 @@ logger = logging.getLogger("Qube.Audio")
 _END_OF_LLM_TURN = object()
 # Wake the consumer so run() can exit on app shutdown.
 _TTS_SHUTDOWN = object()
+# Settings voice preview — bypasses mute and avoids chat UI playback signals.
+_VOICE_PREVIEW = object()
 _PLAYBACK_LEVEL_EMIT_INTERVAL_S = 0.04
 
 
@@ -26,27 +28,42 @@ def _pcm_peak_level(pcm: bytes) -> float:
     return min(1.0, rms * 2.8)
 
 
-def ensure_model_exists(model_path: str):
-    """Downloads the Kokoro model and voices if they don't exist."""
-    base_dir = os.path.dirname(model_path)
+def ensure_bundled_kokoro_assets(model_path: str) -> None:
+    """Download bundled Kokoro ONNX + voices when the default model path is missing."""
+    from core.tts_models import (
+        BUNDLED_DEFAULT_FILENAME,
+        BUNDLED_VOICES_FILENAME,
+        bundled_default_path,
+        is_protected_tts_model,
+    )
+
+    if not is_protected_tts_model(model_path):
+        return
+
+    base_dir = os.path.dirname(bundled_default_path())
     os.makedirs(base_dir, exist_ok=True)
-    
-    onnx_path = os.path.join(base_dir, "kokoro-v1.0.onnx")
-    bin_path = os.path.join(base_dir, "voices-v1.0.bin")
-    
+
+    onnx_path = os.path.join(base_dir, BUNDLED_DEFAULT_FILENAME)
+    bin_path = os.path.join(base_dir, BUNDLED_VOICES_FILENAME)
+
     files_to_check = {
         onnx_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
-        bin_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin"
+        bin_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
     }
-    
+
     for file_path, url in files_to_check.items():
         if not os.path.exists(file_path):
             print(f"[SYSTEM] Downloading missing required file: {os.path.basename(file_path)}...")
             response = requests.get(url, stream=True)
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             print(f"[SYSTEM] Download complete: {os.path.basename(file_path)}")
+
+
+def ensure_model_exists(model_path: str):
+    """Backward-compatible alias for bundled Kokoro bootstrap."""
+    ensure_bundled_kokoro_assets(model_path)
 
 class PiperAdapter:
     def __init__(self, model_path):
@@ -67,12 +84,13 @@ class KokoroAdapter:
         import os
         import numpy as np
 
+        from core.tts_models import BUNDLED_VOICES_FILENAME, is_protected_tts_model
+
         base_dir = os.path.dirname(model_path)
-        voices_path = os.path.join(base_dir, "voices-v1.0.bin")
-        
-        # --- 3. Call the downloader right here! ---
-        # This guarantees the files exist before Kokoro tries to read them.
-        ensure_model_exists(model_path)
+        voices_path = os.path.join(base_dir, BUNDLED_VOICES_FILENAME)
+
+        if is_protected_tts_model(model_path):
+            ensure_bundled_kokoro_assets(model_path)
         
         if not os.path.exists(voices_path):
             raise FileNotFoundError(f"Kokoro voices file not found at {voices_path}")
@@ -221,6 +239,22 @@ class TTSWorker(QThread):
         if not self.isRunning():
             self.start()
 
+    def queue_voice_preview(self, text: str) -> None:
+        """Play a short sample in Settings; ignores mute and chat playback UI."""
+        if not text or not text.strip() or not self.active_adapter:
+            return
+        self._interrupt_tts = True
+        self._last_queued_tts_key = ""
+        if hasattr(self, "sentence_queue"):
+            try:
+                with self.sentence_queue.mutex:
+                    self.sentence_queue.queue.clear()
+            except Exception:
+                pass
+        self.sentence_queue.put((_VOICE_PREVIEW, text.strip()))
+        if not self.isRunning():
+            self.start()
+
     def enqueue_turn_complete(self, _session_id: str | None = None) -> None:
         """Call once per LLM response after streaming ends (with or without TTS chunks)."""
         self.sentence_queue.put(_END_OF_LLM_TURN)
@@ -266,14 +300,21 @@ class TTSWorker(QThread):
 
                 self._interrupt_tts = False
 
-                if isinstance(item, tuple):
+                voice_preview = False
+                if isinstance(item, tuple) and len(item) == 2 and item[0] is _VOICE_PREVIEW:
+                    text, session_id = item[1], "__voice_preview__"
+                    voice_preview = True
+                elif isinstance(item, tuple):
                     text, session_id = item
                 else:
                     text, session_id = item, "default"
 
                 logger.info(f"[TTS] Preparing to speak: '{text[:40]}...'")
 
-                if getattr(self, 'is_muted', False) or not self.active_adapter:
+                if (
+                    not voice_preview
+                    and (getattr(self, 'is_muted', False) or not self.active_adapter)
+                ):
                     logger.info(
                         "[TTS] Skipping speech (muted=%s, adapter_ready=%s).",
                         bool(getattr(self, "is_muted", False)),
@@ -296,7 +337,7 @@ class TTSWorker(QThread):
                         self.status_update.emit(f"Failed to rebuild stream: {e}")
                         continue
 
-                self.status_update.emit("🔊 Speaking...")
+                self.status_update.emit("🔊 Previewing voice..." if voice_preview else "🔊 Speaking...")
                 first_chunk_played = False
                 start_time = time.time()
                 syn_deadline = time.time() + _SYNTHESIS_CAP_S
@@ -311,9 +352,10 @@ class TTSWorker(QThread):
 
                         if not first_chunk_played:
                             self.tts_latency.emit((time.time() - start_time) * 1000)
-                            self.playback_started.emit(session_id)
+                            if not voice_preview:
+                                self.playback_started.emit(session_id)
+                                self._playback_active = True
                             first_chunk_played = True
-                            self._playback_active = True
 
                         CHUNK_SIZE = 4096
                         for i in range(0, len(pcm_data), CHUNK_SIZE):
@@ -329,6 +371,10 @@ class TTSWorker(QThread):
 
                 except Exception as e:
                     self.status_update.emit(f"Audio Error: {e}")
+
+                if voice_preview:
+                    self.playback_level.emit(0.0)
+                    continue
 
         except Exception as e:
             logger.exception("[TTS] run loop failed: %s", e)

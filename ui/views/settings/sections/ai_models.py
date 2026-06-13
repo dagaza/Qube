@@ -16,7 +16,9 @@ from PyQt6.QtWidgets import (
 )
 
 from core.app_settings import (
+    get_advanced_chat_template_unlocked,
     get_advanced_engine_unlocked,
+    get_advanced_hardware_unlocked,
     get_auto_load_last_model_on_startup,
     get_enable_chat_personality_nudge,
     get_internal_n_gpu_layers,
@@ -31,7 +33,6 @@ from core.app_settings import (
     get_llm_temperature,
     get_llm_top_k,
     get_llm_top_p,
-    get_model_manager_hardware_suggestions,
     set_auto_load_last_model_on_startup,
 )
 from core.auxiliary_cognition import get_cognition_models_dir
@@ -47,7 +48,6 @@ from ui.views.settings.controls import (
 )
 from ui.views.settings.widgets import (
     add_subsection_to_form,
-    make_ai_status_strip,
     make_disclosure_row,
     make_external_engine_hint,
     track_internal_ai_label,
@@ -61,8 +61,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     ai_form = QFormLayout(ai_widget)
     ai_form.setSpacing(15)
     ai_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-    ai_form.addRow(make_ai_status_strip(host))
 
     # --- Engine ---
     add_subsection_to_form(ai_form, "Engine & routing", anchor="engine")
@@ -140,147 +138,28 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     ai_form.addRow(host._ai_local_models_subsection)
 
-    # --- Hardware tuning ---
+    # --- Startup ---
     track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Hardware tuning", anchor="hardware")
+        host, add_subsection_to_form(ai_form, "Startup", anchor="startup")
     )
 
-    hardware_inner = QWidget()
-    hardware_form = QFormLayout(hardware_inner)
-    hardware_form.setSpacing(15)
-    hardware_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    startup_inner = QWidget()
+    startup_form = QFormLayout(startup_inner)
+    startup_form.setSpacing(15)
+    startup_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
-    host._gpu_layers_cap = max_safe_n_gpu_layers()
-    gpu_layers_row = QWidget()
-    gpu_layers_row_layout = QHBoxLayout(gpu_layers_row)
-    gpu_layers_row_layout.setContentsMargins(0, 0, 0, 0)
-    gpu_layers_row_layout.setSpacing(12)
-
-    host.gpu_layers_slider = NoScrollSlider(Qt.Orientation.Horizontal)
-    host.gpu_layers_slider.setMinimum(0)
-    host.gpu_layers_slider.setMaximum(host._gpu_layers_cap)
-    host.gpu_layers_slider.setSingleStep(1)
-    host.gpu_layers_slider.setPageStep(
-        max(1, host._gpu_layers_cap // 10) if host._gpu_layers_cap else 1
+    host.auto_load_last_model_cb = QCheckBox("Load last used model on startup")
+    host.auto_load_last_model_cb.setToolTip(
+        "Automatically loads the last used model at startup. This may significantly "
+        "increase application startup time depending on the model size and your hardware."
     )
-    _gpu_val = get_internal_n_gpu_layers()
-    host.gpu_layers_slider.blockSignals(True)
-    host.gpu_layers_slider.setValue(_gpu_val)
-    host.gpu_layers_slider.blockSignals(False)
+    host.auto_load_last_model_cb.setChecked(get_auto_load_last_model_on_startup())
+    host.auto_load_last_model_cb.toggled.connect(set_auto_load_last_model_on_startup)
+    host.auto_load_last_model_cb.toggled.connect(host.auto_load_last_model_changed.emit)
+    startup_form.addRow("", host.auto_load_last_model_cb)
 
-    host.gpu_layers_value_lbl = QLabel(str(_gpu_val))
-    host.gpu_layers_value_lbl.setMinimumWidth(44)
-    host.gpu_layers_value_lbl.setAlignment(
-        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-    )
-    _gpu_tip = (
-        "The number of AI 'brain layers' loaded into your graphics card (GPU). "
-        "More layers make the AI generate text much faster, but setting this too high "
-        "may use up all your video memory and cause crashes."
-    )
-    host.gpu_layers_slider.setToolTip(_gpu_tip)
-    host.gpu_layers_value_lbl.setToolTip(_gpu_tip)
-    gpu_layers_row.setToolTip(_gpu_tip)
-
-    host.gpu_layers_slider.valueChanged.connect(host._on_gpu_layers_slider_changed)
-
-    gpu_layers_row_layout.addWidget(host.gpu_layers_slider, stretch=1)
-    gpu_layers_row_layout.addWidget(host.gpu_layers_value_lbl)
-
-    host._cpu_threads_max = max_cpu_threads_for_ui()
-    cpu_threads_row = QWidget()
-    cpu_threads_row_layout = QHBoxLayout(cpu_threads_row)
-    cpu_threads_row_layout.setContentsMargins(0, 0, 0, 0)
-    cpu_threads_row_layout.setSpacing(12)
-
-    host.cpu_threads_slider = NoScrollSlider(Qt.Orientation.Horizontal)
-    host.cpu_threads_slider.setMinimum(1)
-    host.cpu_threads_slider.setMaximum(host._cpu_threads_max)
-    host.cpu_threads_slider.setSingleStep(1)
-    host.cpu_threads_slider.setPageStep(max(1, host._cpu_threads_max // 10))
-    _cpu_val = get_internal_n_threads()
-    host.cpu_threads_slider.blockSignals(True)
-    host.cpu_threads_slider.setValue(_cpu_val)
-    host.cpu_threads_slider.blockSignals(False)
-
-    host.cpu_threads_value_lbl = QLabel(str(_cpu_val))
-    host.cpu_threads_value_lbl.setMinimumWidth(44)
-    host.cpu_threads_value_lbl.setAlignment(
-        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-    )
-    _cpu_tip = (
-        "How many processor cores the AI is allowed to use. Setting this close to your "
-        "computer's total cores speeds up generation, but might slow down other "
-        "applications running in the background."
-    )
-    host.cpu_threads_slider.setToolTip(_cpu_tip)
-    host.cpu_threads_value_lbl.setToolTip(_cpu_tip)
-    cpu_threads_row.setToolTip(_cpu_tip)
-
-    host.cpu_threads_slider.valueChanged.connect(host._on_cpu_threads_slider_changed)
-
-    cpu_threads_row_layout.addWidget(host.cpu_threads_slider, stretch=1)
-    cpu_threads_row_layout.addWidget(host.cpu_threads_value_lbl)
-
-    hardware_form.addRow("GPU offload layers", gpu_layers_row)
-    hardware_form.addRow("CPU thread pool", cpu_threads_row)
-
-    host._ai_hardware_subsection = wrap_subsection(hardware_inner, anchor="hardware")
-    ai_form.addRow(host._ai_hardware_subsection)
-
-    # --- Chat template ---
-    track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Chat template", anchor="chat_template")
-    )
-
-    chat_template_inner = QWidget()
-    chat_template_form = QFormLayout(chat_template_inner)
-    chat_template_form.setSpacing(15)
-    chat_template_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-    host.native_chat_format_selector = SelectorButton(
-        "Select chat template...", is_dark=is_dark
-    )
-    host.native_chat_format_selector.setMaximumWidth(350)
-    host.native_chat_format_selector.setMenu(QMenu(host.native_chat_format_selector))
-    host.native_chat_format_selector.setToolTip(
-        "The specific conversational format this AI model was trained on. If the native "
-        "engine is hallucinating or talking to itself, changing this to match the model's "
-        "family (e.g., Llama 3, ChatML) usually fixes it."
-    )
-    host._native_chat_format_items = [
-        ("Auto (GGUF / library default)", "auto"),
-        ("GGUF Jinja (tokenizer.chat_template)", "jinja"),
-        ("ChatML", "chatml"),
-        ("Llama 3 Instruct", "llama-3"),
-        ("Mistral / Mixtral Instruct", "mistral"),
-        ("Llama 2 Chat", "llama-2"),
-    ]
-    host._build_prestige_menu(
-        host.native_chat_format_selector,
-        host._native_chat_format_items,
-        host._on_native_chat_format_changed,
-    )
-    host.native_chat_format_reset_btn = QPushButton("Reset")
-    host.native_chat_format_reset_btn.setToolTip(
-        "Reset to automatic template selection for the currently loaded model."
-    )
-    host.native_chat_format_reset_btn.clicked.connect(
-        host._on_reset_native_chat_format_clicked
-    )
-    chat_template_row = QWidget()
-    chat_template_row_layout = QHBoxLayout(chat_template_row)
-    chat_template_row_layout.setContentsMargins(0, 0, 0, 0)
-    chat_template_row_layout.setSpacing(8)
-    chat_template_row_layout.addWidget(host.native_chat_format_selector, stretch=1)
-    chat_template_row_layout.addWidget(host.native_chat_format_reset_btn)
-
-    chat_template_form.addRow("Chat template (internal)", chat_template_row)
-
-    host._ai_chat_template_subsection = wrap_subsection(
-        chat_template_inner, anchor="chat_template"
-    )
-    ai_form.addRow(host._ai_chat_template_subsection)
+    host._ai_startup_subsection = wrap_subsection(startup_inner, anchor="startup")
+    ai_form.addRow(host._ai_startup_subsection)
 
     # --- Generation ---
     add_subsection_to_form(ai_form, "Generation", anchor="generation")
@@ -288,8 +167,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._generation_spinboxes: list = []
 
     _gen_temp_tip = (
-        "Creativity slider: lower values (0.1–0.3) produce strict, factual answers. "
-        "Higher values (0.7–1.0) make Qube more creative."
+        "Creativity Slider: Lower values (0.1-0.3) produce strict, factual answers,  "
+        "but will make the answers sound more robotic and less natural. "
+        "Higher values (0.7-1.0) make Qube more creative and will make the answers sound more natural. "
+        "It is recommended to keep the temperature around 0.7 - 0.8 for balanced performance."
     )
     _gen_ctx_tip = (
         "Total token budget for one turn: instructions, retrieved documents, "
@@ -460,6 +341,220 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.generation_advanced_panel.layout().addWidget(gen_adv_form_widget)
     ai_form.addRow("", host.generation_advanced_panel)
 
+    # --- Chat style ---
+    add_subsection_to_form(ai_form, "Chat style", anchor="chat_style")
+
+    host.chat_personality_toggle = PrestigeToggle()
+    host.chat_personality_label = QLabel("Encourage brief follow-ups on general chat")
+    host.chat_personality_label.setWordWrap(True)
+    _chat_personality_tip = (
+        "When enabled, plain chat turns (no library or memory sources) "
+        "gently invite one optional short follow-up—e.g. after a joke or "
+        "story—not on retrieval, web search, or remember-this turns. "
+        "On by default."
+    )
+    host.chat_personality_toggle.setToolTip(_chat_personality_tip)
+    host.chat_personality_label.setToolTip(_chat_personality_tip)
+    chat_personality_row = QWidget()
+    chat_personality_row_layout = QHBoxLayout(chat_personality_row)
+    chat_personality_row_layout.setContentsMargins(0, 0, 0, 0)
+    chat_personality_row_layout.addWidget(
+        host.chat_personality_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    chat_personality_row_layout.addWidget(host.chat_personality_label, stretch=1)
+    host.chat_personality_toggle.blockSignals(True)
+    host.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())
+    host.chat_personality_toggle.blockSignals(False)
+    host.chat_personality_toggle.toggled.connect(host._on_chat_personality_toggled)
+    ai_form.addRow("", chat_personality_row)
+
+    # --- Hardware tuning ---
+    track_internal_ai_label(
+        host, add_subsection_to_form(ai_form, "Hardware tuning", anchor="hardware")
+    )
+
+    _hardware_adv_tip = (
+        "Advanced hardware controls are not for everyday use.\n\n"
+        "Unlocks GPU offload layers and CPU thread pool tuning for the native engine. "
+        "Setting GPU layers too high can exhaust video memory and crash the app."
+    )
+    host.advanced_hardware_toggle, host.advanced_hardware_row, host.advanced_hardware_panel = (
+        make_disclosure_row(
+            host,
+            "Show advanced hardware settings",
+            _hardware_adv_tip,
+        )
+    )
+    host.advanced_hardware_toggle.blockSignals(True)
+    host.advanced_hardware_toggle.setChecked(get_advanced_hardware_unlocked())
+    host.advanced_hardware_toggle.blockSignals(False)
+    host.advanced_hardware_toggle.toggled.connect(host._on_advanced_hardware_toggled)
+    ai_form.addRow("", host.advanced_hardware_row)
+
+    hardware_inner = QWidget()
+    hardware_form = QFormLayout(hardware_inner)
+    hardware_form.setSpacing(15)
+    hardware_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host._gpu_layers_cap = max_safe_n_gpu_layers()
+    gpu_layers_row = QWidget()
+    gpu_layers_row_layout = QHBoxLayout(gpu_layers_row)
+    gpu_layers_row_layout.setContentsMargins(0, 0, 0, 0)
+    gpu_layers_row_layout.setSpacing(12)
+
+    host.gpu_layers_slider = NoScrollSlider(Qt.Orientation.Horizontal)
+    host.gpu_layers_slider.setMinimum(0)
+    host.gpu_layers_slider.setMaximum(host._gpu_layers_cap)
+    host.gpu_layers_slider.setSingleStep(1)
+    host.gpu_layers_slider.setPageStep(
+        max(1, host._gpu_layers_cap // 10) if host._gpu_layers_cap else 1
+    )
+    _gpu_val = get_internal_n_gpu_layers()
+    host.gpu_layers_slider.blockSignals(True)
+    host.gpu_layers_slider.setValue(_gpu_val)
+    host.gpu_layers_slider.blockSignals(False)
+
+    host.gpu_layers_value_lbl = QLabel(str(_gpu_val))
+    host.gpu_layers_value_lbl.setMinimumWidth(44)
+    host.gpu_layers_value_lbl.setAlignment(
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+    )
+    _gpu_tip = (
+        "The number of AI 'brain layers' loaded into your graphics card (GPU). "
+        "More layers make the AI generate text much faster, but setting this too high "
+        "may use up all your video memory and cause crashes."
+    )
+    host.gpu_layers_slider.setToolTip(_gpu_tip)
+    host.gpu_layers_value_lbl.setToolTip(_gpu_tip)
+    gpu_layers_row.setToolTip(_gpu_tip)
+
+    host.gpu_layers_slider.valueChanged.connect(host._on_gpu_layers_slider_changed)
+
+    gpu_layers_row_layout.addWidget(host.gpu_layers_slider, stretch=1)
+    gpu_layers_row_layout.addWidget(host.gpu_layers_value_lbl)
+
+    host._cpu_threads_max = max_cpu_threads_for_ui()
+    cpu_threads_row = QWidget()
+    cpu_threads_row_layout = QHBoxLayout(cpu_threads_row)
+    cpu_threads_row_layout.setContentsMargins(0, 0, 0, 0)
+    cpu_threads_row_layout.setSpacing(12)
+
+    host.cpu_threads_slider = NoScrollSlider(Qt.Orientation.Horizontal)
+    host.cpu_threads_slider.setMinimum(1)
+    host.cpu_threads_slider.setMaximum(host._cpu_threads_max)
+    host.cpu_threads_slider.setSingleStep(1)
+    host.cpu_threads_slider.setPageStep(max(1, host._cpu_threads_max // 10))
+    _cpu_val = get_internal_n_threads()
+    host.cpu_threads_slider.blockSignals(True)
+    host.cpu_threads_slider.setValue(_cpu_val)
+    host.cpu_threads_slider.blockSignals(False)
+
+    host.cpu_threads_value_lbl = QLabel(str(_cpu_val))
+    host.cpu_threads_value_lbl.setMinimumWidth(44)
+    host.cpu_threads_value_lbl.setAlignment(
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+    )
+    _cpu_tip = (
+        "How many processor cores the AI is allowed to use. Setting this close to your "
+        "computer's total cores speeds up generation, but might slow down other "
+        "applications running in the background."
+    )
+    host.cpu_threads_slider.setToolTip(_cpu_tip)
+    host.cpu_threads_value_lbl.setToolTip(_cpu_tip)
+    cpu_threads_row.setToolTip(_cpu_tip)
+
+    host.cpu_threads_slider.valueChanged.connect(host._on_cpu_threads_slider_changed)
+
+    cpu_threads_row_layout.addWidget(host.cpu_threads_slider, stretch=1)
+    cpu_threads_row_layout.addWidget(host.cpu_threads_value_lbl)
+
+    hardware_form.addRow("GPU offload layers", gpu_layers_row)
+    hardware_form.addRow("CPU thread pool", cpu_threads_row)
+
+    host._ai_hardware_subsection = wrap_subsection(hardware_inner, anchor="hardware")
+    host.advanced_hardware_panel.layout().addWidget(host._ai_hardware_subsection)
+    host.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
+    ai_form.addRow("", host.advanced_hardware_panel)
+
+    # --- Chat template ---
+    track_internal_ai_label(
+        host, add_subsection_to_form(ai_form, "Chat template", anchor="chat_template")
+    )
+
+    _chat_template_adv_tip = (
+        "Advanced chat template controls are not for everyday use.\n\n"
+        "Unlocks manual chat template selection for the native engine. Auto usually "
+        "matches the loaded model; an incorrect template can cause hallucinations or "
+        "the model talking to itself."
+    )
+    (
+        host.advanced_chat_template_toggle,
+        host.advanced_chat_template_row,
+        host.advanced_chat_template_panel,
+    ) = make_disclosure_row(
+        host,
+        "Show advanced chat template settings",
+        _chat_template_adv_tip,
+    )
+    host.advanced_chat_template_toggle.blockSignals(True)
+    host.advanced_chat_template_toggle.setChecked(get_advanced_chat_template_unlocked())
+    host.advanced_chat_template_toggle.blockSignals(False)
+    host.advanced_chat_template_toggle.toggled.connect(
+        host._on_advanced_chat_template_toggled
+    )
+    ai_form.addRow("", host.advanced_chat_template_row)
+
+    chat_template_inner = QWidget()
+    chat_template_form = QFormLayout(chat_template_inner)
+    chat_template_form.setSpacing(15)
+    chat_template_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host.native_chat_format_selector = SelectorButton(
+        "Select chat template...", is_dark=is_dark
+    )
+    host.native_chat_format_selector.setMaximumWidth(350)
+    host.native_chat_format_selector.setMenu(QMenu(host.native_chat_format_selector))
+    host.native_chat_format_selector.setToolTip(
+        "The specific conversational format this AI model was trained on. If the native "
+        "engine is hallucinating or talking to itself, changing this to match the model's "
+        "family (e.g., Llama 3, ChatML) usually fixes it."
+    )
+    host._native_chat_format_items = [
+        ("Auto (GGUF / library default)", "auto"),
+        ("GGUF Jinja (tokenizer.chat_template)", "jinja"),
+        ("ChatML", "chatml"),
+        ("Llama 3 Instruct", "llama-3"),
+        ("Mistral / Mixtral Instruct", "mistral"),
+        ("Llama 2 Chat", "llama-2"),
+    ]
+    host._build_prestige_menu(
+        host.native_chat_format_selector,
+        host._native_chat_format_items,
+        host._on_native_chat_format_changed,
+    )
+    host.native_chat_format_reset_btn = QPushButton("Reset")
+    host.native_chat_format_reset_btn.setToolTip(
+        "Reset to automatic template selection for the currently loaded model."
+    )
+    host.native_chat_format_reset_btn.clicked.connect(
+        host._on_reset_native_chat_format_clicked
+    )
+    chat_template_row = QWidget()
+    chat_template_row_layout = QHBoxLayout(chat_template_row)
+    chat_template_row_layout.setContentsMargins(0, 0, 0, 0)
+    chat_template_row_layout.setSpacing(8)
+    chat_template_row_layout.addWidget(host.native_chat_format_selector, stretch=1)
+    chat_template_row_layout.addWidget(host.native_chat_format_reset_btn)
+
+    chat_template_form.addRow("Chat template (internal)", chat_template_row)
+
+    host._ai_chat_template_subsection = wrap_subsection(
+        chat_template_inner, anchor="chat_template"
+    )
+    host.advanced_chat_template_panel.layout().addWidget(host._ai_chat_template_subsection)
+    host.advanced_chat_template_panel.setVisible(get_advanced_chat_template_unlocked())
+    ai_form.addRow("", host.advanced_chat_template_panel)
+
     # --- Auxiliary cognition ---
     add_subsection_to_form(ai_form, "Auxiliary cognition", anchor="cognition")
 
@@ -579,74 +674,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host.advanced_engine_panel, anchor="cognition"
     )
     ai_form.addRow("", host._ai_cognition_subsection)
-
-    # --- Startup ---
-    track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Startup", anchor="startup")
-    )
-
-    startup_inner = QWidget()
-    startup_form = QFormLayout(startup_inner)
-    startup_form.setSpacing(15)
-    startup_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-    host.auto_load_last_model_cb = QCheckBox("Load last used model on startup")
-    host.auto_load_last_model_cb.setToolTip(
-        "Automatically loads the last used model at startup. This may significantly "
-        "increase application startup time depending on the model size and your hardware."
-    )
-    host.auto_load_last_model_cb.setChecked(get_auto_load_last_model_on_startup())
-    host.auto_load_last_model_cb.toggled.connect(set_auto_load_last_model_on_startup)
-    host.auto_load_last_model_cb.toggled.connect(host.auto_load_last_model_changed.emit)
-    startup_form.addRow("", host.auto_load_last_model_cb)
-
-    host._ai_startup_subsection = wrap_subsection(startup_inner, anchor="startup")
-    ai_form.addRow(host._ai_startup_subsection)
-
-    # --- Chat style ---
-    add_subsection_to_form(ai_form, "Chat style", anchor="chat_style")
-
-    host.chat_personality_toggle = PrestigeToggle()
-    host.chat_personality_label = QLabel("Encourage brief follow-ups on general chat")
-    host.chat_personality_label.setWordWrap(True)
-    _chat_personality_tip = (
-        "When enabled, plain chat turns (no library or memory sources) "
-        "gently invite one optional short follow-up—e.g. after a joke or "
-        "story—not on retrieval, web search, or remember-this turns. "
-        "On by default."
-    )
-    host.chat_personality_toggle.setToolTip(_chat_personality_tip)
-    host.chat_personality_label.setToolTip(_chat_personality_tip)
-    chat_personality_row = QWidget()
-    chat_personality_row_layout = QHBoxLayout(chat_personality_row)
-    chat_personality_row_layout.setContentsMargins(0, 0, 0, 0)
-    chat_personality_row_layout.addWidget(
-        host.chat_personality_toggle, alignment=Qt.AlignmentFlag.AlignLeft
-    )
-    chat_personality_row_layout.addWidget(host.chat_personality_label, stretch=1)
-    host.chat_personality_toggle.blockSignals(True)
-    host.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())
-    host.chat_personality_toggle.blockSignals(False)
-    host.chat_personality_toggle.toggled.connect(host._on_chat_personality_toggled)
-    ai_form.addRow("", chat_personality_row)
-
-    # --- Discovery ---
-    add_subsection_to_form(ai_form, "Discovery", anchor="discovery")
-
-    host.model_manager_hardware_suggestions_cb = QCheckBox(
-        "Suggest models for my hardware in Model Manager"
-    )
-    host.model_manager_hardware_suggestions_cb.setToolTip(
-        "When enabled, Model Manager ranks Qube Verified models and shows Good fit badges "
-        "based on detected RAM and VRAM. The setup tour always includes personalized picks."
-    )
-    host.model_manager_hardware_suggestions_cb.setChecked(
-        get_model_manager_hardware_suggestions()
-    )
-    host.model_manager_hardware_suggestions_cb.toggled.connect(
-        host._on_model_manager_hardware_suggestions_toggled
-    )
-    ai_form.addRow("", host.model_manager_hardware_suggestions_cb)
 
     host._wire_llm_generation_settings()
     host._refresh_cognition_gguf_list()

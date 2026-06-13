@@ -1,9 +1,16 @@
 # rag/embedder.py
+import gc
 import numpy as np
 from llama_cpp import Llama
 import os
 import multiprocessing
 import logging
+
+from core.embedding_models import (
+    EXPECTED_VECTOR_DIM,
+    migrate_legacy_embedding_layout,
+    resolve_active_embedding_path,
+)
 
 logger = logging.getLogger("Qube.RAG.Embedder")
 
@@ -72,20 +79,48 @@ def _init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -
 
 
 class EmbeddingModel:
-    def __init__(self):
-        model_path = os.path.join("models", "nomic-embed-text-v1.5.Q4_K_M.gguf")
-        physical_cores = max(1, multiprocessing.cpu_count() // 2)
+    def __init__(self, model_path: str | None = None):
+        migrate_legacy_embedding_layout()
+        self._model_path = ""
+        self.model: Llama | None = None
+        self._physical_cores = max(1, multiprocessing.cpu_count() // 2)
+        self._load(model_path or resolve_active_embedding_path())
 
-        logger.info("Probing user hardware...")
+    @property
+    def active_model_path(self) -> str:
+        return self._model_path
+
+    @property
+    def expected_vector_dim(self) -> int:
+        return EXPECTED_VECTOR_DIM
+
+    def reload(self, model_path: str | None = None) -> None:
+        """Unload and reload the embedder from settings or an explicit path."""
+        self.model = None
+        gc.collect()
+        self._load(model_path or resolve_active_embedding_path())
+
+    def _load(self, model_path: str) -> None:
+        if not model_path or not os.path.isfile(model_path):
+            raise FileNotFoundError(
+                f"Embedding model not found at {model_path!r}. "
+                f"Place {os.path.basename(model_path or '')} under ~/.qube/models/embedding/."
+            )
+
+        self._model_path = model_path
+        logger.info("Probing user hardware for embedding model: %s", os.path.basename(model_path))
 
         try:
-            self.model = _init_llama_embed(model_path, -1, physical_cores)
+            self.model = _init_llama_embed(model_path, -1, self._physical_cores)
             self.model.create_embedding("hardware_test")
             logger.info("GPU acceleration engaged successfully!")
 
         except Exception as e:
-            logger.warning(f"GPU init failed (Likely missing drivers). Falling back to CPU. Error: {e}")
-            self.model = _init_llama_embed(model_path, 0, physical_cores)
+            logger.warning(
+                "GPU init failed (Likely missing drivers). Falling back to CPU. Error: %s",
+                e,
+            )
+            self.model = _init_llama_embed(model_path, 0, self._physical_cores)
             logger.info("Running on CPU mode.")
 
     def embed(self, texts: list[str]) -> np.ndarray:
@@ -107,7 +142,7 @@ class EmbeddingModel:
             except Exception as e:
                 # Keep your existing logger/print statement here
                 print(f"CRITICAL: Chunk failed. Inserting blank vector. Error: {e}")
-                embeddings.append([0.0] * 768)
+                embeddings.append([0.0] * EXPECTED_VECTOR_DIM)
                 
         return np.array(embeddings, dtype=np.float32)
 

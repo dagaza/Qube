@@ -12,6 +12,7 @@ class SettingsSectionDef:
     icon: str
     legacy_titles: tuple[str, ...] = ()
     group: str | None = None
+    svg_icon: tuple[str, ...] | None = None
 
 
 SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
@@ -31,15 +32,22 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
             "NATIVE ENGINE & LOCAL LIBRARY",
             "STARTUP BEHAVIOR",
             "CHAT",
-            "HELP & GUIDANCE",
         ),
+        group="Intelligence",
+        svg_icon=("assets", "icons", "ai.svg"),
+    ),
+    SettingsSectionDef(
+        id="memory",
+        title="Memory",
+        icon="fa5s.memory",
+        legacy_titles=("MEMORY & PERFORMANCE", "Memory & Knowledge"),
         group="Intelligence",
     ),
     SettingsSectionDef(
-        id="memory.knowledge",
-        title="Memory & Knowledge",
-        icon="fa5s.memory",
-        legacy_titles=("MEMORY & PERFORMANCE", "NLP RAG TRIGGERS"),
+        id="knowledge",
+        title="Knowledge",
+        icon="fa5s.book",
+        legacy_titles=("NLP RAG TRIGGERS",),
         group="Intelligence",
     ),
     SettingsSectionDef(
@@ -57,10 +65,17 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Interface",
     ),
     SettingsSectionDef(
+        id="help",
+        title="Help",
+        icon="fa5s.question-circle",
+        legacy_titles=("HELP & GUIDANCE",),
+        group="System",
+    ),
+    SettingsSectionDef(
         id="advanced",
         title="Advanced",
         icon="fa5s.cog",
-        legacy_titles=("JSON SETTINGS", "HELP & GUIDANCE"),
+        legacy_titles=("JSON SETTINGS",),
         group="System",
     ),
 )

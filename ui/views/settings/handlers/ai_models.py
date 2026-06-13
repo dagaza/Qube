@@ -63,6 +63,10 @@ from core.app_settings import (
     set_audio_output_device_index,
     get_advanced_engine_unlocked,
     set_advanced_engine_unlocked,
+    get_advanced_hardware_unlocked,
+    set_advanced_hardware_unlocked,
+    get_advanced_chat_template_unlocked,
+    set_advanced_chat_template_unlocked,
     get_sidecar_model_path,
     set_sidecar_model_path,
     get_sidecar_chat_format,
@@ -107,12 +111,13 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
 )
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
-from ui.views.settings.widgets import update_ai_status_strip
 from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
-    memory_knowledge,
+    help,
+    knowledge,
+    memory,
     notifications,
     voice_audio,
 )
@@ -127,9 +132,11 @@ _SETTINGS_STATUS_FADE_MS = 500
 _SECTION_BUILDERS = {
     "voice.audio": voice_audio.build_section,
     "ai.models": ai_models.build_section,
-    "memory.knowledge": memory_knowledge.build_section,
+    "memory": memory.build_section,
+    "knowledge": knowledge.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
+    "help": help.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -153,7 +160,6 @@ class AiModelsHandlersMixin:
     def _sync_active_native_model_label(self) -> None:
         """Show the native model actually loaded in-process (telemetry), not only QSettings path."""
         if not hasattr(self, "active_native_model_lbl"):
-            update_ai_status_strip(self)
             return
         mode = get_engine_mode()
         p = get_internal_model_path()
@@ -177,7 +183,6 @@ class AiModelsHandlersMixin:
                 self.active_native_model_lbl.setText(f"{path_name} (not loaded)")
             else:
                 self.active_native_model_lbl.setText("(none)")
-        update_ai_status_strip(self)
 
     def _on_gpu_layers_slider_changed(self, v: int) -> None:
         self.gpu_layers_value_lbl.setText(str(int(v)))
@@ -480,6 +485,63 @@ class AiModelsHandlersMixin:
         set_advanced_engine_unlocked(bool(checked))
         if hasattr(self, "advanced_engine_panel"):
             self.advanced_engine_panel.setVisible(bool(checked))
+
+    def _on_advanced_hardware_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced hardware settings",
+                "GPU offload layers and CPU thread counts directly affect native engine "
+                "performance and stability.\n\n"
+                "Setting GPU layers too high can exhaust video memory and crash the app. "
+                "Using nearly all CPU cores may slow other applications.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                self.advanced_hardware_toggle.blockSignals(True)
+                self.advanced_hardware_toggle.setChecked(False)
+                self.advanced_hardware_toggle.blockSignals(False)
+                return
+        set_advanced_hardware_unlocked(bool(checked))
+        self._sync_hardware_chat_template_panels()
+
+    def _on_advanced_chat_template_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced chat template settings",
+                "Manual chat template overrides change how prompts are formatted for the "
+                "native engine.\n\n"
+                "Auto usually matches the loaded model. An incorrect template can cause "
+                "hallucinations or the model talking to itself.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                self.advanced_chat_template_toggle.blockSignals(True)
+                self.advanced_chat_template_toggle.setChecked(False)
+                self.advanced_chat_template_toggle.blockSignals(False)
+                return
+        set_advanced_chat_template_unlocked(bool(checked))
+        self._sync_hardware_chat_template_panels()
+
+    def _sync_hardware_chat_template_panels(self) -> None:
+        internal = str(get_engine_mode()).lower().strip() == "internal"
+        for row_attr in ("advanced_hardware_row", "advanced_chat_template_row"):
+            row = getattr(self, row_attr, None)
+            if row is not None:
+                row.setVisible(internal)
+        hw_panel = getattr(self, "advanced_hardware_panel", None)
+        if hw_panel is not None:
+            hw_panel.setVisible(internal and get_advanced_hardware_unlocked())
+        ct_panel = getattr(self, "advanced_chat_template_panel", None)
+        if ct_panel is not None:
+            ct_panel.setVisible(internal and get_advanced_chat_template_unlocked())
 
     def _refresh_cognition_gguf_list(self) -> None:
         if not hasattr(self, "cognition_gguf_list"):

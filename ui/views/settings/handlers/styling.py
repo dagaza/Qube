@@ -107,12 +107,13 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
 )
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
-from ui.views.settings.widgets import update_ai_status_strip
 from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
-    memory_knowledge,
+    help,
+    knowledge,
+    memory,
     notifications,
     voice_audio,
 )
@@ -127,9 +128,11 @@ _SETTINGS_STATUS_FADE_MS = 500
 _SECTION_BUILDERS = {
     "voice.audio": voice_audio.build_section,
     "ai.models": ai_models.build_section,
-    "memory.knowledge": memory_knowledge.build_section,
+    "memory": memory.build_section,
+    "knowledge": knowledge.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
+    "help": help.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -141,6 +144,7 @@ class StylingMixin:
         """All Settings-page QCheckBox widgets that share the Prestige indicator style."""
         for name in (
             "pin_audio_cb",
+            "pin_tts_voice_cb",
             "auto_load_last_model_cb",
             "auto_activator_cb",
             "model_manager_hardware_suggestions_cb",
