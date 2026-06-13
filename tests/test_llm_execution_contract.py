@@ -13,8 +13,14 @@ from core.llm_execution_contract import (
 
 
 class TestPolicyForTask(unittest.TestCase):
-    def test_chat_allows_harmony_layers(self) -> None:
+    def test_chat_skips_harmony_layers_by_default(self) -> None:
         p = policy_for_task(PrimaryEngineTask.chat)
+        self.assertFalse(p.include_harmony_reply_guidance)
+        self.assertFalse(p.include_harmony_phrase_stops)
+        self.assertFalse(p.require_role_separated_messages)
+
+    def test_chat_allows_harmony_layers_when_model_active(self) -> None:
+        p = policy_for_task(PrimaryEngineTask.chat, harmony_model_active=True)
         self.assertTrue(p.include_harmony_reply_guidance)
         self.assertTrue(p.include_harmony_phrase_stops)
         self.assertFalse(p.require_role_separated_messages)
@@ -63,10 +69,11 @@ class TestCheckTaskPromptPolicy(unittest.TestCase):
         )
         self.assertIn("forbidden_harmony_chat_guidance_present", flags)
 
-    def test_chat_does_not_flag_guidance(self) -> None:
+    def test_chat_does_not_flag_guidance_when_harmony_active(self) -> None:
         flags = check_task_prompt_policy(
             task=PrimaryEngineTask.chat,
             rendered_prompt=f"system {HARMONY_FINAL_REPLY_GUIDANCE}",
+            policy=policy_for_task(PrimaryEngineTask.chat, harmony_model_active=True),
         )
         self.assertNotIn("forbidden_harmony_chat_guidance_present", flags)
 

@@ -69,3 +69,20 @@ class TestHarmonyProtocol(unittest.TestCase):
             protocol="harmony",
         )
         self.assertTrue(is_harmony_contract(c))
+
+    def test_harmony_model_active_from_contract(self) -> None:
+        from core.harmony_protocol import harmony_model_active
+
+        c = PromptContract(
+            mode="rendered",
+            chat_format=None,
+            prompt="x",
+            messages=None,
+            stop=["<|return|>"],
+            template_source="fallback",
+            confidence="high",
+            protocol="harmony",
+        )
+        self.assertTrue(harmony_model_active(contract=c))
+        self.assertFalse(harmony_model_active(model_name="gemma-4-26b"))
+        self.assertTrue(harmony_model_active(model_name="gpt-oss-20b"))

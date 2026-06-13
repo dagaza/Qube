@@ -558,6 +558,21 @@ class SidecarLlmWorker(QThread):
         )
         new_title = (result.parsed or {}).get("title") or result.text
         ok = bool(new_title)
+        selection = (result.parsed or {}).get("selection") or {}
+        if ok:
+            logger.info(
+                "[Sidecar] Title session=%s title=%r path=%s source=%s score=%.1f "
+                "runner_up=%r (%s %.1f) raw=%r",
+                session_id,
+                new_title,
+                selection.get("path") or "",
+                selection.get("winner_source") or "",
+                float(selection.get("winner_score") or 0.0),
+                selection.get("runner_up") or "",
+                selection.get("runner_up_source") or "",
+                float(selection.get("runner_up_score") or 0.0),
+                (raw_title or "").strip().replace("\n", " ")[:120],
+            )
         if new_title and self.db and session_id:
             if self.db.rename_session(session_id, new_title):
                 self.title_generated.emit(session_id, new_title)

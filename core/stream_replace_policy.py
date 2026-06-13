@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from core.conversational_follow_up import preserve_streamed_follow_up
-from core.output_artifact_strip import strip_harmony_oss_artifacts
+from core.output_artifact_strip import strip_output_artifacts
 
 _DEFAULT_MIN_RATIO = 0.8
 
@@ -12,14 +12,15 @@ def resolve_stream_replacement(
     streamed: str,
     *,
     min_ratio: float = _DEFAULT_MIN_RATIO,
+    harmony_active: bool = False,
 ) -> tuple[str, str | None]:
     """
     Return ``(text_to_use, rejection_reason)``.
 
     Reject replacements that would shrink a good streamed answer the user already saw.
     """
-    rep = strip_harmony_oss_artifacts((replacement or "").strip())
-    stream = strip_harmony_oss_artifacts((streamed or "").strip())
+    rep = strip_output_artifacts((replacement or "").strip(), harmony_active=harmony_active)
+    stream = strip_output_artifacts((streamed or "").strip(), harmony_active=harmony_active)
     if not stream:
         return rep, None
     if not rep:

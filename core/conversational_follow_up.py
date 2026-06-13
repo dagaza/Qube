@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from core.output_artifact_strip import strip_harmony_oss_artifacts
+from core.output_artifact_strip import strip_output_artifacts
 from core.output_validation import validate_output
 from core.prompt_contract import PromptContract
 
@@ -59,9 +59,9 @@ def is_lively_conversational_follow_up(sentence: str) -> bool:
     return False
 
 
-def is_safe_follow_up(sentence: str) -> bool:
+def is_safe_follow_up(sentence: str, *, harmony_active: bool = False) -> bool:
     """Reject template leakage, degeneration, and meta-instruction tails."""
-    s = strip_harmony_oss_artifacts(sentence or "").strip()
+    s = strip_output_artifacts(sentence or "", harmony_active=harmony_active).strip()
     if not s or s != (sentence or "").strip():
         # Stripping removed unsafe scaffolding.
         if not s:
@@ -76,22 +76,22 @@ def is_safe_follow_up(sentence: str) -> bool:
     return True
 
 
-def extract_follow_up_candidate(streamed: str) -> str | None:
+def extract_follow_up_candidate(streamed: str, *, harmony_active: bool = False) -> str | None:
     """Return the last lively follow-up sentence/paragraph from streamed text."""
-    cleaned = strip_harmony_oss_artifacts(streamed or "").strip()
+    cleaned = strip_output_artifacts(streamed or "", harmony_active=harmony_active).strip()
     if not cleaned:
         return None
 
     paragraphs = [part.strip() for part in re.split(r"\n\s*\n", cleaned) if part.strip()]
     if len(paragraphs) >= 2:
         tail = paragraphs[-1]
-        if is_safe_follow_up(tail):
+        if is_safe_follow_up(tail, harmony_active=harmony_active):
             return tail
 
     sentences = [part.strip() for part in _SENTENCE_SPLIT.split(cleaned) if part.strip()]
     if len(sentences) >= 2:
         tail = sentences[-1]
-        if is_safe_follow_up(tail):
+        if is_safe_follow_up(tail, harmony_active=harmony_active):
             return tail
     return None
 
@@ -110,10 +110,15 @@ def _follow_up_already_present(base: str, tail: str) -> bool:
     return False
 
 
-def preserve_streamed_follow_up(replacement: str, streamed: str) -> str:
+def preserve_streamed_follow_up(
+    replacement: str,
+    streamed: str,
+    *,
+    harmony_active: bool = False,
+) -> str:
     """Append a safe streamed follow-up the user already saw after format retry."""
     base = (replacement or "").strip()
-    provisional = strip_harmony_oss_artifacts(streamed or "").strip()
+    provisional = strip_output_artifacts(streamed or "", harmony_active=harmony_active).strip()
     if not base or not provisional:
         return base
 
@@ -122,11 +127,11 @@ def preserve_streamed_follow_up(replacement: str, streamed: str) -> str:
         tail = provisional[len(base) :].strip()
         if tail and len(tail) <= 160:
             sentences = [part.strip() for part in _SENTENCE_SPLIT.split(tail) if part.strip()]
-            if len(sentences) == 1 and is_safe_follow_up(sentences[0]):
+            if len(sentences) == 1 and is_safe_follow_up(sentences[0], harmony_active=harmony_active):
                 if not _follow_up_already_present(base, sentences[0]):
                     return f"{base}\n\n{sentences[0]}".strip()
 
-    candidate = extract_follow_up_candidate(provisional)
+    candidate = extract_follow_up_candidate(provisional, harmony_active=harmony_active)
     if not candidate or _follow_up_already_present(base, candidate):
         return base
     return f"{base}\n\n{candidate}".strip()

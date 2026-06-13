@@ -154,7 +154,7 @@ def resolve_prompt_contract(
         chat_template=tmpl,
     )
     if harmony is not None:
-        task_policy = policy_for_task(task)
+        task_policy = policy_for_task(task, harmony_model_active=True)
         c = PromptContract(
             mode="rendered",
             chat_format=None,

@@ -107,9 +107,20 @@ class LLMWorkerRagTriggerContractTests(unittest.TestCase):
 class SettingsViewRagTriggerContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        path = os.path.join(ROOT, "ui", "views", "settings_view.py")
-        with open(path, "r", encoding="utf-8") as f:
-            cls.src = f.read()
+        paths = [
+            os.path.join(ROOT, "ui", "views", "settings", "settings_view.py"),
+            os.path.join(ROOT, "ui", "views", "settings_view.py"),
+        ]
+        handlers_dir = os.path.join(ROOT, "ui", "views", "settings", "handlers")
+        if os.path.isdir(handlers_dir):
+            for name in sorted(os.listdir(handlers_dir)):
+                if name.endswith(".py"):
+                    paths.append(os.path.join(handlers_dir, name))
+        cls.src = ""
+        for path in paths:
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    cls.src += f.read()
 
     def test_settings_refreshes_worker_cache_on_change(self) -> None:
         self.assertIn("refresh_rag_triggers", self.src)

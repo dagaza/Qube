@@ -15,6 +15,11 @@ def _open_settings(host) -> None:
     host._route_view(5, host.nav_settings)
 
 
+def _open_settings_ai_routing(host) -> None:
+    _open_settings(host)
+    host.settings_view.select_settings_section("ai.models", anchor="engine")
+
+
 def _open_model_manager(host) -> None:
     host._route_view(4, host.nav_models)
 
@@ -66,7 +71,7 @@ def build_local_llm_setup_tour(host) -> OnboardingTour:
                 "locally. External Server is for LM Studio or Ollama on localhost."
             ),
             target_getter=lambda h: h.settings_view.engine_selector,
-            on_enter=_open_settings,
+            on_enter=_open_settings_ai_routing,
             predicate=_is_internal_engine,
             predicate_hint="Choose Internal Engine (native) above, then Next will unlock.",
         ),

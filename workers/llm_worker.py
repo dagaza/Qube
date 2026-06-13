@@ -64,7 +64,6 @@ from core.stream_repetition_guard import create_stream_repetition_guard
 from core.harmony_degeneration import (
     harmony_tail_degenerate,
     is_harmony_orphan_stream_fragment,
-    polish_harmony_visible_text,
 )
 from core.harmony_protocol import harmony_stream_parser_enabled, is_harmony_contract
 from core.llm_structured_log import structured_llm_log
@@ -84,7 +83,7 @@ from core.gemma_output_strip import (
     is_gemma_model_identity,
     strip_gemma_output_artifacts,
 )
-from core.output_artifact_strip import strip_harmony_oss_artifacts
+from core.output_artifact_strip import strip_output_artifacts
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
@@ -346,7 +345,7 @@ class LLMWorker(QThread):
         self.mcp_rag_enabled = get_mcp_rag_enabled()
         self.mcp_strict_enabled = get_mcp_rag_strict_enabled()
         self.mcp_internet_enabled = _internet_hybrid
-        self._force_web_next_turn = False
+        self._force_web_enabled = False
 
         # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
         self._last_completed_llm_session_id = None
@@ -1226,18 +1225,14 @@ class LLMWorker(QThread):
                 outcome.anomaly_penalty(),
             )
 
-    def _infer_harmony_protocol(self) -> bool:
-        """Best-effort Harmony/gpt-oss detection for history-strategy telemetry."""
+    def _harmony_model_active(self) -> bool:
+        """True when the loaded internal model uses Harmony protocol layers."""
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
             return False
-        try:
-            snap = self._native_engine.get_model_reasoning_telemetry() or {}
-            ident = (
-                f"{snap.get('model_name', '')} {snap.get('model_basename', '')}"
-            ).lower()
-            return "gpt-oss" in ident or "harmony" in ident
-        except Exception:
-            return False
+        contract = getattr(self._native_engine, "_last_prompt_contract", None)
+        if is_harmony_contract(contract):
+            return True
+        return bool(getattr(self._native_engine, "_harmony_model_active", False))
 
     def _resolve_turn_context_for_turn(
         self,
@@ -1256,7 +1251,7 @@ class LLMWorker(QThread):
             prior_turn_unreliable=prior_turn_unreliable,
             has_retrieval_sources=has_retrieval_sources,
             history_turn_count=history_turn_count,
-            use_harmony_protocol=self._infer_harmony_protocol(),
+            use_harmony_protocol=self._harmony_model_active(),
             conversation_health=conversation_health,
         )
         self._turn_context = turn_ctx
@@ -1660,7 +1655,10 @@ class LLMWorker(QThread):
                 self.enrichment_context_ready.emit(enrichment_payload)
             except Exception:
                 logger.exception("[LLM] failed to emit enrichment context")
-            final_text_out = strip_harmony_oss_artifacts(final_text_out or "")
+            final_text_out = strip_output_artifacts(
+                final_text_out or "",
+                harmony_active=self._harmony_model_active(),
+            )
             try:
                 self._finalize_conversation_health_after_turn(final_text_out)
             except Exception:
@@ -1707,8 +1705,7 @@ class LLMWorker(QThread):
                 self.status_update.emit("Idle")
 
     def _execute_llm_turn(self) -> str:
-        force_web = bool(getattr(self, "_force_web_next_turn", False))
-        self._force_web_next_turn = False
+        force_web = bool(getattr(self, "_force_web_enabled", False))
 
         # Phase B: reset per-turn enrichment context captured during this turn.
         self._turn_rag_chunk_ids: list[str] = []
@@ -3347,7 +3344,7 @@ class LLMWorker(QThread):
 
             raw_external_text = final_text
             if final_text:
-                final_text = strip_harmony_oss_artifacts(final_text)
+                final_text = strip_output_artifacts(final_text, harmony_active=False)
 
             if final_text.strip():
                 trunc_reason = probable_max_tokens_truncation(
@@ -3529,9 +3526,13 @@ class LLMWorker(QThread):
         stream_wall_start = time.time()
         output_token_count = 0
         harmony_cut_cancelled = False
+        harmony_active = self._harmony_model_active()
 
         def _sanitize_complete_native_text(raw_text: str) -> str:
-            return sanitize_output_for_validation(raw_text)
+            return sanitize_output_for_validation(
+                raw_text,
+                harmony_active=harmony_active,
+            )
 
         def _abort_harmony_tts_tail() -> None:
             nonlocal current_sentence
@@ -3546,8 +3547,9 @@ class LLMWorker(QThread):
             if harmony_parser is not None and is_harmony_orphan_stream_fragment(fragment):
                 return
             if harmony_parser is None:
-                fragment = strip_gemma_output_artifacts(
-                    strip_harmony_oss_artifacts(fragment)
+                fragment = strip_output_artifacts(
+                    fragment,
+                    harmony_active=harmony_active,
                 )
             if not fragment:
                 return
@@ -3682,10 +3684,15 @@ class LLMWorker(QThread):
                 _emit_filtered(clean_piece, speak=False)
             elif kind == "replace":
                 replacement = str(data or "").strip()
-                streamed_snapshot = strip_harmony_oss_artifacts(final_text).strip()
+                streamed_snapshot = strip_output_artifacts(
+                    final_text,
+                    harmony_active=harmony_active,
+                ).strip()
                 streamed_before_replace = streamed_snapshot
                 resolved, rejection = resolve_stream_replacement(
-                    replacement, streamed_snapshot
+                    replacement,
+                    streamed_snapshot,
+                    harmony_active=harmony_active,
                 )
                 val_trace = getattr(
                     self._native_engine, "_last_output_validation_trace", None
@@ -3744,7 +3751,10 @@ class LLMWorker(QThread):
             self._queue_tts_sentence(current_sentence)
             current_sentence = ""
 
-        emitted_text = strip_harmony_oss_artifacts(final_text).strip()
+        emitted_text = strip_output_artifacts(
+            final_text,
+            harmony_active=harmony_active,
+        ).strip()
         raw_complete_text = native_end_text or "".join(raw_parts)
         if harmony_parser is not None:
             cut = harmony_parser.degeneration_cut
@@ -3768,6 +3778,7 @@ class LLMWorker(QThread):
             final_text = preserve_streamed_follow_up(
                 authoritative_text or emitted_text,
                 streamed_before_replace or emitted_text,
+                harmony_active=harmony_active,
             )
             if final_text.strip():
                 self._queue_tts_sentence(final_text)
@@ -3966,9 +3977,13 @@ class LLMWorker(QThread):
         self.USE_COGNITIVE_ROUTER_INTERNET = enabled
         set_mcp_internet_hybrid_enabled(enabled)
 
+    def set_force_web_enabled(self, enabled: bool) -> None:
+        """Sticky UI override: force web search on every turn until disabled."""
+        self._force_web_enabled = bool(enabled)
+
     def set_force_web_next_turn(self, enabled: bool) -> None:
-        """One-shot UI override for the next user prompt."""
-        self._force_web_next_turn = bool(enabled)
+        """Alias for :meth:`set_force_web_enabled` (legacy call sites)."""
+        self.set_force_web_enabled(enabled)
 
     def _close_active_stream(self):
         r = getattr(self, "_active_stream_response", None)

@@ -40,6 +40,14 @@ _ALIGN_ECHO_START = re.compile(
 )
 
 
+_GEMMA_BARE_THOUGHT_LABEL = re.compile(r"(?is)^\s*thought\s*(?:\n+|$)")
+
+
+def looks_like_gemma_output_artifact(text: str) -> bool:
+    """True when text carries Gemma thought-channel markers or instruction echoes."""
+    return _looks_gemma_artifact(text)
+
+
 def is_gemma_model_identity(*, model_name: str = "", model_path: str = "") -> bool:
     blob = f"{model_name} {model_path}".lower()
     return "gemma" in blob
@@ -70,6 +78,7 @@ def strip_gemma_output_artifacts(text: str) -> str:
     m = _GEMMA_THOUGHT_BODY.match((text or "").strip())
     if m:
         body = _GEMMA_CONTROL_INLINE.sub("", m.group(1)).strip()
+        body = _GEMMA_BARE_THOUGHT_LABEL.sub("", body, count=1).strip()
         if len(body) >= 16:
             return body
 
@@ -78,6 +87,8 @@ def strip_gemma_output_artifacts(text: str) -> str:
     t = _GEMMA_CONTROL_INLINE.sub("", t)
     t = _GEMMA_CONTROL_FRAGMENT.sub("", t)
     t = t.strip()
+    if t:
+        t = _GEMMA_BARE_THOUGHT_LABEL.sub("", t, count=1).strip()
     if t and _INTERNAL_ALIGN_ECHO.match(t) and len(t) < 280:
         return ""
     return t
@@ -148,6 +159,16 @@ class GemmaThoughtStreamFilter:
                 self._buf = rest
                 self._phase = "thought"
                 return self._drain()
+
+            # Bare ``thought`` label from the assistant anchor (no ``<|channel>`` prefix).
+            if self._MARKER not in low:
+                bare = re.match(r"(?is)^\s*thought\s*\n", self._buf)
+                if bare:
+                    self._buf = self._buf[bare.end() :]
+                    self._phase = "passthrough"
+                    return self._drain()
+                if re.match(r"(?is)^\s*thought\s*$", self._buf.strip()):
+                    return ""
 
             hold = _longest_suffix_prefix(self._buf, self._MARKER)
             if hold:

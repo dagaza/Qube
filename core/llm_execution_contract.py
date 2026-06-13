@@ -26,7 +26,11 @@ class TaskPromptPolicy:
     require_role_separated_messages: bool
 
 
-def policy_for_task(task: PrimaryEngineTask | str) -> TaskPromptPolicy:
+def policy_for_task(
+    task: PrimaryEngineTask | str,
+    *,
+    harmony_model_active: bool = False,
+) -> TaskPromptPolicy:
     t = (
         task
         if isinstance(task, PrimaryEngineTask)
@@ -41,8 +45,8 @@ def policy_for_task(task: PrimaryEngineTask | str) -> TaskPromptPolicy:
         )
     return TaskPromptPolicy(
         task=PrimaryEngineTask.chat,
-        include_harmony_reply_guidance=True,
-        include_harmony_phrase_stops=True,
+        include_harmony_reply_guidance=bool(harmony_model_active),
+        include_harmony_phrase_stops=bool(harmony_model_active),
         require_role_separated_messages=False,
     )
 

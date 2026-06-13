@@ -172,6 +172,33 @@ def is_harmony_contract(contract: Any | None) -> bool:
     return False
 
 
+def harmony_model_active(
+    *,
+    contract: Any | None = None,
+    model_name: str = "",
+    model_path: str = "",
+    metadata: Optional[dict[str, Any]] = None,
+    chat_template: Optional[str] = None,
+) -> bool:
+    """
+    True when Harmony-specific prompt/output layers should run for the loaded model.
+
+    Prefer the resolved prompt contract when available; otherwise fall back to model
+    identity (name, GGUF metadata, or chat template markers).
+    """
+    if is_harmony_contract(contract):
+        return True
+    identity = (model_name or "").strip() or os.path.basename((model_path or "").strip())
+    return (
+        detect_harmony_protocol(
+            model_name=identity,
+            metadata=metadata,
+            chat_template=chat_template,
+        )
+        is not None
+    )
+
+
 def is_expected_harmony_chat_template(template: str) -> bool:
     """Harmony GGUF templates are expected to contain protocol markers."""
     return template_indicates_harmony(template)

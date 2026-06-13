@@ -205,6 +205,88 @@ class TestSidecarPrompts(unittest.TestCase):
         self.assertIn("Climate Change", prompt)
         self.assertIn("ignore word counts", prompt)
 
+    def test_title_qa_prefers_model_over_assistant_topic(self) -> None:
+        user = "who won the NBA finals"
+        assistant = (
+            "The New York Knicks defeated the Boston Celtics in the 2025 NBA Finals."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "NBA Finals",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = (r.parsed.get("title") or "").lower()
+        self.assertIn("nba", title)
+        self.assertNotIn("knicks", title)
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("path"), "model_line")
+
+    def test_title_tcp_ip_prefers_model_topic_not_answer_opening(self) -> None:
+        user = "explain to me how TCP/IP works"
+        assistant = (
+            "TCP/IP works by dividing network communication into layers. "
+            "The Internet Protocol handles routing."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "TCP/IP",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = r.parsed.get("title") or ""
+        self.assertNotIn("dividing", title.lower())
+        self.assertIn("TCP", title.upper())
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("path"), "model_line")
+
+    def test_title_nginx_setup_uses_model_label(self) -> None:
+        user = (
+            "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?"
+        )
+        assistant = "Start by installing nginx and enabling the site config."
+        r = parse_task_output(
+            SidecarTask.title,
+            "Nginx Reverse Proxy",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "Nginx Reverse Proxy")
+        self.assertNotIn("installing", (r.parsed.get("title") or "").lower())
+
+    def test_title_accepts_single_token_oauth(self) -> None:
+        user = "How does OAuth work?"
+        assistant = (
+            "OAuth is an authorization framework that allows third-party applications "
+            "to access user resources."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "OAuth",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "OAuth")
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("path"), "model_line")
+
+    def test_title_selection_includes_fallback_scores(self) -> None:
+        r = parse_task_output(
+            SidecarTask.title,
+            "<Think>\nplanning title\n",
+            user_prompt="Hey there, can you help me with something quick?",
+            assistant_reply="Quantum tunneling lets particles cross barriers.",
+        )
+        self.assertTrue(r.ok)
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("path"), "fallback_tournament")
+        self.assertGreater(float(selection.get("winner_score") or 0.0), 0.0)
+        self.assertTrue(selection.get("winner_source"))
+
     def test_companion_line_parses_json(self) -> None:
         raw = '{"line":"Still here.","kind":"idle_quip"}'
         r = parse_task_output(SidecarTask.companion_line, raw)

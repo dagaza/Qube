@@ -47,7 +47,7 @@ QToolTip {
     border-bottom-left-radius: 12px; 
 }
 
-#HistorySidebar, #LibrarySidebar, #ModelManagerSidebar { 
+#HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #SettingsSidebar { 
     background-color: #f8fafc; 
     border-right: 1px solid #e2e8f0; 
 }
@@ -146,6 +146,55 @@ QToolTip {
     color: #475569; /* Slate 600 - Muted but readable */
     font-size: 13px;
     font-weight: bold;
+}
+
+#SettingsSubsectionLabel {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+#SettingsSectionGroupHeader {
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 4px 2px 4px;
+}
+
+#SettingsDisclosurePanel {
+    border-left: 2px solid rgba(76, 79, 105, 0.35);
+    padding-left: 12px;
+    margin-left: 4px;
+}
+
+#SettingsStatusStrip {
+    background-color: rgba(241, 245, 249, 0.9);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsExternalEngineHint {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+    font-style: italic;
+    padding: 4px 0 8px 0;
+}
+
+QLabel[class="SettingsHint"] {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
 }
 
 /* --- 3. INPUTS & TEXT AREAS --- */
@@ -656,13 +705,13 @@ QLabel#AgentMessage {
 }
 /* --- UNIFIED LIST STYLING (LIGHT) --- */
 /* Conversations + Library sidebar lists only (Model Hub unchanged). */
-#HistoryList, #LibraryDocList {
+#HistoryList, #LibraryDocList, #SettingsSectionList {
     background-color: #E9EFF5;
     border: none;
 }
 
 /* Match base.qss: no extra item padding — row widget supplies horizontal inset. */
-#HistoryList::item, #LibraryDocList::item {
+#HistoryList::item, #LibraryDocList::item, #SettingsSectionList::item {
     padding: 0px;
     border-radius: 6px;
     margin-bottom: 4px;
@@ -673,11 +722,11 @@ QLabel#AgentMessage {
     border: none;
 }
 
-#HistoryList::item:hover, #LibraryDocList::item:hover, #ModelHubList::item:hover {
+#HistoryList::item:hover, #LibraryDocList::item:hover, #ModelHubList::item:hover, #SettingsSectionList::item:hover {
     background-color: rgba(0, 0, 0, 0.03);
 }
 
-#HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected {
+#HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected, #SettingsSectionList::item:selected {
     background-color: rgba(0, 0, 0, 0.03);
     border: 1px solid #8b5cf6;
     border-radius: 6px;
@@ -699,7 +748,8 @@ QLabel#AgentMessage {
 /* Sidebar row titles: scope to QListWidget::item (setItemWidget); light = slate always */
 #HistoryList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#HistoryRowTitle,
-#LibraryDocList::item QLabel#LibraryRowTitle {
+#LibraryDocList::item QLabel#LibraryRowTitle,
+#SettingsSectionList::item QLabel#HistoryRowTitle {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 500;

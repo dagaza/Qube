@@ -6,6 +6,7 @@ from typing import Any
 
 from core.adaptive_retry import maybe_retry
 from core.heading_style_metrics import analyze_heading_style
+from core.harmony_protocol import is_harmony_contract
 from core.output_validation import OutputValidationResult, validate_output
 from core.output_validation_sanitize import sanitize_output_for_validation
 from core.output_validation_trace import (
@@ -40,7 +41,10 @@ def run_output_validation_and_retry(
 ) -> tuple[str, PromptContract, OutputValidationTrace, OutputValidationResult]:
     """Validate sanitized output; optionally adaptive-retry with matched token budget."""
     raw = final_text or ""
-    sanitized = sanitize_output_for_validation(raw)
+    sanitized = sanitize_output_for_validation(
+        raw,
+        harmony_active=is_harmony_contract(contract),
+    )
     validation = validate_output(sanitized, contract)
     raw_validation = validate_output(raw, contract)
 
@@ -111,5 +115,8 @@ def annotate_raw_vs_sanitized_validation(
     raw: str,
     contract: PromptContract,
 ) -> tuple[OutputValidationResult, OutputValidationResult, str]:
-    sanitized = sanitize_output_for_validation(raw)
+    sanitized = sanitize_output_for_validation(
+        raw,
+        harmony_active=is_harmony_contract(contract),
+    )
     return validate_output(sanitized, contract), validate_output(raw, contract), sanitized

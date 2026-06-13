@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from core.gemma_output_strip import strip_gemma_output_artifacts
+from core.gemma_output_strip import looks_like_gemma_output_artifact, strip_gemma_output_artifacts
 from core.harmony_degeneration import polish_harmony_visible_text
 
 # Log-derived bridge: <|end|><|start|>assistant<|channel|>final<|message|>
@@ -54,8 +54,17 @@ _CONTROL_TOKEN = re.compile(r"<\|[^|\n]{1,56}\|>")
 _MALFORMED_CONTROL = re.compile(
     r"(?i)<\|?channel\|?>|<\|?message\|?>|<\|?start\|?>|<\|?final\|?>|<\|?end\|?>"
 )
-# Channel scaffold tail after an otherwise complete answer.
-_CHANNEL_TAIL = re.compile(r"(?is)\n+\s*<\|?channel\|?>.*$")
+# Channel scaffold tail after an otherwise complete answer (Harmony drift).
+# Gemma 4 emits ``thought\\n<channel|>`` then the user-facing body; do not treat
+# that prose continuation as a tail to delete.
+_CHANNEL_TAIL = re.compile(
+    r"(?is)\n+\s*<\|?channel\|?>\s*"
+    r"(?:"
+    r"<\|?|"
+    r"(?:thought|analysis|final|message)\b|"
+    r"[^A-Za-z<]{1,40}$"
+    r").*$"
+)
 # Mistral instruct markers leaked when prompt anchor was wrong or the model continues the template.
 _MISTRAL_INST_MARKERS = re.compile(r"\s*\[/?INST\]\s*")
 _MISTRAL_EOS_TAIL = re.compile(r"\s*</s>\s*$")
@@ -94,14 +103,44 @@ def strip_mistral_instruct_artifacts(text: str) -> str:
     return _MISTRAL_EOS_TAIL.sub("", t)
 
 
-def strip_harmony_oss_artifacts(text: str) -> str:
+def _strip_non_harmony_output_artifacts(text: str) -> str:
+    """Model-agnostic cleanup (Gemma thought channel, Mistral markers) without Harmony layers."""
     if not text or not text.strip():
         return text
-    t = polish_harmony_visible_text(text)
-    t = _INSTRUCTION_ECHO.sub("", text, count=1)
+    leading = len(text) - len(text.lstrip())
+    trailing = len(text) - len(text.rstrip())
+    lead_ws = text[:leading]
+    trail_ws = text[len(text) - trailing :] if trailing else ""
+    core = text[leading : len(text) - trailing if trailing else len(text)]
+    if not core:
+        return text
+
+    t = core
+    if looks_like_gemma_output_artifact(t):
+        t = strip_gemma_output_artifacts(t)
+    t = strip_mistral_instruct_artifacts(t)
+    return lead_ws + strip_gemma_output_artifacts(t) + trail_ws
+
+
+def strip_harmony_oss_artifacts(text: str) -> str:
+    """Harmony / gpt-oss output cleanup only. Use ``strip_output_artifacts`` at call sites."""
+    if not text or not text.strip():
+        return text
+    leading = len(text) - len(text.lstrip())
+    trailing = len(text) - len(text.rstrip())
+    lead_ws = text[:leading]
+    trail_ws = text[len(text) - trailing :] if trailing else ""
+    core = text[leading : len(text) - trailing if trailing else len(text)]
+    if not core:
+        return text
+
+    t = polish_harmony_visible_text(core)
+    t = _INSTRUCTION_ECHO.sub("", t, count=1)
     t = _PLANNING_PREFACE.sub("", t, count=1)
     t = _HARMONY_BRIDGE.sub("", t)
     t = _CHANNEL_TAIL.sub("", t)
+    if looks_like_gemma_output_artifact(t):
+        t = strip_gemma_output_artifacts(t)
     t = _CONTROL_TOKEN.sub("", t)
     t = _MALFORMED_CONTROL.sub("", t)
     t = _META_COMMAND_PREFIX.sub("", t, count=1)
@@ -110,12 +149,28 @@ def strip_harmony_oss_artifacts(text: str) -> str:
     t = _TRAILING_NOISE.sub("", t)
     t = strip_mistral_instruct_artifacts(t)
     if t and _PUNCT_ONLY_REMAINDER.match(t.strip()):
-        return ""
-    return strip_gemma_output_artifacts(t)
+        return lead_ws + trail_ws
+    return lead_ws + strip_gemma_output_artifacts(t) + trail_ws
 
 
-def merge_user_visible_stream_tail(replacement: str, streamed: str) -> str:
+def strip_output_artifacts(text: str, *, harmony_active: bool = False) -> str:
+    """Dispatch output cleanup based on whether a Harmony model is loaded."""
+    if harmony_active:
+        return strip_harmony_oss_artifacts(text)
+    return _strip_non_harmony_output_artifacts(text)
+
+
+def merge_user_visible_stream_tail(
+    replacement: str,
+    streamed: str,
+    *,
+    harmony_active: bool = False,
+) -> str:
     """Keep a short streamed follow-up the user already saw after format retry."""
     from core.conversational_follow_up import preserve_streamed_follow_up
 
-    return preserve_streamed_follow_up(replacement, streamed)
+    return preserve_streamed_follow_up(
+        replacement,
+        streamed,
+        harmony_active=harmony_active,
+    )

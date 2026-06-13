@@ -65,6 +65,26 @@ class TestGemmaOutputStrip(unittest.TestCase):
         emitted = f.feed("The capital of Nepal is Kathmandu.") + f.flush()
         self.assertEqual(emitted, "The capital of Nepal is Kathmandu.")
 
+    def test_stream_filter_swallows_bare_thought_label_from_anchor(self) -> None:
+        f = GemmaThoughtStreamFilter()
+        parts = [
+            "thought",
+            "\n",
+            "<channel|>Since you aren't experiencing itching, redness, or pain.",
+        ]
+        emitted = "".join(f.feed(p) for p in parts) + f.flush()
+        self.assertNotIn("thought", emitted.lower())
+        self.assertIn("Since you aren't experiencing", emitted)
+
+    def test_strips_bare_thought_label_before_channel_body(self) -> None:
+        raw = (
+            "thought\n"
+            "<channel|>Since you aren't experiencing itching, redness, or pain."
+        )
+        out = strip_gemma_output_artifacts(raw)
+        self.assertNotIn("thought", out.lower())
+        self.assertIn("Since you aren't experiencing", out)
+
 
 if __name__ == "__main__":
     unittest.main()

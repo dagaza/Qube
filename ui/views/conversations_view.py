@@ -2332,8 +2332,10 @@ class ConversationsView(QWidget):
         self.web_btn.setProperty("class", "ThinkToggleButton")
         self.web_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.web_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.web_btn.setToolTip("Search the web for the next message")
-        self.web_btn.toggled.connect(self._apply_action_toggle_styles)
+        self.web_btn.setToolTip(
+            "Search the web for every message in this chat until you turn it off"
+        )
+        self.web_btn.toggled.connect(self._on_web_toggled)
 
         self.think_btn = QPushButton("Think")
         self.think_btn.setCheckable(True)
@@ -2666,12 +2668,6 @@ class ConversationsView(QWidget):
                 )
 
         if self.llm:
-            force_web = bool(hasattr(self, "web_btn") and self.web_btn.isChecked())
-            if hasattr(self.llm, "set_force_web_next_turn"):
-                self.llm.set_force_web_next_turn(force_web)
-            if force_web:
-                # Applies to upcoming query only.
-                self.web_btn.setChecked(False)
             prompt = clean if clean else raw
             self.llm.generate_response(
                 prompt,
@@ -2930,6 +2926,7 @@ class ConversationsView(QWidget):
         self.active_session_id = self.db.create_session(
             "New Conversation", folder_id=folder_id
         )
+        self._reset_web_toggle()
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
@@ -3015,6 +3012,16 @@ class ConversationsView(QWidget):
         set_native_reasoning_display_enabled(bool(checked))
         self.refresh_think_toggle()
 
+    def _harmony_output_cleanup_active(self) -> bool:
+        eng = self.workers.get("native_engine") if self.workers else None
+        if eng is None:
+            return False
+        try:
+            snap = eng.get_model_reasoning_telemetry() or {}
+            return bool(snap.get("harmony_model_active"))
+        except Exception:
+            return False
+
     def refresh_think_toggle(self) -> None:
         """Sync Think button from native engine telemetry (ExecutionPolicy projection only)."""
         if not hasattr(self, "think_btn"):
@@ -3039,6 +3046,24 @@ class ConversationsView(QWidget):
                 self.think_btn.setChecked(False)
         finally:
             self.think_btn.blockSignals(False)
+        self._apply_action_toggle_styles()
+
+    def _on_web_toggled(self, checked: bool) -> None:
+        if self.llm and hasattr(self.llm, "set_force_web_enabled"):
+            self.llm.set_force_web_enabled(checked)
+        self._apply_action_toggle_styles()
+
+    def _reset_web_toggle(self) -> None:
+        """Turn off sticky web search when starting a fresh chat session."""
+        if not hasattr(self, "web_btn"):
+            return
+        self.web_btn.blockSignals(True)
+        try:
+            self.web_btn.setChecked(False)
+        finally:
+            self.web_btn.blockSignals(False)
+        if self.llm and hasattr(self.llm, "set_force_web_enabled"):
+            self.llm.set_force_web_enabled(False)
         self._apply_action_toggle_styles()
 
     def _apply_action_toggle_styles(self) -> None:
@@ -3258,13 +3283,16 @@ class ConversationsView(QWidget):
 
     def on_llm_stream_replaced(self, session_id: str, text: str) -> None:
         """Mid-turn full replace (native format fallback) — sync bubble before finish."""
-        from core.output_artifact_strip import strip_harmony_oss_artifacts
+        from core.output_artifact_strip import strip_output_artifacts
 
         active = str(getattr(self, "active_session_id", "") or "")
         sid = str(session_id or "")
         if not active or sid != active:
             return
-        cleaned = strip_harmony_oss_artifacts(text or "")
+        cleaned = strip_output_artifacts(
+            text or "",
+            harmony_active=self._harmony_output_cleanup_active(),
+        )
         if not cleaned:
             return
         self._agent_text_buffer = cleaned
@@ -3426,7 +3454,7 @@ class ConversationsView(QWidget):
         self._restore_send_mode_if_idle()
 
     def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
-        from core.output_artifact_strip import strip_harmony_oss_artifacts
+        from core.output_artifact_strip import strip_output_artifacts
 
         sid = str(session_id or "")
         if sid:
@@ -3435,7 +3463,10 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
-        cleaned = strip_harmony_oss_artifacts(final_text or "")
+        cleaned = strip_output_artifacts(
+            final_text or "",
+            harmony_active=self._harmony_output_cleanup_active(),
+        )
         if cleaned:
             cur = getattr(self, "current_agent_msg", None)
             if cur is None:

@@ -2,6 +2,7 @@ import logging
 
 import qtawesome as qta
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QCloseEvent, QShowEvent
 from PyQt6.QtWidgets import QSizePolicy
 from PyQt6.QtWidgets import (
     QDialog,
@@ -19,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.wakeword_testbed import WakewordTestbedState
-from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.modal_backdrop import resolve_modal_backdrop_host
 from ui.components.selector_button import SelectorButton
 from ui.components.brand_buttons import (
     apply_brand_primary,
@@ -34,6 +35,7 @@ class WakewordTestbedDialog(QDialog):
     def __init__(self, parent, audio_worker):
         super().__init__(parent)
         self.audio_worker = audio_worker
+        self._backdrop_host = resolve_modal_backdrop_host(parent)
         self._is_dark = getattr(parent, "_is_dark_theme", True)
         self.setWindowTitle("Wakeword Test Lab")
         self.setModal(True)
@@ -1222,7 +1224,14 @@ class WakewordTestbedDialog(QDialog):
             return "Moderate"
         return "Low"
 
-    def closeEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        if self._backdrop_host is not None:
+            self._backdrop_host.acquire_modal_backdrop()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._backdrop_host is not None:
+            self._backdrop_host.release_modal_backdrop()
         self._test_attempt_open = False
         self._test_attempt_timer.stop()
         self._test_false_positive_timer.stop()

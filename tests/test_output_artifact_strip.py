@@ -112,3 +112,39 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
             for p in ("Yes", ",", " soaking", " brown", " rice", " helps.")
         )
         self.assertEqual(combined, "Yes, soaking brown rice helps.")
+
+    def test_preserves_gemma_thought_body_after_channel_marker(self) -> None:
+        """Regression: log exchange 2 — do not truncate Gemma answer after <channel|>."""
+        raw = (
+            "thought\n"
+            "<channel|>Since you aren't experiencing itching, redness, or pain, it is less "
+            "likely to be an active fungal infection or inflammatory dermatitis."
+        )
+        out = strip_harmony_oss_artifacts(raw)
+        self.assertNotEqual(out.strip(), "thought")
+        self.assertIn("Since you aren't experiencing", out)
+
+    def test_preserves_gemma_channel_thought_body_in_sanitize_path(self) -> None:
+        """Regression: log exchange 3 — full sanitize path must keep the answer body."""
+        from core.output_validation_sanitize import sanitize_output_for_validation
+
+        raw = (
+            "<|channel>thought\n"
+            "<channel|>I do not have access to the internet to perform a live search "
+            "for medical data. Because I cannot browse the web, I strongly recommend "
+            "speaking with a healthcare professional."
+        )
+        out = sanitize_output_for_validation(raw, harmony_active=False)
+        self.assertNotEqual(out.strip(), "thought")
+        self.assertIn("I do not have access to the internet", out)
+
+    def test_gemma_body_untouched_when_harmony_inactive(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = (
+            "thought\n"
+            "<channel|>Since you aren't experiencing itching, redness, or pain."
+        )
+        out = strip_output_artifacts(raw, harmony_active=False)
+        self.assertIn("Since you aren't experiencing", out)
+        self.assertNotIn("thought", out.lower().split("since")[0])

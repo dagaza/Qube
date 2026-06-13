@@ -76,6 +76,7 @@ from core.llm_execution_contract import (
     normalize_messages_for_task,
     policy_for_task,
 )
+from core.harmony_protocol import is_harmony_contract
 from core.prompt_contract import (
     PromptContract,
     assert_prompt_contract,
@@ -224,6 +225,7 @@ class NativeLlamaEngine(QThread):
         self._last_merged_stops: list[str] = []
         self._last_eos_token_str: str = ""
         self._last_prompt_contract: Optional[PromptContract] = None
+        self._harmony_model_active: bool = False
         self._model_reasoning_profile: Optional[ModelReasoningProfile] = None
         self._execution_mode: str = "unknown"
         self.execution_policy: Optional[ExecutionPolicy] = None
@@ -396,6 +398,7 @@ class NativeLlamaEngine(QThread):
             "prompt_contract_chat_format": getattr(pc, "chat_format", None) if pc else None,
             "prompt_contract_template_source": getattr(pc, "template_source", None) if pc else None,
             "prompt_contract_confidence": getattr(pc, "confidence", None) if pc else None,
+            "harmony_model_active": bool(getattr(self, "_harmony_model_active", False)),
         }
         plr = self._prompt_layout_resolution
         if plr is not None:
@@ -713,6 +716,7 @@ class NativeLlamaEngine(QThread):
                     [{"role": "user", "content": "hello"}],
                 )
                 self._last_prompt_contract = probe.contract
+                self._harmony_model_active = is_harmony_contract(probe.contract)
                 if probe.warning:
                     self.status_update.emit(probe.warning)
                     logger.warning("[PromptContract] %s model=%s", probe.warning, os.path.basename(path))
@@ -920,6 +924,7 @@ class NativeLlamaEngine(QThread):
         self._last_merged_stops = []
         self._last_eos_token_str = ""
         self._last_prompt_contract = None
+        self._harmony_model_active = False
         self._last_template_safety = None
         self._last_chat_contract_lock_skipped = False
         self._last_render_bundle = None
@@ -1060,7 +1065,10 @@ class NativeLlamaEngine(QThread):
         self._last_debug_session_id = debug_session_id
         self._last_render_bundle = None
         self._bundle_contract_id = None
-        task_policy = policy_for_task(task)
+        task_policy = policy_for_task(
+            task,
+            harmony_model_active=self._harmony_model_active,
+        )
         self._last_execution_task = task_policy.task
         self._last_task_policy = task_policy
         self._last_chat_format_mode = chat_format_mode
@@ -1104,6 +1112,7 @@ class NativeLlamaEngine(QThread):
             reply_shape_policy=reply_shape_policy,
         )
         contract = contract_result.contract
+        self._harmony_model_active = is_harmony_contract(contract)
         self._last_template_safety = getattr(contract_result, "template_safety", None)
         if contract_result.warning:
             logger.warning("[PromptContract] %s", contract_result.warning)

@@ -50,7 +50,7 @@ QToolTip {
     border-top-right-radius: 12px;
 }
 
-#NavSidebar, #HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #ToolsPane {
+#NavSidebar, #HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #SettingsSidebar, #ToolsPane {
     background-color: rgba(0, 0, 0, 0.15);
     border: none;
 }
@@ -439,6 +439,55 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     font-weight: bold;
 }
 
+#SettingsSubsectionLabel {
+    color: #a6adc8;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+#SettingsSectionGroupHeader {
+    color: #6c7086;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 4px 2px 4px;
+}
+
+#SettingsDisclosurePanel {
+    border-left: 2px solid rgba(139, 92, 246, 0.35);
+    padding-left: 12px;
+    margin-left: 4px;
+}
+
+#SettingsStatusStrip {
+    background-color: rgba(49, 50, 68, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #cdd6f4;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsExternalEngineHint {
+    color: #a6adc8;
+    font-size: 12px;
+    font-weight: normal;
+    font-style: italic;
+    padding: 4px 0 8px 0;
+}
+
+QLabel[class="SettingsHint"] {
+    color: #6c7086;
+    font-size: 12px;
+    font-weight: normal;
+}
+
 /* --- 8. TELEMETRY CARDS --- */
 #HardwareCard, #LatencyCard {
     background-color: #232337;
@@ -716,14 +765,14 @@ QLabel#AgentMessage {
 }
 /* --- UNIFIED LIST STYLING (DARK) --- */
 /* Conversations + Library sidebar lists only (chat/preview stage stays default). */
-#HistoryList, #LibraryDocList {
+#HistoryList, #LibraryDocList, #SettingsSectionList {
     background-color: #232337;
     border: none;
 }
 
 /* Sidebar rows size themselves (HistoryRowWidget margins); global QListWidget::item padding
    would inset content and push the options button away from the list edge. */
-#HistoryList::item, #LibraryDocList::item {
+#HistoryList::item, #LibraryDocList::item, #SettingsSectionList::item {
     padding: 0px;
     border-radius: 6px;
     margin-bottom: 4px;
@@ -734,11 +783,11 @@ QLabel#AgentMessage {
     border: none;
 }
 
-#HistoryList::item:hover, #LibraryDocList::item:hover, #ModelHubList::item:hover {
+#HistoryList::item:hover, #LibraryDocList::item:hover, #ModelHubList::item:hover, #SettingsSectionList::item:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-#HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected {
+#HistoryList::item:selected, #LibraryDocList::item:selected, #ModelHubList::item:selected, #SettingsSectionList::item:selected {
     background-color: rgba(255, 255, 255, 0.05);
     border: 1px solid #8b5cf6;
     border-radius: 6px;
@@ -760,7 +809,8 @@ QLabel#AgentMessage {
 /* Sidebar row titles: scope to QListWidget::item so colors apply reliably to setItemWidget rows. */
 #HistoryList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#HistoryRowTitle,
-#LibraryDocList::item QLabel#LibraryRowTitle {
+#LibraryDocList::item QLabel#LibraryRowTitle,
+#SettingsSectionList::item QLabel#HistoryRowTitle {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 500;
@@ -769,7 +819,8 @@ QLabel#AgentMessage {
 
 #HistoryList::item:selected QLabel#HistoryRowTitle,
 #LibraryDocList::item:selected QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected QLabel#LibraryRowTitle {
+#LibraryDocList::item:selected QLabel#LibraryRowTitle,
+#SettingsSectionList::item:selected QLabel#HistoryRowTitle {
     color: #ffffff !important;
 }
 

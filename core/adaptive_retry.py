@@ -186,7 +186,11 @@ def maybe_retry(
             model, contract, messages, max_tokens=max_tokens
         )
         second = validate_output(
-            sanitize_output_for_validation(retried_output), contract
+            sanitize_output_for_validation(
+                retried_output,
+                harmony_active=is_harmony_contract(contract),
+            ),
+            contract,
         )
         if second.is_valid:
             return AdaptiveRetryOutcome(
@@ -236,7 +240,11 @@ def maybe_retry(
         model, retry_contract, messages, max_tokens=max_tokens
     )
     second = validate_output(
-        sanitize_output_for_validation(retried_output), retry_contract
+        sanitize_output_for_validation(
+            retried_output,
+            harmony_active=is_harmony_contract(retry_contract),
+        ),
+        retry_contract,
     )
     if second.is_valid:
         return AdaptiveRetryOutcome(

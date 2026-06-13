@@ -24,7 +24,7 @@ class TestOutputValidationSanitize(unittest.TestCase):
         body = "Kathmandu is the capital of Nepal."
         raw = f"<|channel>thought\nPlanning the answer.\n\n{body}"
         self.assertFalse(validate_output(raw, _contract()).is_valid)
-        sanitized = sanitize_output_for_validation(raw)
+        sanitized = sanitize_output_for_validation(raw, harmony_active=False)
         result = validate_output(sanitized, _contract())
         self.assertTrue(result.is_valid)
         self.assertIn(body, sanitized)

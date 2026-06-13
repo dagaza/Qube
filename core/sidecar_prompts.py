@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
 from core.cognition_prompt_adapter import (
@@ -41,6 +42,22 @@ _VALID_REFLECTION_LABELS = frozenset({
 _JUDGE_WORDS = ("duplicate", "contradiction", "complement")
 
 _VALID_COMPANION_KINDS = frozenset({"idle_quip", "ingest_ack", "download_ack", "skip"})
+
+
+@dataclass(frozen=True)
+class TitleSelectionDetail:
+    """Observability for sidebar title candidate selection."""
+
+    winner: str = ""
+    winner_source: str = ""
+    winner_score: float = 0.0
+    runner_up: str = ""
+    runner_up_source: str = ""
+    runner_up_score: float = 0.0
+    path: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 def task_inference_params(task: SidecarTask) -> dict[str, Any]:
@@ -403,11 +420,71 @@ def _topic_words_from_text(text: str, *, max_words: int = 5) -> list[str]:
     return picked[:max_words]
 
 
+def _is_technical_single_token_title(line: str) -> bool:
+    """Allow one-token labels for tech terms (OAuth, Redis, TCP/IP)."""
+    token = (line or "").strip()
+    if not token or " " in token:
+        return False
+    if _META_TITLE_LINE.search(token):
+        return False
+    if _contains_title_fragment_verb(token):
+        return False
+
+    if "/" in token:
+        parts = [part for part in token.split("/") if part]
+        if not parts or len(parts) > 3:
+            return False
+        for part in parts:
+            if not re.match(r"^[\w']+$", part):
+                return False
+            low = part.lower()
+            if low in _TITLE_STOPWORDS or low in _TITLE_INSTRUCTION_WORDS:
+                return False
+        return True
+
+    words = _TITLE_WORD_RE.findall(token)
+    if len(words) != 1:
+        return False
+    word = words[0]
+    if len(word) < 2:
+        return False
+    low = word.lower()
+    if low in _TITLE_STOPWORDS or low in _TITLE_INSTRUCTION_WORDS:
+        return False
+    if any(c.isupper() for c in word[1:]):
+        return True
+    if word.isupper() and len(word) >= 2:
+        return True
+    return len(word) >= 4 and word[0].isupper()
+
+
+def _format_single_token_title(line: str) -> str:
+    token = (line or "").strip()
+    if any(c.isupper() for c in token) and any(c.islower() for c in token):
+        return token
+    if token.isupper():
+        return token
+    if "/" in token:
+        parts = token.split("/")
+        formatted: list[str] = []
+        for part in parts:
+            if part.isupper() or (len(part) <= 4 and part.isalpha()):
+                formatted.append(part.upper())
+            else:
+                formatted.append(part.capitalize())
+        return "/".join(formatted)
+    return token.capitalize()
+
+
 def _polish_title_candidate(candidate: str) -> str:
     line = re.sub(r"\s+", " ", (candidate or "").replace('"', "").replace("'", "")).strip()
     if not line or re.search(r"<\s*/?\s*think", line, re.IGNORECASE):
         return ""
     words = line.split()
+    if len(words) == 1:
+        if _is_technical_single_token_title(line):
+            return _format_single_token_title(line)
+        return ""
     if len(words) < 2 or len(words) > 8:
         return ""
     if _META_TITLE_LINE.search(line):
@@ -618,12 +695,12 @@ def _select_best_title(
     *,
     user_prompt: str,
     assistant_reply: str,
-) -> str:
+    path: str = "fallback_tournament",
+) -> tuple[str, TitleSelectionDetail]:
     if not candidates:
-        return ""
+        return "", TitleSelectionDetail(path=path)
     task_wrapper = _is_task_wrapper_prompt(user_prompt)
-    best_title = ""
-    best_score = float("-inf")
+    scored: list[tuple[float, str, str]] = []
     for title, source in candidates:
         score = _score_title_candidate(
             title,
@@ -632,19 +709,30 @@ def _select_best_title(
             assistant_reply=assistant_reply,
             task_wrapper=task_wrapper,
         )
-        if score > best_score:
-            best_score = score
-            best_title = title
-    if best_score < _TITLE_MIN_ACCEPT_SCORE:
-        return ""
-    return best_title
+        scored.append((score, title, source))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    if not scored or scored[0][0] < _TITLE_MIN_ACCEPT_SCORE:
+        return "", TitleSelectionDetail(path=path)
+    best_score, best_title, best_source = scored[0]
+    runner_score, runner_title, runner_source = (
+        scored[1] if len(scored) > 1 else (0.0, "", "")
+    )
+    return best_title, TitleSelectionDetail(
+        winner=best_title,
+        winner_source=best_source,
+        winner_score=best_score,
+        runner_up=runner_title,
+        runner_up_source=runner_source,
+        runner_up_score=runner_score,
+        path=path,
+    )
 
 
 def _fallback_title_from_exchange(
     user_prompt: str,
     *,
     assistant_reply: str = "",
-) -> str:
+) -> tuple[str, TitleSelectionDetail]:
     candidates = _collect_title_candidates(
         "",
         user_prompt=user_prompt,
@@ -654,11 +742,21 @@ def _fallback_title_from_exchange(
         candidates,
         user_prompt=user_prompt,
         assistant_reply=assistant_reply,
+        path="fallback_tournament",
     )
 
 
 def _fallback_title_from_user_prompt(user_prompt: str) -> str:
-    return _fallback_title_from_exchange(user_prompt)
+    title, _detail = _fallback_title_from_exchange(user_prompt)
+    return title
+
+
+def _model_selection_detail(title: str, source: str) -> TitleSelectionDetail:
+    return TitleSelectionDetail(
+        winner=title,
+        winner_source=source,
+        path=source,
+    )
 
 
 def _title_from_post_think_tail(raw: str) -> str:
@@ -686,17 +784,39 @@ def _finalize_title_text(
     *,
     user_prompt: str = "",
     assistant_reply: str = "",
-) -> str:
-    """Single-line title after stripping Qwen3 / R1-style reasoning blocks."""
+) -> tuple[str, TitleSelectionDetail]:
+    """Single-line title: validated model output first, heuristic tournament fallback."""
     raw_s = (raw or "").strip()
-    candidates = _collect_title_candidates(
-        raw_s,
-        user_prompt=user_prompt,
-        assistant_reply=assistant_reply,
-    )
-    return _select_best_title(
-        candidates,
-        user_prompt=user_prompt,
+    if not raw_s:
+        return _fallback_title_from_exchange(
+            user_prompt,
+            assistant_reply=assistant_reply,
+        )
+
+    cleaned = _normalize_sidecar_completion_text(raw_s)
+    lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
+    for line in reversed(lines):
+        accepted = _accept_title_candidate(line, user_prompt=user_prompt)
+        if accepted:
+            return accepted, _model_selection_detail(accepted, "model_line")
+        labeled = _title_from_proper_phrases(line)
+        if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
+            return labeled, _model_selection_detail(labeled, "model_proper_phrase")
+        coerced_words = _topic_words_from_text(line)
+        if len(coerced_words) >= 2:
+            coerced = _accept_title_candidate(
+                " ".join(coerced_words),
+                user_prompt=user_prompt,
+            )
+            if coerced:
+                return coerced, _model_selection_detail(coerced, "model_coerced")
+
+    post_think = _title_from_post_think_tail(raw_s)
+    if post_think and not _title_is_verbatim_of_prompt(post_think, user_prompt):
+        return post_think, _model_selection_detail(post_think, "post_think_tail")
+
+    return _fallback_title_from_exchange(
+        user_prompt,
         assistant_reply=assistant_reply,
     )
 
@@ -707,14 +827,14 @@ def parse_task_output(task: SidecarTask, raw: str, **kwargs: Any) -> SidecarResu
         return SidecarResult(ok=False, error="empty_output", task=task)
 
     if task == SidecarTask.title:
-        title = _finalize_title_text(
+        title, selection = _finalize_title_text(
             raw_s,
             user_prompt=str(kwargs.get("user_prompt") or ""),
             assistant_reply=str(kwargs.get("assistant_reply") or ""),
         )
         return SidecarResult(
             text=title,
-            parsed={"title": title},
+            parsed={"title": title, "selection": selection.to_dict()},
             confidence=0.9 if title else 0.0,
             ok=bool(title),
             task=task,

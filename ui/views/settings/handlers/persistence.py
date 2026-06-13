@@ -1,0 +1,438 @@
+"""Settings handler mixin: PersistenceHandlersMixin."""
+
+from __future__ import annotations
+
+# Shared imports from settings shell (handlers use ``self`` as SettingsView).
+import os
+import logging
+from pathlib import Path
+import qtawesome as qta
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QFrame, QPushButton,
+    QLabel, QCheckBox, QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox, QScrollArea, QProgressBar,
+    QToolButton,
+    QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
+    QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
+)
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent
+from core.audio_utils import get_input_devices, get_output_devices
+from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
+from core.network import is_port_open
+from core.settings_store import (
+    default_user_settings_path,
+    get_settings_store,
+)
+from core.app_settings import (
+    get_enable_memory_enrichment,
+    set_enable_memory_enrichment,
+    get_enable_memory_promotion,
+    set_enable_memory_promotion,
+    get_memory_promotion_acknowledged,
+    set_memory_promotion_acknowledged,
+    get_enable_memory_consolidation,
+    set_enable_memory_consolidation,
+    get_enable_chat_personality_nudge,
+    set_enable_chat_personality_nudge,
+    get_memory_promotion_preset,
+    set_memory_promotion_preset,
+    get_profile_units,
+    set_profile_units,
+    DEFAULT_ENGINE_MODE,
+    get_engine_mode,
+    get_internal_model_path,
+    expected_gguf_shard_filenames,
+    is_secondary_gguf_shard,
+    parse_gguf_shard_info,
+    resolve_internal_model_path,
+    set_internal_model_path,
+    get_internal_n_gpu_layers,
+    set_internal_n_gpu_layers,
+    get_internal_n_threads,
+    set_internal_n_threads,
+    get_llm_models_dir,
+    get_internal_native_chat_format,
+    set_internal_native_chat_format,
+    get_auto_load_last_model_on_startup,
+    set_auto_load_last_model_on_startup,
+    get_model_manager_hardware_suggestions,
+    set_model_manager_hardware_suggestions,
+    get_audio_input_device_index,
+    set_audio_input_device_index,
+    get_audio_output_device_index,
+    set_audio_output_device_index,
+    get_advanced_engine_unlocked,
+    set_advanced_engine_unlocked,
+    get_sidecar_model_path,
+    set_sidecar_model_path,
+    get_sidecar_chat_format,
+    set_sidecar_chat_format,
+    get_llm_temperature,
+    get_llm_context_limit,
+    get_llm_output_token_limit,
+    get_llm_output_token_limit_enabled,
+    get_llm_chat_history_messages,
+    get_llm_top_k,
+    get_llm_repeat_penalty,
+    get_llm_presence_penalty,
+    get_llm_top_p,
+    get_llm_min_p,
+    get_mcp_rag_auto_activator_enabled,
+)
+from core.output_token_budget import describe_output_token_budget
+from core.auxiliary_cognition import (
+    get_cognition_models_dir,
+    is_protected_cognition_model,
+    list_selectable_cognition_models,
+    resolve_active_cognition_path,
+    validate_cognition_model_path,
+)
+from core.cpu_threads import max_cpu_threads_for_ui
+from core.gpu_layers_cap import max_safe_n_gpu_layers
+from ui.components.brand_buttons import (
+    apply_brand_primary,
+    apply_brand_danger,
+)
+from ui.components.wakeword_testbed_dialog import WakewordTestbedDialog
+from ui.components.toggle import PrestigeToggle
+from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.settings_json_editor_dialog import SettingsJsonEditorDialog
+from ui.components.selector_button import SelectorButton
+from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.views.settings.controls import (
+    NoScrollComboBox,
+    NoScrollDoubleSpinBox,
+    NoScrollSlider,
+    NoScrollSpinBox,
+)
+from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
+from ui.views.settings.widgets import update_ai_status_strip
+from ui.views.settings.sections import (
+    advanced,
+    ai_models,
+    desktop_companion,
+    memory_knowledge,
+    notifications,
+    voice_audio,
+)
+logger = logging.getLogger("Qube.UI.Settings")
+LOCAL_GGUF_SHARD_PATHS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+COGNITION_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+_SETTINGS_STATUS_BASE_HOLD_MS = 1800
+_SETTINGS_STATUS_MS_PER_CHAR = 75
+_SETTINGS_STATUS_MIN_HOLD_MS = 2500
+_SETTINGS_STATUS_MAX_HOLD_MS = 8000
+_SETTINGS_STATUS_FADE_MS = 500
+_SECTION_BUILDERS = {
+    "voice.audio": voice_audio.build_section,
+    "ai.models": ai_models.build_section,
+    "memory.knowledge": memory_knowledge.build_section,
+    "companion.desktop": desktop_companion.build_section,
+    "notifications": notifications.build_section,
+    "advanced": advanced.build_section,
+}
+
+
+class PersistenceHandlersMixin:
+    """Behavior extracted from SettingsView."""
+
+    def _setup_settings_file_watcher(self) -> None:
+        self._settings_reload_timer = QTimer(self)
+        self._settings_reload_timer.setSingleShot(True)
+        self._settings_reload_timer.setInterval(400)
+        self._settings_reload_timer.timeout.connect(self._reload_settings_from_disk)
+        self._settings_watcher = QFileSystemWatcher(self)
+        self._settings_watcher.fileChanged.connect(self._on_settings_file_changed)
+
+    def _ensure_settings_file_watched(self) -> None:
+        path = str(default_user_settings_path())
+        watched = set(self._settings_watcher.files())
+        if path not in watched:
+            if not default_user_settings_path().is_file():
+                get_settings_store().ensure_user_settings_file()
+            self._settings_watcher.addPath(path)
+        parent = str(default_user_settings_path().parent)
+        if parent not in self._settings_watcher.directories():
+            self._settings_watcher.addPath(parent)
+
+    def _on_settings_file_changed(self, _path: str) -> None:
+        if self._settings_json_dialog is not None and self._settings_json_dialog.isVisible():
+            return
+        self._settings_reload_timer.start()
+
+    def _settings_file_status_hold_ms(self, message: str) -> int:
+        chars = len(message.strip())
+        ms = _SETTINGS_STATUS_BASE_HOLD_MS + chars * _SETTINGS_STATUS_MS_PER_CHAR
+        return min(
+            _SETTINGS_STATUS_MAX_HOLD_MS,
+            max(_SETTINGS_STATUS_MIN_HOLD_MS, ms),
+        )
+
+    def _cancel_settings_file_status_fade(self) -> None:
+        self._settings_file_status_sequence += 1
+        if self._settings_file_status_fade_anim is not None:
+            self._settings_file_status_fade_anim.stop()
+            self._settings_file_status_fade_anim = None
+        if hasattr(self, "settings_file_status_lbl"):
+            self.settings_file_status_lbl.setGraphicsEffect(None)
+
+    def _show_settings_file_status(self, message: str, *, persistent: bool = False) -> None:
+        self._cancel_settings_file_status_fade()
+        self.settings_file_status_lbl.setText(message)
+        if persistent or not message.strip():
+            return
+        seq = self._settings_file_status_sequence
+        QTimer.singleShot(
+            self._settings_file_status_hold_ms(message),
+            lambda: self._begin_settings_file_status_fade(seq),
+        )
+
+    def _begin_settings_file_status_fade(self, seq: int) -> None:
+        if seq != self._settings_file_status_sequence:
+            return
+        lbl = self.settings_file_status_lbl
+        if not lbl.text().strip():
+            return
+        eff = lbl.graphicsEffect()
+        if not isinstance(eff, QGraphicsOpacityEffect):
+            eff = QGraphicsOpacityEffect(lbl)
+            lbl.setGraphicsEffect(eff)
+        eff.setOpacity(1.0)
+        anim = QPropertyAnimation(eff, b"opacity", self)
+        anim.setDuration(_SETTINGS_STATUS_FADE_MS)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(lambda: self._finish_settings_file_status_fade(seq))
+        self._settings_file_status_fade_anim = anim
+        anim.start()
+
+    def _finish_settings_file_status_fade(self, seq: int) -> None:
+        if seq != self._settings_file_status_sequence:
+            return
+        self.settings_file_status_lbl.clear()
+        self.settings_file_status_lbl.setGraphicsEffect(None)
+        self._settings_file_status_fade_anim = None
+
+    def _on_open_settings_json_clicked(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if self._settings_json_dialog is None:
+            self._settings_json_dialog = SettingsJsonEditorDialog(self, is_dark=is_dark)
+            self._settings_json_dialog.settings_applied.connect(
+                self._on_settings_editor_applied
+            )
+        else:
+            self._settings_json_dialog.refresh_theme(is_dark)
+        self._settings_json_dialog.load_from_disk()
+        self._settings_json_dialog.show()
+        self._settings_json_dialog.raise_()
+        self._settings_json_dialog.activateWindow()
+        self._show_settings_file_status(
+            "Editing settings.json in the built-in editor.",
+            persistent=True,
+        )
+
+    def _on_settings_editor_applied(self, changed: set) -> None:
+        if not changed:
+            return
+        self._sync_ui_from_persisted_settings()
+        self._show_settings_file_status(
+            f"Applied {len(changed)} setting(s) from settings.json."
+        )
+        self.external_settings_reloaded.emit(changed)
+
+    def _reload_settings_from_disk(self) -> None:
+        store = get_settings_store()
+        result = store.reload_if_disk_changed()
+        if result is None:
+            return
+        if not result.ok:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Invalid settings.json",
+                result.parse_error or "The file could not be parsed.",
+                is_dark=is_dark,
+            ).exec()
+            self._show_settings_file_status(
+                "settings.json has errors — fix JSON and save again."
+            )
+            return
+        if result.skipped_keys:
+            skipped = ", ".join(result.skipped_keys[:5])
+            if len(result.skipped_keys) > 5:
+                skipped += ", …"
+            logger.info("Ignored unknown settings keys: %s", skipped)
+        if not result.changed_keys:
+            return
+        self._sync_ui_from_persisted_settings()
+        self._show_settings_file_status(
+            f"Reloaded {len(result.changed_keys)} setting(s) from settings.json."
+        )
+        self.external_settings_reloaded.emit(set(result.changed_keys))
+
+    def _sync_ui_from_persisted_settings(self) -> None:
+        engine_modes = [
+            ("Internal Engine (native)", "internal"),
+            ("External Server (localhost)", "external"),
+        ]
+        em = get_engine_mode()
+        engine_label = next((lbl for lbl, m in engine_modes if m == em), engine_modes[0][0])
+        self.engine_selector.blockSignals(True)
+        self.engine_selector.setText(engine_label)
+        self.engine_selector.blockSignals(False)
+
+        self.memory_enrichment_toggle.blockSignals(True)
+        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
+        self.memory_enrichment_toggle.blockSignals(False)
+        if hasattr(self, "chat_personality_toggle"):
+            self.chat_personality_toggle.blockSignals(True)
+            self.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())
+            self.chat_personality_toggle.blockSignals(False)
+        if hasattr(self, "memory_promotion_toggle"):
+            self.memory_promotion_toggle.blockSignals(True)
+            self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())
+            self.memory_promotion_toggle.blockSignals(False)
+        if hasattr(self, "memory_consolidation_toggle"):
+            self.memory_consolidation_toggle.blockSignals(True)
+            self.memory_consolidation_toggle.setChecked(get_enable_memory_consolidation())
+            self.memory_consolidation_toggle.blockSignals(False)
+        if hasattr(self, "memory_promotion_preset_selector"):
+            labels = {
+                "conservative": "Conservative",
+                "standard": "Standard",
+                "aggressive": "Aggressive",
+            }
+            preset = get_memory_promotion_preset()
+            self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
+        if hasattr(self, "memory_promotion_toggle"):
+            self._sync_memory_promotion_controls_for_enrichment()
+        if hasattr(self, "profile_units_selector"):
+            self._sync_profile_units_selector()
+
+        if hasattr(self, "notifications_enabled_cb"):
+            from core import app_settings as _ns
+
+            self.notifications_enabled_cb.blockSignals(True)
+            self.notifications_enabled_cb.setChecked(_ns.get_notifications_enabled())
+            self.notifications_enabled_cb.blockSignals(False)
+            self.notifications_dnd_cb.blockSignals(True)
+            self.notifications_dnd_cb.setChecked(_ns.get_notifications_dnd())
+            self.notifications_dnd_cb.blockSignals(False)
+            self.notifications_suppress_focus_cb.blockSignals(True)
+            self.notifications_suppress_focus_cb.setChecked(_ns.get_notifications_suppress_when_focused())
+            self.notifications_suppress_focus_cb.blockSignals(False)
+            self.notifications_os_hidden_cb.blockSignals(True)
+            self.notifications_os_hidden_cb.setChecked(_ns.get_notifications_os_when_hidden())
+            self.notifications_os_hidden_cb.blockSignals(False)
+            self.notifications_sound_cb.blockSignals(True)
+            self.notifications_sound_cb.setChecked(_ns.get_notifications_sound_enabled())
+            self.notifications_sound_cb.blockSignals(False)
+            self.notifications_preview_cb.blockSignals(True)
+            self.notifications_preview_cb.setChecked(_ns.get_notifications_show_preview())
+            self.notifications_preview_cb.blockSignals(False)
+            self.notifications_memory_cb.blockSignals(True)
+            self.notifications_memory_cb.setChecked(_ns.get_notifications_category_memory())
+            self.notifications_memory_cb.blockSignals(False)
+
+        if hasattr(self, "companion_enabled_cb"):
+            from core import app_settings as _cs
+
+            self.companion_enabled_cb.blockSignals(True)
+            self.companion_enabled_cb.setChecked(_cs.get_companion_enabled())
+            self.companion_enabled_cb.blockSignals(False)
+            win = self.window()
+            if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
+                win.tray_controller.sync_companion_toggle()
+
+        if hasattr(self, "companion_persona_cbs"):
+            from core import app_settings as _cs
+
+            current = _cs.get_companion_persona()
+            for persona_id, cb in self.companion_persona_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(persona_id == current)
+                cb.blockSignals(False)
+            if hasattr(self, "companion_preview"):
+                self.companion_preview.set_persona(current)
+
+        if hasattr(self, "companion_idle_color_cbs"):
+            from core import app_settings as _cs
+
+            current_idle = _cs.get_companion_idle_color()
+            for color_id, cb in self.companion_idle_color_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(color_id == current_idle)
+                cb.blockSignals(False)
+            if hasattr(self, "companion_preview"):
+                self.companion_preview.update()
+
+        if hasattr(self, "advanced_engine_toggle"):
+            self.advanced_engine_toggle.blockSignals(True)
+            self.advanced_engine_toggle.setChecked(get_advanced_engine_unlocked())
+            self.advanced_engine_toggle.blockSignals(False)
+            if hasattr(self, "advanced_engine_panel"):
+                self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
+
+        self.auto_load_last_model_cb.blockSignals(True)
+        checked = get_auto_load_last_model_on_startup()
+        self.auto_load_last_model_cb.setChecked(checked)
+        self.auto_load_last_model_cb.blockSignals(False)
+        self.auto_load_last_model_changed.emit(checked)
+
+        self.model_manager_hardware_suggestions_cb.blockSignals(True)
+        self.model_manager_hardware_suggestions_cb.setChecked(
+            get_model_manager_hardware_suggestions()
+        )
+        self.model_manager_hardware_suggestions_cb.blockSignals(False)
+
+        gpu_val = get_internal_n_gpu_layers()
+        self.gpu_layers_slider.blockSignals(True)
+        self.gpu_layers_slider.setValue(gpu_val)
+        self.gpu_layers_slider.blockSignals(False)
+        self.gpu_layers_value_lbl.setText(str(gpu_val))
+
+        cpu_val = get_internal_n_threads()
+        self.cpu_threads_slider.blockSignals(True)
+        self.cpu_threads_slider.setValue(cpu_val)
+        self.cpu_threads_slider.blockSignals(False)
+        self.cpu_threads_value_lbl.setText(str(cpu_val))
+
+        preferred = get_internal_native_chat_format()
+        label = next(
+            (lbl for lbl, mode in self._native_chat_format_items if mode == preferred),
+            self._native_chat_format_items[0][0],
+        )
+        self.native_chat_format_selector.blockSignals(True)
+        self.native_chat_format_selector.setText(label)
+        self.native_chat_format_selector.blockSignals(False)
+        self._sync_native_chat_template_label()
+
+        self._sync_models_dir_label()
+        self._sync_active_native_model_label()
+        self._refresh_local_gguf_list()
+        self._sync_ai_provider_enabled_for_inference(em)
+
+        saved_input = get_audio_input_device_index()
+        if saved_input is not None:
+            mics = get_input_devices()
+            for idx, name in mics:
+                if idx == saved_input:
+                    self.mic_selector.setText(name)
+                    if self.audio_worker:
+                        self.audio_worker.set_input_device(idx)
+                    break
+
+        saved_output = get_audio_output_device_index()
+        if saved_output is not None:
+            outputs = get_output_devices()
+            for idx, name in outputs:
+                if idx == saved_output:
+                    self.device_selector.setText(name)
+                    if self.tts_worker:
+                        self.tts_worker.set_device(idx)
+                    break
+
+        if self.audio_worker:
+            self._sync_wakeword_catalog(trigger="settings reload")

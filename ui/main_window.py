@@ -32,6 +32,7 @@ from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
+from ui.components.modal_backdrop import ModalBackdrop
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
 from core.assistant_presence import AssistantPresenceService
@@ -350,6 +351,10 @@ class MainWindow(QMainWindow):
         self.notification_center = AppNotificationCenter(self.main_container)
         self.notification_center.action_triggered.connect(self._on_notification_action)
         self.notification_center.apply_theme(self._is_dark_theme)
+
+        self._modal_backdrop = ModalBackdrop(self.main_container)
+        self._modal_backdrop.apply_theme(self._is_dark_theme)
+        self._modal_backdrop_depth = 0
 
         # Resize Grip
         self.grip = QSizeGrip(self.main_container) 
@@ -1731,36 +1736,62 @@ class MainWindow(QMainWindow):
             toolbar_spin.valueChanged.connect(settings_spin.setValue)
         self._apply_toolbar_generation_spin_values()
 
+    def acquire_modal_backdrop(self) -> None:
+        """Dim the main window while a modal dialog is open (reference-counted)."""
+        self._modal_backdrop_depth += 1
+        if self._modal_backdrop_depth == 1:
+            self._modal_backdrop.apply_theme(self._is_dark_theme)
+            self._modal_backdrop.show_animated()
+
+    def release_modal_backdrop(self) -> None:
+        """Remove one modal dim layer; hides when the last dialog closes."""
+        if self._modal_backdrop_depth <= 0:
+            return
+        self._modal_backdrop_depth -= 1
+        if self._modal_backdrop_depth == 0:
+            self._modal_backdrop.hide_animated()
+
+    def _is_tools_pane_collapsed(self) -> bool:
+        return self.tools_content.maximumWidth() == 0
+
+    def _set_tools_pane_expanded(self, expanded: bool, *, animate: bool = True) -> None:
+        """Show or hide the global tools panel content area."""
+        if self._is_tools_pane_collapsed() == (not expanded):
+            return
+
+        end_content = 260 if expanded else 0
+        end_frame = 300 if expanded else 40
+
+        if expanded:
+            icon = qta.icon("fa5s.chevron-right", color="#89b4fa")
+            tooltip = "Hide tools panel"
+        else:
+            icon = qta.icon("fa5s.chevron-left", color="#89b4fa")
+            tooltip = "Show tools panel"
+
+        if animate:
+            self.content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth")
+            self.content_anim.setDuration(350)
+            self.content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+            self.content_anim.setEndValue(end_content)
+
+            self.frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth")
+            self.frame_anim.setDuration(350)
+            self.frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+            self.frame_anim.setEndValue(end_frame)
+
+            self.content_anim.start()
+            self.frame_anim.start()
+        else:
+            self.tools_content.setMaximumWidth(end_content)
+            self.tools_frame.setMaximumWidth(end_frame)
+
+        self.toggle_tools_btn.setIcon(icon)
+        self.toggle_tools_btn.setToolTip(tooltip)
+
     def _toggle_tools_pane(self):
         """Animates the collapse of the content while keeping the handle visible."""
-        # Check if we are currently collapsed (width is small)
-        is_collapsed = self.tools_content.maximumWidth() == 0
-        
-        # 1. Animate the Content Area
-        self.content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth")
-        self.content_anim.setDuration(350)
-        self.content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
-
-        # 2. Animate the Outer Frame (The 'Bar' background)
-        self.frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth")
-        self.frame_anim.setDuration(350)
-        self.frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
-
-        if is_collapsed:
-            # Expand to full size
-            self.content_anim.setEndValue(260)
-            self.frame_anim.setEndValue(300)
-            self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
-            self.toggle_tools_btn.setToolTip("Hide tools panel")
-        else:
-            # Collapse to just the button handle
-            self.content_anim.setEndValue(0)
-            self.frame_anim.setEndValue(40)
-            self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-left', color='#89b4fa'))
-            self.toggle_tools_btn.setToolTip("Show tools panel")
-
-        self.content_anim.start()
-        self.frame_anim.start()
+        self._set_tools_pane_expanded(self._is_tools_pane_collapsed(), animate=True)
 
     def _refresh_toolbar_native_model_from_settings_signal(self, mode: str) -> None:
         """Uses the value from Settings' Inference engine menu (authoritative for this UI tick)."""
@@ -2321,6 +2352,8 @@ class MainWindow(QMainWindow):
         finally:
             stage.setUpdatesEnabled(True)
             stage.update()
+        if index == 5:
+            self._set_tools_pane_expanded(False, animate=False)
         if index == 0 and hasattr(self, "conversations_view"):
             QTimer.singleShot(0, self.conversations_view.focus_composer_if_ready)
 
@@ -2422,6 +2455,8 @@ class MainWindow(QMainWindow):
             self.telemetry_view.refresh_after_theme_toggle()
         if hasattr(self, "notification_center"):
             self.notification_center.apply_theme(self._is_dark_theme)
+        if hasattr(self, "_modal_backdrop"):
+            self._modal_backdrop.apply_theme(self._is_dark_theme)
         if self.tray_controller is not None:
             self.tray_controller.apply_theme(self._is_dark_theme)
         if self._companion_controller is not None:
