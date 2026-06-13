@@ -261,6 +261,8 @@ class Qube:
         self.native_llama_engine.status_update.connect(w.update_status)
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
+        self.llm_worker.web_search_active.connect(w.set_web_indicator_active)
+        self.llm_worker.response_finished.connect(lambda _sid, _text: w.set_web_indicator_active(False))
         self.tts_worker.playback_finished.connect(self._handle_tts_finished)
         self.tts_worker.playback_started.connect(w.conversations_view.on_tts_playback_started)
         self.tts_worker.playback_finished.connect(w.conversations_view.on_tts_playback_finished)

@@ -3052,6 +3052,9 @@ class ConversationsView(QWidget):
         if self.llm and hasattr(self.llm, "set_force_web_enabled"):
             self.llm.set_force_web_enabled(checked)
         self._apply_action_toggle_styles()
+        win = self.window()
+        if win is not None and hasattr(win, "refresh_web_indicator"):
+            win.refresh_web_indicator()
 
     def _reset_web_toggle(self) -> None:
         """Turn off sticky web search when starting a fresh chat session."""
@@ -3065,6 +3068,9 @@ class ConversationsView(QWidget):
         if self.llm and hasattr(self.llm, "set_force_web_enabled"):
             self.llm.set_force_web_enabled(False)
         self._apply_action_toggle_styles()
+        win = self.window()
+        if win is not None and hasattr(win, "refresh_web_indicator"):
+            win.refresh_web_indicator()
 
     def _apply_action_toggle_styles(self) -> None:
         """Render Web/Think toggle buttons with active/inactive styles."""

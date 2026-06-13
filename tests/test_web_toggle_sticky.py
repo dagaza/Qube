@@ -28,6 +28,10 @@ class WebToggleStickyTests(unittest.TestCase):
         worker.set_force_web_next_turn(False)
         self.assertFalse(worker._force_web_enabled)
 
+    def test_web_search_active_signal_declared(self) -> None:
+        worker = self._bare_worker()
+        self.assertTrue(hasattr(worker, "web_search_active"))
+
 
 if __name__ == "__main__":
     unittest.main()

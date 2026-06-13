@@ -727,7 +727,7 @@ class MainWindow(QMainWindow):
 
         # Left counterbalance to keep the bubble perfectly centered
         dummy_spacer = QWidget()
-        dummy_spacer.setFixedWidth(60) 
+        dummy_spacer.setFixedWidth(200)
         center_layout.addWidget(dummy_spacer)
 
         # Status Bubble
@@ -746,6 +746,25 @@ class MainWindow(QMainWindow):
         )
         self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
         center_layout.addWidget(self.rag_status_dot)
+
+        self.web_status_dot = QLabel("● WEB")
+        self.web_status_dot.setFixedWidth(60)
+        self.web_status_dot.setObjectName("WebStatusDot")
+        self.web_status_dot.setToolTip("Web search is off")
+        self.web_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
+        center_layout.addWidget(self.web_status_dot)
+
+        self.hybrid_status_dot = QLabel("● HYB")
+        self.hybrid_status_dot.setFixedWidth(60)
+        self.hybrid_status_dot.setObjectName("HybridStatusDot")
+        self.hybrid_status_dot.setToolTip("Hybrid Internet Mode is off")
+        self.hybrid_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
+        center_layout.addWidget(self.hybrid_status_dot)
+
+        self._web_indicator_force = False
+        self._web_indicator_hybrid = get_mcp_internet_hybrid_enabled()
+        self._web_indicator_active = False
+        self._apply_web_indicator()
 
         layout.addWidget(center_container)
 
@@ -924,6 +943,69 @@ class MainWindow(QMainWindow):
             return
 
         self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px;")
+
+    _WEB_COLOR_OFF = "#45475a"
+    _WEB_COLOR_ON = "#c2410c"
+
+    def _retrieval_indicator_stylesheet(self, color: str) -> str:
+        return f"color: {color}; font-weight: bold; font-size: 11px;"
+
+    def refresh_web_indicator(self) -> None:
+        """Sync the top-bar WEB/HYB indicators from toolbar toggles and chat Web button."""
+        self._web_indicator_force = self._resolve_web_force_enabled()
+        self._web_indicator_hybrid = self._resolve_web_hybrid_enabled()
+        self._apply_web_indicator()
+
+    def set_web_indicator_active(self, active: bool) -> None:
+        """Highlight WEB during an in-flight web search turn."""
+        self._web_indicator_active = bool(active)
+        self._apply_web_indicator()
+
+    def _resolve_web_force_enabled(self) -> bool:
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None and hasattr(cv, "web_btn"):
+            return cv.web_btn.isChecked()
+        worker = getattr(self, "_llm_worker", None)
+        if worker is not None:
+            return bool(getattr(worker, "_force_web_enabled", False))
+        return False
+
+    def _resolve_web_hybrid_enabled(self) -> bool:
+        if hasattr(self, "tool_internet_hybrid_toggle"):
+            return self.tool_internet_hybrid_toggle.isChecked()
+        return get_mcp_internet_hybrid_enabled()
+
+    def _apply_web_indicator(self) -> None:
+        if not hasattr(self, "web_status_dot"):
+            return
+
+        force_on = bool(self._web_indicator_force)
+        hybrid_on = bool(self._web_indicator_hybrid)
+        active = bool(self._web_indicator_active)
+        style = self._retrieval_indicator_stylesheet
+
+        if force_on or active:
+            web_color = self._WEB_COLOR_ON
+            if force_on:
+                web_tooltip = "Web search enabled for every message in this chat"
+            else:
+                web_tooltip = "Web search is active for this turn"
+        else:
+            web_color = self._WEB_COLOR_OFF
+            web_tooltip = "Web search is off"
+
+        self.web_status_dot.setStyleSheet(style(web_color))
+        self.web_status_dot.setToolTip(web_tooltip)
+
+        if hasattr(self, "hybrid_status_dot"):
+            hybrid_color = self._WEB_COLOR_ON if hybrid_on else self._WEB_COLOR_OFF
+            hybrid_tooltip = (
+                "Hybrid Internet Mode: Qube automatically decides when to search the web"
+                if hybrid_on
+                else "Hybrid Internet Mode is off"
+            )
+            self.hybrid_status_dot.setStyleSheet(style(hybrid_color))
+            self.hybrid_status_dot.setToolTip(hybrid_tooltip)
     
     def _screen_for_window(self) -> QScreen | None:
         """Return the monitor that contains most of the window (not always primary)."""
@@ -1677,10 +1759,13 @@ class MainWindow(QMainWindow):
             # Hybrid toggle controls web search + cognitive auto-web routing.
             def on_hybrid_toggled(checked: bool):
                 self._llm_worker.set_mcp_internet_hybrid(checked)
+                self._web_indicator_hybrid = bool(checked)
+                self._apply_web_indicator()
 
             self.tool_internet_hybrid_toggle.toggled.connect(on_hybrid_toggled)
             # Seed worker state from the current toggle value.
             on_hybrid_toggled(self.tool_internet_hybrid_toggle.isChecked())
+            self.refresh_web_indicator()
 
         main_layout.addStretch()
         

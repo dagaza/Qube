@@ -262,6 +262,7 @@ class LLMWorker(QThread):
     ttft_latency = pyqtSignal(float)
     tps_metric = pyqtSignal(float)
     context_retrieved = pyqtSignal(bool)
+    web_search_active = pyqtSignal(bool)
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
@@ -1700,6 +1701,7 @@ class LLMWorker(QThread):
                 exchange_total_ms=exchange_total_ms,
             )
             self._completion_output_snapshot = None
+            self.web_search_active.emit(False)
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -2453,6 +2455,7 @@ class LLMWorker(QThread):
             composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
         ) and (self.mcp_internet_enabled or force_web):
             web_search_attempted = True
+            self.web_search_active.emit(True)
             self.status_update.emit("🌐 Searching the Web...")
 
             search_target = resolve_search_target(
