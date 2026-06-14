@@ -114,6 +114,43 @@ class SimulateExecutionRouteTests(unittest.TestCase):
         self.assertEqual(route, "NONE")
         self.assertEqual(reason, "web_veto_tool_disabled")
 
+    def test_rag_veto_when_master_disabled(self) -> None:
+        decision = {
+            "route": "rag",
+            "top_intent": "rag",
+            "rag_score_final": 0.4,
+            "rag_score_source": "substring",
+        }
+        route, reason = simulate_execution_route(
+            prompt="What does the policy say about refunds?",
+            decision=decision,
+            config=RouterEvalConfig(mcp_rag_enabled=False),
+        )
+        self.assertEqual(route, "NONE")
+        self.assertEqual(reason, "rag_veto_tool_disabled")
+        self.assertTrue(decision.get("rag_vetoed_tool_disabled"))
+
+    def test_hybrid_downgrades_to_memory_when_master_disabled(self) -> None:
+        decision = {"route": "hybrid", "recall_fusion": True}
+        route, reason = simulate_execution_route(
+            prompt="Tell me about Dr. Evelyn.",
+            decision=decision,
+            config=RouterEvalConfig(mcp_rag_enabled=False),
+        )
+        self.assertEqual(route, "MEMORY")
+        self.assertTrue(decision.get("rag_library_leg_skipped"))
+        self.assertIn(reason, ("recall_fusion", "rag_veto_tool_disabled"))
+
+    def test_file_search_bypasses_rag_veto(self) -> None:
+        decision = {"route": "rag"}
+        route, reason = simulate_execution_route(
+            prompt="Search my documents for API retry behavior.",
+            decision=decision,
+            config=RouterEvalConfig(mcp_rag_enabled=False),
+        )
+        self.assertEqual(route, "RAG")
+        self.assertEqual(reason, "explicit_file_search")
+
 
 class EvaluateCaseTests(unittest.TestCase):
     def test_general_knowledge_no_embeddings(self) -> None:

@@ -173,6 +173,7 @@ class SettingsView(
     audio_pin_toggle = pyqtSignal(bool)
     tts_voice_pin_toggle = pyqtSignal(bool)
     auto_activator_toggle = pyqtSignal(bool) # 🔑 ADD THIS
+    rag_kb_toggle = pyqtSignal(bool)
     auto_load_last_model_changed = pyqtSignal(bool)
     memory_enrichment_changed = pyqtSignal(bool)
     memory_promotion_changed = pyqtSignal(bool)

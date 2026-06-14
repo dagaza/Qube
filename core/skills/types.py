@@ -21,6 +21,7 @@ class SkillContext:
     narrative_active: bool
     web_capability_blocked: bool = False
     explicit_web_empty_results: bool = False
+    rag_capability_blocked: bool = False
     router_top_intent: str | None = None
     router_trace_summary: str | None = None
     query_embedding: Any | None = None

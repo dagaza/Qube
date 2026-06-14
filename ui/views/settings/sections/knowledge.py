@@ -17,7 +17,7 @@ from core.app_settings import get_advanced_embedding_unlocked
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.toggle import PrestigeToggle
-from ui.views.settings.widgets import add_subsection_to_layout, wrap_subsection
+from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -131,5 +131,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     adv_panel_layout.addWidget(wrap_subsection(embedding_inner, anchor="embedding_model"))
     host.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
     layout.addWidget(host.advanced_embedding_panel)
+
+    add_section_reset_footer(layout, host, "knowledge", is_dark=is_dark)
 
     return container

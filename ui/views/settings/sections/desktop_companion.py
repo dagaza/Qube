@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
 
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.selector_button import SelectorButton
-from ui.views.settings.widgets import add_subsection_to_layout
+from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -421,5 +421,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._on_companion_demo_state_selected("idle")
 
     host._sync_companion_verbal_controls_enabled()
+
+    add_section_reset_footer(companion_layout, host, "companion.desktop", is_dark=is_dark)
 
     return companion_widget

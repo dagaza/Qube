@@ -49,6 +49,7 @@ from ui.views.settings.controls import (
 )
 from ui.views.settings.widgets import (
     add_subsection_to_form,
+    add_section_reset_footer,
     make_disclosure_row,
     make_external_engine_hint,
     track_internal_ai_label,
@@ -708,5 +709,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._refresh_cognition_gguf_list()
     host._sync_active_cognition_label()
     host._sync_native_chat_template_label()
+
+    add_section_reset_footer(ai_form, host, "ai.models", is_dark=is_dark)
 
     return ai_widget

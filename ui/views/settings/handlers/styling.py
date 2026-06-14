@@ -147,6 +147,7 @@ class StylingMixin:
             "pin_tts_voice_cb",
             "auto_load_last_model_cb",
             "auto_activator_cb",
+            "rag_kb_cb",
             "model_manager_hardware_suggestions_cb",
             "notifications_enabled_cb",
             "notifications_dnd_cb",

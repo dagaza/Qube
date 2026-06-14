@@ -509,7 +509,9 @@ class MainWindow(QMainWindow):
         # 4b. Generation parameters: Settings ↔ Toolbar (both write through LLMWorker)
         self._wire_generation_settings_toolbar_sync()
 
-        # 5. 🔑 Sync Auto-Activator Toggles
+        # 5. 🔑 Sync RAG + Auto-Activator Toggles (Settings ↔ Toolbar)
+        self.settings_view.rag_kb_toggle.connect(self.tool_rag_toggle.setChecked)
+        self.tool_rag_toggle.toggled.connect(self.settings_view.rag_kb_cb.setChecked)
         self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
         self.rag_auto_toggle.toggled.connect(self.settings_view.auto_activator_cb.setChecked)
 
@@ -875,6 +877,8 @@ class MainWindow(QMainWindow):
         self._web_indicator_force = False
         self._web_indicator_hybrid = get_mcp_internet_hybrid_enabled()
         self._web_indicator_active = False
+        self._web_indicator_active_direct = False
+        self._web_indicator_active_hybrid = False
         self._apply_web_indicator()
 
         layout.addWidget(center_container)
@@ -1071,18 +1075,22 @@ class MainWindow(QMainWindow):
     def set_rag_state(self, state: str) -> None:
         """Manages the Traffic Light colors of the RAG indicator."""
         if state == 'off':
-            color = "#45475a" # Dark Slate / Black
+            color = self._RETRIEVAL_COLOR_OFF
         elif state == 'standby':
-            color = "#89b4fa" # Qube Blue (User activated it)
+            color = self._RAG_COLOR_STANDBY
         elif state == 'active':
-            color = "#a6e3a1" # Green (App is fetching data)
+            color = self._RETRIEVAL_COLOR_ACTIVE
         else:
             return
 
-        self.rag_status_dot.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px;")
+        self.rag_status_dot.setStyleSheet(
+            f"color: {color}; font-weight: bold; font-size: 11px;"
+        )
 
-    _WEB_COLOR_OFF = "#45475a"
-    _WEB_COLOR_ON = "#c2410c"
+    _RETRIEVAL_COLOR_OFF = "#45475a"
+    _RETRIEVAL_COLOR_ACTIVE = "#a6e3a1"
+    _RAG_COLOR_STANDBY = "#89b4fa"
+    _WEB_COLOR_STANDBY = "#c2410c"
 
     def _retrieval_indicator_stylesheet(self, color: str) -> str:
         return f"color: {color}; font-weight: bold; font-size: 11px;"
@@ -1093,9 +1101,16 @@ class MainWindow(QMainWindow):
         self._web_indicator_hybrid = self._resolve_web_hybrid_enabled()
         self._apply_web_indicator()
 
-    def set_web_indicator_active(self, active: bool) -> None:
-        """Highlight WEB during an in-flight web search turn."""
+    def set_web_indicator_active(
+        self,
+        active: bool,
+        via_direct: bool = False,
+        via_hybrid: bool = False,
+    ) -> None:
+        """Highlight WEB/HYB while an in-flight web search contributes to the turn."""
         self._web_indicator_active = bool(active)
+        self._web_indicator_active_direct = bool(active and via_direct)
+        self._web_indicator_active_hybrid = bool(active and via_hybrid)
         self._apply_web_indicator()
 
     def _resolve_web_force_enabled(self) -> bool:
@@ -1118,29 +1133,35 @@ class MainWindow(QMainWindow):
 
         force_on = bool(self._web_indicator_force)
         hybrid_on = bool(self._web_indicator_hybrid)
-        active = bool(self._web_indicator_active)
+        active_direct = bool(getattr(self, "_web_indicator_active_direct", False))
+        active_hybrid = bool(getattr(self, "_web_indicator_active_hybrid", False))
         style = self._retrieval_indicator_stylesheet
 
-        if force_on or active:
-            web_color = self._WEB_COLOR_ON
-            if force_on:
-                web_tooltip = "Web search enabled for every message in this chat"
-            else:
-                web_tooltip = "Web search is active for this turn"
+        if active_direct:
+            web_color = self._RETRIEVAL_COLOR_ACTIVE
+            web_tooltip = "Web search is active for this turn"
+        elif force_on:
+            web_color = self._WEB_COLOR_STANDBY
+            web_tooltip = "Web search enabled for every message in this chat"
         else:
-            web_color = self._WEB_COLOR_OFF
+            web_color = self._RETRIEVAL_COLOR_OFF
             web_tooltip = "Web search is off"
 
         self.web_status_dot.setStyleSheet(style(web_color))
         self.web_status_dot.setToolTip(web_tooltip)
 
         if hasattr(self, "hybrid_status_dot"):
-            hybrid_color = self._WEB_COLOR_ON if hybrid_on else self._WEB_COLOR_OFF
-            hybrid_tooltip = (
-                "Hybrid Internet Mode: Qube automatically decides when to search the web"
-                if hybrid_on
-                else "Hybrid Internet Mode is off"
-            )
+            if active_hybrid:
+                hybrid_color = self._RETRIEVAL_COLOR_ACTIVE
+                hybrid_tooltip = "Hybrid Internet Mode is searching the web for this turn"
+            elif hybrid_on:
+                hybrid_color = self._WEB_COLOR_STANDBY
+                hybrid_tooltip = (
+                    "Hybrid Internet Mode: Qube automatically decides when to search the web"
+                )
+            else:
+                hybrid_color = self._RETRIEVAL_COLOR_OFF
+                hybrid_tooltip = "Hybrid Internet Mode is off"
             self.hybrid_status_dot.setStyleSheet(style(hybrid_color))
             self.hybrid_status_dot.setToolTip(hybrid_tooltip)
     
@@ -3169,10 +3190,13 @@ class MainWindow(QMainWindow):
                 self.emit_notification(needs_model_event())
 
     def update_rag_indicator(self, active: bool) -> None:
-        """Called by the LLM Worker when actively retrieving documents."""
-        # Only switch to green if the toggle is actually turned on
-        if self.tool_rag_toggle.isChecked():
-            self.set_rag_state('active' if active else 'standby')
+        """Called by the LLM Worker when the Knowledge Base is used for a turn."""
+        if active:
+            self.set_rag_state('active')
+        else:
+            self.set_rag_state(
+                'standby' if self.tool_rag_toggle.isChecked() else 'off'
+            )
 
     def log_user_message(self, text: str) -> None:
         pass # Will be forwarded to ConversationsView

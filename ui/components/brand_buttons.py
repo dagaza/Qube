@@ -40,6 +40,7 @@ from PyQt6.QtWidgets import QPushButton
 BRAND_PRIMARY = "primary"
 BRAND_SUCCESS = "success"
 BRAND_DANGER = "danger"
+BRAND_CAUTION = "caution"
 
 # Canonical foreground (text / icon) color per brand variant. All three share
 # the same near-white so the icon/text pair renders consistently; expose it as
@@ -49,6 +50,7 @@ BRAND_FG_COLOR: dict[str, str] = {
     BRAND_PRIMARY: "#f8fafc",
     BRAND_SUCCESS: "#f8fafc",
     BRAND_DANGER: "#f8fafc",
+    BRAND_CAUTION: "#f8fafc",
 }
 
 # Canonical disabled-state foreground color (used when the icon tint should
@@ -138,6 +140,29 @@ _BRAND_QSS: dict[str, str] = {
             border: 1px solid rgba(148, 163, 184, 0.35);
         }
     """,
+    BRAND_CAUTION: """
+        QPushButton {
+            background-color: #c2410c;
+            color: #f8fafc;
+            border: 1px solid #9a3412;
+            border-radius: 6px;
+            padding: 8px 15px;
+            font-weight: 700;
+        }
+        QPushButton:hover {
+            background-color: #9a3412;
+            border: 1px solid #9a3412;
+        }
+        QPushButton:pressed {
+            background-color: #7c2d12;
+            border: 1px solid #7c2d12;
+        }
+        QPushButton:disabled {
+            background-color: rgba(100, 116, 139, 0.22);
+            color: rgba(148, 163, 184, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+    """,
 }
 
 
@@ -176,6 +201,8 @@ def apply_brand_style(
         class_tag = "PrimaryActionButton BrandPrimaryButton"
     elif variant == BRAND_SUCCESS:
         class_tag = "PrimaryActionButton BrandSuccessButton"
+    elif variant == BRAND_CAUTION:
+        class_tag = "PrimaryActionButton BrandCautionButton"
     else:
         class_tag = "PrimaryActionButton BrandDangerButton"
 
@@ -214,3 +241,9 @@ def apply_brand_danger(
     button: QPushButton, icon_name: Optional[str] = None
 ) -> None:
     apply_brand_style(button, BRAND_DANGER, icon_name=icon_name)
+
+
+def apply_brand_caution(
+    button: QPushButton, icon_name: Optional[str] = None
+) -> None:
+    apply_brand_style(button, BRAND_CAUTION, icon_name=icon_name)

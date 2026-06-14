@@ -143,6 +143,11 @@ class LLMWorkerRagTriggerContractTests(unittest.TestCase):
             r"self\.mcp_rag_enabled\s*\n\s*or force_rag_via_trigger\s*\n\s*or scoped_library_active",
         )
 
+    def test_rag_veto_wiring_present(self) -> None:
+        self.assertIn("rag_vetoed_tool_disabled", self.src)
+        self.assertIn("library_lane_allowed", self.src)
+        self.assertIn("rag_capability_blocked", self.src)
+
     def test_does_not_blindly_assign_rag_on_trigger(self) -> None:
         self.assertNotRegex(
             self.src,

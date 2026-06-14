@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QCheckBox, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 
 from core import app_settings as _notif_settings
-from ui.views.settings.widgets import add_subsection_to_layout
+from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, make_settings_page_action_button
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
-    del is_dark
-
     notif_widget = QWidget()
     notif_widget.setObjectName("SettingsFormContainer")
     notif_layout = QVBoxLayout(notif_widget)
@@ -70,8 +68,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     add_subsection_to_layout(notif_layout, "Actions")
 
-    clear_history_btn = QPushButton("Clear notification history")
+    clear_history_btn = make_settings_page_action_button("Clear notification history")
     clear_history_btn.clicked.connect(host._clear_notification_history)
     notif_layout.addWidget(clear_history_btn)
+
+    add_section_reset_footer(notif_layout, host, "notifications", is_dark=is_dark)
 
     return notif_widget

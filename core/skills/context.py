@@ -21,6 +21,7 @@ def build_skill_context(
     query_embedding: Any | None = None,
     web_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
+    rag_capability_blocked: bool = False,
 ) -> SkillContext:
     sources = list(all_ui_sources or [])
     top_intent = None
@@ -46,6 +47,7 @@ def build_skill_context(
         narrative_active=bool(narrative_active),
         web_capability_blocked=bool(web_capability_blocked),
         explicit_web_empty_results=bool(explicit_web_empty_results),
+        rag_capability_blocked=bool(rag_capability_blocked),
         router_top_intent=top_intent,
         router_trace_summary=trace_summary,
         query_embedding=query_embedding,

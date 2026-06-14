@@ -189,6 +189,7 @@ class RouterEvalConfig:
     internet_enabled: bool = False
     internet_hybrid_auto: bool = False
     mcp_auto_enabled: bool = True
+    mcp_rag_enabled: bool = True
     custom_rag_triggers: tuple[str, ...] = ()
     install_centroids: bool = True
     with_retrieval: bool = False
@@ -421,6 +422,7 @@ def simulate_execution_route(
     )
     discourse_enabled = bool(flags.get("discourse_enabled", config.discourse_enabled))
     mcp_auto = bool(flags.get("mcp_auto_enabled", config.mcp_auto_enabled))
+    mcp_rag_enabled = bool(flags.get("mcp_rag_enabled", config.mcp_rag_enabled))
     custom_triggers = tuple(flags.get("custom_rag_triggers") or config.custom_rag_triggers)
 
     if explicit_remember_active:
@@ -453,16 +455,36 @@ def simulate_execution_route(
         override_reason = "discourse_follow_up_downgrade"
 
     if mcp_auto and not scoped_library_active:
-        if matches_custom_rag_trigger(clean_prompt, custom_triggers):
+        force_rag_via_trigger = matches_custom_rag_trigger(clean_prompt, custom_triggers)
+        if force_rag_via_trigger:
             execution_route, _ = apply_custom_rag_trigger_route(
                 execution_route, matched=True
             )
             override_reason = override_reason or "custom_rag_trigger"
+    else:
+        force_rag_via_trigger = False
 
     from core.memory_filters import (
         detect_hard_explicit_web_request,
+        library_lane_allowed,
         query_implies_live_web_intent,
     )
+
+    library_bypass = library_lane_allowed(
+        mcp_rag_enabled=mcp_rag_enabled,
+        force_rag_via_trigger=force_rag_via_trigger,
+        scoped_library_active=scoped_library_active,
+    )
+    library_blocked = not library_bypass
+    if library_blocked and execution_route == "RAG":
+        execution_route = "NONE"
+        decision["rag_vetoed_tool_disabled"] = True
+        override_reason = override_reason or "rag_veto_tool_disabled"
+    elif library_blocked and execution_route == "HYBRID":
+        execution_route = "MEMORY"
+        decision["rag_vetoed_tool_disabled"] = True
+        decision["rag_library_leg_skipped"] = True
+        override_reason = override_reason or "rag_veto_tool_disabled"
 
     hard_web = detect_hard_explicit_web_request(clean_prompt)
     live_web = query_implies_live_web_intent(clean_prompt, decision=decision)

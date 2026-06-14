@@ -688,6 +688,25 @@ class RetrievalOutcomeTests(unittest.TestCase):
         self.assertEqual(snap["router_route"], "rag")
         self.assertEqual(snap["execution_route_final"], "none")
 
+    def test_build_snapshot_rag_veto_flags(self) -> None:
+        decision = {
+            "route": "rag",
+            "rag_vetoed_tool_disabled": True,
+            "rag_library_leg_skipped": False,
+            "rag_capability_blocked": True,
+        }
+        snap = build_retrieval_outcome_snapshot(
+            decision=decision,
+            execution_route_pre_downgrade="none",
+            execution_route_final="none",
+            memory_hits=0,
+            rag_hits=0,
+            web_hits=0,
+        )
+        self.assertTrue(snap["rag_vetoed_tool_disabled"])
+        self.assertFalse(snap["rag_library_leg_skipped"])
+        self.assertTrue(snap["rag_capability_blocked"])
+
     def test_merge_updates_route_to_final(self) -> None:
         buf = RoutingDebugBuffer()
         d = {"route": "rag", "strategy": "adaptive_v4", "trace": _base_trace()}

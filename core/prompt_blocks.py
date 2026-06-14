@@ -22,6 +22,8 @@ from core.memory_filters import (
     PREFERENCE_APPLICATION_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
     WEB_CAPABILITY_DISABLED_SUFFIX,
+    RAG_CAPABILITY_DISABLED_SUFFIX,
+    STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
 )
 
@@ -129,7 +131,9 @@ def build_prompt_blocks(
     conversation_history: list[dict[str, Any]] | None = None,
     composer_conversation_ref: bool = False,
     web_capability_blocked: bool = False,
+    rag_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
+    strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
     retrieval_wrapper_mode: RetrievalWrapperMode | None = None,
@@ -166,6 +170,9 @@ def build_prompt_blocks(
     elif web_capability_blocked:
         persona = _BASE_PERSONA
         suffixes.append(WEB_CAPABILITY_DISABLED_SUFFIX)
+    elif rag_capability_blocked:
+        persona = _BASE_PERSONA
+        suffixes.append(RAG_CAPABILITY_DISABLED_SUFFIX)
     elif explicit_web_empty_results:
         persona = _BASE_PERSONA
         suffixes.append(EXPLICIT_WEB_EMPTY_SUFFIX)
@@ -183,6 +190,8 @@ def build_prompt_blocks(
                 suffixes.append(FILE_SEARCH_SYSTEM_SUFFIX)
             if narrative_active:
                 suffixes.append(NARRATIVE_RECALL_SYSTEM_SUFFIX)
+            if strict_isolation_enabled:
+                suffixes.append(STRICT_ISOLATION_SYSTEM_SUFFIX)
     elif route in ("WEB", "INTERNET"):
         persona = _WEB_PERSONA
         suffixes.append(CITATION_DISCIPLINE_SUFFIX)
@@ -221,6 +230,7 @@ def build_prompt_blocks(
         and route == "NONE"
         and not explicit_remember_active
         and not web_capability_blocked
+        and not rag_capability_blocked
         and not explicit_web_empty_results
         and not file_search_active
         and not narrative_active

@@ -1040,6 +1040,16 @@ class DatabaseManager:
             logger.error(f"Failed to add RAG trigger '{phrase}': {e}")
             return False
 
+    def reset_rag_triggers_to_defaults(self) -> None:
+        """Restore the built-in default RAG trigger phrase list."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM rag_triggers")
+                self._ensure_default_rag_triggers(conn)
+                conn.commit()
+        except Exception as e:
+            logger.error("Failed to reset RAG triggers: %s", e)
+
     def remove_rag_trigger(self, phrase: str) -> bool:
         """Removes a trigger phrase."""
         try:

@@ -460,7 +460,119 @@ EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     "You may answer from general knowledge when appropriate."
 )
 
-# Hard internet/tool-use commands — the user explicitly ordered a web search.
+RAG_CAPABILITY_DISABLED_SUFFIX: str = (
+    " IMPORTANT: the user asked about their local files or Knowledge Base, "
+    "but library search is turned off in Qube settings. In one or two "
+    "sentences, say you cannot search their documents right now because "
+    "the Local Knowledge Base is disabled. Do NOT claim you searched their "
+    "files or that nothing matched. Do NOT emit bracket citation tokens "
+    "such as [1] or [2] for document sources you do not have. If numbered "
+    "long-term memory sources are provided below, you may use those; "
+    "otherwise answer plainly without inventing document details. "
+    "Do NOT re-announce unrelated stored preferences."
+)
+
+STRICT_ISOLATION_SYSTEM_SUFFIX: str = (
+    " Strict Isolation Mode: answer ONLY from numbered document sources "
+    "in the retrieved context below. Do NOT use general model knowledge "
+    "or unrelated long-term memory entries to fill gaps. If none of the "
+    "document sources contain the requested information, say so plainly "
+    "in one sentence and stop. Always answer with natural prose."
+)
+
+# Document/library substring signals aligned with cognitive-router RAG lane
+# triggers (subset — avoid import cycles with ``cognitive_router``).
+_ROUTER_RAG_SUBSTRING_TRIGGERS: tuple[str, ...] = (
+    "pdf",
+    "document",
+    "documents",
+    "according to",
+    "based on my",
+    "in my files",
+    "in my library",
+    "in my notes",
+    "knowledge base",
+    "my library",
+    "my files",
+    "my documents",
+    "local file",
+    "uploaded",
+    "citation",
+    "source says",
+    "manual says",
+    "spec says",
+    "readme",
+)
+
+
+def library_lane_allowed(
+    *,
+    mcp_rag_enabled: bool,
+    force_rag_via_trigger: bool = False,
+    scoped_library_active: bool = False,
+) -> bool:
+    """True when the library/RAG leg may run this turn (master switch or bypass)."""
+    return bool(mcp_rag_enabled or force_rag_via_trigger or scoped_library_active)
+
+
+def _router_substring_implies_library_intent(query: str, decision: dict) -> bool:
+    """Router substring RAG score > 0 with document-ish tokens in the query."""
+    from core.rag_trigger_routing import is_operational_library_prompt
+
+    lower = (query or "").lower().strip()
+    if not lower or is_operational_library_prompt(lower):
+        return False
+    source = str(decision.get("rag_score_source") or "").lower()
+    try:
+        score = float(decision.get("rag_score_final") or 0.0)
+    except (TypeError, ValueError):
+        score = 0.0
+    if source != "substring" or score <= 0.0:
+        return False
+    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+
+
+def _router_embedding_implies_library_intent(decision: dict) -> bool:
+    top = str(decision.get("top_intent") or "").lower()
+    if top not in ("rag", "hybrid"):
+        return False
+    source = str(decision.get("top_intent_source") or "").lower()
+    if source != "embedding":
+        return False
+    try:
+        score = float(decision.get("top_score") or 0.0)
+    except (TypeError, ValueError):
+        score = 0.0
+    return score >= 0.30
+
+
+def query_implies_library_intent(
+    query: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """True when the message plausibly expects document/library retrieval."""
+    from core.rag_trigger_routing import is_operational_library_prompt
+
+    q = (query or "").strip()
+    if not q:
+        return False
+    lower = q.lower()
+    if is_operational_library_prompt(lower):
+        return False
+    if detect_recall_intent(q):
+        return True
+    if detect_file_search_intent(q):
+        return True
+    if isinstance(decision, dict):
+        if decision.get("recall_fusion"):
+            return True
+        if _router_embedding_implies_library_intent(decision):
+            return True
+        if _router_substring_implies_library_intent(q, decision):
+            return True
+    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+
 _HARD_EXPLICIT_WEB_TRIGGERS: tuple[str, ...] = (
     "look online",
     "search online",
@@ -829,10 +941,14 @@ __all__ = [
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
     "WEB_CAPABILITY_DISABLED_SUFFIX",
+    "RAG_CAPABILITY_DISABLED_SUFFIX",
+    "STRICT_ISOLATION_SYSTEM_SUFFIX",
     "EXPLICIT_WEB_EMPTY_SUFFIX",
+    "library_lane_allowed",
     "detect_hard_explicit_web_request",
     "detect_explicit_web_request",
     "query_implies_live_web_intent",
+    "query_implies_library_intent",
     "should_run_internet_search_for_route",
     "PREFERENCE_APPLICATION_SUFFIX",
     "CHAT_PERSONALITY_SUFFIX",

@@ -102,7 +102,11 @@ def build_prompt_for_task(
             "'Nginx Reverse Proxy', 'Human Problem Solving'). "
             "Examples: "
             "'Write a 1000-word essay on climate change' → Climate Change; "
-            "'Draft a scholarly paper on quantum tunneling' → Quantum Tunneling. "
+            "'Draft a scholarly paper on quantum tunneling' → Quantum Tunneling; "
+            "'Steelman both sides: \"Remote work always hurts productivity\"' → "
+            "Remote Work Productivity. "
+            "For debate or devil's-advocate prompts, name the neutral TOPIC under "
+            "discussion — not one side's thesis, not the assistant's opening sentence. "
             "Do not describe plot, list characters, or write meta commentary. "
             "No quotes. Output ONLY the title on one line."
         )
@@ -304,9 +308,29 @@ _EXPLAIN_TOPIC_RE = re.compile(
 _TOPIC_TAIL_GENERIC = frozenset({
     "work", "works", "function", "mean", "means", "do", "does",
 })
+_QUOTED_TOPIC_RE = re.compile(
+    r'"([^"]{3,120})"|\'([^\']{3,120})\'|“([^”]{3,120})”|‘([^’]{3,120})’'
+)
+_DEBATE_STYLE_RE = re.compile(
+    r"\b(?:"
+    r"devil'?s\s+advocate|steelman(?:ing)?|both\s+sides|counter-?argument|"
+    r"argue\s+(?:for\s+and\s+against|both\s+sides)|debate\s+(?:the|this|whether)"
+    r")\b",
+    re.IGNORECASE,
+)
+_STANCE_MODIFIER_WORDS = frozenset({
+    "always", "never", "indeed", "only", "must", "cannot", "can't", "clearly",
+    "obviously", "simply", "just", "truly", "really",
+})
+_STANCE_VERB_WORDS = frozenset({
+    "hurts", "hurt", "helps", "help", "kills", "kill", "ruins", "ruin",
+    "destroys", "destroy", "boosts", "boost", "improves", "improve",
+    "harms", "harm", "damages", "damage",
+})
 _MARKDOWN_HEADING_RE = re.compile(r"^#+\s+(.+)$", re.MULTILINE)
 _TITLE_MIN_ACCEPT_SCORE = 4.0
 _TITLE_SOURCE_BASE_SCORE: dict[str, float] = {
+    "quoted_topic": 12.5,
     "assistant_heading": 12.0,
     "subject_clause": 11.0,
     "user_explain_phrase": 10.5,
@@ -537,6 +561,80 @@ def _user_topic_phrase_from_prompt(user_prompt: str) -> str:
     return clause
 
 
+def _is_debate_style_prompt(user_prompt: str) -> bool:
+    return bool(_DEBATE_STYLE_RE.search(user_prompt or ""))
+
+
+def _quoted_topic_from_user_prompt(user_prompt: str) -> str:
+    """Extract the thesis/topic from quoted text in rhetoric or debate prompts."""
+    matches: list[str] = []
+    for match in _QUOTED_TOPIC_RE.finditer(user_prompt or ""):
+        text = next(group for group in match.groups() if group)
+        cleaned = text.strip().strip(".,!?;:")
+        if cleaned:
+            matches.append(cleaned)
+    if not matches:
+        return ""
+    return max(matches, key=len)
+
+
+def _neutralize_stance_phrasing(text: str, *, max_words: int = 5) -> str:
+    """Drop one-sided stance words so debate topics become neutral labels."""
+    words = _TITLE_WORD_RE.findall(text or "")
+    if not words:
+        return ""
+    filtered = [
+        word
+        for word in words
+        if word.lower() not in _STANCE_MODIFIER_WORDS
+        and word.lower() not in _STANCE_VERB_WORDS
+    ]
+    picked = filtered if len(filtered) >= 2 else words
+    return " ".join(picked[:max_words])
+
+
+def _title_has_stance_framing(title: str) -> bool:
+    words = {w.lower() for w in _TITLE_WORD_RE.findall(title or "")}
+    return bool(words & (_STANCE_MODIFIER_WORDS | _STANCE_VERB_WORDS))
+
+
+def _assistant_opening_sentence(assistant_reply: str) -> str:
+    text = (assistant_reply or "").strip()
+    if not text:
+        return ""
+    end = text.find(".")
+    if end == -1:
+        return text[:160]
+    return text[: end + 1]
+
+
+def _title_is_assistant_opening_echo(
+    title: str,
+    *,
+    assistant_reply: str = "",
+) -> bool:
+    """Reject titles that mirror the assistant's opening thesis sentence."""
+    if not _title_has_stance_framing(title):
+        return False
+    opening = _assistant_opening_sentence(assistant_reply)
+    if not opening:
+        return False
+    title_words = [
+        w.lower()
+        for w in _TITLE_WORD_RE.findall(title or "")
+        if w.lower() not in _TITLE_STOPWORDS
+    ]
+    if len(title_words) < 2:
+        return False
+    opening_words = {
+        w.lower()
+        for w in _TITLE_WORD_RE.findall(opening)
+        if w.lower() not in _TITLE_STOPWORDS
+    }
+    overlap = len(set(title_words) & opening_words)
+    return overlap >= 2
+
+
 def _title_is_incomplete_vs_user_topic(title: str, user_prompt: str) -> bool:
     """Reject a one-word title that only names the first word of a richer user topic."""
     title_words = _TITLE_WORD_RE.findall(title or "")
@@ -574,7 +672,12 @@ def _title_is_instruction_like(title: str) -> bool:
     return False
 
 
-def _prepare_title_candidate(candidate: str, *, user_prompt: str) -> str:
+def _prepare_title_candidate(
+    candidate: str,
+    *,
+    user_prompt: str,
+    assistant_reply: str = "",
+) -> str:
     polished = _polish_title_candidate(candidate)
     if not polished:
         return ""
@@ -583,6 +686,13 @@ def _prepare_title_candidate(candidate: str, *, user_prompt: str) -> str:
     if _title_is_instruction_like(polished):
         return ""
     if _title_is_incomplete_vs_user_topic(polished, user_prompt):
+        return ""
+    if _title_has_stance_framing(polished) and _is_debate_style_prompt(user_prompt):
+        return ""
+    if _title_is_assistant_opening_echo(
+        polished,
+        assistant_reply=assistant_reply,
+    ):
         return ""
     return polished
 
@@ -599,6 +709,9 @@ def _score_title_candidate(
     words = [w.lower() for w in _TITLE_WORD_RE.findall(title)]
     word_count = len(words)
 
+    debate_prompt = _is_debate_style_prompt(user_prompt)
+    quoted_topic = _quoted_topic_from_user_prompt(user_prompt)
+
     if task_wrapper:
         if source.startswith("assistant") or source == "assistant_heading":
             score += 8.0
@@ -608,6 +721,18 @@ def _score_title_candidate(
             score -= 12.0
         elif source.startswith("sidecar"):
             score -= 6.0
+
+    if debate_prompt:
+        if source == "quoted_topic":
+            score += 6.0
+        elif source == "assistant_topic":
+            score -= 18.0
+        elif source == "user_topic":
+            score -= 10.0
+        elif source.startswith("sidecar") and _title_has_stance_framing(title):
+            score -= 10.0
+    elif quoted_topic and source == "assistant_topic":
+        score -= 12.0
 
     if 2 <= word_count <= 5:
         score += 4.0
@@ -660,7 +785,11 @@ def _collect_title_candidates(
     by_key: dict[str, tuple[str, str]] = {}
 
     def add(raw: str, source: str) -> None:
-        title = _prepare_title_candidate(raw, user_prompt=user_prompt)
+        title = _prepare_title_candidate(
+            raw,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+        )
         if not title:
             return
         key = _normalize_title_compare(title)
@@ -677,6 +806,11 @@ def _collect_title_candidates(
         clause_words = _topic_words_from_text(subject_clause)
         if len(clause_words) >= 2:
             add(" ".join(clause_words), "subject_clause_snippet")
+
+    quoted_topic = _quoted_topic_from_user_prompt(user_prompt)
+    if quoted_topic:
+        add(_neutralize_stance_phrasing(quoted_topic), "quoted_topic")
+        add(quoted_topic, "quoted_topic")
 
     explain_phrase = _user_topic_phrase_from_prompt(user_prompt)
     if explain_phrase:
@@ -819,8 +953,13 @@ def _accept_title_candidate(
     candidate: str,
     *,
     user_prompt: str,
+    assistant_reply: str = "",
 ) -> str:
-    return _prepare_title_candidate(candidate, user_prompt=user_prompt)
+    return _prepare_title_candidate(
+        candidate,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
 
 
 def _finalize_title_text(
@@ -840,28 +979,59 @@ def _finalize_title_text(
     cleaned = _normalize_sidecar_completion_text(raw_s)
     lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
     for line in reversed(lines):
-        accepted = _accept_title_candidate(line, user_prompt=user_prompt)
+        accepted = _accept_title_candidate(
+            line,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+        )
         if accepted:
             return accepted, _model_selection_detail(accepted, "model_line")
         labeled = _title_from_proper_phrases(line)
         if labeled and not _title_is_verbatim_of_prompt(labeled, user_prompt):
-            return labeled, _model_selection_detail(labeled, "model_proper_phrase")
+            polished = _prepare_title_candidate(
+                labeled,
+                user_prompt=user_prompt,
+                assistant_reply=assistant_reply,
+            )
+            if polished:
+                return polished, _model_selection_detail(polished, "model_proper_phrase")
         coerced_words = _topic_words_from_text(line)
         if len(coerced_words) >= 2:
             coerced = _accept_title_candidate(
                 " ".join(coerced_words),
                 user_prompt=user_prompt,
+                assistant_reply=assistant_reply,
             )
             if coerced:
                 return coerced, _model_selection_detail(coerced, "model_coerced")
 
     post_think = _title_from_post_think_tail(raw_s)
     if post_think and not _title_is_verbatim_of_prompt(post_think, user_prompt):
-        return post_think, _model_selection_detail(post_think, "post_think_tail")
+        polished = _prepare_title_candidate(
+            post_think,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+        )
+        if polished:
+            return polished, _model_selection_detail(polished, "post_think_tail")
+
+    quoted_topic = _quoted_topic_from_user_prompt(user_prompt)
+    if quoted_topic:
+        accepted = _accept_title_candidate(
+            _neutralize_stance_phrasing(quoted_topic),
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+        )
+        if accepted:
+            return accepted, _model_selection_detail(accepted, "quoted_topic")
 
     explain_phrase = _user_topic_phrase_from_prompt(user_prompt)
     if explain_phrase:
-        accepted = _accept_title_candidate(explain_phrase, user_prompt=user_prompt)
+        accepted = _accept_title_candidate(
+            explain_phrase,
+            user_prompt=user_prompt,
+            assistant_reply=assistant_reply,
+        )
         if accepted:
             return accepted, _model_selection_detail(accepted, "user_explain_phrase")
 

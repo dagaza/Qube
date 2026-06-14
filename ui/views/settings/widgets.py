@@ -8,12 +8,61 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.components.brand_buttons import apply_brand_caution
 from ui.components.toggle import PrestigeToggle
+
+SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
+
+
+def make_settings_page_action_button(
+    text: str,
+    *,
+    caution: bool = False,
+) -> QPushButton:
+    btn = QPushButton(text)
+    btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+    if caution:
+        apply_brand_caution(btn)
+    return btn
+
+
+def add_section_reset_footer(
+    layout: QVBoxLayout | QFormLayout,
+    host,
+    section_id: str,
+    *,
+    is_dark: bool = True,
+) -> QPushButton:
+    """Divider, spacing, and centered reset button for a settings page."""
+    divider = SettingsSectionDivider(is_dark=is_dark)
+    row = QWidget()
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.addStretch(1)
+    btn = make_settings_page_action_button(
+        SETTINGS_SECTION_RESET_BUTTON_TEXT,
+        caution=True,
+    )
+    btn.setToolTip(
+        "Restore every setting on this page to its default configuration."
+    )
+    btn.clicked.connect(lambda _checked=False, sid=section_id: host._on_reset_section_defaults(sid))
+    row_layout.addWidget(btn)
+    row_layout.addStretch(1)
+
+    if isinstance(layout, QFormLayout):
+        layout.addRow(divider)
+        layout.addRow("", row)
+    else:
+        layout.addWidget(divider)
+        layout.addWidget(row)
+    return btn
 
 
 class SettingsSectionDivider(QWidget):

@@ -125,9 +125,25 @@ Telemetry still records the **original** routed lane for tuning.
 - **Retrieval routes** — citation discipline, recall-fusion hints, grounded-answer suffixes when sources exist.
 - **WEB** — web-specific persona requiring `[W]` / bracket citations from real hits.
 - **`web_capability_blocked`** — user asked for live data but internet is disabled → `WEB_CAPABILITY_DISABLED_SUFFIX` (honest limitation, not silent chat).
+- **`rag_capability_blocked`** — user plausibly expected document/library retrieval but Local Knowledge Base is disabled → `RAG_CAPABILITY_DISABLED_SUFFIX` (honest limitation; memory sources may still be present).
+- **`strict_isolation_enabled`** — toolbar Strict Isolation Mode → `STRICT_ISOLATION_SYSTEM_SUFFIX` on retrieval routes with sources (prompt-only v1).
 - **`explicit_web_empty_results`** — explicit web request, search ran, zero hits → `EXPLICIT_WEB_EMPTY_SUFFIX`.
 
-**Retrieval wrapper mode** (`resolve_retrieval_wrapper_mode`): on plain `NONE` turns with preference-only hits, context is framed as **background** (not grounded citation mode).
+#### RAG capability veto (pre-retrieval)
+
+Mirrors the WEB proactive veto in `LLMWorker` after NLP trigger routing and before tool execution:
+
+| Condition | Normalization |
+|-----------|----------------|
+| `RAG` route, master KB off, no bypass | `execution_route → NONE`, `rag_vetoed_tool_disabled` |
+| `HYBRID` route, master KB off, no bypass | `execution_route → MEMORY`, `rag_library_leg_skipped` |
+
+**Bypasses** (library search still runs when master is off): NLP trigger phrases, explicit file-search intent (`detect_file_search_intent`), composer `@file` attachments.
+
+When `rag_capability_blocked` is set (library intent + blocked + route `NONE`/`MEMORY`), prompt build uses `RAG_CAPABILITY_DISABLED_SUFFIX` instead of silent plain chat or misleading retrieval framing.
+
+Post-retrieval empty-source downgrade (§6) remains unchanged and handles turns where search ran but returned zero hits.
+ (`resolve_retrieval_wrapper_mode`): on plain `NONE` turns with preference-only hits, context is framed as **background** (not grounded citation mode).
 
 ---
 

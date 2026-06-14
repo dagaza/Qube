@@ -25,6 +25,7 @@ from ui.components.toggle import PrestigeToggle
 from ui.views.settings.controls import NoScrollDoubleSpinBox, NoScrollSpinBox
 from ui.views.settings.widgets import (
     add_section_divider_to_form,
+    add_section_reset_footer,
     add_subsection_to_form,
     wrap_subsection,
 )
@@ -447,5 +448,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(form, "Advanced Voice & Audio Options")
     _add_stt_advanced_options(host, form)
     _add_tts_advanced_options(host, form)
+
+    add_section_reset_footer(form, host, "voice.audio", is_dark=is_dark)
 
     return section_widget

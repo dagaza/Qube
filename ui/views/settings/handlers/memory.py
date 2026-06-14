@@ -78,6 +78,7 @@ from core.app_settings import (
     get_llm_top_p,
     get_llm_min_p,
     get_mcp_rag_auto_activator_enabled,
+    get_mcp_rag_enabled,
 )
 from core.output_token_budget import describe_output_token_budget
 from core.auxiliary_cognition import (
@@ -149,6 +150,16 @@ class MemoryHandlersMixin:
         layout = QVBoxLayout(container)
         layout.setContentsMargins(15, 0, 15, 10)
         layout.setSpacing(15)
+
+        self.rag_kb_cb = QCheckBox("Enable Local Knowledge Base")
+        self.rag_kb_cb.setChecked(get_mcp_rag_enabled())
+        self.rag_kb_cb.setToolTip(
+            "Master switch: grants Qube permission to read and cite your local library "
+            "during chat. When off, library search still runs for custom trigger phrases "
+            "if NLP Auto-Activator is enabled."
+        )
+        self.rag_kb_cb.toggled.connect(self.rag_kb_toggle.emit)
+        layout.addWidget(self.rag_kb_cb)
         
         # Instruction Label
         instruction = QLabel("Add custom phrases that will trigger a semantic search of your Knowledge Base:")

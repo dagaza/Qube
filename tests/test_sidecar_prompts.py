@@ -307,6 +307,63 @@ class TestSidecarPrompts(unittest.TestCase):
         self.assertGreater(float(selection.get("winner_score") or 0.0), 0.0)
         self.assertTrue(selection.get("winner_source"))
 
+    def test_title_debate_prompt_uses_quoted_topic_not_assistant_opening(self) -> None:
+        user = (
+            'Play devil\'s advocate and steelman both sides of the argument: '
+            '"Remote work always hurts productivity"'
+        )
+        assistant = (
+            "Remote work can indeed hurt productivity when teams lack clear "
+            "communication protocols, leading to isolation and blurred boundaries "
+            "that erode focus. However, steelmanning the counter-argument reveals "
+            "that for many roles, remote work significantly boosts output by "
+            "eliminating commuting time and reducing office distractions."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "Remote Work Indeed Hurt Productivity",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        title = (r.parsed.get("title") or "").lower()
+        self.assertIn("remote", title)
+        self.assertIn("productivity", title)
+        self.assertNotIn("indeed", title)
+        self.assertNotIn("hurt", title)
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("winner_source"), "quoted_topic")
+
+    def test_title_debate_think_only_fallback_prefers_quoted_topic(self) -> None:
+        user = (
+            'Steelman both sides: "Remote work always hurts productivity"'
+        )
+        assistant = (
+            "Remote work can indeed hurt productivity when communication is weak, "
+            "but it can also boost focus for many knowledge workers."
+        )
+        r = parse_task_output(
+            SidecarTask.title,
+            "<Think>\nplanning title\n",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "Remote Work Productivity")
+        selection = r.parsed.get("selection") or {}
+        self.assertEqual(selection.get("path"), "quoted_topic")
+
+    def test_title_prompt_mentions_debate_example(self) -> None:
+        prompt = build_prompt_for_task(
+            SidecarTask.title,
+            user_prompt=(
+                'Steelman both sides: "Remote work always hurts productivity"'
+            ),
+            assistant_reply="Remote work can help or hurt depending on context.",
+        )
+        self.assertIn("Remote Work Productivity", prompt)
+        self.assertIn("devil's-advocate", prompt)
+
     def test_companion_line_parses_json(self) -> None:
         raw = '{"line":"Still here.","kind":"idle_quip"}'
         r = parse_task_output(SidecarTask.companion_line, raw)

@@ -27,6 +27,8 @@ def _should_skip(ctx: SkillContext, settings: SkillSettings) -> str | None:
         return "explicit_remember"
     if ctx.web_capability_blocked:
         return "web_capability_blocked"
+    if ctx.rag_capability_blocked:
+        return "rag_capability_blocked"
     if ctx.explicit_web_empty_results:
         return "explicit_web_empty_results"
     return None

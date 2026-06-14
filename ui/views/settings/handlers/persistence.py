@@ -23,6 +23,10 @@ from core.settings_store import (
     default_user_settings_path,
     get_settings_store,
 )
+from core.settings_section_reset import (
+    SECTION_RESET_LABELS,
+    reset_settings_section,
+)
 from core.app_settings import (
     get_enable_memory_enrichment,
     set_enable_memory_enrichment,
@@ -84,6 +88,7 @@ from core.app_settings import (
     get_llm_top_p,
     get_llm_min_p,
     get_mcp_rag_auto_activator_enabled,
+    get_mcp_rag_enabled,
 )
 from core.output_token_budget import describe_output_token_budget
 from core.auxiliary_cognition import (
@@ -496,3 +501,217 @@ class PersistenceHandlersMixin:
 
         if self.audio_worker:
             self._sync_wakeword_catalog(trigger="settings reload")
+
+    def _on_reset_section_defaults(self, section_id: str) -> None:
+        title = SECTION_RESET_LABELS.get(section_id, "Settings")
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            f"Reset {title}",
+            (
+                f"This will restore every setting on the {title} page to its "
+                "default configuration.\n\n"
+                "Custom overrides on this page will be removed. This cannot be undone."
+            ),
+            is_dark=is_dark,
+            tone="danger",
+            confirm_text="RESET",
+        )
+        if not dlg.exec():
+            return
+
+        changed = set(reset_settings_section(section_id))
+        if section_id == "knowledge" and hasattr(self, "db") and self.db is not None:
+            self.db.reset_rag_triggers_to_defaults()
+            if hasattr(self, "_refresh_trigger_list"):
+                self._refresh_trigger_list()
+            if hasattr(self, "_refresh_llm_rag_triggers"):
+                self._refresh_llm_rag_triggers()
+
+        self._apply_section_defaults_to_ui(section_id)
+        self._show_settings_file_status(f"{title} settings restored to defaults.")
+        if changed:
+            self.external_settings_reloaded.emit(changed)
+
+    def _apply_section_defaults_to_ui(self, section_id: str) -> None:
+        self._sync_ui_from_persisted_settings()
+
+        if section_id == "voice.audio":
+            self._apply_voice_audio_defaults_to_ui()
+        elif section_id == "ai.models":
+            self._apply_ai_models_defaults_to_ui()
+        elif section_id == "memory":
+            if hasattr(self, "_sync_memory_promotion_controls_for_enrichment"):
+                self._sync_memory_promotion_controls_for_enrichment()
+        elif section_id == "knowledge":
+            if hasattr(self, "rag_kb_cb"):
+                self.rag_kb_cb.blockSignals(True)
+                self.rag_kb_cb.setChecked(get_mcp_rag_enabled())
+                self.rag_kb_cb.blockSignals(False)
+                self.rag_kb_toggle.emit(self.rag_kb_cb.isChecked())
+            if hasattr(self, "auto_activator_cb"):
+                self.auto_activator_cb.blockSignals(True)
+                self.auto_activator_cb.setChecked(get_mcp_rag_auto_activator_enabled())
+                self.auto_activator_cb.blockSignals(False)
+                self.auto_activator_toggle.emit(self.auto_activator_cb.isChecked())
+        elif section_id == "companion.desktop":
+            self._apply_companion_defaults_to_ui()
+        elif section_id == "notifications":
+            pass
+
+    def _apply_voice_audio_defaults_to_ui(self) -> None:
+        if hasattr(self, "timeout_spinner"):
+            self.timeout_spinner.blockSignals(True)
+            self.timeout_spinner.setValue(2.0)
+            self.timeout_spinner.blockSignals(False)
+            if self.audio_worker:
+                self.audio_worker.set_silence_timeout(2.0)
+        if hasattr(self, "threshold_spinner"):
+            self.threshold_spinner.blockSignals(True)
+            self.threshold_spinner.setValue(2)
+            self.threshold_spinner.blockSignals(False)
+            if self.audio_worker:
+                self.audio_worker.set_speech_threshold(2)
+        for cb_name, signal in (
+            ("pin_audio_cb", self.audio_pin_toggle),
+            ("pin_tts_voice_cb", self.tts_voice_pin_toggle),
+        ):
+            cb = getattr(self, cb_name, None)
+            if cb is None:
+                continue
+            cb.blockSignals(True)
+            cb.setChecked(True)
+            cb.blockSignals(False)
+            signal.emit(True)
+        mics = get_input_devices()
+        if mics and hasattr(self, "mic_selector"):
+            self.mic_selector.setText(mics[0][1])
+        outputs = get_output_devices()
+        if outputs and hasattr(self, "device_selector"):
+            self.device_selector.setText(outputs[0][1])
+        if self.audio_worker:
+            self._sync_wakeword_catalog(trigger="section reset")
+        if hasattr(self, "advanced_stt_panel"):
+            self.advanced_stt_panel.setVisible(get_advanced_stt_unlocked())
+        if hasattr(self, "advanced_tts_panel"):
+            self.advanced_tts_panel.setVisible(get_advanced_tts_unlocked())
+        if hasattr(self, "stt_model_changed"):
+            self.stt_model_changed.emit()
+        if hasattr(self, "tts_model_changed"):
+            self.tts_model_changed.emit()
+
+    def _apply_ai_models_defaults_to_ui(self) -> None:
+        from core import app_settings as _as
+
+        spin_map = (
+            ("llm_temp_spin", _as.get_llm_temperature),
+            ("llm_ctx_spin", _as.get_llm_context_limit),
+            ("llm_output_limit_spin", _as.get_llm_output_token_limit),
+            ("llm_history_spin", _as.get_llm_chat_history_messages),
+            ("llm_top_k_spin", _as.get_llm_top_k),
+            ("llm_top_p_spin", _as.get_llm_top_p),
+            ("llm_min_p_spin", _as.get_llm_min_p),
+            ("llm_repeat_penalty_spin", _as.get_llm_repeat_penalty),
+            ("llm_presence_penalty_spin", _as.get_llm_presence_penalty),
+        )
+        for attr, getter in spin_map:
+            spin = getattr(self, attr, None)
+            if spin is None:
+                continue
+            spin.blockSignals(True)
+            spin.setValue(getter())
+            spin.blockSignals(False)
+        if hasattr(self, "llm_output_limit_cb"):
+            self.llm_output_limit_cb.blockSignals(True)
+            self.llm_output_limit_cb.setChecked(_as.get_llm_output_token_limit_enabled())
+            self.llm_output_limit_cb.blockSignals(False)
+        if hasattr(self, "_sync_output_limit_controls"):
+            self._sync_output_limit_controls()
+        if hasattr(self, "generation_advanced_toggle"):
+            self.generation_advanced_toggle.blockSignals(True)
+            self.generation_advanced_toggle.setChecked(False)
+            self.generation_advanced_toggle.blockSignals(False)
+        if hasattr(self, "generation_advanced_panel"):
+            self.generation_advanced_panel.setVisible(False)
+        if hasattr(self, "advanced_hardware_toggle"):
+            self.advanced_hardware_toggle.blockSignals(True)
+            self.advanced_hardware_toggle.setChecked(get_advanced_hardware_unlocked())
+            self.advanced_hardware_toggle.blockSignals(False)
+        if hasattr(self, "advanced_hardware_panel"):
+            self.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
+        if hasattr(self, "advanced_chat_template_toggle"):
+            self.advanced_chat_template_toggle.blockSignals(True)
+            self.advanced_chat_template_toggle.setChecked(
+                get_advanced_chat_template_unlocked()
+            )
+            self.advanced_chat_template_toggle.blockSignals(False)
+        if hasattr(self, "_sync_hardware_chat_template_panels"):
+            self._sync_hardware_chat_template_panels()
+        if hasattr(self, "advanced_engine_toggle"):
+            self.advanced_engine_toggle.blockSignals(True)
+            self.advanced_engine_toggle.setChecked(get_advanced_engine_unlocked())
+            self.advanced_engine_toggle.blockSignals(False)
+        if hasattr(self, "advanced_engine_panel"):
+            self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
+        if hasattr(self, "_reload_sidecar_from_settings"):
+            self._reload_sidecar_from_settings()
+        if hasattr(self, "cognition_model_changed"):
+            self.cognition_model_changed.emit()
+        llm = getattr(self, "llm_worker", None)
+        if llm is not None:
+            llm.set_temperature(_as.get_llm_temperature())
+            llm.set_context_window(_as.get_llm_context_limit())
+            llm.set_output_token_limit_enabled(_as.get_llm_output_token_limit_enabled())
+            llm.set_output_token_limit(_as.get_llm_output_token_limit())
+            llm.set_max_history_messages(_as.get_llm_chat_history_messages())
+            llm.set_top_k(_as.get_llm_top_k())
+            llm.set_repeat_penalty(_as.get_llm_repeat_penalty())
+            llm.set_presence_penalty(_as.get_llm_presence_penalty())
+            llm.set_top_p(_as.get_llm_top_p())
+            llm.set_min_p(_as.get_llm_min_p())
+        em = get_engine_mode()
+        self.engine_mode_changed.emit(em)
+        win = self.window()
+        if win is not None and hasattr(win, "refresh_toolbar_native_model_dropdown"):
+            win.refresh_toolbar_native_model_dropdown()
+
+    def _apply_companion_defaults_to_ui(self) -> None:
+        from core import app_settings as _cs
+
+        checkbox_map = (
+            ("companion_tray_hidden_cb", _cs.get_companion_show_when_tray_hidden),
+            ("companion_while_open_cb", _cs.get_companion_show_while_window_open),
+            ("companion_auto_hide_cb", _cs.get_companion_auto_hide_idle),
+            ("companion_caption_cb", _cs.get_companion_show_caption),
+            ("companion_fullscreen_cb", _cs.get_companion_suppress_on_fullscreen),
+            ("companion_wayland_cb", _cs.get_companion_try_on_wayland),
+            ("companion_dock_cb", _cs.get_companion_dock_mode),
+            ("companion_verbal_enabled_cb", _cs.get_companion_verbal_enabled),
+            ("companion_cognition_v2_cb", _cs.get_companion_cognition_v2_enabled),
+            ("companion_verbal_react_ingest_cb", _cs.get_companion_verbal_react_ingest),
+            ("companion_verbal_react_download_cb", _cs.get_companion_verbal_react_download),
+        )
+        for attr, getter in checkbox_map:
+            cb = getattr(self, attr, None)
+            if cb is None:
+                continue
+            cb.blockSignals(True)
+            cb.setChecked(getter())
+            cb.blockSignals(False)
+        if hasattr(self, "companion_verbal_prompt"):
+            self.companion_verbal_prompt.blockSignals(True)
+            self.companion_verbal_prompt.setPlainText(_cs.get_companion_verbal_system_prompt())
+            self.companion_verbal_prompt.blockSignals(False)
+        if hasattr(self, "_build_companion_verbal_trait_menu"):
+            self._build_companion_verbal_trait_menu()
+        if hasattr(self, "_build_companion_verbal_frequency_menu"):
+            self._build_companion_verbal_frequency_menu()
+        if hasattr(self, "_build_companion_expression_freedom_menu"):
+            self._build_companion_expression_freedom_menu()
+        if hasattr(self, "_sync_companion_verbal_controls_enabled"):
+            self._sync_companion_verbal_controls_enabled()
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.on_settings_changed()
+        if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
+            win.tray_controller.sync_companion_toggle()

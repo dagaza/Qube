@@ -18,7 +18,7 @@ from core.app_settings import (
 )
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
-from ui.views.settings.widgets import add_subsection_to_form
+from ui.views.settings.widgets import add_subsection_to_form, add_section_reset_footer
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -170,5 +170,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._build_profile_units_menu()
     host._sync_memory_promotion_controls_for_enrichment()
     host._sync_profile_units_selector()
+
+    add_section_reset_footer(layout, host, "memory", is_dark=is_dark)
 
     return container

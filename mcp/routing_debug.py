@@ -483,6 +483,9 @@ def build_retrieval_outcome_snapshot(
         "chat_score": _f("chat_score"),
         "recall_fusion": _b("recall_fusion"),
         "web_vetoed_tool_disabled": _b("web_vetoed_tool_disabled"),
+        "rag_vetoed_tool_disabled": _b("rag_vetoed_tool_disabled"),
+        "rag_library_leg_skipped": _b("rag_library_leg_skipped"),
+        "rag_capability_blocked": _b("rag_capability_blocked"),
         "web_relevance_dropped_count": web_dropped_count,
         "tier3_success": tier3_success,
     }

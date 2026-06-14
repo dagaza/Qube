@@ -328,7 +328,12 @@ class Qube:
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
         self.llm_worker.web_search_active.connect(w.set_web_indicator_active)
-        self.llm_worker.response_finished.connect(lambda _sid, _text: w.set_web_indicator_active(False))
+        self.llm_worker.response_finished.connect(
+            lambda _sid, _text: w.update_rag_indicator(False)
+        )
+        self.llm_worker.response_finished.connect(
+            lambda _sid, _text: w.set_web_indicator_active(False)
+        )
         self.tts_worker.playback_finished.connect(self._handle_tts_finished)
         self.tts_worker.playback_started.connect(w.conversations_view.on_tts_playback_started)
         self.tts_worker.playback_finished.connect(w.conversations_view.on_tts_playback_finished)
@@ -336,8 +341,8 @@ class Qube:
 
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_tts_voice_dropdowns)
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_toggle'):
-            self.window.settings_view.rag_toggle.toggled.connect(self.on_rag_toggle_changed)
+        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_kb_toggle'):
+            self.window.settings_view.rag_kb_toggle.connect(self.on_rag_toggle_changed)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
             self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
             self.window.settings_view.memory_enrichment_changed.connect(

@@ -133,6 +133,8 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
     query_implies_live_web_intent,
+    query_implies_library_intent,
+    library_lane_allowed,
     should_run_internet_search_for_route,
 )
 from core.discourse_intent import (
@@ -264,7 +266,8 @@ class LLMWorker(QThread):
     ttft_latency = pyqtSignal(float)
     tps_metric = pyqtSignal(float)
     context_retrieved = pyqtSignal(bool)
-    web_search_active = pyqtSignal(bool)
+    # active, via_direct (force/manual/@internet), via_hybrid (cognitive router)
+    web_search_active = pyqtSignal(bool, bool, bool)
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
@@ -1705,7 +1708,8 @@ class LLMWorker(QThread):
                 exchange_total_ms=exchange_total_ms,
             )
             self._completion_output_snapshot = None
-            self.web_search_active.emit(False)
+            self.context_retrieved.emit(False)
+            self.web_search_active.emit(False, False, False)
             self.response_finished.emit(self.session_id, final_text_out)
             if not self._successfully_finished:
                 self.status_update.emit("Idle")
@@ -2090,6 +2094,31 @@ class LLMWorker(QThread):
                 decision["rag_query"] = self.prompt
                 decision["custom_rag_trigger"] = True
 
+        library_bypass = library_lane_allowed(
+            mcp_rag_enabled=self.mcp_rag_enabled,
+            force_rag_via_trigger=force_rag_via_trigger,
+            scoped_library_active=scoped_library_active,
+        )
+        library_blocked = not library_bypass
+        if library_blocked and execution_route == "RAG":
+            logger.info(
+                "[LLM Worker] Cognitive router picked RAG but Local Knowledge Base "
+                "is disabled and no library bypass fired; reverting execution_route "
+                "to NONE."
+            )
+            execution_route = "NONE"
+            if isinstance(decision, dict):
+                decision["rag_vetoed_tool_disabled"] = True
+        elif library_blocked and execution_route == "HYBRID":
+            logger.info(
+                "[LLM Worker] HYBRID route with Local Knowledge Base disabled; "
+                "skipping library leg and downgrading execution_route to MEMORY."
+            )
+            execution_route = "MEMORY"
+            if isinstance(decision, dict):
+                decision["rag_vetoed_tool_disabled"] = True
+                decision["rag_library_leg_skipped"] = True
+
         # ------------------------------------------------------------
         # INTERNET TRIGGER (manual + cognitive)
         # ------------------------------------------------------------
@@ -2186,15 +2215,30 @@ class LLMWorker(QThread):
         web_vetoed = bool(
             isinstance(decision, dict) and decision.get("web_vetoed_tool_disabled")
         )
+        rag_vetoed = bool(
+            isinstance(decision, dict) and decision.get("rag_vetoed_tool_disabled")
+        )
         web_capability_blocked = bool(
             explicit_web_request and not self.mcp_internet_enabled
         ) or bool(
             web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
         )
+        rag_capability_blocked = bool(
+            library_blocked
+            and query_implies_library_intent(clean_prompt, decision=decision)
+            and execution_route in ("NONE", "MEMORY")
+        )
+        if isinstance(decision, dict):
+            decision["rag_capability_blocked"] = rag_capability_blocked
         if web_vetoed and not web_capability_blocked:
             logger.info(
                 "[LLM Worker] WEB route vetoed (internet disabled) but query has "
                 "no live-web intent; using plain chat prompt."
+            )
+        if rag_vetoed and not rag_capability_blocked:
+            logger.info(
+                "[LLM Worker] RAG route vetoed (library disabled) but query has "
+                "no library intent; using plain chat prompt."
             )
 
         # ============================================================
@@ -2434,6 +2478,7 @@ class LLMWorker(QThread):
             or force_rag_via_trigger
             or scoped_library_active
         ):
+            self.context_retrieved.emit(True)
             rag_q = decision.get("rag_query") or retrieval_query
             rag_result = self._rag_search_hybrid(
                 rag_q,
@@ -2466,7 +2511,16 @@ class LLMWorker(QThread):
             composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
         ) and (self.mcp_internet_enabled or force_web):
             web_search_attempted = True
-            self.web_search_active.emit(True)
+            via_direct = bool(
+                force_web
+                or manual_web
+                or getattr(self, "_composer_internet_requested", False)
+            )
+            via_hybrid = bool(
+                auto_web
+                or (live_web and not hard_web and not force_web and not manual_web)
+            )
+            self.web_search_active.emit(True, via_direct, via_hybrid)
             self.status_update.emit("🌐 Searching the Web...")
 
             search_target = resolve_search_target(
@@ -3178,6 +3232,7 @@ class LLMWorker(QThread):
             ),
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
+            rag_capability_blocked=rag_capability_blocked,
         )
         skill_result = activate_skills(
             skill_ctx,
@@ -3219,6 +3274,8 @@ class LLMWorker(QThread):
             composer_conversation_ref=attachment_conversation_active,
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
+            rag_capability_blocked=rag_capability_blocked,
+            strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(
                 query=self.prompt,
                 route=execution_route,
