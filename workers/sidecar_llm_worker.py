@@ -27,6 +27,12 @@ from core.sidecar_engine_queue import (
     should_defer_companion_line,
     should_drop_ingest_blurb,
 )
+from core.app_settings import (
+    get_sidecar_title_context_mode,
+    get_sidecar_title_inference_profile,
+)
+from core.title_generation_experiment import log_title_experiment_run, run_title_generation
+from core.title_inference_profiles import get_title_profile
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.sidecar_prompts import (
     build_prompt_for_task,
@@ -536,34 +542,31 @@ class SidecarLlmWorker(QThread):
         user_prompt = cmd.get("user_prompt") or ""
         assistant_reply = cmd.get("assistant_reply") or ""
         wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
-        t0 = time.perf_counter()
-        title_params = task_inference_params(SidecarTask.title)
-        raw_title = self._complete_prompt(
-            build_prompt_for_task(
-                SidecarTask.title,
-                chat_format=self.active_chat_format,
-                model_path=self.active_model_path,
-                user_prompt=user_prompt,
-                assistant_reply=assistant_reply,
-            ),
-            max_tokens=int(title_params.get("max_tokens", 128)),
-            temperature=float(title_params.get("temperature", 0.1)),
-        )
-        inference_ms = (time.perf_counter() - t0) * 1000.0
-        result = parse_task_output(
-            SidecarTask.title,
-            raw_title,
+        profile = get_title_profile(get_sidecar_title_inference_profile())
+        context_mode = get_sidecar_title_context_mode()
+        run = run_title_generation(
+            self.model,
+            profile=profile,
             user_prompt=user_prompt,
             assistant_reply=assistant_reply,
+            context_mode=context_mode,
+            model_path=self.active_model_path,
+            chat_format=self.active_chat_format,
+            session_id=session_id,
         )
-        new_title = (result.parsed or {}).get("title") or result.text
+        log_title_experiment_run(run)
+        inference_ms = run.inference_ms
+        raw_title = run.raw_model_output
+        new_title = run.final_title
         ok = bool(new_title)
-        selection = (result.parsed or {}).get("selection") or {}
+        selection = run.selection or {}
         if ok:
             logger.info(
-                "[Sidecar] Title session=%s title=%r path=%s source=%s score=%.1f "
-                "runner_up=%r (%s %.1f) raw=%r",
+                "[Sidecar] Title session=%s profile=%s context=%s title=%r path=%s "
+                "source=%s score=%.1f runner_up=%r (%s %.1f) raw=%r",
                 session_id,
+                run.profile_id,
+                run.context_mode,
                 new_title,
                 selection.get("path") or "",
                 selection.get("winner_source") or "",
@@ -585,8 +588,9 @@ class SidecarLlmWorker(QThread):
         elif not ok:
             snippet = (raw_title or "").strip().replace("\n", " ")[:120]
             logger.info(
-                "[Sidecar] Title empty for session=%s raw=%r",
+                "[Sidecar] Title empty for session=%s profile=%s raw=%r",
                 session_id,
+                run.profile_id,
                 snippet,
             )
         self.telemetry.record(
@@ -595,7 +599,14 @@ class SidecarLlmWorker(QThread):
             latency_ms=inference_ms,
             wait_ms=wait_ms,
             foreground=False,
-            reason="" if ok else (result.error or "empty"),
+            reason="" if ok else "empty",
+            meta={
+                "profile": run.profile_id,
+                "context_mode": run.context_mode,
+                "fallback_repair": run.used_fallback_repair,
+                "model_rejected": run.model_output_rejected,
+                "think_stripped": run.think_block_stripped,
+            },
         )
         self._sync_telemetry_runtime()
 

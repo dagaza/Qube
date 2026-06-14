@@ -1,0 +1,145 @@
+Conversation: fixture-debate-remote-work
+Category: opinion_debate
+Context mode: full
+Stored title: 
+User: Play devil's advocate and steelman both sides of the argument: "Remote work always hurts productivity"
+
+A: Remote Work Productivity
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=5177 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Remote Work Productivity
+Raw B: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=1818 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Remote Work Productivity
+Raw C: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=270 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Remote Work Productivity
+Raw D: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=257 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: fixture-nginx
+Category: technical
+Context mode: full
+Stored title: 
+User: Can you walk me through setting up a reverse proxy with nginx on Ubuntu?
+
+A: Start By Installing Nginx and
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1456 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Reverse Proxy Nginx Ubuntu
+Raw B: Reverse Proxy Nginx Ubuntu
+  -> fallback=False rejected=False think=False ms=1775 finish=stop tokens=6 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Reverse Proxy Nginx Ubuntu
+Raw C: Reverse Proxy Nginx Ubuntu
+  -> fallback=False rejected=False think=False ms=361 finish=stop tokens=6 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Reverse Proxy Nginx Ubuntu
+Raw D: Reverse Proxy Nginx Ubuntu
+  -> fallback=False rejected=False think=False ms=398 finish=stop tokens=6 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+=== Metrics ===
+{
+  "profiles": {
+    "A": {
+      "count": 2,
+      "avg_inference_ms": 3316.7866399999184,
+      "avg_output_char_length": 7.0,
+      "avg_completion_tokens": 2.0,
+      "pct_fallback_repair": 100.0,
+      "pct_model_rejected": 100.0,
+      "pct_think_block_stripped": 100.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "stop": 2
+      }
+    },
+    "B": {
+      "count": 2,
+      "avg_inference_ms": 1796.4379420009209,
+      "avg_output_char_length": 25.0,
+      "avg_completion_tokens": 5.0,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "stop": 2
+      }
+    },
+    "C": {
+      "count": 2,
+      "avg_inference_ms": 315.75844550206966,
+      "avg_output_char_length": 25.0,
+      "avg_completion_tokens": 5.0,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "stop": 2
+      }
+    },
+    "D": {
+      "count": 2,
+      "avg_inference_ms": 327.941429499333,
+      "avg_output_char_length": 25.0,
+      "avg_completion_tokens": 5.0,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "stop": 2
+      }
+    }
+  },
+  "total_runs": 8
+}
+=== Think-Trace Statistics ===
+{
+  "count": 8,
+  "pct_had_think_block": 25.0,
+  "pct_candidate_in_reasoning": 0.0,
+  "pct_reasoning_has_best_title": 0.0,
+  "pct_answer_has_best_title": 75.0,
+  "pct_reasoning_nonempty": 0.0,
+  "pct_answer_nonempty": 75.0
+}
+=== Stop-Token / Termination Analysis ===
+
+1. Why profile A returns ~7-character outputs:
+   Profile A avg raw length=7.0 chars, avg completion_tokens=2.0.
+   Example raw: '<think>'
+   Typical finish_reason='stop'; configured stops=['<|im_end|>', '\n\n'].
+   Interpretation: raw ChatML + /no_think still opens a think block; generation terminates quickly (stop/EOS) before any answer text is emitted.
+
+2. Whether stop tokens prematurely terminate generation:
+   Raw-path stop sequences: ['<|im_end|>', '\n\n']
+   Profile A finish_reason counts: {'stop': 2}
+   llama.cpp finish_reason='stop' includes EOS and custom stop sequences (not distinguished).
+
+3. Whether generated answer text is being discarded:
+   Chat profiles B/C/D: 0/6 runs had think blocks stripped.
+   When think-only output is stripped, answer channel is empty and fallbacks run.
+
+4. Whether the model enters reasoning mode due to missing template metadata:
+   Profile A uses manual ChatML without Jinja enable_thinking=False.
+   Profiles B/C/D use chat_handler kwargs merge (enable_thinking=False).
+   Compare think-block frequency across profiles in metrics.
+
+Notes:
+   - Profile A emits very few tokens before termination — likely stop/EOS after think opener.
+   - Profile A output is think-only; answer channel empty after strip.
+   - Raw path uses manual ChatML + /no_think; chat path uses GGUF Jinja via chat_handler kwargs.
+   - Configured stop sequences for raw ChatML: ['<|im_end|>', '\n\n']

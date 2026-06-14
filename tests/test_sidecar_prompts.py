@@ -4,14 +4,26 @@ from __future__ import annotations
 import unittest
 
 from core.sidecar_prompts import (
+    TITLE_SYSTEM_PROMPT,
     build_prompt_for_task,
     format_title_exchange_context,
     parse_task_output,
+    task_inference_params,
 )
 from core.sidecar_types import SidecarTask
 
 
 class TestSidecarPrompts(unittest.TestCase):
+    def test_title_inference_max_tokens(self) -> None:
+        params = task_inference_params(SidecarTask.title)
+        self.assertEqual(params["max_tokens"], 20)
+
+    def test_title_system_prompt_output_contract(self) -> None:
+        self.assertIn("Output exactly one title", TITLE_SYSTEM_PROMPT)
+        self.assertIn("2–6 words", TITLE_SYSTEM_PROMPT)
+        self.assertIn("no markdown", TITLE_SYSTEM_PROMPT)
+        self.assertIn("Remote Work Productivity", TITLE_SYSTEM_PROMPT)
+
     def test_contradiction_judge_parses_duplicate(self) -> None:
         r = parse_task_output(SidecarTask.contradiction_judge, "duplicate")
         self.assertTrue(r.ok)

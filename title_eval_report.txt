@@ -1,0 +1,800 @@
+Conversation: ddcd0e6c-999e-4384-8715-40c19e9e3a6b
+Category: technical
+Context mode: full
+Stored title: New Conversation
+User: Write a detailed encyclopedia-style essay about the history of human artistic expression from prehistoric cave paintings
+
+A: History of Human Artistic Expression
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=5822 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Earliest Tangible Evidence of Human
+Raw B: # The Evolution of Human Artistic Expression  ## Prehistoric Art  The earliest tangible evidence of human artistic expression emerges from the Paleolithic era, long before the advent of recorded histo
+  -> fallback=False rejected=False think=False ms=12041 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Earliest Tangible Evidence of Human
+Raw C: # The Evolution of Human Artistic Expression  ## Prehistoric Art  The earliest tangible evidence of human artistic expression emerges from the Paleolithic era, long before the advent of recorded histo
+  -> fallback=False rejected=False think=False ms=5847 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Earliest Tangible Evidence of Human
+Raw D: # The Evolution of Human Artistic Expression  ## Prehistoric Art  The earliest tangible evidence of human artistic expression emerges from the Paleolithic era, long before the advent of recorded histo
+  -> fallback=False rejected=False think=False ms=6005 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: ca58d982-335b-4da7-aa97-0e05223b1bf4
+Category: technical
+Context mode: full
+Stored title: Tcp Ip Works By Dividing
+User: How does TCP/IP work?
+
+A: Tcp/ip Work
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1906 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: TCP/IP
+Raw B: TCP/IP
+  -> fallback=False rejected=False think=False ms=2343 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: TCP/IP
+Raw C: TCP/IP
+  -> fallback=False rejected=False think=False ms=145 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: TCP/IP
+Raw D: TCP/IP
+  -> fallback=False rejected=False think=False ms=140 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 11d10a88-627d-459d-96d5-41a98d097dd2
+Category: how_to
+Context mode: full
+Stored title: Evolution of Human Problem Solving
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=4049 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Earliest Forms of Human Problem
+Raw B: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  The earliest forms of human problem solving occurred during the prehistoric era, with ou
+  -> fallback=False rejected=False think=False ms=9856 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Earliest Forms of Human Problem
+Raw C: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  The earliest forms of human problem solving occurred during the prehistoric era, with ou
+  -> fallback=False rejected=False think=False ms=5736 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Earliest Forms of Human Problem
+Raw D: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  The earliest forms of human problem solving occurred during the prehistoric era, with ou
+  -> fallback=False rejected=False think=False ms=5574 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 9b7556e2-f01a-4994-ad9e-ee01b416e9d6
+Category: how_to
+Context mode: full
+Stored title: Native Model Not Loaded Load
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=3671 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving: Evolution Through History
+Raw B: Human Problem Solving: Evolution Through History
+  -> fallback=False rejected=False think=False ms=3058 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving: A Historical Evolution
+Raw C: Human Problem Solving: A Historical Evolution
+  -> fallback=False rejected=False think=False ms=413 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving: A Historical Evolution
+Raw D: Human Problem Solving: A Historical Evolution
+  -> fallback=False rejected=False think=False ms=346 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 30b25bb3-0213-4509-b6fd-a54a39325eb3
+Category: how_to
+Context mode: full
+Stored title: Human Problem Solving Has Evolved
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=3646 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving
+Raw B: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=3988 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving
+Raw C: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=201 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving
+Raw D: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=201 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 5ae4ba9f-6d1e-4e30-947f-3e464b87ff65
+Category: how_to
+Context mode: full
+Stored title: New Conversation
+User: Create a comprehensive reference guide to 120 artistic mediums from around the world.
+
+Requirements:
+
+* Use Markdown.
+
+*
+
+A: Previous Assistant Response Suppressed Due
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=2138 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Artistic Mediums Around the World
+Raw B: Artistic Mediums Around the World
+  -> fallback=False rejected=False think=False ms=2228 finish=stop tokens=7 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Artistic Mediums Across the World
+Raw C: Artistic Mediums Across the World
+  -> fallback=False rejected=False think=False ms=322 finish=stop tokens=7 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Artistic Mediums Worldwide
+Raw D: Artistic Mediums Worldwide
+  -> fallback=False rejected=False think=False ms=286 finish=stop tokens=5 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: ad754467-ce6f-406b-9b39-937ca7f55913
+Category: how_to
+Context mode: full
+Stored title: Evolution of Human Problem Solving
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=3387 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: As Societies Transitioned From Nom
+Raw B: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  Human problem solving in prehistoric societies was largely instinctual and based on tria
+  -> fallback=False rejected=False think=False ms=9082 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: As Societies Transitioned From Nom
+Raw C: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  Human problem solving in prehistoric societies was largely instinctual and based on tria
+  -> fallback=False rejected=False think=False ms=5449 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: As Societies Began to Develop More
+Raw D: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BCE - 3000 BCE)  Human problem solving in prehistoric societies was largely instinctual and based on tria
+  -> fallback=False rejected=False think=False ms=5725 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 64b874e5-a29c-4db2-b406-7c7a67e074ec
+Category: how_to
+Context mode: full
+Stored title: Human Problem Solving Has Evolved
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=4639 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving
+Raw B: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=4867 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving
+Raw C: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=205 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving
+Raw D: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=210 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 67b90bab-8aa7-4c07-95be-d39776a4a2dd
+Category: opinion_debate
+Context mode: full
+Stored title: Steelmanning the Claim Remote Work
+User: @[skill:debate_critical_thinking]  Play devil's advocate and steelman both sides of the argument: "Remote work always hu
+
+A: Remote Work Productivity
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1695 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Remote Work Productivity
+Raw B: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=2629 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Remote Work Productivity
+Raw C: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=224 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Remote Work Productivity
+Raw D: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=195 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 9c0bc487-14b2-4d28-831d-633f06e39bc2
+Category: opinion_debate
+Context mode: full
+Stored title: Native Model Not Loaded Load
+User: @[skill:debate_critical_thinking]  Play devil's advocate and steelman both sides of the argument: "Remote work always hu
+
+A: Remote Work Productivity
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1470 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Remote Work Productivity
+Raw B: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=1616 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Remote Work Productivity
+Raw C: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=220 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Remote Work Productivity
+Raw D: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=204 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 778168fd-3e04-4421-8ae5-f8a7f302249d
+Category: opinion_debate
+Context mode: full
+Stored title: Title Human Problem Solving In
+User: Write a 1,500-word essay on human problem solving.
+
+After each section, restate the section's main thesis using nearly i
+
+A: human problem solving After each
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1886 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving: The Cognitive Process
+Raw B: Human Problem Solving: The Cognitive Process
+  -> fallback=False rejected=False think=False ms=3122 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving: The Cognitive Process
+Raw C: Human Problem Solving: The Cognitive Process
+  -> fallback=False rejected=False think=False ms=420 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving: Core Processes and Strategies
+Raw D: Human Problem Solving: Core Processes and Strategies
+  -> fallback=False rejected=False think=False ms=420 finish=stop tokens=9 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 3761b6eb-0328-46b9-a459-b14ec3f89e2b
+Category: opinion_debate
+Context mode: full
+Stored title: Remote Work Indeed Hurt Productivity
+User: Play devil's advocate and steelman both sides of the argument: "Remote work always hurts productivity."
+
+A: Remote Work Productivity
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=2354 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Remote Work Productivity
+Raw B: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=2555 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Remote Work Productivity
+Raw C: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=210 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Remote Work Productivity
+Raw D: Remote Work Productivity
+  -> fallback=False rejected=False think=False ms=202 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: c7fe678a-4b8a-4bbb-b6c8-b97b59143439
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1110 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=675 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=195 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=198 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 5bc0cc46-f97a-4abe-8182-19c97dbda01d
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #4
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=889 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=1009 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=193 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=207 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: f49f3434-474d-4348-a4df-76e7c6b07945
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1726 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Nepal Capital
+Raw B: Nepal Capital
+  -> fallback=False rejected=False think=False ms=1558 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Nepal Capital
+Raw C: Nepal Capital
+  -> fallback=False rejected=False think=False ms=224 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Nepal Capital
+Raw D: Nepal Capital
+  -> fallback=False rejected=False think=False ms=238 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 2597b01d-7091-46ee-8455-e8a46c484a39
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #1
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1030 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=1056 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=196 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=199 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: f26e2a0f-88a9-4ba7-8979-93413518c20f
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #5
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1086 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=1171 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=237 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=215 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 64aeb72d-1f1c-4936-be28-1d6471ee620b
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #6
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1361 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=1107 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=215 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=203 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: c908613a-bffb-4851-8f3c-9efebddc39fd
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #0
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=975 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=878 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=185 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=197 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 6dce75fa-6b9b-4670-8f9f-f929a79eb652
+Category: how_to
+Context mode: full
+Stored title: Native Model Not Loaded Load
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=2967 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving: A Historical Evolution
+Raw B: Human Problem Solving: A Historical Evolution
+  -> fallback=False rejected=False think=False ms=3498 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving: A Historical Evolution
+Raw C: Human Problem Solving: A Historical Evolution
+  -> fallback=False rejected=False think=False ms=406 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving: Evolution Through History
+Raw D: Human Problem Solving: Evolution Through History
+  -> fallback=False rejected=False think=False ms=391 finish=stop tokens=8 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 7f04616f-506a-459a-898a-36fca655d622
+Category: how_to
+Context mode: full
+Stored title: Human Problem Solving Has Evolved
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=3816 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Human Problem Solving
+Raw B: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=3307 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Human Problem Solving
+Raw C: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=220 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Human Problem Solving
+Raw D: Human Problem Solving
+  -> fallback=False rejected=False think=False ms=204 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 94b3c60c-b777-4ca6-b0d7-094861d20207
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=575 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=877 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=227 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=196 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 42087c01-5af8-4e34-ac8a-f5cf47c4585b
+Category: other
+Context mode: full
+Stored title: Lord Rings Follows Frodo Baggins
+User: Generate a comprehensive explanation of the Lord of the Rings story.
+
+A: Fellowship of the Ring
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1900 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Lord of the Rings
+Raw B: Lord of the Rings
+  -> fallback=False rejected=False think=False ms=2298 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Lord of the Rings
+Raw C: Lord of the Rings
+  -> fallback=False rejected=False think=False ms=222 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Lord of the Rings
+Raw D: Lord of the Rings
+  -> fallback=False rejected=False think=False ms=217 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 20be45a3-9193-46ac-af99-e10ab17ac6d8
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #6
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1159 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=628 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=193 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=204 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: b18bc5dc-1b34-400a-bc1c-866eb418942b
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: Provide a comprehensive analysis of the history, culture, economy, architecture, cuisine, music, literature, visual arts
+
+A: Music
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=3646 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Economy Historically agrarian now transitioning
+Raw B: | Aspect | Summary Description | Key Characteristics | | :--- | :--- | :--- | | **History** | Ancient settlement evolving through various kingdoms and religious influences. | Syncretism of Hinduism an
+  -> fallback=False rejected=False think=False ms=8362 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+C: Economy Historically agrarian now transitioning
+Raw C: | Aspect | Summary Description | Key Characteristics | | :--- | :--- | :--- | | **History** | Ancient settlement evolving through various kingdoms and religious influences. | Syncretism of Hinduism an
+  -> fallback=False rejected=False think=False ms=5353 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+D: Economy Historically agrarian now transitioning
+Raw D: | Aspect | Summary Description | Key Characteristics | | :--- | :--- | :--- | | **History** | Ancient settlement evolving through various kingdoms and religious influences. | Syncretism of Hinduism an
+  -> fallback=False rejected=False think=False ms=5426 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+
+Conversation: fb4b7d76-fbb3-4af1-b60d-7eaa8f186f6e
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #4
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=615 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=894 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=205 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=199 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 038d54b2-5d5d-448e-80a8-6ea6d768c2dc
+Category: other
+Context mode: full
+Stored title: Replay Nepal follow-up chain #1
+User: What is the capital of Nepal?
+
+A: the capital of Nepal
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=668 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Kathmandu
+Raw B: Kathmandu
+  -> fallback=False rejected=False think=False ms=903 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Kathmandu
+Raw C: Kathmandu
+  -> fallback=False rejected=False think=False ms=201 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Kathmandu
+Raw D: Kathmandu
+  -> fallback=False rejected=False think=False ms=211 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 1c98221f-1929-43a5-8ba0-4b5376e2b07e
+Category: how_to
+Context mode: full
+Stored title: Evolution of Human Problem Solving
+User: Write a comprehensive, scholarly essay of at least 2,000 words on the evolution of human problem solving throughout hist
+
+A: Human Problem Solving
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=4832 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: One notable example the Acheulean
+Raw B: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BC - 3000 BC)  The early stages of human problem solving were shaped by the necessity for survival in a h
+  -> fallback=False rejected=False think=False ms=9541 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+C: One notable example the Acheulean
+Raw C: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BC - 3000 BC)  The early stages of human problem solving were shaped by the necessity for survival in a h
+  -> fallback=False rejected=False think=False ms=5482 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+D: One notable example the Acheulean
+Raw D: # Evolution of Human Problem Solving Throughout History  ## Prehistoric Societies (2.6 million BC - 3000 BC)  The early stages of human problem solving were shaped by the necessity for survival in a h
+  -> fallback=False rejected=False think=False ms=5657 finish=length tokens=128 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+
+Conversation: 87c0b593-10e4-4d35-8df5-444c13e5636f
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: Create a long and comprehensive analysis of the Lord of the Rings story, including lists, diagrams, and tables.
+
+A: Destruction of the Ring
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=1511 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: The Fellowship
+Raw B: The Fellowship
+  -> fallback=False rejected=False think=False ms=2097 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: The Fellowship
+Raw C: The Fellowship
+  -> fallback=False rejected=False think=False ms=125 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: The Fellowship
+Raw D: The Fellowship
+  -> fallback=False rejected=False think=False ms=157 finish=stop tokens=2 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+Conversation: 578958a1-66f1-435d-8680-d5796d8ff1d1
+Category: other
+Context mode: full
+Stored title: New Conversation
+User: Can you create a comprehensive analysis of the country's music and arts scene?
+
+A: Music and Arts Scene a
+Raw A: <think>
+  -> fallback=True rejected=True think=True ms=2215 finish=stop tokens=2 stops=['<|im_end|>', '\n\n'] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False
+B: Music and Arts Scene
+Raw B: Music and Arts Scene
+  -> fallback=False rejected=False think=False ms=1741 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+C: Music and Arts Scene
+Raw C: Music and Arts Scene
+  -> fallback=False rejected=False think=False ms=213 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+D: Music and Arts Scene
+Raw D: Music and Arts Scene
+  -> fallback=False rejected=False think=False ms=211 finish=stop tokens=4 stops=[] err=-
+  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True
+
+=== Metrics ===
+{
+  "profiles": {
+    "A": {
+      "count": 30,
+      "avg_inference_ms": 2291.4556695337524,
+      "avg_output_char_length": 7.0,
+      "avg_completion_tokens": 2.0,
+      "pct_fallback_repair": 100.0,
+      "pct_model_rejected": 100.0,
+      "pct_think_block_stripped": 100.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "stop": 30
+      }
+    },
+    "B": {
+      "count": 30,
+      "avg_inference_ms": 3299.4520179331935,
+      "avg_output_char_length": 120.46666666666667,
+      "avg_completion_tokens": 25.033333333333335,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "length": 5,
+        "stop": 25
+      }
+    },
+    "C": {
+      "count": 30,
+      "avg_inference_ms": 1122.8525951664778,
+      "avg_output_char_length": 120.53333333333333,
+      "avg_completion_tokens": 25.033333333333335,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "length": 5,
+        "stop": 25
+      }
+    },
+    "D": {
+      "count": 30,
+      "avg_inference_ms": 1134.535245567046,
+      "avg_output_char_length": 120.5,
+      "avg_completion_tokens": 25.0,
+      "pct_fallback_repair": 0.0,
+      "pct_model_rejected": 0.0,
+      "pct_think_block_stripped": 0.0,
+      "pct_empty_generation": 0.0,
+      "pct_generation_errors": 0.0,
+      "finish_reason_counts": {
+        "length": 5,
+        "stop": 25
+      }
+    }
+  },
+  "total_runs": 120
+}
+=== Think-Trace Statistics ===
+{
+  "count": 120,
+  "pct_had_think_block": 25.0,
+  "pct_candidate_in_reasoning": 0.0,
+  "pct_reasoning_has_best_title": 0.0,
+  "pct_answer_has_best_title": 70.0,
+  "pct_reasoning_nonempty": 0.0,
+  "pct_answer_nonempty": 75.0
+}
+=== Stop-Token / Termination Analysis ===
+
+1. Why profile A returns ~7-character outputs:
+   Profile A avg raw length=7.0 chars, avg completion_tokens=2.0.
+   Example raw: '<think>'
+   Typical finish_reason='stop'; configured stops=['<|im_end|>', '\n\n'].
+   Interpretation: raw ChatML + /no_think still opens a think block; generation terminates quickly (stop/EOS) before any answer text is emitted.
+
+2. Whether stop tokens prematurely terminate generation:
+   Raw-path stop sequences: ['<|im_end|>', '\n\n']
+   Profile A finish_reason counts: {'stop': 30}
+   llama.cpp finish_reason='stop' includes EOS and custom stop sequences (not distinguished).
+
+3. Whether generated answer text is being discarded:
+   Chat profiles B/C/D: 0/90 runs had think blocks stripped.
+   When think-only output is stripped, answer channel is empty and fallbacks run.
+
+4. Whether the model enters reasoning mode due to missing template metadata:
+   Profile A uses manual ChatML without Jinja enable_thinking=False.
+   Profiles B/C/D use chat_handler kwargs merge (enable_thinking=False).
+   Compare think-block frequency across profiles in metrics.
+
+Notes:
+   - Profile A emits very few tokens before termination — likely stop/EOS after think opener.
+   - Profile A output is think-only; answer channel empty after strip.
+   - Raw path uses manual ChatML + /no_think; chat path uses GGUF Jinja via chat_handler kwargs.
+   - Configured stop sequences for raw ChatML: ['<|im_end|>', '\n\n']

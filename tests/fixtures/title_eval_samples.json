@@ -1,0 +1,12 @@
+[
+  {
+    "session_id": "fixture-debate-remote-work",
+    "user_prompt": "Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"",
+    "assistant_reply": "Remote work can indeed hurt productivity when teams lack clear communication protocols, leading to isolation and blurred boundaries that erode focus. However, steelmanning the counter-argument reveals that for many roles, remote work significantly boosts output by eliminating commuting time and reducing office distractions."
+  },
+  {
+    "session_id": "fixture-nginx",
+    "user_prompt": "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?",
+    "assistant_reply": "Start by installing nginx and enabling the site config for your upstream application."
+  }
+]

@@ -98,6 +98,18 @@
     "default": "auto",
     "description": "Chat template for auxiliary cognition prompts; auto infers from model filename."
   },
+  "qube.sidecar.title_inference_profile": {
+    "type": "string",
+    "enum": ["A", "B", "C", "D"],
+    "default": "B",
+    "description": "Sidecar titling A/B profile: A=raw+/no_think+t0.1, B=chat+enable_thinking_false+t0.1 (production default), C=chat+t0.3, D=chat+Qwen instruct sampling."
+  },
+  "qube.sidecar.title_context_mode": {
+    "type": "string",
+    "enum": ["full", "user_only"],
+    "default": "full",
+    "description": "Titling context: full (user+assistant first turn) or user_only for experiments."
+  },
   "qube.settings.advanced_engine_unlocked": {
     "type": "boolean",
     "default": false,

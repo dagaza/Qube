@@ -1,0 +1,19 @@
+{
+  "llama_cpp_version": "0.3.29",
+  "model_path": "/home/personax404/.qube/models/cognition/Qwen3-1.7B-Q6_K.gguf",
+  "chat_format": "chatml",
+  "handler_wrap_supported": true,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "raw_response": "TEST",
+  "raw_response_length": 4,
+  "finish_reason": "stop",
+  "completion_tokens": 1,
+  "prompt_tokens": 25,
+  "total_tokens": 26,
+  "eos_encountered": true,
+  "has_think_tags": false,
+  "generation_error": "",
+  "enable_thinking_honored": true
+}

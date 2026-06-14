@@ -1,0 +1,592 @@
+{
+  "llama_cpp_version": "0.3.29",
+  "handler_wrap_supported": true,
+  "model_path": "/home/personax404/.qube/models/cognition/Qwen3-1.7B-Q6_K.gguf",
+  "chat_format": "chatml",
+  "sample_count": 2,
+  "samples_by_category": {
+    "technical": 1,
+    "how_to": 0,
+    "opinion_debate": 1,
+    "troubleshooting": 0,
+    "other": 0
+  },
+  "runs": [
+    {
+      "session_id": "fixture-debate-remote-work",
+      "profile_id": "A",
+      "profile_label": "production_raw_no_think_t01",
+      "context_mode": "full",
+      "user_prompt": "Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"",
+      "assistant_reply": "Remote work can indeed hurt productivity when teams lack clear communication protocols, leading to isolation and blurred boundaries that erode focus. However, steelmanning the counter-argument reveals that for many roles, remote work significantly boosts output by eliminating commuting time and reducing office distractions.",
+      "raw_model_output": "<think>",
+      "cleaned_model_output": "",
+      "output_char_length": 7,
+      "inference_ms": 5177.283495999291,
+      "had_think_block": true,
+      "think_block_stripped": true,
+      "candidates": [
+        {
+          "title": "Remote Work Productivity",
+          "source": "quoted_topic"
+        },
+        {
+          "title": "Play Devils Advocate and Steelman",
+          "source": "user_topic"
+        }
+      ],
+      "selection": {
+        "winner": "Remote Work Productivity",
+        "winner_source": "quoted_topic",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "quoted_topic"
+      },
+      "final_title": "Remote Work Productivity",
+      "used_fallback_repair": true,
+      "model_output_rejected": true,
+      "generation_error": "",
+      "stop_sequences": [
+        "<|im_end|>",
+        "\n\n"
+      ],
+      "finish_reason": "stop",
+      "completion_tokens": 2,
+      "prompt_tokens": 307,
+      "eos_encountered": true,
+      "chat_template_kwargs": {},
+      "think_trace": {
+        "raw_completion": "<think>",
+        "think_content": "",
+        "answer_content": "",
+        "had_think_block": true,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "",
+        "best_known_candidate": "Remote Work Productivity",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": false
+      }
+    },
+    {
+      "session_id": "fixture-debate-remote-work",
+      "profile_id": "B",
+      "profile_label": "chat_template_enable_thinking_false_t01",
+      "context_mode": "full",
+      "user_prompt": "Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"",
+      "assistant_reply": "Remote work can indeed hurt productivity when teams lack clear communication protocols, leading to isolation and blurred boundaries that erode focus. However, steelmanning the counter-argument reveals that for many roles, remote work significantly boosts output by eliminating commuting time and reducing office distractions.",
+      "raw_model_output": "Remote Work Productivity",
+      "cleaned_model_output": "Remote Work Productivity",
+      "output_char_length": 24,
+      "inference_ms": 1817.7127490016574,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Remote Work Productivity",
+          "source": "quoted_topic"
+        },
+        {
+          "title": "Play Devils Advocate and Steelman",
+          "source": "user_topic"
+        }
+      ],
+      "selection": {
+        "winner": "Remote Work Productivity",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Remote Work Productivity",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 4,
+      "prompt_tokens": 307,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Remote Work Productivity",
+        "think_content": "",
+        "answer_content": "Remote Work Productivity",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Remote Work Productivity",
+        "best_known_candidate": "Remote Work Productivity",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    },
+    {
+      "session_id": "fixture-debate-remote-work",
+      "profile_id": "C",
+      "profile_label": "chat_template_enable_thinking_false_t03",
+      "context_mode": "full",
+      "user_prompt": "Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"",
+      "assistant_reply": "Remote work can indeed hurt productivity when teams lack clear communication protocols, leading to isolation and blurred boundaries that erode focus. However, steelmanning the counter-argument reveals that for many roles, remote work significantly boosts output by eliminating commuting time and reducing office distractions.",
+      "raw_model_output": "Remote Work Productivity",
+      "cleaned_model_output": "Remote Work Productivity",
+      "output_char_length": 24,
+      "inference_ms": 270.42993500072043,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Remote Work Productivity",
+          "source": "quoted_topic"
+        },
+        {
+          "title": "Play Devils Advocate and Steelman",
+          "source": "user_topic"
+        }
+      ],
+      "selection": {
+        "winner": "Remote Work Productivity",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Remote Work Productivity",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 4,
+      "prompt_tokens": 307,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Remote Work Productivity",
+        "think_content": "",
+        "answer_content": "Remote Work Productivity",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Remote Work Productivity",
+        "best_known_candidate": "Remote Work Productivity",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    },
+    {
+      "session_id": "fixture-debate-remote-work",
+      "profile_id": "D",
+      "profile_label": "chat_template_qwen_instruct_sampling",
+      "context_mode": "full",
+      "user_prompt": "Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"",
+      "assistant_reply": "Remote work can indeed hurt productivity when teams lack clear communication protocols, leading to isolation and blurred boundaries that erode focus. However, steelmanning the counter-argument reveals that for many roles, remote work significantly boosts output by eliminating commuting time and reducing office distractions.",
+      "raw_model_output": "Remote Work Productivity",
+      "cleaned_model_output": "Remote Work Productivity",
+      "output_char_length": 24,
+      "inference_ms": 257.46570300179883,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Remote Work Productivity",
+          "source": "quoted_topic"
+        },
+        {
+          "title": "Play Devils Advocate and Steelman",
+          "source": "user_topic"
+        }
+      ],
+      "selection": {
+        "winner": "Remote Work Productivity",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Remote Work Productivity",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 4,
+      "prompt_tokens": 307,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Remote Work Productivity",
+        "think_content": "",
+        "answer_content": "Remote Work Productivity",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Remote Work Productivity",
+        "best_known_candidate": "Remote Work Productivity",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    },
+    {
+      "session_id": "fixture-nginx",
+      "profile_id": "A",
+      "profile_label": "production_raw_no_think_t01",
+      "context_mode": "full",
+      "user_prompt": "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?",
+      "assistant_reply": "Start by installing nginx and enabling the site config for your upstream application.",
+      "raw_model_output": "<think>",
+      "cleaned_model_output": "",
+      "output_char_length": 7,
+      "inference_ms": 1456.2897840005462,
+      "had_think_block": true,
+      "think_block_stripped": true,
+      "candidates": [
+        {
+          "title": "Ubuntu",
+          "source": "subject_clause"
+        },
+        {
+          "title": "Start By Installing Nginx and",
+          "source": "assistant_topic"
+        },
+        {
+          "title": "Walk Through Setting Up a",
+          "source": "user_topic"
+        }
+      ],
+      "selection": {
+        "winner": "Start By Installing Nginx and",
+        "winner_source": "assistant_topic",
+        "winner_score": 11.0,
+        "runner_up": "Ubuntu",
+        "runner_up_source": "subject_clause",
+        "runner_up_score": 11.0,
+        "path": "fallback_tournament"
+      },
+      "final_title": "Start By Installing Nginx and",
+      "used_fallback_repair": true,
+      "model_output_rejected": true,
+      "generation_error": "",
+      "stop_sequences": [
+        "<|im_end|>",
+        "\n\n"
+      ],
+      "finish_reason": "stop",
+      "completion_tokens": 2,
+      "prompt_tokens": 263,
+      "eos_encountered": true,
+      "chat_template_kwargs": {},
+      "think_trace": {
+        "raw_completion": "<think>",
+        "think_content": "",
+        "answer_content": "",
+        "had_think_block": true,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "",
+        "best_known_candidate": "Start By Installing Nginx and",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": false
+      }
+    },
+    {
+      "session_id": "fixture-nginx",
+      "profile_id": "B",
+      "profile_label": "chat_template_enable_thinking_false_t01",
+      "context_mode": "full",
+      "user_prompt": "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?",
+      "assistant_reply": "Start by installing nginx and enabling the site config for your upstream application.",
+      "raw_model_output": "Reverse Proxy Nginx Ubuntu",
+      "cleaned_model_output": "Reverse Proxy Nginx Ubuntu",
+      "output_char_length": 26,
+      "inference_ms": 1775.1631350001844,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Ubuntu",
+          "source": "subject_clause"
+        },
+        {
+          "title": "Start By Installing Nginx and",
+          "source": "assistant_topic"
+        },
+        {
+          "title": "Walk Through Setting Up a",
+          "source": "user_topic"
+        },
+        {
+          "title": "Reverse Proxy Nginx Ubuntu",
+          "source": "sidecar_line"
+        }
+      ],
+      "selection": {
+        "winner": "Reverse Proxy Nginx Ubuntu",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Reverse Proxy Nginx Ubuntu",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 6,
+      "prompt_tokens": 263,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Reverse Proxy Nginx Ubuntu",
+        "think_content": "",
+        "answer_content": "Reverse Proxy Nginx Ubuntu",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Reverse Proxy Nginx Ubuntu",
+        "best_known_candidate": "Reverse Proxy Nginx Ubuntu",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    },
+    {
+      "session_id": "fixture-nginx",
+      "profile_id": "C",
+      "profile_label": "chat_template_enable_thinking_false_t03",
+      "context_mode": "full",
+      "user_prompt": "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?",
+      "assistant_reply": "Start by installing nginx and enabling the site config for your upstream application.",
+      "raw_model_output": "Reverse Proxy Nginx Ubuntu",
+      "cleaned_model_output": "Reverse Proxy Nginx Ubuntu",
+      "output_char_length": 26,
+      "inference_ms": 361.0869560034189,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Ubuntu",
+          "source": "subject_clause"
+        },
+        {
+          "title": "Start By Installing Nginx and",
+          "source": "assistant_topic"
+        },
+        {
+          "title": "Walk Through Setting Up a",
+          "source": "user_topic"
+        },
+        {
+          "title": "Reverse Proxy Nginx Ubuntu",
+          "source": "sidecar_line"
+        }
+      ],
+      "selection": {
+        "winner": "Reverse Proxy Nginx Ubuntu",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Reverse Proxy Nginx Ubuntu",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 6,
+      "prompt_tokens": 263,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Reverse Proxy Nginx Ubuntu",
+        "think_content": "",
+        "answer_content": "Reverse Proxy Nginx Ubuntu",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Reverse Proxy Nginx Ubuntu",
+        "best_known_candidate": "Reverse Proxy Nginx Ubuntu",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    },
+    {
+      "session_id": "fixture-nginx",
+      "profile_id": "D",
+      "profile_label": "chat_template_qwen_instruct_sampling",
+      "context_mode": "full",
+      "user_prompt": "Can you walk me through setting up a reverse proxy with nginx on Ubuntu?",
+      "assistant_reply": "Start by installing nginx and enabling the site config for your upstream application.",
+      "raw_model_output": "Reverse Proxy Nginx Ubuntu",
+      "cleaned_model_output": "Reverse Proxy Nginx Ubuntu",
+      "output_char_length": 26,
+      "inference_ms": 398.4171559968672,
+      "had_think_block": false,
+      "think_block_stripped": false,
+      "candidates": [
+        {
+          "title": "Ubuntu",
+          "source": "subject_clause"
+        },
+        {
+          "title": "Start By Installing Nginx and",
+          "source": "assistant_topic"
+        },
+        {
+          "title": "Walk Through Setting Up a",
+          "source": "user_topic"
+        },
+        {
+          "title": "Reverse Proxy Nginx Ubuntu",
+          "source": "sidecar_line"
+        }
+      ],
+      "selection": {
+        "winner": "Reverse Proxy Nginx Ubuntu",
+        "winner_source": "model_line",
+        "winner_score": 0.0,
+        "runner_up": "",
+        "runner_up_source": "",
+        "runner_up_score": 0.0,
+        "path": "model_line"
+      },
+      "final_title": "Reverse Proxy Nginx Ubuntu",
+      "used_fallback_repair": false,
+      "model_output_rejected": false,
+      "generation_error": "",
+      "stop_sequences": [],
+      "finish_reason": "stop",
+      "completion_tokens": 6,
+      "prompt_tokens": 263,
+      "eos_encountered": true,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "think_trace": {
+        "raw_completion": "Reverse Proxy Nginx Ubuntu",
+        "think_content": "",
+        "answer_content": "Reverse Proxy Nginx Ubuntu",
+        "had_think_block": false,
+        "candidate_in_reasoning": false,
+        "reasoning_candidate": "",
+        "answer_candidate": "Reverse Proxy Nginx Ubuntu",
+        "best_known_candidate": "Reverse Proxy Nginx Ubuntu",
+        "reasoning_has_best_title": false,
+        "answer_has_best_title": true
+      }
+    }
+  ],
+  "metrics": {
+    "profiles": {
+      "A": {
+        "count": 2,
+        "avg_inference_ms": 3316.7866399999184,
+        "avg_output_char_length": 7.0,
+        "avg_completion_tokens": 2.0,
+        "pct_fallback_repair": 100.0,
+        "pct_model_rejected": 100.0,
+        "pct_think_block_stripped": 100.0,
+        "pct_empty_generation": 0.0,
+        "pct_generation_errors": 0.0,
+        "finish_reason_counts": {
+          "stop": 2
+        }
+      },
+      "B": {
+        "count": 2,
+        "avg_inference_ms": 1796.4379420009209,
+        "avg_output_char_length": 25.0,
+        "avg_completion_tokens": 5.0,
+        "pct_fallback_repair": 0.0,
+        "pct_model_rejected": 0.0,
+        "pct_think_block_stripped": 0.0,
+        "pct_empty_generation": 0.0,
+        "pct_generation_errors": 0.0,
+        "finish_reason_counts": {
+          "stop": 2
+        }
+      },
+      "C": {
+        "count": 2,
+        "avg_inference_ms": 315.75844550206966,
+        "avg_output_char_length": 25.0,
+        "avg_completion_tokens": 5.0,
+        "pct_fallback_repair": 0.0,
+        "pct_model_rejected": 0.0,
+        "pct_think_block_stripped": 0.0,
+        "pct_empty_generation": 0.0,
+        "pct_generation_errors": 0.0,
+        "finish_reason_counts": {
+          "stop": 2
+        }
+      },
+      "D": {
+        "count": 2,
+        "avg_inference_ms": 327.941429499333,
+        "avg_output_char_length": 25.0,
+        "avg_completion_tokens": 5.0,
+        "pct_fallback_repair": 0.0,
+        "pct_model_rejected": 0.0,
+        "pct_think_block_stripped": 0.0,
+        "pct_empty_generation": 0.0,
+        "pct_generation_errors": 0.0,
+        "finish_reason_counts": {
+          "stop": 2
+        }
+      }
+    },
+    "total_runs": 8
+  },
+  "think_trace_metrics": {
+    "count": 8,
+    "pct_had_think_block": 25.0,
+    "pct_candidate_in_reasoning": 0.0,
+    "pct_reasoning_has_best_title": 0.0,
+    "pct_answer_has_best_title": 75.0,
+    "pct_reasoning_nonempty": 0.0,
+    "pct_answer_nonempty": 75.0
+  },
+  "stop_token_analysis": {
+    "profile_a_runs": 2,
+    "profile_a_avg_raw_length": 7.0,
+    "profile_a_finish_reasons": {
+      "stop": 2
+    },
+    "profile_a_stop_sequences": [
+      "<|im_end|>",
+      "\n\n"
+    ],
+    "notes": [
+      "Profile A emits very few tokens before termination \u2014 likely stop/EOS after think opener.",
+      "Profile A output is think-only; answer channel empty after strip.",
+      "Raw path uses manual ChatML + /no_think; chat path uses GGUF Jinja via chat_handler kwargs.",
+      "Configured stop sequences for raw ChatML: ['<|im_end|>', '\\n\\n']"
+    ],
+    "profile_a_avg_completion_tokens": 2.0
+  },
+  "stop_token_report": "=== Stop-Token / Termination Analysis ===\n\n1. Why profile A returns ~7-character outputs:\n   Profile A avg raw length=7.0 chars, avg completion_tokens=2.0.\n   Example raw: '<think>'\n   Typical finish_reason='stop'; configured stops=['<|im_end|>', '\\n\\n'].\n   Interpretation: raw ChatML + /no_think still opens a think block; generation terminates quickly (stop/EOS) before any answer text is emitted.\n\n2. Whether stop tokens prematurely terminate generation:\n   Raw-path stop sequences: ['<|im_end|>', '\\n\\n']\n   Profile A finish_reason counts: {'stop': 2}\n   llama.cpp finish_reason='stop' includes EOS and custom stop sequences (not distinguished).\n\n3. Whether generated answer text is being discarded:\n   Chat profiles B/C/D: 0/6 runs had think blocks stripped.\n   When think-only output is stripped, answer channel is empty and fallbacks run.\n\n4. Whether the model enters reasoning mode due to missing template metadata:\n   Profile A uses manual ChatML without Jinja enable_thinking=False.\n   Profiles B/C/D use chat_handler kwargs merge (enable_thinking=False).\n   Compare think-block frequency across profiles in metrics.\n\nNotes:\n   - Profile A emits very few tokens before termination \u2014 likely stop/EOS after think opener.\n   - Profile A output is think-only; answer channel empty after strip.\n   - Raw path uses manual ChatML + /no_think; chat path uses GGUF Jinja via chat_handler kwargs.\n   - Configured stop sequences for raw ChatML: ['<|im_end|>', '\\n\\n']",
+  "report_text": "Conversation: fixture-debate-remote-work\nCategory: opinion_debate\nContext mode: full\nStored title: \nUser: Play devil's advocate and steelman both sides of the argument: \"Remote work always hurts productivity\"\n\nA: Remote Work Productivity\nRaw A: <think>\n  -> fallback=True rejected=True think=True ms=5177 finish=stop tokens=2 stops=['<|im_end|>', '\\n\\n'] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False\nB: Remote Work Productivity\nRaw B: Remote Work Productivity\n  -> fallback=False rejected=False think=False ms=1818 finish=stop tokens=4 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\nC: Remote Work Productivity\nRaw C: Remote Work Productivity\n  -> fallback=False rejected=False think=False ms=270 finish=stop tokens=4 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\nD: Remote Work Productivity\nRaw D: Remote Work Productivity\n  -> fallback=False rejected=False think=False ms=257 finish=stop tokens=4 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\n\nConversation: fixture-nginx\nCategory: technical\nContext mode: full\nStored title: \nUser: Can you walk me through setting up a reverse proxy with nginx on Ubuntu?\n\nA: Start By Installing Nginx and\nRaw A: <think>\n  -> fallback=True rejected=True think=True ms=1456 finish=stop tokens=2 stops=['<|im_end|>', '\\n\\n'] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=False\nB: Reverse Proxy Nginx Ubuntu\nRaw B: Reverse Proxy Nginx Ubuntu\n  -> fallback=False rejected=False think=False ms=1775 finish=stop tokens=6 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\nC: Reverse Proxy Nginx Ubuntu\nRaw C: Reverse Proxy Nginx Ubuntu\n  -> fallback=False rejected=False think=False ms=361 finish=stop tokens=6 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\nD: Reverse Proxy Nginx Ubuntu\nRaw D: Reverse Proxy Nginx Ubuntu\n  -> fallback=False rejected=False think=False ms=398 finish=stop tokens=6 stops=[] err=-\n  -> think_trace: reasoning_candidate='' candidate_in_reasoning=False reasoning_has_best=False answer_has_best=True\n"
+}

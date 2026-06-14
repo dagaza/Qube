@@ -35,6 +35,8 @@ KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
 KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
 KEY_SIDECAR_MODEL_PATH = "qube.sidecar.model_path"
 KEY_SIDECAR_CHAT_FORMAT = "qube.sidecar.chat_format"
+KEY_SIDECAR_TITLE_INFERENCE_PROFILE = "qube.sidecar.title_inference_profile"
+KEY_SIDECAR_TITLE_CONTEXT_MODE = "qube.sidecar.title_context_mode"
 KEY_ADVANCED_ENGINE_UNLOCKED = "qube.settings.advanced_engine_unlocked"
 KEY_ADVANCED_ENGINE_ACKNOWLEDGED = "qube.settings.advanced_engine_acknowledged"
 KEY_ADVANCED_EMBEDDING_UNLOCKED = "qube.settings.advanced_embedding_unlocked"
@@ -546,6 +548,42 @@ def set_sidecar_chat_format(fmt: str) -> None:
     raw = str(fmt or "auto").lower().strip()
     allowed = ("auto", "chatml", "llama-3", "phi", "gemma")
     _store().set(KEY_SIDECAR_CHAT_FORMAT, raw if raw in allowed else "auto")
+
+
+def get_sidecar_title_inference_profile() -> str:
+    from core.title_inference_profiles import normalize_title_inference_profile
+
+    raw = str(
+        _store().get(KEY_SIDECAR_TITLE_INFERENCE_PROFILE, "B") or "B"
+    ).strip()
+    return normalize_title_inference_profile(raw)
+
+
+def set_sidecar_title_inference_profile(profile_id: str) -> None:
+    from core.title_inference_profiles import normalize_title_inference_profile
+
+    _store().set(
+        KEY_SIDECAR_TITLE_INFERENCE_PROFILE,
+        normalize_title_inference_profile(profile_id),
+    )
+
+
+def get_sidecar_title_context_mode() -> str:
+    from core.title_inference_profiles import normalize_title_context_mode
+
+    raw = str(
+        _store().get(KEY_SIDECAR_TITLE_CONTEXT_MODE, "full") or "full"
+    ).strip()
+    return normalize_title_context_mode(raw)
+
+
+def set_sidecar_title_context_mode(mode: str) -> None:
+    from core.title_inference_profiles import normalize_title_context_mode
+
+    _store().set(
+        KEY_SIDECAR_TITLE_CONTEXT_MODE,
+        normalize_title_context_mode(mode),
+    )
 
 
 def get_profile_units() -> str | None:

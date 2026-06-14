@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
 from core.cognition_prompt_adapter import (
@@ -62,7 +62,7 @@ class TitleSelectionDetail:
 
 def task_inference_params(task: SidecarTask) -> dict[str, Any]:
     defaults: dict[SidecarTask, dict[str, Any]] = {
-        SidecarTask.title: {"max_tokens": 128, "temperature": 0.1},
+        SidecarTask.title: {"max_tokens": 20, "temperature": 0.1},
         SidecarTask.contradiction_judge: {"max_tokens": 8, "temperature": 0.1},
         SidecarTask.reflection_label: {"max_tokens": 64, "temperature": 0.1},
         SidecarTask.episode_summary: {"max_tokens": 220, "temperature": 0.2},
@@ -92,28 +92,8 @@ def build_prompt_for_task(
     if task == SidecarTask.title:
         user_prompt = (kwargs.get("user_prompt") or "").strip()
         assistant_reply = (kwargs.get("assistant_reply") or "").strip()
-        system = (
-            "You name chat conversations for a sidebar history list. Read the user's "
-            "first message and the assistant's reply, then write a short topic label "
-            "(2-5 words) for the SUBJECT — like a folder name, not a sentence. "
-            "Name the topic, not the assignment: ignore word counts, format requirements, "
-            "and task verbs (write, essay, comprehensive, draft). "
-            "Use the core topic name when obvious (e.g. 'Lord of the Rings', "
-            "'Nginx Reverse Proxy', 'Human Problem Solving'). "
-            "Examples: "
-            "'Write a 1000-word essay on climate change' → Climate Change; "
-            "'Draft a scholarly paper on quantum tunneling' → Quantum Tunneling; "
-            "'Steelman both sides: \"Remote work always hurts productivity\"' → "
-            "Remote Work Productivity. "
-            "For debate or devil's-advocate prompts, name the neutral TOPIC under "
-            "discussion — not one side's thesis, not the assistant's opening sentence. "
-            "Do not describe plot, list characters, or write meta commentary. "
-            "No quotes. Output ONLY the title on one line."
-        )
-        return _prompt(
-            system,
-            format_title_exchange_context(user_prompt, assistant_reply),
-        )
+        system, user = build_title_task_parts(user_prompt, assistant_reply)
+        return _prompt(system, user)
 
     if task == SidecarTask.contradiction_judge:
         old_s = (kwargs.get("old_content") or "").strip()
@@ -260,6 +240,30 @@ _META_TITLE_LINE = re.compile(
 )
 _TITLE_USER_MAX_CHARS = 1200
 _TITLE_ASSISTANT_MAX_CHARS = 600
+TITLE_SYSTEM_PROMPT = (
+    "You name chat conversations for a sidebar history list. Read the user's "
+    "first message and the assistant's reply, then write a short topic label "
+    "for the SUBJECT — like a folder name, not a sentence. "
+    "Name the topic, not the assignment: ignore word counts, format requirements, "
+    "and task verbs (write, essay, comprehensive, draft). "
+    "Use the core topic name when obvious (e.g. Lord of the Rings, "
+    "Nginx Reverse Proxy, Human Problem Solving). "
+    "Examples: "
+    "'Write a 1000-word essay on climate change' → Climate Change; "
+    "'Draft a scholarly paper on quantum tunneling' → Quantum Tunneling; "
+    "'Steelman both sides: \"Remote work always hurts productivity\"' → "
+    "Remote Work Productivity. "
+    "For debate or devil's-advocate prompts, name the neutral TOPIC under "
+    "discussion — not one side's thesis, not the assistant's opening sentence. "
+    "Do not describe plot, list characters, or write meta commentary. "
+    "Output exactly one title.\n"
+    "Requirements:\n"
+    "- 2–6 words\n"
+    "- no punctuation\n"
+    "- no explanation\n"
+    "- no markdown\n"
+    "- no quotes"
+)
 _TITLE_STOPWORDS = frozenset({
     "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "of",
     "is", "are", "was", "were", "be", "been", "being", "do", "does", "did",
@@ -360,6 +364,72 @@ def format_title_exchange_context(
     if assistant:
         parts.append(f"Assistant: {assistant[:_TITLE_ASSISTANT_MAX_CHARS]}")
     return "\n\n".join(parts) if parts else user
+
+
+def build_title_task_parts(
+    user_prompt: str,
+    assistant_reply: str = "",
+    *,
+    context_mode: str = "full",
+) -> tuple[str, str]:
+    """System + user content for titling (supports user-only context experiments)."""
+    mode = (context_mode or "full").strip().lower()
+    if mode in ("user_only", "user-only", "user"):
+        user_content = f"User: {(user_prompt or '').strip()[:_TITLE_USER_MAX_CHARS]}"
+    else:
+        user_content = format_title_exchange_context(user_prompt, assistant_reply)
+    return TITLE_SYSTEM_PROMPT, user_content
+
+
+@dataclass
+class TitleParseInstrumentation:
+    """Observability for title post-processing without changing selection logic."""
+
+    raw_output: str = ""
+    cleaned_output: str = ""
+    had_think_block: bool = False
+    think_block_stripped: bool = False
+    candidates: list[dict[str, str]] = field(default_factory=list)
+    selection: dict[str, Any] = field(default_factory=dict)
+    final_title: str = ""
+
+
+def instrument_title_parse(
+    raw: str,
+    *,
+    user_prompt: str = "",
+    assistant_reply: str = "",
+) -> TitleParseInstrumentation:
+    """Run existing title finalize pipeline and capture diagnostic metadata."""
+    raw_s = (raw or "").strip()
+    had_think = bool(
+        _THINK_INTERIOR_RE.search(raw_s)
+        or re.search(r"<\s*/?\s*(?:redacted_)?think(?:ing)?>", raw_s, re.IGNORECASE)
+    )
+    cleaned = _normalize_sidecar_completion_text(raw_s)
+    think_stripped = had_think and cleaned != raw_s
+
+    candidates_raw = _collect_title_candidates(
+        raw_s,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
+    candidates = [{"title": t, "source": s} for t, s in candidates_raw]
+
+    title, selection = _finalize_title_text(
+        raw_s,
+        user_prompt=user_prompt,
+        assistant_reply=assistant_reply,
+    )
+    return TitleParseInstrumentation(
+        raw_output=raw_s,
+        cleaned_output=cleaned,
+        had_think_block=had_think,
+        think_block_stripped=think_stripped,
+        candidates=candidates,
+        selection=selection.to_dict(),
+        final_title=title,
+    )
 
 
 def _normalize_title_compare(text: str) -> str:
