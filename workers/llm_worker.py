@@ -34,6 +34,8 @@ from core.app_settings import (
     get_mcp_rag_auto_activator_enabled,
     get_mcp_rag_enabled,
     get_mcp_rag_strict_enabled,
+    get_citation_integrity_enforce,
+    get_citation_integrity_missing_retry,
     missing_gguf_shards,
     resolve_internal_model_path,
     set_engine_mode as persist_engine_mode,
@@ -151,6 +153,16 @@ from core.discourse_intent import (
 )
 from core.collapse_diagnostics import compute_collapse_diagnostics
 from core.collapse_diagnostics_telemetry import log_collapse_diagnostics
+from core.citation_integrity import (
+    analyze_citations,
+    repair_orphan_citations,
+    valid_source_ids as citation_valid_source_ids,
+)
+from core.citation_integrity_telemetry import (
+    log_citation_integrity,
+    log_citation_integrity_repair,
+)
+from core.citation_missing_retry import maybe_retry_missing_web_citations
 from core.generation_debug_capture import (
     GenerationDebugRecorder,
     apply_debug_sampling_overrides,
@@ -521,12 +533,98 @@ class LLMWorker(QThread):
         """Assign globally unique citation ids (1..n) in merge order: memory → RAG → web."""
         if not sources:
             return
-        if execution_route in ("WEB", "INTERNET") and len(sources) == 1:
-            if str(sources[0].get("type", "")).lower() == "web":
-                return
         for i, src in enumerate(sources, start=1):
             if isinstance(src, dict):
                 src["id"] = i
+
+    def _finalize_citation_integrity_text(
+        self,
+        text: str,
+        sources: list,
+        *,
+        phase: str = "worker_finalize",
+    ) -> str:
+        """Log citation integrity; optionally strip orphan tokens before persist/UI."""
+        src_list = list(sources or [])
+        report = analyze_citations(text or "", src_list)
+        try:
+            log_citation_integrity(
+                report,
+                phase=phase,
+                execution_route=str(getattr(self, "_turn_execution_route", "") or ""),
+                session_id=str(self.session_id or ""),
+            )
+        except Exception:
+            logger.debug("[CitationIntegrity] telemetry failed", exc_info=True)
+
+        if not get_citation_integrity_enforce():
+            return text or ""
+
+        repaired, post = repair_orphan_citations(
+            text or "",
+            src_list,
+            mode="strip",
+        )
+        if report.has_violation:
+            try:
+                log_citation_integrity_repair(
+                    session_id=str(self.session_id or ""),
+                    execution_route=str(getattr(self, "_turn_execution_route", "") or ""),
+                    orphan_ids=report.orphan_ids,
+                    mode="strip",
+                    chars_before=len(text or ""),
+                    chars_after=len(repaired),
+                )
+            except Exception:
+                logger.debug("[CitationIntegrity] repair telemetry failed", exc_info=True)
+        return repaired
+
+    def _maybe_retry_missing_web_citations(
+        self,
+        text: str,
+        sources: list,
+        messages: list[dict],
+        *,
+        execution_route: str = "",
+    ) -> tuple[str, bool]:
+        """One-shot citation fixup retry for WEB turns (opt-in via settings)."""
+        if not get_citation_integrity_missing_retry():
+            return text or "", False
+        if str(execution_route or "").upper() != "WEB":
+            return text or "", False
+        src_list = list(sources or [])
+        if not src_list or not (text or "").strip():
+            return text or "", False
+
+        native_engine = getattr(self, "_native_engine", None)
+        if native_engine is None:
+            return text or "", False
+
+        before = text or ""
+        outcome = maybe_retry_missing_web_citations(
+            native_engine,
+            messages,
+            before,
+            src_list,
+        )
+        if not outcome.retry_used or outcome.text == before:
+            return before, False
+
+        try:
+            log_citation_integrity_repair(
+                session_id=str(self.session_id or ""),
+                execution_route=str(execution_route or ""),
+                mode="missing_retry",
+                chars_before=len(before),
+                chars_after=len(outcome.text),
+                retry_reason=outcome.retry_reason,
+            )
+        except Exception:
+            logger.debug("[CitationIntegrity] missing retry telemetry failed", exc_info=True)
+
+        self.stream_replaced.emit(self.session_id or "", outcome.text)
+        self.tts_turn_superseded.emit(self.session_id or "")
+        return outcome.text, True
 
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
@@ -890,6 +988,12 @@ class LLMWorker(QThread):
             stream_cancelled=bool(
                 getattr(self, "_turn_stream_degeneration_cancelled", False)
             ),
+        )
+        sources = list(all_ui_sources or [])
+        history_content = self._finalize_citation_integrity_text(
+            history_content,
+            sources,
+            phase="worker_persist",
         )
         self._turn_history_degeneration = degeneration
         self._turn_stored_history_content = history_content
@@ -1339,6 +1443,7 @@ class LLMWorker(QThread):
             rewrite_confidence = (
                 float(prompt_rewrite.rewrite_confidence) if prompt_rewrite else 0.0
             )
+            turn_sources = list(getattr(self, "_turn_all_ui_sources", None) or [])
             collapse = compute_collapse_diagnostics(
                 prompt=str(getattr(self, "_turn_rendered_prompt", "") or ""),
                 output=str(output or ""),
@@ -1362,6 +1467,7 @@ class LLMWorker(QThread):
                         or ""
                     )
                 ),
+                valid_source_ids=citation_valid_source_ids(turn_sources),
             )
             metadata.update(collapse.trace_fields())
             log_collapse_diagnostics(
@@ -1667,6 +1773,12 @@ class LLMWorker(QThread):
                 final_text_out or "",
                 harmony_active=self._harmony_model_active(),
             )
+            turn_sources = list(getattr(self, "_turn_all_ui_sources", None) or [])
+            final_text_out = self._finalize_citation_integrity_text(
+                final_text_out,
+                turn_sources,
+                phase="worker_finalize",
+            )
             try:
                 self._finalize_conversation_health_after_turn(final_text_out)
             except Exception:
@@ -1724,6 +1836,7 @@ class LLMWorker(QThread):
         # T3.3: reset tool-aware enrichment skip / mode flags for this turn.
         self._reset_turn_enrichment_flags()
         self._pending_salvage_message_ids = []
+        self._turn_all_ui_sources: list = []
 
         if self.session_id:
             user_content = getattr(self, "_persist_content", None) or self.prompt
@@ -2681,7 +2794,6 @@ class LLMWorker(QThread):
                         )
                 web_context = "\n\n".join(web_context_parts)[: self.RAG_BUDGET]
 
-                single_web = len(web_items) == 1
                 for idx, item in enumerate(web_items, start=1):
                     title = str(item.get("title") or "").strip() or f"Web result {idx}"
                     snippet = str(item.get("snippet") or "").strip()
@@ -2693,14 +2805,10 @@ class LLMWorker(QThread):
                     url = str(item.get("url") or "").strip()
                     if url.startswith(("http://", "https://")):
                         src["url"] = url
-                    if single_web and execution_route in ("WEB", "INTERNET"):
-                        src["id"] = "W"
                     all_ui_sources.append(src)
 
                 web_hdr = (
-                    "[W] WEB SEARCH RESULTS"
-                    if single_web and execution_route in ("WEB", "INTERNET")
-                    else "WEB SEARCH RESULTS"
+                    "WEB SEARCH RESULTS"
                 )
                 if tool_context:
                     tool_context = f"{tool_context}\n\n{web_hdr}:\n{web_context}"
@@ -2791,6 +2899,7 @@ class LLMWorker(QThread):
 
         # Sequential ids + emit isolated snapshots (UI must not share worker list refs)
         self._apply_sequential_source_ids(all_ui_sources, execution_route)
+        self._turn_all_ui_sources = copy.deepcopy(all_ui_sources)
         if all_ui_sources:
             self.sources_found.emit(self.session_id or "", copy.deepcopy(all_ui_sources))
 
@@ -3288,6 +3397,12 @@ class LLMWorker(QThread):
             chat_personality_enabled=get_enable_chat_personality_nudge(),
             reply_shape_hint=turn_ctx.reply_shape.system_reply_hint,
             skill_guidance=skill_result.prompt_block,
+            retrieval_source_count=len(all_ui_sources),
+            web_hit_count=sum(
+                1
+                for s in all_ui_sources
+                if isinstance(s, dict) and str(s.get("type", "")).lower() == "web"
+            ),
         )
         if prompt_blocks.no_sources_mode:
             logger.info(
@@ -3920,6 +4035,17 @@ class LLMWorker(QThread):
             final_text = native_load_error_text
         if not final_text.strip():
             _emit_filtered(NATIVE_EMPTY_VISIBLE_OUTPUT_MSG)
+
+        citation_retry_replaced = False
+        if final_text.strip() and all_ui_sources:
+            final_text, citation_retry_replaced = self._maybe_retry_missing_web_citations(
+                final_text,
+                all_ui_sources,
+                messages,
+                execution_route=execution_route,
+            )
+            if citation_retry_replaced:
+                stream_output_superseded = True
 
         trace_extra: dict = {}
         val_trace = getattr(self._native_engine, "_last_output_validation_trace", None)

@@ -151,6 +151,22 @@ class TestPromptRenderers(unittest.TestCase):
             "grounded",
         )
 
+    def test_flatten_web_includes_citation_exemplar(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="--- [1]: Example ---\nSnippet.",
+            retrieval_source_count=1,
+            web_hit_count=1,
+            conversation_history=[{"role": "user", "content": "What happened?"}],
+        )
+        messages = render_flattened_instruct_messages(blocks)
+        content = messages[-1]["content"]
+        self.assertIn("[RETRIEVED CONTEXT]", content)
+        self.assertIn("=== CITATION FORMAT (follow exactly) ===", content)
+        self.assertIn("[USER QUESTION]\nWhat happened?", content)
+
 
 if __name__ == "__main__":
     unittest.main()

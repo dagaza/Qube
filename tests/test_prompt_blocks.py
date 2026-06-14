@@ -77,14 +77,8 @@ def _legacy_compose(
             "CRITICAL: Respond directly to the user in a natural, conversational tone. "
             "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
             "Write only the user-facing response. "
-            "Cite web sources using only the bracket ids shown on each context block (e.g. [W] "
-            "when there is a single web hit, or [1] and [2] when multiple web hits are listed)—"
-            "never echo header words like SOURCE or [SOURCE 1], never labels like "
-            "[W: Live Web Search], no Markdown hyperlink syntax, "
-            "no URL in parentheses after the citation token, and no backticks around citations. "
-            "Use separate brackets per source ([1], [2], or [W])—never combine ids like [1, 2, 3]. "
-            "Use [W] at most once at the end of each sentence that relies on the web results, "
-            "and never output [W] two or more times in a row."
+            "Cite using the numbered bracket ids from context ([1], [2], etc.)—"
+            "never echo SOURCE headers, never use Markdown links or URLs after citations."
         )
         system_prompt += CITATION_DISCIPLINE_SUFFIX
     if engine_mode == "internal":
@@ -235,6 +229,53 @@ class TestPromptBlocks(unittest.TestCase):
         sys_p = compose_system_prompt(blocks)
         self.assertNotIn("You are Qube", sys_p)
         self.assertIn("Real-time live web search results", sys_p)
+
+    def test_multi_web_suffix_forbids_w(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_source_count=2,
+            web_hit_count=2,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn("do NOT use [W] on this turn", sys_p)
+
+    def test_web_retrieval_injects_citation_exemplar(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="--- [1]: Example ---\nSnippet.",
+            retrieval_source_count=1,
+            web_hit_count=1,
+            conversation_history=[{"role": "user", "content": "What happened?"}],
+        )
+        messages = render_system_ok_messages(blocks)
+        last = messages[-1]["content"]
+        self.assertIn("=== CITATION FORMAT (follow exactly) ===", last)
+        self.assertIn("The first event was reported on Tuesday [1].", last)
+        self.assertIn("--- [1]: Example ---", last)
+        q_idx = last.index("USER QUERY:")
+        ex_idx = last.index("=== CITATION FORMAT (follow exactly) ===")
+        src_idx = last.index("--- [1]: Example ---")
+        self.assertLess(src_idx, ex_idx)
+        self.assertLess(ex_idx, q_idx)
+
+    def test_rag_retrieval_omits_web_citation_exemplar(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="RAG",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="--- [1]: Doc ---\nSnippet.",
+            retrieval_source_count=1,
+            conversation_history=[{"role": "user", "content": "What is X?"}],
+        )
+        messages = render_system_ok_messages(blocks)
+        self.assertNotIn(
+            "=== CITATION FORMAT (follow exactly) ===",
+            messages[-1]["content"],
+        )
 
     def test_base_chat_keeps_brand_persona(self) -> None:
         blocks = build_prompt_blocks(

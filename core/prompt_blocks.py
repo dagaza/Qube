@@ -50,14 +50,13 @@ _WEB_PERSONA = (
     "CRITICAL: Respond directly to the user in a natural, conversational tone. "
     "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
     "Write only the user-facing response. "
-    "Cite web sources using only the bracket ids shown on each context block (e.g. [W] "
-    "when there is a single web hit, or [1] and [2] when multiple web hits are listed)—"
-    "never echo header words like SOURCE or [SOURCE 1], never labels like "
-    "[W: Live Web Search], no Markdown hyperlink syntax, "
-    "no URL in parentheses after the citation token, and no backticks around citations. "
-    "Use separate brackets per source ([1], [2], or [W])—never combine ids like [1, 2, 3]. "
-    "Use [W] at most once at the end of each sentence that relies on the web results, "
-    "and never output [W] two or more times in a row."
+    "Cite using the numbered bracket ids from context ([1], [2], etc.)—"
+    "never echo SOURCE headers, never use Markdown links or URLs after citations."
+)
+
+_WEB_MULTI_SOURCE_SUFFIX = (
+    " Multiple web sources are numbered [1], [2], and so on—cite only those ids; "
+    "do NOT use [W] on this turn."
 )
 
 _INTERNAL_ALIGN_NVIDIA = (
@@ -91,6 +90,8 @@ class PromptBlocks:
     topic_salience_hint: str = ""
     follow_up_active: bool = False
     skill_guidance: str = ""
+    retrieval_source_count: int = 0
+    web_hit_count: int = 0
 
 
 def resolve_retrieval_wrapper_mode(
@@ -143,6 +144,8 @@ def build_prompt_blocks(
     prior_turn_unreliable_hint: str = "",
     reply_shape_hint: str = "",
     skill_guidance: str = "",
+    retrieval_source_count: int = 0,
+    web_hit_count: int = 0,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -195,6 +198,8 @@ def build_prompt_blocks(
     elif route in ("WEB", "INTERNET"):
         persona = _WEB_PERSONA
         suffixes.append(CITATION_DISCIPLINE_SUFFIX)
+        if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
+            suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
 
@@ -258,6 +263,8 @@ def build_prompt_blocks(
         retrieval_wrapper_mode=wrapper_mode,
         topic_salience_hint=salience,
         follow_up_active=bool(follow_up_active),
+        retrieval_source_count=int(retrieval_source_count or 0),
+        web_hit_count=int(web_hit_count or 0),
     )
 
 

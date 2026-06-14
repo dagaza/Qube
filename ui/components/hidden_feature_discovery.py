@@ -164,8 +164,10 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
             title="Hidden feature found",
             body=(
                 "You unlocked the composer @ picker — release the modifier after @ "
-                "to attach files, conversations, tools, and commands. "
-                "Type @@ for a literal @; add another @ for each extra escape."
+                "to attach files, conversations, tools, skills, and commands. "
+                "Type @@ for a literal @; add another @ for each extra escape.\n\n"
+                "For the full guide (mixing limits, every skill, and token formats), "
+                "open Settings → Help → Open @ Composer Guide."
             ),
             hint="Keep going — more secrets are tucked around Qube.",
             on_dismiss=self._on_coach_dismissed,

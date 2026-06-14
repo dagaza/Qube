@@ -55,6 +55,22 @@ class TestCollapseDiagnostics(unittest.TestCase):
         self.assertIn("orphan_web_citation", flags)
         self.assertGreater(score, 0.0)
 
+    def test_valid_w_with_source_id_not_orphan(self) -> None:
+        score, flags = score_hallucination_indicators(
+            user_query="weather today",
+            output="It is sunny [W]",
+            valid_source_ids=frozenset({"W"}),
+        )
+        self.assertNotIn("orphan_web_citation", flags)
+
+    def test_invalid_w_with_numeric_sources_is_orphan(self) -> None:
+        score, flags = score_hallucination_indicators(
+            user_query="interview prep",
+            output="Summary [W]",
+            valid_source_ids=frozenset({"1", "2"}),
+        )
+        self.assertIn("orphan_web_citation", flags)
+
     def test_template_leak_format_drift(self) -> None:
         score, flags = score_format_drift("Answer <|channel|>final text")
         self.assertGreater(score, 0.0)

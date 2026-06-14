@@ -60,6 +60,15 @@ from core.citation_normalize import (
     markdown_for_external_clipboard,
     normalize_labeled_citation_tokens,
 )
+from core.citation_integrity import (
+    CITATION_TOKEN_RE,
+    analyze_citations,
+    normalize_citation_id as _normalize_citation_id,
+    source_citation_match_keys as _source_citation_match_keys,
+    valid_source_ids,
+)
+from core.citation_integrity_telemetry import log_citation_integrity
+from core.app_settings import get_citation_integrity_ui_linkify
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from core.composer_attachments import format_token, parse_attachments, validate_file_token
 from core.composer_skills import format_skill_token, parse_composer_input
@@ -182,44 +191,6 @@ def _parent_conversations_view(widget: QWidget):
     return None
 
 
-def _normalize_citation_id(value) -> str:
-    """Single canonical form for matching cite tokens across JSON (int/float/str), Qt URLs, and LLM [W]."""
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return str(int(value))
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        if value.is_integer():
-            return str(int(value))
-        return str(value).strip()
-    s = str(value).strip()
-    if not s:
-        return ""
-    try:
-        f = float(s)
-        if f.is_integer():
-            return str(int(f))
-        return s
-    except ValueError:
-        return s
-
-
-def _source_citation_match_keys(src: dict) -> set[str]:
-    """Normalized id values to compare against a clicked cite token (handles alternate keys)."""
-    out: set[str] = set()
-    if not isinstance(src, dict):
-        return out
-    for key in ("id", "cite_id", "source_id"):
-        if key not in src:
-            continue
-        n = _normalize_citation_id(src.get(key))
-        if n:
-            out.add(n)
-    return out
-
-
 def _normalize_stored_source_id(src: dict) -> None:
     """Ensure citation ids are JSON-stable scalars; web citations use the string 'W' (not list/tuple)."""
     if not isinstance(src, dict):
@@ -281,9 +252,12 @@ def _prepare_stream_for_qt_citation_links(raw: str) -> str:
     return s
 
 
-def _markdown_cite_link_replacement(match) -> str:
+def _markdown_cite_link_replacement(match, *, valid_ids: set[str] | None = None) -> str:
     token = match.group(1)
     key = "W" if str(token).lower() == "w" else str(token)
+    if get_citation_integrity_ui_linkify() and valid_ids is not None:
+        if _normalize_citation_id(key) not in valid_ids:
+            return "[W]" if key == "W" else f"[{key}]"
     return f"[[{key}]](<{CITATION_HREF_PREFIX}{key}>)"
 
 
@@ -2507,14 +2481,20 @@ class ConversationsView(QWidget):
     def _schedule_coalesced_agent_markdown(self) -> None:
         self._agent_md_coalesce_timer.start(48)
 
-    def _prepare_agent_markdown_source(self, buf: str, *, finalize: bool) -> str:
+    def _prepare_agent_markdown_source(
+        self,
+        buf: str,
+        *,
+        finalize: bool,
+        valid_ids: set[str] | None = None,
+    ) -> str:
         prepared = _prepare_stream_for_qt_citation_links(buf)
+
+        def _repl(match: re.Match[str]) -> str:
+            return _markdown_cite_link_replacement(match, valid_ids=valid_ids)
+
         rich_text = normalize_inline_markdown_structure(
-            _re_cite.sub(
-                r"\[\s*(\d+|[wW])\s*\]",
-                _markdown_cite_link_replacement,
-                prepared,
-            )
+            CITATION_TOKEN_RE.sub(_repl, prepared)
         )
         if finalize or not rich_text:
             return rich_text
@@ -2531,7 +2511,13 @@ class ConversationsView(QWidget):
         is_dark = True
         if self.window() and hasattr(self.window(), "_is_dark_theme"):
             is_dark = self.window()._is_dark_theme
-        rich_text = self._prepare_agent_markdown_source(buf, finalize=finalize)
+        cite_sources = getattr(cur, "_citation_sources", None) or []
+        valid_ids = valid_source_ids(cite_sources)
+        rich_text = self._prepare_agent_markdown_source(
+            buf,
+            finalize=finalize,
+            valid_ids=valid_ids,
+        )
         follow_stream_tail = self._is_transcript_scrolled_to_bottom()
         streaming = bool(getattr(self, "_llm_in_progress", False)) and not finalize
         try:
@@ -3341,6 +3327,8 @@ class ConversationsView(QWidget):
             self, "_user_turn_id", -1
         ):
             cur._citation_sources = _snapshot_citation_sources(sources)
+            if (getattr(self, "_agent_text_buffer", "") or "").strip():
+                self._schedule_coalesced_agent_markdown()
 
     def _resolve_citation_link_for_label(self, label: AgentMessageLabel, link_text: str):
         """Resolve href from this bubble's isolated _citation_sources (label-bound, not sender())."""
@@ -3505,6 +3493,18 @@ class ConversationsView(QWidget):
                 # Replace the active bubble instead of appending/reconciling around leaked prefix text.
                 self._agent_text_buffer = cleaned
                 self._schedule_coalesced_agent_markdown()
+            try:
+                cite_sources = []
+                if cur is not None:
+                    cite_sources = getattr(cur, "_citation_sources", None) or []
+                report = analyze_citations(cleaned, cite_sources)
+                log_citation_integrity(
+                    report,
+                    phase="ui_finalize",
+                    session_id=sid,
+                )
+            except Exception:
+                logger.debug("[CitationIntegrity] ui_finalize telemetry failed", exc_info=True)
         self._flush_agent_markdown_coalesce_immediate(finalize=True)
         self._hide_agent_typing_row()
         self._llm_in_progress = False

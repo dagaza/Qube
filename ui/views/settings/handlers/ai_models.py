@@ -707,6 +707,12 @@ class AiModelsHandlersMixin:
             is_dark=is_dark,
         ).exec()
 
+    def _on_open_composer_mention_guide_clicked(self) -> None:
+        from ui.components.composer_mention_guide_dialog import show_composer_mention_guide
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        show_composer_mention_guide(self.window(), is_dark=is_dark)
+
     def _on_model_manager_hardware_suggestions_toggled(self, enabled: bool) -> None:
         set_model_manager_hardware_suggestions(enabled)
         win = self.window()

@@ -95,6 +95,19 @@ def build_local_llm_setup_tour(host) -> OnboardingTour:
             target_getter=lambda h: h.nav_models,
             on_enter=_open_model_manager,
         ),
+        OnboardingStep(
+            step_id="composer_mentions",
+            title="@ mentions in chat",
+            body=(
+                "In any conversation, type @ in the message box (release Shift after @) "
+                "to attach library files, past chats, web/library/memory tools, reasoning "
+                "skills, or app commands.\n\n"
+                "Open Settings → Help → Open @ Composer Guide anytime for token formats "
+                "and mixing rules."
+            ),
+            target_getter=lambda h: h.conversations_view.text_input,
+            on_enter=_open_conversations,
+        ),
     ]
 
     def _mark_complete() -> None:

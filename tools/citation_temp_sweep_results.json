@@ -1,0 +1,56 @@
+{
+  "query": "Who won the first game of the World Cup this year?",
+  "prompt": "baseline_WEB_production",
+  "model": "from_settings",
+  "temperatures": [
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+  ],
+  "seeds_per_temp": 100,
+  "results": [
+    {
+      "temperature": 0.2,
+      "seeds": 100,
+      "compliance_count": 79,
+      "compliance_rate": 0.79,
+      "compliance_pct": 79.0,
+      "elapsed_s": 779.5
+    },
+    {
+      "temperature": 0.4,
+      "seeds": 100,
+      "compliance_count": 68,
+      "compliance_rate": 0.68,
+      "compliance_pct": 68.0,
+      "elapsed_s": 1022.6
+    },
+    {
+      "temperature": 0.6,
+      "seeds": 100,
+      "compliance_count": 69,
+      "compliance_rate": 0.69,
+      "compliance_pct": 69.0,
+      "elapsed_s": 1499.3
+    },
+    {
+      "temperature": 0.8,
+      "seeds": 100,
+      "compliance_count": 75,
+      "compliance_rate": 0.75,
+      "compliance_pct": 75.0,
+      "elapsed_s": 651.3
+    },
+    {
+      "temperature": 1.0,
+      "seeds": 100,
+      "compliance_count": 76,
+      "compliance_rate": 0.76,
+      "compliance_pct": 76.0,
+      "elapsed_s": 672.6
+    }
+  ],
+  "model_path": "/home/personax404/.qube/models/llm/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-Q5_K_M.gguf"
+}

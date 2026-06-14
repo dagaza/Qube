@@ -41,6 +41,31 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         alignment=Qt.AlignmentFlag.AlignLeft,
     )
 
+    add_subsection_to_layout(layout, "Composer @ mentions", anchor="composer-mentions")
+
+    composer_guide_hint = QLabel(
+        "The @ picker in chat attaches files, past conversations, tools, skills, and "
+        "app commands. Open the full guide for token formats, mixing rules, and limits."
+    )
+    composer_guide_hint.setWordWrap(True)
+    composer_guide_hint.setProperty("class", "ToolsPaneControl")
+    host.composer_mention_guide_hint_lbl = composer_guide_hint
+
+    host.open_composer_mention_guide_btn = QPushButton("Open @ Composer Guide")
+    apply_brand_primary(host.open_composer_mention_guide_btn, icon_name="fa5s.at")
+    host.open_composer_mention_guide_btn.setToolTip(
+        "How to use @ in the chat composer: files, tools, skills, mixing limits, and more."
+    )
+    host.open_composer_mention_guide_btn.clicked.connect(
+        host._on_open_composer_mention_guide_clicked
+    )
+
+    layout.addWidget(composer_guide_hint)
+    layout.addWidget(
+        host.open_composer_mention_guide_btn,
+        alignment=Qt.AlignmentFlag.AlignLeft,
+    )
+
     add_subsection_to_layout(layout, "Discovery", anchor="discovery")
 
     host.model_manager_hardware_suggestions_cb = QCheckBox(

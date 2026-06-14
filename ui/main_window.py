@@ -333,6 +333,12 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_local_llm_tour"):
             self._local_llm_tour.start()
 
+    def show_composer_mention_guide(self) -> None:
+        """Open the scrollable @ composer guide (Settings → Help uses the same dialog)."""
+        from ui.components.composer_mention_guide_dialog import show_composer_mention_guide
+
+        show_composer_mention_guide(self, is_dark=getattr(self, "_is_dark_theme", True))
+
     def focus_chat_composer_if_ready(self) -> None:
         if hasattr(self, "conversations_view"):
             self.conversations_view.focus_composer_if_ready()

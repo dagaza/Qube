@@ -52,6 +52,9 @@ KEY_SKILLS_MAX_ACTIVE = "qube.skills.max_active_skills"
 KEY_SKILLS_PROMPT_CHAR_BUDGET = "qube.skills.total_prompt_char_budget"
 KEY_SKILLS_EMBEDDING_BOOST = "qube.skills.embedding_boost_enabled"
 KEY_SKILLS_DEBUG_LOG_ENABLED = "qube.skills.debug_log_enabled"
+KEY_CITATION_INTEGRITY_ENFORCE = "qube.citations.integrity_enforce"
+KEY_CITATION_INTEGRITY_UI_LINKIFY = "qube.citations.integrity_ui_linkify"
+KEY_CITATION_INTEGRITY_MISSING_RETRY = "qube.citations.integrity_missing_retry"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
@@ -157,6 +160,33 @@ def default_llm_models_dir() -> str:
     path = models_root() / "llm"
     path.mkdir(parents=True, exist_ok=True)
     return str(path)
+
+
+def get_citation_integrity_enforce() -> bool:
+    """When True, strip orphan citation tokens from finalized assistant text before persist/UI."""
+    return bool(_store().get(KEY_CITATION_INTEGRITY_ENFORCE, False))
+
+
+def set_citation_integrity_enforce(enabled: bool) -> None:
+    _store().set(KEY_CITATION_INTEGRITY_ENFORCE, enabled)
+
+
+def get_citation_integrity_ui_linkify() -> bool:
+    """When True, only linkify citation tokens that match attached source ids."""
+    return bool(_store().get(KEY_CITATION_INTEGRITY_UI_LINKIFY, True))
+
+
+def set_citation_integrity_ui_linkify(enabled: bool) -> None:
+    _store().set(KEY_CITATION_INTEGRITY_UI_LINKIFY, enabled)
+
+
+def get_citation_integrity_missing_retry() -> bool:
+    """When True, WEB turns with no bracket citations trigger one citation fixup retry."""
+    return bool(_store().get(KEY_CITATION_INTEGRITY_MISSING_RETRY, False))
+
+
+def set_citation_integrity_missing_retry(enabled: bool) -> None:
+    _store().set(KEY_CITATION_INTEGRITY_MISSING_RETRY, enabled)
 
 
 def get_enable_memory_enrichment() -> bool:

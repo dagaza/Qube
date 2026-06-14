@@ -19,9 +19,22 @@ from core.prompt_layout import PromptLayout, normalize_prompt_layout
 
 _RETRIEVAL_WRAPPER_HEAD = (
     "=== SYSTEM RETRIEVED CONTEXT ===\n"
-    "Use the following numbered sources to answer the query. "
-    "In the prose of your reply, cite with plain tokens [1], [2], or [W] only—one id per "
-    "bracket (never [1, 2, 3] combined), never [SOURCE 1] header echoes (no markdown links).\n\n"
+    "The following numbered sources are available for this answer.\n\n"
+)
+
+_RETRIEVAL_WRAPPER_HEAD_MULTI = (
+    "=== SYSTEM RETRIEVED CONTEXT ===\n"
+    "The following numbered sources are available for this answer. "
+    "Do NOT use [W] when multiple numbered sources are listed.\n\n"
+)
+
+_WEB_CITATION_EXEMPLAR = (
+    "=== CITATION FORMAT (follow exactly) ===\n"
+    "Every factual sentence using the sources above must end with a citation token.\n\n"
+    "Example style (pattern only):\n"
+    "The first event was reported on Tuesday [1].\n"
+    "A second development followed later the same day [2].\n\n"
+    "Do not explain citations. Do not describe rules. Apply the pattern in your answer.\n"
 )
 
 _RETRIEVAL_WRAPPER_TAIL = "================================\n\nUSER QUERY:\n"
@@ -79,33 +92,60 @@ def _last_user_raw_content(blocks: PromptBlocks) -> str:
     return ""
 
 
+def _retrieval_wrapper_head(blocks: PromptBlocks) -> str:
+    count = int(getattr(blocks, "retrieval_source_count", 0) or 0)
+    if count > 1:
+        return _RETRIEVAL_WRAPPER_HEAD_MULTI
+    return _RETRIEVAL_WRAPPER_HEAD
+
+
+def _web_citation_exemplar(blocks: PromptBlocks | None) -> str:
+    if blocks is None:
+        return ""
+    route = str(blocks.execution_route or "").upper()
+    if route not in ("WEB", "INTERNET"):
+        return ""
+    if int(getattr(blocks, "retrieval_source_count", 0) or 0) < 1:
+        return ""
+    return _WEB_CITATION_EXEMPLAR
+
+
 def _wrap_retrieval(
     user_content: str,
     retrieval_body: str,
     mode: RetrievalWrapperMode,
+    *,
+    blocks: PromptBlocks | None = None,
 ) -> str:
     body = (retrieval_body or "").strip()
     if not body or mode == "none":
         return user_content
     if mode == "background":
         return f"{_BACKGROUND_WRAPPER_HEAD}{body}\n{_BACKGROUND_WRAPPER_TAIL}{user_content}"
-    return f"{_RETRIEVAL_WRAPPER_HEAD}{body}\n{_RETRIEVAL_WRAPPER_TAIL}{user_content}"
+    head = _retrieval_wrapper_head(blocks) if blocks is not None else _RETRIEVAL_WRAPPER_HEAD
+    exemplar = _web_citation_exemplar(blocks)
+    if exemplar:
+        return f"{head}{body}\n{exemplar}{_RETRIEVAL_WRAPPER_TAIL}{user_content}"
+    return f"{head}{body}\n{_RETRIEVAL_WRAPPER_TAIL}{user_content}"
 
 
-def _short_web_persona() -> str:
-    return (
+def _short_web_persona(blocks: PromptBlocks | None = None) -> str:
+    multi = blocks is not None and int(getattr(blocks, "retrieval_source_count", 0) or 0) > 1
+    base = (
         "Use the live web results in context to answer the user's query. "
-        "Cite web hits with [W] when only one block is tagged [W]; otherwise use "
-        "[1], [2], etc. matching the bracket ids in context. Never write [SOURCE N]. "
-        "Never reply with only a citation token."
+        "Cite web hits with [1], [2], etc. matching the bracket ids in context. "
+        "Never write [SOURCE N]. Never reply with only a citation token."
     )
+    if multi:
+        return base + " Do NOT use [W] when multiple sources are listed."
+    return base
 
 
 def _short_persona(blocks: PromptBlocks) -> str:
     if is_explicit_remember_persona(blocks.persona):
         return blocks.persona
     if blocks.execution_route in ("WEB", "INTERNET"):
-        return _short_web_persona()
+        return _short_web_persona(blocks)
     return (blocks.persona or "").strip() or "Answer naturally and accurately."
 
 
@@ -131,7 +171,7 @@ def _flatten_instruction_bullets(blocks: PromptBlocks) -> str:
     if is_explicit_remember_persona(blocks.persona):
         lines.append(blocks.persona.strip())
     elif blocks.execution_route in ("WEB", "INTERNET"):
-        lines.append(_short_web_persona())
+        lines.append(_short_web_persona(blocks))
     else:
         lines.append((blocks.persona or "").strip() or "Answer for the user in natural language.")
     for suf in _suffixes_for_compact_layout(blocks):
@@ -164,7 +204,11 @@ def _build_flatten_last_user(blocks: PromptBlocks) -> str:
                 label = "[BACKGROUND CONTEXT]"
             else:
                 label = "[RETRIEVED CONTEXT]"
-            parts.append(f"{label}\n{body}")
+            chunk = body
+            exemplar = _web_citation_exemplar(blocks)
+            if exemplar:
+                chunk = f"{body}\n{exemplar.rstrip()}"
+            parts.append(f"{label}\n{chunk}")
         parts.append(f"[USER QUESTION]\n{query}")
 
     return "\n\n".join(parts)
@@ -184,7 +228,7 @@ def render_system_ok_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
         if blocks.composer_conversation_ref:
             messages[-1]["content"] = _wrap_conversation_ref(original, body)
         else:
-            messages[-1]["content"] = _wrap_retrieval(original, body, mode)
+            messages[-1]["content"] = _wrap_retrieval(original, body, mode, blocks=blocks)
     return messages
 
 
@@ -201,7 +245,7 @@ def render_short_system_messages(blocks: PromptBlocks) -> list[dict[str, Any]]:
         if blocks.composer_conversation_ref:
             messages[-1]["content"] = _wrap_conversation_ref(original, body)
         else:
-            messages[-1]["content"] = _wrap_retrieval(original, body, mode)
+            messages[-1]["content"] = _wrap_retrieval(original, body, mode, blocks=blocks)
     return messages
 
 

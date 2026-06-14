@@ -180,6 +180,7 @@ def score_hallucination_indicators(
     output: str,
     prior_turn_suppressed: bool = False,
     active_referent: str = "",
+    valid_source_ids: set[str] | frozenset[str] | None = None,
 ) -> tuple[float, tuple[str, ...]]:
     text = (output or "").strip()
     if not text:
@@ -192,7 +193,10 @@ def score_hallucination_indicators(
             flags.append(issue)
 
     if _ORPHAN_WEB_CITATION.search(text) and "orphan_web_citation" not in flags:
-        flags.append("orphan_web_citation")
+        if valid_source_ids is None:
+            flags.append("orphan_web_citation")
+        elif "W" not in valid_source_ids:
+            flags.append("orphan_web_citation")
 
     if _BARE_CITATION_ONLY.match(text) and "bare_citation_token" not in flags:
         flags.append("bare_citation_token")
@@ -286,6 +290,7 @@ def compute_collapse_diagnostics(
     turn_index: int = 0,
     prior_turn_suppressed: bool = False,
     active_referent: str = "",
+    valid_source_ids: set[str] | frozenset[str] | None = None,
 ) -> CollapseTurnDiagnostics:
     prompt_text = prompt or ""
     output_text = output or ""
@@ -303,6 +308,7 @@ def compute_collapse_diagnostics(
         output=output_text,
         prior_turn_suppressed=prior_turn_suppressed,
         active_referent=active_referent,
+        valid_source_ids=valid_source_ids,
     )
 
     collapse_score = min(
