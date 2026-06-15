@@ -9,6 +9,7 @@ from typing import Any
 
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
 from core.discourse_prompt_rewrite import score_rewrite_anchor
+from core.discourse_query_rewrite import ResolvedUserQuery
 from core.discourse_referent_policy import fallback_referent
 from core.discourse_state import DiscourseState, is_deictic_topic_phrase
 from core.memory_filters import detect_hard_explicit_web_request
@@ -38,6 +39,84 @@ class SearchTargetResult:
     @property
     def rewritten(self) -> bool:
         return self.rewrite_reason != "none"
+
+
+@dataclass(frozen=True)
+class ResolvedRetrievalQuery:
+    """
+    Canonical per-turn query representation for routing and retrieval.
+
+    Built once after discourse classification; all retrieval subsystems
+    should consume these fields instead of re-deriving from ``raw_text``.
+    """
+
+    raw_text: str
+    inference_text: str
+    routing_text: str
+    retrieval_text: str
+    web_text: str
+    web_rewrite_reason: str = "none"
+    inference_rewrite_reason: str = "none"
+    inference_confidence: float = 0.0
+
+    @property
+    def web_rewritten(self) -> bool:
+        return self.web_rewrite_reason != "none"
+
+    @property
+    def inference_rewritten(self) -> bool:
+        return self.inference_rewrite_reason != "none"
+
+    def to_telemetry_dict(self) -> dict[str, Any]:
+        """Flat decision/routing-debug fields (additive, JSON-safe)."""
+        out: dict[str, Any] = {
+            "resolved_query_raw": self.raw_text,
+            "resolved_query_inference": self.inference_text,
+            "resolved_query_routing": self.routing_text,
+            "resolved_query_retrieval": self.retrieval_text,
+            "resolved_query_web": self.web_text,
+            "web_query_rewrite_reason": self.web_rewrite_reason,
+        }
+        if self.inference_rewritten:
+            out["inference_rewrite_reason"] = self.inference_rewrite_reason
+            out["inference_rewrite_confidence"] = round(self.inference_confidence, 3)
+        return out
+
+
+def build_resolved_retrieval_query(
+    *,
+    raw_text: str,
+    inference_text: str,
+    follow_up: FollowUpClassification,
+    discourse: DiscourseState | None,
+    history: list[dict[str, Any]] | None = None,
+    resolved_query: ResolvedUserQuery | None = None,
+) -> ResolvedRetrievalQuery:
+    """
+    Compose all channel-specific query strings from one inference base.
+
+    ``inference_text`` is the post-``resolve_ambiguous_user_query`` string.
+    Web search uses the same base plus ``history`` for meta-web prior-turn
+    fallback (``meta_prior_turn``).
+    """
+    raw = (raw_text or "").strip()
+    inference = (inference_text or raw).strip()
+    web_target = resolve_search_target(inference, follow_up, discourse, history)
+    inf_reason = "none"
+    inf_conf = 0.0
+    if resolved_query is not None and resolved_query.succeeded:
+        inf_reason = resolved_query.rewrite_reason
+        inf_conf = float(resolved_query.confidence or 0.0)
+    return ResolvedRetrievalQuery(
+        raw_text=raw,
+        inference_text=inference,
+        routing_text=resolve_routing_query(inference, follow_up, discourse),
+        retrieval_text=resolve_retrieval_query(inference, follow_up, discourse),
+        web_text=web_target.query,
+        web_rewrite_reason=web_target.rewrite_reason,
+        inference_rewrite_reason=inf_reason,
+        inference_confidence=inf_conf,
+    )
 
 
 def resolve_routing_query(
@@ -150,9 +229,12 @@ def resolve_web_query(
     follow_up: FollowUpClassification,
     discourse: DiscourseState | None,
     history: list[dict[str, Any]] | None = None,
+    *,
+    inference_text: str | None = None,
 ) -> str:
     """Topic expansion + meta web-request rewrite before ``apply_tool_policy`` / search."""
-    return resolve_search_target(prompt, follow_up, discourse, history).query
+    base = (inference_text or prompt or "").strip() or (prompt or "").strip()
+    return resolve_search_target(base, follow_up, discourse, history).query
 
 
 def should_veto_ungrounded_web_follow_up(

@@ -77,6 +77,27 @@ class TestWebCitationSources(unittest.TestCase):
         raw = "See [1] for details."
         self.assertEqual(normalize_combined_numeric_citations(raw), raw)
 
+    def test_nested_combined_numeric_citations_split(self) -> None:
+        raw = "Knicks won. [2, [3]]"
+        self.assertEqual(
+            normalize_combined_numeric_citations(raw),
+            "Knicks won. [2], [3]",
+        )
+
+    def test_nested_combined_via_full_pipeline(self) -> None:
+        raw = "text [2, [3]]."
+        self.assertEqual(
+            normalize_labeled_citation_tokens(raw),
+            "text [2], [3].",
+        )
+
+    def test_nested_combined_no_space(self) -> None:
+        raw = "See [2,[3]] here."
+        self.assertEqual(
+            normalize_combined_numeric_citations(raw),
+            "See [2], [3] here.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,39 @@ def _decode_ddg_target_href(href: str) -> str:
             pass
     return h
 
+def parse_ddg_html_results(
+    html_text: str,
+    *,
+    max_results: int = 3,
+) -> List[Dict[str, str]]:
+    """Parse DuckDuckGo HTML search results into structured snippets."""
+    result_links = re.findall(
+        r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
+        html_text or "",
+        re.IGNORECASE | re.DOTALL,
+    )
+    snippets = re.findall(
+        r'<a class="result__snippet"[^>]*>(.*?)</a>',
+        html_text or "",
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    results: List[Dict[str, str]] = []
+    for i in range(min(max_results, len(snippets))):
+        title_clean = ""
+        url = ""
+        if i < len(result_links):
+            href, title_html = result_links[i]
+            title_clean = _strip_html_tags(title_html)
+            url = _decode_ddg_target_href(href)
+        snippet_clean = _strip_html_tags(snippets[i])
+        row: Dict[str, str] = {"title": title_clean, "snippet": snippet_clean}
+        if url.startswith(("http://", "https://")):
+            row["url"] = url
+        results.append(row)
+    return results
+
+
 def search_internet(
     query: str,
     max_results: int = 3,
@@ -60,32 +93,9 @@ def search_internet(
     try:
         response = requests.post(url, data={"q": query}, headers=headers, timeout=5)
         response.raise_for_status()
-        
-        result_links = re.findall(
-            r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
-            response.text,
-            re.IGNORECASE | re.DOTALL,
-        )
-        snippets = re.findall(
-            r'<a class="result__snippet"[^>]*>(.*?)</a>',
-            response.text,
-            re.IGNORECASE | re.DOTALL,
-        )
 
-        results = []
-        for i in range(min(max_results, len(snippets))):
-            title_clean = ""
-            url = ""
-            if i < len(result_links):
-                href, title_html = result_links[i]
-                title_clean = _strip_html_tags(title_html)
-                url = _decode_ddg_target_href(href)
-            snippet_clean = _strip_html_tags(snippets[i])
-            row: Dict[str, str] = {"title": title_clean, "snippet": snippet_clean}
-            if url.startswith(("http://", "https://")):
-                row["url"] = url
-            results.append(row)
-        
+        results = parse_ddg_html_results(response.text, max_results=max_results)
+
         if not results:
             logger.debug("No internet results found.")
             return [{"title": "", "snippet": "No relevant internet results found."}]

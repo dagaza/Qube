@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qube.local/schemas/query_resolution_corpus.v1.json",
+  "title": "Qube Query Resolution Evaluation Corpus",
+  "type": "object",
+  "required": ["schema", "cases"],
+  "properties": {
+    "schema": {
+      "const": "qube.query_resolution_corpus.v1"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "prompt", "category", "expect"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "prompt": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "notes": { "type": "string" },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["role", "content"],
+              "properties": {
+                "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+                "content": { "type": "string" }
+              }
+            }
+          },
+          "expect": {
+            "type": "object",
+            "properties": {
+              "inference_contains": { "type": "array", "items": { "type": "string" } },
+              "inference_not_contains": { "type": "array", "items": { "type": "string" } },
+              "web_contains": { "type": "array", "items": { "type": "string" } },
+              "web_not_contains": { "type": "array", "items": { "type": "string" } },
+              "routing_contains": { "type": "array", "items": { "type": "string" } },
+              "retrieval_contains": { "type": "array", "items": { "type": "string" } },
+              "web_fixture_id": { "type": "string" },
+              "min_web_hits": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "flags": {
+            "type": "object",
+            "properties": {
+              "discourse_enabled": { "type": "boolean" },
+              "apply_inference_rewrite": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

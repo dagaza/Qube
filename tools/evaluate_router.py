@@ -156,6 +156,17 @@ def main() -> int:
         help="Attempt sidecar query rewrite (requires sidecar model)",
     )
     parser.add_argument(
+        "--with-web-fixtures",
+        action="store_true",
+        help="Replay offline web HTML fixtures for cases with flags.query_resolution.web_fixture_id",
+    )
+    parser.add_argument(
+        "--web-fixtures-dir",
+        type=Path,
+        default=None,
+        help="Directory of offline DuckDuckGo HTML fixtures (default: eval/fixtures/web)",
+    )
+    parser.add_argument(
         "--internet-enabled",
         action="store_true",
         help="Simulate internet tool enabled (affects web veto logic)",
@@ -310,6 +321,8 @@ def main() -> int:
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    from core.query_resolution_evaluation import DEFAULT_WEB_FIXTURES_DIR
+
     config = RouterEvalConfig(
         discourse_enabled=not args.no_discourse,
         internet_enabled=args.internet_enabled,
@@ -317,6 +330,12 @@ def main() -> int:
         install_centroids=not args.no_embeddings,
         with_retrieval=args.with_retrieval,
         with_sidecar_rewrite=args.with_sidecar,
+        with_web_fixtures=args.with_web_fixtures,
+        web_fixtures_dir=(
+            args.web_fixtures_dir.resolve()
+            if args.web_fixtures_dir is not None
+            else DEFAULT_WEB_FIXTURES_DIR
+        ),
     )
 
     embed_fn = _build_embed_fn(use_embeddings=not args.no_embeddings)

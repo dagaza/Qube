@@ -254,13 +254,30 @@ class TestPromptBlocks(unittest.TestCase):
         messages = render_system_ok_messages(blocks)
         last = messages[-1]["content"]
         self.assertIn("=== CITATION FORMAT (follow exactly) ===", last)
-        self.assertIn("The first event was reported on Tuesday [1].", last)
+        self.assertIn("Every factual sentence using the source above must end with [1].", last)
         self.assertIn("--- [1]: Example ---", last)
         q_idx = last.index("USER QUERY:")
         ex_idx = last.index("=== CITATION FORMAT (follow exactly) ===")
         src_idx = last.index("--- [1]: Example ---")
         self.assertLess(src_idx, ex_idx)
         self.assertLess(ex_idx, q_idx)
+
+    def test_web_multi_retrieval_exemplar_avoids_numeric_examples(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context="--- [1]: A ---\nOne.\n\n--- [2]: B ---\nTwo.",
+            retrieval_source_count=2,
+            web_hit_count=2,
+            conversation_history=[{"role": "user", "content": "Compare them."}],
+        )
+        messages = render_system_ok_messages(blocks)
+        last = messages[-1]["content"]
+        self.assertIn("not sentence order or list numbering", last)
+        self.assertIn("One factual sentence. [n]", last)
+        self.assertNotIn("Tuesday [1]", last)
+        self.assertNotIn("the same day [2]", last)
 
     def test_rag_retrieval_omits_web_citation_exemplar(self) -> None:
         blocks = build_prompt_blocks(

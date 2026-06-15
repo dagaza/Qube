@@ -28,12 +28,22 @@ _RETRIEVAL_WRAPPER_HEAD_MULTI = (
     "Do NOT use [W] when multiple numbered sources are listed.\n\n"
 )
 
-_WEB_CITATION_EXEMPLAR = (
+_WEB_CITATION_EXEMPLAR_SINGLE = (
+    "=== CITATION FORMAT (follow exactly) ===\n"
+    "Every factual sentence using the source above must end with [1].\n\n"
+    "Example pattern only:\n"
+    "One factual sentence. [1]\n\n"
+    "Do not explain citations. Do not describe rules. Apply the pattern in your answer.\n"
+)
+
+_WEB_CITATION_EXEMPLAR_MULTI = (
     "=== CITATION FORMAT (follow exactly) ===\n"
     "Every factual sentence using the sources above must end with a citation token.\n\n"
-    "Example style (pattern only):\n"
-    "The first event was reported on Tuesday [1].\n"
-    "A second development followed later the same day [2].\n\n"
+    "The number must match the id on the source block that supports that sentence "
+    "(from --- [N]: title ---), not sentence order or list numbering.\n\n"
+    "Example pattern only — substitute the real ids from the source headers above:\n"
+    "One factual sentence. [n]\n"
+    "Another factual sentence from a different source block. [m]\n\n"
     "Do not explain citations. Do not describe rules. Apply the pattern in your answer.\n"
 )
 
@@ -105,9 +115,12 @@ def _web_citation_exemplar(blocks: PromptBlocks | None) -> str:
     route = str(blocks.execution_route or "").upper()
     if route not in ("WEB", "INTERNET"):
         return ""
-    if int(getattr(blocks, "retrieval_source_count", 0) or 0) < 1:
+    count = int(getattr(blocks, "retrieval_source_count", 0) or 0)
+    if count < 1:
         return ""
-    return _WEB_CITATION_EXEMPLAR
+    if count == 1:
+        return _WEB_CITATION_EXEMPLAR_SINGLE
+    return _WEB_CITATION_EXEMPLAR_MULTI
 
 
 def _wrap_retrieval(

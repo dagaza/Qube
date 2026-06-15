@@ -163,6 +163,7 @@ from core.citation_integrity_telemetry import (
     log_citation_integrity_repair,
 )
 from core.citation_missing_retry import maybe_retry_missing_web_citations
+from core.citation_renumber import renumber_citations_by_appearance
 from core.generation_debug_capture import (
     GenerationDebugRecorder,
     apply_debug_sampling_overrides,
@@ -190,9 +191,9 @@ from core.discourse_telemetry import (
     log_discourse_referent_trace,
 )
 from core.discourse_query import (
-    resolve_retrieval_query,
-    resolve_routing_query,
-    resolve_search_target,
+    ResolvedRetrievalQuery,
+    SearchTargetResult,
+    build_resolved_retrieval_query,
     should_veto_ungrounded_web_follow_up,
     web_query_rewrite_failed,
 )
@@ -579,6 +580,61 @@ class LLMWorker(QThread):
                 logger.debug("[CitationIntegrity] repair telemetry failed", exc_info=True)
         return repaired
 
+    def _apply_cited_only_citation_renumber(
+        self, final_text: str, all_ui_sources: list
+    ) -> tuple[str, list]:
+        """Filter to cited sources only; renumber [1..n] by first appearance in the answer."""
+        before = len(all_ui_sources or [])
+        new_text, new_sources = renumber_citations_by_appearance(
+            final_text or "",
+            list(all_ui_sources or []),
+        )
+        if before or new_sources:
+            logger.info(
+                "[CitationRenumber] cited-only appearance order: sources %d -> %d",
+                before,
+                len(new_sources),
+            )
+        return new_text, new_sources
+
+    def _sync_turn_citation_sources(self, all_ui_sources: list) -> None:
+        """Persist isolated source snapshot for UI/telemetry and refresh inline cite links."""
+        self._turn_all_ui_sources = copy.deepcopy(all_ui_sources or [])
+        self.sources_found.emit(
+            self.session_id or "",
+            copy.deepcopy(all_ui_sources or []),
+        )
+
+    def _finalize_turn_citations(
+        self,
+        final_text: str,
+        all_ui_sources: list,
+        *,
+        messages: list[dict] | None = None,
+        execution_route: str = "",
+        allow_missing_retry: bool = False,
+    ) -> tuple[str, list, bool]:
+        """Citation retry (optional), then cited-only renumber + UI source sync."""
+        retry_replaced = False
+        if (
+            allow_missing_retry
+            and (final_text or "").strip()
+            and all_ui_sources
+            and messages is not None
+        ):
+            final_text, retry_replaced = self._maybe_retry_missing_web_citations(
+                final_text,
+                all_ui_sources,
+                messages,
+                execution_route=execution_route,
+            )
+        final_text, all_ui_sources = self._apply_cited_only_citation_renumber(
+            final_text,
+            all_ui_sources,
+        )
+        self._sync_turn_citation_sources(all_ui_sources)
+        return final_text, all_ui_sources, retry_replaced
+
     def _maybe_retry_missing_web_citations(
         self,
         text: str,
@@ -812,6 +868,7 @@ class LLMWorker(QThread):
         inference_user_text: str = "",
         resolved_query: ResolvedUserQuery | None = None,
         prompt_rewrite: DiscoursePromptRewrite | None = None,
+        resolved_retrieval: ResolvedRetrievalQuery | None = None,
     ) -> None:
         if not isinstance(decision, dict):
             return
@@ -834,6 +891,8 @@ class LLMWorker(QThread):
             decision["routing_query"] = routing_query
         if retrieval_query != original:
             decision["retrieval_query"] = retrieval_query
+        if resolved_retrieval is not None:
+            decision.update(resolved_retrieval.to_telemetry_dict())
         decision["core_memory_suppressed"] = bool(core_memory_suppressed)
         decision["retrieval_wrapper_mode"] = retrieval_wrapper_mode
 
@@ -1861,6 +1920,7 @@ class LLMWorker(QThread):
         inference_user_text = original_query
         routing_query = original_query
         retrieval_query = original_query
+        resolved_retrieval: ResolvedRetrievalQuery | None = None
         query_expansion: QueryExpansion | None = None
         core_memory_suppressed = False
         self._sidecar_hybrid_extra_memory = 0
@@ -1935,12 +1995,16 @@ class LLMWorker(QThread):
                 salience_anchor=salience_anchor,
                 salience_reason=salience_reason,
             )
-            routing_query = resolve_routing_query(
-                inference_user_text, follow_up, discourse_state
+            resolved_retrieval = build_resolved_retrieval_query(
+                raw_text=original_query,
+                inference_text=inference_user_text,
+                follow_up=follow_up,
+                discourse=discourse_state,
+                history=history,
+                resolved_query=resolved_query,
             )
-            retrieval_query = resolve_retrieval_query(
-                inference_user_text, follow_up, discourse_state
-            )
+            routing_query = resolved_retrieval.routing_text
+            retrieval_query = resolved_retrieval.retrieval_text
             if follow_up.active:
                 logger.info(
                     "[Discourse] follow_up=%s conf=%.2f topic=%r",
@@ -1955,6 +2019,18 @@ class LLMWorker(QThread):
                     follow_up.confidence,
                     discourse_state.active_topic if discourse_state else None,
                 )
+
+        if resolved_retrieval is None:
+            resolved_retrieval = build_resolved_retrieval_query(
+                raw_text=original_query,
+                inference_text=inference_user_text,
+                follow_up=follow_up,
+                discourse=discourse_state if discourse_enabled else None,
+                history=history,
+                resolved_query=resolved_query,
+            )
+            routing_query = resolved_retrieval.routing_text
+            retrieval_query = resolved_retrieval.retrieval_text
 
         # ============================================================
         # 0. EXPLICIT-REMEMBER SHORT-CIRCUIT (Memory v6.1)
@@ -2390,6 +2466,7 @@ class LLMWorker(QThread):
             inference_user_text=inference_user_text,
             resolved_query=resolved_query,
             prompt_rewrite=prompt_rewrite,
+            resolved_retrieval=resolved_retrieval,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -2636,21 +2713,19 @@ class LLMWorker(QThread):
             self.web_search_active.emit(True, via_direct, via_hybrid)
             self.status_update.emit("🌐 Searching the Web...")
 
-            search_target = resolve_search_target(
-                self.prompt,
-                follow_up,
-                discourse_state,
-                history,
+            search_target = SearchTargetResult(
+                resolved_retrieval.web_text,
+                resolved_retrieval.web_rewrite_reason,
             )
-            web_semantic = search_target.query
+            web_semantic = resolved_retrieval.web_text
             web_query = apply_tool_policy(
                 web_semantic,
                 preference_policy,
                 tool="internet",
             )
-            raw_prompt = (self.prompt or "").strip()
+            raw_prompt = resolved_retrieval.raw_text
             rewrite_failed = web_query_rewrite_failed(
-                self.prompt,
+                raw_prompt,
                 follow_up,
                 web_semantic,
                 explicit_web=explicit_web_request,
@@ -3278,6 +3353,7 @@ class LLMWorker(QThread):
             inference_user_text=inference_user_text,
             resolved_query=resolved_query,
             prompt_rewrite=prompt_rewrite,
+            resolved_retrieval=resolved_retrieval,
         )
         self._stamp_query_expansion_on_decision(
             decision,
@@ -3602,6 +3678,10 @@ class LLMWorker(QThread):
             )
 
             if self.session_id and final_text.strip():
+                final_text, all_ui_sources, _ = self._finalize_turn_citations(
+                    final_text,
+                    all_ui_sources,
+                )
                 self._persist_assistant_turn(final_text, all_ui_sources)
 
             self._successfully_finished = True
@@ -4037,12 +4117,15 @@ class LLMWorker(QThread):
             _emit_filtered(NATIVE_EMPTY_VISIBLE_OUTPUT_MSG)
 
         citation_retry_replaced = False
-        if final_text.strip() and all_ui_sources:
-            final_text, citation_retry_replaced = self._maybe_retry_missing_web_citations(
-                final_text,
-                all_ui_sources,
-                messages,
-                execution_route=execution_route,
+        if final_text.strip():
+            final_text, all_ui_sources, citation_retry_replaced = (
+                self._finalize_turn_citations(
+                    final_text,
+                    all_ui_sources,
+                    messages=messages,
+                    execution_route=execution_route,
+                    allow_missing_retry=bool(all_ui_sources),
+                )
             )
             if citation_retry_replaced:
                 stream_output_superseded = True

@@ -26,6 +26,10 @@ from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
     matches_custom_rag_trigger,
 )
+from core.query_resolution_evaluation import (
+    evaluate_resolution_expectations,
+    expectations_from_flags,
+)
 from core.router_centroid_examples import (
     CHAT_INTENT_EXAMPLES,
     MEMORY_INTENT_EXAMPLES,
@@ -194,6 +198,8 @@ class RouterEvalConfig:
     install_centroids: bool = True
     with_retrieval: bool = False
     with_sidecar_rewrite: bool = False
+    with_web_fixtures: bool = False
+    web_fixtures_dir: Optional[Path] = None
 
 
 @dataclass
@@ -234,6 +240,11 @@ class RouterEvalResult:
     over_retrieval: bool = False
     under_retrieval: bool = False
     retrieval_type: str = "none"
+    inference_text: str = ""
+    web_text: str = ""
+    query_resolution_pass: Optional[bool] = None
+    query_resolution_failed_checks: list[str] = field(default_factory=list)
+    web_fixture_hits: int = 0
     stability_cluster_id: str = ""
     stability_cluster_size: int = 0
     is_oscillating_cluster: bool = False
@@ -360,30 +371,16 @@ def _discourse_context(
     history: tuple[dict[str, str], ...],
     *,
     discourse_enabled: bool,
-) -> tuple[Any, Any, str, str]:
-    """Return (follow_up, discourse_state, routing_query, retrieval_query)."""
-    if not discourse_enabled:
-        return None, None, prompt, prompt
+):
+    """Return ``(follow_up, discourse_state, resolved_retrieval_query)``."""
+    from core.query_resolution_evaluation import build_discourse_resolution
 
-    from core.discourse_intent import FollowUpClassification, FollowUpKind, classify_follow_up
-    from core.discourse_query import resolve_retrieval_query, resolve_routing_query
-    from core.discourse_state import DiscourseState, update_discourse_state
-
-    hist_list = [dict(h) for h in history]
-    prior: DiscourseState | None = None
-    if hist_list:
-        for msg in hist_list[:-1]:
-            if str(msg.get("role", "")).lower() == "user":
-                prior = update_discourse_state(hist_list, prior, str(msg.get("content") or ""))
-        discourse_state = update_discourse_state(hist_list, prior, prompt)
-        follow_up = classify_follow_up(prompt, hist_list, discourse_state)
-    else:
-        discourse_state = None
-        follow_up = FollowUpClassification(FollowUpKind.NONE, 0.0)
-
-    routing_query = resolve_routing_query(prompt, follow_up, discourse_state)
-    retrieval_query = resolve_retrieval_query(prompt, follow_up, discourse_state)
-    return follow_up, discourse_state, routing_query, retrieval_query
+    return build_discourse_resolution(
+        prompt,
+        history,
+        discourse_enabled=discourse_enabled,
+        apply_inference_rewrite=True,
+    )
 
 
 def simulate_execution_route(
@@ -553,6 +550,10 @@ def _run_retrieval(
     retrieval_query: str,
     query_vector: np.ndarray | None,
     store: Any,
+    web_query: str = "",
+    web_fixture_id: str = "",
+    fixtures_dir: Path | None = None,
+    embed_fn: Any = None,
 ) -> dict[str, Any]:
     memory_hits = 0
     rag_hits = 0
@@ -587,6 +588,25 @@ def _run_retrieval(
             rag_hits = len(rag.get("sources") or [])
         except Exception as exc:
             logger.debug("rag_search failed in eval: %s", exc)
+
+    fixture_id = (web_fixture_id or "").strip()
+    if (
+        fixture_id
+        and route in ("WEB", "INTERNET", "HYBRID")
+        and fixtures_dir is not None
+    ):
+        try:
+            from core.query_resolution_evaluation import run_web_fixture_retrieval
+
+            web_out = run_web_fixture_retrieval(
+                web_query or retrieval_query,
+                fixture_id,
+                fixtures_dir=fixtures_dir,
+                embed_fn=embed_fn,
+            )
+            web_hits = int(web_out.get("web_hits") or 0)
+        except Exception as exc:
+            logger.debug("web fixture retrieval failed in eval: %s", exc)
 
     relevance_gate_dropped = (
         (memory_candidates > 0 and memory_hits == 0 and route in ("MEMORY", "HYBRID"))
@@ -696,12 +716,53 @@ def evaluate_case(
     sidecar_client: Any = None,
 ) -> RouterEvalResult:
     expected = case.expected_route
+    query_resolution_pass: Optional[bool] = None
+    query_resolution_failed_checks: list[str] = []
+    web_fixture_hits = 0
+    inference_text = ""
+    web_text = ""
     try:
-        follow_up, discourse_state, routing_query, retrieval_query = _discourse_context(
+        follow_up, discourse_state, resolved = _discourse_context(
             case.prompt,
             case.history,
             discourse_enabled=config.discourse_enabled,
         )
+        routing_query = resolved.routing_text
+        retrieval_query = resolved.retrieval_text
+        inference_text = resolved.inference_text
+        web_text = resolved.web_text
+
+        qr_expect = expectations_from_flags(case.flags)
+        if qr_expect is not None:
+            query_resolution_failed_checks = evaluate_resolution_expectations(
+                resolved, qr_expect
+            )
+            if (
+                qr_expect.web_fixture_id
+                and config.with_web_fixtures
+            ):
+                fixtures_dir = config.web_fixtures_dir
+                if fixtures_dir is None:
+                    from core.query_resolution_evaluation import DEFAULT_WEB_FIXTURES_DIR
+
+                    fixtures_dir = DEFAULT_WEB_FIXTURES_DIR
+                try:
+                    from core.query_resolution_evaluation import run_web_fixture_retrieval
+
+                    web_out = run_web_fixture_retrieval(
+                        resolved.web_text,
+                        qr_expect.web_fixture_id,
+                        fixtures_dir=fixtures_dir,
+                        embed_fn=embed_fn,
+                    )
+                    web_fixture_hits = int(web_out.get("web_hits") or 0)
+                    if web_fixture_hits < qr_expect.min_web_hits:
+                        query_resolution_failed_checks.append(
+                            f"web_hits_below_min:{web_fixture_hits}<{qr_expect.min_web_hits}"
+                        )
+                except Exception as exc:
+                    query_resolution_failed_checks.append(f"web_fixture_error:{exc}")
+            query_resolution_pass = not query_resolution_failed_checks
 
         intent_vector = None
         if embed_fn is not None:
@@ -753,6 +814,18 @@ def evaluate_case(
         memory_hits = rag_hits = web_hits = 0
         memory_candidates = rag_candidates = 0
         relevance_gate_dropped = False
+        web_fixture_id_for_retrieval = ""
+        fixtures_dir_for_retrieval: Path | None = None
+        if config.with_web_fixtures:
+            qr_for_retrieval = expectations_from_flags(case.flags)
+            if qr_for_retrieval and qr_for_retrieval.web_fixture_id:
+                web_fixture_id_for_retrieval = qr_for_retrieval.web_fixture_id
+                fixtures_dir_for_retrieval = config.web_fixtures_dir
+                if fixtures_dir_for_retrieval is None:
+                    from core.query_resolution_evaluation import DEFAULT_WEB_FIXTURES_DIR
+
+                    fixtures_dir_for_retrieval = DEFAULT_WEB_FIXTURES_DIR
+
         if config.with_retrieval and embed_fn is not None:
             qv = embed_fn(retrieval_query)
             retrieval = _run_retrieval(
@@ -760,6 +833,10 @@ def evaluate_case(
                 retrieval_query=retrieval_query,
                 query_vector=qv,
                 store=store,
+                web_query=web_text,
+                web_fixture_id=web_fixture_id_for_retrieval,
+                fixtures_dir=fixtures_dir_for_retrieval,
+                embed_fn=embed_fn,
             )
             memory_hits = int(retrieval["memory_hits"])
             rag_hits = int(retrieval["rag_hits"])
@@ -794,6 +871,9 @@ def evaluate_case(
                     relevance_gate_dropped = relevance_gate_dropped or bool(
                         rewritten["relevance_gate_dropped"]
                     )
+
+        if web_hits > 0 and web_fixture_id_for_retrieval:
+            web_fixture_hits = max(web_fixture_hits, web_hits)
 
         execution_final = execution_pre_norm
         downgrade_fired = False
@@ -929,6 +1009,11 @@ def evaluate_case(
             over_retrieval=over_ret,
             under_retrieval=under_ret,
             retrieval_type=ret_type,
+            inference_text=inference_text,
+            web_text=web_text,
+            query_resolution_pass=query_resolution_pass,
+            query_resolution_failed_checks=query_resolution_failed_checks,
+            web_fixture_hits=web_fixture_hits,
             override_reason=override_reason,
         )
     except Exception as exc:

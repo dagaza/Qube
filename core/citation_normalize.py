@@ -18,9 +18,25 @@ def _replace_source_bracket(match: re.Match[str]) -> str:
 def normalize_combined_numeric_citations(text: str) -> str:
     """
     Split list-style cites like ``[1, 2, 3]`` → ``[1], [2], [3]`` for Qt linkification.
+
+    Also repairs model typos such as ``[2, [3]]`` where a nested bracket prevents
+    the comma-split path from recognizing both ids.
     """
     if not text:
         return text
+
+    def _fix_nested_typo(s: str) -> str:
+        prev = None
+        while s != prev:
+            prev = s
+            s = re.sub(
+                r"\[(\d+)\s*,\s*\[(\d+)\]\]",
+                r"[\1], [\2]",
+                s,
+            )
+        return s
+
+    text = _fix_nested_typo(text)
 
     def _repl(match: re.Match[str]) -> str:
         inner = match.group(1).strip()

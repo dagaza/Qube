@@ -145,6 +145,65 @@ export_frontier_json(d / 'frontier_2d.json', run_frontier_from_run_dir(d))
 **When to update the committed baseline:** after intentional router or shadow-policy
 changes that should shift regression expectations — not after every local smoke test.
 
+## Query resolution evaluation (PR5)
+
+Offline harness for discourse query strings and fixture-based web retrieval quality.
+
+### Corpus
+
+File: `eval/router_corpus/query_resolution_v1.json` (schema: `qube.query_resolution_corpus.v1`).
+
+Each case may include an `expect` block:
+
+| Field | Meaning |
+|-------|---------|
+| `inference_contains` / `inference_not_contains` | Substrings required/forbidden on inference text |
+| `web_contains` / `web_not_contains` | Substrings required/forbidden on web search text |
+| `routing_contains` / `retrieval_contains` | Routing and memory/RAG query strings |
+| `web_fixture_id` | Replay offline DuckDuckGo HTML from `eval/fixtures/web/<id>.html` |
+| `min_web_hits` | Minimum snippets passing the production relevance gate |
+
+### Web fixtures
+
+Recorded HTML under `eval/fixtures/web/` is parsed with `mcp.internet_tool.parse_ddg_html_results`
+and filtered with `core.retrieval_relevance.filter_web_results` (same gate as production).
+
+### Runner
+
+```bash
+# Lexical web gate only (no embedder GGUF required)
+python3 tools/evaluate_query_resolution.py --no-embeddings
+
+# Full embedding gate (requires venv + nomic embedder)
+venv/bin/python tools/evaluate_query_resolution.py
+
+# Fail CI when any case regresses
+python3 tools/evaluate_query_resolution.py --no-embeddings --fail-on-regression
+```
+
+Artifacts: `eval/runs/query_resolution_<run-id>/run.json`
+
+### Router eval integration
+
+Router cases may optionally embed query-resolution expectations:
+
+```json
+"flags": {
+  "query_resolution": {
+    "web_contains": ["Kathmandu"],
+    "web_fixture_id": "kathmandu_population",
+    "min_web_hits": 1
+  }
+}
+```
+
+Enable fixture replay on router runs with `--with-web-fixtures` (see `tools/evaluate_router.py`).
+
+Discourse simulation in router eval now applies `resolve_ambiguous_user_query` via
+`core.query_resolution_evaluation.build_discourse_resolution` (parity with `LLMWorker`).
+
+---
+
 ## Metrics captured
 
 | Column | Meaning |

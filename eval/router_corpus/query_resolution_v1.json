@@ -1,0 +1,117 @@
+{
+  "schema": "qube.query_resolution_corpus.v1",
+  "version": 1,
+  "description": "Query resolution and offline web-retrieval regression corpus",
+  "cases": [
+    {
+      "id": "qr_fu_population",
+      "prompt": "And what is the size of its population?",
+      "category": "follow_up_inference",
+      "notes": "Pronoun rewrite + web must name Kathmandu, not 'its'",
+      "history": [
+        {"role": "user", "content": "What is the capital of Nepal?"},
+        {"role": "assistant", "content": "Kathmandu is the capital of Nepal."},
+        {"role": "user", "content": "And what is the size of its population?"}
+      ],
+      "expect": {
+        "inference_contains": ["Kathmandu", "population"],
+        "inference_not_contains": [" its "],
+        "web_contains": ["Kathmandu"],
+        "web_not_contains": [" its "],
+        "web_fixture_id": "kathmandu_population",
+        "min_web_hits": 1
+      }
+    },
+    {
+      "id": "qr_fu_population_short",
+      "prompt": "And its population?",
+      "category": "follow_up_inference",
+      "notes": "Short population follow-up after Nepal thread",
+      "history": [
+        {"role": "user", "content": "Tell me about Nepal."},
+        {"role": "assistant", "content": "Nepal is a landlocked country in South Asia."},
+        {"role": "user", "content": "What is the capital of Nepal?"},
+        {"role": "assistant", "content": "Kathmandu is the capital."},
+        {"role": "user", "content": "And its population?"}
+      ],
+      "expect": {
+        "web_contains": ["Kathmandu"],
+        "web_not_contains": [" its "]
+      }
+    },
+    {
+      "id": "qr_meta_web_prior_turn",
+      "prompt": "Yes that would be nice. Can you also do an online search for the answer?",
+      "category": "meta_web",
+      "notes": "Meta web request should replay prior substantive user question",
+      "history": [
+        {"role": "user", "content": "Why do birds take dust baths?"},
+        {"role": "assistant", "content": "Birds take dust baths to remove parasites."},
+        {"role": "user", "content": "Yes that would be nice. Can you also do an online search for the answer?"}
+      ],
+      "expect": {
+        "web_contains": ["birds", "dust bath"],
+        "web_fixture_id": "birds_dust_bath",
+        "min_web_hits": 1
+      }
+    },
+    {
+      "id": "qr_pronoun_birth",
+      "prompt": "when was he born",
+      "category": "follow_up_inference",
+      "notes": "Person referent substitution when Steve Jobs is active topic",
+      "history": [
+        {"role": "user", "content": "Tell me about Steve Jobs."},
+        {"role": "assistant", "content": "Steve Jobs co-founded Apple with Steve Wozniak."}
+      ],
+      "expect": {
+        "inference_contains": ["Steve Jobs"],
+        "web_contains": ["Steve Jobs"],
+        "web_fixture_id": "steve_jobs_birth",
+        "min_web_hits": 1
+      }
+    },
+    {
+      "id": "qr_kathmandu_music",
+      "prompt": "What about its music and arts scene?",
+      "category": "follow_up_expansion",
+      "notes": "Topic expansion should anchor Kathmandu from thread",
+      "history": [
+        {"role": "user", "content": "What is the capital of Nepal?"},
+        {"role": "assistant", "content": "Kathmandu is the capital of Nepal."},
+        {"role": "user", "content": "What about Kathmandu's flora and fauna?"},
+        {"role": "assistant", "content": "Kathmandu has urban parks with marigolds and jasmine."},
+        {"role": "user", "content": "What about its music and arts scene?"}
+      ],
+      "expect": {
+        "routing_contains": ["Kathmandu"],
+        "retrieval_contains": ["Kathmandu"],
+        "web_contains": ["Kathmandu"]
+      }
+    },
+    {
+      "id": "qr_standalone_no_rewrite",
+      "prompt": "What is the weather in Copenhagen today?",
+      "category": "standalone",
+      "notes": "Standalone live-web query should pass through unchanged",
+      "expect": {
+        "inference_contains": ["weather", "Copenhagen"],
+        "web_contains": ["Copenhagen", "weather"]
+      }
+    },
+    {
+      "id": "qr_lookup_deictic",
+      "prompt": "Can you look it up online?",
+      "category": "meta_web",
+      "notes": "Deictic look-it-up with active game topic",
+      "history": [
+        {"role": "user", "content": "I'm playing Slay the Spire."},
+        {"role": "assistant", "content": "Slay the Spire is a roguelike deckbuilder."},
+        {"role": "user", "content": "Can you look it up online?"}
+      ],
+      "expect": {
+        "web_contains": ["Slay the Spire"]
+      }
+    }
+  ]
+}
