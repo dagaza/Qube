@@ -88,7 +88,7 @@ from core.app_settings import (
 )
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
-from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
 from ui.components.sidebar_folder_list import (
@@ -1452,6 +1452,9 @@ class ConversationsView(QWidget):
         self._pending_stream_tokens_by_session: dict[str, str] = {}
         self._pending_stream_sources_by_session: dict[str, list] = {}
         self._user_turn_id = 0
+        self._stt_ms_for_turn: int | None = None
+        self._stt_ms_value: float | None = None
+        self._pending_ttft_ms: float | None = None
         self._stop_requested_callback = None
         self._llm_in_progress = False
         self._awaiting_tts_end = False
@@ -1776,6 +1779,49 @@ class ConversationsView(QWidget):
             """
         )
 
+    def _style_agent_sources_button(self, btn: QPushButton, is_dark: bool) -> None:
+        icon_color = "#a6adc8" if is_dark else "#64748b"
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        btn.setIcon(qta.icon("fa5s.globe", color=icon_color))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(
+            f"""
+            QPushButton {{ background: transparent; border: none; border-radius: 4px; padding: 4px; }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+            """
+        )
+
+    def _sync_agent_sources_button(
+        self, agent: AgentMessageLabel, btn: QPushButton | None = None
+    ) -> None:
+        btn = btn or getattr(agent, "_sources_action_btn", None)
+        if btn is None:
+            return
+        sources = getattr(agent, "_citation_sources", None) or []
+        count = len(sources)
+        visible = count > 0
+        btn.setVisible(visible)
+        btn.setEnabled(visible)
+        if visible:
+            btn.setToolTip(
+                f"View {count} source{'s' if count != 1 else ''} used in this answer"
+            )
+        else:
+            btn.setToolTip("")
+
+    def _show_agent_citation_sources(self, agent: AgentMessageLabel) -> None:
+        sources = getattr(agent, "_citation_sources", None) or []
+        if not sources:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = CitationSourcesDialog(
+            sources,
+            self,
+            is_dark=is_dark,
+            on_open_source=self.open_source_preview,
+        )
+        dlg.exec()
+
     def _copy_agent_message_to_clipboard(
         self, agent: AgentMessageLabel, *, as_markdown: bool = False
     ) -> None:
@@ -1808,11 +1854,77 @@ class ConversationsView(QWidget):
         )
         return menu
 
+    def _create_agent_telemetry_label(self, text: str, is_dark: bool) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setProperty("class", "AgentMessageTelemetryLabel")
+        lbl.setFixedHeight(28)
+        lbl.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._style_agent_telemetry_label(lbl, is_dark)
+        return lbl
+
+    def _style_agent_telemetry_label(self, lbl: QLabel, is_dark: bool) -> None:
+        color = "#a6adc8" if is_dark else "#64748b"
+        lbl.setStyleSheet(
+            f"color: {color}; font-size: 9px; background: transparent; border: none; padding: 0px 4px;"
+        )
+
+    def _default_agent_telemetry_labels(self, is_dark: bool) -> dict[str, QLabel]:
+        return {
+            "stt": self._create_agent_telemetry_label("STT: --", is_dark),
+            "ttft": self._create_agent_telemetry_label("TTFT: --", is_dark),
+            "tts": self._create_agent_telemetry_label("TTS: --", is_dark),
+            "tps": self._create_agent_telemetry_label("TPS: --", is_dark),
+        }
+
+    def _format_agent_telemetry_text(self, metric: str, value: float | None) -> str:
+        if metric == "stt":
+            return f"STT: {value:.0f} ms" if value is not None else "STT: --"
+        if metric == "ttft":
+            return f"TTFT: {value:.0f} ms" if value is not None else "TTFT: --"
+        if metric == "tts":
+            return f"TTS: {value:.0f} ms" if value is not None else "TTS: --"
+        if metric == "tps":
+            if value is not None and value > 0:
+                return f"TPS: {value:.1f} tok/s"
+            return "TPS: --"
+        return ""
+
+    def _set_agent_telemetry_metric(
+        self, agent: AgentMessageLabel, metric: str, value: float | None
+    ) -> None:
+        labels = getattr(agent, "_telemetry_labels", None)
+        if not labels or metric not in labels:
+            return
+        stored = getattr(agent, "_telemetry_values", None)
+        if stored is None:
+            stored = {}
+            agent._telemetry_values = stored
+        stored[metric] = value
+        labels[metric].setText(self._format_agent_telemetry_text(metric, value))
+
+    def _apply_pending_stt_to_agent(self, agent: AgentMessageLabel) -> None:
+        turn_id = getattr(agent, "_assistant_turn_id", None)
+        if (
+            turn_id is not None
+            and self._stt_ms_for_turn == turn_id
+            and self._stt_ms_value is not None
+        ):
+            self._set_agent_telemetry_metric(agent, "stt", self._stt_ms_value)
+            self._stt_ms_for_turn = None
+            self._stt_ms_value = None
+
+    def _apply_pending_ttft_to_agent(self, agent: AgentMessageLabel) -> None:
+        if self._pending_ttft_ms is not None:
+            self._set_agent_telemetry_metric(agent, "ttft", self._pending_ttft_ms)
+            self._pending_ttft_ms = None
+
     def _add_agent_copy_button(self, container_layout: QVBoxLayout, agent: AgentMessageLabel) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         copy_row = QHBoxLayout()
         copy_row.setContentsMargins(0, 0, 0, 0)
-        copy_row.setSpacing(0)
+        copy_row.setSpacing(2)
 
         copy_btn = QPushButton()
         copy_btn.setObjectName("AgentMessageCopyBtn")
@@ -1824,20 +1936,54 @@ class ConversationsView(QWidget):
         copy_menu = self._build_agent_copy_menu(agent, is_dark)
         copy_btn.setMenu(copy_menu)
 
+        sources_btn = QPushButton()
+        sources_btn.setObjectName("AgentMessageSourcesBtn")
+        sources_btn.setFixedSize(28, 28)
+        sources_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        sources_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._style_agent_sources_button(sources_btn, is_dark)
+        sources_btn.clicked.connect(
+            lambda _checked=False, lbl=agent: self._show_agent_citation_sources(lbl)
+        )
+        agent._sources_action_btn = sources_btn
+        self._sync_agent_sources_button(agent, sources_btn)
+
+        agent._telemetry_labels = self._default_agent_telemetry_labels(is_dark)
+        agent._telemetry_values = {}
+
         copy_row.addWidget(copy_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        copy_row.addWidget(sources_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addStretch(1)
+        copy_row.addSpacing(12)
+        for key in ("stt", "ttft", "tts", "tps"):
+            copy_row.addWidget(
+                agent._telemetry_labels[key],
+                0,
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            )
         container_layout.addLayout(copy_row)
+        self._apply_pending_stt_to_agent(agent)
+        self._apply_pending_ttft_to_agent(agent)
 
     def _refresh_agent_copy_buttons(self, is_dark: bool) -> None:
         for w in self._iter_transcript_widgets():
             if not isinstance(w, MessageWrapper) or w.is_user:
                 continue
-            btn = w.findChild(QPushButton, "AgentMessageCopyBtn")
-            if btn is not None:
-                self._style_agent_copy_button(btn, is_dark)
-                menu = btn.menu()
+            copy_btn = w.findChild(QPushButton, "AgentMessageCopyBtn")
+            if copy_btn is not None:
+                self._style_agent_copy_button(copy_btn, is_dark)
+                menu = copy_btn.menu()
                 if menu is not None:
                     self._apply_menu_theme(menu, is_dark)
+            sources_btn = w.findChild(QPushButton, "AgentMessageSourcesBtn")
+            if sources_btn is not None:
+                self._style_agent_sources_button(sources_btn, is_dark)
+            for agent in w.findChildren(AgentMessageLabel):
+                self._sync_agent_sources_button(agent, sources_btn)
+                labels = getattr(agent, "_telemetry_labels", None)
+                if labels:
+                    for lbl in labels.values():
+                        self._style_agent_telemetry_label(lbl, is_dark)
 
     def _iter_transcript_widgets(self):
         if not hasattr(self, "transcript_layout"):
@@ -2367,20 +2513,6 @@ class ConversationsView(QWidget):
         input_layout.addWidget(self.send_btn)
         bottom_stack_layout.addWidget(input_container)
 
-        # 4. Latency Metrics Footer
-        latency_layout = QHBoxLayout()
-        self.stt_latency_lbl = QLabel("STT: -- ms")
-        self.ttft_latency_lbl = QLabel("TTFT: -- ms")
-        self.tts_latency_lbl = QLabel("TTS: -- ms")
-        self.tps_lbl = QLabel("TPS: -- tok/s")
-        
-        for lbl in [self.stt_latency_lbl, self.ttft_latency_lbl, self.tts_latency_lbl, self.tps_lbl]:
-            lbl.setProperty("class", "MiniLatencyLabel")
-            latency_layout.addWidget(lbl)
-            
-        latency_layout.addStretch()
-        bottom_stack_layout.addLayout(latency_layout)
-
         self.chat_bottom_container.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Minimum,
@@ -2410,6 +2542,7 @@ class ConversationsView(QWidget):
         # New user turn: drop stale assistant pointer so Turn N+1 tools cannot overwrite Turn N bubbles.
         self._user_turn_id += 1
         self.current_agent_msg = None
+        self._pending_ttft_ms = None
 
         bubble = UserBubbleFrame()
         bubble.setObjectName("UserBubble")
@@ -2686,19 +2819,28 @@ class ConversationsView(QWidget):
             )
 
     def update_stt_latency(self, ms: float) -> None:
-        self.stt_latency_lbl.setText(f"STT: {ms:.0f} ms")
+        self._stt_ms_for_turn = self._user_turn_id + 1
+        self._stt_ms_value = float(ms)
+        agent = getattr(self, "current_agent_msg", None)
+        if agent is not None:
+            self._apply_pending_stt_to_agent(agent)
 
     def update_ttft_latency(self, ms: float) -> None:
-        self.ttft_latency_lbl.setText(f"TTFT: {ms:.0f} ms")
+        self._pending_ttft_ms = float(ms)
+        agent = getattr(self, "current_agent_msg", None)
+        if agent is not None:
+            self._apply_pending_ttft_to_agent(agent)
 
     def update_tts_latency(self, ms: float) -> None:
-        self.tts_latency_lbl.setText(f"TTS: {ms:.0f} ms")
+        agent = getattr(self, "current_agent_msg", None)
+        if agent is not None:
+            self._set_agent_telemetry_metric(agent, "tts", float(ms))
 
     def update_tps(self, tps: float) -> None:
-        if tps and tps > 0:
-            self.tps_lbl.setText(f"TPS: {tps:.1f} tok/s")
-        else:
-            self.tps_lbl.setText("TPS: -- tok/s")
+        agent = getattr(self, "current_agent_msg", None)
+        if agent is not None:
+            value = float(tps) if tps and tps > 0 else None
+            self._set_agent_telemetry_metric(agent, "tps", value)
 
     def _on_history_search_changed(self, _text: str) -> None:
         self._history_search_timer.stop()
@@ -3327,6 +3469,7 @@ class ConversationsView(QWidget):
             self, "_user_turn_id", -1
         ):
             cur._citation_sources = _snapshot_citation_sources(sources)
+            self._sync_agent_sources_button(cur)
             if (getattr(self, "_agent_text_buffer", "") or "").strip():
                 self._schedule_coalesced_agent_markdown()
 

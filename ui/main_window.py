@@ -1910,7 +1910,6 @@ class MainWindow(QMainWindow):
         if self._tts_worker:
             self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
         if self._llm_worker:
-            self._llm_worker.response_finished.connect(self._check_for_titling)
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
             self.history_spin.valueChanged.connect(self._llm_worker.set_max_history_messages)

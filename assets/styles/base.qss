@@ -864,7 +864,7 @@ QLabel#AgentMessage {
     color: #ffffff !important;
 }
 
-#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn, #AgentMessageSourcesBtn {
     background: transparent;
     border: none;
     padding: 0px;
@@ -872,7 +872,7 @@ QLabel#AgentMessage {
     min-height: 0px;
 }
 
-#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover, #AgentMessageSourcesBtn:hover {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
@@ -888,6 +888,14 @@ QLabel#AgentMessage {
     font-size: 13px;
     color: #a6adc8; /* Subtle metadata color */
     font-weight: 500;
+}
+
+.AgentMessageTelemetryLabel {
+    color: #a6adc8;
+    font-size: 9px;
+    background: transparent;
+    border: none;
+    padding: 0px 4px;
 }
 
 /* --- INGEST PROGRESS BAR --- */

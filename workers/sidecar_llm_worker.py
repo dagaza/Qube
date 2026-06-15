@@ -33,6 +33,7 @@ from core.app_settings import (
 )
 from core.title_generation_experiment import log_title_experiment_run, run_title_generation
 from core.title_inference_profiles import get_title_profile
+from core.sidecar_prompts import normalize_title_user_prompt
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.sidecar_prompts import (
     build_prompt_for_task,
@@ -539,7 +540,8 @@ class SidecarLlmWorker(QThread):
 
     def _do_title(self, cmd: dict) -> None:
         session_id = str(cmd.get("session_id") or "")
-        user_prompt = cmd.get("user_prompt") or ""
+        # Raw DB / UI text may include composer @ tokens; titling normalizes at this boundary.
+        user_prompt = normalize_title_user_prompt(cmd.get("user_prompt") or "")
         assistant_reply = cmd.get("assistant_reply") or ""
         wait_ms = float(cmd.get("_queue_wait_ms") or 0.0)
         profile = get_title_profile(get_sidecar_title_inference_profile())

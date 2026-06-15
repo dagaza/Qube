@@ -6,7 +6,10 @@ import unittest
 from core.sidecar_prompts import (
     TITLE_SYSTEM_PROMPT,
     build_prompt_for_task,
+    build_title_task_parts,
     format_title_exchange_context,
+    instrument_title_parse,
+    normalize_title_user_prompt,
     parse_task_output,
     task_inference_params,
 )
@@ -440,6 +443,77 @@ class TestSidecarPrompts(unittest.TestCase):
         )
         self.assertTrue(r.ok)
         self.assertEqual(r.text, "Hello, world!")
+
+    def test_normalize_title_user_prompt_strips_composer_tokens(self) -> None:
+        raw = (
+            "@[tool:internet] @[skill:interview_preparation]\n\n"
+            "I am a mechanical engineer applying to UVX Technologies."
+        )
+        cleaned = normalize_title_user_prompt(raw)
+        self.assertNotIn("@[", cleaned)
+        self.assertNotIn("tool:internet", cleaned)
+        self.assertIn("mechanical engineer", cleaned)
+
+    def test_title_accepts_year_in_sidecar_output(self) -> None:
+        user = "Who won the NBA Finals in 2026?"
+        assistant = "The New York Knicks won the 2026 NBA Finals. [1]"
+        r = parse_task_output(
+            SidecarTask.title,
+            "NBA Finals 2026",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "NBA Finals 2026")
+
+    def test_title_accepts_numbered_standard_in_sidecar_output(self) -> None:
+        user = "Explain ISO 14001 environmental management to me"
+        assistant = "ISO 14001 is an international standard for environmental management systems."
+        r = parse_task_output(
+            SidecarTask.title,
+            "ISO 14001 Explanation",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "ISO 14001 Explanation")
+
+    def test_title_web_meta_prompt_fallback_uses_topic_not_meta(self) -> None:
+        user = (
+            "Can you look online for which countries played in the first day "
+            "of the World Cup this year?"
+        )
+        assistant = "South Korea defeated Czechia on the opening day. [1]"
+        parsed = instrument_title_parse(
+            "",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        title = (parsed.final_title or "").lower()
+        self.assertNotIn("look online", title)
+        self.assertNotIn("search the", title)
+        self.assertIn("world cup", title)
+
+    def test_title_web_meta_sidecar_output_not_rejected(self) -> None:
+        user = (
+            "Can you look online for which countries played in the first day "
+            "of the World Cup this year?"
+        )
+        assistant = "South Korea defeated Czechia on the opening day. [1]"
+        r = parse_task_output(
+            SidecarTask.title,
+            "World Cup 2026 Participants",
+            user_prompt=user,
+            assistant_reply=assistant,
+        )
+        self.assertTrue(r.ok)
+        self.assertEqual(r.parsed.get("title"), "World Cup 2026 Participants")
+
+    def test_build_title_task_parts_strips_composer_at_titling_boundary(self) -> None:
+        raw = "@[tool:internet] @[skill:research_synthesis] Who won the NBA Finals?"
+        _system, user_content = build_title_task_parts(raw)
+        self.assertNotIn("@[", user_content)
+        self.assertIn("Who won the NBA Finals", user_content)
 
 
 if __name__ == "__main__":

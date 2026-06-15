@@ -240,6 +240,36 @@ _META_TITLE_LINE = re.compile(
 )
 _TITLE_USER_MAX_CHARS = 1200
 _TITLE_ASSISTANT_MAX_CHARS = 600
+_WEB_META_PREFIX_RE = re.compile(
+    r"^(?:(?:can|could|would)\s+you\s+(?:please\s+)?)?"
+    r"(?:please\s+)?"
+    r"(?:"
+    r"look(?:\s+\w+){0,3}\s+online(?:\s+for)?|"
+    r"search(?:\s+(?:the\s+)?(?:web|internet))(?:\s+for)?|"
+    r"(?:check|find)(?:\s+\w+){0,2}\s+"
+    r"(?:on\s+(?:the\s+)?(?:web|internet)|(?:the\s+)?(?:web|internet)\s+for)"
+    r")\s*[:,\-]?\s*",
+    re.IGNORECASE,
+)
+_WH_LEAD_RE = re.compile(
+    r"^(?:which|what|who|when|where|how many|how much)\s+",
+    re.IGNORECASE,
+)
+_QUESTION_EVENT_OF_RE = re.compile(
+    r"\b(?:day|game|match|round|final|finals|series|stage)\s+of\s+(?:the\s+)?(.+)$",
+    re.IGNORECASE,
+)
+_WEB_META_PROMPT_RE = re.compile(
+    r"\b(?:"
+    r"look(?:\s+\w+){0,3}\s+online|"
+    r"search(?:\s+(?:the\s+)?(?:web|internet))|"
+    r"(?:check|find)(?:\s+\w+){0,2}\s+(?:on\s+)?(?:the\s+)?(?:web|internet)"
+    r")\b",
+    re.IGNORECASE,
+)
+_ASSISTANT_ANSWER_VERBS = frozenset({
+    "defeated", "won", "lost", "beat", "beats", "scored", "clinched", "advanced",
+})
 TITLE_SYSTEM_PROMPT = (
     "You name chat conversations for a sidebar history list. Read the user's "
     "first message and the assistant's reply, then write a short topic label "
@@ -348,7 +378,22 @@ _TITLE_SOURCE_BASE_SCORE: dict[str, float] = {
     "think_interior": 2.0,
     "sidecar_coerced": 1.0,
     "user_topic": 1.0,
+    "question_core_topic": 11.5,
 }
+
+
+def normalize_title_user_prompt(user_prompt: str) -> str:
+    """Strip composer @ tokens and web-search meta phrasing before titling.
+
+    Titling-owned preprocessing: callers may pass raw DB composer text; every
+    production boundary (``SidecarLlmWorker._do_title``, ``run_title_generation``)
+    and parse helper must route through this function — not ``parse_composer_input``.
+    """
+    from core.composer_attachments import strip_tokens_for_display
+
+    text = strip_tokens_for_display(user_prompt or "")
+    text = _WEB_META_PREFIX_RE.sub("", text).strip()
+    return text
 
 
 def format_title_exchange_context(
@@ -356,7 +401,7 @@ def format_title_exchange_context(
     assistant_reply: str = "",
 ) -> str:
     """Bounded first-turn context for sidecar titling."""
-    user = (user_prompt or "").strip()
+    user = normalize_title_user_prompt(user_prompt)
     assistant = (assistant_reply or "").strip()
     parts: list[str] = []
     if user:
@@ -374,10 +419,11 @@ def build_title_task_parts(
 ) -> tuple[str, str]:
     """System + user content for titling (supports user-only context experiments)."""
     mode = (context_mode or "full").strip().lower()
+    normalized_user = normalize_title_user_prompt(user_prompt)
     if mode in ("user_only", "user-only", "user"):
-        user_content = f"User: {(user_prompt or '').strip()[:_TITLE_USER_MAX_CHARS]}"
+        user_content = f"User: {normalized_user[:_TITLE_USER_MAX_CHARS]}"
     else:
-        user_content = format_title_exchange_context(user_prompt, assistant_reply)
+        user_content = format_title_exchange_context(normalized_user, assistant_reply)
     return TITLE_SYSTEM_PROMPT, user_content
 
 
@@ -401,6 +447,7 @@ def instrument_title_parse(
     assistant_reply: str = "",
 ) -> TitleParseInstrumentation:
     """Run existing title finalize pipeline and capture diagnostic metadata."""
+    user_prompt = normalize_title_user_prompt(user_prompt)
     raw_s = (raw or "").strip()
     had_think = bool(
         _THINK_INTERIOR_RE.search(raw_s)
@@ -728,16 +775,82 @@ def _title_from_markdown_heading(text: str) -> str:
     return ""
 
 
+def _is_web_meta_prompt(user_prompt: str) -> bool:
+    return bool(_WEB_META_PROMPT_RE.search(user_prompt or ""))
+
+
+def _title_looks_like_answer_snippet(title: str) -> bool:
+    words = {w.lower() for w in _TITLE_WORD_RE.findall(title or "")}
+    return bool(words & _ASSISTANT_ANSWER_VERBS)
+
+
+def _core_topic_from_question(user_prompt: str) -> str:
+    """Extract a sidebar topic from wh-questions after web/meta prefixes are stripped."""
+    text = (user_prompt or "").strip().rstrip("?").strip()
+    if not text:
+        return ""
+
+    labeled = _title_from_proper_phrases(text)
+    if labeled:
+        return labeled
+
+    event_match = _QUESTION_EVENT_OF_RE.search(text)
+    if event_match:
+        clause = event_match.group(1).strip().strip(".,!?;:\"'")
+        clause = re.sub(r"\b(?:this|that)\s+year\b", "", clause, flags=re.IGNORECASE).strip()
+        labeled = _title_from_proper_phrases(clause)
+        if labeled:
+            return labeled
+        topic_words = _topic_words_from_text(clause, max_words=4)
+        if len(topic_words) >= 2:
+            return " ".join(topic_words)
+
+    wh_stripped = _WH_LEAD_RE.sub("", text).strip()
+    if wh_stripped and wh_stripped != text:
+        labeled = _title_from_proper_phrases(wh_stripped)
+        if labeled:
+            return labeled
+
+    return ""
+
+
+def _title_has_web_meta_framing(title: str) -> bool:
+    """Reject fallback titles that echo web-search request phrasing."""
+    words = [w.lower() for w in _TITLE_WORD_RE.findall(title or "")]
+    if len(words) < 2:
+        return False
+    if words[0] in {"look", "search", "check", "find"} and words[1] in {
+        "online",
+        "the",
+        "web",
+        "internet",
+        "on",
+    }:
+        return True
+    if words[0] in {"search", "web", "internet", "online"}:
+        return True
+    return False
+
+
 def _title_is_instruction_like(title: str) -> bool:
+    """Reject essay/format-assignment titles, not bare years or numbered standards."""
     words = [w.lower() for w in _TITLE_WORD_RE.findall(title or "")]
     instruction_count = sum(1 for word in words if word in _TITLE_INSTRUCTION_WORDS)
     if instruction_count >= 2:
         return True
-    if re.search(r"\b\d{3,}\b", title or ""):
-        return True
     if re.search(r"\b\d+\s*(?:words?|pages?|paragraphs?)\b", title or "", re.IGNORECASE):
         return True
-    if instruction_count >= 1 and re.search(r"\d", title or ""):
+    if re.search(
+        r"\b(?:least|minimum|maximum|approximately|roughly)\s+\d",
+        title or "",
+        re.IGNORECASE,
+    ):
+        return True
+    if instruction_count >= 1 and re.search(
+        r"\b\d{3,}\s*(?:words?|pages?|paragraphs?)\b",
+        title or "",
+        re.IGNORECASE,
+    ):
         return True
     return False
 
@@ -764,6 +877,8 @@ def _prepare_title_candidate(
         assistant_reply=assistant_reply,
     ):
         return ""
+    if _title_has_web_meta_framing(polished):
+        return ""
     return polished
 
 
@@ -781,6 +896,20 @@ def _score_title_candidate(
 
     debate_prompt = _is_debate_style_prompt(user_prompt)
     quoted_topic = _quoted_topic_from_user_prompt(user_prompt)
+    web_meta_prompt = _is_web_meta_prompt(user_prompt)
+
+    if web_meta_prompt:
+        if source == "user_topic":
+            score -= 18.0
+        elif source in {"subject_clause", "subject_clause_snippet", "user_explain_phrase"}:
+            score += 8.0
+        elif source == "question_core_topic":
+            score += 6.0
+        if source == "assistant_topic" and _title_looks_like_answer_snippet(title):
+            score -= 16.0
+
+    if _title_has_web_meta_framing(title):
+        score -= 20.0
 
     if task_wrapper:
         if source.startswith("assistant") or source == "assistant_heading":
@@ -809,15 +938,15 @@ def _score_title_candidate(
     elif word_count > 6:
         score -= 3.0
 
+    instruction_in_title = sum(1 for word in words if word in _TITLE_INSTRUCTION_WORDS)
     for word in words:
         if word in _TITLE_INSTRUCTION_WORDS:
             score -= 10.0
 
-    if re.search(r"\d", title):
-        if re.search(r"\b\d{3,}\b", title):
-            score -= 15.0
-        else:
-            score -= 4.0
+    if instruction_in_title >= 1 and re.search(r"\d", title or ""):
+        score -= 8.0
+    elif re.search(r"\b\d+\s*(?:words?|pages?|paragraphs?)\b", title or "", re.IGNORECASE):
+        score -= 12.0
 
     assistant_words = {
         w.lower()
@@ -885,6 +1014,10 @@ def _collect_title_candidates(
     explain_phrase = _user_topic_phrase_from_prompt(user_prompt)
     if explain_phrase:
         add(explain_phrase, "user_explain_phrase")
+
+    question_core = _core_topic_from_question(user_prompt)
+    if question_core:
+        add(question_core, "question_core_topic")
 
     heading = _title_from_markdown_heading(assistant_reply)
     if heading:
@@ -1039,6 +1172,7 @@ def _finalize_title_text(
     assistant_reply: str = "",
 ) -> tuple[str, TitleSelectionDetail]:
     """Single-line title: validated model output first, heuristic tournament fallback."""
+    user_prompt = normalize_title_user_prompt(user_prompt)
     raw_s = (raw or "").strip()
     if not raw_s:
         return _fallback_title_from_exchange(

@@ -142,6 +142,14 @@ QToolTip {
     font-size: 10px;
 }
 
+.AgentMessageTelemetryLabel {
+    color: #64748b;
+    font-size: 9px;
+    background: transparent;
+    border: none;
+    padding: 0px 4px;
+}
+
 #SettingsFormContainer QLabel {
     color: #475569; /* Slate 600 - Muted but readable */
     font-size: 13px;
@@ -792,7 +800,7 @@ QLabel#AgentMessage {
     color: #1e293b !important;
 }
 
-#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn {
+#HistoryOptionsBtn, #LibraryOptionsBtn, #AgentMessageCopyBtn, #AgentMessageSourcesBtn {
     background: transparent;
     border: none;
     padding: 0px;
@@ -800,7 +808,7 @@ QLabel#AgentMessage {
     min-height: 0px;
 }
 
-#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover {
+#HistoryOptionsBtn:hover, #LibraryOptionsBtn:hover, #AgentMessageCopyBtn:hover, #AgentMessageSourcesBtn:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
 }

@@ -28,6 +28,7 @@ from core.qwen3_sidecar_inference import (
 from core.sidecar_prompts import (
     build_title_task_parts,
     instrument_title_parse,
+    normalize_title_user_prompt,
     task_inference_params,
 )
 from core.sidecar_types import SidecarTask
@@ -262,6 +263,7 @@ def run_title_generation(
     evaluation_mode: bool | None = None,
 ) -> TitleExperimentRun:
     """Full instrumented title run: generate then existing parse/fallback pipeline."""
+    user_prompt = normalize_title_user_prompt(user_prompt)
     prof = profile if isinstance(profile, TitleInferenceProfile) else get_title_profile(profile)
     ctx = normalize_title_context_mode(context_mode)
     eval_mode = is_title_evaluation_mode() if evaluation_mode is None else evaluation_mode
