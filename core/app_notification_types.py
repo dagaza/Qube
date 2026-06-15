@@ -12,6 +12,8 @@ class AppNotificationRequest:
     action_label: str | None = None
     action_id: str | None = None
     auto_dismiss_ms: int = 0
+    show_countdown: bool = False
+    icon_name: str | None = None
     severity: str = "info"
     category: str = "system"
     event_id: str = ""

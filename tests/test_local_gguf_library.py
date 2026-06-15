@@ -22,3 +22,13 @@ def test_list_local_gguf_menu_entries_returns_primary_models(tmp_path, monkeypat
     assert len(entries) == 1
     _label, path = entries[0]
     assert path == str((models_dir / "demo-model-q4_k_m.gguf").resolve())
+
+
+def test_has_local_gguf_models(tmp_path, monkeypatch):
+    monkeypatch.setattr("core.local_gguf_library.get_llm_models_dir", lambda: str(tmp_path))
+    from core.local_gguf_library import has_local_gguf_models
+
+    assert has_local_gguf_models() is False
+
+    (tmp_path / "demo.gguf").write_bytes(b"gguf")
+    assert has_local_gguf_models() is True

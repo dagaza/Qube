@@ -2051,6 +2051,39 @@ class MainWindow(QMainWindow):
         """Animates the collapse of the content while keeping the handle visible."""
         self._set_tools_pane_expanded(self._is_tools_pane_collapsed(), animate=True)
 
+    def _open_model_manager_page(self) -> None:
+        self._restore_workspace_from_tray()
+        if hasattr(self, "nav_models"):
+            self.nav_models.setChecked(True)
+            self._route_view(4, self.nav_models)
+
+    def _open_local_model_picker_from_toolbar(self) -> None:
+        """Expand the tools pane and open the toolbar Select AI Model menu."""
+        self._restore_workspace_from_tray()
+        if get_engine_mode() != "internal" or not list_local_gguf_menu_entries():
+            self._open_model_manager_page()
+            return
+
+        need_expand = self._is_tools_pane_collapsed()
+        if need_expand:
+            self._set_tools_pane_expanded(True, animate=True)
+
+        def _popup_menu() -> None:
+            btn = getattr(self, "toolbar_native_model_selector", None)
+            if btn is None or not btn.isEnabled():
+                self._open_model_manager_page()
+                return
+            if btn.menu() is None:
+                self.refresh_toolbar_native_model_dropdown()
+            menu = btn.menu()
+            if menu is None or menu.isEmpty():
+                self._open_model_manager_page()
+                return
+            btn.setFocus(Qt.FocusReason.OtherFocusReason)
+            btn.showMenu()
+
+        QTimer.singleShot(380 if need_expand else 0, _popup_menu)
+
     def _refresh_toolbar_native_model_from_settings_signal(self, mode: str) -> None:
         """Uses the value from Settings' Inference engine menu (authoritative for this UI tick)."""
         self.refresh_toolbar_native_model_dropdown(mode)
@@ -3123,10 +3156,9 @@ class MainWindow(QMainWindow):
                 self.nav_settings.setChecked(True)
                 self._route_view(5, self.nav_settings)
         elif action_id == "open_models":
-            self._restore_workspace_from_tray()
-            if hasattr(self, "nav_models"):
-                self.nav_models.setChecked(True)
-                self._route_view(4, self.nav_models)
+            self._open_model_manager_page()
+        elif action_id == "open_local_model_picker":
+            self._open_local_model_picker_from_toolbar()
         elif action_id == "open_library":
             self._restore_workspace_from_tray()
             if hasattr(self, "nav_library"):

@@ -23,3 +23,8 @@ def list_local_gguf_menu_entries() -> list[tuple[str, str]]:
         label = format_local_gguf_display(resolved, models_dir=root).menu_label
         entries.append((label, resolved))
     return entries
+
+
+def has_local_gguf_models() -> bool:
+    """True when at least one primary .gguf exists in the configured LLM models folder."""
+    return bool(list_local_gguf_menu_entries())

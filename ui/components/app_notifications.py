@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QProgressBar,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -60,6 +61,19 @@ class AppNotificationToast(QFrame):
         self._body.setWordWrap(True)
         outer.addWidget(self._body)
 
+        self._countdown_bar: QProgressBar | None = None
+        self._countdown_timer: QTimer | None = None
+        self._countdown_started_ms = 0
+        self._countdown_total_ms = 0
+        if request.show_countdown and request.auto_dismiss_ms > 0:
+            self._countdown_bar = QProgressBar()
+            self._countdown_bar.setObjectName("AppNotificationCountdown")
+            self._countdown_bar.setTextVisible(False)
+            self._countdown_bar.setFixedHeight(3)
+            self._countdown_bar.setRange(0, 1000)
+            self._countdown_bar.setValue(1000)
+            outer.addWidget(self._countdown_bar)
+
         self._action_btn: QPushButton | None = None
         if request.action_label and request.action_id:
             action_row = QHBoxLayout()
@@ -84,11 +98,49 @@ class AppNotificationToast(QFrame):
         self._auto_timer.timeout.connect(self._emit_dismissed)
         if request.auto_dismiss_ms > 0:
             self._auto_timer.start(request.auto_dismiss_ms)
+            if self._countdown_bar is not None:
+                self._countdown_total_ms = request.auto_dismiss_ms
+                self._countdown_started_ms = 0
+                self._countdown_timer = QTimer(self)
+                self._countdown_timer.setInterval(50)
+                self._countdown_timer.timeout.connect(self._tick_countdown)
+                self._countdown_timer.start()
 
         self.apply_theme(True)
 
+    def restart_auto_dismiss(self, request: AppNotificationRequest) -> None:
+        """Reset auto-dismiss and countdown when deduping the same toast."""
+        self._request = request
+        self._title.setText(request.title)
+        self._body.setText(request.body)
+        if request.auto_dismiss_ms > 0:
+            self._auto_timer.start(request.auto_dismiss_ms)
+            if self._countdown_bar is not None and request.show_countdown:
+                self._countdown_total_ms = request.auto_dismiss_ms
+                self._countdown_started_ms = 0
+                self._countdown_bar.setValue(1000)
+                if self._countdown_timer is None:
+                    self._countdown_timer = QTimer(self)
+                    self._countdown_timer.setInterval(50)
+                    self._countdown_timer.timeout.connect(self._tick_countdown)
+                if not self._countdown_timer.isActive():
+                    self._countdown_timer.start()
+        self.apply_theme(getattr(self, "_is_dark", True))
+
+    def _tick_countdown(self) -> None:
+        if self._countdown_bar is None or self._countdown_total_ms <= 0:
+            return
+        self._countdown_started_ms += 50
+        remaining = max(0, self._countdown_total_ms - self._countdown_started_ms)
+        value = int(1000 * remaining / self._countdown_total_ms)
+        self._countdown_bar.setValue(value)
+        if remaining <= 0 and self._countdown_timer is not None:
+            self._countdown_timer.stop()
+
     def _emit_dismissed(self) -> None:
         self._auto_timer.stop()
+        if self._countdown_timer is not None:
+            self._countdown_timer.stop()
         self.dismissed.emit(self)
 
     def _on_action(self) -> None:
@@ -136,11 +188,28 @@ class AppNotificationToast(QFrame):
         return super().eventFilter(watched, event)
 
     def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
         accent = "#89b4fa" if is_dark else "#2563eb"
         bg = "#1e1e2e" if is_dark else "#ffffff"
         fg = "#cdd6f4" if is_dark else "#1e293b"
         sub = "#a6adc8" if is_dark else "#64748b"
         border = "rgba(137, 180, 250, 0.45)" if is_dark else "#cbd5e1"
+        icon_name = self._request.icon_name or "fa5s.bell"
+        countdown_chunk = ""
+        if self._countdown_bar is not None:
+            track = "rgba(148, 163, 184, 0.25)" if is_dark else "rgba(148, 163, 184, 0.35)"
+            fill = "#34d399" if is_dark else "#10b981"
+            countdown_chunk = f"""
+            QProgressBar#AppNotificationCountdown {{
+                background-color: {track};
+                border: none;
+                border-radius: 2px;
+            }}
+            QProgressBar#AppNotificationCountdown::chunk {{
+                background-color: {fill};
+                border-radius: 2px;
+            }}
+            """
         self.setStyleSheet(
             f"""
             QFrame#AppNotificationToast {{
@@ -167,9 +236,10 @@ class AppNotificationToast(QFrame):
             QPushButton#AppNotificationClose:hover {{
                 color: {fg};
             }}
+            {countdown_chunk}
             """
         )
-        self._icon.setPixmap(qta.icon("fa5s.bell", color=accent).pixmap(16, 16))
+        self._icon.setPixmap(qta.icon(icon_name, color=accent).pixmap(16, 16))
         self._close_btn.setIcon(qta.icon("fa5s.times", color=sub))
         self._close_btn.setIconSize(self._close_btn.size())
 
@@ -255,11 +325,7 @@ class AppNotificationCenter(QWidget):
         if request.dedupe_key:
             existing = self._toast_by_dedupe.get(request.dedupe_key)
             if existing is not None and existing in self._toasts:
-                existing._request = request
-                existing._title.setText(request.title)
-                existing._body.setText(request.body)
-                if request.auto_dismiss_ms > 0:
-                    existing._auto_timer.start(request.auto_dismiss_ms)
+                existing.restart_auto_dismiss(request)
                 self.relayout()
                 self.show()
                 self.raise_()

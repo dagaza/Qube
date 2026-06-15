@@ -55,6 +55,8 @@ class NotificationEvent:
     tray_bump: bool = False
     timestamp: float = field(default_factory=time.time)
     show_preview: bool = False
+    show_countdown: bool = False
+    icon_name: str | None = None
 
     def to_app_request(self) -> AppNotificationRequest:
         return AppNotificationRequest(
@@ -63,6 +65,8 @@ class NotificationEvent:
             action_label=self.action_label,
             action_id=self.action_id,
             auto_dismiss_ms=self.auto_dismiss_ms,
+            show_countdown=self.show_countdown,
+            icon_name=self.icon_name,
             severity=self.severity.value,
             category=self.category,
             event_id=self.event_id,
@@ -144,6 +148,25 @@ def mic_error_event(*, detail: str = "") -> NotificationEvent:
 
 
 def needs_model_event() -> NotificationEvent:
+    from core.app_settings import get_engine_mode
+    from core.local_gguf_library import has_local_gguf_models
+
+    dismiss_ms = 5000
+    has_local = get_engine_mode() == "internal" and has_local_gguf_models()
+    if has_local:
+        return NotificationEvent(
+            title="Model required",
+            body="Pick a downloaded model from Select AI Model in the toolbar.",
+            severity=NotificationSeverity.CRITICAL,
+            category="system",
+            action_label="Select AI Model",
+            action_id="open_local_model_picker",
+            auto_dismiss_ms=dismiss_ms,
+            show_countdown=True,
+            icon_name="fa5s.cube",
+            dedupe_key="needs_model",
+            tray_bump=True,
+        )
     return NotificationEvent(
         title="Model required",
         body="Load a model to start chatting.",
@@ -151,10 +174,10 @@ def needs_model_event() -> NotificationEvent:
         category="system",
         action_label="Open Models",
         action_id="open_models",
-        auto_dismiss_ms=0,
+        auto_dismiss_ms=dismiss_ms,
+        show_countdown=True,
+        icon_name="fa5s.cube",
         dedupe_key="needs_model",
-        rate_limit_key="needs_model",
-        rate_limit_sec=300.0,
         tray_bump=True,
     )
 

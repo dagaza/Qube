@@ -879,6 +879,34 @@ class Qube:
     def show(self) -> None:
         self.window.show()
 
+    def _wait_worker_shutdown(
+        self,
+        worker,
+        timeout_ms: int,
+        *,
+        label: str,
+        warn_on_timeout: bool = True,
+    ) -> bool | None:
+        """Wait for a worker thread to exit.
+
+        Returns True when the worker exited, False on timeout, None if interrupted.
+        """
+        try:
+            exited = worker.wait(timeout_ms)
+        except KeyboardInterrupt:
+            logger.warning(
+                "[Shutdown] Interrupted while waiting for %s; continuing exit.",
+                label,
+            )
+            return None
+        if warn_on_timeout and not exited:
+            logger.warning(
+                "[Shutdown] %s did not exit within %ds.",
+                label,
+                timeout_ms // 1000,
+            )
+        return exited
+
     def _graceful_shutdown(self):
         """Called automatically when the application is closing."""
         logger.info("Initiating graceful shutdown...")
@@ -894,10 +922,9 @@ class Qube:
             if mmw is not None and hasattr(mmw, "isRunning") and mmw.isRunning():
                 if hasattr(mmw, "shutdown"):
                     mmw.shutdown()
-                if not mmw.wait(5000):
-                    logger.warning(
-                        "[Shutdown] Memory manager worker did not exit within 5s."
-                    )
+                self._wait_worker_shutdown(
+                    mmw, 5000, label="Memory manager worker"
+                )
 
         # 0c. Windows GPU polling (standard library thread, not QThread)
         if hasattr(self, "gpu_monitor") and self.gpu_monitor is not None:
@@ -912,43 +939,62 @@ class Qube:
         # 1. Stop transient workers (Internet & Ingestion)
         if self.active_internet_worker and self.active_internet_worker.isRunning():
             self.active_internet_worker.stop()
-            self.active_internet_worker.wait(2000) # Wait up to 2 seconds for it to close safely
-            
+            self._wait_worker_shutdown(
+                self.active_internet_worker, 2000, label="Internet worker"
+            )
+
         if hasattr(self, 'ingestion_worker') and self.ingestion_worker.isRunning():
             self.ingestion_worker.stop()
-            self.ingestion_worker.wait(2000)
+            self._wait_worker_shutdown(
+                self.ingestion_worker, 2000, label="Ingestion worker"
+            )
 
         # 2. Stop the core background loop (Enrichment/Memory)
         if hasattr(self, 'enrichment_worker') and self.enrichment_worker.isRunning():
             self.enrichment_worker.stop()
-            self.enrichment_worker.wait(2000)
+            self._wait_worker_shutdown(
+                self.enrichment_worker, 2000, label="Enrichment worker"
+            )
 
         # Phase C: stop the periodic memory self-reflection worker.
         if hasattr(self, 'memory_reflection_worker') and self.memory_reflection_worker.isRunning():
             self.memory_reflection_worker.shutdown()
-            self.memory_reflection_worker.wait(2000)
+            self._wait_worker_shutdown(
+                self.memory_reflection_worker, 2000, label="Memory reflection worker"
+            )
 
         if hasattr(self, 'memory_promotion_worker') and self.memory_promotion_worker.isRunning():
             self.memory_promotion_worker.shutdown()
-            self.memory_promotion_worker.wait(2000)
+            self._wait_worker_shutdown(
+                self.memory_promotion_worker, 2000, label="Memory promotion worker"
+            )
 
         if hasattr(self, 'memory_consolidation_worker') and self.memory_consolidation_worker.isRunning():
             self.memory_consolidation_worker.shutdown()
-            self.memory_consolidation_worker.wait(2000)
+            self._wait_worker_shutdown(
+                self.memory_consolidation_worker,
+                2000,
+                label="Memory consolidation worker",
+            )
 
         if hasattr(self, 'tts_worker'):
             # Cut any in-flight audio first, then request cooperative thread exit.
             self.tts_worker.stop_playback()
             self.tts_worker.request_graceful_stop()
-            tts_exited = self.tts_worker.wait(2000)
-            if not tts_exited:
-                logger.warning("[Shutdown] TTS worker did not exit within timeout.")
+            tts_exited = self._wait_worker_shutdown(
+                self.tts_worker, 2000, label="TTS worker"
+            )
+            if tts_exited is False:
                 # One more cooperative nudge before giving up on native handle teardown.
                 self.tts_worker.request_graceful_stop()
-                tts_exited = self.tts_worker.wait(3000)
-                if not tts_exited:
-                    logger.error("[Shutdown] TTS worker still active; skipping audio handle close to avoid crash.")
-            else:
+                tts_exited = self._wait_worker_shutdown(
+                    self.tts_worker, 3000, label="TTS worker"
+                )
+                if tts_exited is False:
+                    logger.error(
+                        "[Shutdown] TTS worker still active; skipping audio handle close to avoid crash."
+                    )
+            elif tts_exited:
                 logger.info("[Shutdown] TTS worker exited cleanly.")
             if tts_exited and hasattr(self.tts_worker, "close_audio_resources"):
                 self.tts_worker.close_audio_resources()
@@ -958,7 +1004,19 @@ class Qube:
 
         if hasattr(self, "sidecar_worker") and self.sidecar_worker.isRunning():
             self.sidecar_worker.stop_engine()
-            self.sidecar_worker.wait(2000)
+            sidecar_exited = self._wait_worker_shutdown(
+                self.sidecar_worker, 2000, label="Sidecar worker"
+            )
+            if sidecar_exited is False:
+                sidecar_exited = self._wait_worker_shutdown(
+                    self.sidecar_worker, 3000, label="Sidecar worker"
+                )
+                if sidecar_exited is False:
+                    logger.error(
+                        "[Shutdown] Sidecar worker still active after extended wait."
+                    )
+            elif sidecar_exited:
+                logger.info("[Shutdown] Sidecar worker exited cleanly.")
 
         # 3. Stop all core hardware/LLM workers
         for name, worker in self.window.workers.items():
@@ -966,15 +1024,17 @@ class Qube:
             if hasattr(worker, 'isRunning') and worker.isRunning():
                 logger.debug(f"Stopping {name} worker...")
                 if hasattr(worker, 'stop'):
-                    worker.stop() 
+                    worker.stop()
                 elif hasattr(worker, 'cancel_generation'):
-                    worker.cancel_generation() 
+                    worker.cancel_generation()
 
                 # Only ask Qt event-loop threads to quit; custom while-loop workers stop via flags.
                 if hasattr(worker, "quit") and name not in ("audio", "tts", "native_engine"):
                     worker.quit()
-                worker.wait(2000) 
-            
+                self._wait_worker_shutdown(
+                    worker, 2000, label=f"{name} worker"
+                )
+
             # 🔑 BONUS: Safely close database connections if they exist
             elif hasattr(worker, 'close'):
                 logger.debug(f"Closing {name} connection...")
@@ -991,24 +1051,30 @@ class Qube:
         if llm is not None and llm.isRunning():
             if hasattr(llm, "cancel_generation"):
                 llm.cancel_generation()
-            if not llm.wait(10_000):
-                logger.warning("[Shutdown] LLM worker still running after 10s wait.")
+            self._wait_worker_shutdown(llm, 10_000, label="LLM worker")
 
         stt = getattr(self, "stt_worker", None)
         if stt is not None and stt.isRunning():
             stt.requestInterruption()
-            if not stt.wait(10_000):
+            if self._wait_worker_shutdown(stt, 10_000, label="STT worker") is False:
                 logger.warning("[Shutdown] STT worker still running; terminating thread.")
                 stt.terminate()
-                stt.wait(3000)
+                self._wait_worker_shutdown(stt, 3000, label="STT worker")
 
         audio = getattr(self, "audio_worker", None)
         if audio is not None and audio.isRunning():
             if hasattr(audio, "stop"):
                 audio.stop()
-            if not audio.wait(8000):
-                logger.warning("[Shutdown] Audio worker still running; blocking until exit.")
-                audio.wait()
+            if self._wait_worker_shutdown(audio, 8000, label="Audio worker") is False:
+                logger.warning(
+                    "[Shutdown] Audio worker still running; blocking until exit."
+                )
+                try:
+                    audio.wait()
+                except KeyboardInterrupt:
+                    logger.warning(
+                        "[Shutdown] Interrupted while waiting for audio worker; continuing exit."
+                    )
 
 
 if __name__ == "__main__":

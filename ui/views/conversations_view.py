@@ -70,8 +70,20 @@ from core.citation_integrity import (
 from core.citation_integrity_telemetry import log_citation_integrity
 from core.app_settings import get_citation_integrity_ui_linkify
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
-from core.composer_attachments import format_token, parse_attachments, validate_file_token
-from core.composer_skills import format_skill_token, parse_composer_input
+from core.composer_attachments import validate_file_token
+from core.composer_draft import (
+    ComposerDraft,
+    ROUTING_REJECT_ONE_SOURCE,
+    add_routing_attachment,
+    add_skill,
+    composer_one_source_limit_request,
+    draft_from_text,
+    merge_drafts,
+    remove_routing_at,
+    remove_skill_at,
+    serialize_draft,
+)
+from core.composer_skills import parse_composer_input, strip_all_composer_tokens_for_display
 from core.composer_commands import execute_composer_command
 from core.composer_mention_trigger import (
     escape_strip_index,
@@ -112,6 +124,7 @@ from ui.components.stream_markdown_split import (
     split_stream_markdown_buffer,
 )
 from ui.components.composer_mention_popup import ComposerMentionPopup
+from ui.components.composer_context_chips import ComposerContextChipStrip
 from ui.components.hidden_feature_discovery import present_composer_at_mention_discovery
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 
@@ -927,6 +940,52 @@ class AgentMessageLabel(QTextBrowser):
         return self.plain_text_for_clipboard()
 
 
+class AgentMessageContainer(QFrame):
+    """Assistant turn body: markdown bubble + per-message actions share one width."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._agent: AgentMessageLabel | None = None
+        self._actions_bar: QWidget | None = None
+
+    def attach_agent(self, agent: AgentMessageLabel) -> None:
+        self._agent = agent
+        self._layout.addWidget(agent, 0)
+        agent.installEventFilter(self)
+
+    def attach_actions_bar(self, actions_bar: QWidget) -> None:
+        self._actions_bar = actions_bar
+        actions_bar.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Fixed,
+        )
+        self._layout.addWidget(actions_bar, 0)
+        self._sync_actions_bar_width()
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self._agent and event.type() == QEvent.Type.Resize:
+            self._sync_actions_bar_width()
+        return super().eventFilter(obj, event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_actions_bar_width()
+
+    def _sync_actions_bar_width(self) -> None:
+        agent = self._agent
+        bar = self._actions_bar
+        if agent is None or bar is None:
+            return
+        w = max(1, agent.width())
+        if bar.width() != w:
+            bar.setFixedWidth(w)
+
+
 class MessageWrapper(QWidget):
     """An autonomous layout row that takes full width and safely manages bubble expansion."""
     def __init__(self, bubble: QWidget, is_user: bool, parent=None):
@@ -1220,29 +1279,18 @@ class ChatComposerEdit(QPlainTextEdit):
                 popup.seed_type_buffer(query)
 
     def _insert_mention_token(self, attachment) -> None:
-        if attachment.kind == "file" and not validate_file_token(attachment.id):
-            return
-        token = format_token(attachment)
-        cursor = self.textCursor()
-        text = self.toPlainText()
-        if self._mention_start_pos >= 0:
-            start = self._mention_start_pos
-            end = min(cursor.position(), len(text))
-            while end < len(text) and text[end] not in (" ", "\n"):
-                end += 1
-            cursor.setPosition(start)
-            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
-            cursor.removeSelectedText()
-        cursor.insertText(token + " ")
-        self.setTextCursor(cursor)
-        self._mention_session_active = False
-        self._mention_start_pos = -1
-        self._disarm_mention_trigger()
-        if self._mention_popup:
-            self._mention_popup.hide()
+        host = self._mention_host
+        if host is not None and hasattr(host, "add_composer_attachment"):
+            host.add_composer_attachment(attachment)
+        self._clear_mention_trigger_after_pick()
 
     def _insert_skill_token(self, mention) -> None:
-        token = format_skill_token(mention.id)
+        host = self._mention_host
+        if host is not None and hasattr(host, "add_composer_skill"):
+            host.add_composer_skill(mention)
+        self._clear_mention_trigger_after_pick()
+
+    def _clear_mention_trigger_after_pick(self) -> None:
         cursor = self.textCursor()
         text = self.toPlainText()
         if self._mention_start_pos >= 0:
@@ -1253,13 +1301,25 @@ class ChatComposerEdit(QPlainTextEdit):
             cursor.setPosition(start)
             cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
             cursor.removeSelectedText()
-        cursor.insertText(token + " ")
-        self.setTextCursor(cursor)
+            self.setTextCursor(cursor)
         self._mention_session_active = False
         self._mention_start_pos = -1
         self._disarm_mention_trigger()
         if self._mention_popup:
             self._mention_popup.hide()
+        self.setFocus()
+
+    def open_mention_palette(self, global_pos=None) -> None:
+        """Open the @ composer palette (keyboard @ or attach button)."""
+        popup = self._mention_popup
+        if popup is None:
+            return
+        self._sync_mention_context()
+        self._mention_start_pos = self.textCursor().position()
+        self._mention_session_active = True
+        gpos = global_pos or self._mention_global_pos()
+        popup.show_root(gpos)
+        self._maybe_show_at_discovery(popup)
 
     def _clear_mention_trigger(self) -> None:
         cursor = self.textCursor()
@@ -1474,6 +1534,7 @@ class ConversationsView(QWidget):
 
         self._active_folder_id: str | None = None
         self._folder_controller: SidebarFolderListController | None = None
+        self._composer_draft = ComposerDraft()
 
         self._setup_ui()
         self._start_new_chat()
@@ -1578,6 +1639,7 @@ class ConversationsView(QWidget):
         if changed:
             self.transcript_layout.invalidate()
             self.transcript_container.updateGeometry()
+            self._sync_agent_actions_bar_widths()
 
     def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
         pixmap = QPixmap(svg_path)
@@ -1762,8 +1824,10 @@ class ConversationsView(QWidget):
         f = agent.font()
         f.setPointSizeF(pt)
         agent.setFont(f)
+        # Zero padding so the bubble viewport matches the per-message action row width
+        # (global QTextEdit QSS applies 8px 12px otherwise).
         agent.setStyleSheet(
-            f"font-size: {pt:.1f}pt; background: transparent; border: none;"
+            f"font-size: {pt:.1f}pt; background: transparent; border: none; padding: 0px;"
         )
 
     def _style_agent_copy_button(self, btn: QPushButton, is_dark: bool) -> None:
@@ -1920,9 +1984,21 @@ class ConversationsView(QWidget):
             self._set_agent_telemetry_metric(agent, "ttft", self._pending_ttft_ms)
             self._pending_ttft_ms = None
 
-    def _add_agent_copy_button(self, container_layout: QVBoxLayout, agent: AgentMessageLabel) -> None:
+    def _sync_agent_actions_bar_widths(self) -> None:
+        for w in self._iter_transcript_widgets():
+            if not isinstance(w, MessageWrapper) or w.is_user:
+                continue
+            container = w.bubble
+            if isinstance(container, AgentMessageContainer):
+                container._sync_actions_bar_width()
+
+    def _add_agent_copy_button(
+        self, container: AgentMessageContainer, agent: AgentMessageLabel
+    ) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        copy_row = QHBoxLayout()
+        actions_bar = QWidget()
+        actions_bar.setObjectName("AgentMessageActionsBar")
+        copy_row = QHBoxLayout(actions_bar)
         copy_row.setContentsMargins(0, 0, 0, 0)
         copy_row.setSpacing(2)
 
@@ -1961,7 +2037,7 @@ class ConversationsView(QWidget):
                 0,
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
             )
-        container_layout.addLayout(copy_row)
+        container.attach_actions_bar(actions_bar)
         self._apply_pending_stt_to_agent(agent)
         self._apply_pending_ttft_to_agent(agent)
 
@@ -2090,6 +2166,7 @@ class ConversationsView(QWidget):
                             )
         self._refresh_ancillary_transcript_labels()
         self._refresh_readability_toolbar()
+        self._sync_agent_actions_bar_widths()
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
         else:
@@ -2491,12 +2568,25 @@ class ConversationsView(QWidget):
         action_layout.addWidget(self.think_btn)
         bottom_stack_layout.addLayout(action_layout)
 
+        self.composer_chip_strip = ComposerContextChipStrip()
+        self.composer_chip_strip.routing_removed.connect(self._on_composer_routing_removed)
+        self.composer_chip_strip.skill_removed.connect(self._on_composer_skill_removed)
+        bottom_stack_layout.addWidget(self.composer_chip_strip)
+
         # 3. Input Bar Area
         input_container = QFrame()
         input_container.setObjectName("ChatInputContainer")
         input_layout = QHBoxLayout(input_container)
         input_layout.setContentsMargins(10, 5, 5, 5)
         input_layout.setSpacing(8)
+
+        self.composer_attach_btn = QPushButton()
+        self.composer_attach_btn.setObjectName("ComposerAttachButton")
+        self.composer_attach_btn.setFixedSize(32, 32)
+        self.composer_attach_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.composer_attach_btn.setToolTip(
+            "Add file, tool, skill, or conversation (@)"
+        )
 
         self.text_input = ChatComposerEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
@@ -2509,6 +2599,7 @@ class ConversationsView(QWidget):
         self.send_btn.setProperty("class", "SendButton")
         self.send_btn.setToolTip("Send message")
 
+        input_layout.addWidget(self.composer_attach_btn)
         input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
         bottom_stack_layout.addWidget(input_container)
@@ -2526,9 +2617,13 @@ class ConversationsView(QWidget):
         )
         layout.addWidget(self._composer_row_host)
 
+        self.composer_attach_btn.clicked.connect(self._open_composer_palette_from_button)
         self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.submit_requested.connect(self._handle_text_submit)
+        self.text_input.textChanged.connect(self._on_composer_body_changed)
         self.text_input.bind_mention_host(self)
+        self._style_composer_attach_button(is_dark=True)
+        self._refresh_composer_chip_strip()
 
         return frame
 
@@ -2544,6 +2639,11 @@ class ConversationsView(QWidget):
         self.current_agent_msg = None
         self._pending_ttft_ms = None
 
+        parsed = draft_from_text(text)
+        display_body = (parsed.body or "").strip()
+        if not display_body:
+            display_body = strip_all_composer_tokens_for_display(text)
+
         bubble = UserBubbleFrame()
         bubble.setObjectName("UserBubble")
         # Preferred width: short prompts shrink to content; cap still from MessageWrapper.
@@ -2552,12 +2652,25 @@ class ConversationsView(QWidget):
 
         bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setContentsMargins(16, 12, 16, 12)
+        bubble_layout.setSpacing(8)
 
-        lbl = ChatUserBubble(text)
-        lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self._style_user_bubble(bubble, lbl)
+        if parsed.routing or parsed.skills:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            chip_row = ComposerContextChipStrip(bubble)
+            chip_row.set_draft(parsed, editable=False, compact=True)
+            chip_row.apply_theme(is_dark)
+            bubble_layout.addWidget(chip_row)
 
-        bubble_layout.addWidget(lbl)
+        if display_body:
+            lbl = ChatUserBubble(display_body)
+            lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self._style_user_bubble(bubble, lbl)
+            bubble_layout.addWidget(lbl)
+        elif parsed.routing or parsed.skills:
+            bubble.setMinimumHeight(36)
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            bg = self._user_bubble_frame_bg(is_dark)
+            bubble.setStyleSheet(f"background-color: {bg}; border-radius: 18px;")
 
         wrapper = MessageWrapper(bubble, is_user=True)
         self._register_reader_focus_tracking(wrapper)
@@ -2665,6 +2778,9 @@ class ConversationsView(QWidget):
         except RuntimeError:
             return
         cur.updateGeometry()
+        parent = cur.parentWidget()
+        if isinstance(parent, AgentMessageContainer):
+            parent._sync_actions_bar_width()
         if follow_stream_tail:
             self._scroll_to_bottom()
         if self._focus_mode_enabled:
@@ -2688,14 +2804,7 @@ class ConversationsView(QWidget):
             )
             self.transcript_layout.addWidget(header)
 
-            self.agent_msg_container = QFrame()
-            self.agent_msg_container.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Preferred,
-            )
-            
-            container_layout = QVBoxLayout(self.agent_msg_container)
-            container_layout.setContentsMargins(0, 0, 0, 0)
+            self.agent_msg_container = AgentMessageContainer()
 
             self.current_agent_msg = AgentMessageLabel()
             self.current_agent_msg.setSizePolicy(
@@ -2712,12 +2821,13 @@ class ConversationsView(QWidget):
             else:
                 self._attach_pending_citation_sources(self.current_agent_msg)
 
-            container_layout.addWidget(self.current_agent_msg)
-            self._add_agent_copy_button(container_layout, self.current_agent_msg)
+            self.agent_msg_container.attach_agent(self.current_agent_msg)
+            self._add_agent_copy_button(self.agent_msg_container, self.current_agent_msg)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self._register_reader_focus_tracking(wrapper)
             self.transcript_layout.addWidget(wrapper)
+            self._sync_agent_actions_bar_widths()
             
             self._agent_text_buffer = ""
             self._is_agent_typing = True
@@ -2781,15 +2891,159 @@ class ConversationsView(QWidget):
     #  INTERACTION & LOGIC                                      #
     # --------------------------------------------------------- #
 
+    def _web_toggle_active(self) -> bool:
+        return bool(getattr(self, "web_btn", None) and self.web_btn.isChecked())
+
+    def _style_composer_attach_button(self, is_dark: bool) -> None:
+        if not hasattr(self, "composer_attach_btn"):
+            return
+        icon_color = "#a6adc8" if is_dark else "#64748b"
+        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        self.composer_attach_btn.setIcon(qta.icon("fa5s.at", color=icon_color))
+        self.composer_attach_btn.setIconSize(QSize(16, 16))
+        self.composer_attach_btn.setStyleSheet(
+            f"""
+            QPushButton#ComposerAttachButton {{
+                background: transparent;
+                border: none;
+                border-radius: 8px;
+                padding: 4px;
+            }}
+            QPushButton#ComposerAttachButton:hover {{
+                background-color: {hover_bg};
+            }}
+            QPushButton#ComposerAttachButton:disabled {{
+                opacity: 0.45;
+            }}
+            """
+        )
+
+    def _notify_composer_one_source_limit(self) -> None:
+        """Show a short in-app toast; bypasses notification policy so it appears while typing."""
+        win = self.window()
+        nc = getattr(win, "notification_center", None)
+        if nc is None:
+            return
+        nc.show_notification(composer_one_source_limit_request())
+
+    def _refresh_composer_chip_strip(self) -> None:
+        if not hasattr(self, "composer_chip_strip"):
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self.composer_chip_strip.set_draft(self._composer_draft, editable=True)
+        self.composer_chip_strip.apply_theme(is_dark)
+
+    def _reset_composer_draft(self) -> None:
+        self._composer_draft = ComposerDraft()
+        if hasattr(self, "text_input"):
+            self.text_input.blockSignals(True)
+            self.text_input.clear()
+            self.text_input.blockSignals(False)
+            if hasattr(self.text_input, "_schedule_height_sync"):
+                self.text_input._schedule_height_sync()
+        self._refresh_composer_chip_strip()
+
+    def _apply_composer_prefill(self, text: str) -> None:
+        prefill = (text or "").strip()
+        if not prefill:
+            self._reset_composer_draft()
+            return
+        lifted = draft_from_text(prefill)
+        self._composer_draft = ComposerDraft(body=lifted.body, skills=list(lifted.skills))
+        reject_reason = None
+        for att in lifted.routing:
+            updated, _added, reason = add_routing_attachment(self._composer_draft, att)
+            if reason == ROUTING_REJECT_ONE_SOURCE:
+                reject_reason = reason
+                break
+            self._composer_draft = updated
+        if reject_reason == ROUTING_REJECT_ONE_SOURCE:
+            self._notify_composer_one_source_limit()
+        if hasattr(self, "text_input"):
+            self.text_input.blockSignals(True)
+            self.text_input.setPlainText(lifted.body)
+            self.text_input.blockSignals(False)
+            if hasattr(self.text_input, "_schedule_height_sync"):
+                self.text_input._schedule_height_sync()
+        self._refresh_composer_chip_strip()
+
+    def add_composer_attachment(self, attachment) -> None:
+        if attachment.kind == "file" and not validate_file_token(attachment.id):
+            return
+        updated, _added, reject_reason = add_routing_attachment(
+            self._composer_draft,
+            attachment,
+            skip_internet_when_web_active=self._web_toggle_active(),
+        )
+        if reject_reason == ROUTING_REJECT_ONE_SOURCE:
+            self._notify_composer_one_source_limit()
+            return
+        self._composer_draft = updated
+        self._refresh_composer_chip_strip()
+        if hasattr(self, "text_input"):
+            self.text_input.setFocus()
+
+    def add_composer_skill(self, mention) -> None:
+        updated, _added = add_skill(self._composer_draft, mention)
+        self._composer_draft = updated
+        self._refresh_composer_chip_strip()
+        if hasattr(self, "text_input"):
+            self.text_input.setFocus()
+
+    def _on_composer_routing_removed(self, index: int) -> None:
+        self._composer_draft = remove_routing_at(self._composer_draft, index)
+        self._refresh_composer_chip_strip()
+
+    def _on_composer_skill_removed(self, index: int) -> None:
+        self._composer_draft = remove_skill_at(self._composer_draft, index)
+        self._refresh_composer_chip_strip()
+
+    def _on_composer_body_changed(self) -> None:
+        text = self.text_input.toPlainText()
+        if "@[" not in text:
+            self._composer_draft.body = text
+            return
+        lifted = draft_from_text(text)
+        merged, reject_reason = merge_drafts(
+            self._composer_draft,
+            lifted,
+            skip_internet_when_web_active=self._web_toggle_active(),
+        )
+        self._composer_draft = merged
+        if reject_reason == ROUTING_REJECT_ONE_SOURCE:
+            self._notify_composer_one_source_limit()
+        clean = lifted.body
+        if clean != text:
+            self.text_input.blockSignals(True)
+            self.text_input.setPlainText(clean)
+            cursor = self.text_input.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.text_input.setTextCursor(cursor)
+            self.text_input.blockSignals(False)
+            if hasattr(self.text_input, "_schedule_height_sync"):
+                self.text_input._schedule_height_sync()
+        self._composer_draft.body = clean
+        self._refresh_composer_chip_strip()
+
+    def _open_composer_palette_from_button(self) -> None:
+        if not hasattr(self, "text_input"):
+            return
+        pos = self.composer_attach_btn.mapToGlobal(
+            self.composer_attach_btn.rect().bottomLeft()
+        )
+        self.text_input.open_mention_palette(pos)
+        self.text_input.setFocus()
+
     def _handle_text_submit(self):
         if self._is_stop_mode():
             self._request_stop()
             return
-        raw = self.text_input.toPlainText().strip()
-        if not raw:
+        self._composer_draft.body = self.text_input.toPlainText()
+        if self._composer_draft.is_empty():
             return
+        raw = serialize_draft(self._composer_draft)
         clean, attachments, enforced_skills = parse_composer_input(raw)
-        self.text_input.clear()
+        self._reset_composer_draft()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
         self._tts_playing = False
@@ -3078,6 +3332,7 @@ class ConversationsView(QWidget):
             "New Conversation", folder_id=folder_id
         )
         self._reset_web_toggle()
+        self._reset_composer_draft()
         self._notify_llm_active_session_changed()
         self._clear_transcript()
 
@@ -3096,15 +3351,14 @@ class ConversationsView(QWidget):
         self._start_new_chat()
         if not hasattr(self, "text_input"):
             return
-        self.text_input.setPlainText((text or "").strip())
-        if hasattr(self.text_input, "_schedule_height_sync"):
-            self.text_input._schedule_height_sync()
+        self._apply_composer_prefill(text)
         self.text_input.setFocus()
 
     def _load_selected_chat(self, item):
         from PyQt6.QtCore import Qt
         session_id = item.data(Qt.ItemDataRole.UserRole)
         self.active_session_id = session_id
+        self._reset_composer_draft()
         self._notify_llm_active_session_changed()
         if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
             self.text_input._sync_mention_context()
@@ -3269,6 +3523,9 @@ class ConversationsView(QWidget):
     def refresh_button_themes(self, is_dark: bool):
         if hasattr(self, "text_input") and hasattr(self.text_input, "apply_mention_theme"):
             self.text_input.apply_mention_theme(is_dark)
+        if hasattr(self, "composer_chip_strip"):
+            self.composer_chip_strip.apply_theme(is_dark)
+        self._style_composer_attach_button(is_dark)
         """Dynamically updates the colors of the New Chat and Send buttons."""
         import qtawesome as qta
         
@@ -3544,6 +3801,8 @@ class ConversationsView(QWidget):
         """Locks the text input bar and resets its placeholder."""
         if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
             self.text_input.setEnabled(enabled)
+            if hasattr(self, "composer_attach_btn"):
+                self.composer_attach_btn.setEnabled(enabled)
             # Keep stop clickable while text input is disabled.
             self.send_btn.setEnabled(True)
             
@@ -3591,6 +3850,8 @@ class ConversationsView(QWidget):
         self._voice_capture_active = True
         if hasattr(self, "text_input") and hasattr(self, "send_btn"):
             self.text_input.setEnabled(False)
+            if hasattr(self, "composer_attach_btn"):
+                self.composer_attach_btn.setEnabled(False)
             self.text_input.setPlaceholderText("Listening...")
             self.send_btn.setEnabled(True)
         self._refresh_send_stop_button()

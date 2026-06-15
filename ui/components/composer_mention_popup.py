@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -29,9 +30,54 @@ _ROOT_ROWS = (
     ("command", "Commands", "App actions and guidance", "fa5s.terminal"),
 )
 
+_ROOT_ROW_TOOLTIPS: dict[str, str] = {
+    "file": "Attach an indexed library document. Inserts @[file:filename] and scopes search to that file.",
+    "conversation": "Attach another chat's transcript. Inserts @[chat:session-id::Title] for this turn only.",
+    "tool": "Choose a routing tool (Internet, Library, or Memory). Inserts @[tool:…] to control how Qube searches.",
+    "skill": "Add a reasoning-framework skill. Inserts @[skill:…] as prompt guidance (not routing).",
+    "command": "Run an app action immediately. Commands are not sent to the model.",
+}
+
+_FILTER_TOOLTIPS: dict[str, str] = {
+    "file": "Search indexed library documents by filename. Backspace returns to categories when empty.",
+    "conversation": "Search conversations by title. Backspace returns to categories when empty.",
+    "tool": "Filter tools by name or description. Backspace returns to categories when empty.",
+    "skill": "Search skills by name or description. Backspace returns to categories when empty.",
+    "command": "Filter commands by name or description. Backspace returns to categories when empty.",
+}
+
+_BACK_LINK_TOOLTIP = "Back to categories (Backspace)"
+
+_ROOT_LIST_TOOLTIP = (
+    "Type letters to jump to a category, or use arrow keys and Enter to select."
+)
+_DRILL_LIST_TOOLTIP = (
+    "Use arrow keys and Enter to select. Backspace returns to categories."
+)
+
 _ROOT_ROW_HEIGHT = 56
 _DRILL_LIST_HEIGHT = 220
 _TYPEAHEAD_RESET_MS = 900
+
+
+class _ComposerBackLink(QLabel):
+    """Compact text link — avoids global QPushButton padding/min-height."""
+
+    activated = pyqtSignal()
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("ComposerMentionBack")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.position().toPoint())
+        ):
+            self.activated.emit()
+        super().mouseReleaseEvent(event)
 
 
 def root_row_index_for_query(query: str) -> int:
@@ -74,6 +120,7 @@ class ComposerMentionPopup(QWidget):
 
         shell = QFrame(self)
         shell.setObjectName("ComposerMentionShell")
+        shell.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self._shell = shell
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -82,6 +129,16 @@ class ComposerMentionPopup(QWidget):
         layout = QVBoxLayout(shell)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
+        self._shell_layout = layout
+
+        self._back_link = _ComposerBackLink()
+        self._back_link.hide()
+        self._back_link.activated.connect(self._navigate_to_root)
+        layout.addWidget(
+            self._back_link,
+            0,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+        )
 
         self._filter = QLineEdit()
         self._filter.setObjectName("ComposerMentionFilter")
@@ -101,6 +158,12 @@ class ComposerMentionPopup(QWidget):
         self._filter.installEventFilter(self)
         self._list.installEventFilter(self)
         layout.addWidget(self._list)
+
+        self.setToolTip(_ROOT_LIST_TOOLTIP)
+        self._shell.setToolTip(_ROOT_LIST_TOOLTIP)
+        self._list.setToolTip(_ROOT_LIST_TOOLTIP)
+        self._filter.setToolTip("")
+        self._back_link.setToolTip(_BACK_LINK_TOOLTIP)
 
         self._search_debounce_ms = 280
         self._anchor_global_pos: QPoint | None = None
@@ -140,12 +203,32 @@ class ComposerMentionPopup(QWidget):
         self._list.setPalette(palette)
 
         chevron = "#94a3b8" if is_dark else "#64748b"
-        ss = f"""
+        self._back_link.setText("")
+        self._back_link.setPixmap(qta.icon("fa5s.chevron-left", color=chevron).pixmap(12, 12))
+        self._back_link.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._back_link.setFixedHeight(16)
+        back_ss = f"""
+            QLabel#ComposerMentionBack {{
+                color: {fg};
+                background: transparent;
+                border: none;
+                padding: 2px 0px;
+                margin: 0px;
+            }}
+            QLabel#ComposerMentionBack:hover {{
+                color: {chevron};
+            }}
+        """
+        shell_ss = f"""
             QFrame#ComposerMentionShell {{
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 12px;
             }}
+        """
+        filter_ss = f"""
             QLineEdit#ComposerMentionFilter {{
                 background-color: {hover};
                 color: {fg};
@@ -153,6 +236,8 @@ class ComposerMentionPopup(QWidget):
                 border-radius: 8px;
                 padding: 6px 10px;
             }}
+        """
+        list_ss = f"""
             QListWidget#ComposerMentionList {{
                 background-color: transparent;
                 color: {fg};
@@ -167,15 +252,21 @@ class ComposerMentionPopup(QWidget):
                 background-color: {hover};
             }}
         """
-        self._shell.setStyleSheet(ss)
-        self._filter.setStyleSheet(ss)
-        self._list.setStyleSheet(ss)
+        self._shell.setStyleSheet(shell_ss)
+        self._back_link.setStyleSheet(back_ss)
+        self._filter.setStyleSheet(filter_ss)
+        self._list.setStyleSheet(list_ss)
         self._rebuild_visible_list()
+
+    def _set_drill_chrome_visible(self, visible: bool) -> None:
+        self._back_link.setVisible(visible)
+        self._filter.setVisible(visible)
+        self._shell_layout.setSpacing(4 if visible else 6)
 
     def close_mention(self) -> None:
         """Hide popup and reset drill-down state (e.g. user deleted ``@``)."""
         self._mode = None
-        self._filter.hide()
+        self._set_drill_chrome_visible(False)
         self._filter.clear()
         self._clear_type_buffer()
         self.hide()
@@ -218,10 +309,11 @@ class ComposerMentionPopup(QWidget):
     def show_root(self, global_pos) -> None:
         self._anchor_global_pos = QPoint(global_pos)
         self._mode = None
-        self._filter.hide()
+        self._set_drill_chrome_visible(False)
         self._filter.clear()
         self._clear_type_buffer()
         self._rebuild_visible_list()
+        self._sync_panel_tooltips()
         self._select_first_actionable_row()
         self._position_at(self._anchor_global_pos)
         self.show()
@@ -241,7 +333,7 @@ class ComposerMentionPopup(QWidget):
         if global_pos is not None:
             self._anchor_global_pos = QPoint(global_pos)
         self._mode = kind
-        self._filter.show()
+        self._set_drill_chrome_visible(True)
         self._filter.setText(query)
         placeholders = {
             "file": "Search documents…",
@@ -251,8 +343,10 @@ class ComposerMentionPopup(QWidget):
             "command": "Filter commands…",
         }
         self._filter.setPlaceholderText(placeholders.get(kind, "Filter…"))
+        self._filter.setToolTip(_FILTER_TOOLTIPS.get(kind, "Filter this list."))
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
         self._rebuild_visible_list()
+        self._sync_panel_tooltips()
         self._select_first_actionable_row()
         anchor = self._anchor_global_pos or QPoint(global_pos)
         self._position_at(anchor)
@@ -307,6 +401,10 @@ class ComposerMentionPopup(QWidget):
         if global_pos is not None:
             self._anchor_global_pos = QPoint(global_pos)
         anchor = self._anchor_global_pos or QPoint(0, 0)
+        self.setMinimumHeight(0)
+        self.setMaximumHeight(16777215)
+        self._shell.setMinimumHeight(0)
+        self._shell.setMaximumHeight(16777215)
         self.adjustSize()
         w = max(280, self.sizeHint().width())
         bounds = self._host_window_rect()
@@ -314,9 +412,30 @@ class ComposerMentionPopup(QWidget):
             w = min(w, max(200, bounds.width() - 2 * self._window_margin))
         self.setFixedWidth(w)
         self.adjustSize()
-        h = self.height()
+        h = self.sizeHint().height()
         pt = self._clamp_to_window(anchor, w, h)
         self.move(pt)
+        self.resize(w, h)
+
+    def _sync_panel_tooltips(self) -> None:
+        if self._mode is None:
+            panel_tip = _ROOT_LIST_TOOLTIP
+        else:
+            panel_tip = _DRILL_LIST_TOOLTIP
+        self.setToolTip(panel_tip)
+        self._shell.setToolTip(panel_tip)
+        self._list.setToolTip(panel_tip)
+
+    def _apply_row_tooltip(self, row: QListWidgetItem, text: str) -> None:
+        if not text:
+            return
+        row.setToolTip(text)
+        widget = self._list.itemWidget(row)
+        if widget is None:
+            return
+        widget.setToolTip(text)
+        for child in widget.findChildren(QWidget):
+            child.setToolTip(text)
 
     def _schedule_search(self) -> None:
         if self._mode:
@@ -346,6 +465,7 @@ class ComposerMentionPopup(QWidget):
         for kind, title, subtitle, icon_name in _ROOT_ROWS:
             row = QListWidgetItem()
             row.setData(Qt.ItemDataRole.UserRole, ("root", kind))
+            tip = _ROOT_ROW_TOOLTIPS.get(kind, subtitle)
             widget = QWidget()
             widget.setMinimumHeight(_ROOT_ROW_HEIGHT - 8)
             hl = QHBoxLayout(widget)
@@ -375,6 +495,7 @@ class ComposerMentionPopup(QWidget):
             row.setSizeHint(QSize(list_w, row_h))
             self._list.addItem(row)
             self._list.setItemWidget(row, widget)
+            self._apply_row_tooltip(row, tip)
         # Shrink list to fit three category rows (avoids huge empty area + clipping).
         n = max(1, self._list.count())
         self._list.setFixedHeight(n * _ROOT_ROW_HEIGHT + max(0, (n - 1) * self._list.spacing()) + 6)
@@ -409,6 +530,9 @@ class ComposerMentionPopup(QWidget):
             row.setData(
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="file", id=filename, label=filename),
+            )
+            row.setToolTip(
+                f"Attach {filename}. Search will be scoped to this document."
             )
             self._list.addItem(row)
             shown += 1
@@ -446,6 +570,9 @@ class ComposerMentionPopup(QWidget):
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="conversation", id=sid, label=title),
             )
+            row.setToolTip(
+                f'Attach "{title}". Includes that chat\'s transcript in this turn (~7000 chars).'
+            )
             self._list.addItem(row)
             shown += 1
         if shown == 0:
@@ -464,6 +591,9 @@ class ComposerMentionPopup(QWidget):
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="tool", id=tool["id"], label=label),
             )
+            row.setToolTip(
+                f"{label}: {desc}. Inserts @[tool:{tool['id']}] to route this message."
+            )
             self._list.addItem(row)
 
     def _populate_skills(self) -> None:
@@ -477,6 +607,14 @@ class ComposerMentionPopup(QWidget):
             text = f"{mention.label} — {desc}" if desc else mention.label
             row = QListWidgetItem(text)
             row.setData(Qt.ItemDataRole.UserRole, mention)
+            if desc:
+                tip = (
+                    f"{mention.label}: {desc}. "
+                    f"Inserts @[skill:{mention.id}] as prompt guidance."
+                )
+            else:
+                tip = f"Inserts @[skill:{mention.id}] as prompt guidance."
+            row.setToolTip(tip)
             self._list.addItem(row)
         if self._list.count() == 0:
             self._add_empty_row("No matching skills")
@@ -489,6 +627,9 @@ class ComposerMentionPopup(QWidget):
             text = f"{command.label} — {command.description}"
             row = QListWidgetItem(text)
             row.setData(Qt.ItemDataRole.UserRole, command)
+            row.setToolTip(
+                f"{command.label}: {command.description}. Runs immediately when selected."
+            )
             self._list.addItem(row)
         if self._list.count() == 0:
             self._add_empty_row("No matching commands")
@@ -566,19 +707,7 @@ class ComposerMentionPopup(QWidget):
 
         if key == Qt.Key.Key_Backspace:
             if self._mode is not None:
-                if from_filter:
-                    if self._filter.text():
-                        return False
-                    self._navigate_to_root()
-                    event.accept()
-                    return True
-                parent = self.parent()
-                query = ""
-                if parent is not None and hasattr(parent, "_active_mention_query"):
-                    active = parent._active_mention_query()
-                    if active:
-                        query = active[1]
-                if query or self._filter.text():
+                if from_filter and self._filter.text():
                     return False
                 self._navigate_to_root()
                 event.accept()
@@ -671,5 +800,5 @@ class ComposerMentionPopup(QWidget):
         super().hideEvent(event)
         # Reset mode so a new ``@`` always opens the root menu, not a stale drill-down.
         self._mode = None
-        self._filter.hide()
+        self._set_drill_chrome_visible(False)
         self.dismissed.emit()
