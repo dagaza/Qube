@@ -27,6 +27,12 @@ data:
   sample_rate: 16000
   negative_features: datasets/features/librispeech_negatives.npy
   fp_validation_features: datasets/features/fp_validation.npy
+  # Source audio (commercially licensed) for M2 feature precomputation.
+  negative_source_paths:
+    - datasets/speech            # LibriSpeech (CC-BY-4.0)
+  validation_source_paths:
+    - datasets/speech            # LibriSpeech dev (CC-BY-4.0)
+    - datasets/background-noise  # MUSAN (CC-BY-4.0)
   background_paths:
     - datasets/background-noise
     - datasets/music

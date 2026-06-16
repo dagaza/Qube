@@ -6,14 +6,16 @@
 |---|---|---|
 | **M0** | License audit table (`docs/audit.md`) | Know exactly what to replace |
 | **M1** | `download_datasets.py` + `verify_licenses.py` + `LICENSES.md` + pinned env | All sources CC-BY/CC0/Apache; gate green |
-| **M2** | `precompute_features.py` (LibriSpeech negatives + FP validation `.npy`) | Trains without ACAV100M |
+| **M2** ✅ | `precompute_features.py` (LibriSpeech negatives + FP validation `.npy`) | Trains without ACAV100M |
 | **M3** | Pilot train (5k examples / 10k steps) for 3–5 phonetic variants | Pick winner per word class cheaply |
 | **M4** | Full train (50k / 50k / penalty 2500) for `hey_keube` + best single-word | Two production models |
 | **M5** | Eval report + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | Ship criteria met |
 
-> **Scaffold delivered:** M0 + M1 skeleton (this commit). M2 onward is real ML work.
+> **Delivered:** M0 + M1 scaffold + **M2 feature precompute** (validated end-to-end
+> against openWakeWord's embedding model, output shape `(N, 16, 96)`).
 
-M2 is the riskiest task. Once it works, M4 is mostly GPU time.
+M2 was the riskiest task. With it working, M4 is mostly GPU time. Next up is wiring
+`download_datasets.py` (so the feature sources actually exist) and the M4 training loop.
 
 ## Medium term
 

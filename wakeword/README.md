@@ -27,10 +27,10 @@ reproducibility, and provenance.
 configs/<phrase>.yaml
    │
    ▼
-[1] scripts/download_datasets.py     → datasets/** + per-asset *.license.json
-[2] scripts/verify_licenses.py       → FAIL-CLOSED license gate (CI-enforced)
-[3] scripts/generate_positives.py    → Piper TTS positive + adversarial clips
-[4] scripts/precompute_features.py   → embedding .npy for negatives + FP validation
+[1] scripts/download_datasets.py     → datasets/** + per-asset *.license.json   (stub)
+[2] scripts/verify_licenses.py       → FAIL-CLOSED license gate (CI-enforced)   (done)
+[3] scripts/generate_positives.py    → Piper TTS positive + adversarial clips   (stub)
+[4] scripts/precompute_features.py   → embedding .npy for negatives + FP validation  (done, M2)
 [5] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)
 [6] scripts/train.py                 → openWakeWord auto-train → checkpoint
 [7] scripts/export.py                → .onnx + .tflite @ 16 kHz
@@ -89,9 +89,13 @@ Same inputs + same params → equivalent model.
 
 ## Status
 
-Scaffold (milestones **M0 + M1**): audit table, license gate, configs, pinned env.
-The data/feature/train/eval scripts are **structured stubs** — they define the CLI,
-config contract, and provenance behaviour, and raise a clear `NotImplementedError`
-with next steps where the heavy ML work (M2+) still has to be written.
+- **M0 + M1 (done):** audit table, fail-closed license gate, configs, pinned env.
+- **M2 (done):** `precompute_features.py` generates `(N, 16, 96)` negative + FP-validation
+  features from commercially-licensed audio (LibriSpeech/MUSAN) via openWakeWord's
+  Apache-2.0 embedding model — the FOSS replacement for ACAV100M. Memory-safe
+  (shard-then-merge memmap) and provenance-stamped.
+- **M3–M5 (pending):** `download_datasets.py`, `augment.py`, `train.py`, `export.py`,
+  and `evaluate.py` remain **structured stubs** that define the CLI/config contract and
+  raise a clear `NotImplementedError` with next steps.
 
 See [`docs/roadmap.md`](docs/roadmap.md) for milestones.

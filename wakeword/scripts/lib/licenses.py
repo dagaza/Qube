@@ -8,8 +8,10 @@ See ``docs/licensing.md`` for the policy rationale.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 MANIFEST_SUFFIX = ".license.json"
@@ -129,6 +131,58 @@ def evaluate_manifest(manifest: Manifest, *, require_commercial: bool) -> tuple[
             )
 
     return errors, warnings
+
+
+def sha256_file(path: Path, *, chunk_size: int = 1 << 20) -> str:
+    """Streaming sha256 so we never load large feature files fully into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_manifest(
+    asset_path: Path,
+    *,
+    datasets_root: Path,
+    dataset: str,
+    source_url: str,
+    license_id: str,
+    commercial_use: bool,
+    attribution: str = "",
+    dataset_version: str = "",
+    notes: str = "",
+    compute_sha256: bool = True,
+) -> Path:
+    """Write a ``<asset>.license.json`` provenance sidecar next to ``asset_path``.
+
+    Used by generation stages (e.g. precompute_features) so derived artifacts carry
+    the same machine-checkable provenance as downloaded data and stay green under the
+    commercial license gate.
+    """
+    try:
+        rel_asset = str(asset_path.relative_to(datasets_root))
+    except ValueError:
+        rel_asset = asset_path.name
+
+    payload = {
+        "asset": rel_asset,
+        "dataset": dataset,
+        "dataset_version": dataset_version,
+        "source_url": source_url,
+        "license": license_id,
+        "commercial_use": commercial_use,
+        "attribution": attribution,
+        "retrieved": date.today().isoformat(),
+        "notes": notes,
+    }
+    if compute_sha256 and asset_path.is_file():
+        payload["sha256"] = sha256_file(asset_path)
+
+    manifest_path = asset_path.with_name(asset_path.name + MANIFEST_SUFFIX)
+    manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return manifest_path
 
 
 def run_gate(datasets_root: Path, *, require_commercial: bool) -> GateResult:
