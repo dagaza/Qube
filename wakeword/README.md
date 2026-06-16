@@ -27,7 +27,7 @@ reproducibility, and provenance.
 configs/<phrase>.yaml
    │
    ▼
-[1] scripts/download_datasets.py     → datasets/** + per-asset *.license.json   (stub)
+[1] scripts/download_datasets.py     → datasets/** + dataset *.license.json + lock (done, M1)
 [2] scripts/verify_licenses.py       → FAIL-CLOSED license gate (CI-enforced)   (done)
 [3] scripts/generate_positives.py    → Piper TTS positive + adversarial clips   (stub)
 [4] scripts/precompute_features.py   → embedding .npy for negatives + FP validation  (done, M2)
@@ -47,8 +47,10 @@ models/<phrase>/<version>/<phrase>.onnx  (+ model_card.json)
 python -m venv .venv && . .venv/Scripts/activate      # Windows
 pip install -r environment/requirements-training.txt
 
-# 2. Fetch datasets (writes a *.license.json next to every asset)
-python scripts/download_datasets.py --config configs/hey_qube.yaml
+# 2. Fetch datasets (writes datasets/licenses/<key>.license.json + manifest.lock.json)
+python scripts/download_datasets.py --list                 # see datasets + profiles
+python scripts/download_datasets.py --profile m2-min        # LibriSpeech dev-clean + MUSAN
+python scripts/precompute_features.py --config configs/hey_qube.yaml   # -> (N,16,96) .npy
 
 # 3. Prove every asset is commercially licensed — this MUST pass before training
 python scripts/verify_licenses.py --datasets datasets --require-commercial
@@ -67,7 +69,7 @@ checksums, training params, the pinned openWakeWord commit, hardware, duration, 
 eval metrics. To reproduce:
 
 1. `git checkout <model tag>`
-2. `python scripts/download_datasets.py --config <config>` (checksums verified against `datasets/licenses/manifest.lock.json`)
+2. `python scripts/download_datasets.py --profile <profile>` (checksums verified against `datasets/licenses/manifest.lock.json`)
 3. `python scripts/verify_licenses.py --require-commercial`
 4. `python scripts/train.py --config <config>` (uses the recorded seed)
 
@@ -89,12 +91,18 @@ Same inputs + same params → equivalent model.
 
 ## Status
 
-- **M0 + M1 (done):** audit table, fail-closed license gate, configs, pinned env.
+- **M0 (done):** audit table, configs, pinned env.
+- **M1 (done):** `download_datasets.py` fetches FOSS source audio from a declarative
+  registry (`lib/datasets.py`) — LibriSpeech (CC-BY-4.0), MUSAN (CC-BY-4.0), MIT-RIR
+  and FMA-commercial cuts — with resumable HTTP / HF downloads, path-traversal-safe
+  extraction, dataset-level provenance manifests, and a trust-on-first-use
+  reproducibility lock (`manifest.lock.json`). The run ends with the fail-closed
+  commercial license gate.
 - **M2 (done):** `precompute_features.py` generates `(N, 16, 96)` negative + FP-validation
-  features from commercially-licensed audio (LibriSpeech/MUSAN) via openWakeWord's
-  Apache-2.0 embedding model — the FOSS replacement for ACAV100M. Memory-safe
-  (shard-then-merge memmap) and provenance-stamped.
-- **M3–M5 (pending):** `download_datasets.py`, `augment.py`, `train.py`, `export.py`,
+  features from that commercially-licensed audio via openWakeWord's Apache-2.0 embedding
+  model — the FOSS replacement for ACAV100M. Memory-safe (shard-then-merge memmap) and
+  provenance-stamped.
+- **M3–M5 (pending):** `generate_positives.py`, `augment.py`, `train.py`, `export.py`,
   and `evaluate.py` remain **structured stubs** that define the CLI/config contract and
   raise a clear `NotImplementedError` with next steps.
 

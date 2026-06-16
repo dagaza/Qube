@@ -4,6 +4,7 @@ datasets/music/
 datasets/room-impulse/
 datasets/speech/
 datasets/features/
+datasets/.downloads/
 
 # Training outputs
 models/*/

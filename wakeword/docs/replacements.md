@@ -17,6 +17,22 @@ code via [`scripts/verify_licenses.py`](../scripts/verify_licenses.py) — see
 | Positive speech | — | **Piper TTS** synthetic | MIT/Apache | No real-voice data needed for positives. |
 | Feature extractor / mel | openWakeWord release | (unchanged) | Apache-2.0 | Keep. |
 
+This matrix is implemented as a **declarative registry** in
+[`scripts/lib/datasets.py`](../scripts/lib/datasets.py); adding a source is a data
+change there, never a code change in the downloader. Fetch a tractable set with
+profiles:
+
+```bash
+python scripts/download_datasets.py --list           # registry + profiles
+python scripts/download_datasets.py --profile m2-min  # LibriSpeech dev-clean + MUSAN
+python scripts/download_datasets.py --profile m2-full # + train-clean-100
+python scripts/download_datasets.py --profile all     # + MIT-RIR + FMA (M4 augmentation)
+```
+
+The downloader resumes interrupted HTTP transfers, refuses path-traversal in archives,
+records each archive's sha256 into the lock on first download (verifying on later runs),
+and finishes by running the fail-closed commercial license gate.
+
 ## Reference: commercially-cleared dataset curation
 
 [`benjamin-paine/hey-buddy`](https://huggingface.co/benjamin-paine/hey-buddy) is the
@@ -25,9 +41,12 @@ is not openWakeWord-compatible. Mine its **dataset choices**, not its model form
 
 ## Provenance tracking
 
-For every downloaded or generated asset the pipeline writes a sidecar manifest
-(`<asset>.license.json`) conforming to
-[`datasets/licenses/manifest.schema.json`](../datasets/licenses/manifest.schema.json):
+Downloaded datasets get a single **dataset-level** manifest under
+`datasets/licenses/<key>.license.json` (one CC-BY corpus can hold tens of thousands of
+files); **generated** artifacts (precomputed features) get a per-file sidecar. Both
+conform to
+[`datasets/licenses/manifest.schema.json`](../datasets/licenses/manifest.schema.json)
+and are consumed by the same gate:
 
 ```json
 {
