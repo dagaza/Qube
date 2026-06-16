@@ -1,0 +1,35 @@
+{
+  "wakeword_id": "hey_keube",
+  "display_name": "Hey Qube",
+  "phrase": "hey_keube",
+  "model_version": "1.0.0",
+  "tier": "commercial",
+  "created": "2026-06-16",
+  "training": {
+    "examples": 50000,
+    "steps": 50000,
+    "false_penalty": 2500,
+    "layer_dim": 32,
+    "augmentation_rounds": 2,
+    "seed": 1337
+  },
+  "framework": {
+    "openwakeword": "0.4.0",
+    "oww_commit": "PINNED_COMMIT_TBD",
+    "sample_rate": 16000
+  },
+  "datasets": {
+    "manifest_lock": "datasets/licenses/manifest.lock.json",
+    "components": ["LibriSpeech CC-BY-4.0", "MUSAN CC-BY-4.0", "MIT IR Survey 16k CC-BY", "FMA commercial cut", "Piper TTS MIT"]
+  },
+  "hardware": "TBD (e.g. RTX 4090, 24GB)",
+  "training_duration_minutes": 0,
+  "evaluation": {
+    "report": "results/hey_keube/1.0.0/eval.json",
+    "recommended_threshold": 0.5,
+    "recall": 0.0,
+    "false_positives_per_hour": 0.0
+  },
+  "license_attestation": "All training inputs are on the commercial allowlist; output is MIT-compatible.",
+  "install_path": "~/.qube/models/wakeword/en/hey_keube/hey_keube.onnx"
+}

@@ -1,0 +1,32 @@
+# Section 4 — phonetic variant experiment plan (M3 pilot sweep).
+#
+# Cheap pilot run (5k examples / 10k steps) across candidate spellings to pick the
+# best per word-class BEFORE spending GPU time on full 50k production runs.
+#
+# Drive with:  python scripts/train.py --config configs/experiments.yaml --pilot
+# (each variant trains a throwaway model; evaluate.py ranks them on the held-out corpus)
+
+pilot:
+  examples: 5000
+  steps: 10000
+  false_penalty: 2500
+  seed: 1337
+
+variants:
+  single_word:
+    - { id: keube,   phrase: "keube" }
+    - { id: cube,    phrase: "cube" }
+    - { id: kyoob,   phrase: "kyoob" }
+    - { id: kay_oob, phrase: "kay_oob" }
+    - { id: kewb,    phrase: "kewb" }
+  two_word:
+    - { id: hey_keube,   phrase: "hey_keube" }
+    - { id: hey_kyoob,   phrase: "hey_kyoob" }
+    - { id: hey_cube,    phrase: "hey_cube" }
+
+# Selection rule (see docs/evaluation.md):
+#   winner = highest recall subject to FP/hr <= target, tie-break on noisy-room robustness.
+selection:
+  max_false_positives_per_hour: 1.0
+  min_recall: 0.85
+  tie_breaker: noisy_room_robustness

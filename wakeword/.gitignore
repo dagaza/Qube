@@ -1,0 +1,32 @@
+# Downloaded / generated assets are reproducible from manifests — do not commit them.
+datasets/background-noise/
+datasets/music/
+datasets/room-impulse/
+datasets/speech/
+datasets/features/
+
+# Training outputs
+models/*/
+results/*/
+checkpoints/
+*.onnx
+*.tflite
+*.pt
+*.ckpt
+
+# Generated attribution (regenerated from manifests)
+ATTRIBUTION.generated.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.pytest_tmp/
+.pytest_cache/
+
+# Keep these tracked:
+!datasets/licenses/
+!datasets/licenses/**
+!.gitkeep

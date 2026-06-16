@@ -1,0 +1,43 @@
+# Wake word config: "Hey Qube" (two-word phrase)
+# Train with:  python scripts/train.py --config configs/hey_qube.yaml
+#
+# Two-word phrases consistently outperform single words (stronger acoustic
+# signature => better recall + lower false-accept). Train this one FIRST.
+
+wakeword:
+  id: hey_keube
+  display_name: "Hey Qube"
+  phrase: "hey_keube"
+  adversarial_phrases:
+    - "hey cube"
+    - "hey kube"
+    - "hey tube"
+    - "a cube"
+    - "okay cube"
+
+training:
+  examples: 50000                 # Dan's target; pilot at 5000 first
+  steps: 50000                    # Dan's target; pilot at 10000 first
+  false_penalty: 2500
+  layer_dim: 32
+  augmentation_rounds: 2
+  seed: 1337
+
+data:
+  sample_rate: 16000
+  negative_features: datasets/features/librispeech_negatives.npy
+  fp_validation_features: datasets/features/fp_validation.npy
+  background_paths:
+    - datasets/background-noise
+    - datasets/music
+  rir_paths:
+    - datasets/room-impulse
+
+export:
+  formats: [onnx, tflite]
+  install_hint: "~/.qube/models/wakeword/en/hey_keube/"
+
+provenance:
+  tier: commercial
+  require_commercial_license: true
+  oww_commit: "PINNED_COMMIT_TBD"
