@@ -113,6 +113,7 @@ from ui.views.settings.widgets import collect_theme_buttons
 from ui.views.settings.sections import (
     advanced,
     ai_models,
+    contact_feedback,
     desktop_companion,
     help,
     knowledge,
@@ -131,6 +132,7 @@ from ui.views.settings.handlers import (
     PersistenceHandlersMixin,
     PrestigeMenuMixin,
     StylingMixin,
+    SupportHandlersMixin,
     VoiceHandlersMixin,
 )
 
@@ -152,6 +154,7 @@ _SECTION_BUILDERS = {
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
+    "contact.feedback": contact_feedback.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -168,6 +171,7 @@ class SettingsView(
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
     PersistenceHandlersMixin,
+    SupportHandlersMixin,
 ):
 
     audio_pin_toggle = pyqtSignal(bool)

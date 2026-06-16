@@ -69,7 +69,14 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         title="Help",
         icon="fa5s.question-circle",
         legacy_titles=("HELP & GUIDANCE",),
-        group="System",
+        group="Support",
+    ),
+    SettingsSectionDef(
+        id="contact.feedback",
+        title="Contact & Feedback",
+        icon="fa5s.envelope",
+        legacy_titles=("CONTACT & FEEDBACK",),
+        group="Support",
     ),
     SettingsSectionDef(
         id="advanced",

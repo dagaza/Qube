@@ -25,9 +25,14 @@ class SettingsRegistryTests(unittest.TestCase):
         self.assertEqual(resolve_section_id("Memory & Knowledge"), "memory")
         self.assertEqual(resolve_section_id("JSON SETTINGS"), "advanced")
         self.assertEqual(resolve_section_id("HELP & GUIDANCE"), "help")
+        self.assertEqual(resolve_section_id("CONTACT & FEEDBACK"), "contact.feedback")
 
-    def test_eight_sections_registered(self) -> None:
-        self.assertEqual(len(SETTINGS_SECTIONS), 8)
+    def test_nine_sections_registered(self) -> None:
+        self.assertEqual(len(SETTINGS_SECTIONS), 9)
+
+    def test_support_group_sections(self) -> None:
+        support = [s for s in SETTINGS_SECTIONS if s.group == "Support"]
+        self.assertEqual([s.id for s in support], ["help", "contact.feedback"])
 
     def test_get_section_returns_def(self) -> None:
         sec = get_section("notifications")
