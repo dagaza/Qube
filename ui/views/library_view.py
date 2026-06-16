@@ -51,7 +51,7 @@ logger = logging.getLogger("Qube.UI.Library")
 LAYOUT_FULL_WIDTH = "full_width"
 LAYOUT_CENTERED_COLUMN = "centered_column"
 _CENTERED_COLUMN_MAX_WIDTH = 800
-_QWIDGETSIZE_MAX = (1 << 24) - 1
+_FULL_WIDTH_COLUMN_MAX_WIDTH = 1200
 _LAYOUT_ICON_WIDE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "assets", "icons", "layout-wide.svg")
 )
@@ -500,7 +500,7 @@ class LibraryView(QWidget):
         ti_layout.addWidget(self.text_preview, 1)
 
         self._transcript_width_host = _LibraryTranscriptWidthHost(
-            transcript_inner, _QWIDGETSIZE_MAX
+            transcript_inner, _CENTERED_COLUMN_MAX_WIDTH
         )
         layout.addWidget(self._transcript_width_host, stretch=1)
 
@@ -527,12 +527,16 @@ class LibraryView(QWidget):
         self._layout_mode = mode
         self._apply_library_layout_mode()
 
-    def _apply_library_layout_mode(self) -> None:
-        cap = (
-            _CENTERED_COLUMN_MAX_WIDTH
-            if self._layout_mode == LAYOUT_CENTERED_COLUMN
-            else _QWIDGETSIZE_MAX
+    def _preview_column_max_width(self) -> int:
+        """Match ConversationsView.transcript_column_max_width nominal caps (800 / 1200)."""
+        return (
+            _FULL_WIDTH_COLUMN_MAX_WIDTH
+            if self._layout_mode == LAYOUT_FULL_WIDTH
+            else _CENTERED_COLUMN_MAX_WIDTH
         )
+
+    def _apply_library_layout_mode(self) -> None:
+        cap = self._preview_column_max_width()
         for host_attr in ("_transcript_width_host", "_preview_header_width_host"):
             host = getattr(self, host_attr, None)
             if host is not None:
@@ -592,14 +596,18 @@ class LibraryView(QWidget):
                     _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Centered column")
+            btn.setToolTip(
+                f"Layout mode: Narrow column ({_CENTERED_COLUMN_MAX_WIDTH}px)"
+            )
         else:
             btn.setIcon(
                 self._make_tinted_svg_icon(
                     _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
-            btn.setToolTip("Layout mode: Full width")
+            btn.setToolTip(
+                f"Layout mode: Wide column ({_FULL_WIDTH_COLUMN_MAX_WIDTH}px)"
+            )
         btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
         btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         btn.setStyleSheet(

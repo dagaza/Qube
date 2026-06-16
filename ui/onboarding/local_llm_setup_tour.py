@@ -20,6 +20,11 @@ def _open_settings_ai_routing(host) -> None:
     host.settings_view.select_settings_section("ai.models", anchor="engine")
 
 
+def _open_settings_voice_wakeword(host) -> None:
+    _open_settings(host)
+    host.settings_view.select_settings_section("voice.audio", anchor="wakeword")
+
+
 def _open_model_manager(host) -> None:
     host._route_view(4, host.nav_models)
 
@@ -94,6 +99,41 @@ def build_local_llm_setup_tour(host) -> OnboardingTour:
             body_getter=_model_manager_step_body,
             target_getter=lambda h: h.nav_models,
             on_enter=_open_model_manager,
+        ),
+        OnboardingStep(
+            step_id="wakeword_openwakeword",
+            title="Download OpenWakeWord models",
+            body=(
+                "Voice wake needs detection models on disk. In Settings → Voice & Audio, "
+                "use this button to download the core OpenWakeWord set (for example "
+                "alexa, hey jarvis, and hey mycroft). Run it once before relying on "
+                "hands-free wake."
+            ),
+            target_getter=lambda h: h.settings_view.wakeword_download_open_btn,
+            on_enter=_open_settings_voice_wakeword,
+        ),
+        OnboardingStep(
+            step_id="wakeword_community",
+            title="Download community wakewords",
+            body=(
+                "For more wake phrases, download the community pack with this button. "
+                "It adds many extra English models to your local wakeword folder so you "
+                "can pick alternatives that fit your preference."
+            ),
+            target_getter=lambda h: h.settings_view.wakeword_download_community_btn,
+            on_enter=_open_settings_voice_wakeword,
+        ),
+        OnboardingStep(
+            step_id="wakeword_test_lab",
+            title="Try the Wakeword Test Lab",
+            body=(
+                "After models are available, open the Wakeword Test Lab and try a few "
+                "candidates with your microphone. Room noise, mic placement, and your "
+                "voice all affect detection—use the lab to see what works well in your "
+                "environment before you depend on wake in daily use."
+            ),
+            target_getter=lambda h: h.settings_view.wakeword_test_lab_btn,
+            on_enter=_open_settings_voice_wakeword,
         ),
         OnboardingStep(
             step_id="composer_mentions",

@@ -98,7 +98,10 @@ from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.settings_json_editor_dialog import SettingsJsonEditorDialog
 from ui.components.selector_button import SelectorButton
-from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_list_qss import (
+    apply_nav_list_sidebar_surface,
+    apply_sidebar_row_title_colors,
+)
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.views.settings.controls import (
     NoScrollComboBox,
@@ -325,3 +328,15 @@ class StylingMixin:
             """)
         if hasattr(self, "active_native_model_lbl"):
             self.active_native_model_lbl.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+
+    def _apply_settings_sidebar_surface(self, is_dark: bool) -> None:
+        """Match Model Manager: tint only the left sidebar frame and section list."""
+        hub_host = getattr(self, "_settings_hub_container", None)
+        if hub_host is not None:
+            hub_host.setAutoFillBackground(False)
+            hub_host.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
+        apply_nav_list_sidebar_surface(
+            is_dark=is_dark,
+            sidebar_frame=getattr(self, "settings_sidebar", None),
+            list_widget=getattr(self, "settings_section_list", None),
+        )

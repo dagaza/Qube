@@ -643,14 +643,14 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 }
 
 /* --- 10. LIBRARY SPECIFIC --- */
-#LibrarySearchBar, #HubModelSearchBar {
+#LibrarySearchBar, #HubModelSearchBar, #SettingsSectionSearchBar {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     padding: 8px 12px;
     margin-bottom: 5px;
 }
-#LibrarySearchBar:focus, #HubModelSearchBar:focus {
+#LibrarySearchBar:focus, #HubModelSearchBar:focus, #SettingsSectionSearchBar:focus {
     border: 1px solid #94a3b8;
 }
 

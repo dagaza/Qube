@@ -255,9 +255,13 @@ class SettingsView(
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
         self._ensure_settings_file_watched()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_settings_sidebar_surface(is_dark)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_settings_sidebar_surface(is_dark)
         self._relayout_trigger_list_rows()
     def _setup_ui(self):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -525,6 +529,7 @@ class SettingsView(
             """)
 
         self._apply_spinbox_style(is_dark)
+        self._apply_settings_sidebar_surface(is_dark)
         self._refresh_trigger_list() # Repaints the list fonts & trash icons!
         self._sync_ai_provider_enabled_for_inference(get_engine_mode())
 
@@ -538,6 +543,7 @@ class SettingsView(
             self.companion_preview.apply_theme(is_dark)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
+        # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.
         main_layout.setContentsMargins(0, 0, 40, 0)
         main_layout.setSpacing(16)
 
@@ -545,13 +551,14 @@ class SettingsView(
         hub_container.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
+        self._settings_hub_container = hub_container
         hub_h = QHBoxLayout(hub_container)
         hub_h.setContentsMargins(0, 0, 0, 0)
         hub_h.setSpacing(0)
 
         left = QFrame()
         left.setFixedWidth(LEFT_NAV_LIST_SIDEBAR_WIDTH)
-        left.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        left.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         left.setObjectName("SettingsSidebar")
         left_l = QVBoxLayout(left)
         left_l.setContentsMargins(15, 20, 15, 20)
@@ -564,6 +571,7 @@ class SettingsView(
         left_l.addWidget(title)
 
         self.settings_search_input = QLineEdit()
+        self.settings_search_input.setObjectName("SettingsSectionSearchBar")
         self.settings_search_input.setPlaceholderText("Search settings…")
         self.settings_search_input.setClearButtonEnabled(True)
         self.settings_search_input.setToolTip(
@@ -590,7 +598,7 @@ class SettingsView(
         right = QWidget()
         right.setMinimumWidth(0)
         right.setMaximumWidth(900)
-        right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        right.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         right_l = QVBoxLayout(right)
         right_l.setContentsMargins(8, 75, 0, 40)
         right_l.setSpacing(10)
@@ -599,11 +607,16 @@ class SettingsView(
         self.settings_section_stack.setObjectName("SettingsSectionStack")
         right_l.addWidget(self.settings_section_stack, stretch=1)
 
-        hub_h.addWidget(left)
-        hub_h.addWidget(right, stretch=1)
-        main_layout.addWidget(hub_container, stretch=1)
+        right_host = QWidget()
+        right_host_l = QHBoxLayout(right_host)
+        right_host_l.setContentsMargins(10, 0, 0, 0)
+        right_host_l.setSpacing(0)
+        right_host_l.addWidget(right, 1)
 
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        hub_h.addWidget(left)
+        hub_h.addWidget(right_host, stretch=1)
+
+        main_layout.addWidget(hub_container, stretch=1)
 
         self._settings_nav_icon_labels: list[QLabel] = []
         self._settings_section_icon_labels: list[QLabel] = []
@@ -613,6 +626,7 @@ class SettingsView(
         )
     def _finalize_settings_layout(self, is_dark: bool) -> None:
         self._apply_spinbox_style(is_dark)
+        self._apply_settings_sidebar_surface(is_dark)
         self._update_settings_section_nav_colors()
     def _make_tinted_svg_pixmap(self, svg_path, color_hex: str, size: int) -> QPixmap:
         pixmap = QPixmap(str(svg_path))

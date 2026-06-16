@@ -195,6 +195,10 @@ class CompanionVerbalScheduler(QObject):
         ctx = self._gate_context()
         if not should_emit_idle(ctx, self._limiter):
             return
+        # Throttle idle dispatch attempts, not only successful captions. Without
+        # this, failed sidecar lines never update the limiter and we enqueue
+        # companion_line every 30s while idle (inflating telemetry failure counts).
+        record_emitted(CompanionVerbalTrigger.IDLE.value, self._limiter, now=ctx.now)
         self._request_line(CompanionVerbalTrigger.IDLE.value)
 
     def on_ingestion_complete(self, file_count: int) -> None:

@@ -22,6 +22,11 @@ _SIDECAR_DEBUG_ENV = "QUBE_SIDECAR_DEBUG"
 _MAX_EVENTS = 400
 _MAX_TURN_EVENTS = 200
 
+# Policy/coalescing outcomes — not model inference failures; excluded from success rate.
+_OPERATIONAL_SKIP_REASONS = frozenset(
+    {"queue_deferred", "coalesced", "ingest_queue_saturated"}
+)
+
 
 @dataclass
 class SidecarRuntimeState:
@@ -325,13 +330,18 @@ def _build_summary(
     fg_turn_ms = [float(t.get("foreground_sidecar_ms") or 0) for t in turns]
 
     total_attempts = len(events)
+    inference_events = [
+        e for e in events if str(e.get("reason") or "") not in _OPERATIONAL_SKIP_REASONS
+    ]
+    inference_attempts = len(inference_events)
+    inference_ok = sum(1 for e in inference_events if e.get("ok"))
     total_ok = sum(1 for e in events if e.get("ok"))
 
     health, health_tip = _health_status(
         runtime,
         queue_depth,
-        total_attempts,
-        total_ok,
+        inference_attempts,
+        inference_ok,
         fg_latencies,
         fg_wait_ms,
         rewrite_attempts,
@@ -357,7 +367,10 @@ def _build_summary(
             "ingest_queue_saturated": ingest_saturated,
         },
         "total_invocations": total_attempts,
-        "success_rate": (total_ok / total_attempts) if total_attempts else 0.0,
+        "inference_attempts": inference_attempts,
+        "success_rate": (
+            (inference_ok / inference_attempts) if inference_attempts else 0.0
+        ),
         "by_task": {
             k: {
                 "attempts": v["attempts"],

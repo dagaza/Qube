@@ -83,4 +83,25 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     layout.addWidget(host.model_manager_hardware_suggestions_cb)
 
+    add_subsection_to_layout(layout, "Wakeword models", anchor="wakeword-models")
+
+    wakeword_dir_hint = QLabel(
+        "Qube loads wakeword models from:\n"
+        "~/.qube/models/wakeword/\n\n"
+        "Community wakewords are typically placed under an `en/` subfolder, "
+        "e.g. ~/.qube/models/wakeword/en/<wakeword_id>/...\n\n"
+        "The Settings picker scans this folder recursively for .onnx and .tflite models."
+    )
+    wakeword_dir_hint.setWordWrap(True)
+    layout.addWidget(wakeword_dir_hint)
+
+    ow_models_hint = QLabel(
+        "OpenWakeWord built-in models download into the OpenWakeWord package directory.\n"
+        "If that directory is read-only (common in some packaged installs), the download "
+        "will fail."
+    )
+    ow_models_hint.setWordWrap(True)
+    ow_models_hint.setProperty("class", "ToolsPaneControl")
+    layout.addWidget(ow_models_hint)
+
     return widget

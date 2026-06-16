@@ -555,7 +555,13 @@ class WakewordTestbedDialog(QDialog):
         ]
         wakeword_items = recommended + community
         if not wakeword_items:
+            self.wakeword_selector.setEnabled(False)
+            self.wakeword_selector.setText("No model available")
+            self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
+            self._apply_settings_menu_button_chevron_state(self.wakeword_selector)
             return
+
+        self.wakeword_selector.setEnabled(True)
         self._build_prestige_menu(
             self.wakeword_selector,
             wakeword_items,

@@ -118,13 +118,11 @@ class SidecarLlmClient:
 
     def generate(self, prompt: str, *, timeout_sec: float = 120.0) -> str:
         """Legacy raw-prompt path (episode-sized prompts built upstream)."""
-        tel = get_sidecar_telemetry()
-        t0 = time.perf_counter()
         if self._worker is None:
-            tel.record(
+            get_sidecar_telemetry().record(
                 "raw_prompt",
                 ok=False,
-                latency_ms=(time.perf_counter() - t0) * 1000,
+                latency_ms=0.0,
                 foreground=False,
                 reason="no_worker",
             )
@@ -133,23 +131,15 @@ class SidecarLlmClient:
         ev = threading.Event()
         self._worker.enqueue_raw_prompt(prompt, out, ev, timeout_hint=timeout_sec)
         if not ev.wait(timeout_sec):
-            tel.record(
+            get_sidecar_telemetry().record(
                 "raw_prompt",
                 ok=False,
-                latency_ms=(time.perf_counter() - t0) * 1000,
+                latency_ms=0.0,
                 foreground=False,
                 reason="timeout",
             )
             return ""
-        text = (out[0] if out else "") or ""
-        tel.record(
-            "raw_prompt",
-            ok=bool(text),
-            latency_ms=(time.perf_counter() - t0) * 1000,
-            foreground=False,
-            reason="" if text else "empty",
-        )
-        return text
+        return (out[0] if out else "") or ""
 
     def enqueue_title(
         self,

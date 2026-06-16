@@ -68,6 +68,7 @@ from core.audio_utils import get_input_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.local_gguf_library import list_local_gguf_menu_entries
 from core.qube_tooltip import qube_tooltip_set_theme
+from core.platform.work_area import workspace_bounds_for_screen
 from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
 
@@ -239,9 +240,7 @@ class MainWindow(QMainWindow):
         if logo_icon_path is not None:
             self.setWindowIcon(QIcon(str(logo_icon_path)))
         self.setWindowTitle("Qube - Workspace")
-        self._default_minimum_size = QSize(1200, 800)
-        self.setMinimumSize(self._default_minimum_size)
-        self.resize(self._default_minimum_size)
+        self._default_minimum_size = QSize(1200, 950)
 
         # Custom maximize: Qt's showMaximized() is unreliable for frameless windows on
         # secondary/portrait monitors (sets maximized state without resizing, which also
@@ -257,6 +256,8 @@ class MainWindow(QMainWindow):
         # 1. Frameless Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # setWindowFlags() recreates the native window and drops prior size constraints.
+        self.setMinimumSize(self._default_minimum_size)
         self._old_pos = None
 
         # 2. Worker References
@@ -316,6 +317,8 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
+        if not getattr(self, "_startup_geometry_finalized", False):
+            self._schedule_startup_geometry()
         if not getattr(self, "_onboarding_start_scheduled", False):
             self._onboarding_start_scheduled = True
             QTimer.singleShot(900, self._maybe_start_local_llm_onboarding)
@@ -749,20 +752,29 @@ class MainWindow(QMainWindow):
         super().moveEvent(event)
         if self._geometry_update_depth:
             return
-        self._sync_minimum_size_for_screen()
+        self._apply_workspace_minimum_size()
 
     def minimumSizeHint(self) -> QSize:
-        """Keep child layout hints from blocking restore on narrow/portrait monitors."""
-        screen = self._screen_for_window()
-        if self._workspace_maximized:
-            return self._layout_minimum_size(screen)
-        geo = self._screen_available_geometry(screen)
-        if geo is not None and geo.width() <= self._default_minimum_size.width():
-            return self._restorable_minimum_size(screen)
-        return self._default_minimum_size
+        """Match enforced minimum so Qt's first show does not shrink below the layout floor."""
+        screen = self._screen_for_window() or QApplication.primaryScreen()
+        return self._layout_minimum_size(screen)
+
+    def sizeHint(self) -> QSize:
+        """Prefer the design layout size on first paint (frameless windows ignore pre-show resize)."""
+        screen = QApplication.primaryScreen() or self._screen_for_window()
+        return self._default_window_geometry(screen).size()
 
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
+        if not self._geometry_update_depth and not self._workspace_maximized:
+            clamped = event.size().expandedTo(self.minimumSize())
+            if clamped != event.size():
+                self._geometry_update_depth += 1
+                try:
+                    self.resize(clamped)
+                finally:
+                    self._geometry_update_depth -= 1
+                return
         super().resizeEvent(event)
         if hasattr(self, 'grip'):
             # Position it at the absolute bottom-right of the container
@@ -1178,18 +1190,75 @@ class MainWindow(QMainWindow):
 
     def _screen_available_geometry(self, screen: QScreen | None = None) -> QRect | None:
         screen = screen or self._screen_for_window()
-        return screen.availableGeometry() if screen is not None else None
+        if screen is None:
+            return None
+        return workspace_bounds_for_screen(screen)
 
     def _layout_minimum_size(self, screen: QScreen | None = None) -> QSize:
         """Ideal layout minimum, capped when the active monitor is smaller than the design target."""
         screen = screen or self._screen_for_window()
         if screen is None:
             return self._default_minimum_size
-        geo = screen.availableGeometry()
+        geo = workspace_bounds_for_screen(screen)
         return QSize(
             min(self._default_minimum_size.width(), geo.width()),
             min(self._default_minimum_size.height(), geo.height()),
         )
+
+    def _default_window_geometry(self, screen: QScreen | None = None) -> QRect:
+        """Centered startup/restored size: design target capped to the monitor."""
+        screen = screen or QApplication.primaryScreen() or self._screen_for_window()
+        if screen is None:
+            return QRect(
+                0,
+                0,
+                self._default_minimum_size.width(),
+                self._default_minimum_size.height(),
+            )
+        geo = workspace_bounds_for_screen(screen)
+        target = self._layout_minimum_size(screen)
+        x = geo.left() + max(0, (geo.width() - target.width()) // 2)
+        y = geo.top() + max(0, (geo.height() - target.height()) // 2)
+        return QRect(x, y, target.width(), target.height())
+
+    def _schedule_startup_geometry(self) -> None:
+        """Frameless windows need geometry after the first show/layout pass."""
+        if getattr(self, "_startup_geometry_scheduled", False):
+            return
+        self._startup_geometry_scheduled = True
+        QTimer.singleShot(0, self._finalize_startup_geometry)
+        QTimer.singleShot(120, self._finalize_startup_geometry)
+
+    def _finalize_startup_geometry(self) -> None:
+        if getattr(self, "_startup_geometry_finalized", False):
+            return
+        if self._workspace_maximized or self._geometry_update_depth:
+            return
+        screen = QApplication.primaryScreen() or self._screen_for_window()
+        if screen is None:
+            return
+        target_rect = self._default_window_geometry(screen)
+        target_size = target_rect.size()
+        self._geometry_update_depth += 1
+        try:
+            self.setMinimumSize(target_size)
+            current = self.size()
+            if (
+                current.width() < target_size.width() - 4
+                or current.height() < target_size.height() - 4
+            ):
+                self.setGeometry(target_rect)
+            else:
+                self._startup_geometry_finalized = True
+                return
+            after = self.size()
+            if (
+                after.width() >= target_size.width() - 4
+                and after.height() >= target_size.height() - 4
+            ):
+                self._startup_geometry_finalized = True
+        finally:
+            self._geometry_update_depth -= 1
 
     def _restorable_minimum_size(self, screen: QScreen | None = None) -> QSize:
         """Minimum allowed while restored; must permit a visibly smaller-than-fullscreen window."""
@@ -1297,8 +1366,8 @@ class MainWindow(QMainWindow):
 
     def _maximize_to_current_screen(self) -> None:
         screen = self._screen_for_window()
-        geo = self._screen_available_geometry(screen)
-        if geo is None:
+        bounds = self._screen_available_geometry(screen)
+        if bounds is None:
             return
         if not self._workspace_maximized:
             self._save_pre_maximize_geometry(screen)
@@ -1308,12 +1377,22 @@ class MainWindow(QMainWindow):
             self._clear_platform_maximized_state()
             self._unlock_window_size()
             self.setMinimumSize(self._layout_minimum_size(screen))
-            self.setFixedSize(geo.size())
-            self.move(geo.topLeft())
+            self.setGeometry(bounds)
+            self.setFixedSize(bounds.size())
         finally:
             self._geometry_update_depth -= 1
         self._workspace_maximized = True
         self._apply_maximize_chrome(True)
+        QTimer.singleShot(0, self._sync_active_view_sidebar_surfaces)
+
+    def _sync_active_view_sidebar_surfaces(self) -> None:
+        """Re-paint hub sidebars after workspace geometry changes (custom maximize)."""
+        if not hasattr(self, "main_stage"):
+            return
+        is_dark = self._is_dark_theme
+        idx = self.main_stage.currentIndex()
+        if idx == 5 and hasattr(self.settings_view, "_apply_settings_sidebar_surface"):
+            self.settings_view._apply_settings_sidebar_surface(is_dark)
 
     def _restore_workspace_geometry(self) -> None:
         screen = self._screen_for_window()
@@ -1354,6 +1433,7 @@ class MainWindow(QMainWindow):
 
         self._workspace_maximized = False
         self._apply_maximize_chrome(False)
+        QTimer.singleShot(0, self._sync_active_view_sidebar_surfaces)
         QTimer.singleShot(0, self._ensure_restored_geometry)
 
     def _ensure_restored_geometry(self) -> None:
@@ -1385,18 +1465,15 @@ class MainWindow(QMainWindow):
             finally:
                 self._geometry_update_depth -= 1
 
-    def _sync_minimum_size_for_screen(self) -> None:
-        """Keep resize limits sensible when the window moves between monitors."""
+    def _apply_workspace_minimum_size(self, screen: QScreen | None = None) -> None:
+        """Keep resize limits sensible for the active monitor (restored window only)."""
         if self._workspace_maximized or self._geometry_update_depth:
             return
-        screen = self._screen_for_window()
-        geo = self._screen_available_geometry(screen)
-        if geo is None:
-            return
-        if geo.width() > self._default_minimum_size.width():
+        screen = screen or self._screen_for_window() or QApplication.primaryScreen()
+        if screen is None:
             self.setMinimumSize(self._default_minimum_size)
-        else:
-            self.setMinimumSize(self._restorable_minimum_size(screen))
+            return
+        self.setMinimumSize(self._layout_minimum_size(screen))
 
     def _toggle_maximize(self):
         """Toggle fit-to-monitor vs the last normal window geometry."""
@@ -3155,6 +3232,22 @@ class MainWindow(QMainWindow):
             if hasattr(self, "nav_settings"):
                 self.nav_settings.setChecked(True)
                 self._route_view(5, self.nav_settings)
+        elif action_id == "open_help_wakeword_models":
+            self._restore_workspace_from_tray()
+            if hasattr(self, "nav_settings"):
+                self.nav_settings.setChecked(True)
+                self._route_view(5, self.nav_settings)
+
+            # Scroll to the wakeword models help anchor after the Settings
+            # view is routed/constructed.
+            def _jump() -> None:
+                sv = getattr(self, "settings_view", None)
+                if sv is not None and hasattr(sv, "select_settings_section"):
+                    sv.select_settings_section(
+                        "help", anchor="wakeword-models"
+                    )
+
+            QTimer.singleShot(0, _jump)
         elif action_id == "open_models":
             self._open_model_manager_page()
         elif action_id == "open_local_model_picker":

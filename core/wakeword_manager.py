@@ -17,7 +17,14 @@ from core.paths import models_root
 
 logger = logging.getLogger("Qube.WakewordManager")
 
-_HIDDEN_WAKEWORDS = {"timer", "weather"}
+_HIDDEN_WAKEWORDS = {
+    "timer",
+    "weather",
+    # Explicit wakewords to hide from the community library.
+    "hey_dick_head",
+    "oi_fuckwhit",
+    "yo_bitch",
+}
 
 
 @dataclass
@@ -92,6 +99,10 @@ class WakewordManager:
         for path in pretrained_paths:
             stem = self._clean_stem(path)
             if self._is_hidden_wakeword(stem):
+                continue
+            # Bundled pretrained assets may be missing when users can't write
+            # into the OpenWakeWord install directory (e.g. read-only packaging).
+            if not os.path.isfile(path):
                 continue
             display = self._display_name(stem)
             wakeword_id = stem.lower()

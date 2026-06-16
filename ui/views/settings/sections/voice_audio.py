@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -31,10 +32,20 @@ from ui.views.settings.widgets import (
 )
 
 _DEVICE_SELECTOR_WIDTH = 350
+_WAKEWORD_ACTION_BTN_WIDTH = 300
 
 
 def _apply_device_selector_width(selector: SelectorButton) -> None:
     selector.setFixedWidth(_DEVICE_SELECTOR_WIDTH)
+
+
+def _apply_wakeword_action_button_width(btn: QPushButton) -> None:
+    """Keep wakeword download + test-lab buttons the same compact width."""
+    btn.setFixedWidth(_WAKEWORD_ACTION_BTN_WIDTH)
+    policy = btn.sizePolicy()
+    policy.setHorizontalPolicy(QSizePolicy.Policy.Fixed)
+    policy.setVerticalPolicy(QSizePolicy.Policy.Fixed)
+    btn.setSizePolicy(policy)
 
 
 def _preview_play_button(host, *, tooltip: str, handler) -> QPushButton:
@@ -342,7 +353,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _device_selector_row(host.voice_selector, host.tts_voice_preview_btn),
     )
 
-    add_subsection_to_form(form, "Wakeword")
+    add_subsection_to_form(form, "Wakeword", anchor="wakeword")
 
     host.wakeword_selector = SelectorButton("Select Wakeword...", is_dark=is_dark)
     host.wakeword_selector.setMenu(QMenu(host.wakeword_selector))
@@ -371,8 +382,41 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     form.addRow("Active Wakeword", wakeword_row)
 
+    host.wakeword_download_open_btn = QPushButton("Download OpenWakeWord models")
+    apply_brand_primary(host.wakeword_download_open_btn)
+    _apply_wakeword_action_button_width(host.wakeword_download_open_btn)
+    host.wakeword_download_open_btn.setToolTip(
+        "Downloads OpenWakeWord wakeword models (built-in set) and the required feature assets."
+    )
+
+    host.wakeword_download_community_btn = QPushButton("Download Community models")
+    apply_brand_primary(host.wakeword_download_community_btn)
+    _apply_wakeword_action_button_width(host.wakeword_download_community_btn)
+    host.wakeword_download_community_btn.setToolTip(
+        "Downloads the community wakeword pack into your local wakeword folder."
+    )
+
+    wakeword_download_col = QWidget()
+    wakeword_download_layout = QVBoxLayout(wakeword_download_col)
+    wakeword_download_layout.setContentsMargins(0, 0, 0, 0)
+    wakeword_download_layout.setSpacing(8)
+    wakeword_download_layout.addWidget(
+        host.wakeword_download_open_btn,
+        alignment=Qt.AlignmentFlag.AlignLeft,
+    )
+    wakeword_download_layout.addWidget(
+        host.wakeword_download_community_btn,
+        alignment=Qt.AlignmentFlag.AlignLeft,
+    )
+    wakeword_download_layout.addStretch(1)
+    form.addRow("", wakeword_download_col)
+
+    host.wakeword_download_open_btn.clicked.connect(host._download_openwakeword_models)
+    host.wakeword_download_community_btn.clicked.connect(host._download_community_wakeword_models)
+
     host.wakeword_test_lab_btn = QPushButton("Open Wakeword Test Lab")
     apply_brand_primary(host.wakeword_test_lab_btn)
+    _apply_wakeword_action_button_width(host.wakeword_test_lab_btn)
     host.wakeword_test_lab_btn.setToolTip(
         "Test wakeword detection with your microphone before relying on it in conversation."
     )

@@ -178,15 +178,21 @@ class VoiceHandlersMixin:
                 for spec in self.audio_worker.wakeword_manager.list_community()
             ]
             wakeword_items = recommended + community
-            if wakeword_items:
-                self._build_prestige_menu(
-                    self.wakeword_selector,
-                    wakeword_items,
-                    self._on_wakeword_selection_changed,
-                )
-                active_name = getattr(self.audio_worker, "active_wakeword_name", "") or wakeword_items[0][1]
-                matching_label = next((label for label, data in wakeword_items if data == active_name), wakeword_items[0][0])
-                self.wakeword_selector.setText(matching_label)
+            if not wakeword_items:
+                self.wakeword_selector.setEnabled(False)
+                self.wakeword_selector.setText("No model available")
+                self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
+                return
+
+            self.wakeword_selector.setEnabled(True)
+            self._build_prestige_menu(
+                self.wakeword_selector,
+                wakeword_items,
+                self._on_wakeword_selection_changed,
+            )
+            active_name = getattr(self.audio_worker, "active_wakeword_name", "") or wakeword_items[0][1]
+            matching_label = next((label for label, data in wakeword_items if data == active_name), wakeword_items[0][0])
+            self.wakeword_selector.setText(matching_label)
         except Exception as exc:
             logger.exception("Wakeword catalog sync failed: %s", exc)
             is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -199,6 +205,113 @@ class VoiceHandlersMixin:
 
     def _on_wakeword_selector_pressed(self) -> None:
         self._sync_wakeword_catalog(trigger="dropdown")
+
+    def _set_wakeword_download_buttons_enabled(self, enabled: bool) -> None:
+        for btn_name in ("wakeword_download_open_btn", "wakeword_download_community_btn"):
+            btn = getattr(self, btn_name, None)
+            if btn is not None:
+                btn.setEnabled(bool(enabled))
+
+    def _start_wakeword_download(self, kind: str) -> None:
+        if getattr(self, "_wakeword_download_worker", None) is not None and self._wakeword_download_worker.isRunning():
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Download busy",
+                "A wakeword download is already in progress.",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        self._set_wakeword_download_buttons_enabled(False)
+
+        from workers.wakeword_models_download_worker import WakewordModelsDownloadWorker
+
+        worker = WakewordModelsDownloadWorker(kind=kind)
+        self._wakeword_download_worker = worker
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._download_dialog = PrestigeDialog(
+            self.window(),
+            "Downloading wakewords",
+            "Working… this may take a while on first run.",
+            is_dark=is_dark,
+            show_cancel=False,
+        )
+        self._download_dialog.show()
+
+        def _on_ok() -> None:
+            try:
+                if getattr(self, "_download_dialog", None) is not None:
+                    self._download_dialog.accept()
+            except Exception:
+                pass
+
+            self._set_wakeword_download_buttons_enabled(True)
+            if self.audio_worker:
+                self._sync_wakeword_catalog(trigger="wakeword download")
+            if getattr(self, "_wakeword_testbed_dialog", None) is not None:
+                self._wakeword_testbed_dialog.on_wakeword_selection_changed(sync_catalog=True)
+
+            PrestigeDialog(
+                self.window(),
+                "Download complete",
+                "Wakeword models are ready. Open the Test Lab or select a wakeword in Settings.",
+                is_dark=is_dark,
+            ).exec()
+
+        def _on_failed(err: str) -> None:
+            try:
+                if getattr(self, "_download_dialog", None) is not None:
+                    self._download_dialog.reject()
+            except Exception:
+                pass
+
+            self._set_wakeword_download_buttons_enabled(True)
+
+            # Also raise a non-modal in-app notification for visibility (especially
+            # when the OpenWakeWord install directory is read-only).
+            try:
+                from core.notification_types import NotificationEvent, NotificationSeverity
+
+                err_norm = str(err or "").lower()
+                is_readonly = "not writable" in err_norm or "read-only" in err_norm
+                title = "Wakeword download"
+                if is_readonly:
+                    body = (
+                        "OpenWakeWord model install directory is read-only, so built-in "
+                        "wakewords could not be downloaded automatically.\n\n"
+                        f"{err}"
+                    )
+                else:
+                    body = str(err or "Wakeword download failed.")
+
+                self.window().emit_notification(
+                    NotificationEvent(
+                        title=title,
+                        body=body,
+                        severity=NotificationSeverity.WARNING,
+                        category="system",
+                        action_label="Help",
+                        action_id="open_help_wakeword_models",
+                        auto_dismiss_ms=8000,
+                    )
+                )
+            except Exception:
+                # Fallback to the blocking dialog only.
+                pass
+
+            PrestigeDialog(
+                self.window(),
+                "Wakeword download failed",
+                f"{err}",
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
 
     def _open_wakeword_test_lab(self) -> None:
         if not self.audio_worker:
@@ -216,6 +329,12 @@ class VoiceHandlersMixin:
         self._wakeword_testbed_dialog.show()
         self._wakeword_testbed_dialog.raise_()
         self._wakeword_testbed_dialog.activateWindow()
+
+    def _download_openwakeword_models(self) -> None:
+        self._start_wakeword_download(kind="openwakeword")
+
+    def _download_community_wakeword_models(self) -> None:
+        self._start_wakeword_download(kind="community")
 
     def _on_wakeword_selection_changed(self, display_name: str) -> None:
         if not self.audio_worker:

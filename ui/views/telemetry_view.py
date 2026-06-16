@@ -388,7 +388,7 @@ class TelemetryView(QWidget):
             "Success rate",
             "Completed sidecar calls",
             "—",
-            "ok / total invocations over the rolling telemetry window.",
+            "ok / inference attempts over the rolling telemetry window (queue deferrals and ingest coalescing excluded).",
         )
         fg_row, self.sidecar_fg_p95_val = self._make_metric_row(
             "Foreground p95",
@@ -760,7 +760,8 @@ class TelemetryView(QWidget):
         self.sidecar_queue_val.setText(str(depth))
 
         total = int(summary.get("total_invocations") or 0)
-        if total <= 0:
+        inference_attempts = int(summary.get("inference_attempts") or total)
+        if inference_attempts <= 0 and total <= 0:
             self.sidecar_success_val.setText("—")
             self.sidecar_fg_p95_val.setText("—")
             self.sidecar_rewrite_val.setText("—")
@@ -770,7 +771,19 @@ class TelemetryView(QWidget):
             return
 
         rate = float(summary.get("success_rate") or 0.0)
-        self.sidecar_success_val.setText(f"{rate:.0%} ({total} calls)")
+        if inference_attempts != total and total > inference_attempts:
+            success_label = (
+                f"{rate:.0%} ({inference_attempts} tasks, {total - inference_attempts} skipped)"
+            )
+            success_tip = (
+                "Success rate counts completed inference only; queue deferrals and "
+                "ingest coalescing are excluded from the denominator."
+            )
+        else:
+            success_label = f"{rate:.0%} ({inference_attempts} tasks)"
+            success_tip = "ok / inference attempts over the rolling telemetry window."
+        self.sidecar_success_val.setText(success_label)
+        self.sidecar_success_val.setToolTip(success_tip)
 
         fg = summary.get("foreground") or {}
         p95 = float(fg.get("p95_latency_ms") or 0.0)

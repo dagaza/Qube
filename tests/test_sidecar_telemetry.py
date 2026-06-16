@@ -59,9 +59,33 @@ def test_digest_compression_telemetry():
     assert summary["digest"]["memory_avg_chars_after"] == 900.0
 
 
+def test_operational_skips_excluded_from_success_rate():
+    brain = SidecarTelemetryBrain()
+    brain.record(
+        SidecarTask.companion_line,
+        ok=False,
+        latency_ms=0.0,
+        foreground=False,
+        reason="queue_deferred",
+    )
+    brain.record(
+        SidecarTask.companion_line,
+        ok=False,
+        latency_ms=12.0,
+        foreground=False,
+        reason="parse_fail",
+    )
+    brain.record(SidecarTask.title, ok=True, latency_ms=40.0, foreground=False)
+    summary = brain.summarize()
+    assert summary["total_invocations"] == 3
+    assert summary["inference_attempts"] == 2
+    assert summary["success_rate"] == 0.5
+
+
 if __name__ == "__main__":
     test_summarize_empty_is_idle()
     test_record_and_rewrite_turn_metrics()
     test_queue_wait_telemetry()
     test_digest_compression_telemetry()
+    test_operational_skips_excluded_from_success_rate()
     print("ok")
