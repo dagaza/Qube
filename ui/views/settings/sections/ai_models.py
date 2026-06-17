@@ -38,7 +38,7 @@ from core.app_settings import (
 )
 from core.auxiliary_cognition import get_cognition_models_dir
 from core.cpu_threads import max_cpu_threads_for_ui
-from core.gpu_layers_cap import max_safe_n_gpu_layers
+from core.gpu_layers_cap import max_safe_n_gpu_layers, is_unified_gpu_memory
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
@@ -455,6 +455,11 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "More layers make the AI generate text much faster, but setting this too high "
         "may use up all your video memory and cause crashes."
     )
+    if is_unified_gpu_memory():
+        _gpu_tip += (
+            " On unified-memory systems (Apple Silicon or AMD APUs), layers draw from "
+            "shared system RAM — raise this toward the maximum for much better speed."
+        )
     host.gpu_layers_slider.setToolTip(_gpu_tip)
     host.gpu_layers_value_lbl.setToolTip(_gpu_tip)
     gpu_layers_row.setToolTip(_gpu_tip)

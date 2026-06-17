@@ -1943,12 +1943,11 @@ class ConversationsView(QWidget):
         }
 
     def _format_agent_telemetry_text(self, metric: str, value: float | None) -> str:
-        if metric == "stt":
-            return f"STT: {value:.0f} ms" if value is not None else "STT: --"
-        if metric == "ttft":
-            return f"TTFT: {value:.0f} ms" if value is not None else "TTFT: --"
-        if metric == "tts":
-            return f"TTS: {value:.0f} ms" if value is not None else "TTS: --"
+        if metric in ("stt", "ttft", "tts"):
+            prefix = metric.upper()
+            if value is None:
+                return f"{prefix}: --"
+            return f"{prefix}: {float(value) / 1000.0:.1f} seconds"
         if metric == "tps":
             if value is not None and value > 0:
                 return f"TPS: {value:.1f} tok/s"
