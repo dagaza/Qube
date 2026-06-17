@@ -46,6 +46,7 @@ from ui.views.settings.controls import (
     NoScrollDoubleSpinBox,
     NoScrollSlider,
     NoScrollSpinBox,
+    SettingsScrollListWidget,
 )
 from ui.views.settings.widgets import (
     add_subsection_to_form,
@@ -102,7 +103,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.models_dir_label.setWordWrap(True)
 
     local_row = QHBoxLayout()
-    host.local_gguf_list = QListWidget()
+    host.local_gguf_list = SettingsScrollListWidget()
     host.local_gguf_list.setMinimumHeight(100)
     host.local_gguf_list.setMaximumHeight(160)
     host.local_gguf_list.setToolTip(
