@@ -95,12 +95,22 @@ class SimulateExecutionRouteTests(unittest.TestCase):
     def test_recall_fusion(self) -> None:
         decision = {"route": "none"}
         route, reason = simulate_execution_route(
-            prompt="Tell me about Dr. Evelyn.",
+            prompt="Remind me about Dr. Evelyn.",
             decision=decision,
             config=RouterEvalConfig(),
         )
         self.assertEqual(route, "HYBRID")
         self.assertEqual(reason, "recall_fusion")
+
+    def test_general_knowledge_stays_none(self) -> None:
+        decision = {"route": "none", "recall_active": False, "recall_score": 1.0}
+        route, reason = simulate_execution_route(
+            prompt="What is the capital of Nepal?",
+            decision=decision,
+            config=RouterEvalConfig(),
+        )
+        self.assertEqual(route, "NONE")
+        self.assertNotEqual(reason, "recall_fusion")
 
     def test_web_veto_when_disabled(self) -> None:
         # Router-picked WEB without explicit live-web triggers (weather/today

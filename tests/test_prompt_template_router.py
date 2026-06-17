@@ -166,6 +166,40 @@ class TestBuildPromptBundle(unittest.TestCase):
         }
         self.assertEqual(infer_template_type(llama), "gemma")
 
+    def test_nemotron_skips_reasoning_injection_when_disabled(self) -> None:
+        llama = _F()
+        llama.metadata = {"general.name": "NVIDIA-Nemotron-3-Nano-4B"}
+        llama.model_path = "/models/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf"
+        pol = ExecutionPolicy(
+            execution_mode="direct",
+            allow_thinking_tokens=False,
+            strip_thinking_output=True,
+            ui_display_thinking=False,
+            tts_strip_thinking=True,
+            enforcement_mode="soft",
+        )
+        prompt = (
+            "<|im_start|>system\nYou are Qube.<|im_end|>\n"
+            "<|im_start|>user\nWhy is the sky blue?<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
+        with patch(
+            "core.prompt_template_router.reconstruct_formatted_prompt",
+            return_value=(prompt, ["<|im_end|>"], "n"),
+        ) as mock_r:
+            bundle, _note, _ = build_prompt_bundle(
+                llama,
+                [{"role": "user", "content": "Why is the sky blue?"}],
+                None,
+                pol,
+                effective_chat_format="chat_template.default",
+                prompt_contract_stops=["<|im_end|>"],
+            )
+        self.assertEqual(bundle.prompt, prompt)
+        self.assertNotIn("Write only the user-facing response.", bundle.prompt)
+        _args, kwargs = mock_r.call_args
+        self.assertEqual(kwargs.get("chat_template_kwargs"), {"enable_thinking": False})
+
 
 if __name__ == "__main__":
     unittest.main()

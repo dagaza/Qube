@@ -129,6 +129,7 @@ from core.router_centroid_examples import (
 )
 from core.memory_filters import (
     detect_recall_intent,
+    should_apply_recall_fusion,
     detect_explicit_remember,
     detect_hard_explicit_web_request,
     detect_file_search_intent,
@@ -2264,7 +2265,7 @@ class LLMWorker(QThread):
             not explicit_remember_active
             and not scoped_library_active
             and not attachment_patch
-            and detect_recall_intent(clean_prompt)
+            and should_apply_recall_fusion(clean_prompt, decision=decision)
             and execution_route in ("NONE", "MEMORY", "RAG")
         ):
             logger.info("[LLM Worker] Recall intent detected; routing to HYBRID")

@@ -5,7 +5,11 @@ import unittest
 
 from core.execution_policy import resolve_execution_policy
 from core.model_reasoning_profile import ModelReasoningProfile
-from core.qwen3_thinking_policy import is_qwen3_model, template_kwargs_for_thinking_policy
+from core.qwen3_thinking_policy import (
+    is_nemotron_family_model,
+    is_qwen3_model,
+    template_kwargs_for_thinking_policy,
+)
 
 
 def _qwen_profile() -> ModelReasoningProfile:
@@ -53,6 +57,41 @@ class TestQwen3ThinkingPolicy(unittest.TestCase):
             model_name="Gpt-Oss-20B",
         )
         self.assertEqual(kw, {})
+
+    def test_is_nemotron_family_model_detects_name_and_path(self) -> None:
+        self.assertTrue(
+            is_nemotron_family_model(
+                model_path="/models/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
+                model_name="",
+            )
+        )
+        self.assertTrue(
+            is_nemotron_family_model(
+                model_path="",
+                model_name="NVIDIA Nemotron 3 Nano 4B",
+            )
+        )
+        self.assertFalse(
+            is_nemotron_family_model(model_path="/models/llama.gguf", model_name="Llama-3")
+        )
+
+    def test_template_kwargs_nemotron_think_off(self) -> None:
+        pol = resolve_execution_policy(_qwen_profile(), False, "internal")
+        kw = template_kwargs_for_thinking_policy(
+            pol,
+            model_path="/models/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
+            model_name="Nemotron-3-Nano-4B",
+        )
+        self.assertEqual(kw, {"enable_thinking": False})
+
+    def test_template_kwargs_nemotron_think_on(self) -> None:
+        pol = resolve_execution_policy(_qwen_profile(), True, "internal")
+        kw = template_kwargs_for_thinking_policy(
+            pol,
+            model_path="/models/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
+            model_name="Nemotron-3-Nano-4B",
+        )
+        self.assertEqual(kw, {"enable_thinking": True})
 
 
 if __name__ == "__main__":

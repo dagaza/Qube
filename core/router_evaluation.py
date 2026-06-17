@@ -20,7 +20,7 @@ from core.memory_filters import (
     detect_explicit_remember,
     detect_file_search_intent,
     detect_narrative_intent,
-    detect_recall_intent,
+    should_apply_recall_fusion,
 )
 from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
@@ -170,7 +170,10 @@ def _detect_recall_fusion_triggered(
         return True
     if (
         normalize_route(execution_pre) == "hybrid"
-        and detect_recall_intent(prompt.lower().strip())
+        and should_apply_recall_fusion(
+            prompt.lower().strip(),
+            decision=decision,
+        )
     ):
         return True
     return False
@@ -431,7 +434,7 @@ def simulate_execution_route(
 
     if (
         not scoped_library_active
-        and detect_recall_intent(clean_prompt)
+        and should_apply_recall_fusion(clean_prompt, decision=decision)
         and execution_route in ("NONE", "MEMORY", "RAG")
     ):
         execution_route = "HYBRID"

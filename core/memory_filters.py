@@ -207,28 +207,32 @@ def detect_explicit_remember(user_text: str) -> Optional[str]:
 _RECALL_INTENT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
-        r"\btell\s+me\s+about\b",
-        r"\bwho\s+is\b",
-        r"\bwho\s+was\b",
-        r"\bwhat\s+is\s+[a-z]",
+        # Explicit stored-context / personal recall (avoid bare "what is X",
+        # "who is X", or "tell me about X" — those are general-knowledge chat).
         r"\bremind\s+me\s+(?:about|of)\b",
-        r"\bwhat\s+do\s+(?:i|we)\s+know\s+about\b",
+        r"\bwhat\s+do\s+(?:i|we|you)\s+know\s+about\b",
         r"\bwhat\s+did\s+(?:we|you)\s+say\s+about\b",
         r"\bsummari[sz]e\s+what\s+you\s+know\s+about\b",
         r"\brefresh\s+my\s+memory\b",
         r"\brecall\s+what\b",
         r"\bdo\s+you\s+remember\b",
-        r"\banything\s+about\b",
+        r"\btell\s+me\s+about\s+my\b",
+        r"\bwho\s+is\s+my\b",
+        r"\bwho\s+was\s+my\b",
+        r"\bwhat\s+is\s+my\b",
+        r"\banything\s+about\s+my\b",
     )
 )
 
 
 def detect_recall_intent(user_text: str) -> bool:
-    """Substring-based detector for "tell me about X" / "who is X" style queries.
+    """Substring-based detector for personal / stored-context recall queries.
 
-    Used by Phase A's fusion-for-recall override in ``llm_worker`` to upgrade
-    NONE / MEMORY / RAG routes to HYBRID when the user is asking a recall
-    question.
+    Used as the cognitive-router substring fallback for ``recall_score`` and
+    as one input to ``should_apply_recall_fusion``. Broad general-knowledge
+    phrasing ("what is the capital of …", "who is Einstein") is intentionally
+    excluded; semantic recall centroids handle ambiguous "tell me about X"
+    cases when embeddings are available.
     """
     if not user_text:
         return False
@@ -239,6 +243,38 @@ def detect_recall_intent(user_text: str) -> bool:
         if p.search(s):
             return True
     return False
+
+
+def should_apply_recall_fusion(
+    user_text: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """True when the turn should upgrade to HYBRID for memory + document recall.
+
+    Honors the router's chat-centroid margin: when ``recall_active`` is false
+    but ``recall_score`` cleared the absolute threshold, the router already
+    decided the query is chat-class — do not override with substring fusion.
+    """
+    if not user_text:
+        return False
+    s = user_text.strip()
+    if not s:
+        return False
+
+    if isinstance(decision, dict):
+        if decision.get("recall_active"):
+            return True
+        try:
+            recall_score = float(decision.get("recall_score") or 0.0)
+            recall_threshold = float(decision.get("recall_threshold") or 0.62)
+        except (TypeError, ValueError):
+            recall_score = 0.0
+            recall_threshold = 0.62
+        if recall_score >= recall_threshold and not decision.get("recall_active"):
+            return False
+
+    return detect_recall_intent(s)
 
 
 # ============================================================
@@ -560,8 +596,6 @@ def query_implies_library_intent(
     lower = q.lower()
     if is_operational_library_prompt(lower):
         return False
-    if detect_recall_intent(q):
-        return True
     if detect_file_search_intent(q):
         return True
     if isinstance(decision, dict):
@@ -930,6 +964,7 @@ __all__ = [
     "is_thin_content",
     "detect_explicit_remember",
     "detect_recall_intent",
+    "should_apply_recall_fusion",
     "detect_narrative_intent",
     "detect_file_search_intent",
     "derive_memory_tier",

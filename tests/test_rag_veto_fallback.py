@@ -16,6 +16,7 @@ from core.memory_filters import (
     detect_recall_intent,
     library_lane_allowed,
     query_implies_library_intent,
+    should_apply_recall_fusion,
 )
 from core.prompt_blocks import build_prompt_blocks, compose_system_prompt
 
@@ -50,8 +51,10 @@ class LibraryLaneAllowedTests(unittest.TestCase):
 
 
 class QueryImpliesLibraryIntentTests(unittest.TestCase):
-    def test_recall_intent(self) -> None:
-        self.assertTrue(query_implies_library_intent("Tell me about Dr. Evelyn."))
+    def test_recall_intent_personal_phrase_without_decision(self) -> None:
+        self.assertFalse(
+            query_implies_library_intent("Tell me about Dr. Evelyn.")
+        )
 
     def test_document_substring(self) -> None:
         self.assertTrue(
@@ -60,6 +63,11 @@ class QueryImpliesLibraryIntentTests(unittest.TestCase):
 
     def test_plain_chat_false(self) -> None:
         self.assertFalse(query_implies_library_intent("Tell me a joke."))
+
+    def test_general_knowledge_false(self) -> None:
+        self.assertFalse(
+            query_implies_library_intent("What is the capital of Nepal?")
+        )
 
     def test_operational_library_prompt_false(self) -> None:
         self.assertFalse(
@@ -78,6 +86,42 @@ class QueryImpliesLibraryIntentTests(unittest.TestCase):
 
     def test_detect_recall_intent_helper(self) -> None:
         self.assertTrue(detect_recall_intent("Remind me about metric units"))
+
+    def test_detect_recall_intent_general_knowledge_false(self) -> None:
+        self.assertFalse(detect_recall_intent("What is the capital of Nepal?"))
+        self.assertFalse(detect_recall_intent("Who is Einstein?"))
+
+
+class ShouldApplyRecallFusionTests(unittest.TestCase):
+    def test_personal_recall_phrase(self) -> None:
+        self.assertTrue(
+            should_apply_recall_fusion("Remind me about metric units")
+        )
+
+    def test_general_knowledge_blocked(self) -> None:
+        self.assertFalse(
+            should_apply_recall_fusion("What is the capital of Nepal?")
+        )
+
+    def test_honors_router_recall_active(self) -> None:
+        self.assertTrue(
+            should_apply_recall_fusion(
+                "Tell me about Dr. Evelyn.",
+                decision={"recall_active": True},
+            )
+        )
+
+    def test_honors_router_chat_margin_block(self) -> None:
+        self.assertFalse(
+            should_apply_recall_fusion(
+                "What is the capital of Nepal?",
+                decision={
+                    "recall_active": False,
+                    "recall_score": 1.0,
+                    "recall_threshold": 0.62,
+                },
+            )
+        )
 
 
 class RagVetoPromptTests(unittest.TestCase):

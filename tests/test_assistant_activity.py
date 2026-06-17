@@ -99,6 +99,21 @@ def test_reducer_maps_voice_input_deactivated_to_idle():
     assert t.display_text.strip() == "Idle"
 
 
+def test_reducer_maps_native_model_ready_with_thinking_in_filename_to_idle():
+    reducer = AssistantActivityReducer()
+    t = reducer.reduce("Native model ready: Qwen3-32B-Thinking-Q4_K_M.gguf")
+    assert t.activity == AssistantActivity.IDLE_LISTEN
+    assert t.bubble_state == "idle"
+    assert t.display_text.strip() == "Idle"
+
+
+def test_reducer_maps_loading_native_model_to_idle():
+    reducer = AssistantActivityReducer()
+    t = reducer.reduce("Loading native model…")
+    assert t.activity == AssistantActivity.IDLE_LISTEN
+    assert t.bubble_state == "idle"
+
+
 def test_user_presence_label_speaking_and_idle():
     assert user_presence_label(AssistantActivity.IDLE_LISTEN) == "Idle"
     assert user_presence_label(AssistantActivity.CAPTURING) == "Listening"

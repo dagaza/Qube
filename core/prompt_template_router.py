@@ -18,6 +18,7 @@ from core.native_llama_inference import native_chat_completion_kwargs
 from core.model_override_store import get_override
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
 from core.qwen3_thinking_policy import (
+    is_nemotron_family_model,
     is_qwen3_model,
     template_kwargs_for_thinking_policy,
 )
@@ -184,12 +185,25 @@ def resolve_reasoning_mode(policy: ExecutionPolicy) -> str:
     return "soft"
 
 
-def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: str) -> str:
+def apply_reasoning_injection(
+    prompt: str,
+    template_type: str,
+    reasoning_mode: str,
+    *,
+    model_name: str = "",
+    model_path: str = "",
+) -> str:
     """
     Inject reasoning instructions SAFELY based on template type.
     Must NEVER break assistant anchor or template structure.
+
+    NVIDIA/Nemotron templates control reasoning via ``enable_thinking`` Jinja kwargs;
+    injected control phrases are echoed as visible planning text and are skipped here.
     """
     if reasoning_mode == "hard":
+        return prompt
+
+    if is_nemotron_family_model(model_name=model_name, model_path=model_path):
         return prompt
 
     if reasoning_mode != "soft" and reasoning_mode != "disabled":
@@ -308,6 +322,8 @@ def build_prompt_bundle(
         prompt_txt or "",
         template_type,
         reasoning_mode,
+        model_name=model_name,
+        model_path=model_path,
     )
 
     merged, _ = merge_stop_lists(_cc_kw.get("stop"), fmt_stop)

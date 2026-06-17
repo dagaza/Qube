@@ -105,6 +105,24 @@ def _is_voice_capture_message(msg_upper: str) -> bool:
     return msg_upper == "LISTENING" or "RECORDING" in msg_upper
 
 
+def _is_native_engine_status(msg_upper: str) -> bool:
+    """Model load/unload and engine routing — not user-visible assistant activity."""
+    return (
+        msg_upper.startswith("NATIVE ENGINE")
+        or msg_upper.startswith("NATIVE MODEL")
+        or msg_upper.startswith("LOADING NATIVE")
+        or msg_upper.startswith("UNLOADING NATIVE")
+        or msg_upper.startswith("ENGINE:")
+    )
+
+
+def _is_assistant_working_message(msg_upper: str) -> bool:
+    """Canonical in-flight turn statuses only — not arbitrary substrings in filenames."""
+    if msg_upper.startswith(("THINKING", "TRANSCRIBING", "GENERATING", "SYNTHESIZING")):
+        return True
+    return "SEARCHING" in msg_upper and "WEB" in msg_upper
+
+
 class AssistantActivityReducer:
     """Priority gate for worker status strings (extracted from MainWindow.update_status)."""
 
@@ -153,16 +171,10 @@ class AssistantActivityReducer:
         elif msg_upper == "LOAD A MODEL":
             new_bubble = "needs_model"
             activity = AssistantActivity.NEEDS_ATTENTION
-        elif any(
-            k in msg_upper
-            for k in (
-                "THINKING",
-                "GENERATING",
-                "SYNTHESIZING",
-                "TRANSCRIBING",
-                "SEARCHING",
-            )
-        ):
+        elif _is_native_engine_status(msg_upper):
+            new_bubble = "idle"
+            activity = AssistantActivity.IDLE_LISTEN
+        elif _is_assistant_working_message(msg_upper):
             activity = AssistantActivity.WORKING
             new_bubble = (
                 "writing" if self._voice_output_muted else "thinking"
