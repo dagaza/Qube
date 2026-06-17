@@ -2560,7 +2560,9 @@ class ConversationsView(QWidget):
         self.think_btn.setProperty("class", "ThinkToggleButton")
         self.think_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.think_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.think_btn.setToolTip("Show the model's reasoning process in responses")
+        self.think_btn.setToolTip(
+            "Show the model's reasoning process in responses (internal engine only)"
+        )
         self.think_btn.toggled.connect(self._on_think_toggled)
 
         action_layout.addWidget(self.web_btn)

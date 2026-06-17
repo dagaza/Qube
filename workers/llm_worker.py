@@ -111,6 +111,7 @@ from core.llm_debug_markers import (
     log_chat_exchange_end,
     next_exchange_id,
 )
+from core.execution_policy import execution_policy_debug_fields
 from core.conversational_follow_up import preserve_streamed_follow_up
 from core.output_token_budget import (
     probable_max_tokens_truncation,
@@ -1648,6 +1649,22 @@ class LLMWorker(QThread):
         except Exception:
             return ""
 
+    def _execution_policy_debug_payload(self) -> dict[str, Any] | None:
+        if str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or "").lower() != "internal":
+            return None
+        engine = getattr(self, "_native_engine", None)
+        if engine is None:
+            return None
+        try:
+            pol = engine.get_execution_policy()
+            return execution_policy_debug_fields(
+                pol,
+                reasoning_mode=getattr(engine, "_last_reasoning_mode", None),
+                chat_template_kwargs=getattr(engine, "_last_chat_template_kwargs", None),
+            )
+        except Exception:
+            return None
+
     def _bind_truth_diff_hooks(self) -> None:
         bind_llm_worker_truth_diff_hooks(
             l1_engine_request=self._truth_diff_hook_l1_engine_request,
@@ -1783,6 +1800,7 @@ class LLMWorker(QThread):
             session_id=str(self.session_id or ""),
             user_prompt=str(getattr(self, "_persist_content", None) or self.prompt or ""),
             engine_mode=str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or ""),
+            execution_policy=self._execution_policy_debug_payload(),
         )
         final_text_out = ""
         try:
@@ -1877,6 +1895,7 @@ class LLMWorker(QThread):
                 engine_queue_wait_ms=engine_queue_wait_ms,
                 engine_inference_ms=engine_inference_ms,
                 exchange_total_ms=exchange_total_ms,
+                execution_policy=self._execution_policy_debug_payload(),
             )
             self._completion_output_snapshot = None
             self.context_retrieved.emit(False)
@@ -3801,7 +3820,12 @@ class LLMWorker(QThread):
             debug_session_id=str(self.session_id or ""),
         )
 
-        cot_filter = RedactedThinkingStreamFilter()
+        _native_exec_policy = self._native_engine.get_execution_policy()
+        cot_filter = (
+            RedactedThinkingStreamFilter()
+            if bool(_native_exec_policy.strip_thinking_output)
+            else None
+        )
         meta_filter = LeadingMetaInstructionStripper()
         _native_telemetry = self._native_engine.get_model_reasoning_telemetry() or {}
         use_gemma_strip = is_gemma_model_identity(
@@ -3841,7 +3865,13 @@ class LLMWorker(QThread):
             return sanitize_output_for_validation(
                 raw_text,
                 harmony_active=harmony_active,
+                policy=_native_exec_policy,
             )
+
+        def _apply_stream_thinking_filter(text: str) -> str:
+            if cot_filter is None:
+                return text
+            return cot_filter.feed(text)
 
         def _abort_harmony_tts_tail() -> None:
             nonlocal current_sentence
@@ -3881,8 +3911,9 @@ class LLMWorker(QThread):
             if gemma_filter is not None:
                 tail = gemma_filter.feed(tail)
                 tail += gemma_filter.flush()
-            tail = cot_filter.feed(tail)
-            tail += cot_filter.flush()
+            if cot_filter is not None:
+                tail = cot_filter.feed(tail)
+                tail += cot_filter.flush()
             tail = meta_filter.feed(tail) + meta_filter.flush()
             _emit_filtered(tail)
 
@@ -3912,7 +3943,7 @@ class LLMWorker(QThread):
                 stream_piece = stream_in
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
+                clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
                 chunk_events: dict[str, Any] = {}
                 if gen_debug is not None:
                     repair_triggers: list[str] = []
@@ -3989,7 +4020,7 @@ class LLMWorker(QThread):
                 stream_piece = stream_in
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
+                clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
                 _emit_filtered(clean_piece, speak=False)
             elif kind == "replace":
                 replacement = str(data or "").strip()

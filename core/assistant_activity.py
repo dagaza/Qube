@@ -73,8 +73,6 @@ def user_presence_label(
     voice_output_muted: bool = False,
 ) -> str:
     """User-facing presence line (status bubble, tray, companion)."""
-    if activity == AssistantActivity.ASSISTANT_OFF:
-        return "Assistant paused"
     if activity == AssistantActivity.NEEDS_ATTENTION:
         return "Needs attention"
     if activity == AssistantActivity.CAPTURING:
@@ -90,10 +88,7 @@ def tray_tooltip_for_activity(
     activity: AssistantActivity,
     *,
     voice_output_muted: bool = False,
-    voice_paused: bool = False,
 ) -> str:
-    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
-        return "Qube — Assistant paused"
     label = user_presence_label(activity, voice_output_muted=voice_output_muted)
     return f"Qube — {label}"
 
@@ -102,10 +97,7 @@ def menu_status_line(
     activity: AssistantActivity,
     *,
     voice_output_muted: bool = False,
-    voice_paused: bool = False,
 ) -> str:
-    if voice_paused or activity == AssistantActivity.ASSISTANT_OFF:
-        return "Assistant paused"
     return user_presence_label(activity, voice_output_muted=voice_output_muted)
 
 
@@ -137,12 +129,6 @@ class AssistantActivityReducer:
     def set_forced_activity(self, activity: AssistantActivity | None) -> None:
         self._forced_activity = activity
 
-    def set_voice_paused(self, paused: bool) -> None:
-        if paused:
-            self._forced_activity = AssistantActivity.ASSISTANT_OFF
-        elif self._forced_activity == AssistantActivity.ASSISTANT_OFF:
-            self._forced_activity = None
-
     def set_background_busy(self, busy: bool) -> None:
         if busy:
             self._forced_activity = AssistantActivity.BACKGROUND_BUSY
@@ -152,18 +138,12 @@ class AssistantActivityReducer:
     def reduce(self, message: str, *, force: bool = False) -> ActivityTransition:
         msg_upper = message.upper().strip()
 
-        if "MIC ERROR" in msg_upper or "VOICE INPUT DEACTIVATED" in msg_upper:
+        if "MIC ERROR" in msg_upper:
             new_bubble = "idle"
-            if "MIC ERROR" in msg_upper:
-                activity = AssistantActivity.NEEDS_ATTENTION
-            elif self._forced_activity == AssistantActivity.ASSISTANT_OFF:
-                activity = AssistantActivity.ASSISTANT_OFF
-            else:
-                activity = (
-                    AssistantActivity.ASSISTANT_OFF
-                    if "DEACTIVATED" in msg_upper
-                    else AssistantActivity.IDLE_LISTEN
-                )
+            activity = AssistantActivity.NEEDS_ATTENTION
+        elif "VOICE INPUT DEACTIVATED" in msg_upper:
+            new_bubble = "idle"
+            activity = AssistantActivity.IDLE_LISTEN
         elif _is_voice_capture_message(msg_upper):
             new_bubble = "listening"
             activity = AssistantActivity.CAPTURING
@@ -217,15 +197,10 @@ class AssistantActivityReducer:
                 )
 
         self._bubble_state = new_bubble
-        if self._forced_activity not in (
-            AssistantActivity.ASSISTANT_OFF,
-            AssistantActivity.BACKGROUND_BUSY,
-        ):
+        if self._forced_activity != AssistantActivity.BACKGROUND_BUSY:
             self._forced_activity = None
 
-        if self._forced_activity == AssistantActivity.ASSISTANT_OFF:
-            activity = AssistantActivity.ASSISTANT_OFF
-        elif (
+        if (
             self._forced_activity == AssistantActivity.BACKGROUND_BUSY
             and new_bubble == "idle"
         ):
@@ -251,8 +226,6 @@ class AssistantActivityReducer:
             return "Load a Model"
         if "MIC ERROR" in msg_upper:
             return " Voice input unavailable"
-        if activity == AssistantActivity.ASSISTANT_OFF or "DEACTIVATED" in msg_upper:
-            return " Assistant paused"
         label = user_presence_label(
             activity, voice_output_muted=self._voice_output_muted
         )

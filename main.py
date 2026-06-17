@@ -557,10 +557,7 @@ class Qube:
         )
         if not tts_will_play:
             self._notify_turn_complete_if_hidden(session_id, text or "")
-            if getattr(self.audio_worker, "is_paused", False):
-                self.window.update_status("Voice Input Deactivated", force=True)
-            else:
-                self.window.update_status("Idle", force=True)
+            self.window.update_status("Idle", force=True)
         if hasattr(self, 'tts_worker'):
             self.tts_worker.enqueue_turn_complete(session_id)
 
@@ -670,10 +667,7 @@ class Qube:
             self._pending_turn_session_id = None
         if hasattr(self, 'window'):
             # 1. Determine the correct safe state
-            if getattr(self.audio_worker, 'is_paused', False):
-                safe_status = "Voice Input Deactivated"
-            else:
-                safe_status = "Idle"
+            safe_status = "Idle"
                 
             # 2. Update the internal window state
             self.window.update_status(safe_status, force=True)

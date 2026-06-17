@@ -41,9 +41,11 @@ def run_output_validation_and_retry(
 ) -> tuple[str, PromptContract, OutputValidationTrace, OutputValidationResult]:
     """Validate sanitized output; optionally adaptive-retry with matched token budget."""
     raw = final_text or ""
+    pol = getattr(engine, "get_execution_policy", lambda: None)()
     sanitized = sanitize_output_for_validation(
         raw,
         harmony_active=is_harmony_contract(contract),
+        policy=pol,
     )
     validation = validate_output(sanitized, contract)
     raw_validation = validate_output(raw, contract)
@@ -107,16 +109,26 @@ def run_output_validation_and_retry(
     engine._last_output_validation_trace = trace
 
     if trace.retry_replaced_stream:
-        return retried_text, final_contract, trace, validation
+        presented = retried_text
+        if pol is not None and pol.strip_thinking_output:
+            presented = sanitize_output_for_validation(
+                retried_text,
+                harmony_active=is_harmony_contract(final_contract),
+                policy=pol,
+            )
+        return presented, final_contract, trace, validation
     return raw, contract if not outcome.retry_used else final_contract, trace, validation
 
 
 def annotate_raw_vs_sanitized_validation(
     raw: str,
     contract: PromptContract,
+    *,
+    policy: Any | None = None,
 ) -> tuple[OutputValidationResult, OutputValidationResult, str]:
     sanitized = sanitize_output_for_validation(
         raw,
         harmony_active=is_harmony_contract(contract),
+        policy=policy,
     )
     return validate_output(sanitized, contract), validate_output(raw, contract), sanitized

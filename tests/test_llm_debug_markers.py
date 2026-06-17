@@ -115,6 +115,28 @@ class LlmDebugMarkersTests(unittest.TestCase):
         self.assertTrue(any("[QUBE INFERENCE TOKEN BEGIN]" in m for m in messages))
         self.assertTrue(any("[QUBE INFERENCE TOKEN END]" in m for m in messages))
 
+    def test_exchange_begin_includes_execution_policy_fields(self) -> None:
+        with patch.dict(os.environ, {"QUBE_LLM_DEBUG": "1"}, clear=False):
+            with self.assertLogs("Qube.NativeLLM.Debug", level="INFO") as captured:
+                log_chat_exchange_begin(
+                    exchange_id=8,
+                    session_id="sess",
+                    user_prompt="hi",
+                    engine_mode="internal",
+                    execution_policy={
+                        "allow_thinking_tokens": False,
+                        "strip_thinking_output": True,
+                        "reasoning_mode": "disabled",
+                        "chat_template_kwargs": {"enable_thinking": False},
+                    },
+                )
+        payload = json.loads(
+            next(r.getMessage() for r in captured.records if r.getMessage().startswith("{"))
+        )
+        self.assertFalse(payload["allow_thinking_tokens"])
+        self.assertEqual(payload["reasoning_mode"], "disabled")
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
+
     def test_noop_when_debug_disabled(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             with patch("core.llm_debug_markers.logger") as mock_logger:

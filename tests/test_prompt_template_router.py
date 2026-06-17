@@ -143,7 +143,8 @@ class TestBuildPromptBundle(unittest.TestCase):
                 pol,
             )
         self.assertNotIn("<|assistant|>", bundle.prompt)
-        self.assertTrue(bundle.prompt.rstrip().endswith("[/INST]"))
+        self.assertIn("Write only the user-facing response.", bundle.prompt)
+        self.assertTrue(bundle.prompt.rstrip().endswith("[/INST]") is False)
 
     def test_gemma_disabled_reasoning_injection_before_turn_model_anchor(self) -> None:
         prompt = (

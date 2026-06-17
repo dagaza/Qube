@@ -1107,7 +1107,7 @@ def get_internal_native_chat_format() -> str:
 
 def get_native_reasoning_display_user_override() -> bool | None:
     """
-    None = user has not chosen; callers should combine with model telemetry defaults.
+    None = user has not chosen; callers treat unset as Think OFF (opt-in).
     True/False = persisted explicit preference for internal native chat.
     """
     store = _store()

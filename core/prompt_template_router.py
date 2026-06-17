@@ -17,6 +17,10 @@ from core.execution_policy import ExecutionPolicy
 from core.native_llama_inference import native_chat_completion_kwargs
 from core.model_override_store import get_override
 from core.native_llm_debug import merge_stop_lists, reconstruct_formatted_prompt
+from core.qwen3_thinking_policy import (
+    is_qwen3_model,
+    template_kwargs_for_thinking_policy,
+)
 from core.template_override import TemplateOverride, detect_template_override
 
 if TYPE_CHECKING:
@@ -30,6 +34,14 @@ _POLICY_DISABLED_EXTRA_STOPS: tuple[str, ...] = (
     "</redacted_thinking>",
     "<thinking>",
     "</thinking>",
+)
+
+# Qwen3 often emits untagged planning monologues; catch common sentinels when Think is OFF.
+_QWEN_DISABLED_SENTINEL_STOPS: tuple[str, ...] = (
+    "Thinking Process:",
+    "\nThinking Process:",
+    "1. **Analyze",
+    "\n1. **Analyze",
 )
 
 _PHI_ASSISTANT = "<|assistant|>"
@@ -160,13 +172,16 @@ def infer_template_type(llama: Any) -> str:
 def resolve_reasoning_mode(policy: ExecutionPolicy) -> str:
     """
     Map ExecutionPolicy to overlay mode for prompt suffixes.
-    hard → no overlay; soft + allow thinking → soft overlay; else → disabled overlay.
+
+    When thinking is disallowed, always use ``disabled`` (inject final-answer-only
+    guidance) even under hard enforcement. ``hard`` applies only when thinking is
+    allowed but must not be prompted (reserved / no overlay).
     """
+    if not policy.allow_thinking_tokens:
+        return "disabled"
     if policy.enforcement_mode == "hard":
         return "hard"
-    if policy.allow_thinking_tokens:
-        return "soft"
-    return "disabled"
+    return "soft"
 
 
 def apply_reasoning_injection(prompt: str, template_type: str, reasoning_mode: str) -> str:
@@ -266,11 +281,19 @@ def build_prompt_bundle(
     matches ``PromptContract.stop``.
     """
     _cc_kw = native_chat_completion_kwargs(llama)
+    model_name = _llama_display_name(llama)
+    model_path = str(getattr(llama, "model_path", "") or "")
+    chat_template_kwargs = template_kwargs_for_thinking_policy(
+        execution_policy,
+        model_path=model_path,
+        model_name=model_name,
+    )
     prompt_txt, fmt_stop, recon_note = reconstruct_formatted_prompt(
         llama,
         messages,
         effective_chat_format=effective_chat_format,
         suppress_gguf_metadata=suppress_gguf_metadata,
+        chat_template_kwargs=chat_template_kwargs,
     )
     template_type = infer_template_type(llama)
     reasoning_mode = resolve_reasoning_mode(execution_policy)
@@ -291,8 +314,13 @@ def build_prompt_bundle(
     stops = list(merged)
     # Thinking-tag stops are for ChatML/Llama3/Phi where tags are in-vocab anchors.
     # On Jinja/GGUF templates they can truncate the first token to empty (stream + non-stream).
-    if reasoning_mode == "disabled" and template_type in ("chatml", "llama3", "phi"):
-        stops = stops + list(_POLICY_DISABLED_EXTRA_STOPS)
+    if reasoning_mode == "disabled":
+        if template_type in ("chatml", "llama3", "phi"):
+            stops = stops + list(_POLICY_DISABLED_EXTRA_STOPS)
+        elif is_qwen3_model(model_path=model_path, model_name=model_name):
+            stops = stops + list(_POLICY_DISABLED_EXTRA_STOPS) + list(
+                _QWEN_DISABLED_SENTINEL_STOPS
+            )
 
     cf = str(getattr(llama, "chat_format", "") or "")
     bundle = RenderPromptBundle(

@@ -127,10 +127,6 @@ class AssistantPresenceService(QObject):
         self._reducer.set_forced_activity(activity)
         self._publish_from_current("")
 
-    def set_voice_paused(self, paused: bool) -> None:
-        self._reducer.set_voice_paused(paused)
-        self._publish_from_current("")
-
     def set_background_busy(self, busy: bool) -> None:
         self._reducer.set_background_busy(busy)
         self._publish_from_current("")
@@ -200,7 +196,6 @@ class AssistantPresenceService(QObject):
     def _build_snapshot(self, transition: ActivityTransition, message: str) -> AssistantPresenceSnapshot:
         activity = transition.activity
         phase = phase_from_message(message, activity, transition.bubble_state)
-        voice_paused = activity == AssistantActivity.ASSISTANT_OFF
         background_busy = activity == AssistantActivity.BACKGROUND_BUSY
         attention = activity in (
             AssistantActivity.NEEDS_ATTENTION,
@@ -222,7 +217,7 @@ class AssistantPresenceService(QObject):
             phase=phase,
             display_text=transition.display_text,
             bubble_state=transition.bubble_state,
-            voice_input_paused=voice_paused,
+            voice_input_paused=False,
             voice_output_muted=self._voice_output_muted,
             dnd=self._dnd,
             background_busy=background_busy,

@@ -79,10 +79,6 @@ class AudioListenerWorker(QThread):
     def set_paused(self, paused: bool):
         """Thread-safe request to pause the audio stream."""
         self.is_paused = paused
-        if paused:
-            self.status_update.emit("Voice Input Deactivated")
-        else:
-            self.status_update.emit("Boot: Reconnecting Mic...")
 
     def refresh_wakewords(self, include_remote: bool = True) -> dict:
         catalog = self.wakeword_manager.refresh_catalog(include_remote=include_remote)

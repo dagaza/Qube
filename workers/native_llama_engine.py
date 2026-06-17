@@ -244,6 +244,8 @@ class NativeLlamaEngine(QThread):
         # Set by _prepare_validation_and_logs when using build_prompt_bundle (messages path).
         self._last_render_bundle: Optional[RenderPromptBundle] = None
         self._bundle_contract_id: Optional[int] = None
+        self._last_reasoning_mode: Optional[str] = None
+        self._last_chat_template_kwargs: dict[str, Any] = {}
         self._publisher_guidance: Any = None
         self._publisher_guidance_service = PublisherGuidanceService()
         self._last_retrieval_context: str = ""
@@ -1213,6 +1215,8 @@ class NativeLlamaEngine(QThread):
             merged_stops = list(contract.stop or [])
             self._last_render_bundle = None
             self._bundle_contract_id = None
+            self._last_reasoning_mode = None
+            self._last_chat_template_kwargs = {}
         else:
             bundle, recon_note, _fmt_stop = build_prompt_bundle(
                 self._llama,
@@ -1228,6 +1232,18 @@ class NativeLlamaEngine(QThread):
             merged_stops = list(bundle.stop_tokens)
             self._last_render_bundle = bundle
             self._bundle_contract_id = id(contract)
+            from core.qwen3_thinking_policy import template_kwargs_for_thinking_policy
+
+            self._last_reasoning_mode = str(bundle.reasoning_mode)
+            self._last_chat_template_kwargs = template_kwargs_for_thinking_policy(
+                pol,
+                model_path=str(self._model_path or ""),
+                model_name=(
+                    self._model_reasoning_profile.model_name
+                    if self._model_reasoning_profile
+                    else os.path.basename(self._model_path or "")
+                ),
+            )
         eos_s, _ = llama_eos_bos_strings(self._llama)
         merged_stops = apply_debug_stop_mode(list(merged_stops or []), eos_s)
         _val_cf = (

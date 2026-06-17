@@ -90,11 +90,13 @@ def test_reducer_allows_forced_idle_after_thinking():
     assert ok.bubble_state == "idle"
 
 
-def test_reducer_voice_paused_forces_assistant_off():
+
+def test_reducer_maps_voice_input_deactivated_to_idle():
     reducer = AssistantActivityReducer()
-    reducer.set_voice_paused(True)
-    t = reducer.reduce("Idle")
-    assert t.activity == AssistantActivity.ASSISTANT_OFF
+    t = reducer.reduce("Voice Input Deactivated", force=True)
+    assert t.activity == AssistantActivity.IDLE_LISTEN
+    assert t.bubble_state == "idle"
+    assert t.display_text.strip() == "Idle"
 
 
 def test_user_presence_label_speaking_and_idle():

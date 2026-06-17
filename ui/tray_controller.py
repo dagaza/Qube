@@ -82,7 +82,6 @@ class TrayController(QWidget):
         super().__init__(parent)
         self._is_dark = True
         self._activity = AssistantActivity.IDLE_LISTEN
-        self._voice_paused = False
         self._voice_output_muted = False
         self._tray_logo_icon = build_tray_logo_icon(tray_logo_path)
         self._tray_available = QSystemTrayIcon.isSystemTrayAvailable()
@@ -123,11 +122,9 @@ class TrayController(QWidget):
         self,
         activity: AssistantActivity,
         *,
-        voice_paused: bool = False,
         voice_output_muted: bool = False,
     ) -> None:
         self._activity = activity
-        self._voice_paused = voice_paused
         self._voice_output_muted = voice_output_muted
         self._refresh_presence()
 
@@ -272,7 +269,6 @@ class TrayController(QWidget):
     def _refresh_presence(self) -> None:
         line = menu_status_line(
             self._activity,
-            voice_paused=self._voice_paused,
             voice_output_muted=self._voice_output_muted,
         )
         if self._status_action is not None:
@@ -281,7 +277,6 @@ class TrayController(QWidget):
             self._tray_icon.setToolTip(
                 tray_tooltip_for_activity(
                     self._activity,
-                    voice_paused=self._voice_paused,
                     voice_output_muted=self._voice_output_muted,
                 )
             )

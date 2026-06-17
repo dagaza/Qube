@@ -136,6 +136,13 @@ def _emit_adaptive_retry_notice(model: Any, issues: list[str]) -> None:
         hook("format_retry", {"issues": list(issues)})
 
 
+def _policy_for_model(model: Any) -> Any:
+    try:
+        return model.get_execution_policy()
+    except Exception:
+        return None
+
+
 def maybe_retry(
     model: Any,
     messages: list[dict],
@@ -189,6 +196,7 @@ def maybe_retry(
             sanitize_output_for_validation(
                 retried_output,
                 harmony_active=is_harmony_contract(contract),
+                policy=_policy_for_model(model),
             ),
             contract,
         )
@@ -243,6 +251,7 @@ def maybe_retry(
         sanitize_output_for_validation(
             retried_output,
             harmony_active=is_harmony_contract(retry_contract),
+            policy=_policy_for_model(model),
         ),
         retry_contract,
     )

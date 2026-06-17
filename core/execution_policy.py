@@ -7,7 +7,7 @@ Does not modify prompts, sampling, or model weights — policy fields for UI + s
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from core.app_settings import DEFAULT_ENGINE_MODE
 
@@ -16,6 +16,27 @@ if TYPE_CHECKING:
 
 ExecutionMode = Literal["direct", "thinking", "hybrid"]
 EnforcementMode = Literal["soft", "hard"]
+
+
+def execution_policy_debug_fields(
+    policy: ExecutionPolicy,
+    *,
+    reasoning_mode: str | None = None,
+    chat_template_kwargs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compact policy projection for llm_debug exchange logs."""
+    out: dict[str, Any] = {
+        "allow_thinking_tokens": bool(policy.allow_thinking_tokens),
+        "strip_thinking_output": bool(policy.strip_thinking_output),
+        "policy_execution_mode": str(policy.execution_mode),
+        "policy_enforcement": str(policy.enforcement_mode),
+        "ui_display_thinking": bool(policy.ui_display_thinking),
+    }
+    if reasoning_mode is not None:
+        out["reasoning_mode"] = str(reasoning_mode)
+    if chat_template_kwargs:
+        out["chat_template_kwargs"] = dict(chat_template_kwargs)
+    return out
 
 
 @dataclass
@@ -32,12 +53,10 @@ def resolve_user_think_enabled(
     model_profile: Optional["ModelReasoningProfile"],
     user_override: Optional[bool],
 ) -> bool:
-    """Merge QSettings override with model default when override is unset."""
+    """Merge QSettings override; unset override means Think OFF (opt-in)."""
     if user_override is not None:
         return bool(user_override)
-    if model_profile is None or not model_profile.supports_thinking_tokens:
-        return False
-    return model_profile.default_mode in ("thinking", "hybrid")
+    return False
 
 
 def _policy_non_thinking() -> ExecutionPolicy:
@@ -96,7 +115,7 @@ def resolve_execution_policy(
     """
     Resolve the effective ExecutionPolicy (strict cases A–D).
 
-    user_think_enabled: None means “use model default” via resolve_user_think_enabled.
+    user_think_enabled: None means Think OFF until the user explicitly enables it (opt-in).
     """
     em = str(engine_mode or DEFAULT_ENGINE_MODE).lower().strip()
     if em != "internal":

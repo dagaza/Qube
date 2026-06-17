@@ -3063,7 +3063,6 @@ class MainWindow(QMainWindow):
             self.voice_input_toggle.blockSignals(False)
         if self._audio_worker is not None:
             self._audio_worker.set_paused(not enabled)
-        self._activity_reducer.set_voice_paused(not enabled)
         self._sync_tray_presence()
         self._sync_tray_voice_toggles()
 
@@ -3083,7 +3082,6 @@ class MainWindow(QMainWindow):
         voice_in = self.voice_input_toggle.isChecked() if hasattr(self, "voice_input_toggle") else True
         voice_out = self.voice_bypass_toggle.isChecked() if hasattr(self, "voice_bypass_toggle") else True
         self.tray_controller.sync_voice_toggles(voice_in=voice_in, voice_out=voice_out)
-        self._activity_reducer.set_voice_paused(not voice_in)
         self._presence_service.set_voice_output_muted(not voice_out)
         self._sync_tray_presence()
 
@@ -3093,12 +3091,8 @@ class MainWindow(QMainWindow):
     def _sync_tray_presence(self) -> None:
         if self.tray_controller is None:
             return
-        voice_paused = bool(
-            self._audio_worker and getattr(self._audio_worker, "is_paused", False)
-        )
         self.tray_controller.set_activity(
             self._activity_reducer.activity,
-            voice_paused=voice_paused,
             voice_output_muted=self._presence_service.snapshot().voice_output_muted,
         )
 
