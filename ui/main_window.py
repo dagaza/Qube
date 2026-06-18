@@ -1531,7 +1531,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_memory, alignment=Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addStretch()
 
@@ -1546,7 +1546,7 @@ class MainWindow(QMainWindow):
         self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20, tooltip="Settings")
         self.nav_settings.setObjectName("NavSettings")
@@ -1587,8 +1587,8 @@ class MainWindow(QMainWindow):
             self.nav_chat,
             self.nav_library,
             self.nav_memory,
-            self.nav_telemetry,
             self.nav_models,
+            self.nav_telemetry,
             self.nav_settings,
         ]
         self._nav_active_btn = self.nav_chat
