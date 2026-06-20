@@ -93,6 +93,11 @@ from core.engine_input_trace import (
 )
 from core.response_quality import evaluate_response_quality
 from core.model_performance_store import ModelPerformanceStore
+from core.inference_transparency import (
+    log_inference_transparency,
+    merge_native_telemetry_snapshot,
+    snapshot_from_loaded_llama,
+)
 from core.model_router import (
     RoutingDecision,
     extract_last_user_query,
@@ -249,6 +254,7 @@ class NativeLlamaEngine(QThread):
         self._publisher_guidance: Any = None
         self._publisher_guidance_service = PublisherGuidanceService()
         self._last_retrieval_context: str = ""
+        self._inference_transparency_native: Optional[Dict[str, Any]] = None
 
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
@@ -467,6 +473,14 @@ class NativeLlamaEngine(QThread):
             out["chat_contract"] = chat_blob or None
         else:
             out["chat_contract"] = None
+        out["inference_transparency"] = merge_native_telemetry_snapshot(
+            self._inference_transparency_native
+        )
+        out["inference_transparency_native"] = (
+            dict(self._inference_transparency_native)
+            if self._inference_transparency_native
+            else {"loaded": False, "role": "native"}
+        )
         return out
 
     def _log_chat_contract_violation_if_any(self, text: str) -> None:
@@ -803,6 +817,25 @@ class NativeLlamaEngine(QThread):
                 n_threads,
                 getattr(self._llama, "chat_format", "?"),
             )
+            try:
+                self._inference_transparency_native = snapshot_from_loaded_llama(
+                    self._llama,
+                    model_path=path,
+                    requested_n_gpu_layers=n_gpu,
+                    n_ctx=n_ctx,
+                    n_threads=n_threads,
+                    role="native",
+                )
+                log_inference_transparency(
+                    logger,
+                    role="Native",
+                    snapshot=merge_native_telemetry_snapshot(
+                        self._inference_transparency_native
+                    ),
+                )
+            except Exception as e:
+                logger.debug("[Native] inference transparency capture failed: %s", e)
+                self._inference_transparency_native = None
             self._router_profile_key = reg_name
             try:
                 upsert_profile_from_loaded_model(
@@ -825,6 +858,7 @@ class NativeLlamaEngine(QThread):
             logger.exception("[Native] Load failed: %s", e)
             self._llama = None
             self._model_path = None
+            self._inference_transparency_native = None
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
@@ -918,6 +952,7 @@ class NativeLlamaEngine(QThread):
         finally:
             self._llama = None
             self._model_path = None
+            self._inference_transparency_native = None
             self._last_trace_preflight = None
             self._last_formatted_prompt = None
             self._gt_token_ids = []

@@ -258,6 +258,8 @@ class SettingsView(
         super().showEvent(event)
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
+        if hasattr(self, "_refresh_inference_transparency_panel"):
+            self._refresh_inference_transparency_panel()
         self._ensure_settings_file_watched()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_settings_sidebar_surface(is_dark)

@@ -35,6 +35,7 @@ from core.title_generation_experiment import log_title_experiment_run, run_title
 from core.title_inference_profiles import get_title_profile
 from core.sidecar_prompts import normalize_title_user_prompt
 from core.sidecar_telemetry import get_sidecar_telemetry
+from core.inference_transparency import log_inference_transparency, snapshot_from_loaded_llama
 from core.sidecar_prompts import (
     build_prompt_for_task,
     parse_task_output,
@@ -84,6 +85,23 @@ class SidecarLlmWorker(QThread):
         self.active_chat_format: str = "chatml"
         self._warned_missing = False
         self.telemetry = get_sidecar_telemetry()
+        self._inference_transparency: dict[str, Any] = {}
+
+    def get_inference_transparency(self) -> dict[str, Any]:
+        """Read-only sidecar stack snapshot for UI telemetry."""
+        snap = dict(self._inference_transparency)
+        snap.setdefault("role", "sidecar")
+        snap.setdefault("backend", "cpu")
+        snap.setdefault("compute_mode", "cpu")
+        snap["loaded"] = bool(self.model_loaded)
+        if not self.model_loaded:
+            try:
+                degraded = str(self.telemetry.summarize().get("degraded_reason") or "")
+            except Exception:
+                degraded = ""
+            if degraded:
+                snap["degraded_reason"] = degraded
+        return snap
 
     def reload_from_settings(self) -> None:
         """Enqueue hot-reload of the cognition model from current settings."""
@@ -251,6 +269,7 @@ class SidecarLlmWorker(QThread):
     def _unload_cognition_model(self) -> None:
         self.model = None
         self.model_loaded = False
+        self._inference_transparency = {}
         gc.collect()
 
     def _load_cognition_model(self, path: str) -> tuple[bool, str]:
@@ -277,11 +296,41 @@ class SidecarLlmWorker(QThread):
             )
             self.model_loaded = True
             self.active_model_path = path
+            try:
+                snap = snapshot_from_loaded_llama(
+                    self.model,
+                    model_path=path,
+                    requested_n_gpu_layers=0,
+                    n_ctx=n_ctx,
+                    n_threads=max(1, int(os.cpu_count() or 4)),
+                    role="sidecar",
+                )
+                snap["backend"] = "cpu"
+                snap["compute_mode"] = "cpu"
+                snap["chat_format"] = self.active_chat_format
+                self._inference_transparency = snap
+                log_inference_transparency(logger, role="Sidecar", snapshot=snap)
+            except Exception as e:
+                logger.debug("[Sidecar] inference transparency capture failed: %s", e)
+                self._inference_transparency = {
+                    "loaded": True,
+                    "role": "sidecar",
+                    "model_basename": os.path.basename(path),
+                    "backend": "cpu",
+                    "compute_mode": "cpu",
+                }
             return True, "ok"
         except Exception as e:
             logger.error("[Sidecar] Load failed: %s", e)
             self._unload_cognition_model()
             self.active_model_path = ""
+            self._inference_transparency = {
+                "loaded": False,
+                "role": "sidecar",
+                "backend": "cpu",
+                "compute_mode": "cpu",
+                "degraded_reason": str(e),
+            }
             return False, str(e)
 
     def _do_reload(self) -> None:

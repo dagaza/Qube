@@ -11,6 +11,7 @@ from core.embedding_models import (
     migrate_legacy_embedding_layout,
     resolve_active_embedding_path,
 )
+from core.inference_transparency import log_inference_transparency, snapshot_from_loaded_llama
 
 logger = logging.getLogger("Qube.RAG.Embedder")
 
@@ -84,6 +85,9 @@ class EmbeddingModel:
         self._model_path = ""
         self.model: Llama | None = None
         self._physical_cores = max(1, multiprocessing.cpu_count() // 2)
+        self._backend = "unknown"
+        self._requested_n_gpu_layers = 0
+        self._inference_transparency: dict = {}
         self._load(model_path or resolve_active_embedding_path())
 
     @property
@@ -97,8 +101,17 @@ class EmbeddingModel:
     def reload(self, model_path: str | None = None) -> None:
         """Unload and reload the embedder from settings or an explicit path."""
         self.model = None
+        self._inference_transparency = {}
+        self._backend = "unknown"
         gc.collect()
         self._load(model_path or resolve_active_embedding_path())
+
+    def get_inference_transparency(self) -> dict:
+        """Read-only embedder stack snapshot for UI telemetry."""
+        snap = dict(self._inference_transparency)
+        snap.setdefault("role", "embedder")
+        snap["backend"] = self._backend
+        return snap
 
     def _load(self, model_path: str) -> None:
         if not model_path or not os.path.isfile(model_path):
@@ -111,17 +124,48 @@ class EmbeddingModel:
         logger.info("Probing user hardware for embedding model: %s", os.path.basename(model_path))
 
         try:
+            self._requested_n_gpu_layers = -1
             self.model = _init_llama_embed(model_path, -1, self._physical_cores)
             self.model.create_embedding("hardware_test")
+            self._backend = "gpu"
             logger.info("GPU acceleration engaged successfully!")
+            self._capture_transparency(model_path, requested_n_gpu_layers=-1)
 
         except Exception as e:
             logger.warning(
                 "GPU init failed (Likely missing drivers). Falling back to CPU. Error: %s",
                 e,
             )
+            self._requested_n_gpu_layers = 0
             self.model = _init_llama_embed(model_path, 0, self._physical_cores)
+            self._backend = "cpu"
             logger.info("Running on CPU mode.")
+            self._capture_transparency(model_path, requested_n_gpu_layers=0)
+
+    def _capture_transparency(self, model_path: str, *, requested_n_gpu_layers: int) -> None:
+        if self.model is None:
+            self._inference_transparency = {"loaded": False, "role": "embedder"}
+            return
+        try:
+            snap = snapshot_from_loaded_llama(
+                self.model,
+                model_path=model_path,
+                requested_n_gpu_layers=requested_n_gpu_layers,
+                n_ctx=_LLAMA_CTX,
+                n_threads=self._physical_cores,
+                role="embedder",
+            )
+            snap["backend"] = self._backend
+            self._inference_transparency = snap
+            log_inference_transparency(logger, role="Embedder", snapshot=snap)
+        except Exception as e:
+            logger.debug("Embedder transparency capture failed: %s", e)
+            self._inference_transparency = {
+                "loaded": True,
+                "role": "embedder",
+                "model_basename": os.path.basename(model_path),
+                "backend": self._backend,
+            }
 
     def embed(self, texts: list[str]) -> np.ndarray:
         """Rock-solid sequential embedding to bypass llama.cpp batching bugs."""

@@ -569,6 +569,7 @@ def _router_substring_implies_library_intent(query: str, decision: dict) -> bool
 
 
 def _router_embedding_implies_library_intent(decision: dict) -> bool:
+    """Router telemetry: embedding lane won RAG (retrieval utility, not user intent)."""
     top = str(decision.get("top_intent") or "").lower()
     if top not in ("rag", "hybrid"):
         return False
@@ -582,12 +583,27 @@ def _router_embedding_implies_library_intent(decision: dict) -> bool:
     return score >= 0.30
 
 
-def query_implies_library_intent(
+def query_has_lexical_library_signal(query: str) -> bool:
+    """True when the query text itself names documents/files/library (lexical only)."""
+    from core.rag_trigger_routing import is_operational_library_prompt
+
+    lower = (query or "").lower().strip()
+    if not lower or is_operational_library_prompt(lower):
+        return False
+    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+
+
+def query_explicitly_requests_library_search(
     query: str,
     *,
     decision: dict | None = None,
 ) -> bool:
-    """True when the message plausibly expects document/library retrieval."""
+    """True when the user explicitly scoped the turn to local documents/library.
+
+    Uses file-search regexes, document-ish tokens in the query text, and
+    router substring RAG confirmation — but **not** embedding scores or
+    ``recall_fusion`` routing metadata (those belong to retrieval routing only).
+    """
     from core.rag_trigger_routing import is_operational_library_prompt
 
     q = (query or "").strip()
@@ -598,14 +614,112 @@ def query_implies_library_intent(
         return False
     if detect_file_search_intent(q):
         return True
-    if isinstance(decision, dict):
-        if decision.get("recall_fusion"):
-            return True
-        if _router_embedding_implies_library_intent(decision):
-            return True
-        if _router_substring_implies_library_intent(q, decision):
-            return True
-    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+    if query_has_lexical_library_signal(q):
+        return True
+    if isinstance(decision, dict) and _router_substring_implies_library_intent(q, decision):
+        return True
+    return False
+
+
+def query_implies_library_intent(
+    query: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """Alias for :func:`query_explicitly_requests_library_search` (messaging / UX gates).
+
+    Previously also accepted router embedding and ``recall_fusion`` signals;
+    those paths were removed so KB-disabled messaging tracks explicit user
+    intent rather than retrieval utility.
+    """
+    return query_explicitly_requests_library_search(query, decision=decision)
+
+
+# Short corrective / continuation phrasing on a prior plain-chat turn.
+_CONTINUATION_CORRECTION_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.I)
+    for p in (
+        r"\bactually\b",
+        r"\bit'?s not\b",
+        r"\bthat'?s not\b",
+        r"\bnot quite\b",
+        r"\bi meant\b",
+        r"\bwhat i meant\b",
+        r"\bcorrection\b",
+        r"\bto clarify\b",
+    )
+)
+
+
+def is_conversational_continuation_turn(
+    query: str,
+    *,
+    follow_up_active: bool,
+    prior_execution_route: str | None,
+    has_chat_history: bool,
+    short_token_max: int = 20,
+) -> bool:
+    """True when the turn likely continues a prior plain-chat exchange."""
+    if not has_chat_history:
+        return False
+    prior = str(prior_execution_route or "NONE").upper()
+    if prior not in ("NONE", ""):
+        return False
+    if follow_up_active:
+        return True
+    q = (query or "").strip()
+    if not q:
+        return False
+    if any(p.search(q) for p in _CONTINUATION_CORRECTION_PATTERNS):
+        return True
+    return len(q.split()) <= short_token_max
+
+
+def should_downgrade_embedding_rag_on_continuation(
+    query: str,
+    *,
+    decision: dict | None,
+    execution_route: str,
+    prior_execution_route: str | None,
+    follow_up_active: bool,
+    has_chat_history: bool,
+    scoped_library_active: bool = False,
+) -> bool:
+    """Downgrade embedding-only RAG/HYBRID picks on short plain-chat continuations."""
+    if scoped_library_active:
+        return False
+    if query_explicitly_requests_library_search(
+        query, decision=decision if isinstance(decision, dict) else None
+    ):
+        return False
+    route = str(execution_route or "").upper()
+    if route not in ("RAG", "HYBRID"):
+        return False
+    if not isinstance(decision, dict):
+        return False
+    if decision.get("recall_fusion") or decision.get("recall_active"):
+        return False
+    if route == "HYBRID" and not _router_embedding_implies_library_intent(decision):
+        rag_source = str(decision.get("rag_score_source") or "").lower()
+        if rag_source != "embedding":
+            return False
+    elif route == "RAG":
+        rag_source = str(decision.get("rag_score_source") or "").lower()
+        top_intent = str(decision.get("top_intent") or "").lower()
+        top_source = str(decision.get("top_intent_source") or "").lower()
+        embedding_rag = rag_source == "embedding" or (
+            top_intent == "rag" and top_source == "embedding"
+        )
+        if not embedding_rag:
+            return False
+    if not is_conversational_continuation_turn(
+        query,
+        follow_up_active=follow_up_active,
+        prior_execution_route=prior_execution_route,
+        has_chat_history=has_chat_history,
+    ):
+        return False
+    return True
 
 _HARD_EXPLICIT_WEB_TRIGGERS: tuple[str, ...] = (
     "look online",
@@ -983,7 +1097,11 @@ __all__ = [
     "detect_hard_explicit_web_request",
     "detect_explicit_web_request",
     "query_implies_live_web_intent",
+    "query_has_lexical_library_signal",
+    "query_explicitly_requests_library_search",
     "query_implies_library_intent",
+    "is_conversational_continuation_turn",
+    "should_downgrade_embedding_rag_on_continuation",
     "should_run_internet_search_for_route",
     "PREFERENCE_APPLICATION_SUFFIX",
     "CHAT_PERSONALITY_SUFFIX",

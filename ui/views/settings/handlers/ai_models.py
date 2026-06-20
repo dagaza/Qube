@@ -95,6 +95,7 @@ from core.auxiliary_cognition import (
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
+from core.inference_transparency import aggregate_app_transparency
 from ui.components.brand_buttons import (
     apply_brand_primary,
     apply_brand_danger,
@@ -186,6 +187,24 @@ class AiModelsHandlersMixin:
             else:
                 self.active_native_model_lbl.setText("(none)")
 
+    def _refresh_inference_transparency_panel(self) -> None:
+        lbl = getattr(self, "inference_transparency_lbl", None)
+        if lbl is None:
+            return
+        mw = self.window()
+        ne = getattr(mw, "_native_engine", None) if mw else self.workers.get("native_engine")
+        try:
+            snap = aggregate_app_transparency(
+                native_engine=ne,
+                embedder=self.workers.get("embedder") if getattr(self, "workers", None) else None,
+                sidecar_worker=self.workers.get("sidecar_worker") if getattr(self, "workers", None) else None,
+            )
+            lines = snap.get("summary_lines") or []
+            lbl.setText("\n".join(lines) if lines else "Inference stack details unavailable.")
+        except Exception as e:
+            logger.debug("Inference transparency panel refresh failed: %s", e)
+            lbl.setText("Inference stack details unavailable.")
+
     def _on_gpu_layers_slider_changed(self, v: int) -> None:
         self.gpu_layers_value_lbl.setText(str(int(v)))
         self._on_native_gpu_layers_changed(int(v))
@@ -215,6 +234,7 @@ class AiModelsHandlersMixin:
             self._template_override_reload_pending = False
             self._sync_active_native_model_label()
             self._sync_native_chat_template_label()
+            self._refresh_inference_transparency_panel()
             return
 
         if self._auto_reset_reload_pending:
@@ -222,6 +242,7 @@ class AiModelsHandlersMixin:
             self._auto_reset_reload_pending = False
             self._sync_active_native_model_label()
             self._sync_native_chat_template_label()
+            self._refresh_inference_transparency_panel()
             return
 
         if get_internal_native_chat_format() != "auto":
@@ -237,6 +258,7 @@ class AiModelsHandlersMixin:
                 llm.refresh_native_model_from_settings()
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
+        self._refresh_inference_transparency_panel()
 
     def _saved_native_chat_format_label(self, mode: str) -> str:
         items = getattr(self, "_native_chat_format_items", None) or []
@@ -293,6 +315,7 @@ class AiModelsHandlersMixin:
 
     def _on_native_gpu_layers_changed(self, v: int) -> None:
         set_internal_n_gpu_layers(int(v))
+        self._refresh_inference_transparency_panel()
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
             llm.refresh_native_model_from_settings()

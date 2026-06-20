@@ -11,6 +11,7 @@ import pyqtgraph as pg
 import qtawesome as qta
 
 from core.app_settings import get_engine_mode
+from core.inference_transparency import aggregate_app_transparency
 
 logger = logging.getLogger("Qube.UI.Telemetry")
 
@@ -110,8 +111,11 @@ class TelemetryView(QWidget):
         bottom_row_layout.addWidget(self.router_card, stretch=1)
         bottom_row_layout.addWidget(self.sidecar_card, stretch=1)
 
+        self.inference_transparency_card = self._build_inference_transparency_card()
+
         dashboard_layout.addLayout(top_row_layout)
         dashboard_layout.addLayout(bottom_row_layout)
+        dashboard_layout.addWidget(self.inference_transparency_card)
         layout.addLayout(dashboard_layout)
         if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
             "1",
@@ -419,6 +423,63 @@ class TelemetryView(QWidget):
 
         return frame
 
+    # ============================================================
+    # INFERENCE TRANSPARENCY
+    # ============================================================
+    def _build_inference_transparency_card(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("InferenceTransparencyCard")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(25)
+
+        header = QLabel("Inference stack")
+        header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Compile-time llama.cpp backend, hardware profile, layer configuration, "
+            "and which compute path each model instance uses. Does not measure VRAM or timing."
+        )
+        layout.addWidget(header)
+
+        build_row, self._inf_build_val = self._make_metric_row(
+            "llama.cpp build",
+            "Wheel backend and GPU offload support",
+            "—",
+            "From llama_print_system_info() and llama_supports_gpu_offload() at load time.",
+        )
+        hardware_row, self._inf_hardware_val = self._make_metric_row(
+            "Hardware profile",
+            "GPU memory kind and layer cap heuristics",
+            "—",
+            "From Qube GPU layer cap detection (NVIDIA, AMD discrete, AMD APU unified, Apple unified).",
+        )
+        native_row, self._inf_native_val = self._make_metric_row(
+            "Native chat",
+            "Loaded model and requested GPU layers",
+            "—",
+            "Requested layer count vs model depth from llama_model_n_layer(); not measured offload.",
+        )
+        embedder_row, self._inf_embedder_val = self._make_metric_row(
+            "Embeddings",
+            "RAG embedder compute path",
+            "—",
+            "GPU probe at embedder init (-1 layers) with CPU fallback.",
+        )
+        sidecar_row, self._inf_sidecar_val = self._make_metric_row(
+            "Sidecar",
+            "Auxiliary cognition compute path",
+            "—",
+            "Sidecar always loads with n_gpu_layers=0 (CPU).",
+        )
+
+        layout.addLayout(build_row)
+        layout.addLayout(hardware_row)
+        layout.addLayout(native_row)
+        layout.addLayout(embedder_row)
+        layout.addLayout(sidecar_row)
+        layout.addStretch()
+        return frame
+
     def _make_metric_row(
         self,
         title: str,
@@ -518,6 +579,7 @@ class TelemetryView(QWidget):
 
     def _on_native_load_finished_telemetry(self, _ok: bool, _msg: str) -> None:
         self._refresh_model_capability_labels()
+        self._refresh_inference_transparency_labels()
 
     def _resolve_native_engine(self):
         """Prefer ctor ref; fall back to workers dict (same object in normal app startup)."""
@@ -551,6 +613,7 @@ class TelemetryView(QWidget):
 
     def _refresh_hardware(self):
         self._refresh_model_capability_labels()
+        self._refresh_inference_transparency_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
 
@@ -588,6 +651,7 @@ class TelemetryView(QWidget):
             getattr(self, "model_capability_card", None),
             getattr(self, "router_card", None),
             getattr(self, "sidecar_card", None),
+            getattr(self, "inference_transparency_card", None),
         ):
             if card is not None:
                 name = card.objectName() or "TelemetryCard"
@@ -671,6 +735,80 @@ class TelemetryView(QWidget):
             self._cap_publisher_guidance_val.setText(f"{pg_src}; default={default}; tags={tag_txt}")
         else:
             self._cap_publisher_guidance_val.setText("—")
+
+    def _refresh_inference_transparency_labels(self) -> None:
+        if not hasattr(self, "_inf_build_val"):
+            return
+        try:
+            snap = aggregate_app_transparency(
+                native_engine=self._resolve_native_engine(),
+                embedder=self.workers.get("embedder") if getattr(self, "workers", None) else None,
+                sidecar_worker=self.workers.get("sidecar_worker") if getattr(self, "workers", None) else None,
+            )
+        except Exception as e:
+            logger.debug("Inference transparency refresh failed: %s", e)
+            for lbl in (
+                self._inf_build_val,
+                self._inf_hardware_val,
+                self._inf_native_val,
+                self._inf_embedder_val,
+                self._inf_sidecar_val,
+            ):
+                lbl.setText("—")
+            return
+
+        build = snap.get("build") or {}
+        hardware = snap.get("hardware") or {}
+        native = snap.get("native") or {}
+        embedder = snap.get("embedder") or {}
+        sidecar = snap.get("sidecar") or {}
+
+        backend = str(build.get("backend_hint") or "unknown")
+        ver = build.get("llama_cpp_python_version") or "?"
+        offload = build.get("supports_gpu_offload")
+        offload_txt = "yes" if offload else "no"
+        self._inf_build_val.setText(f"{backend} (offload={offload_txt}, v{ver})")
+
+        hw_label = hardware.get("gpu_memory_kind_label") or hardware.get("gpu_memory_kind") or "unknown"
+        vram_gb = hardware.get("vram_budget_gb") or 0
+        cap = hardware.get("max_safe_n_gpu_layers")
+        unified = hardware.get("is_unified_gpu_memory")
+        hw_txt = f"{hw_label}"
+        if vram_gb:
+            hw_txt += f", budget≈{vram_gb} GB"
+        if cap is not None:
+            hw_txt += f", cap={cap}"
+        if unified:
+            hw_txt += ", APU/unified"
+        self._inf_hardware_val.setText(hw_txt)
+
+        if native.get("loaded"):
+            name = native.get("model_basename") or "model"
+            params = native.get("model_n_params_label") or "?"
+            layers = native.get("model_n_layers")
+            layer_cfg = native.get("layer_configuration") or "?"
+            self._inf_native_val.setText(f"{name} ({params}, {layers}L) — {layer_cfg}")
+        else:
+            mode = (snap.get("settings") or {}).get("engine_mode") or get_engine_mode()
+            if mode != "internal":
+                self._inf_native_val.setText("External engine (no native model)")
+            else:
+                self._inf_native_val.setText("Not loaded")
+
+        emb_backend = embedder.get("backend")
+        if emb_backend and emb_backend != "unknown":
+            emb_name = embedder.get("model_basename") or "embedder"
+            self._inf_embedder_val.setText(f"{emb_name} on {str(emb_backend).upper()}")
+        else:
+            self._inf_embedder_val.setText("—")
+
+        if sidecar.get("loaded"):
+            sc_name = sidecar.get("model_basename") or "sidecar"
+            self._inf_sidecar_val.setText(f"{sc_name} on CPU (n_gpu_layers=0)")
+        elif sidecar.get("degraded_reason"):
+            self._inf_sidecar_val.setText(f"Unavailable ({sidecar.get('degraded_reason')})")
+        else:
+            self._inf_sidecar_val.setText("Not loaded")
 
     # ============================================================
     # LATENCY UPDATE SLOTS

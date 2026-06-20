@@ -137,7 +137,9 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
     query_implies_live_web_intent,
-    query_implies_library_intent,
+    query_explicitly_requests_library_search,
+    query_has_lexical_library_signal,
+    should_downgrade_embedding_rag_on_continuation,
     library_lane_allowed,
     should_run_internet_search_for_route,
 )
@@ -373,6 +375,7 @@ class LLMWorker(QThread):
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
         self._conversation_health_by_session: dict[str, ConversationHealthState] = {}
+        self._prior_execution_route_by_session: dict[str, str] = {}
         self._push_sampling_to_native()
 
     def _sampling_payload(self) -> dict:
@@ -2251,6 +2254,14 @@ class LLMWorker(QThread):
 
         execution_route = decision["route"].upper()
 
+        prior_execution_route = "NONE"
+        if self.session_id:
+            prior_execution_route = self._prior_execution_route_by_session.get(
+                str(self.session_id),
+                "NONE",
+            )
+        has_prior_chat = len(history) > 1
+
         # ------------------------------------------------------------
         # Phase A: recall-intent fusion override.
         # "Tell me about X" / "who is X" / "remind me about X" style queries
@@ -2291,6 +2302,29 @@ class LLMWorker(QThread):
             )
             execution_route = "NONE"
             decision["route_inherited_from_discourse"] = True
+
+        if (
+            not explicit_remember_active
+            and not scoped_library_active
+            and should_downgrade_embedding_rag_on_continuation(
+                self.prompt,
+                decision=decision if isinstance(decision, dict) else None,
+                execution_route=execution_route,
+                prior_execution_route=prior_execution_route,
+                follow_up_active=follow_up.active,
+                has_chat_history=has_prior_chat,
+                scoped_library_active=scoped_library_active,
+            )
+        ):
+            logger.info(
+                "[LLM Worker] Embedding RAG/HYBRID suppressed on plain-chat "
+                "continuation (prior_route=%s); execution_route %s -> NONE",
+                prior_execution_route,
+                execution_route,
+            )
+            execution_route = "NONE"
+            if isinstance(decision, dict):
+                decision["embedding_rag_continuation_suppressed"] = True
 
         force_rag_via_trigger = False
         # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.
@@ -2432,10 +2466,19 @@ class LLMWorker(QThread):
         ) or bool(
             web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
         )
+        explicit_library_request = query_explicitly_requests_library_search(
+            clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
+        )
         rag_capability_blocked = bool(
             library_blocked
-            and query_implies_library_intent(clean_prompt, decision=decision)
+            and explicit_library_request
             and execution_route in ("NONE", "MEMORY")
+            and (
+                rag_vetoed
+                or detect_file_search_intent(clean_prompt)
+                or query_has_lexical_library_signal(clean_prompt)
+            )
         )
         if isinstance(decision, dict):
             decision["rag_capability_blocked"] = rag_capability_blocked
@@ -3136,6 +3179,8 @@ class LLMWorker(QThread):
             and execution_route == "NONE"
         )
         self._turn_execution_route = execution_route
+        if self.session_id:
+            self._prior_execution_route_by_session[str(self.session_id)] = execution_route
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
