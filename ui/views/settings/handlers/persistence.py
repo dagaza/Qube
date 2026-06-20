@@ -403,6 +403,8 @@ class PersistenceHandlersMixin:
         self._sync_embedding_models_dir_label()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        if hasattr(self, "_sync_embedding_mode_selector"):
+            self._sync_embedding_mode_selector()
 
         if hasattr(self, "advanced_stt_toggle"):
             self.advanced_stt_toggle.blockSignals(True)

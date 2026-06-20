@@ -21,8 +21,6 @@ from core.auxiliary_cognition import migrate_stale_sidecar_override
 from core.embedding_models import migrate_stale_embedding_override
 from core.stt_models import migrate_stale_stt_override
 from core.tts_models import migrate_legacy_tts_layout, migrate_stale_tts_override, resolve_active_tts_path
-from workers.ingestion_worker import IngestionWorker 
-from core.gpu_monitor import GPUMonitor
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
@@ -60,10 +58,17 @@ from core.notification_types import (
     turn_complete_event,
 )
 from workers.enrichment_worker import EnrichmentWorker
+from workers.ingestion_worker import IngestionWorker
+from workers.reindex_worker import ReindexWorker
 from workers.memory_reflection_worker import MemoryReflectionWorker
 from workers.memory_promotion_worker import MemoryPromotionWorker
 from workers.memory_consolidation_worker import MemoryConsolidationWorker
 from workers.internet_worker import InternetWorker
+from core.gpu_monitor import GPUMonitor
+from core.app_settings import get_embedding_mode, set_embedding_mode, set_embedding_model_path
+from core.embedding_modes import normalize_mode_id
+from core.reindex_state import is_reindex_in_progress
+from core.router_centroid_install import clear_router_embedding_state, install_router_centroids
 
 import logging
 
@@ -122,8 +127,9 @@ class Qube:
             tick("Loading embeddings…")
             self.embedder = EmbeddingModel()
         tick("Preparing storage…")
-        self.store = DocumentStore()
+        self.store = DocumentStore(expected_vector_dim=self.embedder.vector_dim)
         self.db_manager = DatabaseManager()
+        self.reindex_worker = None
 
     def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
         tick("Starting core services…")
@@ -216,6 +222,11 @@ class Qube:
         self._wire_notification_adapters()
         self.sidecar_worker.ingest_blurb_ready.connect(self._on_ingest_blurb_ready)
         self._sync_databases()
+        if getattr(self.store, "dim_mismatch", False):
+            logger.warning(
+                "LanceDB dimension mismatch detected; starting reindex for active mode."
+            )
+            self._start_reindex_for_mode(get_embedding_mode())
 
     def _boot_autoload_model(self, tick: Callable[[str], None]) -> None:
         if (
@@ -263,20 +274,96 @@ class Qube:
         else:
             self.window.notification_service.emit(event)
 
-    def _reload_embedder_from_settings(self) -> None:
-        """Reload the global embedder after Settings → Knowledge model swap."""
-        from workers.intent_router import EmbeddingCache
+    def _invalidate_router_embedding_state(self, *, rebuild_centroids: bool = False) -> None:
+        router = getattr(getattr(self, "llm_worker", None), "cognitive_router", None)
+        if router is None:
+            return
+        clear_router_embedding_state(router)
+        if rebuild_centroids and getattr(self, "embedder", None) is not None:
+            install_router_centroids(router, self.embedder, force=True)
+        cache = getattr(getattr(self, "llm_worker", None), "embedding_cache", None)
+        if cache is not None and hasattr(cache, "reset"):
+            cache.reset()
 
+    def _reload_embedder_from_settings(self) -> None:
+        """Reload GGUF override and re-embed the library with the new model."""
+        self._invalidate_router_embedding_state()
         try:
             self.embedder.reload()
         except Exception as e:
             logger.error("Embedding model reload failed: %s", e)
             return
+        self._start_reindex_current_embedder()
+
+    def _begin_embedding_job_ui(self, detail: str) -> None:
+        self.window.begin_background_progress(detail)
+        self.window.library_view.begin_ingest_progress_ui(detail=detail)
+
+    def _update_embedding_job_progress(self, percent: int) -> None:
+        self.window.update_background_progress(percent)
+        self.window.library_view.update_ingestion_progress(percent)
+
+    def _set_embedding_job_detail(self, detail: str) -> None:
+        self.window.set_background_progress_detail(detail)
+        self.window.library_view.set_ingest_progress_detail(detail)
+        self.window.update_status(detail)
+
+    def _finish_embedding_job_ui(self) -> None:
+        self.window.finish_background_progress()
+
+    def _wire_reindex_worker(self, worker: ReindexWorker) -> None:
+        worker.progress_update.connect(self._update_embedding_job_progress)
+        worker.status_update.connect(self._set_embedding_job_detail)
+        worker.error_occurred.connect(self._on_reindex_error)
+        worker.reindex_complete.connect(self._on_reindex_complete)
+
+    def _start_reindex_worker(
+        self,
+        *,
+        target_mode: str | None = None,
+        reload_embedder: bool = True,
+    ) -> None:
+        if is_reindex_in_progress():
+            logger.info("Reindex already in progress; ignoring duplicate request.")
+            return
+        if self.reindex_worker is not None and self.reindex_worker.isRunning():
+            return
+
+        self._invalidate_router_embedding_state()
+        detail = "Reprocessing your library and memories…"
+        self.window._activity_reducer.set_background_busy(True)
+        self.window._sync_tray_presence()
+        self._begin_embedding_job_ui(detail)
+        self.window.update_status(detail)
+
+        router = getattr(self.llm_worker, "cognitive_router", None)
+        self.reindex_worker = ReindexWorker(
+            target_mode=target_mode,
+            embedder=self.embedder,
+            store=self.store,
+            cognitive_router=router,
+            reload_embedder=reload_embedder,
+        )
+        self._wire_reindex_worker(self.reindex_worker)
+        self.reindex_worker.start()
+
+    def _start_reindex_current_embedder(self) -> None:
+        self._start_reindex_worker(reload_embedder=False)
+
+    def _start_reindex_for_mode(self, mode_id: str) -> None:
+        target_mode = normalize_mode_id(mode_id)
+        set_embedding_mode(target_mode)
+        set_embedding_model_path("")
+        self._start_reindex_worker(target_mode=target_mode, reload_embedder=True)
+
+    def _on_reindex_complete(self, mode_id: str) -> None:
+        from workers.intent_router import EmbeddingCache
 
         self.llm_worker.embedder = self.embedder
         self.llm_worker.embedding_cache = EmbeddingCache(self.embedder)
         self.enrichment_worker.embedder = self.embedder
-
+        self.store.dim_mismatch = False
+        self.store.vector_dim = self.embedder.vector_dim
         w = self.window
         if isinstance(getattr(w, "workers", None), dict):
             w.workers["embedder"] = self.embedder
@@ -286,13 +373,46 @@ class Qube:
             worker = getattr(mmv, "worker", None)
             if worker is not None:
                 worker.embedder = self.embedder
+        self.window.library_view.finish_reindex_ui()
+        self._finish_embedding_job_ui()
+        self.window._activity_reducer.set_background_busy(False)
+        self.window._sync_tray_presence()
+        self.window.update_status("Idle", force=True)
+        logger.info("Reindex complete for mode=%s", mode_id)
+        from core.embedding_modes import get_mode_spec
+        from core.notification_types import NotificationEvent, NotificationSeverity
 
-        if hasattr(w, "settings_view"):
-            sv = w.settings_view
+        spec = get_mode_spec(mode_id) if mode_id else None
+        mode_label = spec.label if spec else "updated search quality"
+        self.window.emit_notification(
+            NotificationEvent(
+                title="Library reprocessing complete",
+                body=f"Your knowledge base is ready with {mode_label} search quality.",
+                severity=NotificationSeverity.SUCCESS,
+                category="background",
+                auto_dismiss_ms=8000,
+                tray_bump=True,
+            )
+        )
+        if hasattr(self.window, "settings_view"):
+            sv = self.window.settings_view
+            if hasattr(sv, "_sync_embedding_mode_selector"):
+                sv._sync_embedding_mode_selector()
             if hasattr(sv, "_sync_active_embedding_label"):
                 sv._sync_active_embedding_label()
-            if hasattr(sv, "_refresh_embedding_gguf_list"):
-                sv._refresh_embedding_gguf_list()
+
+    def _on_reindex_error(self, message: str) -> None:
+        self._finish_embedding_job_ui()
+        self.window.library_view.show_error(
+            f"Reprocessing failed. Your library may be incomplete — try again.\n\n{message}",
+            title="Reprocessing Failed",
+        )
+        self.window._activity_reducer.set_background_busy(False)
+        self.window._sync_tray_presence()
+        self.window.update_status("Idle", force=True)
+
+    def _on_embedding_mode_change_requested(self, mode_id: str) -> None:
+        self._start_reindex_for_mode(mode_id)
 
     def _reload_stt_from_settings(self) -> None:
         if hasattr(self.stt_worker, "reload_from_settings"):
@@ -369,6 +489,12 @@ class Qube:
         ):
             self.window.settings_view.embedding_model_changed.connect(
                 self._reload_embedder_from_settings
+            )
+        if hasattr(self.window, "settings_view") and hasattr(
+            self.window.settings_view, "embedding_mode_change_requested"
+        ):
+            self.window.settings_view.embedding_mode_change_requested.connect(
+                self._on_embedding_mode_change_requested
             )
         if hasattr(self.window, "settings_view") and hasattr(
             self.window.settings_view, "stt_model_changed"
@@ -743,9 +869,15 @@ class Qube:
 
     def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""
+        if is_reindex_in_progress():
+            self.window.library_view.show_error(
+                "Reprocessing is still running. Please wait until it finishes."
+            )
+            return
         self.window.update_status("Ingesting Documents...")
         self.window._activity_reducer.set_background_busy(True)
         self.window._sync_tray_presence()
+        self.window.begin_background_progress("Preparing documents for indexing…")
 
         self.ingestion_worker = IngestionWorker(
             file_paths,
@@ -757,13 +889,14 @@ class Qube:
         )
 
         # Wire the worker's progress signals back to the Library UI
-        self.ingestion_worker.progress_update.connect(self.window.library_view.update_ingestion_progress)
-        self.ingestion_worker.file_done.connect(self.window.update_status)
+        self.ingestion_worker.progress_update.connect(self._update_embedding_job_progress)
+        self.ingestion_worker.file_done.connect(self._set_embedding_job_detail)
         self.ingestion_worker.ingestion_complete.connect(self.window.library_view.complete_ingestion)
         self.ingestion_worker.ingestion_complete.connect(self._on_ingestion_complete)
 
         # Route backend errors directly to the UI popup
         self.ingestion_worker.error_occurred.connect(self.window.library_view.show_error)
+        self.ingestion_worker.error_occurred.connect(lambda _err: self._finish_embedding_job_ui())
 
         # Keep the terminal log as a backup
         self.ingestion_worker.error_occurred.connect(lambda err: logger.error(f"Ingestion Error: {err}"))
@@ -782,6 +915,7 @@ class Qube:
             file_count = 1
         if file_count > 0:
             self.window.emit_notification(ingestion_complete_event(file_count=file_count))
+        self._finish_embedding_job_ui()
         # Clear background-busy before forcing Idle — otherwise BACKGROUND_BUSY wins
         # over an idle bubble (see AssistantActivityReducer.reduce).
         self.window._activity_reducer.set_background_busy(False)

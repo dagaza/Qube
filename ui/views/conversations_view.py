@@ -2750,11 +2750,23 @@ class ConversationsView(QWidget):
             return rich_text
         return compose_streaming_markdown(stable, tail)
 
+    def _sanitize_agent_stream_text(self, text: str) -> str:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        return strip_output_artifacts(
+            text or "",
+            harmony_active=self._harmony_output_cleanup_active(),
+            reasoning_family=self._reasoning_family_harmony_leak_strip_active(),
+        )
+
     def _flush_coalesced_agent_markdown(self, *, finalize: bool = False) -> None:
         cur = getattr(self, "current_agent_msg", None)
         if cur is None:
             return
-        buf = getattr(self, "_agent_text_buffer", "") or ""
+        raw = getattr(self, "_agent_text_buffer", "") or ""
+        buf = self._sanitize_agent_stream_text(raw)
+        if buf != raw:
+            self._agent_text_buffer = buf
         is_dark = True
         if self.window() and hasattr(self.window(), "_is_dark_theme"):
             is_dark = self.window()._is_dark_theme
@@ -2788,6 +2800,9 @@ class ConversationsView(QWidget):
             self._apply_reader_focus_opacity()
 
     def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
+        token = self._sanitize_agent_stream_text(str(token or ""))
+        if not token:
+            return
         self._hide_agent_typing_row()
         self._clear_placeholders()
 
@@ -3428,6 +3443,31 @@ class ConversationsView(QWidget):
         except Exception:
             return False
 
+    def _reasoning_family_harmony_leak_strip_active(self) -> bool:
+        eng = self.workers.get("native_engine") if self.workers else None
+        if eng is None:
+            return False
+        try:
+            from core.qwen3_thinking_policy import (
+                is_reasoning_family_harmony_leak_strip_candidate,
+            )
+
+            snap = eng.get_model_reasoning_telemetry() or {}
+            if not bool(snap.get("loaded")):
+                return False
+            name = str(snap.get("model_name", "") or "")
+            base = str(snap.get("model_basename", "") or "")
+            path = str(getattr(eng, "_model_path", "") or "")
+            ident_name = f"{name} {base}".strip()
+            if is_reasoning_family_harmony_leak_strip_candidate(
+                model_path=path,
+                model_name=ident_name,
+            ):
+                return True
+            return bool(snap.get("supports_thinking_tokens"))
+        except Exception:
+            return False
+
     def refresh_think_toggle(self) -> None:
         """Sync Think button from native engine telemetry (ExecutionPolicy projection only)."""
         if not hasattr(self, "think_btn"):
@@ -3694,20 +3734,14 @@ class ConversationsView(QWidget):
                 prev = self._pending_stream_tokens_by_session.get(sid, "")
                 self._pending_stream_tokens_by_session[sid] = prev + str(token or "")
             return
-        self.log_agent_token(token)
+        self.log_agent_token(str(token or ""))
 
     def on_llm_stream_replaced(self, session_id: str, text: str) -> None:
-        """Mid-turn full replace (native format fallback) — sync bubble before finish."""
-        from core.output_artifact_strip import strip_output_artifacts
-
         active = str(getattr(self, "active_session_id", "") or "")
         sid = str(session_id or "")
         if not active or sid != active:
             return
-        cleaned = strip_output_artifacts(
-            text or "",
-            harmony_active=self._harmony_output_cleanup_active(),
-        )
+        cleaned = self._sanitize_agent_stream_text(text or "")
         if not cleaned:
             return
         self._agent_text_buffer = cleaned
@@ -3876,8 +3910,6 @@ class ConversationsView(QWidget):
         self._restore_send_mode_if_idle()
 
     def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
-        from core.output_artifact_strip import strip_output_artifacts
-
         sid = str(session_id or "")
         if sid:
             self._pending_stream_tokens_by_session.pop(sid, None)
@@ -3885,10 +3917,7 @@ class ConversationsView(QWidget):
         active = str(getattr(self, "active_session_id", "") or "")
         if not active or sid != active:
             return
-        cleaned = strip_output_artifacts(
-            final_text or "",
-            harmony_active=self._harmony_output_cleanup_active(),
-        )
+        cleaned = self._sanitize_agent_stream_text(final_text or "")
         if cleaned:
             cur = getattr(self, "current_agent_msg", None)
             if cur is None:

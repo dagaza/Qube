@@ -5,6 +5,7 @@ import re
 
 from core.gemma_output_strip import looks_like_gemma_output_artifact, strip_gemma_output_artifacts
 from core.harmony_degeneration import polish_harmony_visible_text
+from core.redacted_thinking_filter import _longest_suffix_that_is_prefix_of
 
 # Log-derived bridge: <|end|><|start|>assistant<|channel|>final<|message|>
 _HARMONY_BRIDGE = re.compile(
@@ -68,6 +69,43 @@ _CHANNEL_TAIL = re.compile(
 # Mistral instruct markers leaked when prompt anchor was wrong or the model continues the template.
 _MISTRAL_INST_MARKERS = re.compile(r"\s*\[/?INST\]\s*")
 _MISTRAL_EOS_TAIL = re.compile(r"\s*</s>\s*$")
+# Harmony/gpt-oss control tokens sometimes leak from Nemotron/Qwen3-family completions.
+_REASONING_FAMILY_HARMONY_LEAK = re.compile(
+    r"(?i)<\|start\|>|<\|end\|>|<\|return\|>|<\|assistant\|>"
+)
+_REASONING_FAMILY_HARMONY_HEADER = re.compile(
+    r"(?is)^\s*<\|start\|>\s*assistant\s*<\|end\|>\s*"
+)
+_ORPHAN_ASSISTANT_AFTER_SCAFFOLD = re.compile(r"(?is)^\s*assistant\s+")
+_SCAFFOLD_TOKEN_NEEDLES: tuple[str, ...] = (
+    "<|start|>",
+    "<|end|>",
+    "<|return|>",
+    "<|assistant|>",
+)
+
+
+def harmony_scaffold_leak_detected(text: str) -> bool:
+    """True when text contains Harmony/gpt-oss control tokens that should not be user-visible."""
+    if not text:
+        return False
+    return bool(
+        _REASONING_FAMILY_HARMONY_LEAK.search(text)
+        or _REASONING_FAMILY_HARMONY_HEADER.search(text)
+    )
+
+
+def _should_strip_harmony_scaffold(text: str, *, reasoning_family: bool) -> bool:
+    return bool(reasoning_family or harmony_scaffold_leak_detected(text))
+
+
+def _longest_suffix_scaffold_prefix(s: str) -> int:
+    best = 0
+    for needle in _SCAFFOLD_TOKEN_NEEDLES:
+        best = max(best, _longest_suffix_that_is_prefix_of(s, needle))
+    if best:
+        return best
+    return _longest_suffix_that_is_prefix_of(s, "<|")
 
 
 def _strip_degenerate_punctuation_tail(text: str) -> str:
@@ -103,8 +141,70 @@ def strip_mistral_instruct_artifacts(text: str) -> str:
     return _MISTRAL_EOS_TAIL.sub("", t)
 
 
-def _strip_non_harmony_output_artifacts(text: str) -> str:
+def _strip_reasoning_family_harmony_scaffold(text: str) -> str:
+    """Remove leaked Harmony/gpt-oss scaffold tokens (Nemotron/Qwen3-family path only).
+
+    Preserves leading/trailing whitespace on each streaming fragment.
+    """
+    if not text:
+        return text
+    if not _REASONING_FAMILY_HARMONY_LEAK.search(text) and not _REASONING_FAMILY_HARMONY_HEADER.search(
+        text
+    ):
+        return text
+    leading = len(text) - len(text.lstrip())
+    trailing = len(text) - len(text.rstrip())
+    lead_ws = text[:leading]
+    trail_ws = text[len(text) - trailing :] if trailing else ""
+    core = text[leading : len(text) - trailing if trailing else len(text)]
+    if not core:
+        return text
+    t = _REASONING_FAMILY_HARMONY_HEADER.sub("", core, count=1)
+    t = _REASONING_FAMILY_HARMONY_LEAK.sub("", t)
+    t = _ORPHAN_ASSISTANT_AFTER_SCAFFOLD.sub("", t, count=1)
+    return lead_ws + t + trail_ws
+
+
+class LeakedHarmonyScaffoldStreamFilter:
+    """Chunk-safe strip for Harmony scaffold tokens on non-Harmony model streams."""
+
+    __slots__ = ("_hold",)
+
+    def __init__(self) -> None:
+        self._hold = ""
+
+    def feed(self, chunk: str) -> str:
+        if not chunk:
+            return ""
+        combined = self._hold + chunk
+        self._hold = ""
+        cleaned = combined
+        if _should_strip_harmony_scaffold(combined, reasoning_family=True):
+            cleaned = _strip_reasoning_family_harmony_scaffold(combined)
+        hold = _longest_suffix_scaffold_prefix(cleaned)
+        if hold:
+            self._hold = cleaned[-hold:]
+            return cleaned[:-hold]
+        return cleaned
+
+    def flush(self) -> str:
+        if not self._hold:
+            return ""
+        tail = _strip_reasoning_family_harmony_scaffold(self._hold)
+        self._hold = ""
+        return tail
+
+
+def _strip_non_harmony_output_artifacts(
+    text: str,
+    *,
+    reasoning_family: bool = False,
+) -> str:
     """Model-agnostic cleanup (Gemma thought channel, Mistral markers) without Harmony layers."""
+    if not text:
+        return text
+    if _should_strip_harmony_scaffold(text, reasoning_family=reasoning_family):
+        text = _strip_reasoning_family_harmony_scaffold(text)
     if not text or not text.strip():
         return text
     leading = len(text) - len(text.lstrip())
@@ -153,11 +253,16 @@ def strip_harmony_oss_artifacts(text: str) -> str:
     return lead_ws + strip_gemma_output_artifacts(t) + trail_ws
 
 
-def strip_output_artifacts(text: str, *, harmony_active: bool = False) -> str:
+def strip_output_artifacts(
+    text: str,
+    *,
+    harmony_active: bool = False,
+    reasoning_family: bool = False,
+) -> str:
     """Dispatch output cleanup based on whether a Harmony model is loaded."""
     if harmony_active:
         return strip_harmony_oss_artifacts(text)
-    return _strip_non_harmony_output_artifacts(text)
+    return _strip_non_harmony_output_artifacts(text, reasoning_family=reasoning_family)
 
 
 def merge_user_visible_stream_tail(

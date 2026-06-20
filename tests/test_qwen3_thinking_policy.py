@@ -8,6 +8,7 @@ from core.model_reasoning_profile import ModelReasoningProfile
 from core.qwen3_thinking_policy import (
     is_nemotron_family_model,
     is_qwen3_model,
+    is_reasoning_family_harmony_leak_strip_candidate,
     template_kwargs_for_thinking_policy,
 )
 
@@ -92,6 +93,23 @@ class TestQwen3ThinkingPolicy(unittest.TestCase):
             model_name="Nemotron-3-Nano-4B",
         )
         self.assertEqual(kw, {"enable_thinking": True})
+
+    def test_is_reasoning_family_harmony_leak_strip_candidate(self) -> None:
+        self.assertTrue(
+            is_reasoning_family_harmony_leak_strip_candidate(
+                model_path="/models/NVIDIA-Nemotron-3-Nano-4B-Q8_0.gguf",
+            )
+        )
+        self.assertTrue(
+            is_reasoning_family_harmony_leak_strip_candidate(
+                model_path="/models/Qwen3.5-9B-Q6_K.gguf",
+            )
+        )
+        self.assertFalse(
+            is_reasoning_family_harmony_leak_strip_candidate(
+                model_path="/models/Llama-3.2-3B.gguf",
+            )
+        )
 
 
 if __name__ == "__main__":

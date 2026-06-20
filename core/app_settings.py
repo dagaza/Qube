@@ -56,6 +56,7 @@ KEY_CITATION_INTEGRITY_ENFORCE = "qube.citations.integrity_enforce"
 KEY_CITATION_INTEGRITY_UI_LINKIFY = "qube.citations.integrity_ui_linkify"
 KEY_CITATION_INTEGRITY_MISSING_RETRY = "qube.citations.integrity_missing_retry"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
+KEY_EMBEDDING_MODE = "qube.embedding.activeMode"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
 KEY_PROFILE_UNITS = "qube.profile.units"
@@ -449,6 +450,19 @@ def set_embedding_model_path(path: str) -> None:
         _store().set(KEY_EMBEDDING_MODEL_PATH, cleaned)
     else:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+
+
+def get_embedding_mode() -> str:
+    from core.embedding_modes import DEFAULT_MODE, normalize_mode_id
+
+    raw = str(_store().get(KEY_EMBEDDING_MODE, DEFAULT_MODE) or DEFAULT_MODE)
+    return normalize_mode_id(raw)
+
+
+def set_embedding_mode(mode: str) -> None:
+    from core.embedding_modes import normalize_mode_id
+
+    _store().set(KEY_EMBEDDING_MODE, normalize_mode_id(mode))
 
 
 def get_advanced_speech_models_unlocked() -> bool:
