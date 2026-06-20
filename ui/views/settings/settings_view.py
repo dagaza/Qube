@@ -186,6 +186,7 @@ class SettingsView(
     external_settings_reloaded = pyqtSignal(set)
     cognition_model_changed = pyqtSignal()
     embedding_model_changed = pyqtSignal()
+    embedding_mode_change_requested = pyqtSignal(str)
     stt_model_changed = pyqtSignal()
     tts_model_changed = pyqtSignal()
     mic_vu_hint_requested = pyqtSignal()
@@ -220,6 +221,8 @@ class SettingsView(
         self._refresh_local_gguf_list()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        if hasattr(self, "_sync_embedding_mode_selector"):
+            self._sync_embedding_mode_selector()
         self._refresh_stt_model_list()
         self._refresh_tts_model_list()
         self._sync_active_stt_label()

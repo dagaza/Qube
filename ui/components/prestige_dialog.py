@@ -16,11 +16,42 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QShowEvent
 
 
 def _resolve_is_dark_from_parent(parent) -> bool:
     w = parent.window() if parent else None
     return getattr(w, "_is_dark_theme", True) if w else True
+
+
+def _resolve_host_window(parent):
+    if parent is None:
+        return None
+    if hasattr(parent, "frameGeometry") and hasattr(parent, "isWindow"):
+        return parent
+    return parent.window()
+
+
+def _center_dialog_on_host(dialog: QDialog) -> None:
+    from PyQt6.QtWidgets import QApplication
+
+    host = _resolve_host_window(dialog.parent())
+    dialog.adjustSize()
+    frame = dialog.frameGeometry()
+    if (
+        host is not None
+        and host.isVisible()
+        and host.width() > 0
+        and host.height() > 0
+    ):
+        frame.moveCenter(host.frameGeometry().center())
+        dialog.move(frame.topLeft())
+        return
+    screen = QApplication.primaryScreen()
+    if screen is None:
+        return
+    frame.moveCenter(screen.availableGeometry().center())
+    dialog.move(frame.topLeft())
 
 
 class PrestigeDialog(QDialog):
@@ -41,7 +72,10 @@ class PrestigeDialog(QDialog):
         show_cancel: bool = True,
     ):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         fixed_w = int(dialog_width) if dialog_width is not None else None
@@ -179,6 +213,12 @@ class PrestigeDialog(QDialog):
         c_layout.addLayout(btns)
 
         layout.addWidget(self.container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        _center_dialog_on_host(self)
+        self.raise_()
+        self.activateWindow()
 
     def exec(self):
         """Returns the input text if Accepted and is_input=True, otherwise True/None."""

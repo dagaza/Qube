@@ -34,6 +34,7 @@ from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
+from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.modal_backdrop import ModalBackdrop
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
@@ -404,6 +405,16 @@ class MainWindow(QMainWindow):
         # Build the Multi-Pane Layout
         self.top_bar = self._build_top_bar()
         root_layout.addWidget(self.top_bar)
+
+        self.background_progress_banner = QWidget()
+        self.background_progress_banner.setObjectName("BackgroundProgressBanner")
+        banner_layout = QVBoxLayout(self.background_progress_banner)
+        banner_layout.setContentsMargins(16, 6, 16, 6)
+        banner_layout.setSpacing(0)
+        self.background_progress_row = IngestProgressRow(self.background_progress_banner)
+        banner_layout.addWidget(self.background_progress_row)
+        self.background_progress_banner.hide()
+        root_layout.addWidget(self.background_progress_banner)
 
         workspace_layout = QHBoxLayout()
         workspace_layout.setContentsMargins(0, 0, 0, 0)
@@ -2833,6 +2844,9 @@ class MainWindow(QMainWindow):
             if hasattr(self.library_view, '_update_row_colors'):
                 self.library_view._update_row_colors() # Force text repaint instantly!
 
+        if hasattr(self, "background_progress_row"):
+            self.background_progress_row.apply_theme(self._is_dark_theme)
+
         if hasattr(self, "memory_manager_view") and hasattr(
             self.memory_manager_view, "refresh_theme"
         ):
@@ -3266,6 +3280,27 @@ class MainWindow(QMainWindow):
                 manual_restart_instructions(),
                 is_dark=self._is_dark_theme,
             ).exec()
+
+    def begin_background_progress(self, detail: str = "") -> None:
+        """Show the app-wide progress strip (visible on every page)."""
+        self.background_progress_row.apply_theme(self._is_dark_theme)
+        self.background_progress_row.begin(detail=detail)
+        self.background_progress_banner.show()
+
+    def update_background_progress(self, percent: int, *, detail: str | None = None) -> None:
+        if not self.background_progress_banner.isVisible():
+            self.begin_background_progress(detail=detail or "")
+        self.background_progress_row.update_progress(percent, detail=detail)
+
+    def set_background_progress_detail(self, detail: str) -> None:
+        if not self.background_progress_banner.isVisible():
+            self.begin_background_progress(detail=detail)
+        else:
+            self.background_progress_row.set_detail(detail)
+
+    def finish_background_progress(self) -> None:
+        self.background_progress_row.finish()
+        self.background_progress_banner.hide()
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""

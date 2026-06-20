@@ -128,7 +128,13 @@
   "qube.embedding.modelPath": {
     "type": "string",
     "default": "",
-    "description": "Absolute path to optional embedding GGUF; empty uses bundled Nomic Embed v1.5 in models/embedding/."
+    "description": "Absolute path to optional custom embedding GGUF override; empty uses the active Fast/Balanced/Power preset."
+  },
+  "qube.embedding.activeMode": {
+    "type": "string",
+    "enum": ["fast", "balanced", "power"],
+    "default": "balanced",
+    "description": "Active embedding preset for RAG and memory search."
   },
   "qube.settings.advanced_stt_unlocked": {
     "type": "boolean",

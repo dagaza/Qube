@@ -23,6 +23,17 @@ def is_nemotron_family_model(*, model_path: str = "", model_name: str = "") -> b
     return "nemotron" in ident or "nvidia" in ident
 
 
+def is_reasoning_family_harmony_leak_strip_candidate(
+    *,
+    model_path: str = "",
+    model_name: str = "",
+) -> bool:
+    """True when non-Harmony models may leak gpt-oss/Harmony scaffold tokens in output."""
+    return is_qwen3_model(model_path=model_path, model_name=model_name) or (
+        is_nemotron_family_model(model_path=model_path, model_name=model_name)
+    )
+
+
 def template_kwargs_for_thinking_policy(
     policy: "ExecutionPolicy",
     *,
@@ -41,5 +52,6 @@ def template_kwargs_for_thinking_policy(
 __all__ = [
     "is_nemotron_family_model",
     "is_qwen3_model",
+    "is_reasoning_family_harmony_leak_strip_candidate",
     "template_kwargs_for_thinking_policy",
 ]

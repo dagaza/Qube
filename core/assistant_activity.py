@@ -179,7 +179,7 @@ class AssistantActivityReducer:
             new_bubble = (
                 "writing" if self._voice_output_muted else "thinking"
             )
-        elif "INGESTING" in msg_upper:
+        elif "INGESTING" in msg_upper or "REPROCESSING" in msg_upper:
             new_bubble = "writing" if self._voice_output_muted else "thinking"
             activity = AssistantActivity.BACKGROUND_BUSY
             self._forced_activity = AssistantActivity.BACKGROUND_BUSY
@@ -203,7 +203,7 @@ class AssistantActivityReducer:
                     activity=self.activity,
                     bubble_state=current_state,
                     display_text=self._format_display(
-                        msg_upper, current_state, self.activity
+                        message, current_state, self.activity
                     ),
                     blocked=True,
                 )
@@ -218,7 +218,7 @@ class AssistantActivityReducer:
         ):
             activity = AssistantActivity.BACKGROUND_BUSY
 
-        display = self._format_display(msg_upper, new_bubble, activity)
+        display = self._format_display(message, new_bubble, activity)
         return ActivityTransition(
             activity=activity,
             bubble_state=new_bubble,
@@ -228,16 +228,21 @@ class AssistantActivityReducer:
 
     def _format_display(
         self,
-        msg_upper: str,
+        message: str,
         bubble_state: str,
         activity: AssistantActivity,
     ) -> str:
+        msg_upper = message.upper().strip()
         if msg_upper == "VOICE CAPTURE IDLE":
             return " Idle"
         if bubble_state == "needs_model" or msg_upper == "LOAD A MODEL":
             return "Load a Model"
         if "MIC ERROR" in msg_upper:
             return " Voice input unavailable"
+        if activity == AssistantActivity.BACKGROUND_BUSY:
+            detail = message.strip()
+            if detail and msg_upper not in ("IDLE",):
+                return f" {detail}"
         label = user_presence_label(
             activity, voice_output_muted=self._voice_output_muted
         )

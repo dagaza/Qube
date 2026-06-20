@@ -233,6 +233,8 @@ class StylingMixin:
             spinbox.setStyleSheet(style)
         if hasattr(self, "native_chat_format_selector"):
             self._apply_settings_menu_button_chevron_state(self.native_chat_format_selector)
+        if hasattr(self, "embedding_mode_selector"):
+            self._apply_settings_menu_button_chevron_state(self.embedding_mode_selector)
         if hasattr(self, "gpu_layers_slider"):
             handle = "#8b5cf6" if is_dark else "#7c3aed"
             slider_css = f"""

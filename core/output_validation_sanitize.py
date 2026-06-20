@@ -32,6 +32,7 @@ def sanitize_output_for_validation(
     contract: Any | None = None,
     policy: "ExecutionPolicy | None" = None,
     strip_thinking: bool | None = None,
+    reasoning_family: bool = False,
 ) -> str:
     """
     Apply the same complete-text cleanup the worker uses before presentation.
@@ -57,4 +58,8 @@ def sanitize_output_for_validation(
     cleaned = meta.feed(cleaned) + meta.flush()
     if active:
         cleaned = polish_harmony_visible_text(cleaned)
-    return strip_output_artifacts(cleaned, harmony_active=active).strip()
+    return strip_output_artifacts(
+        cleaned,
+        harmony_active=active,
+        reasoning_family=reasoning_family,
+    ).strip()

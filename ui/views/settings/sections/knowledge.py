@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QMenu,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -16,6 +17,7 @@ from PyQt6.QtWidgets import (
 from core.app_settings import get_advanced_embedding_unlocked
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
+from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
@@ -29,15 +31,35 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_layout(layout, "Library search phrases", anchor="triggers")
     layout.addWidget(host._build_triggers_manager())
 
-    add_subsection_to_layout(layout, "Embedding model", anchor="embedding_model")
+    add_subsection_to_layout(layout, "Search quality", anchor="embedding_mode")
+
+    mode_inner = QWidget()
+    mode_form = QFormLayout(mode_inner)
+    mode_form.setSpacing(12)
+    mode_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host.embedding_mode_selector = SelectorButton("Balanced", is_dark=is_dark)
+    host.embedding_mode_selector.setMaximumWidth(280)
+    host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
+    host.embedding_mode_selector.setToolTip(
+        "Fast — lightest on memory. Balanced — recommended default. "
+        "Power — best search quality, uses more memory."
+    )
+
+    host.embedding_mode_description = QLabel()
+    host.embedding_mode_description.setWordWrap(True)
+
+    mode_form.addRow("Mode", host.embedding_mode_selector)
+    mode_form.addRow("", host.embedding_mode_description)
+    layout.addWidget(wrap_subsection(mode_inner, anchor="embedding_mode"))
+
+    add_subsection_to_layout(layout, "Advanced embedding", anchor="embedding_model")
 
     _adv_tip = (
         "Advanced embedding controls are not for everyday use.\n\n"
-        "Unlocks optional embedding model selection for RAG and memory search. "
-        "The bundled Nomic Embed v1.5 default cannot be deleted. Place alternate "
-        ".gguf embedding models in the embedding folder, then select one here.\n\n"
-        "Switching to a model with a different vector size will reset your vector "
-        "index — re-ingest library documents afterward."
+        "Unlocks optional custom .gguf embedding models for RAG and memory search. "
+        "Place files in the embedding folder, then select one here.\n\n"
+        "Using a custom model reprocesses your library and memories."
     )
     host.advanced_embedding_toggle = PrestigeToggle()
     host.advanced_embedding_label = QLabel("Show advanced embedding settings")
@@ -78,8 +100,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.embedding_dir_label = QLabel(get_embedding_models_dir())
     host.embedding_dir_label.setWordWrap(True)
     host.embedding_dir_label.setToolTip(
-        "Place optional embedding .gguf files here. The bundled Nomic default "
-        "also lives in this folder."
+        "Place optional custom embedding .gguf files here."
     )
 
     embedding_row = QHBoxLayout()
@@ -87,8 +108,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.embedding_gguf_list.setMinimumHeight(90)
     host.embedding_gguf_list.setMaximumHeight(140)
     host.embedding_gguf_list.setToolTip(
-        "Built-in Nomic Embed v1.5 default cannot be deleted. Select a custom model "
-        "and click Use selected, or Reset to default."
+        "Select a custom .gguf model and click Use selected."
     )
     embedding_row.addWidget(host.embedding_gguf_list, stretch=1)
     embedding_btn_col = QVBoxLayout()
@@ -98,12 +118,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.use_embedding_gguf_btn.clicked.connect(host._apply_selected_embedding_gguf)
     embedding_btn_col.addWidget(
         host.use_embedding_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop
-    )
-    host.reset_embedding_btn = QPushButton("Reset to default")
-    apply_brand_primary(host.reset_embedding_btn, icon_name="fa5s.undo")
-    host.reset_embedding_btn.clicked.connect(host._reset_embedding_to_default)
-    embedding_btn_col.addWidget(
-        host.reset_embedding_btn, alignment=Qt.AlignmentFlag.AlignTop
     )
     host.refresh_embedding_gguf_btn = QPushButton("Refresh")
     host.refresh_embedding_gguf_btn.setToolTip(
@@ -126,11 +140,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     embedding_form.addRow("Model storage", host.embedding_dir_label)
     embedding_form.addRow("On this device", embedding_row)
-    embedding_form.addRow("Active model", host.active_embedding_model_lbl)
+    embedding_form.addRow("Custom override", host.active_embedding_model_lbl)
 
     adv_panel_layout.addWidget(wrap_subsection(embedding_inner, anchor="embedding_model"))
     host.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
     layout.addWidget(host.advanced_embedding_panel)
+
+    host._build_embedding_mode_menu()
 
     add_section_reset_footer(layout, host, "knowledge", is_dark=is_dark)
 
