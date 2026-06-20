@@ -17,7 +17,7 @@ IDLE_COLOR_LABELS: dict[CompanionIdleColor, str] = {
 
 IDLE_COLOR_DESCRIPTIONS: dict[CompanionIdleColor, str] = {
     CompanionIdleColor.PURPLE: "Brand violet — default idle glow for the companion.",
-    CompanionIdleColor.BLUE: "Calm blue — the original companion idle color.",
+    CompanionIdleColor.BLUE: "Calm blue — the original companion idle colour.",
 }
 
 # Primary / secondary pairs for IDLE_LISTEN rendering.

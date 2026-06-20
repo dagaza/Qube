@@ -17,6 +17,7 @@ from core.app_settings import get_advanced_embedding_unlocked
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
 
@@ -30,6 +31,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     layout.addWidget(host._build_triggers_manager())
 
     add_subsection_to_layout(layout, "Embedding model", anchor="embedding_model")
+
+    embedding_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="embedding_bootstrap_download_row",
+        label_attr="embedding_bootstrap_missing_lbl",
+        button_attr="download_base_embedding_btn",
+        handler_name="_download_bootstrap_embedding",
+        label_text=(
+            "Nomic Embed is not installed. Library uploads and knowledge toggles need "
+            "this base embedding model."
+        ),
+        button_text="Download base embedding model",
+    )
+    layout.addWidget(embedding_download_row)
 
     _adv_tip = (
         "Advanced embedding controls are not for everyday use.\n\n"

@@ -26,6 +26,13 @@ def _global_widget_rect(widget: QWidget | None, *, margin: int = 0) -> QRect:
     return _pad_rect(QRect(top_left, widget.size()), margin)
 
 
+def _widget_rect_in_parent(widget: QWidget, parent: QWidget) -> QRect:
+    if widget is None or parent is None or not widget.isVisible():
+        return QRect()
+    top_left = widget.mapTo(parent, QPoint(0, 0))
+    return QRect(top_left, widget.size())
+
+
 def _prefers_reduced_motion() -> bool:
     try:
         from core.app_settings import get_companion_reduced_motion
@@ -124,7 +131,7 @@ class BorderFireworksHandle:
 
 
 class _BorderFireworksSequence(QWidget):
-    """Top-level border bursts around ``target`` (works with Qt.Popup menus)."""
+    """In-tree particle overlay around ``target`` (no extra top-level window)."""
 
     finished = pyqtSignal()
 
@@ -132,21 +139,17 @@ class _BorderFireworksSequence(QWidget):
         self,
         target: QWidget,
         *,
+        overlay_parent: QWidget,
         duration_ms: int = 3200,
         burst_interval_ms: int = 520,
         spread_margin: int = 20,
     ) -> None:
-        super().__init__(None)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.Tool
-            | Qt.WindowType.WindowDoesNotAcceptFocus
-            | Qt.WindowType.WindowStaysOnTopHint
-        )
+        super().__init__(overlay_parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        self.setAutoFillBackground(False)
         self._target = target
+        self._overlay_parent = overlay_parent
         self._spread_margin = spread_margin
         self._particles: list[dict] = []
         self._elapsed_ms = 0
@@ -173,19 +176,27 @@ class _BorderFireworksSequence(QWidget):
         self.hide()
         self.deleteLater()
 
+    def _target_rect_in_parent(self) -> QRect:
+        return _widget_rect_in_parent(self._target, self._overlay_parent)
+
     def _sync_geometry(self) -> None:
-        outer = _global_widget_rect(self._target, margin=self._spread_margin)
-        if outer.isNull():
+        target_in_parent = self._target_rect_in_parent()
+        if target_in_parent.isNull():
             return
-        self.setGeometry(outer)
+        self.setGeometry(_pad_rect(target_in_parent, self._spread_margin))
 
     def _inner_target_rect(self) -> QRect:
         """Target widget bounds in this overlay's local coordinates."""
-        inner = _global_widget_rect(self._target, margin=0)
-        if inner.isNull():
+        target_in_parent = self._target_rect_in_parent()
+        if target_in_parent.isNull():
             return QRect()
-        origin = self.mapFromGlobal(inner.topLeft())
-        return QRect(origin, inner.size())
+        outer = self.geometry()
+        return QRect(
+            target_in_parent.left() - outer.left(),
+            target_in_parent.top() - outer.top(),
+            target_in_parent.width(),
+            target_in_parent.height(),
+        )
 
     def _emit_burst(self) -> None:
         self._sync_geometry()
@@ -201,6 +212,7 @@ class _BorderFireworksSequence(QWidget):
             )
 
     def _tick(self) -> None:
+        self._sync_geometry()
         self._elapsed_ms += 16
         dt = 0.016
         if self._elapsed_ms >= self._next_burst_ms and self._elapsed_ms < self._duration_ms:
@@ -244,21 +256,27 @@ def show_celebration_burst(anchor_widget: QWidget, anchor_global: QPoint) -> Non
 
 
 def show_border_fireworks(
-    host: QWidget,
+    target: QWidget,
     *,
+    overlay_parent: QWidget | None = None,
     duration_ms: int = 3200,
     on_finished: Callable[[], None] | None = None,
 ) -> BorderFireworksHandle | None:
-    """Surround ``host`` widget borders with fireworks for a few seconds."""
+    """Surround ``target`` with fireworks inside ``overlay_parent`` (no new window)."""
     if _prefers_reduced_motion():
         if on_finished is not None:
             on_finished()
         return None
-    if host is None or not host.isVisible():
+    if target is None or not target.isVisible():
         if on_finished is not None:
             on_finished()
         return None
-    seq = _BorderFireworksSequence(host, duration_ms=duration_ms)
+    parent = overlay_parent or target.parentWidget() or target.window() or target
+    seq = _BorderFireworksSequence(
+        target,
+        overlay_parent=parent,
+        duration_ms=duration_ms,
+    )
     if on_finished is not None:
         seq.finished.connect(on_finished)
     return BorderFireworksHandle(seq)
@@ -267,8 +285,14 @@ def show_border_fireworks(
 def show_composer_border_fireworks(
     host: QWidget,
     *,
+    overlay_parent: QWidget | None = None,
     duration_ms: int = 3200,
     on_finished: Callable[[], None] | None = None,
 ) -> None:
     """Alias for :func:`show_border_fireworks`."""
-    show_border_fireworks(host, duration_ms=duration_ms, on_finished=on_finished)
+    show_border_fireworks(
+        host,
+        overlay_parent=overlay_parent,
+        duration_ms=duration_ms,
+        on_finished=on_finished,
+    )

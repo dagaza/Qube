@@ -29,13 +29,19 @@ class CompanionPersonaRenderer(ABC):
 
 
 def get_persona_renderer(persona_id: CompanionPersonaId | str) -> CompanionPersonaRenderer:
+    from core.companion_cube_style import CompanionCubeStyle, normalize_companion_cube_style
     from core.companion_personas import normalize_companion_persona
-    from ui.companion.personas.qube_cube import QubeCubePersonaRenderer
+    from core import app_settings
+    from ui.companion.personas.qube_cube_classic import QubeCubeClassicPersonaRenderer
+    from ui.companion.personas.qube_cube_experimental import QubeCubeExperimentalPersonaRenderer
     from ui.companion.personas.sphere import SpherePersonaRenderer
 
     resolved = normalize_companion_persona(
         persona_id.value if isinstance(persona_id, CompanionPersonaId) else persona_id
     )
     if resolved == CompanionPersonaId.QUBE:
-        return QubeCubePersonaRenderer()
+        style = normalize_companion_cube_style(app_settings.get_companion_cube_style())
+        if style == CompanionCubeStyle.CLASSIC:
+            return QubeCubeClassicPersonaRenderer()
+        return QubeCubeExperimentalPersonaRenderer()
     return SpherePersonaRenderer()

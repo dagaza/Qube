@@ -19,11 +19,12 @@ class STTWorker(QThread):
     status_update = pyqtSignal(str)
     stt_latency = pyqtSignal(float) 
 
-    def __init__(self):
+    def __init__(self, *, eager_load: bool = True):
         super().__init__()
         self.stt_model = None
         self._active_spec = BUNDLED_STT_MODEL_ID
-        self._load_model()
+        if eager_load:
+            self._load_model()
 
     def _load_model(self) -> None:
         spec = resolve_active_stt_model_spec()

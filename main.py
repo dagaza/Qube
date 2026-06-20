@@ -8,8 +8,9 @@ os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
 from core.__version__ import __version__
 
 from PyQt6 import QtCore
+from PyQt6.QtGui import QFont, QFontDatabase
 from core.qube_tooltip import QubeApplication, qube_tooltip_set_theme
-from PyQt6.QtGui import QFont, QFontDatabase, QIcon
+from ui.app_icon import qube_window_icon
 
 from core.richtext_styles import apply_app_link_palette
 
@@ -120,15 +121,23 @@ class Qube:
             self.embedder = embedder
         else:
             tick("Loading embeddings…")
-            self.embedder = EmbeddingModel()
+            try:
+                self.embedder = EmbeddingModel()
+            except FileNotFoundError as exc:
+                logger.warning("Embedding model unavailable at startup: %s", exc)
+                self.embedder = None
         tick("Preparing storage…")
         self.store = DocumentStore()
         self.db_manager = DatabaseManager()
 
     def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
+        from core.bootstrap_manifest import BootstrapModelId
+        from core.bootstrap_selection import get_selected_model_ids
+
         tick("Starting core services…")
         self.audio_worker = AudioListenerWorker()
-        self.stt_worker = STTWorker()
+        stt_selected = BootstrapModelId.WHISPER_SMALL in get_selected_model_ids()
+        self.stt_worker = STTWorker(eager_load=stt_selected)
         self.native_llama_engine = NativeLlamaEngine()
         self.native_llama_engine.start()
 
@@ -872,6 +881,10 @@ class Qube:
 
     def show(self) -> None:
         self.window.show()
+        from PyQt6.QtCore import QTimer
+
+        QTimer.singleShot(0, self.window._finalize_startup_geometry)
+        QTimer.singleShot(120, self.window._finalize_startup_geometry)
 
     def _wait_worker_shutdown(
         self,
@@ -1088,13 +1101,9 @@ if __name__ == "__main__":
     app = QubeApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     repo_root = install_root()
-    window_icon_path = resource_path("assets", "logos", "qube_logo_256.png")
-    if not window_icon_path.is_file():
-        window_icon_path = resource_path("assets", "icons", "qube_logo_256.png")
-    if not window_icon_path.is_file():
-        window_icon_path = resource_path("assets", "qube_logo_256.png")
-    if window_icon_path.is_file():
-        app.setWindowIcon(QIcon(str(window_icon_path)))
+    app_icon = qube_window_icon()
+    if not app_icon.isNull():
+        app.setWindowIcon(app_icon)
     apply_app_link_palette(app)
     # 2. 🔑 THE PRESTIGE FONT LOADER
     font_files = [
@@ -1142,11 +1151,26 @@ if __name__ == "__main__":
     # 4. Boot the Qube Assistant (first launch defaults to Internal Engine)
     ensure_engine_mode_initialized()
 
+    from core.bootstrap_selection import (
+        effective_bootstrap_selection,
+        get_voice_input_default,
+        get_voice_output_default,
+        is_bootstrap_completed,
+        should_show_bootstrap_consent,
+    )
+
+    selected_models = effective_bootstrap_selection()
+    needs_consent = should_show_bootstrap_consent()
+    if args.mock_bootstrap_download:
+        os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
+        logger.info("Bootstrap mock downloads enabled (--mock-bootstrap-download).")
+
     def _build_qube(
         *,
-        embedder: EmbeddingModel,
+        embedder: EmbeddingModel | None,
         on_phase,
         on_complete,
+        on_failed=None,
     ):
         return start_phased_qube_build(
             embedder=embedder,
@@ -1156,9 +1180,15 @@ if __name__ == "__main__":
             ),
             on_phase=on_phase,
             on_complete=on_complete,
+            on_failed=on_failed,
         )
 
     def _on_qube_ready(qube: Qube) -> None:
+        if is_bootstrap_completed():
+            if hasattr(qube.window, "voice_input_toggle"):
+                qube.window.voice_input_toggle.setChecked(get_voice_input_default())
+            if hasattr(qube.window, "voice_bypass_toggle"):
+                qube.window.voice_bypass_toggle.setChecked(get_voice_output_default())
         qube_tooltip_set_theme(getattr(qube.window, "_is_dark_theme", True))
         app.aboutToQuit.connect(qube._graceful_shutdown)
         if args.run_scenario:
@@ -1193,6 +1223,9 @@ if __name__ == "__main__":
         repo_root=repo_root,
         build_app_fn=_build_qube,
         on_ready=_on_qube_ready,
+        selected_models=selected_models,
+        needs_consent=needs_consent,
+        mock_downloads=bool(args.mock_bootstrap_download),
     )
     logger.info("Entering Qt event loop.")
     sys.exit(app.exec())

@@ -43,4 +43,9 @@ def parse_boot_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar=("SESSION_A", "SESSION_B"),
         help="After startup, compare two saved session JSON files offline.",
     )
+    parser.add_argument(
+        "--mock-bootstrap-download",
+        action="store_true",
+        help="Simulate bootstrap downloads on a timer (no files fetched).",
+    )
     return parser.parse_args(argv)

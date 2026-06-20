@@ -13,9 +13,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from PyQt6.QtCore import Qt
 
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.selector_button import SelectorButton
+from core.ui_language import tr
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer
 
 
@@ -59,8 +61,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     # --- When to show ---
     add_subsection_to_layout(companion_layout, "When to show", anchor="visibility")
 
-    _companion_tray_tip = (
-        "Show the companion when the main window is minimized or closed to the tray. "
+    _companion_tray_tip = tr(
+        "Show the companion when the main window is minimised or closed to the tray. "
         "Turn off if you only want the companion while the app window is visible."
     )
     host.companion_tray_hidden_cb = QCheckBox("Show when hidden to tray")
@@ -71,8 +73,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_tray_hidden_cb.toggled.connect(host._on_companion_setting_changed)
     companion_layout.addWidget(host.companion_tray_hidden_cb)
 
-    _companion_while_open_tip = (
-        "Keep the companion visible even when the main Qube window is open and not minimized. "
+    _companion_while_open_tip = tr(
+        "Keep the companion visible even when the main Qube window is open and not minimised. "
         "Uncheck to hide the companion whenever the main window is in the foreground."
     )
     host.companion_while_open_cb = QCheckBox("Show while main window is open")
@@ -130,6 +132,32 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_dock_cb.setChecked(_companion_settings.get_companion_dock_mode())
     host.companion_dock_cb.toggled.connect(host._on_companion_setting_changed)
     companion_layout.addWidget(host.companion_dock_cb)
+
+    # --- Position ---
+    add_subsection_to_layout(companion_layout, "Position", anchor="position")
+
+    from ui.components.companion_snap_compass import CompanionSnapCompass
+
+    position_row = QHBoxLayout()
+    position_row.setSpacing(16)
+    position_hint = QLabel(
+        tr(
+            "Snap the live companion to a screen zone. Dragging the companion clears "
+            "the snap selection and saves your last free position."
+        )
+    )
+    position_hint.setWordWrap(True)
+    position_hint.setProperty("class", "ToolsPaneControl")
+    position_row.addWidget(position_hint, 1)
+
+    host.companion_snap_compass = CompanionSnapCompass()
+    host.companion_snap_compass.setToolTip(
+        tr("Compass snap zones — N, NE, E, SE, S, SW, W, NW, and centre.")
+    )
+    host.companion_snap_compass.zone_selected.connect(host._on_companion_snap_zone_selected)
+    host.companion_snap_compass.set_active_zone(_companion_settings.get_companion_snap_zone())
+    position_row.addWidget(host.companion_snap_compass, 0, Qt.AlignmentFlag.AlignTop)
+    companion_layout.addLayout(position_row)
 
     # --- Commentary ---
     _companion_verbal_section_tip = (
@@ -356,11 +384,45 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     persona_row.addStretch()
     companion_layout.addLayout(persona_row)
 
-    _companion_idle_color_tip = (
-        "Accent color for the companion glow while idle. "
-        "Does not change colors during listening, thinking, or speaking states."
+    from core.companion_cube_style import (
+        CompanionCubeStyle,
+        CUBE_STYLE_DESCRIPTIONS,
+        CUBE_STYLE_LABELS,
     )
-    idle_color_lbl = QLabel("Companion idle glow color")
+
+    cube_style_lbl = QLabel("Qube cube style")
+    cube_style_lbl.setObjectName("SettingsSubsectionLabel")
+    cube_style_lbl.setToolTip(
+        "When the Qube cube persona is selected, choose Dan's holographic classic "
+        "look or the experimental splash wireframe cube."
+    )
+    host._companion_cube_style_lbl = cube_style_lbl
+    companion_layout.addWidget(cube_style_lbl)
+
+    cube_style_row = QHBoxLayout()
+    cube_style_row.setSpacing(16)
+    host.companion_cube_style_group = QButtonGroup(host)
+    host.companion_cube_style_group.setExclusive(True)
+    current_cube_style = _companion_settings.get_companion_cube_style()
+    host.companion_cube_style_cbs: dict[CompanionCubeStyle, QCheckBox] = {}
+    for style_id in (CompanionCubeStyle.CLASSIC, CompanionCubeStyle.EXPERIMENTAL):
+        cb = QCheckBox(CUBE_STYLE_LABELS[style_id])
+        cb.setToolTip(CUBE_STYLE_DESCRIPTIONS[style_id])
+        cb.setProperty("companion_cube_style_id", style_id.value)
+        cb.setChecked(style_id == current_cube_style)
+        host.companion_cube_style_group.addButton(cb)
+        host.companion_cube_style_cbs[style_id] = cb
+        cube_style_row.addWidget(cb)
+    host.companion_cube_style_group.buttonToggled.connect(host._on_companion_cube_style_toggled)
+    cube_style_row.addStretch()
+    companion_layout.addLayout(cube_style_row)
+    host._sync_companion_cube_style_enabled()
+
+    _companion_idle_color_tip = tr(
+        "Accent colour for the companion glow while idle. "
+        "Does not change colours during listening, thinking, or speaking states."
+    )
+    idle_color_lbl = QLabel(tr("Companion idle glow colour"))
     idle_color_lbl.setObjectName("SettingsSubsectionLabel")
     idle_color_lbl.setToolTip(_companion_idle_color_tip)
     companion_layout.addWidget(idle_color_lbl)
@@ -371,7 +433,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_idle_color_cbs: dict[CompanionIdleColor, QCheckBox] = {}
     for color_id in (CompanionIdleColor.PURPLE, CompanionIdleColor.BLUE):
         cb = QCheckBox(IDLE_COLOR_LABELS[color_id])
-        cb.setToolTip(IDLE_COLOR_DESCRIPTIONS[color_id])
+        cb.setToolTip(tr(IDLE_COLOR_DESCRIPTIONS[color_id]))
         cb.setProperty("companion_idle_color_id", color_id.value)
         cb.setChecked(color_id == current_idle_color)
         host.companion_idle_color_group.addButton(cb)
@@ -413,7 +475,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_preview = CompanionPreviewWidget()
     host.companion_preview.apply_theme(is_dark)
     host.companion_preview.setToolTip(
-        "Live preview of the selected persona, idle glow color, and preview activity state."
+        "Live preview of the selected persona, idle glow colour, and preview activity state."
     )
     companion_layout.addWidget(host.companion_preview)
 

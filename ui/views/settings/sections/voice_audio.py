@@ -24,6 +24,7 @@ from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.controls import NoScrollDoubleSpinBox, NoScrollSpinBox
+from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.widgets import (
     add_section_divider_to_form,
     add_section_reset_footer,
@@ -136,6 +137,17 @@ def _advanced_toggle_row(
 def _add_stt_advanced_options(host, form: QFormLayout) -> None:
     add_subsection_to_form(form, "Speech-to-text (STT)", anchor="stt_models")
 
+    stt_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="stt_bootstrap_download_row",
+        label_attr="stt_bootstrap_missing_lbl",
+        button_attr="download_base_stt_btn",
+        handler_name="_download_bootstrap_stt",
+        label_text="Whisper Small is not installed. Voice Input needs this base model.",
+        button_text="Download base STT model",
+    )
+    form.addRow("", stt_download_row)
+
     _stt_adv_tip = (
         "Advanced STT controls are not for everyday use.\n\n"
         "Unlocks optional speech-to-text model selection. Place CTranslate2 Whisper "
@@ -214,6 +226,17 @@ def _add_stt_advanced_options(host, form: QFormLayout) -> None:
 
 def _add_tts_advanced_options(host, form: QFormLayout) -> None:
     add_subsection_to_form(form, "Text-to-speech (TTS)", anchor="tts_models")
+
+    tts_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="tts_bootstrap_download_row",
+        label_attr="tts_bootstrap_missing_lbl",
+        button_attr="download_base_tts_btn",
+        handler_name="_download_bootstrap_tts",
+        label_text="Kokoro TTS is not installed. TTS Voice needs this base model.",
+        button_text="Download base TTS model",
+    )
+    form.addRow("", tts_download_row)
 
     _tts_adv_tip = (
         "Advanced TTS controls are not for everyday use.\n\n"

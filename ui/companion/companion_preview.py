@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from core import app_settings
@@ -52,6 +52,7 @@ class CompanionPreviewWidget(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("CompanionPreviewFrame")
+        self.setFrameShape(QFrame.Shape.NoFrame)
         self.setFixedSize(_PREVIEW_DIMENSION, _PREVIEW_DIMENSION)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
 
@@ -102,8 +103,6 @@ class CompanionPreviewWidget(QFrame):
 
     def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
         persona_id = normalize_companion_persona(persona_id)
-        if persona_id == self._persona_id:
-            return
         self._persona_id = persona_id
         self._renderer = get_persona_renderer(persona_id)
         if not self._timer.isActive():
@@ -153,12 +152,6 @@ class CompanionPreviewWidget(QFrame):
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        bg = QColor("#11111b" if self._is_dark else "#f1f5f9")
-        border = QColor("#313244" if self._is_dark else "#cbd5e1")
-        painter.setPen(QPen(border, 1))
-        painter.setBrush(bg)
-        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 10, 10)
 
         cx = self.width() / 2
         cy = self.height() / 2

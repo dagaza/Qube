@@ -59,6 +59,25 @@ QToolTip {
 #RoutingDebugWindow {
     background-color: #1e1e2e;
 }
+
+/* Frameless desktop companion host — persona paints directly; no window chrome box */
+QWidget#CompanionWindow {
+    background: transparent;
+    border: none;
+}
+
+/* @-mention popup host is transparent; card chrome is ComposerMentionShell */
+QWidget#ComposerMentionPopup {
+    background: transparent;
+    border: none;
+}
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList,
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList::viewport {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
 #RoutingDebugSurface {
     background-color: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -116,19 +135,19 @@ QToolTip {
     border-bottom-left-radius: 12px;
 }
 /* --- NAV SIDEBAR (DARK) --- */
-.NavButton {
-    border: none; 
-    background: transparent; 
-    border-radius: 8px; 
-    padding: 10px;
+QPushButton[class~="NavButton"] {
+    border: none !important;
+    background: transparent !important;
+    border-radius: 8px;
+    padding: 0;
 }
 
-.NavButton:hover {
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle light hover */
+QPushButton[class~="NavButton"]:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important; /* Subtle light hover */
 }
 
-.NavButton:checked {
-    background-color: rgba(255, 255, 255, 0.1); /* Slightly deeper active state */
+QPushButton[class~="NavButton"]:checked {
+    background-color: rgba(255, 255, 255, 0.1) !important; /* Slightly deeper active state */
 }
 
 /* --- 2. TYPOGRAPHY --- */
@@ -268,15 +287,12 @@ QPushButton[class~="BrandDangerButton"]:disabled {
 }
 
 /* Transparent utility buttons (window controls, nav icons) */
-.WindowControlButton, .IconButton, .NavButton {
+.WindowControlButton, .IconButton {
     background-color: transparent;
     border: none;
 }
-.WindowControlButton:hover, .IconButton:hover, .NavButton:hover {
+.WindowControlButton:hover, .IconButton:hover {
     background-color: rgba(255, 255, 255, 0.1);
-}
-.NavButton:checked {
-    background-color: rgba(255, 255, 255, 0.15);
 }
 
 /* --- 5. LISTS (QListWidget) --- */

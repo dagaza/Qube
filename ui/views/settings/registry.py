@@ -51,6 +51,13 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Intelligence",
     ),
     SettingsSectionDef(
+        id="general",
+        title="General",
+        icon="fa5s.globe",
+        legacy_titles=("GENERAL",),
+        group="Interface",
+    ),
+    SettingsSectionDef(
         id="companion.desktop",
         title="Desktop Companion",
         icon="fa5s.ghost",

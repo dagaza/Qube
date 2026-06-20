@@ -61,6 +61,25 @@ QToolTip {
 #RoutingDebugWindow {
     background-color: #f1f5f9;
 }
+
+/* Frameless desktop companion host — persona paints directly; no window chrome box */
+QWidget#CompanionWindow {
+    background: transparent;
+    border: none;
+}
+
+/* @-mention popup host is transparent; card chrome is ComposerMentionShell */
+QWidget#ComposerMentionPopup {
+    background: transparent;
+    border: none;
+}
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList,
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList::viewport {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
 #RoutingDebugSurface {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
@@ -306,21 +325,26 @@ QPushButton[class~="BrandDangerButton"]:disabled {
     border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
-/* Match base.qss nav hit area so icon buttons do not jump when switching themes. */
-.NavButton {
-    border: none;
-    background: transparent;
+/* Match base.qss nav hit area (44×44 fixed size) so icon buttons do not jump when switching themes. */
+QPushButton[class~="NavButton"] {
+    border: none !important;
+    background: transparent !important;
     border-radius: 8px;
-    padding: 10px;
+    padding: 0;
 }
 
-.WindowControlButton, .IconButton, .NavButton {
+QPushButton[class~="NavButton"]:hover {
+    background-color: #e2e8f0 !important;
+}
+
+QPushButton[class~="NavButton"]:checked {
+    background-color: #e2e8f0 !important;
+}
+
+.WindowControlButton, .IconButton {
     background-color: transparent; border: none;
 }
-.WindowControlButton:hover, .IconButton:hover, .NavButton:hover {
-    background-color: #e2e8f0;
-}
-.NavButton:checked {
+.WindowControlButton:hover, .IconButton:hover {
     background-color: #e2e8f0;
 }
 

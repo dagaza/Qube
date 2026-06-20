@@ -42,6 +42,7 @@ from core.gpu_layers_cap import max_safe_n_gpu_layers, is_unified_gpu_memory
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.controls import (
     NoScrollDoubleSpinBox,
     NoScrollSlider,
@@ -593,6 +594,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Auxiliary cognition ---
     add_subsection_to_form(ai_form, "Auxiliary cognition", anchor="cognition")
+
+    cognition_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="cognition_bootstrap_download_row",
+        label_attr="cognition_bootstrap_missing_lbl",
+        button_attr="download_base_cognition_btn",
+        handler_name="_download_bootstrap_cognition",
+        label_text=(
+            "The bundled Qwen3 1.7B sidecar is not installed. Memory enrichment "
+            "needs this auxiliary cognition model."
+        ),
+        button_text="Download base cognition model",
+    )
+    ai_form.addRow("", cognition_download_row)
 
     _adv_tip = (
         "Advanced engine controls are not for everyday use. Only enable them if you "

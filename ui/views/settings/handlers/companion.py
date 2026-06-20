@@ -111,6 +111,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -130,6 +131,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -455,6 +457,22 @@ class CompanionHandlersMixin:
         win = self.window()
         if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
             win._companion_controller.on_settings_changed()
+        self._sync_companion_snap_compass()
+
+    def _sync_companion_snap_compass(self) -> None:
+        compass = getattr(self, "companion_snap_compass", None)
+        if compass is None:
+            return
+        from core import app_settings as _cs
+
+        compass.set_active_zone(_cs.get_companion_snap_zone())
+
+    def _on_companion_snap_zone_selected(self, zone: str) -> None:
+        win = self.window()
+        if win is None or not hasattr(win, "_companion_controller") or win._companion_controller is None:
+            return
+        win._companion_controller.place_at_snap_zone(zone)
+        self._sync_companion_snap_compass()
 
     def _on_companion_persona_toggled(self, button, checked: bool) -> None:
         if not checked:
@@ -468,8 +486,38 @@ class CompanionHandlersMixin:
 
         persona_id = normalize_companion_persona(button.property("companion_persona_id"))
         _cs.set_companion_persona(persona_id.value)
+        self._sync_companion_cube_style_enabled()
         if hasattr(self, "companion_preview"):
             self.companion_preview.set_persona(persona_id)
+        win = self.window()
+        if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
+            win._companion_controller.on_settings_changed()
+
+    def _sync_companion_cube_style_enabled(self) -> None:
+        from core import app_settings as _cs
+        from core.companion_personas import CompanionPersonaId
+
+        qube_selected = _cs.get_companion_persona() == CompanionPersonaId.QUBE
+        for cb in getattr(self, "companion_cube_style_cbs", {}).values():
+            cb.setEnabled(qube_selected)
+        label = getattr(self, "_companion_cube_style_lbl", None)
+        if label is not None:
+            label.setEnabled(qube_selected)
+
+    def _on_companion_cube_style_toggled(self, button, checked: bool) -> None:
+        if not checked:
+            if not any(cb.isChecked() for cb in self.companion_cube_style_cbs.values()):
+                button.blockSignals(True)
+                button.setChecked(True)
+                button.blockSignals(False)
+            return
+        from core import app_settings as _cs
+        from core.companion_cube_style import normalize_companion_cube_style
+
+        style_id = normalize_companion_cube_style(button.property("companion_cube_style_id"))
+        _cs.set_companion_cube_style(style_id.value)
+        if hasattr(self, "companion_preview"):
+            self.companion_preview.set_persona(_cs.get_companion_persona())
         win = self.window()
         if win is not None and hasattr(win, "_companion_controller") and win._companion_controller is not None:
             win._companion_controller.on_settings_changed()

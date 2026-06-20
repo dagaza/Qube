@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from core.support_feedback import QUBE_WEBSITE_URL
+from core.ui_language import tr
 from ui.components.brand_buttons import apply_brand_primary
 from ui.views.settings.widgets import add_subsection_to_layout
 
@@ -45,7 +46,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_layout(layout, "Suggest an improvement", anchor="feature-request")
 
     feature_hint = QLabel(
-        "Open the website to share an idea for a new capability or a change to existing behavior."
+        tr(
+            "Open the website to share an idea for a new capability or a change to existing behaviour."
+        )
     )
     feature_hint.setWordWrap(True)
     feature_hint.setProperty("class", "ToolsPaneControl")

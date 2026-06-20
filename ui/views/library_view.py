@@ -1106,6 +1106,15 @@ class LibraryView(QWidget):
             ).exec()
             return
 
+        from core.bootstrap_missing_models import guard_library_upload
+
+        allowed, event = guard_library_upload()
+        if not allowed:
+            win = self.window()
+            if event and hasattr(win, "emit_notification"):
+                win.emit_notification(event)
+            return
+
         files, _ = QFileDialog.getOpenFileNames(
             self, "Select Documents to Ingest", "", "Documents (*.txt *.md *.pdf *.epub)"
         )

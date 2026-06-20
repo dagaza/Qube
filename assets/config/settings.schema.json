@@ -5,6 +5,12 @@
     "default": "internal",
     "description": "Inference backend: in-process GGUF (internal) or OpenAI-compatible localhost server (external)."
   },
+  "qube.ui.language": {
+    "type": "string",
+    "default": "british",
+    "enum": ["british", "american"],
+    "description": "Application UI language variant (British English or American English spelling)."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,
@@ -521,11 +527,17 @@
     "enum": ["sphere", "qube"],
     "description": "Companion visual persona (sphere or qube cube)."
   },
+  "qube.companion.cubeStyle": {
+    "type": "string",
+    "default": "classic",
+    "enum": ["classic", "experimental"],
+    "description": "Qube cube persona style: classic holographic cube or experimental splash wireframe."
+  },
   "qube.companion.idleColor": {
     "type": "string",
     "default": "purple",
     "enum": ["purple", "blue"],
-    "description": "Base idle glow color for the desktop companion (purple = Qube brand, blue = legacy)."
+    "description": "Base idle glow colour for the desktop companion (purple = Qube brand, blue = legacy)."
   },
   "qube.companion.position.x": {
     "type": ["integer", "null"],
@@ -557,6 +569,12 @@
     "enum": ["none", "left", "right", "bottom"],
     "default": "none",
     "description": "Edge dock preference for companion placement."
+  },
+  "qube.companion.position.snapZone": {
+    "type": "string",
+    "default": "none",
+    "enum": ["none", "center", "n", "ne", "e", "se", "s", "sw", "w", "nw"],
+    "description": "Compass snap zone for companion placement (none = free drag position)."
   },
   "qube.companion.verbal.enabled": {
     "type": "boolean",
@@ -626,5 +644,25 @@
     "type": "boolean",
     "default": false,
     "description": "Enable rotating companion identity motifs in message selection."
+  },
+  "qube.bootstrap.completed": {
+    "type": "boolean",
+    "default": false,
+    "description": "True after the user completed first-run bootstrap model selection and downloads."
+  },
+  "qube.bootstrap.selectedModels": {
+    "type": "string",
+    "default": "",
+    "description": "JSON array of bootstrap model ids selected on first run."
+  },
+  "qube.bootstrap.voiceInputDefault": {
+    "type": "boolean",
+    "default": true,
+    "description": "Default Voice Input toggle after bootstrap (false when Whisper was skipped)."
+  },
+  "qube.bootstrap.voiceOutputDefault": {
+    "type": "boolean",
+    "default": true,
+    "description": "Default TTS Voice toggle after bootstrap (false when Kokoro was skipped)."
   }
 }

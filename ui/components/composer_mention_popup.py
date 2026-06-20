@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, QRect, QSize, Qt, QTimer, pyqtSignal, QEvent
-from PyQt6.QtGui import QColor, QKeyEvent, QPalette
+from PyQt6.QtGui import QColor, QBrush, QFontMetrics, QKeyEvent, QPalette, QPainter
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -12,6 +12,9 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QSizePolicy,
+    QStyle,
+    QStyleOptionViewItem,
+    QStyledItemDelegate,
     QVBoxLayout,
     QWidget,
 )
@@ -21,6 +24,7 @@ import qtawesome as qta
 from core.composer_attachments import COMPOSER_TOOLS, ComposerAttachment
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 from core.composer_skills import ComposerSkillMention, list_skill_mentions_for_palette
+from core.platform.frameless_window import apply_translucent_window_chrome
 
 _ROOT_ROWS = (
     ("file", "Files", "Reference a library document", "fa5s.file-alt"),
@@ -58,6 +62,83 @@ _DRILL_LIST_TOOLTIP = (
 _ROOT_ROW_HEIGHT = 56
 _DRILL_LIST_HEIGHT = 220
 _TYPEAHEAD_RESET_MS = 900
+
+
+class _ComposerMentionItemDelegate(QStyledItemDelegate):
+    """Paint drill rows entirely ourselves so Qt never draws a second list frame."""
+
+    def __init__(self, popup: "ComposerMentionPopup") -> None:
+        super().__init__(popup._list)
+        self._popup = popup
+
+    def paint(self, painter, option, index) -> None:
+        opt = QStyleOptionViewItem(option)
+        opt.state &= ~QStyle.StateFlag.State_HasFocus
+        is_drill = self._popup._mode is not None
+
+        if is_drill:
+            self._paint_drill_row(painter, opt, index)
+            return
+
+        colors = getattr(self._popup, "_theme_colors", None)
+        selected = bool(opt.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(opt.state & QStyle.StateFlag.State_MouseOver)
+        if colors and (selected or hovered):
+            _fg, _border, hover_bg = colors
+            rect = opt.rect.adjusted(2, 1, -2, -1)
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            fill = QColor(hover_bg)
+            if self._popup._is_dark:
+                fill.setAlpha(140)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(fill)
+            painter.drawRoundedRect(rect, 8, 8)
+            painter.restore()
+
+        opt.state &= ~(
+            QStyle.StateFlag.State_Selected | QStyle.StateFlag.State_MouseOver
+        )
+        opt.backgroundBrush = QBrush(Qt.GlobalColor.transparent)
+        super().paint(painter, opt, index)
+
+    def _paint_drill_row(self, painter, opt, index) -> None:
+        colors = getattr(self._popup, "_theme_colors", None)
+        if colors is None:
+            return
+        fg, _border, hover_bg = colors
+        selected = bool(opt.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(opt.state & QStyle.StateFlag.State_MouseOver)
+        enabled = bool(opt.state & QStyle.StateFlag.State_Enabled)
+        rect = opt.rect.adjusted(2, 1, -2, -1)
+
+        if enabled and (selected or hovered):
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(hover_bg))
+            painter.drawRoundedRect(rect, 8, 8)
+            painter.restore()
+
+        text = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+        text_rect = opt.rect.adjusted(12, 0, -10, 0)
+        painter.save()
+        color = QColor(fg)
+        if not enabled:
+            color.setAlpha(140)
+        painter.setPen(color)
+        painter.setFont(opt.font)
+        elided = QFontMetrics(opt.font).elidedText(
+            text,
+            Qt.TextElideMode.ElideRight,
+            max(0, text_rect.width()),
+        )
+        painter.drawText(
+            text_rect,
+            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+            elided,
+        )
+        painter.restore()
 
 
 class _ComposerBackLink(QLabel):
@@ -103,8 +184,15 @@ class ComposerMentionPopup(QWidget):
     dismissed = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        super().__init__(
+            parent,
+            Qt.WindowType.Popup
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint,
+        )
+        self.setObjectName("ComposerMentionPopup")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
         self._is_dark = True
         self._mode: str | None = None  # None = root, else file|conversation|tool
         self._active_session_id: str | None = None
@@ -118,18 +206,21 @@ class ComposerMentionPopup(QWidget):
         self._type_reset_timer.setSingleShot(True)
         self._type_reset_timer.timeout.connect(self._clear_type_buffer)
 
-        shell = QFrame(self)
-        shell.setObjectName("ComposerMentionShell")
-        shell.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        self._shell = shell
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(shell)
+        outer.setSpacing(0)
 
-        layout = QVBoxLayout(shell)
+        self._shell = QFrame(self)
+        self._shell.setObjectName("ComposerMentionShell")
+        self._shell.setFrameShape(QFrame.Shape.NoFrame)
+        self._shell.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self._shell.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        outer.addWidget(self._shell)
+
+        layout = QVBoxLayout(self._shell)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
-        self._shell_layout = layout
+        self._layout = layout
 
         self._back_link = _ComposerBackLink()
         self._back_link.hide()
@@ -149,8 +240,13 @@ class ComposerMentionPopup(QWidget):
 
         self._list = QListWidget()
         self._list.setObjectName("ComposerMentionList")
+        self._list.setFrameShape(QFrame.Shape.NoFrame)
+        self._list.setLineWidth(0)
+        self._list.setMidLineWidth(0)
+        self._list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
+        self._list.setItemDelegate(_ComposerMentionItemDelegate(self))
         self._list.itemClicked.connect(self._on_item_clicked)
         self._list.setUniformItemSizes(False)
         self._list.setSpacing(2)
@@ -237,6 +333,48 @@ class ComposerMentionPopup(QWidget):
                 padding: 6px 10px;
             }}
         """
+        self._theme_colors = (fg, border, hover)
+        self.setStyleSheet("background: transparent; border: none;")
+        self._shell.setStyleSheet(shell_ss)
+        self._back_link.setStyleSheet(back_ss)
+        self._filter.setStyleSheet(filter_ss)
+        self._apply_list_stylesheet()
+        self._rebuild_visible_list()
+
+    def _apply_popup_chrome(self) -> None:
+        apply_translucent_window_chrome(self, transparent_stylesheet=True)
+
+    def _apply_list_stylesheet(self) -> None:
+        colors = getattr(self, "_theme_colors", None)
+        if colors is None:
+            return
+        fg, border, hover = colors
+        if self._mode is None:
+            item_rules = """
+            QListWidget#ComposerMentionList::item {
+                padding: 0px;
+                border: none;
+                outline: none;
+                background: transparent;
+            }
+            """
+        else:
+            item_rules = f"""
+            QListWidget#ComposerMentionList::item {{
+                padding: 8px 10px;
+                border: none;
+                outline: none;
+                background: transparent;
+                font-weight: normal;
+            }}
+            QListWidget#ComposerMentionList::item:selected,
+            QListWidget#ComposerMentionList::item:hover {{
+                background: transparent;
+                border: none;
+                outline: none;
+                font-weight: normal;
+            }}
+            """
         list_ss = f"""
             QListWidget#ComposerMentionList {{
                 background-color: transparent;
@@ -244,24 +382,25 @@ class ComposerMentionPopup(QWidget):
                 border: none;
                 outline: none;
             }}
-            QListWidget#ComposerMentionList::item {{
-                padding: 8px 10px;
-                border-radius: 8px;
+            QListWidget#ComposerMentionList:focus {{
+                border: none;
+                outline: none;
             }}
-            QListWidget#ComposerMentionList::item:selected {{
-                background-color: {hover};
+            QListWidget#ComposerMentionList::viewport {{
+                border: none;
+                outline: none;
+                background: transparent;
             }}
+            {item_rules}
         """
-        self._shell.setStyleSheet(shell_ss)
-        self._back_link.setStyleSheet(back_ss)
-        self._filter.setStyleSheet(filter_ss)
         self._list.setStyleSheet(list_ss)
-        self._rebuild_visible_list()
+        self._list.setAutoFillBackground(False)
+        self._list.viewport().setAutoFillBackground(False)
 
     def _set_drill_chrome_visible(self, visible: bool) -> None:
         self._back_link.setVisible(visible)
         self._filter.setVisible(visible)
-        self._shell_layout.setSpacing(4 if visible else 6)
+        self._layout.setSpacing(4 if visible else 6)
 
     def close_mention(self) -> None:
         """Hide popup and reset drill-down state (e.g. user deleted ``@``)."""
@@ -310,6 +449,7 @@ class ComposerMentionPopup(QWidget):
         self._anchor_global_pos = QPoint(global_pos)
         self._mode = None
         self._set_drill_chrome_visible(False)
+        self._apply_list_stylesheet()
         self._filter.clear()
         self._clear_type_buffer()
         self._rebuild_visible_list()
@@ -334,6 +474,7 @@ class ComposerMentionPopup(QWidget):
             self._anchor_global_pos = QPoint(global_pos)
         self._mode = kind
         self._set_drill_chrome_visible(True)
+        self._apply_list_stylesheet()
         self._filter.setText(query)
         placeholders = {
             "file": "Search documents…",
@@ -405,6 +546,7 @@ class ComposerMentionPopup(QWidget):
         self.setMaximumHeight(16777215)
         self._shell.setMinimumHeight(0)
         self._shell.setMaximumHeight(16777215)
+        self._shell.adjustSize()
         self.adjustSize()
         w = max(280, self.sizeHint().width())
         bounds = self._host_window_rect()
@@ -795,6 +937,10 @@ class ComposerMentionPopup(QWidget):
         self._activate_current_item()
         event.accept()
         return True
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._apply_popup_chrome()
 
     def hideEvent(self, event):
         super().hideEvent(event)

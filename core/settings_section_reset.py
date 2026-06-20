@@ -77,7 +77,15 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_COMPANION_VERBAL_REACT_INGEST,
         app.KEY_COMPANION_VERBAL_REACT_DOWNLOAD,
         app.KEY_COMPANION_PERSONA,
+        app.KEY_COMPANION_CUBE_STYLE,
         app.KEY_COMPANION_IDLE_COLOR,
+        app.KEY_COMPANION_POS_X,
+        app.KEY_COMPANION_POS_Y,
+        app.KEY_COMPANION_POS_SCREEN,
+        app.KEY_COMPANION_POS_NORM_X,
+        app.KEY_COMPANION_POS_NORM_Y,
+        app.KEY_COMPANION_DOCK_EDGE,
+        app.KEY_COMPANION_SNAP_ZONE,
     ),
     "notifications": (
         app.KEY_NOTIFICATIONS_ENABLED,
@@ -88,6 +96,9 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_NOTIFICATIONS_SHOW_PREVIEW,
         app.KEY_NOTIFICATIONS_CATEGORY_MEMORY,
     ),
+    "general": (
+        app.KEY_UI_LANGUAGE,
+    ),
 }
 
 SECTION_RESET_LABELS: dict[str, str] = {
@@ -97,6 +108,7 @@ SECTION_RESET_LABELS: dict[str, str] = {
     "knowledge": "Knowledge",
     "companion.desktop": "Desktop Companion",
     "notifications": "Notifications",
+    "general": "General",
 }
 
 

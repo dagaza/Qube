@@ -46,6 +46,10 @@ class ParseBootArgsTests(unittest.TestCase):
         )
         self.assertEqual(len(args.compare_sessions), 2)
 
+    def test_mock_bootstrap_download_flag(self) -> None:
+        args = parse_boot_args(["--mock-bootstrap-download"])
+        self.assertTrue(args.mock_bootstrap_download)
+
 
 if __name__ == "__main__":
     unittest.main()

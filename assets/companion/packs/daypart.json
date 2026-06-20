@@ -4,7 +4,7 @@
     {
       "id": "dp_001",
       "intent": "atmosphere",
-      "text": "The day still seems to be getting organized.",
+      "text": "The day still seems to be getting organised.",
       "voice": "observational",
       "mood": [
         "calm",

@@ -115,6 +115,7 @@ from ui.views.settings.sections import (
     ai_models,
     contact_feedback,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -124,6 +125,7 @@ from ui.views.settings.sections import (
 
 from ui.views.settings.handlers import (
     AiModelsHandlersMixin,
+    BootstrapDownloadsHandlersMixin,
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
     GenerationMixin,
@@ -151,6 +153,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -166,6 +169,7 @@ class SettingsView(
     StylingMixin,
     VoiceHandlersMixin,
     AiModelsHandlersMixin,
+    BootstrapDownloadsHandlersMixin,
     MemoryHandlersMixin,
     KnowledgeHandlersMixin,
     CompanionHandlersMixin,
@@ -184,6 +188,7 @@ class SettingsView(
     memory_consolidation_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
     external_settings_reloaded = pyqtSignal(set)
+    ui_language_changed = pyqtSignal()
     cognition_model_changed = pyqtSignal()
     embedding_model_changed = pyqtSignal()
     stt_model_changed = pyqtSignal()
@@ -262,6 +267,8 @@ class SettingsView(
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_settings_sidebar_surface(is_dark)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -276,6 +283,8 @@ class SettingsView(
         self._theme_buttons: list = []
 
         self._init_settings_layout()
+
+        self._section_builders_for_rebuild = _SECTION_BUILDERS
 
         last_group: str | None = None
         for sec_def in SETTINGS_SECTIONS:
@@ -292,6 +301,8 @@ class SettingsView(
         collect_theme_buttons(self)
         self._finalize_settings_layout(is_dark)
         self._sync_internal_engine_subsections(get_engine_mode())
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
     _SETTINGS_STACK_ROLE = int(Qt.ItemDataRole.UserRole)
     _SETTINGS_SECTION_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 1
     def _add_settings_group_header(self, group_text: str) -> None:

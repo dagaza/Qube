@@ -114,6 +114,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -133,6 +134,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -173,7 +175,9 @@ class StylingMixin:
                 yield cb
         for choice_cbs in (
             getattr(self, "companion_persona_cbs", {}),
+            getattr(self, "companion_cube_style_cbs", {}),
             getattr(self, "companion_idle_color_cbs", {}),
+            getattr(self, "ui_language_cbs", {}),
         ):
             if isinstance(choice_cbs, dict):
                 yield from choice_cbs.values()

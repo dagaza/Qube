@@ -128,7 +128,7 @@
     {
       "id": "ack_007",
       "intent": "acknowledge_effort",
-      "text": "The shelf has a new neighbor.",
+      "text": "The shelf has a new neighbour.",
       "voice": "playful",
       "mood": [
         "warm"

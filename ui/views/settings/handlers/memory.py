@@ -112,6 +112,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -131,6 +132,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -158,7 +160,7 @@ class MemoryHandlersMixin:
             "during chat. When off, library search still runs for custom trigger phrases "
             "if NLP Auto-Activator is enabled."
         )
-        self.rag_kb_cb.toggled.connect(self.rag_kb_toggle.emit)
+        self.rag_kb_cb.toggled.connect(self._on_rag_kb_settings_toggled)
         layout.addWidget(self.rag_kb_cb)
         
         # Instruction Label
@@ -173,7 +175,7 @@ class MemoryHandlersMixin:
             "When enabled, custom trigger phrases can search your Knowledge Base for a single turn, "
             "even if the master RAG switch is off. Add magic words below."
         )
-        self.auto_activator_cb.toggled.connect(self.auto_activator_toggle.emit)
+        self.auto_activator_cb.toggled.connect(self._on_auto_activator_settings_toggled)
         layout.addWidget(self.auto_activator_cb)
         
         # Input Row
@@ -347,7 +349,46 @@ class MemoryHandlersMixin:
                 enrichment_on and get_enable_memory_promotion()
             )
 
+    def _on_rag_kb_settings_toggled(self, checked: bool) -> None:
+        from core.bootstrap_missing_models import guard_enable_embedding_feature
+
+        allowed, event = guard_enable_embedding_feature(checked)
+        if not allowed:
+            self.rag_kb_cb.blockSignals(True)
+            self.rag_kb_cb.setChecked(False)
+            self.rag_kb_cb.blockSignals(False)
+            win = self.window()
+            if event and hasattr(win, "emit_notification"):
+                win.emit_notification(event)
+            return
+        self.rag_kb_toggle.emit(checked)
+
+    def _on_auto_activator_settings_toggled(self, checked: bool) -> None:
+        from core.bootstrap_missing_models import guard_enable_embedding_feature
+
+        allowed, event = guard_enable_embedding_feature(checked)
+        if not allowed:
+            self.auto_activator_cb.blockSignals(True)
+            self.auto_activator_cb.setChecked(False)
+            self.auto_activator_cb.blockSignals(False)
+            win = self.window()
+            if event and hasattr(win, "emit_notification"):
+                win.emit_notification(event)
+            return
+        self.auto_activator_toggle.emit(checked)
+
     def _on_memory_enrichment_toggled(self, checked: bool):
+        from core.bootstrap_missing_models import guard_enable_memory_enrichment
+
+        allowed, event = guard_enable_memory_enrichment(checked)
+        if not allowed:
+            self.memory_enrichment_toggle.blockSignals(True)
+            self.memory_enrichment_toggle.setChecked(False)
+            self.memory_enrichment_toggle.blockSignals(False)
+            win = self.window()
+            if event and hasattr(win, "emit_notification"):
+                win.emit_notification(event)
+            return
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
         self._sync_memory_promotion_controls_for_enrichment()

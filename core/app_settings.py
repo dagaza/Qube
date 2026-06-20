@@ -58,6 +58,7 @@ KEY_CITATION_INTEGRITY_MISSING_RETRY = "qube.citations.integrity_missing_retry"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
+KEY_UI_LANGUAGE = "qube.ui.language"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -133,7 +134,9 @@ KEY_COMPANION_POS_SCREEN = "qube.companion.position.screen"
 KEY_COMPANION_POS_NORM_X = "qube.companion.position.normX"
 KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
+KEY_COMPANION_SNAP_ZONE = "qube.companion.position.snapZone"
 KEY_COMPANION_PERSONA = "qube.companion.persona"
+KEY_COMPANION_CUBE_STYLE = "qube.companion.cubeStyle"
 KEY_COMPANION_IDLE_COLOR = "qube.companion.idleColor"
 KEY_COMPANION_VERBAL_ENABLED = "qube.companion.verbal.enabled"
 KEY_COMPANION_VERBAL_SYSTEM_PROMPT = "qube.companion.verbal.systemPrompt"
@@ -1485,6 +1488,32 @@ def set_companion_persona(persona: str) -> None:
     _store().set(KEY_COMPANION_PERSONA, normalize_companion_persona(persona).value)
 
 
+def get_ui_language() -> "UiLanguage":
+    from core.ui_language import DEFAULT_UI_LANGUAGE, normalize_ui_language
+
+    raw = _store().get(KEY_UI_LANGUAGE, DEFAULT_UI_LANGUAGE.value)
+    return normalize_ui_language(str(raw) if raw is not None else None)
+
+
+def set_ui_language(language: str) -> None:
+    from core.ui_language import normalize_ui_language
+
+    _store().set(KEY_UI_LANGUAGE, normalize_ui_language(language).value)
+
+
+def get_companion_cube_style() -> "CompanionCubeStyle":
+    from core.companion_cube_style import DEFAULT_COMPANION_CUBE_STYLE, normalize_companion_cube_style
+
+    raw = _store().get(KEY_COMPANION_CUBE_STYLE, DEFAULT_COMPANION_CUBE_STYLE.value)
+    return normalize_companion_cube_style(str(raw) if raw is not None else None)
+
+
+def set_companion_cube_style(style: str) -> None:
+    from core.companion_cube_style import normalize_companion_cube_style
+
+    _store().set(KEY_COMPANION_CUBE_STYLE, normalize_companion_cube_style(style).value)
+
+
 def get_companion_idle_color() -> "CompanionIdleColor":
     from core.companion_idle_color import DEFAULT_COMPANION_IDLE_COLOR, normalize_companion_idle_color
 
@@ -1507,7 +1536,18 @@ def get_companion_position() -> dict:
         "norm_x": store.get(KEY_COMPANION_POS_NORM_X),
         "norm_y": store.get(KEY_COMPANION_POS_NORM_Y),
         "dock_edge": str(store.get(KEY_COMPANION_DOCK_EDGE, "none") or "none"),
+        "snap_zone": str(store.get(KEY_COMPANION_SNAP_ZONE, "none") or "none"),
     }
+
+
+def get_companion_snap_zone() -> str:
+    return str(_store().get(KEY_COMPANION_SNAP_ZONE, "none") or "none")
+
+
+def set_companion_snap_zone(zone: str) -> None:
+    from core.companion_placement import normalize_companion_snap_zone
+
+    _store().set(KEY_COMPANION_SNAP_ZONE, normalize_companion_snap_zone(zone).value)
 
 
 def set_companion_position(
@@ -1535,6 +1575,22 @@ def set_companion_position(
         if edge not in ("none", "left", "right", "bottom"):
             edge = "none"
         store.set(KEY_COMPANION_DOCK_EDGE, edge)
+
+
+def clear_companion_position() -> None:
+    """Remove saved companion coordinates (next restore uses default placement)."""
+    store = _store()
+    for key in (
+        KEY_COMPANION_POS_X,
+        KEY_COMPANION_POS_Y,
+        KEY_COMPANION_POS_SCREEN,
+        KEY_COMPANION_POS_NORM_X,
+        KEY_COMPANION_POS_NORM_Y,
+        KEY_COMPANION_DOCK_EDGE,
+        KEY_COMPANION_SNAP_ZONE,
+    ):
+        if store.contains(key):
+            store.remove(key)
 
 
 def get_companion_verbal_enabled() -> bool:

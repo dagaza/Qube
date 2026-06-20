@@ -68,6 +68,7 @@ from core.audio_utils import get_input_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.local_gguf_library import list_local_gguf_menu_entries
 from core.qube_tooltip import qube_tooltip_set_theme
+from core.ui_language import tr
 from core.platform.work_area import workspace_bounds_for_screen
 from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
@@ -873,7 +874,7 @@ class MainWindow(QMainWindow):
         self.rag_status_dot.setFixedWidth(60) 
         self.rag_status_dot.setObjectName("RagStatusDot")
         self.rag_status_dot.setToolTip(
-            "Knowledge base status: gray = off, blue = ready, green = retrieving"
+            tr("Knowledge base status: grey = off, blue = ready, green = retrieving")
         )
         self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
         center_layout.addWidget(self.rag_status_dot)
@@ -910,28 +911,28 @@ class MainWindow(QMainWindow):
         win_layout.setContentsMargins(0, 0, 0, 0)
         win_layout.setSpacing(8)
         
-        min_btn = QPushButton()
-        min_btn.setIcon(qta.icon('fa5s.minus'))
-        min_btn.setProperty("class", "WindowControlButton")
-        min_btn.setToolTip("Minimize window")
-        min_btn.clicked.connect(self.showMinimized)
+        self._min_btn = QPushButton()
+        self._min_btn.setIcon(qta.icon('fa5s.minus'))
+        self._min_btn.setProperty("class", "WindowControlButton")
+        self._min_btn.setToolTip(tr("Minimise window"))
+        self._min_btn.clicked.connect(self.showMinimized)
 
         self.max_btn = QPushButton()
         self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
         self.max_btn.setProperty("class", "WindowControlButton")
-        self.max_btn.setToolTip("Maximize window")
+        self.max_btn.setToolTip(tr("Maximise window"))
         self.max_btn.clicked.connect(self._toggle_maximize)
 
-        close_btn = QPushButton()
-        close_btn.setIcon(qta.icon('fa5s.times'))
-        close_btn.setProperty("class", "WindowControlButton")
-        close_btn.setToolTip("Minimize to system tray")
-        close_btn.clicked.connect(self.hide)
+        self._close_btn = QPushButton()
+        self._close_btn.setIcon(qta.icon('fa5s.times'))
+        self._close_btn.setProperty("class", "WindowControlButton")
+        self._close_btn.setToolTip(tr("Minimise to system tray"))
+        self._close_btn.clicked.connect(self.hide)
 
         win_layout.addStretch()
-        win_layout.addWidget(min_btn)
+        win_layout.addWidget(self._min_btn)
         win_layout.addWidget(self.max_btn)
-        win_layout.addWidget(close_btn)
+        win_layout.addWidget(self._close_btn)
 
         layout.addWidget(win_controls)
         
@@ -1242,21 +1243,8 @@ class MainWindow(QMainWindow):
         self._geometry_update_depth += 1
         try:
             self.setMinimumSize(target_size)
-            current = self.size()
-            if (
-                current.width() < target_size.width() - 4
-                or current.height() < target_size.height() - 4
-            ):
-                self.setGeometry(target_rect)
-            else:
-                self._startup_geometry_finalized = True
-                return
-            after = self.size()
-            if (
-                after.width() >= target_size.width() - 4
-                and after.height() >= target_size.height() - 4
-            ):
-                self._startup_geometry_finalized = True
+            self.setGeometry(target_rect)
+            self._startup_geometry_finalized = True
         finally:
             self._geometry_update_depth -= 1
 
@@ -1338,10 +1326,20 @@ class MainWindow(QMainWindow):
     def _unlock_window_size(self) -> None:
         self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))
 
+    def _apply_ui_language(self) -> None:
+        """Refresh window chrome strings after the UI language setting changes."""
+        self._min_btn.setToolTip(tr("Minimise window"))
+        self._close_btn.setToolTip(tr("Minimise to system tray"))
+        self.rag_status_dot.setToolTip(
+            tr("Knowledge base status: grey = off, blue = ready, green = retrieving")
+        )
+        maximized = bool(self.windowState() & Qt.WindowState.WindowMaximized)
+        self.max_btn.setToolTip(tr("Restore window") if maximized else tr("Maximise window"))
+
     def _apply_maximize_chrome(self, maximized: bool) -> None:
         if maximized:
             self.max_btn.setIcon(qta.icon("fa5s.compress-arrows-alt"))
-            self.max_btn.setToolTip("Restore window")
+            self.max_btn.setToolTip(tr("Restore window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;")
             )
@@ -1349,7 +1347,7 @@ class MainWindow(QMainWindow):
                 self.grip.setVisible(False)
         else:
             self.max_btn.setIcon(qta.icon("fa5s.expand-arrows-alt"))
-            self.max_btn.setToolTip("Maximize window")
+            self.max_btn.setToolTip(tr("Maximise window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;")
             )
@@ -1980,12 +1978,12 @@ class MainWindow(QMainWindow):
         #  WIRING TO WORKERS                                        #
         # --------------------------------------------------------- #
         if self._audio_worker:
-            self.voice_input_toggle.toggled.connect(lambda checked: self._audio_worker.set_paused(not checked))
+            self.voice_input_toggle.toggled.connect(self._on_voice_input_toggle)
             # 🔑 Catch the volume signal and route it to the VU meter
             self._audio_worker.volume_update.connect(self.update_mic_level)
 
         if self._tts_worker:
-            self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
+            self.voice_bypass_toggle.toggled.connect(self._on_voice_bypass_toggle)
         if self._llm_worker:
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
@@ -1993,18 +1991,30 @@ class MainWindow(QMainWindow):
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.tool_rag_toggle, checked):
+                    return
                 self.set_rag_state('standby' if checked else 'off')
                 self._llm_worker.set_mcp_rag(checked)
-                
+
             self.tool_rag_toggle.toggled.connect(on_rag_toggled)
             
             # Force initial state check on boot
             self.set_rag_state('standby' if self.tool_rag_toggle.isChecked() else 'off')
 
             # 🔑 THE NEW STRICT WIRE
-            self.rag_strict_toggle.toggled.connect(self._llm_worker.set_mcp_strict)
+            def on_strict_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.rag_strict_toggle, checked):
+                    return
+                self._llm_worker.set_mcp_strict(checked)
+
+            self.rag_strict_toggle.toggled.connect(on_strict_toggled)
             # 🔑 THE NEW AUTO-ACTIVATOR WIRE
-            self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
+            def on_auto_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.rag_auto_toggle, checked):
+                    return
+                self._llm_worker.set_mcp_auto(checked)
+
+            self.rag_auto_toggle.toggled.connect(on_auto_toggled)
 
             # Hybrid toggle controls web search + cognitive auto-web routing.
             def on_hybrid_toggled(checked: bool):
@@ -3035,6 +3045,9 @@ class MainWindow(QMainWindow):
         self._companion_controller.navigate_settings_requested.connect(
             lambda: self._on_notification_action("open_settings")
         )
+        self._companion_controller.window.snap_zone_changed.connect(
+            self._on_companion_snap_zone_changed
+        )
         voice_out = (
             self.voice_bypass_toggle.isChecked()
             if hasattr(self, "voice_bypass_toggle")
@@ -3055,6 +3068,11 @@ class MainWindow(QMainWindow):
             self.settings_view.companion_enabled_cb.blockSignals(False)
         if self._companion_controller is not None:
             self._companion_controller.set_user_enabled(enabled)
+
+    def _on_companion_snap_zone_changed(self, _zone: str) -> None:
+        settings = getattr(self, "settings_view", None)
+        if settings is not None and hasattr(settings, "_sync_companion_snap_compass"):
+            settings._sync_companion_snap_compass()
 
     def _on_tray_voice_input_toggled(self, enabled: bool) -> None:
         if hasattr(self, "voice_input_toggle"):
@@ -3256,6 +3274,65 @@ class MainWindow(QMainWindow):
             if hasattr(self, "nav_memory"):
                 self.nav_memory.setChecked(True)
                 self._route_view(2, self.nav_memory)
+        elif action_id == "open_settings_voice_stt":
+            self._open_settings_section("voice.audio", anchor="stt_models")
+        elif action_id == "open_settings_voice_tts":
+            self._open_settings_section("voice.audio", anchor="tts_models")
+        elif action_id == "open_settings_knowledge_embedding":
+            self._open_settings_section("knowledge", anchor="embedding_model")
+        elif action_id == "open_settings_ai_cognition":
+            self._open_settings_section("ai.models", anchor="cognition")
+
+    def _open_settings_section(self, section: str, *, anchor: str | None = None) -> None:
+        self._restore_workspace_from_tray()
+        if hasattr(self, "nav_settings"):
+            self.nav_settings.setChecked(True)
+            self._route_view(5, self.nav_settings)
+        if anchor and hasattr(self, "settings_view") and hasattr(
+            self.settings_view, "select_settings_section"
+        ):
+            QTimer.singleShot(0, lambda: self.settings_view.select_settings_section(section, anchor=anchor))
+
+    def _guard_embedding_feature_toggle(self, toggle, checked: bool) -> bool:
+        from core.bootstrap_missing_models import guard_enable_embedding_feature
+
+        allowed, event = guard_enable_embedding_feature(checked)
+        if allowed:
+            return True
+        toggle.blockSignals(True)
+        toggle.setChecked(False)
+        toggle.blockSignals(False)
+        if event:
+            self.emit_notification(event)
+        return False
+
+    def _on_voice_input_toggle(self, checked: bool) -> None:
+        from core.bootstrap_missing_models import guard_enable_stt
+
+        allowed, event = guard_enable_stt(checked)
+        if not allowed:
+            self.voice_input_toggle.blockSignals(True)
+            self.voice_input_toggle.setChecked(False)
+            self.voice_input_toggle.blockSignals(False)
+            if event:
+                self.emit_notification(event)
+            return
+        if self._audio_worker:
+            self._audio_worker.set_paused(not checked)
+
+    def _on_voice_bypass_toggle(self, checked: bool) -> None:
+        from core.bootstrap_missing_models import guard_enable_tts
+
+        allowed, event = guard_enable_tts(checked)
+        if not allowed:
+            self.voice_bypass_toggle.blockSignals(True)
+            self.voice_bypass_toggle.setChecked(False)
+            self.voice_bypass_toggle.blockSignals(False)
+            if event:
+                self.emit_notification(event)
+            return
+        if self._tts_worker:
+            self._tts_worker.set_mute(not checked)
 
     def request_application_restart(self) -> None:
         self._force_app_exit = True
