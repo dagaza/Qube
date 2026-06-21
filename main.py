@@ -604,7 +604,7 @@ class Qube:
         Runs on the UI thread before the audio worker opens the capture buffer.
 
         Only cancels an in-flight LLM/TTS turn (barge-in). Capture status is owned
-        by ``AudioListenerWorker`` (Listening → Voice capture idle / Thinking).
+        by ``AudioListenerWorker`` (Listening → Voice capture idle / Working).
         """
         logger = logging.getLogger("Qube.Main")
         interrupted = False

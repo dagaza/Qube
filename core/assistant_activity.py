@@ -80,7 +80,7 @@ def user_presence_label(
     if activity == AssistantActivity.SPEAKING:
         return "Speaking"
     if activity in (AssistantActivity.WORKING, AssistantActivity.BACKGROUND_BUSY):
-        return "Writing" if voice_output_muted else "Thinking"
+        return "Writing" if voice_output_muted else "Working"
     return "Idle"
 
 
@@ -118,7 +118,7 @@ def _is_native_engine_status(msg_upper: str) -> bool:
 
 def _is_assistant_working_message(msg_upper: str) -> bool:
     """Canonical in-flight turn statuses only — not arbitrary substrings in filenames."""
-    if msg_upper.startswith(("THINKING", "TRANSCRIBING", "GENERATING", "SYNTHESIZING")):
+    if msg_upper.startswith(("WORKING", "THINKING", "TRANSCRIBING", "GENERATING", "SYNTHESIZING")):
         return True
     return "SEARCHING" in msg_upper and "WEB" in msg_upper
 

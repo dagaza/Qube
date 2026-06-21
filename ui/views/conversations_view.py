@@ -3813,7 +3813,7 @@ class ConversationsView(QWidget):
                 self.text_input.setFocus()
             else:
                 # 🔑 DEFAULT LOCK: We will update this dynamically in a millisecond
-                self.text_input.setPlaceholderText("Qube is thinking...")
+                self.text_input.setPlaceholderText("Qube is working...")
         self._refresh_send_stop_button()
 
     # 🔑 NEW: A dynamic receiver to update the text box live

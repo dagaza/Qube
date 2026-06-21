@@ -493,7 +493,7 @@
   "qube.companion.showCaption": {
     "type": "boolean",
     "default": false,
-    "description": "Show the activity label (Listening, Thinking, Speaking, etc.) below the companion."
+    "description": "Show the activity label (Listening, Working, Speaking, etc.) below the companion."
   },
   "qube.companion.suppressOnFullscreen": {
     "type": "boolean",

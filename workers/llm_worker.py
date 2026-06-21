@@ -2191,7 +2191,7 @@ class LLMWorker(QThread):
         # ============================================================
         # 1. ROUTING PHASE
         # ============================================================
-        self.status_update.emit("Thinking...")
+        self.status_update.emit("Working...")
 
         intent_vector = None
 

@@ -78,7 +78,7 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
         return AssistantPhase.MODEL_LOAD
     if "SEARCHING" in msg_upper:
         return AssistantPhase.ROUTING
-    if any(k in msg_upper for k in ("THINKING", "GENERATING", "SYNTHESIZING")):
+    if any(k in msg_upper for k in ("WORKING", "THINKING", "GENERATING", "SYNTHESIZING")):
         return AssistantPhase.LLM
     return AssistantPhase.LLM
 
