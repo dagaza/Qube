@@ -147,12 +147,6 @@ def apply_bootstrap_selection(selected: set[BootstrapModelId]) -> None:
         if path and os.path.isfile(path):
             set_internal_model_path(path)
 
-    if BootstrapModelId.SEARCH_PRESET_BALANCED in selected:
-        from core.embedding_models import mark_embedding_preset_available
-        from core.embedding_modes import DEFAULT_MODE
-
-        mark_embedding_preset_available(DEFAULT_MODE)
-
 
 def _resolved_download_path(model_id: BootstrapModelId) -> str:
     from core.bootstrap_download import resolve_model_destination
@@ -284,7 +278,10 @@ def apply_downloaded_bootstrap_model(model_id: BootstrapModelId) -> None:
             set_internal_model_path(path)
         return
     if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+        from core.bootstrap_search_models import embedding_preset_cached_on_disk
         from core.embedding_models import mark_embedding_preset_available
         from core.embedding_modes import DEFAULT_MODE
 
-        mark_embedding_preset_available(DEFAULT_MODE)
+        if embedding_preset_cached_on_disk(DEFAULT_MODE):
+            mark_embedding_preset_available(DEFAULT_MODE)
+        return

@@ -30,7 +30,10 @@ class FastembedBackend:
         self._load()
 
     def _load(self) -> None:
+        from core.paths import configure_user_model_paths
         from fastembed import TextEmbedding
+
+        configure_user_model_paths()
 
         supported = {
             entry["model"]

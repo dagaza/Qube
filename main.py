@@ -79,7 +79,7 @@ from core.logging_bootstrap import (
     init_skills_debug_logging,
 )
 from core.boot_args import parse_boot_args
-from core.paths import install_root, resource_path
+from core.paths import install_root, resource_path, configure_user_model_paths
 
 # --- QUBE TERMINAL LOGGER SETUP ---
 logging.basicConfig(
@@ -1283,6 +1283,7 @@ class Qube:
 
 if __name__ == "__main__":
     args = parse_boot_args()
+    configure_user_model_paths()
     # Optional: The Windows Taskbar App ID fix we discussed
     if sys.platform == "win32":
         import ctypes

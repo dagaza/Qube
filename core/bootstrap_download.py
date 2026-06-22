@@ -189,18 +189,17 @@ def resolve_model_destination(model_id: BootstrapModelId) -> Path | None:
 
 def model_is_present(model_id: BootstrapModelId) -> bool:
     if model_id == BootstrapModelId.WHISPER_SMALL:
-        from core.stt_models import resolve_active_stt_model_spec
+        from core.stt_models import (
+            bundled_whisper_present,
+            is_protected_stt_model,
+            resolve_active_stt_model_spec,
+        )
 
         spec = resolve_active_stt_model_spec()
-        if os.path.isdir(spec):
-            return (Path(spec) / "model.bin").is_file()
-        cache_root = Path(get_stt_models_dir())
-        if not cache_root.is_dir():
-            return False
-        for child in cache_root.iterdir():
-            if child.is_dir() and (child / "model.bin").is_file():
-                return True
-        return False
+        if not is_protected_stt_model(spec):
+            custom = Path(spec)
+            return custom.is_dir() and (custom / "model.bin").is_file()
+        return bundled_whisper_present()
 
     if model_id == BootstrapModelId.KOKORO_TTS:
         from core.tts_models import BUNDLED_DEFAULT_FILENAME, BUNDLED_VOICES_FILENAME
@@ -309,6 +308,9 @@ def _download_balanced_search_preset(on_progress: DownloadProgressCallback, spec
     from core.bootstrap_search_models import balanced_search_preset_present
     from core.embedding_modes import DEFAULT_MODE, get_mode_spec
     from core.embedding_models import probe_embedding_preset_available
+    from core.paths import configure_user_model_paths
+
+    configure_user_model_paths()
 
     mode_spec = get_mode_spec(DEFAULT_MODE)
     filename = mode_spec.fastembed_model

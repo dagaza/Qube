@@ -70,7 +70,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(ai_form, "Engine & routing", anchor="engine")
 
     host.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
-    host.engine_selector.setObjectName("SettingsEngineSelector")
     host.provider_selector = SelectorButton("Select Provider...", is_dark=is_dark)
 
     for btn in (host.engine_selector, host.provider_selector):

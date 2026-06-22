@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QVBoxLayout,
     QWidget,
 )
@@ -89,8 +90,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.memory_promotion_toggle.toggled.connect(host._on_memory_promotion_toggled)
 
     host.memory_promotion_preset_selector = SelectorButton("Standard", is_dark=is_dark)
-    host.memory_promotion_preset_selector.setMinimumWidth(200)
-    host.memory_promotion_preset_selector.setMaximumWidth(280)
+    host.memory_promotion_preset_selector.setMaximumWidth(250)
+    host.memory_promotion_preset_selector.setMenu(QMenu(host.memory_promotion_preset_selector))
     host.memory_promotion_preset_selector.setToolTip(
         "How cautious Qube should be before promoting a memory.\n\n"
         "Conservative — waits for more repeated use before upgrading.\n"
@@ -149,8 +150,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(personal_form, "Personalization", anchor="personalization")
 
     host.profile_units_selector = SelectorButton("Use inferred units", is_dark=is_dark)
-    host.profile_units_selector.setMinimumWidth(200)
-    host.profile_units_selector.setMaximumWidth(280)
+    host.profile_units_selector.setMaximumWidth(250)
+    host.profile_units_selector.setMenu(QMenu(host.profile_units_selector))
     host.profile_units_selector.setToolTip(
         "Default measurement units for weather and other numeric answers. "
         "Unset lets Qube learn units from conversation."

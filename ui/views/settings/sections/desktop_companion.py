@@ -206,7 +206,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     freedom_lbl.setToolTip(_companion_freedom_tip)
     freedom_row.addWidget(freedom_lbl)
     host.companion_expression_freedom_selector = SelectorButton("Balanced", is_dark=is_dark)
-    host.companion_expression_freedom_selector.setMinimumWidth(180)
     host.companion_expression_freedom_selector.setMaximumWidth(250)
     host.companion_expression_freedom_selector.setToolTip(_companion_freedom_tip)
     host.companion_expression_freedom_selector.setMenu(
@@ -243,7 +242,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     trait_lbl.setToolTip(_companion_trait_tip)
     trait_row.addWidget(trait_lbl)
     host.companion_verbal_trait_selector = SelectorButton("Neutral", is_dark=is_dark)
-    host.companion_verbal_trait_selector.setMinimumWidth(180)
     host.companion_verbal_trait_selector.setMaximumWidth(250)
     host.companion_verbal_trait_selector.setToolTip(_companion_trait_tip)
     host.companion_verbal_trait_selector.setMenu(QMenu(host.companion_verbal_trait_selector))
@@ -268,7 +266,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     freq_lbl.setToolTip(_companion_freq_tip)
     freq_row.addWidget(freq_lbl)
     host.companion_verbal_frequency_selector = SelectorButton("Normal", is_dark=is_dark)
-    host.companion_verbal_frequency_selector.setMinimumWidth(180)
     host.companion_verbal_frequency_selector.setMaximumWidth(250)
     host.companion_verbal_frequency_selector.setToolTip(_companion_freq_tip)
     host.companion_verbal_frequency_selector.setMenu(

@@ -83,24 +83,26 @@ class SelectorButton(QPushButton):
             self._chevron_muted = QColor("#a1a1aa")
         self._chevron_active = QColor("#64748b")
 
+        # Widget-level QSS (no #objectName) so call sites can set a stable
+        # objectName for tests/tours without breaking menu-indicator suppression.
         # `padding: 8px 15px;` matches the global `#SettingsMenuButton` rule so
         # this selector has the same outer height / left inset as every other
         # dropdown in the app. We still custom-paint the text (see paintEvent),
         # but the QSS padding is what drives Qt's sizeHint for the button.
         self.setStyleSheet(
             f"""
-            QPushButton#QubeSelectorButton {{
+            QPushButton {{
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 6px;
                 padding: 8px 15px;
                 text-align: left;
             }}
-            QPushButton#QubeSelectorButton:disabled {{
+            QPushButton:disabled {{
                 background-color: {disabled_bg};
                 border: 1px solid {disabled_border};
             }}
-            QPushButton#QubeSelectorButton::menu-indicator {{
+            QPushButton::menu-indicator {{
                 image: none;
                 width: 0px;
             }}

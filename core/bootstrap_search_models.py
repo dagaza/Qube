@@ -7,6 +7,7 @@ from pathlib import Path
 
 from core.bootstrap_manifest import format_byte_size
 from core.embedding_modes import DEFAULT_MODE, get_mode_spec, normalize_mode_id
+from core.paths import configure_user_model_paths, search_models_cache_dir
 
 _MB = 1024 * 1024
 
@@ -32,11 +33,12 @@ def default_search_preset_size_bytes() -> int:
 
 def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
     """True when fastembed ONNX assets for a mode appear present locally (no load)."""
+    configure_user_model_paths()
     mode = normalize_mode_id(mode_id)
     model_name = get_mode_spec(mode).fastembed_model
     slug = model_name.replace("/", "--")
 
-    cache_candidates: list[Path] = []
+    cache_candidates: list[Path] = [search_models_cache_dir()]
     fastembed_env = os.environ.get("FASTEMBED_CACHE_PATH", "").strip()
     if fastembed_env:
         cache_candidates.append(Path(fastembed_env))
@@ -67,11 +69,9 @@ def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
 
 def balanced_search_preset_present() -> bool:
     """True when the default Balanced search preset is cached or a GGUF override is active."""
-    from core.embedding_models import gguf_override_available, preset_embedder_ready
+    from core.embedding_models import gguf_override_available
 
     if gguf_override_available():
-        return True
-    if preset_embedder_ready(mode_id=DEFAULT_MODE, probe=False):
         return True
     return embedding_preset_cached_on_disk(DEFAULT_MODE)
 

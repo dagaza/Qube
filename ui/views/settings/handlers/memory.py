@@ -344,6 +344,9 @@ class MemoryHandlersMixin:
         ):
             if widget is not None:
                 widget.setEnabled(enrichment_on)
+        preset_selector = getattr(self, "memory_promotion_preset_selector", None)
+        if preset_selector is not None:
+            self._apply_settings_menu_button_chevron_state(preset_selector)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_changed.emit(
                 enrichment_on and get_enable_memory_promotion()
@@ -445,21 +448,20 @@ class MemoryHandlersMixin:
     def _build_profile_units_menu(self) -> None:
         if not hasattr(self, "profile_units_selector"):
             return
-        menu = QMenu(self)
-        options = [
-            ("", "Use inferred units"),
-            ("metric", "Metric"),
-            ("imperial", "Imperial"),
+        items = [
+            ("Use inferred units", ""),
+            ("Metric", "metric"),
+            ("Imperial", "imperial"),
         ]
+        self._build_prestige_menu(
+            self.profile_units_selector,
+            items,
+            self._on_profile_units_selected,
+        )
+        self._sync_profile_units_selector()
 
-        def _pick(value: str, label: str) -> None:
-            set_profile_units(value or None)
-            self.profile_units_selector.setText(label)
-
-        for value, label in options:
-            act = menu.addAction(label)
-            act.triggered.connect(lambda _checked=False, v=value, l=label: _pick(v, l))
-        self.profile_units_selector.setMenu(menu)
+    def _on_profile_units_selected(self, value: str) -> None:
+        set_profile_units(str(value) if value else None)
 
     def _sync_profile_units_selector(self) -> None:
         if not hasattr(self, "profile_units_selector"):
@@ -471,22 +473,30 @@ class MemoryHandlersMixin:
     def _build_memory_promotion_preset_menu(self) -> None:
         if not hasattr(self, "memory_promotion_preset_selector"):
             return
-        menu = QMenu(self)
+        items = [
+            ("Conservative", "conservative"),
+            ("Standard", "standard"),
+            ("Aggressive", "aggressive"),
+        ]
+        self._build_prestige_menu(
+            self.memory_promotion_preset_selector,
+            items,
+            self._on_memory_promotion_preset_selected,
+        )
+        self._sync_memory_promotion_preset_selector()
+
+    def _on_memory_promotion_preset_selected(self, key: str) -> None:
+        set_memory_promotion_preset(str(key))
+
+    def _sync_memory_promotion_preset_selector(self) -> None:
+        if not hasattr(self, "memory_promotion_preset_selector"):
+            return
         labels = {
             "conservative": "Conservative",
             "standard": "Standard",
             "aggressive": "Aggressive",
         }
         current = get_memory_promotion_preset()
-
-        def _pick(key: str, label: str) -> None:
-            set_memory_promotion_preset(key)
-            self.memory_promotion_preset_selector.setText(label)
-
-        for key, label in labels.items():
-            act = menu.addAction(label)
-            act.triggered.connect(lambda _checked=False, k=key, l=label: _pick(k, l))
-        self.memory_promotion_preset_selector.setMenu(menu)
         self.memory_promotion_preset_selector.setText(labels.get(current, "Standard"))
 
     def _on_memory_consolidation_toggled(self, checked: bool):

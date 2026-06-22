@@ -76,9 +76,14 @@ def clear_embedding_availability_cache() -> None:
 
 def mark_embedding_preset_available(mode_id: str | None = None) -> None:
     from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
     from core.embedding_modes import normalize_mode_id
 
+    if resolve_active_gguf_path():
+        return
     key = normalize_mode_id(mode_id or get_embedding_mode())
+    if not embedding_preset_cached_on_disk(key):
+        return
     _preset_available_cache[key] = True
 
 
@@ -89,12 +94,19 @@ def probe_embedding_preset_available(
 ) -> bool:
     """Verify the active Fast/Balanced/Power preset can load (may download on first use)."""
     from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
     from core.embedding_modes import normalize_mode_id
+    from core.paths import configure_user_model_paths
+
+    configure_user_model_paths()
 
     if resolve_active_gguf_path():
         return True
 
     mode = normalize_mode_id(mode_id or get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        mark_embedding_preset_available(mode)
+        return True
     if not force and _preset_available_cache.get(mode, False):
         return True
 
@@ -103,6 +115,9 @@ def probe_embedding_preset_available(
 
         model = EmbeddingModel(mode_id=mode)
         if model.vector_dim <= 0:
+            _preset_available_cache[mode] = False
+            return False
+        if not embedding_preset_cached_on_disk(mode):
             _preset_available_cache[mode] = False
             return False
         mark_embedding_preset_available(mode)
@@ -133,10 +148,11 @@ def preset_embedder_ready(
     if gguf_override_available():
         return False
     from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
     from core.embedding_modes import normalize_mode_id
 
     mode = normalize_mode_id(mode_id or get_embedding_mode())
-    if _preset_available_cache.get(mode, False):
+    if embedding_preset_cached_on_disk(mode):
         return True
     if probe:
         return probe_embedding_preset_available(mode_id=mode, force=True)
@@ -147,10 +163,11 @@ def all_presets_embedder_ready(probe: bool = False) -> bool:
     """True when every Fast/Balanced/Power preset is cached or loadable."""
     if gguf_override_available():
         return True
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
     from core.embedding_modes import MODE_IDS
 
     for mode in MODE_IDS:
-        if _preset_available_cache.get(mode, False):
+        if embedding_preset_cached_on_disk(mode):
             continue
         if probe:
             if not probe_embedding_preset_available(mode_id=mode, force=True):
@@ -163,7 +180,14 @@ def all_presets_embedder_ready(probe: bool = False) -> bool:
 def embedding_model_available() -> bool:
     if gguf_override_available():
         return True
-    return preset_embedder_ready(probe=True)
+    from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import normalize_mode_id
+
+    mode = normalize_mode_id(get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        return True
+    return probe_embedding_preset_available(mode_id=mode, force=True)
 
 
 def validate_embedding_model_path(path: str) -> tuple[bool, str]:

@@ -63,7 +63,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         handler_name="_warm_embedding_preset",
         label_text=(
             "Search models are not ready. Library uploads and knowledge toggles need "
-            "the active Fast/Balanced/Power preset. Change mode under Search quality above."
+            "the active Fast/Balanced/Power preset (ONNX under ~/.qube/models/search/, "
+            "not the embedding GGUF folder). Change mode under Search quality above."
         ),
         button_text="Prepare search models",
     )

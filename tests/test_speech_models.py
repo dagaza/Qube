@@ -68,6 +68,31 @@ def test_stt_skips_hf_cache_dirs_in_list():
     _run_in_tmp(body)
 
 
+def test_bundled_whisper_present_finds_hf_snapshot_layout():
+    def body(root: Path) -> None:
+        stt_dir = Path(sm.get_stt_models_dir())
+        snap = (
+            stt_dir
+            / "models--Systran--faster-whisper-small"
+            / "snapshots"
+            / "abc123"
+        )
+        snap.mkdir(parents=True)
+        (snap / "model.bin").write_bytes(b"x")
+        assert sm.bundled_whisper_present() is True
+        assert sm.stt_model_available() is True
+
+    _run_in_tmp(body)
+
+
+def test_bundled_whisper_absent_without_weights():
+    def body(_root: Path) -> None:
+        assert sm.bundled_whisper_present() is False
+        assert sm.stt_model_available() is False
+
+    _run_in_tmp(body)
+
+
 def test_tts_bundled_default_path():
     def body(root: Path) -> None:
         tts_dir = root / "models" / tm.TTS_SUBDIR

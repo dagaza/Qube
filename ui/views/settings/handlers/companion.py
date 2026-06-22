@@ -186,6 +186,14 @@ class CompanionHandlersMixin:
             widget = getattr(self, name, None)
             if widget is not None:
                 widget.setEnabled(companion_on)
+        for selector_name in (
+            "companion_expression_freedom_selector",
+            "companion_verbal_trait_selector",
+            "companion_verbal_frequency_selector",
+        ):
+            selector = getattr(self, selector_name, None)
+            if selector is not None:
+                self._apply_settings_menu_button_chevron_state(selector)
         result_lbl = getattr(self, "companion_verbal_test_result", None)
         if result_lbl is not None:
             result_lbl.setEnabled(True)
@@ -193,42 +201,69 @@ class CompanionHandlersMixin:
     def _build_companion_verbal_trait_menu(self) -> None:
         if not hasattr(self, "companion_verbal_trait_selector"):
             return
-        from core import app_settings as _cs
-        from core.companion_verbal_traits import (
-            CompanionVerbalTraitPreset,
-            TRAIT_LABELS,
-            normalize_companion_verbal_trait,
+        from core.companion_verbal_traits import CompanionVerbalTraitPreset, TRAIT_LABELS
+
+        items = [
+            (TRAIT_LABELS[preset], preset.value) for preset in CompanionVerbalTraitPreset
+        ]
+        self._build_prestige_menu(
+            self.companion_verbal_trait_selector,
+            items,
+            self._on_companion_verbal_trait_selected,
         )
+        self._sync_companion_verbal_trait_selector()
 
-        menu = QMenu(self)
+    def _on_companion_verbal_trait_selected(self, preset_value: str) -> None:
+        from core import app_settings as _cs
+        from core.companion_verbal_traits import normalize_companion_verbal_trait
+
+        _cs.set_companion_verbal_trait_preset(
+            normalize_companion_verbal_trait(preset_value).value
+        )
+        self._on_companion_verbal_setting_changed()
+
+    def _sync_companion_verbal_trait_selector(self) -> None:
+        if not hasattr(self, "companion_verbal_trait_selector"):
+            return
+        from core import app_settings as _cs
+        from core.companion_verbal_traits import TRAIT_LABELS, normalize_companion_verbal_trait
+
         current = normalize_companion_verbal_trait(_cs.get_companion_verbal_trait_preset())
-
-        def _pick(preset: CompanionVerbalTraitPreset) -> None:
-            _cs.set_companion_verbal_trait_preset(preset.value)
-            self.companion_verbal_trait_selector.setText(TRAIT_LABELS[preset])
-            self._on_companion_verbal_setting_changed()
-
-        trait_tips = {
-            CompanionVerbalTraitPreset.NEUTRAL: "Calm, brief companion lines.",
-            CompanionVerbalTraitPreset.WARM: "Gently encouraging tone.",
-            CompanionVerbalTraitPreset.WITTY: "Light humor; never distracting or insulting.",
-            CompanionVerbalTraitPreset.DRY: "Understated, deadpan humor.",
-            CompanionVerbalTraitPreset.SARCASTIC: "Mild sarcasm; still friendly.",
-        }
-        for preset in CompanionVerbalTraitPreset:
-            act = menu.addAction(TRAIT_LABELS[preset])
-            act.setToolTip(trait_tips.get(preset, ""))
-            act.triggered.connect(lambda _checked=False, p=preset: _pick(p))
-        self.companion_verbal_trait_selector.setMenu(menu)
         self.companion_verbal_trait_selector.setText(TRAIT_LABELS[current])
 
     def _build_companion_verbal_frequency_menu(self) -> None:
         if not hasattr(self, "companion_verbal_frequency_selector"):
             return
+        from core.companion_verbal_policy import CompanionVerbalFrequency
+
+        labels = {
+            CompanionVerbalFrequency.RARE: "Rare",
+            CompanionVerbalFrequency.NORMAL: "Normal",
+            CompanionVerbalFrequency.CHATTY: "Chatty",
+        }
+        items = [(labels[freq], freq.value) for freq in CompanionVerbalFrequency]
+        self._build_prestige_menu(
+            self.companion_verbal_frequency_selector,
+            items,
+            self._on_companion_verbal_frequency_selected,
+        )
+        self._sync_companion_verbal_frequency_selector()
+
+    def _on_companion_verbal_frequency_selected(self, frequency_value: str) -> None:
+        from core import app_settings as _cs
+        from core.companion_verbal_policy import normalize_companion_verbal_frequency
+
+        _cs.set_companion_verbal_frequency(
+            normalize_companion_verbal_frequency(frequency_value).value
+        )
+        self._on_companion_verbal_setting_changed()
+
+    def _sync_companion_verbal_frequency_selector(self) -> None:
+        if not hasattr(self, "companion_verbal_frequency_selector"):
+            return
         from core import app_settings as _cs
         from core.companion_verbal_policy import (
             CompanionVerbalFrequency,
-            frequency_idle_label,
             normalize_companion_verbal_frequency,
         )
 
@@ -237,22 +272,31 @@ class CompanionHandlersMixin:
             CompanionVerbalFrequency.NORMAL: "Normal",
             CompanionVerbalFrequency.CHATTY: "Chatty",
         }
-        menu = QMenu(self)
         current = normalize_companion_verbal_frequency(_cs.get_companion_verbal_frequency())
-
-        def _pick(freq: CompanionVerbalFrequency) -> None:
-            _cs.set_companion_verbal_frequency(freq.value)
-            self.companion_verbal_frequency_selector.setText(labels[freq])
-            self._on_companion_verbal_setting_changed()
-
-        for freq in CompanionVerbalFrequency:
-            act = menu.addAction(labels[freq])
-            act.setToolTip(frequency_idle_label(freq))
-            act.triggered.connect(lambda _checked=False, f=freq: _pick(f))
-        self.companion_verbal_frequency_selector.setMenu(menu)
         self.companion_verbal_frequency_selector.setText(labels[current])
 
     def _build_companion_expression_freedom_menu(self) -> None:
+        if not hasattr(self, "companion_expression_freedom_selector"):
+            return
+        items = [
+            ("Conservative", "conservative"),
+            ("Balanced", "balanced"),
+            ("Expressive", "expressive"),
+        ]
+        self._build_prestige_menu(
+            self.companion_expression_freedom_selector,
+            items,
+            self._on_companion_expression_freedom_selected,
+        )
+        self._sync_companion_expression_freedom_selector()
+
+    def _on_companion_expression_freedom_selected(self, mode: str) -> None:
+        from core import app_settings as _cs
+
+        _cs.set_companion_expression_freedom(str(mode))
+        self._on_companion_verbal_setting_changed()
+
+    def _sync_companion_expression_freedom_selector(self) -> None:
         if not hasattr(self, "companion_expression_freedom_selector"):
             return
         from core import app_settings as _cs
@@ -262,34 +306,10 @@ class CompanionHandlersMixin:
             "balanced": "Balanced",
             "expressive": "Expressive",
         }
-        freedom_tips = {
-            "conservative": (
-                "Curated message library only — templates at most. "
-                "No sidecar rephrasing or full generation."
-            ),
-            "balanced": (
-                "Expression depth follows your auxiliary cognition model "
-                "(small models: templates; larger models: optional rephrasing)."
-            ),
-            "expressive": (
-                "Allows the richest local lines plus sidecar rephrasing or "
-                "full generation when the auxiliary model supports it."
-            ),
-        }
-        menu = QMenu(self)
         current = _cs.get_companion_expression_freedom()
-
-        def _pick(mode: str) -> None:
-            _cs.set_companion_expression_freedom(mode)
-            self.companion_expression_freedom_selector.setText(labels[mode])
-            self._on_companion_verbal_setting_changed()
-
-        for mode in ("conservative", "balanced", "expressive"):
-            act = menu.addAction(labels[mode])
-            act.setToolTip(freedom_tips[mode])
-            act.triggered.connect(lambda _checked=False, m=mode: _pick(m))
-        self.companion_expression_freedom_selector.setMenu(menu)
-        self.companion_expression_freedom_selector.setText(labels.get(current, "Balanced"))
+        self.companion_expression_freedom_selector.setText(
+            labels.get(current, "Balanced")
+        )
 
     def _on_companion_verbal_prompt_changed(self) -> None:
         from core.app_settings import set_companion_verbal_system_prompt

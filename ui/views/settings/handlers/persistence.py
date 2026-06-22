@@ -335,13 +335,7 @@ class PersistenceHandlersMixin:
             self.memory_consolidation_toggle.setChecked(get_enable_memory_consolidation())
             self.memory_consolidation_toggle.blockSignals(False)
         if hasattr(self, "memory_promotion_preset_selector"):
-            labels = {
-                "conservative": "Conservative",
-                "standard": "Standard",
-                "aggressive": "Aggressive",
-            }
-            preset = get_memory_promotion_preset()
-            self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
+            self._sync_memory_promotion_preset_selector()
         if hasattr(self, "memory_promotion_toggle"):
             self._sync_memory_promotion_controls_for_enrichment()
         if hasattr(self, "profile_units_selector"):

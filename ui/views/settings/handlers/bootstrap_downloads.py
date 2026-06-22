@@ -12,7 +12,6 @@ from core.bootstrap_download import resolve_model_destination
 from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
 from core.bootstrap_missing_models import (
     cognition_model_present,
-    embedding_model_available,
     stt_model_available,
     tts_model_available,
 )
@@ -125,12 +124,24 @@ class BootstrapDownloadsHandlersMixin:
             ).exec()
             return
 
-        if embedding_model_available():
+        from core.app_settings import get_embedding_mode
+        from core.bootstrap_search_models import embedding_preset_cached_on_disk
+        from core.embedding_modes import get_mode_spec
+        from core.paths import search_models_cache_dir
+
+        mode = get_embedding_mode()
+        if gguf_override_available() or embedding_preset_cached_on_disk(mode):
             is_dark = getattr(self.window(), "_is_dark_theme", True)
+            spec = get_mode_spec(mode)
+            cache_hint = (
+                f"Cached under {search_models_cache_dir()}."
+                if embedding_preset_cached_on_disk(mode)
+                else "Using your custom GGUF embedding override."
+            )
             PrestigeDialog(
                 self.window(),
                 "Search models ready",
-                "The active search preset is loaded and ready to use.",
+                f"The {spec.label} preset ({spec.fastembed_model}) is ready.\n\n{cache_hint}",
                 is_dark=is_dark,
             ).exec()
             self._sync_bootstrap_download_visibility()
@@ -166,7 +177,11 @@ class BootstrapDownloadsHandlersMixin:
             PrestigeDialog(
                 self.window(),
                 "Search models ready",
-                "The active search preset is loaded and ready to use.",
+                (
+                    f"The {get_mode_spec(get_embedding_mode()).label} preset is downloaded "
+                    f"and ready.\n\nONNX files are stored under {search_models_cache_dir()} "
+                    "(not in the embedding GGUF folder)."
+                ),
                 is_dark=is_dark,
             ).exec()
 
@@ -333,10 +348,12 @@ class BootstrapDownloadsHandlersMixin:
                 self._sync_active_cognition_label()
                 self._refresh_cognition_gguf_list()
             elif model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+                from core.bootstrap_search_models import embedding_preset_cached_on_disk
                 from core.embedding_models import mark_embedding_preset_available
                 from core.embedding_modes import DEFAULT_MODE
 
-                mark_embedding_preset_available(DEFAULT_MODE)
+                if embedding_preset_cached_on_disk(DEFAULT_MODE):
+                    mark_embedding_preset_available(DEFAULT_MODE)
                 if hasattr(self, "_reload_embedder_from_settings"):
                     self._reload_embedder_from_settings()
             self._sync_bootstrap_download_visibility()

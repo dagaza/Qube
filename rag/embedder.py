@@ -74,7 +74,6 @@ class EmbeddingModel:
             self._model_path = gguf_path
             self._mode_id = None
             self._backend = GgufEmbeddingBackend(gguf_path)
-            mark_embedding_preset_available()
             return
 
         from core.app_settings import get_embedding_mode

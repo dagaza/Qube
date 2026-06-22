@@ -169,6 +169,10 @@ class StylingMixin:
             "companion_fullscreen_cb",
             "companion_wayland_cb",
             "companion_dock_cb",
+            "companion_verbal_enabled_cb",
+            "companion_cognition_v2_cb",
+            "companion_verbal_react_ingest_cb",
+            "companion_verbal_react_download_cb",
         ):
             cb = getattr(self, name, None)
             if cb is not None:

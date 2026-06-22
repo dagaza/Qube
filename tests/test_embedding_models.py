@@ -81,18 +81,40 @@ def test_embedding_model_available_with_gguf_override():
     _run_in_tmp(body)
 
 
-def test_preset_embedder_ready_uses_cache():
+def test_preset_embedder_ready_requires_on_disk_cache():
     em.clear_embedding_availability_cache()
     em.mark_embedding_preset_available("balanced")
     with patch("core.embedding_models.get_embedding_mode", return_value="balanced"):
+        assert em.preset_embedder_ready() is False
+    with patch(
+        "core.embedding_models.get_embedding_mode",
+        return_value="balanced",
+    ), patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=True,
+    ):
         assert em.preset_embedder_ready() is True
-        assert em.embedding_model_available() is True
 
 
-def test_embedding_model_available_uses_preset_cache():
+def test_embedding_model_available_requires_on_disk_or_probe():
     em.clear_embedding_availability_cache()
     em.mark_embedding_preset_available("balanced")
     with patch("core.embedding_models.get_embedding_mode", return_value="balanced"):
+        with patch(
+            "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+            return_value=False,
+        ), patch(
+            "core.embedding_models.probe_embedding_preset_available",
+            return_value=False,
+        ):
+            assert em.embedding_model_available() is False
+    with patch(
+        "core.embedding_models.get_embedding_mode",
+        return_value="balanced",
+    ), patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=True,
+    ):
         assert em.embedding_model_available() is True
 
 
@@ -100,6 +122,16 @@ def test_probe_embedding_preset_available_marks_cache_on_success():
     em.clear_embedding_availability_cache()
     fake_backend = type("B", (), {"vector_dim": 512, "unload": lambda self: None})()
     fake_model = type("M", (), {"vector_dim": 512, "_backend": fake_backend})()
-    with patch("rag.embedder.EmbeddingModel", return_value=fake_model):
+    with patch("rag.embedder.EmbeddingModel", return_value=fake_model), patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        side_effect=[False, True, True],
+    ):
         assert em.probe_embedding_preset_available(force=True) is True
-    assert em.embedding_model_available() is True
+    with patch(
+        "core.embedding_models.get_embedding_mode",
+        return_value="balanced",
+    ), patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=True,
+    ):
+        assert em.preset_embedder_ready() is True
