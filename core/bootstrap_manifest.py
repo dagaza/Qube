@@ -202,6 +202,11 @@ MAIN_LLM_GROUP = frozenset(
         BootstrapModelId.LLM_NEMOTRON_NANO,
     }
 )
+MAIN_LLM_PREFERENCE: tuple[BootstrapModelId, ...] = (
+    BootstrapModelId.LLM_QWEN35_9B,
+    BootstrapModelId.LLM_GEMMA4_E4B,
+    BootstrapModelId.LLM_NEMOTRON_NANO,
+)
 
 RECOMMENDED_ORDER: tuple[BootstrapModelId, ...] = (
     BootstrapModelId.SIDECAR_QWEN17,
@@ -273,7 +278,7 @@ def normalize_selection(selected: set[BootstrapModelId]) -> set[BootstrapModelId
             out -= SIDECAR_GROUP - {keep}
     llms = out & MAIN_LLM_GROUP
     if len(llms) > 1:
-        keep = sorted(llms, key=lambda m: m.value)[0]
+        keep = next(mid for mid in MAIN_LLM_PREFERENCE if mid in llms)
         out -= MAIN_LLM_GROUP - {keep}
     return out
 
@@ -312,6 +317,14 @@ def bootstrap_tier_tag(model_id: BootstrapModelId) -> tuple[str, str]:
     return labels[tier], object_names[tier]
 
 
+def consent_tier_tag(model_id: BootstrapModelId, *, advanced: bool) -> tuple[str, str]:
+    """Tier chip label/style for the bootstrap consent dialog view."""
+    spec = BOOTSTRAP_MODELS[model_id]
+    if advanced and spec.locked_in_recommended:
+        return "Strongly Recommended", "BootstrapTierTagStronglyRecommended"
+    return bootstrap_tier_tag(model_id)
+
+
 def format_bootstrap_tier_tag_tooltip(model_id: BootstrapModelId) -> str:
     """Hover text for Required / Recommended / Optional chips."""
     spec = BOOTSTRAP_MODELS[model_id]
@@ -339,6 +352,20 @@ def format_bootstrap_tier_tag_tooltip(model_id: BootstrapModelId) -> str:
         "(lighter sidecar, different main LLM, low-spec hardware) or Advanced tuning.\n\n"
         "Technical: not default_recommended; optional advanced/alternative pick."
     )
+
+
+def format_consent_tier_tag_tooltip(model_id: BootstrapModelId, *, advanced: bool) -> str:
+    """Hover text for tier chips in the bootstrap consent dialog."""
+    spec = BOOTSTRAP_MODELS[model_id]
+    label = spec.label
+    if advanced and spec.locked_in_recommended:
+        return (
+            "Strongly Recommended — core capability\n"
+            f"{label} powers essential Qube features. Advanced Configuration lets you "
+            "opt out, but the app works best with it installed.\n\n"
+            "Technical: locked_in_recommended catalogue entry; optional in Advanced view."
+        )
+    return format_bootstrap_tier_tag_tooltip(model_id)
 
 
 def total_selected_bytes(selected: set[BootstrapModelId]) -> int:

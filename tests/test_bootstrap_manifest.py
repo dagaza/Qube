@@ -17,6 +17,7 @@ from core.bootstrap_manifest import (
     bootstrap_model_tier,
     bootstrap_tier_tag,
     consent_model_order,
+    consent_tier_tag,
     default_selection,
     format_bootstrap_tier_tag_tooltip,
     format_byte_size,
@@ -109,7 +110,21 @@ def test_normalize_selection_mutual_exclusion():
         BootstrapModelId.LLM_GEMMA4_E4B,
     }
     normalized_llm = normalize_selection(both_llms)
-    assert len(normalized_llm & {BootstrapModelId.LLM_QWEN35_9B, BootstrapModelId.LLM_GEMMA4_E4B}) == 1
+    assert BootstrapModelId.LLM_QWEN35_9B in normalized_llm
+    assert BootstrapModelId.LLM_GEMMA4_E4B not in normalized_llm
+
+    all_llms = {
+        BootstrapModelId.SIDECAR_QWEN17,
+        BootstrapModelId.LLM_QWEN35_9B,
+        BootstrapModelId.LLM_GEMMA4_E4B,
+        BootstrapModelId.LLM_NEMOTRON_NANO,
+    }
+    normalized_all_llms = normalize_selection(all_llms)
+    assert BootstrapModelId.LLM_QWEN35_9B in normalized_all_llms
+    assert normalized_all_llms & {
+        BootstrapModelId.LLM_GEMMA4_E4B,
+        BootstrapModelId.LLM_NEMOTRON_NANO,
+    } == set()
 
 
 def test_total_selected_bytes_matches_catalog():
@@ -141,6 +156,20 @@ def test_consent_order_hides_deferred_sidecar():
     assert BootstrapModelId.SIDECAR_QWEN05 in CONSENT_HIDDEN_MODEL_IDS
     assert BootstrapModelId.SIDECAR_QWEN05 not in consent_model_order(advanced=True)
     assert BootstrapModelId.SIDECAR_QWEN05 not in consent_model_order(advanced=False)
+
+
+def test_consent_tier_tag_advanced_core_models():
+    assert consent_tier_tag(BootstrapModelId.SIDECAR_QWEN17, advanced=True) == (
+        "Strongly Recommended",
+        "BootstrapTierTagStronglyRecommended",
+    )
+    assert consent_tier_tag(BootstrapModelId.SEARCH_PRESET_BALANCED, advanced=True) == (
+        "Strongly Recommended",
+        "BootstrapTierTagStronglyRecommended",
+    )
+    assert consent_tier_tag(BootstrapModelId.SIDECAR_QWEN17, advanced=False) == bootstrap_tier_tag(
+        BootstrapModelId.SIDECAR_QWEN17
+    )
 
 
 def test_selection_serialization_roundtrip():

@@ -9,6 +9,7 @@ from core.bootstrap_manifest import (
     BOOTSTRAP_MODELS,
     BootstrapModelId,
     MAIN_LLM_GROUP,
+    MAIN_LLM_PREFERENCE,
     SIDECAR_GROUP,
     format_byte_size,
     normalize_selection,
@@ -267,13 +268,6 @@ def summarize_blocked_models(
     return " ".join(parts) + " See row details."
 
 
-_MAIN_LLM_PREFERENCE: tuple[BootstrapModelId, ...] = (
-    BootstrapModelId.LLM_QWEN35_9B,
-    BootstrapModelId.LLM_GEMMA4_E4B,
-    BootstrapModelId.LLM_NEMOTRON_NANO,
-)
-
-
 def feasible_recommended_selection(
     assessment: BootstrapSessionAssessment,
     *,
@@ -288,7 +282,7 @@ def feasible_recommended_selection(
     sizes = assessment.size_bytes
     selected = normalize_selection(set(locked))
 
-    for main_id in _MAIN_LLM_PREFERENCE:
+    for main_id in MAIN_LLM_PREFERENCE:
         if main_id == BootstrapModelId.LLM_QWEN35_9B and main_id not in target_preset:
             continue
         if main_id in selected:

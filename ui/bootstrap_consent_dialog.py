@@ -42,8 +42,10 @@ from core.bootstrap_manifest import (
     SIDECAR_GROUP,
     bootstrap_tier_tag,
     consent_model_order,
+    consent_tier_tag,
     default_selection,
     format_bootstrap_tier_tag_tooltip,
+    format_consent_tier_tag_tooltip,
     format_byte_size,
     locked_recommended_ids,
     normalize_selection,
@@ -611,13 +613,13 @@ class BootstrapConsentPanel(QWidget):
         return "Estimated", "BootstrapSizeTagEstimate"
 
     def _tier_tag_tooltip(self, model_id: BootstrapModelId) -> str:
-        return format_bootstrap_tier_tag_tooltip(model_id)
+        return format_consent_tier_tag_tooltip(model_id, advanced=self._advanced)
 
     def _apply_tier_tag(self, model_id: BootstrapModelId) -> None:
         tag = self._tier_tags.get(model_id)
         if tag is None:
             return
-        text, style = bootstrap_tier_tag(model_id)
+        text, style = consent_tier_tag(model_id, advanced=self._advanced)
         tag.setText(text)
         tag.setToolTip(self._tier_tag_tooltip(model_id))
         tag.setObjectName(style)
@@ -859,6 +861,15 @@ class BootstrapConsentPanel(QWidget):
                 background: rgba(139, 92, 246, 0.16);
                 color: #c4b5fd;
                 border: 1px solid rgba(139, 92, 246, 0.35);
+                border-radius: 8px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QLabel#BootstrapTierTagStronglyRecommended {
+                background: rgba(251, 146, 60, 0.14);
+                color: #fb923c;
+                border: 1px solid rgba(251, 146, 60, 0.28);
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -1127,6 +1138,8 @@ class BootstrapConsentPanel(QWidget):
     def _row_object_name(spec, *, advanced: bool, locked: bool) -> str:
         if locked:
             return "BootstrapModelRowLocked"
+        if advanced and spec.locked_in_recommended:
+            return "BootstrapModelRowCoreWarning"
         hint = spec.hint_for(advanced=advanced)
         if hint is BootstrapHintLevel.CORE_WARNING:
             return "BootstrapModelRowCoreWarning"
@@ -1138,6 +1151,8 @@ class BootstrapConsentPanel(QWidget):
 
     @staticmethod
     def _desc_object_name(spec, *, advanced: bool) -> str:
+        if advanced and spec.locked_in_recommended:
+            return "BootstrapModelDescCoreWarning"
         hint = spec.hint_for(advanced=advanced)
         if hint is BootstrapHintLevel.CORE_WARNING:
             return "BootstrapModelDescCoreWarning"
@@ -1154,7 +1169,8 @@ class BootstrapConsentPanel(QWidget):
         return consent_model_order(advanced=self._advanced)
 
     def _is_locked_in_view(self, model_id: BootstrapModelId) -> bool:
-        return BOOTSTRAP_MODELS[model_id].locked_in_recommended
+        spec = BOOTSTRAP_MODELS[model_id]
+        return spec.locked_in_recommended and not self._advanced
 
     def _effective_selection(self) -> set[BootstrapModelId]:
         selected = {mid for mid, checked in self._selection_state.items() if checked}
@@ -1164,8 +1180,9 @@ class BootstrapConsentPanel(QWidget):
         selected = normalize_selection(
             {mid for mid, checked in self._selection_state.items() if checked}
         )
-        selected.update(locked_recommended_ids())
-        selected = normalize_selection(selected)
+        if not self._advanced:
+            selected.update(locked_recommended_ids())
+            selected = normalize_selection(selected)
         self._selection_state = {mid: mid in selected for mid in BootstrapModelId}
         self._sync_checkboxes_from_state()
         self._refresh_totals()
@@ -1194,8 +1211,9 @@ class BootstrapConsentPanel(QWidget):
         for model_id in self._visible_model_ids():
             if not self._is_locked_in_view(model_id):
                 self._selection_state[model_id] = False
-        for model_id in locked_recommended_ids():
-            self._selection_state[model_id] = True
+        if not self._advanced:
+            for model_id in locked_recommended_ids():
+                self._selection_state[model_id] = True
         self._normalize_and_apply_state()
 
     def _rebuild_model_list(self, *, persist_first: bool = True) -> None:
@@ -1216,7 +1234,7 @@ class BootstrapConsentPanel(QWidget):
         order = consent_model_order(advanced=self._advanced)
         for model_id in order:
             spec = BOOTSTRAP_MODELS[model_id]
-            locked = spec.locked_in_recommended
+            locked = spec.locked_in_recommended and not self._advanced
             cb = QCheckBox(self._model_checkbox_label(model_id))
             cb.setToolTip(self._model_checkbox_tooltip(model_id))
             cb.blockSignals(True)
@@ -1331,13 +1349,17 @@ class BootstrapConsentPanel(QWidget):
         self._refresh_list_section_layout()
 
     def _enforce_locked_recommended(self, selected: set[BootstrapModelId]) -> set[BootstrapModelId]:
+        if self._advanced:
+            return selected
         out = set(selected)
         out.update(locked_recommended_ids())
         return normalize_selection(out)
 
     def _is_on_recommended_preset(self) -> bool:
         """True when the current selection matches the feasible Recommended preset."""
-        selected = self._enforce_locked_recommended(normalize_selection(self._current_selection()))
+        selected = normalize_selection(self._current_selection())
+        if not self._advanced:
+            selected = self._enforce_locked_recommended(selected)
         return selected == self._feasible_recommended_set()
 
     def _sync_recommended_title(self) -> None:
@@ -1385,23 +1407,26 @@ class BootstrapConsentPanel(QWidget):
         selected = normalize_selection(
             {mid for mid, checked in self._selection_state.items() if checked}
         )
-        selected.update(locked_recommended_ids())
-        selected = normalize_selection(selected)
+        if not self._advanced:
+            selected.update(locked_recommended_ids())
+            selected = normalize_selection(selected)
         sizes = self._resolved_sizes()
         if self._selection_state.get(model_id, False):
             base = normalize_selection(
                 {mid for mid, checked in self._selection_state.items() if checked and mid != model_id}
             )
-            base.update(locked_recommended_ids())
-            base = normalize_selection(base)
+            if not self._advanced:
+                base.update(locked_recommended_ids())
+                base = normalize_selection(base)
             fit = assess_model_feasibility(model_id, base, self._assessment)
             if fit.block_reason is not BootstrapBlockReason.NONE:
                 self._selection_state[model_id] = False
                 selected = normalize_selection(
                     {mid for mid, checked in self._selection_state.items() if checked}
                 )
-                selected.update(locked_recommended_ids())
-                selected = normalize_selection(selected)
+                if not self._advanced:
+                    selected.update(locked_recommended_ids())
+                    selected = normalize_selection(selected)
                 self._disk_notice.setText(fit.message)
                 self._disk_notice.show()
                 self._selection_state = {mid: mid in selected for mid in BootstrapModelId}
@@ -1413,8 +1438,9 @@ class BootstrapConsentPanel(QWidget):
             selected = normalize_selection(
                 {mid for mid, checked in self._selection_state.items() if checked}
             )
-            selected.update(locked_recommended_ids())
-            selected = normalize_selection(selected)
+            if not self._advanced:
+                selected.update(locked_recommended_ids())
+                selected = normalize_selection(selected)
             self._disk_notice.setText(
                 f"Cannot add {BOOTSTRAP_MODELS[model_id].label} - not enough free disk space "
                 f"for this selection. Deselect other models or free disk space."
