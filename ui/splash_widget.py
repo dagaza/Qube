@@ -109,6 +109,15 @@ class SplashCircleSpinner(QWidget):
         self._track = QColor(255, 255, 255, 28)
         self._arc = QColor("#8b5cf6")
 
+    def apply_theme(self, is_dark: bool) -> None:
+        if is_dark:
+            self._track = QColor(255, 255, 255, 28)
+            self._arc = QColor("#89b4fa")
+        else:
+            self._track = QColor(0, 0, 0, 22)
+            self._arc = QColor("#3b82f6")
+        self.update()
+
     def advance(self, delta_ms: float = 16.67) -> None:
         self._angle_deg = (self._angle_deg + delta_ms * 0.35) % 360.0
         self.update()
@@ -117,18 +126,19 @@ class SplashCircleSpinner(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         side = min(self.width(), self.height())
-        margin = 4.0
+        margin = max(2.0, side * 0.18)
         rect = QRectF(margin, margin, side - 2 * margin, side - 2 * margin)
+        pen_width = max(1.5, side * 0.16)
 
         pen_track = QPen(self._track)
-        pen_track.setWidthF(3.0)
+        pen_track.setWidthF(pen_width)
         pen_track.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen_track)
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(rect)
 
         pen_arc = QPen(self._arc)
-        pen_arc.setWidthF(3.0)
+        pen_arc.setWidthF(pen_width)
         pen_arc.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen_arc)
         span = 100 * 16

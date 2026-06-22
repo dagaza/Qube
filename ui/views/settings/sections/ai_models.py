@@ -513,6 +513,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
     ai_form.addRow("", host.advanced_hardware_panel)
 
+    # --- Inference transparency (read-only) ---
+    track_internal_ai_label(
+        host,
+        add_subsection_to_form(ai_form, "Inference stack", anchor="inference_stack"),
+    )
+    host.inference_transparency_lbl = QLabel("Loading inference stack details…")
+    host.inference_transparency_lbl.setWordWrap(True)
+    host.inference_transparency_lbl.setProperty("class", "ToolsPaneControl")
+    host.inference_transparency_lbl.setToolTip(
+        "Read-only summary of llama.cpp build backend, hardware detection (including AMD APU "
+        "unified memory), requested GPU layer configuration, and embedder/sidecar compute paths."
+    )
+    ai_form.addRow("", host.inference_transparency_lbl)
+
     # --- Chat template ---
     track_internal_ai_label(
         host, add_subsection_to_form(ai_form, "Chat template", anchor="chat_template")

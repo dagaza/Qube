@@ -51,32 +51,41 @@ def test_stale_listening_for_phrase_after_capture_idle_stays_idle():
     assert late.activity == AssistantActivity.IDLE_LISTEN
 
 
-def test_reducer_maps_thinking_to_working_activity():
+def test_reducer_maps_working_to_working_activity():
+    reducer = AssistantActivityReducer()
+    t = reducer.reduce("Working...")
+    assert t.activity == AssistantActivity.WORKING
+    assert t.bubble_state == "thinking"
+    assert t.display_text.strip() == "Working"
+
+
+def test_reducer_maps_legacy_thinking_message_to_working_activity():
+    """Backwards compat: older worker status strings still map to WORKING."""
     reducer = AssistantActivityReducer()
     t = reducer.reduce("Thinking...")
     assert t.activity == AssistantActivity.WORKING
     assert t.bubble_state == "thinking"
-    assert t.display_text.strip() == "Thinking"
+    assert t.display_text.strip() == "Working"
 
 
-def test_reducer_maps_transcribing_to_thinking_display():
+def test_reducer_maps_transcribing_to_working_display():
     reducer = AssistantActivityReducer()
     t = reducer.reduce("Transcribing...")
     assert t.activity == AssistantActivity.WORKING
-    assert t.display_text.strip() == "Thinking"
+    assert t.display_text.strip() == "Working"
 
 
 def test_reducer_writing_when_voice_output_muted():
     reducer = AssistantActivityReducer()
     reducer.set_voice_output_muted(True)
-    t = reducer.reduce("Thinking...")
+    t = reducer.reduce("Working...")
     assert t.bubble_state == "writing"
     assert t.display_text.strip() == "Writing"
 
 
 def test_reducer_blocks_stray_idle_during_thinking():
     reducer = AssistantActivityReducer()
-    reducer.reduce("Thinking...")
+    reducer.reduce("Working...")
     blocked = reducer.reduce("Idle")
     assert blocked.blocked is True
     assert blocked.bubble_state == "thinking"
@@ -84,7 +93,7 @@ def test_reducer_blocks_stray_idle_during_thinking():
 
 def test_reducer_allows_forced_idle_after_thinking():
     reducer = AssistantActivityReducer()
-    reducer.reduce("Thinking...")
+    reducer.reduce("Working...")
     ok = reducer.reduce("Idle", force=True)
     assert ok.blocked is False
     assert ok.bubble_state == "idle"
@@ -118,6 +127,7 @@ def test_user_presence_label_speaking_and_idle():
     assert user_presence_label(AssistantActivity.IDLE_LISTEN) == "Idle"
     assert user_presence_label(AssistantActivity.CAPTURING) == "Listening"
     assert user_presence_label(AssistantActivity.SPEAKING) == "Speaking"
+    assert user_presence_label(AssistantActivity.WORKING) == "Working"
     assert user_presence_label(AssistantActivity.WORKING, voice_output_muted=True) == "Writing"
 
 
@@ -135,13 +145,13 @@ def test_presence_service_emits_phase_for_transcribing():
     assert snap.phase == AssistantPhase.STT
 
 
-def test_phase_from_message_thinking_is_llm():
-    phase = phase_from_message("Thinking...", AssistantActivity.WORKING, "thinking")
+def test_phase_from_message_working_is_llm():
+    phase = phase_from_message("Working...", AssistantActivity.WORKING, "thinking")
     assert phase == AssistantPhase.LLM
 
 
 def test_companion_status_caption_maps_activity():
-    assert companion_status_caption(AssistantActivity.WORKING, AssistantPhase.LLM) == "Thinking"
+    assert companion_status_caption(AssistantActivity.WORKING, AssistantPhase.LLM) == "Working"
     assert (
         companion_status_caption(AssistantActivity.SPEAKING, AssistantPhase.TTS_STREAM)
         == "Speaking"
@@ -153,18 +163,18 @@ def test_companion_status_caption_maps_activity():
     assert companion_status_caption(AssistantActivity.IDLE_LISTEN, None) is None
 
 
-def test_presence_service_auto_caption_while_thinking():
+def test_presence_service_auto_caption_while_working():
     service = AssistantPresenceService()
     with patch("core.app_settings.get_companion_show_caption", return_value=True):
-        service.reduce("Thinking...")
-        assert service.snapshot().caption_text == "Thinking"
+        service.reduce("Working...")
+        assert service.snapshot().caption_text == "Working"
 
 
 def test_presence_service_writing_caption_when_muted():
     service = AssistantPresenceService()
     service.set_voice_output_muted(True)
     with patch("core.app_settings.get_companion_show_caption", return_value=True):
-        service.reduce("Thinking...")
+        service.reduce("Working...")
         assert service.snapshot().caption_text == "Writing"
 
 

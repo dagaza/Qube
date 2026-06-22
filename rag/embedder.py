@@ -1,163 +1,96 @@
 # rag/embedder.py
-import gc
-import numpy as np
-from llama_cpp import Llama
-import os
-import multiprocessing
-import logging
+from __future__ import annotations
 
-from core.embedding_models import (
-    EXPECTED_VECTOR_DIM,
-    migrate_legacy_embedding_layout,
-    resolve_active_embedding_path,
-)
+import gc
+import logging
+from typing import Any
+
+import numpy as np
+
+from core.app_settings import get_embedding_mode
+from core.embedding_modes import DEFAULT_MODE, ModeId, get_mode_spec, normalize_mode_id
+from core.embedding_models import resolve_active_gguf_path
+from rag.backends.fastembed_backend import FastembedBackend
+from rag.backends.gguf_backend import GgufEmbeddingBackend
+from rag.embed_utils import MAX_EMBED_CHARS, truncate_for_embed
 
 logger = logging.getLogger("Qube.RAG.Embedder")
 
-# Hard cap on characters passed to llama.cpp embedding (token count must stay ≤ n_ctx / n_ubatch).
-# Dense code / CJK can inflate tokens; keep this conservative to avoid GGML_ASSERT on n_ubatch.
-MAX_EMBED_CHARS = 2400
-
-# nomic-embed-text-v1.5 GGUF reports n_ctx_train≈2048; larger n_ctx breaks llama_context on many builds.
-_LLAMA_CTX = 2048
-_LLAMA_CTX_FALLBACKS = (2048, 1024, 512)
-
-
-def _llama_embed_kwargs(*, n_ctx: int | None = None) -> dict:
-    """Shared context/batch sizing so n_ubatch >= max single-sequence tokens (llama.cpp requirement)."""
-    n = _LLAMA_CTX if n_ctx is None else int(n_ctx)
-    return {"n_ctx": n, "n_batch": n, "n_ubatch": n}
-
-
-def _truncate_for_embed(text: str) -> str:
-    if len(text) <= MAX_EMBED_CHARS:
-        return text
-    logger.warning(
-        "Embedding input truncated from %d to %d chars (MAX_EMBED_CHARS)",
-        len(text),
-        MAX_EMBED_CHARS,
-    )
-    return text[:MAX_EMBED_CHARS]
-
-
-def _init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -> Llama:
-    """Construct Llama for embeddings; retries smaller ``n_ctx`` and without ``n_ubatch`` if needed."""
-    last_error: Exception | None = None
-    for n_ctx in _LLAMA_CTX_FALLBACKS:
-        base = dict(
-            model_path=model_path,
-            embedding=True,
-            **_llama_embed_kwargs(n_ctx=n_ctx),
-            n_threads=physical_cores,
-            verbose=False,
-            n_gpu_layers=n_gpu_layers,
-        )
-        try:
-            return Llama(**base)
-        except TypeError as e:
-            err = str(e).lower()
-            if "n_ubatch" in err or "unexpected keyword" in err:
-                base.pop("n_ubatch", None)
-                logger.warning(
-                    "Llama() has no n_ubatch; retrying (upgrade llama-cpp-python to match llama.cpp batch fixes)"
-                )
-                try:
-                    return Llama(**base)
-                except Exception as retry_exc:
-                    last_error = retry_exc
-                    logger.warning("Embedder init failed at n_ctx=%s: %s", n_ctx, retry_exc)
-                    continue
-            raise
-        except Exception as e:
-            last_error = e
-            logger.warning("Embedder init failed at n_ctx=%s: %s", n_ctx, e)
-            continue
-
-    if last_error is not None:
-        raise last_error
-    raise RuntimeError("Embedder init failed with no error detail")
+# Back-compat alias used by ingestion_worker
+_truncate_for_embed = truncate_for_embed
 
 
 class EmbeddingModel:
-    def __init__(self, model_path: str | None = None):
-        migrate_legacy_embedding_layout()
+    """Facade over one active embedding backend (mode preset or GGUF override)."""
+
+    def __init__(self, mode_id: str | None = None, model_path: str | None = None):
+        self._mode_id: ModeId | None = None
         self._model_path = ""
-        self.model: Llama | None = None
-        self._physical_cores = max(1, multiprocessing.cpu_count() // 2)
-        self._load(model_path or resolve_active_embedding_path())
+        self._backend: Any = None
+        self._load(mode_id=mode_id, model_path=model_path)
 
     @property
     def active_model_path(self) -> str:
-        return self._model_path
+        if self._model_path:
+            return self._model_path
+        if self._mode_id:
+            return get_mode_spec(self._mode_id).fastembed_model
+        return ""
+
+    @property
+    def active_mode_id(self) -> str | None:
+        return self._mode_id
 
     @property
     def expected_vector_dim(self) -> int:
-        return EXPECTED_VECTOR_DIM
+        return int(self._backend.vector_dim)
 
-    def reload(self, model_path: str | None = None) -> None:
-        """Unload and reload the embedder from settings or an explicit path."""
-        self.model = None
+    @property
+    def vector_dim(self) -> int:
+        return self.expected_vector_dim
+
+    def get_inference_transparency(self) -> dict:
+        if self._backend is None:
+            return {"loaded": False, "role": "embedder"}
+        return self._backend.get_inference_transparency()
+
+    def reload(
+        self,
+        mode_id: str | None = None,
+        model_path: str | None = None,
+    ) -> None:
+        if self._backend is not None:
+            try:
+                self._backend.unload()
+            except Exception:
+                logger.debug("Backend unload failed during reload", exc_info=True)
+        self._backend = None
         gc.collect()
-        self._load(model_path or resolve_active_embedding_path())
+        self._load(mode_id=mode_id, model_path=model_path)
 
-    def _load(self, model_path: str) -> None:
-        if not model_path or not os.path.isfile(model_path):
-            raise FileNotFoundError(
-                f"Embedding model not found at {model_path!r}. "
-                f"Place {os.path.basename(model_path or '')} under ~/.qube/models/embedding/."
-            )
+    def _load(self, *, mode_id: str | None, model_path: str | None) -> None:
+        gguf_path = (model_path or resolve_active_gguf_path() or "").strip()
+        if gguf_path:
+            self._model_path = gguf_path
+            self._mode_id = None
+            self._backend = GgufEmbeddingBackend(gguf_path)
+            return
 
-        self._model_path = model_path
-        logger.info("Probing user hardware for embedding model: %s", os.path.basename(model_path))
+        from core.app_settings import get_embedding_mode
 
-        try:
-            self.model = _init_llama_embed(model_path, -1, self._physical_cores)
-            self.model.create_embedding("hardware_test")
-            logger.info("GPU acceleration engaged successfully!")
-
-        except Exception as e:
-            logger.warning(
-                "GPU init failed (Likely missing drivers). Falling back to CPU. Error: %s",
-                e,
-            )
-            self.model = _init_llama_embed(model_path, 0, self._physical_cores)
-            logger.info("Running on CPU mode.")
+        resolved_mode = normalize_mode_id(mode_id or get_embedding_mode() or DEFAULT_MODE)
+        self._mode_id = resolved_mode
+        self._model_path = ""
+        self._backend = FastembedBackend(get_mode_spec(resolved_mode))
 
     def embed(self, texts: list[str]) -> np.ndarray:
-        """Rock-solid sequential embedding to bypass llama.cpp batching bugs."""
-        embeddings = []
-
-        for text in texts:
-            safe_text = _truncate_for_embed(text)
-            formatted_text = f"search_document: {safe_text}"
-            
-            try:
-                # 2. Process one by one safely
-                response = self.model.create_embedding(formatted_text)
-                
-                # 🔑 THE FIX: Extract, convert, and normalize the vector
-                vec = np.array(response["data"][0]["embedding"], dtype=np.float32)
-                embeddings.append(self._normalize(vec))
-                
-            except Exception as e:
-                # Keep your existing logger/print statement here
-                print(f"CRITICAL: Chunk failed. Inserting blank vector. Error: {e}")
-                embeddings.append([0.0] * EXPECTED_VECTOR_DIM)
-                
-        return np.array(embeddings, dtype=np.float32)
+        if not texts:
+            dim = self.expected_vector_dim
+            return np.zeros((0, dim), dtype=np.float32)
+        return self._backend.embed_documents(texts)
 
     def embed_one(self, text: str) -> np.ndarray:
-        """Single string embedding for convenience."""
         return self.embed([text])[0]
-        
+
     def embed_query(self, query: str) -> np.ndarray:
-        """Use this specifically in your LLM search tool!"""
-        q = _truncate_for_embed(query)
-        formatted_query = f"search_query: {q}"
-        response = self.model.create_embedding(formatted_query)
-        vec = np.array(response["data"][0]["embedding"], dtype=np.float32)
-        return self._normalize(vec) # 🔑 THE FIX
-    
-    def _normalize(self, vec: np.ndarray) -> np.ndarray:
-        norm = np.linalg.norm(vec)
-        return vec / norm if norm > 0 else vec
+        return self._backend.embed_query(query)

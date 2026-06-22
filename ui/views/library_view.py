@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QSizePolicy,
-    QProgressBar,
     QLineEdit,
     QApplication,
     QGraphicsOpacityEffect,
@@ -43,6 +42,7 @@ from ui.components.sidebar_folder_list import (
     SidebarFolderListController,
     add_new_folder_header_button,
 )
+from ui.components.ingest_progress_row import IngestProgressRow
 import logging
 
 logger = logging.getLogger("Qube.UI.Library")
@@ -214,14 +214,9 @@ class LibraryView(QWidget):
         
         layout.addLayout(header_layout)
 
-        # --- PROGRESS BAR (Moved here, right under the header!) ---
-        self.ingest_progress = QProgressBar()
-        self.ingest_progress.setObjectName("IngestProgressBar")
-        self.ingest_progress.setRange(0, 100)
-        self.ingest_progress.setFixedHeight(4) # Made it slightly thinner for a sleeker look
-        self.ingest_progress.setTextVisible(False)
-        self.ingest_progress.hide() 
-        layout.addWidget(self.ingest_progress)
+        self.ingest_progress_row = IngestProgressRow()
+        self.ingest_progress_row.hide()
+        layout.addWidget(self.ingest_progress_row)
 
         # The Search Bar
         self.search_bar = QLineEdit()
@@ -1154,8 +1149,7 @@ class LibraryView(QWidget):
                     return
 
         # 3. Proceed with the standard ingestion UI updates
-        self.ingest_progress.setValue(0)
-        self.ingest_progress.show()
+        self.begin_ingest_progress_ui()
         self.add_btn.setEnabled(False)
         # REMOVED: self.add_btn.setText(...)
         
@@ -1165,25 +1159,47 @@ class LibraryView(QWidget):
         self.ingest_requested.emit(paths, folder_id)
 
     # --- UI Receivers for Worker Progress ---
-    def update_ingestion_progress(self, percent: int):
-        self.ingest_progress.setValue(percent)
+    def begin_ingest_progress_ui(self, *, detail: str = "") -> None:
+        """Show ingest progress row with a spinner until the bar advances."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self.ingest_progress_row.apply_theme(is_dark)
+        self.ingest_progress_row.begin(detail=detail)
+        self.ingest_progress_row.show()
 
-    def show_error(self, error_msg: str):
+    def _hide_ingest_progress_ui(self) -> None:
+        self.ingest_progress_row.finish()
+        self.ingest_progress_row.hide()
+
+    def update_ingestion_progress(self, percent: int, *, detail: str | None = None):
+        if not self.ingest_progress_row.isVisible():
+            self.begin_ingest_progress_ui(detail=detail or "")
+        self.ingest_progress_row.update_progress(percent, detail=detail)
+
+    def set_ingest_progress_detail(self, detail: str) -> None:
+        if not self.ingest_progress_row.isVisible():
+            self.begin_ingest_progress_ui(detail=detail)
+        else:
+            self.ingest_progress_row.set_detail(detail)
+
+    def show_error(self, error_msg: str, *, title: str = "Ingestion Failed"):
         """Displays ingestion errors to the user and resets the UI."""
         self._had_ingestion_error = True 
-        
-        self.ingest_progress.hide()
-        self.ingest_progress.setValue(0)
+
+        self._hide_ingest_progress_ui()
         self.add_btn.setEnabled(True)
 
-        # 🔑 Use the superior PrestigeDialog
         is_dark = getattr(self.window(), '_is_dark_theme', True)
-        dialog = PrestigeDialog(self, "Ingestion Failed", str(error_msg), is_dark)
+        dialog = PrestigeDialog(self.window(), title, str(error_msg), is_dark)
         dialog.exec()
 
-    def complete_ingestion(self, total_chunks: int):
-        self.ingest_progress.hide()
-        self.ingest_progress.setValue(0)
+    def finish_reindex_ui(self) -> None:
+        """Hide re-embed progress after a mode switch without ingestion dialogs."""
+        self._hide_ingest_progress_ui()
+        self.add_btn.setEnabled(True)
+        self.refresh_library_list()
+
+    def complete_ingestion(self, total_chunks: int, *, warn_if_empty: bool = True):
+        self._hide_ingest_progress_ui()
         self.add_btn.setEnabled(True)
         
         if self._had_ingestion_error:
@@ -1191,10 +1207,14 @@ class LibraryView(QWidget):
             
         self.refresh_library_list()
         
-        if total_chunks == 0:
+        if total_chunks == 0 and warn_if_empty:
             is_dark = getattr(self.window(), '_is_dark_theme', True)
-            msg = "Process finished, but 0 chunks were added. This usually means the file was already in the database, or it is a scanned PDF with no readable text."
-            dialog = PrestigeDialog(self, "No Data Added", msg, is_dark)
+            msg = (
+                "Process finished, but 0 chunks were added. This usually means the "
+                "file was already in the database, or it is a scanned PDF with no "
+                "readable text."
+            )
+            dialog = PrestigeDialog(self.window(), "No Data Added", msg, is_dark)
             dialog.exec()
 
     def refresh_menu_themes(self, is_dark: bool) -> None:
@@ -1211,6 +1231,9 @@ class LibraryView(QWidget):
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the color of the Add Document button."""
         import qtawesome as qta
+
+        if hasattr(self, "ingest_progress_row"):
+            self.ingest_progress_row.apply_theme(is_dark)
         
         # Keep utility-toolbar button colors theme-based only (not status-coupled).
         base_icon_color = "#8b5cf6" if is_dark else "#1e293b"

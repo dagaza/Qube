@@ -191,6 +191,7 @@ class SettingsView(
     ui_language_changed = pyqtSignal()
     cognition_model_changed = pyqtSignal()
     embedding_model_changed = pyqtSignal()
+    embedding_mode_change_requested = pyqtSignal(str)
     stt_model_changed = pyqtSignal()
     tts_model_changed = pyqtSignal()
     mic_vu_hint_requested = pyqtSignal()
@@ -225,6 +226,8 @@ class SettingsView(
         self._refresh_local_gguf_list()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        if hasattr(self, "_sync_embedding_mode_selector"):
+            self._sync_embedding_mode_selector()
         self._refresh_stt_model_list()
         self._refresh_tts_model_list()
         self._sync_active_stt_label()
@@ -263,6 +266,8 @@ class SettingsView(
         super().showEvent(event)
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
+        if hasattr(self, "_refresh_inference_transparency_panel"):
+            self._refresh_inference_transparency_panel()
         self._ensure_settings_file_watched()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_settings_sidebar_surface(is_dark)

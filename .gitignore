@@ -1,5 +1,6 @@
 # --- Python & Environment ---
 venv/
+.deps/
 app_env/
 __pycache__/
 *.pyc

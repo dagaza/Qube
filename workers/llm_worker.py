@@ -87,7 +87,10 @@ from core.gemma_output_strip import (
     is_gemma_model_identity,
     strip_gemma_output_artifacts,
 )
-from core.output_artifact_strip import strip_output_artifacts
+from core.output_artifact_strip import (
+    LeakedHarmonyScaffoldStreamFilter,
+    strip_output_artifacts,
+)
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
@@ -120,13 +123,6 @@ from core.output_token_budget import (
 from core.output_validation_sanitize import sanitize_output_for_validation
 from core.output_validation_trace import log_output_validation_trace
 from core.stream_replace_policy import resolve_stream_replacement
-from core.router_centroid_examples import (
-    CHAT_INTENT_EXAMPLES as _CHAT_INTENT_EXAMPLES,
-    MEMORY_INTENT_EXAMPLES as _MEMORY_INTENT_EXAMPLES,
-    RAG_INTENT_EXAMPLES as _RAG_INTENT_EXAMPLES,
-    RECALL_INTENT_EXAMPLES as _RECALL_INTENT_EXAMPLES,
-    WEB_INTENT_EXAMPLES as _WEB_INTENT_EXAMPLES,
-)
 from core.memory_filters import (
     detect_recall_intent,
     should_apply_recall_fusion,
@@ -137,7 +133,9 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
     query_implies_live_web_intent,
-    query_implies_library_intent,
+    query_explicitly_requests_library_search,
+    query_has_lexical_library_signal,
+    should_downgrade_embedding_rag_on_continuation,
     library_lane_allowed,
     should_run_internet_search_for_route,
 )
@@ -373,6 +371,7 @@ class LLMWorker(QThread):
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
         self._conversation_health_by_session: dict[str, ConversationHealthState] = {}
+        self._prior_execution_route_by_session: dict[str, str] = {}
         self._push_sampling_to_native()
 
     def _sampling_payload(self) -> dict:
@@ -416,6 +415,31 @@ class LLMWorker(QThread):
             base = str(snap.get("model_basename", "") or "")
             ident = f"{name} {base}".lower()
             return ("nemotron" in ident) or ("nvidia" in ident)
+        except Exception:
+            return False
+
+    def _reasoning_family_harmony_leak_strip_active(self) -> bool:
+        """Strip leaked Harmony scaffold tokens during native streaming/sanitize."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
+            return False
+        try:
+            from core.qwen3_thinking_policy import (
+                is_reasoning_family_harmony_leak_strip_candidate,
+            )
+
+            snap = self._native_engine.get_model_reasoning_telemetry() or {}
+            if not bool(snap.get("loaded")):
+                return False
+            name = str(snap.get("model_name", "") or "")
+            base = str(snap.get("model_basename", "") or "")
+            path = str(getattr(self._native_engine, "_model_path", "") or "")
+            ident_name = f"{name} {base}".strip()
+            if is_reasoning_family_harmony_leak_strip_candidate(
+                model_path=path,
+                model_name=ident_name,
+            ):
+                return True
+            return bool(snap.get("supports_thinking_tokens"))
         except Exception:
             return False
 
@@ -756,56 +780,15 @@ class LLMWorker(QThread):
         self._turn_skip_enrichment_reason = reason
 
     def _ensure_router_centroids(self) -> None:
-        """T4.2: lazily build and install BOTH the RECALL and CHAT
-        (negative-class) semantic centroids on the cognitive router.
-
-        Called once on the first turn that uses the cognitive router.
-        Each centroid is only built if it has not been installed yet,
-        so the method is cheap to call on every turn. The router falls
-        back to substring detection for recall if anything fails here;
-        an unset chat centroid simply returns ``chat_score = 0.0`` and
-        leaves the margin gate trivially satisfied (backwards compatible
-        with the single-centroid pre-T4.2 behaviour).
-        """
         if not getattr(self, "cognitive_router", None):
             return
         embedder = getattr(self.embedding_cache, "embedder", None)
         if embedder is None:
             return
         try:
-            from workers.intent_router import build_centroid
-            if self.cognitive_router.recall_centroid is None:
-                self.cognitive_router.set_recall_centroid(
-                    build_centroid(embedder, list(_RECALL_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Recall centroid installed.")
-            if self.cognitive_router.chat_centroid is None:
-                self.cognitive_router.set_chat_centroid(
-                    build_centroid(embedder, list(_CHAT_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Chat centroid installed.")
-            # Tier 2: install the per-lane embedding centroids. Each
-            # is gated by ``is None`` so we never stomp a manually
-            # installed centroid (e.g. in tests) and so the build
-            # cost is paid exactly once per worker lifetime. Until at
-            # least one of these is installed, the router's confidence
-            # layer stays dormant via the ``any_embedding_centroid``
-            # gate in ``CognitiveRouterV4.route(...)``.
-            if self.cognitive_router.memory_centroid is None:
-                self.cognitive_router.set_memory_centroid(
-                    build_centroid(embedder, list(_MEMORY_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Memory centroid installed.")
-            if self.cognitive_router.rag_centroid is None:
-                self.cognitive_router.set_rag_centroid(
-                    build_centroid(embedder, list(_RAG_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] RAG centroid installed.")
-            if self.cognitive_router.web_centroid is None:
-                self.cognitive_router.set_web_centroid(
-                    build_centroid(embedder, list(_WEB_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Web centroid installed.")
+            from core.router_centroid_install import install_router_centroids
+
+            install_router_centroids(self.cognitive_router, embedder)
         except Exception:
             logger.exception("[LLM Worker] Failed to build router centroids")
 
@@ -1850,6 +1833,7 @@ class LLMWorker(QThread):
             final_text_out = strip_output_artifacts(
                 final_text_out or "",
                 harmony_active=self._harmony_model_active(),
+                reasoning_family=self._reasoning_family_harmony_leak_strip_active(),
             )
             turn_sources = list(getattr(self, "_turn_all_ui_sources", None) or [])
             final_text_out = self._finalize_citation_integrity_text(
@@ -2188,7 +2172,7 @@ class LLMWorker(QThread):
         # ============================================================
         # 1. ROUTING PHASE
         # ============================================================
-        self.status_update.emit("Thinking...")
+        self.status_update.emit("Working...")
 
         intent_vector = None
 
@@ -2251,6 +2235,14 @@ class LLMWorker(QThread):
 
         execution_route = decision["route"].upper()
 
+        prior_execution_route = "NONE"
+        if self.session_id:
+            prior_execution_route = self._prior_execution_route_by_session.get(
+                str(self.session_id),
+                "NONE",
+            )
+        has_prior_chat = len(history) > 1
+
         # ------------------------------------------------------------
         # Phase A: recall-intent fusion override.
         # "Tell me about X" / "who is X" / "remind me about X" style queries
@@ -2291,6 +2283,29 @@ class LLMWorker(QThread):
             )
             execution_route = "NONE"
             decision["route_inherited_from_discourse"] = True
+
+        if (
+            not explicit_remember_active
+            and not scoped_library_active
+            and should_downgrade_embedding_rag_on_continuation(
+                self.prompt,
+                decision=decision if isinstance(decision, dict) else None,
+                execution_route=execution_route,
+                prior_execution_route=prior_execution_route,
+                follow_up_active=follow_up.active,
+                has_chat_history=has_prior_chat,
+                scoped_library_active=scoped_library_active,
+            )
+        ):
+            logger.info(
+                "[LLM Worker] Embedding RAG/HYBRID suppressed on plain-chat "
+                "continuation (prior_route=%s); execution_route %s -> NONE",
+                prior_execution_route,
+                execution_route,
+            )
+            execution_route = "NONE"
+            if isinstance(decision, dict):
+                decision["embedding_rag_continuation_suppressed"] = True
 
         force_rag_via_trigger = False
         # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.
@@ -2432,10 +2447,19 @@ class LLMWorker(QThread):
         ) or bool(
             web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
         )
+        explicit_library_request = query_explicitly_requests_library_search(
+            clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
+        )
         rag_capability_blocked = bool(
             library_blocked
-            and query_implies_library_intent(clean_prompt, decision=decision)
+            and explicit_library_request
             and execution_route in ("NONE", "MEMORY")
+            and (
+                rag_vetoed
+                or detect_file_search_intent(clean_prompt)
+                or query_has_lexical_library_signal(clean_prompt)
+            )
         )
         if isinstance(decision, dict):
             decision["rag_capability_blocked"] = rag_capability_blocked
@@ -3136,6 +3160,8 @@ class LLMWorker(QThread):
             and execution_route == "NONE"
         )
         self._turn_execution_route = execution_route
+        if self.session_id:
+            self._prior_execution_route_by_session[str(self.session_id)] = execution_route
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
@@ -3847,6 +3873,15 @@ class LLMWorker(QThread):
             is_harmony_contract(prompt_contract) and harmony_stream_parser_enabled()
         )
         harmony_parser = HarmonyStreamParser() if use_harmony_parser else None
+        harmony_active = self._harmony_model_active()
+        reasoning_family_harmony_leak_strip = (
+            self._reasoning_family_harmony_leak_strip_active()
+        )
+        harmony_scaffold_filter = (
+            LeakedHarmonyScaffoldStreamFilter()
+            if harmony_parser is None and not harmony_active
+            else None
+        )
         current_sentence = ""
         final_text = ""
         raw_parts: list[str] = []
@@ -3860,13 +3895,13 @@ class LLMWorker(QThread):
         stream_wall_start = time.time()
         output_token_count = 0
         harmony_cut_cancelled = False
-        harmony_active = self._harmony_model_active()
 
         def _sanitize_complete_native_text(raw_text: str) -> str:
             return sanitize_output_for_validation(
                 raw_text,
                 harmony_active=harmony_active,
                 policy=_native_exec_policy,
+                reasoning_family=reasoning_family_harmony_leak_strip,
             )
 
         def _apply_stream_thinking_filter(text: str) -> str:
@@ -3890,6 +3925,7 @@ class LLMWorker(QThread):
                 fragment = strip_output_artifacts(
                     fragment,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 )
             if not fragment:
                 return
@@ -3916,6 +3952,9 @@ class LLMWorker(QThread):
                 tail = cot_filter.feed(tail)
                 tail += cot_filter.flush()
             tail = meta_filter.feed(tail) + meta_filter.flush()
+            if harmony_scaffold_filter is not None:
+                tail = harmony_scaffold_filter.feed(tail)
+                tail += harmony_scaffold_filter.flush()
             _emit_filtered(tail)
 
         saw_end = False
@@ -3945,6 +3984,8 @@ class LLMWorker(QThread):
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
                 clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
+                if harmony_scaffold_filter is not None:
+                    clean_piece = harmony_scaffold_filter.feed(clean_piece)
                 chunk_events: dict[str, Any] = {}
                 if gen_debug is not None:
                     repair_triggers: list[str] = []
@@ -4022,18 +4063,22 @@ class LLMWorker(QThread):
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
                 clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
+                if harmony_scaffold_filter is not None:
+                    clean_piece = harmony_scaffold_filter.feed(clean_piece)
                 _emit_filtered(clean_piece, speak=False)
             elif kind == "replace":
                 replacement = str(data or "").strip()
                 streamed_snapshot = strip_output_artifacts(
                     final_text,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 ).strip()
                 streamed_before_replace = streamed_snapshot
                 resolved, rejection = resolve_stream_replacement(
                     replacement,
                     streamed_snapshot,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 )
                 val_trace = getattr(
                     self._native_engine, "_last_output_validation_trace", None
@@ -4095,6 +4140,7 @@ class LLMWorker(QThread):
         emitted_text = strip_output_artifacts(
             final_text,
             harmony_active=harmony_active,
+            reasoning_family=reasoning_family_harmony_leak_strip,
         ).strip()
         raw_complete_text = native_end_text or "".join(raw_parts)
         if harmony_parser is not None:

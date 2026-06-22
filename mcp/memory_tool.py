@@ -20,6 +20,7 @@ from core.retrieval_fusion import (
     fuse_ranked_results,
     fuse_weighted_scores,
 )
+from core.reindex_state import is_reindex_in_progress
 
 logger = logging.getLogger("Qube.MemoryTool")
 
@@ -281,6 +282,10 @@ def memory_search(
       clause so plain chat turns see only preferences + context while
       recall / hybrid / narrative turns also see knowledge and episodes.
     """
+
+    if is_reindex_in_progress():
+        logger.info("[Memory] Retrieval suppressed while library reprocessing is active.")
+        return {"memory_context": "", "memory_sources": []}
 
     logger.info(
         "[Memory v6] Searching: %r (prefer_episode=%s pref=%s know=%s ep=%s ctx=%s)",

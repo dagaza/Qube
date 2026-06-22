@@ -861,3 +861,8 @@ QLabel#AgentMessage {
     background-color: #3b82f6; /* Bright blue loading bar */
     border-radius: 2px;
 }
+
+#BackgroundProgressBanner {
+    background-color: rgba(226, 232, 240, 0.85);
+    border-bottom: 1px solid #e2e8f0;
+}

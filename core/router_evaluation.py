@@ -355,18 +355,9 @@ def corpus_fingerprint(path: Path) -> str:
 
 
 def install_router_centroids(router: CognitiveRouterV4, embedder: Any) -> None:
-    from workers.intent_router import build_centroid
+    from core.router_centroid_install import install_router_centroids as _install
 
-    if router.recall_centroid is None:
-        router.set_recall_centroid(build_centroid(embedder, list(RECALL_INTENT_EXAMPLES)))
-    if router.chat_centroid is None:
-        router.set_chat_centroid(build_centroid(embedder, list(CHAT_INTENT_EXAMPLES)))
-    if router.memory_centroid is None:
-        router.set_memory_centroid(build_centroid(embedder, list(MEMORY_INTENT_EXAMPLES)))
-    if router.rag_centroid is None:
-        router.set_rag_centroid(build_centroid(embedder, list(RAG_INTENT_EXAMPLES)))
-    if router.web_centroid is None:
-        router.set_web_centroid(build_centroid(embedder, list(WEB_INTENT_EXAMPLES)))
+    _install(router, embedder)
 
 
 def _discourse_context(

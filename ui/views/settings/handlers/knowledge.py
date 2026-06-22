@@ -11,14 +11,16 @@ from PyQt6.QtWidgets import QListWidgetItem
 
 from core.app_settings import (
     get_advanced_embedding_unlocked,
+    get_embedding_mode,
     set_advanced_embedding_unlocked,
     set_embedding_model_path,
+    set_embedding_mode,
 )
+from core.embedding_modes import get_mode_spec, list_mode_specs, normalize_mode_id
 from core.embedding_models import (
     get_embedding_models_dir,
-    is_protected_embedding_model,
     list_selectable_embedding_models,
-    resolve_active_embedding_path,
+    resolve_active_gguf_path,
     validate_embedding_model_path,
 )
 from ui.components.prestige_dialog import PrestigeDialog
@@ -37,11 +39,9 @@ class KnowledgeHandlersMixin:
             dlg = PrestigeDialog(
                 self.window(),
                 "Advanced embedding settings",
-                "Swapping the embedding model affects RAG, memory search, and routing "
-                "centroids. Models must be GGUF files placed in the embedding folder.\n\n"
-                "If the new model outputs a different vector size, your LanceDB index "
-                "will be reset automatically — re-ingest library documents afterward.\n\n"
-                "The bundled Nomic Embed v1.5 default cannot be deleted.\n\nContinue?",
+                "Custom embedding models are for expert use only.\n\n"
+                "Models must be .gguf files placed in the embedding folder. "
+                "Using a custom model reprocesses your library and memories.\n\nContinue?",
                 is_dark=is_dark,
                 tone="danger",
                 dialog_width=450,
@@ -55,6 +55,56 @@ class KnowledgeHandlersMixin:
         if hasattr(self, "advanced_embedding_panel"):
             self.advanced_embedding_panel.setVisible(bool(checked))
 
+    def _build_embedding_mode_menu(self) -> None:
+        if not hasattr(self, "embedding_mode_selector"):
+            return
+        items = [
+            (f"{spec.label} — {spec.short_description}", spec.mode_id)
+            for spec in list_mode_specs()
+        ]
+        self._build_prestige_menu(
+            self.embedding_mode_selector,
+            items,
+            self._on_embedding_mode_selected,
+        )
+        self._sync_embedding_mode_selector()
+
+    def _sync_embedding_mode_selector(self) -> None:
+        if not hasattr(self, "embedding_mode_selector"):
+            return
+        spec = get_mode_spec(get_embedding_mode())
+        self.embedding_mode_selector.setText(spec.label)
+        if hasattr(self, "embedding_mode_description"):
+            self.embedding_mode_description.setText(spec.short_description)
+
+    def _on_embedding_mode_selected(self, mode_id: str) -> None:
+        mode_id = normalize_mode_id(str(mode_id or ""))
+        current = normalize_mode_id(get_embedding_mode())
+        if mode_id == current and not resolve_active_gguf_path():
+            self._sync_embedding_mode_selector()
+            return
+
+        spec = get_mode_spec(mode_id)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            f"Switch to {spec.label}?",
+            "Switching will reprocess your library and memories. "
+            "This can take from a few minutes to several hours for large libraries. "
+            "Progress appears in the banner below the top bar and on the Library page.\n\n"
+            "Continue?",
+            is_dark=is_dark,
+            tone="danger",
+            dialog_width=420,
+        )
+        if not dlg.exec():
+            self._sync_embedding_mode_selector()
+            return
+
+        set_embedding_mode(mode_id)
+        self._sync_embedding_mode_selector()
+        self.embedding_mode_change_requested.emit(mode_id)
+
     def _sync_embedding_models_dir_label(self) -> None:
         if hasattr(self, "embedding_dir_label"):
             self.embedding_dir_label.setText(get_embedding_models_dir())
@@ -63,7 +113,7 @@ class KnowledgeHandlersMixin:
         if not hasattr(self, "embedding_gguf_list"):
             return
         self.embedding_gguf_list.clear()
-        active = resolve_active_embedding_path()
+        active = resolve_active_gguf_path()
         try:
             active_norm = str(Path(active).resolve()) if active else ""
         except OSError:
@@ -84,20 +134,22 @@ class KnowledgeHandlersMixin:
     def _sync_active_embedding_label(self) -> None:
         if not hasattr(self, "active_embedding_model_lbl"):
             return
-        path = resolve_active_embedding_path()
-        if not path or not os.path.isfile(path):
-            self.active_embedding_model_lbl.setText("— (bundled default missing)")
+        gguf = resolve_active_gguf_path()
+        if gguf and os.path.isfile(gguf):
+            self.active_embedding_model_lbl.setText(
+                f"{os.path.basename(gguf)} (custom GGUF override active)"
+            )
             return
-        base = os.path.basename(path)
-        if is_protected_embedding_model(path):
-            self.active_embedding_model_lbl.setText(f"{base} (bundled default)")
-        else:
-            self.active_embedding_model_lbl.setText(f"{base} (custom)")
+        spec = get_mode_spec(get_embedding_mode())
+        self.active_embedding_model_lbl.setText(
+            f"{spec.label} preset ({spec.fastembed_model})"
+        )
 
     def _on_refresh_embedding_gguf_clicked(self) -> None:
         self._sync_embedding_models_dir_label()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        self._sync_embedding_mode_selector()
 
     def _reload_embedder_from_settings(self) -> None:
         self.embedding_model_changed.emit()
@@ -114,27 +166,35 @@ class KnowledgeHandlersMixin:
             ).exec()
             return
         path = str(item.data(Qt.ItemDataRole.UserRole) or "")
-        if is_protected_embedding_model(path):
-            set_embedding_model_path("")
-        else:
-            ok, msg = validate_embedding_model_path(path)
-            if not ok:
-                is_dark = getattr(self.window(), "_is_dark_theme", True)
-                PrestigeDialog(
-                    self.window(),
-                    "Invalid embedding model",
-                    msg or "That file cannot be used as the embedding model.",
-                    is_dark=is_dark,
-                ).exec()
-                return
-            set_embedding_model_path(path)
-        self._sync_active_embedding_label()
-        self._reload_embedder_from_settings()
+        ok, msg = validate_embedding_model_path(path)
+        if not ok:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Invalid embedding model",
+                msg or "That file cannot be used as the embedding model.",
+                is_dark=is_dark,
+            ).exec()
+            return
 
-    def _reset_embedding_to_default(self) -> None:
-        set_embedding_model_path("")
-        self._refresh_embedding_gguf_list()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            "Use custom embedding model?",
+            "Switching will reprocess your library and memories. "
+            "This can take from a few minutes to several hours for large libraries. "
+            "Progress appears in the banner below the top bar and on the Library page.\n\n"
+            "Continue?",
+            is_dark=is_dark,
+            tone="danger",
+            dialog_width=420,
+        )
+        if not dlg.exec():
+            return
+
+        set_embedding_model_path(path)
         self._sync_active_embedding_label()
+        self._sync_embedding_mode_selector()
         self._reload_embedder_from_settings()
 
     def _delete_selected_embedding_gguf(self) -> None:
@@ -149,16 +209,6 @@ class KnowledgeHandlersMixin:
             ).exec()
             return
         path = str(item.data(Qt.ItemDataRole.UserRole) or "")
-        if is_protected_embedding_model(path):
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
-            PrestigeDialog(
-                self.window(),
-                "Protected model",
-                "The bundled Nomic Embed v1.5 default cannot be deleted. Use Reset to "
-                "default to stop using a custom embedding model.",
-                is_dark=is_dark,
-            ).exec()
-            return
         if not item.data(EMBEDDING_ENTRY_DELETABLE_ROLE):
             return
         if not path or not os.path.isfile(path):
@@ -192,7 +242,7 @@ class KnowledgeHandlersMixin:
             ).exec()
             return
 
-        active = resolve_active_embedding_path()
+        active = resolve_active_gguf_path()
         try:
             active_resolved = str(Path(active).resolve()) if active else ""
             deleted_resolved = str(Path(path).resolve())
@@ -205,3 +255,4 @@ class KnowledgeHandlersMixin:
 
         self._sync_active_embedding_label()
         self._refresh_embedding_gguf_list()
+        self._sync_embedding_mode_selector()

@@ -4,6 +4,7 @@ import numpy as np
 
 from core.retrieval_fusion import fuse_ranked_results
 from core.memory_retrieval_policy import fts_query_token_overlap
+from core.reindex_state import is_reindex_in_progress
 
 logger = logging.getLogger("Qube.RAGTool")
 
@@ -70,6 +71,10 @@ def rag_search(
 
     scope = f" source={source_filter!r}" if source_filter else ""
     logger.info(f"[RAG v2.3] Query: {query}{scope}")
+
+    if is_reindex_in_progress():
+        logger.info("[RAG] Retrieval suppressed while library reprocessing is active.")
+        return {"llm_context": "", "sources": []}
 
     try:
         # ============================================================

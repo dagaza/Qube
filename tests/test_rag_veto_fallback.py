@@ -13,12 +13,22 @@ if ROOT not in sys.path:
 from core.memory_filters import (
     RAG_CAPABILITY_DISABLED_SUFFIX,
     STRICT_ISOLATION_SYSTEM_SUFFIX,
-    detect_recall_intent,
+    detect_file_search_intent,
     library_lane_allowed,
+    query_explicitly_requests_library_search,
+    query_has_lexical_library_signal,
     query_implies_library_intent,
     should_apply_recall_fusion,
+    should_downgrade_embedding_rag_on_continuation,
+    is_conversational_continuation_turn,
+    _router_embedding_implies_library_intent,
 )
 from core.prompt_blocks import build_prompt_blocks, compose_system_prompt
+
+USER_ACRONYM_PROMPT = (
+    "It's actually not, it's something like BDO or BOD. "
+    "It sounds like a 3 letter acronym"
+)
 
 
 class LibraryLaneAllowedTests(unittest.TestCase):
@@ -50,46 +60,65 @@ class LibraryLaneAllowedTests(unittest.TestCase):
         )
 
 
-class QueryImpliesLibraryIntentTests(unittest.TestCase):
+class QueryExplicitlyRequestsLibrarySearchTests(unittest.TestCase):
     def test_recall_intent_personal_phrase_without_decision(self) -> None:
         self.assertFalse(
-            query_implies_library_intent("Tell me about Dr. Evelyn.")
+            query_explicitly_requests_library_search("Tell me about Dr. Evelyn.")
         )
 
     def test_document_substring(self) -> None:
         self.assertTrue(
-            query_implies_library_intent("What does the onboarding pdf say?")
+            query_explicitly_requests_library_search("What does the onboarding pdf say?")
         )
 
     def test_plain_chat_false(self) -> None:
-        self.assertFalse(query_implies_library_intent("Tell me a joke."))
+        self.assertFalse(query_explicitly_requests_library_search("Tell me a joke."))
 
     def test_general_knowledge_false(self) -> None:
         self.assertFalse(
-            query_implies_library_intent("What is the capital of Nepal?")
+            query_explicitly_requests_library_search("What is the capital of Nepal?")
         )
 
     def test_operational_library_prompt_false(self) -> None:
         self.assertFalse(
-            query_implies_library_intent(
+            query_explicitly_requests_library_search(
                 "how can i remove entries from my library"
             )
         )
 
-    def test_recall_fusion_decision_flag(self) -> None:
-        self.assertTrue(
-            query_implies_library_intent(
+    def test_user_acronym_correction_false(self) -> None:
+        self.assertFalse(query_explicitly_requests_library_search(USER_ACRONYM_PROMPT))
+
+    def test_recall_fusion_decision_flag_does_not_imply_explicit_request(self) -> None:
+        self.assertFalse(
+            query_explicitly_requests_library_search(
                 "hello",
                 decision={"recall_fusion": True},
             )
         )
 
-    def test_detect_recall_intent_helper(self) -> None:
-        self.assertTrue(detect_recall_intent("Remind me about metric units"))
+    def test_embedding_router_signal_does_not_imply_explicit_request(self) -> None:
+        decision = {
+            "top_intent": "rag",
+            "top_intent_source": "embedding",
+            "top_score": 0.42,
+            "rag_score_source": "embedding",
+            "rag_score_final": 0.42,
+        }
+        self.assertTrue(_router_embedding_implies_library_intent(decision))
+        self.assertFalse(
+            query_explicitly_requests_library_search(USER_ACRONYM_PROMPT, decision=decision)
+        )
 
-    def test_detect_recall_intent_general_knowledge_false(self) -> None:
-        self.assertFalse(detect_recall_intent("What is the capital of Nepal?"))
-        self.assertFalse(detect_recall_intent("Who is Einstein?"))
+    def test_alias_matches_explicit_helper(self) -> None:
+        self.assertEqual(
+            query_implies_library_intent("What does the onboarding pdf say?"),
+            query_explicitly_requests_library_search("What does the onboarding pdf say?"),
+        )
+
+    def test_lexical_helper(self) -> None:
+        self.assertTrue(query_has_lexical_library_signal("What does the onboarding pdf say?"))
+        self.assertFalse(query_has_lexical_library_signal(USER_ACRONYM_PROMPT))
 
 
 class ShouldApplyRecallFusionTests(unittest.TestCase):
@@ -120,6 +149,141 @@ class ShouldApplyRecallFusionTests(unittest.TestCase):
                     "recall_score": 1.0,
                     "recall_threshold": 0.62,
                 },
+            )
+        )
+
+
+class ContinuationRoutingTests(unittest.TestCase):
+    def test_is_conversational_continuation_on_correction(self) -> None:
+        self.assertTrue(
+            is_conversational_continuation_turn(
+                USER_ACRONYM_PROMPT,
+                follow_up_active=False,
+                prior_execution_route="NONE",
+                has_chat_history=True,
+            )
+        )
+
+    def test_not_continuation_without_history(self) -> None:
+        self.assertFalse(
+            is_conversational_continuation_turn(
+                USER_ACRONYM_PROMPT,
+                follow_up_active=False,
+                prior_execution_route="NONE",
+                has_chat_history=False,
+            )
+        )
+
+    def test_not_continuation_when_prior_route_was_rag(self) -> None:
+        self.assertFalse(
+            is_conversational_continuation_turn(
+                USER_ACRONYM_PROMPT,
+                follow_up_active=False,
+                prior_execution_route="RAG",
+                has_chat_history=True,
+            )
+        )
+
+    def test_downgrade_embedding_rag_on_user_session_prompt(self) -> None:
+        decision = {
+            "top_intent": "rag",
+            "top_intent_source": "embedding",
+            "top_score": 0.42,
+            "rag_score_source": "embedding",
+            "rag_score_final": 0.42,
+        }
+        self.assertTrue(
+            should_downgrade_embedding_rag_on_continuation(
+                USER_ACRONYM_PROMPT,
+                decision=decision,
+                execution_route="RAG",
+                prior_execution_route="NONE",
+                follow_up_active=False,
+                has_chat_history=True,
+            )
+        )
+
+    def test_no_downgrade_when_explicit_library_request(self) -> None:
+        decision = {
+            "top_intent": "rag",
+            "top_intent_source": "embedding",
+            "top_score": 0.42,
+            "rag_score_source": "embedding",
+        }
+        self.assertFalse(
+            should_downgrade_embedding_rag_on_continuation(
+                "What does the onboarding pdf say?",
+                decision=decision,
+                execution_route="RAG",
+                prior_execution_route="NONE",
+                follow_up_active=False,
+                has_chat_history=True,
+            )
+        )
+
+    def test_no_downgrade_when_recall_active(self) -> None:
+        decision = {
+            "recall_active": True,
+            "top_intent": "recall",
+            "rag_score_source": "embedding",
+        }
+        self.assertFalse(
+            should_downgrade_embedding_rag_on_continuation(
+                USER_ACRONYM_PROMPT,
+                decision=decision,
+                execution_route="HYBRID",
+                prior_execution_route="NONE",
+                follow_up_active=False,
+                has_chat_history=True,
+            )
+        )
+
+
+class RagCapabilityBlockedLogicTests(unittest.TestCase):
+    """Mirror LLMWorker rag_capability_blocked gate (options 1 + 2)."""
+
+    def _blocked(
+        self,
+        *,
+        clean_prompt: str,
+        execution_route: str = "NONE",
+        rag_vetoed: bool = True,
+        library_blocked: bool = True,
+        decision: dict | None = None,
+    ) -> bool:
+        explicit = query_explicitly_requests_library_search(
+            clean_prompt, decision=decision
+        )
+        return bool(
+            library_blocked
+            and explicit
+            and execution_route in ("NONE", "MEMORY")
+            and (
+                rag_vetoed
+                or detect_file_search_intent(clean_prompt)
+                or query_has_lexical_library_signal(clean_prompt)
+            )
+        )
+
+    def test_embedding_only_veto_does_not_block(self) -> None:
+        decision = {
+            "top_intent": "rag",
+            "top_intent_source": "embedding",
+            "top_score": 0.42,
+        }
+        self.assertFalse(
+            self._blocked(
+                clean_prompt=USER_ACRONYM_PROMPT,
+                rag_vetoed=True,
+                decision=decision,
+            )
+        )
+
+    def test_lexical_pdf_with_veto_blocks(self) -> None:
+        self.assertTrue(
+            self._blocked(
+                clean_prompt="What does the onboarding pdf say?",
+                rag_vetoed=True,
             )
         )
 

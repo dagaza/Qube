@@ -98,7 +98,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_caption_cb = QCheckBox("Show activity label under companion")
     host.companion_caption_cb.setToolTip(
         "When enabled, a short status chip appears below the companion "
-        "(Idle, Listening, Thinking, Writing, Speaking). Uncheck to show only the companion widget."
+        "(Idle, Listening, Working, Writing, Speaking). Uncheck to show only the companion widget."
     )
     host.companion_caption_cb.setChecked(_companion_settings.get_companion_show_caption())
     host.companion_caption_cb.toggled.connect(host._on_companion_setting_changed)
@@ -107,7 +107,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_fullscreen_cb = QCheckBox("Hide during fullscreen apps")
     host.companion_fullscreen_cb.setToolTip(
         "Hide the companion while another app is fullscreen, unless Qube needs your "
-        "attention (listening, thinking, speaking, or an error)."
+        "attention (listening, working, speaking, or an error)."
     )
     host.companion_fullscreen_cb.setChecked(
         _companion_settings.get_companion_suppress_on_fullscreen()
@@ -458,7 +458,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._companion_demo_items = [
         ("Idle", "idle"),
         ("Listening", "capturing"),
-        ("Thinking", "working"),
+        ("Working", "working"),
         ("Writing", "writing"),
         ("Speaking", "speaking"),
     ]
