@@ -12,9 +12,11 @@ from core.bootstrap_manifest import (
     BOOTSTRAP_MODELS,
     BootstrapModelId,
     BootstrapModelTier,
+    CONSENT_HIDDEN_MODEL_IDS,
     RECOMMENDED_ORDER,
     bootstrap_model_tier,
     bootstrap_tier_tag,
+    consent_model_order,
     default_selection,
     format_bootstrap_tier_tag_tooltip,
     format_byte_size,
@@ -51,6 +53,7 @@ def test_recommended_defaults_include_locked_core():
 
 def test_bootstrap_model_tiers():
     assert bootstrap_model_tier(BootstrapModelId.SIDECAR_QWEN17) is BootstrapModelTier.REQUIRED
+    assert bootstrap_model_tier(BootstrapModelId.SEARCH_PRESET_BALANCED) is BootstrapModelTier.REQUIRED
     assert bootstrap_model_tier(BootstrapModelId.WHISPER_SMALL) is BootstrapModelTier.RECOMMENDED
     assert bootstrap_model_tier(BootstrapModelId.LLM_QWEN35_9B) is BootstrapModelTier.RECOMMENDED
     assert bootstrap_model_tier(BootstrapModelId.SIDECAR_QWEN05) is BootstrapModelTier.OPTIONAL
@@ -130,6 +133,14 @@ def test_total_selected_bytes_uses_dynamic_sizes():
 def test_balanced_search_in_recommended_order():
     assert BootstrapModelId.SEARCH_PRESET_BALANCED in RECOMMENDED_ORDER
     assert BootstrapModelId.SEARCH_PRESET_BALANCED in ADVANCED_ORDER
+    assert RECOMMENDED_ORDER.index(BootstrapModelId.SEARCH_PRESET_BALANCED) == 1
+    assert ADVANCED_ORDER.index(BootstrapModelId.SEARCH_PRESET_BALANCED) == 1
+
+
+def test_consent_order_hides_deferred_sidecar():
+    assert BootstrapModelId.SIDECAR_QWEN05 in CONSENT_HIDDEN_MODEL_IDS
+    assert BootstrapModelId.SIDECAR_QWEN05 not in consent_model_order(advanced=True)
+    assert BootstrapModelId.SIDECAR_QWEN05 not in consent_model_order(advanced=False)
 
 
 def test_selection_serialization_roundtrip():
@@ -143,7 +154,6 @@ def test_optional_recommended_ids():
     assert OPTIONAL_RECOMMENDED_IDS == {
         BootstrapModelId.WHISPER_SMALL,
         BootstrapModelId.KOKORO_TTS,
-        BootstrapModelId.SEARCH_PRESET_BALANCED,
         BootstrapModelId.LLM_QWEN35_9B,
     }
 

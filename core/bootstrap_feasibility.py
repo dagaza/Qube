@@ -304,7 +304,6 @@ def feasible_recommended_selection(
     for opt_id in (
         BootstrapModelId.WHISPER_SMALL,
         BootstrapModelId.KOKORO_TTS,
-        BootstrapModelId.SEARCH_PRESET_BALANCED,
     ):
         if opt_id not in target_preset or opt_id in selected:
             continue

@@ -1416,6 +1416,24 @@ class ChatComposerEdit(QPlainTextEdit):
             event.accept()
             self.submit_requested.emit()
             return
+        if key == Qt.Key.Key_Up and self._at_top_visual_line():
+            cursor = self.textCursor()
+            cursor.movePosition(
+                QTextCursor.MoveOperation.Start,
+                QTextCursor.MoveMode.MoveAnchor,
+            )
+            self.setTextCursor(cursor)
+            event.accept()
+            return
+        if key == Qt.Key.Key_Down and self._at_bottom_visual_line():
+            cursor = self.textCursor()
+            cursor.movePosition(
+                QTextCursor.MoveOperation.End,
+                QTextCursor.MoveMode.MoveAnchor,
+            )
+            self.setTextCursor(cursor)
+            event.accept()
+            return
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
@@ -1424,6 +1442,24 @@ class ChatComposerEdit(QPlainTextEdit):
             event.accept()
             return
         super().keyReleaseEvent(event)
+
+    def _at_top_visual_line(self) -> bool:
+        cursor = self.textCursor()
+        probe = QTextCursor(cursor)
+        probe.movePosition(
+            QTextCursor.MoveOperation.Up,
+            QTextCursor.MoveMode.KeepAnchor,
+        )
+        return probe.position() == cursor.position()
+
+    def _at_bottom_visual_line(self) -> bool:
+        cursor = self.textCursor()
+        probe = QTextCursor(cursor)
+        probe.movePosition(
+            QTextCursor.MoveOperation.Down,
+            QTextCursor.MoveMode.KeepAnchor,
+        )
+        return probe.position() == cursor.position()
 
     def _line_step_px(self) -> int:
         """One text line in px (prefer font height so ~7 lines match visible rows)."""

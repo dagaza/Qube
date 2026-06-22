@@ -127,12 +127,13 @@ BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
         label="Balanced search",
         size_bytes=130 * _MB,
         description_recommended=(
-            "Default search quality for library uploads and memory retrieval (Recommended)"
+            "Default search quality for library uploads and memory retrieval (Required)"
         ),
         description_advanced=(
-            "Fastembed ONNX preset for library and memory semantic search."
+            "Core semantic search for library and memory. "
+            "(Unchecking disables library uploads and memory retrieval)"
         ),
-        locked_in_recommended=False,
+        locked_in_recommended=True,
         default_recommended=True,
         default_advanced=True,
         source_display="fastembed / jinaai/jina-embeddings-v2-small-en",
@@ -204,9 +205,9 @@ MAIN_LLM_GROUP = frozenset(
 
 RECOMMENDED_ORDER: tuple[BootstrapModelId, ...] = (
     BootstrapModelId.SIDECAR_QWEN17,
+    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.WHISPER_SMALL,
     BootstrapModelId.KOKORO_TTS,
-    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.LLM_QWEN35_9B,
     BootstrapModelId.LLM_GEMMA4_E4B,
     BootstrapModelId.LLM_NEMOTRON_NANO,
@@ -218,16 +219,26 @@ OPTIONAL_RECOMMENDED_IDS: frozenset[BootstrapModelId] = frozenset(
     if spec.default_recommended and not spec.locked_in_recommended
 )
 
+# Catalogued but hidden from first-run consent until re-enabled.
+CONSENT_HIDDEN_MODEL_IDS: frozenset[BootstrapModelId] = frozenset(
+    {BootstrapModelId.SIDECAR_QWEN05}
+)
+
 ADVANCED_ORDER: tuple[BootstrapModelId, ...] = (
     BootstrapModelId.SIDECAR_QWEN17,
-    BootstrapModelId.SIDECAR_QWEN05,
+    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.WHISPER_SMALL,
     BootstrapModelId.KOKORO_TTS,
-    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.LLM_QWEN35_9B,
     BootstrapModelId.LLM_GEMMA4_E4B,
     BootstrapModelId.LLM_NEMOTRON_NANO,
 )
+
+
+def consent_model_order(*, advanced: bool) -> tuple[BootstrapModelId, ...]:
+    """Model rows shown in the bootstrap consent dialog."""
+    order = ADVANCED_ORDER if advanced else RECOMMENDED_ORDER
+    return tuple(mid for mid in order if mid not in CONSENT_HIDDEN_MODEL_IDS)
 
 
 def format_byte_size(num_bytes: int) -> str:
