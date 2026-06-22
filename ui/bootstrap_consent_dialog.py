@@ -64,6 +64,9 @@ from ui.app_icon import apply_window_branding, finalize_window_branding
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import resolve_splash_logo_path
 
+# Estimated/Verified download-size chips — sizing logic stays; UI hidden for now.
+_SHOW_BOOTSTRAP_SIZE_CHIPS = False
+
 
 class _BootstrapModelScrollArea(QScrollArea):
     """Model list scroll area — do not inherit full content height as minimum."""
@@ -149,6 +152,8 @@ class _BootstrapRowChip(QLabel):
         super().__init__(parent)
         self._checkbox = checkbox
         self._row = row
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
@@ -533,7 +538,13 @@ class BootstrapConsentPanel(QWidget):
     def _size_tag_tooltip(self, model_id: BootstrapModelId) -> str:
         entry = self._assessment.resolved_sizes.get(model_id)
         if entry is None:
-            return ""
+            spec = BOOTSTRAP_MODELS[model_id]
+            entry = ResolvedBootstrapSize(
+                model_id=model_id,
+                size_bytes=spec.size_bytes,
+                source=BootstrapSizeSource.ESTIMATE,
+                detail="Offline catalogue estimate",
+            )
         return format_bootstrap_size_tag_tooltip(entry)
 
     def _feasible_recommended_set(self) -> set[BootstrapModelId]:
@@ -643,6 +654,8 @@ class BootstrapConsentPanel(QWidget):
         tag.setObjectName(style)
         tag.style().unpolish(tag)
         tag.style().polish(tag)
+        if not _SHOW_BOOTSTRAP_SIZE_CHIPS:
+            tag.hide()
 
     def _update_row_badges(self) -> None:
         selected = self._effective_selection()

@@ -96,13 +96,15 @@ def _tooltip_text_height(text: str, label: QLabel, label_w: int) -> int:
     return max(int(doc.size().height()) + fm.leading() + 2, fm.height())
 
 _ET_TOOLTIP = int(QEvent.Type.ToolTip)
-_ET_HIDE = frozenset({
+_ET_HIDE_IMMEDIATE = frozenset({
     int(QEvent.Type.MouseButtonPress),
     int(QEvent.Type.Wheel),
-    int(QEvent.Type.Leave),
-    int(QEvent.Type.HoverLeave),
     int(QEvent.Type.WindowDeactivate),
     int(QEvent.Type.FocusOut),
+})
+_ET_HIDE_IF_LEFT = frozenset({
+    int(QEvent.Type.Leave),
+    int(QEvent.Type.HoverLeave),
 })
 _ET_MOVE = frozenset({
     int(QEvent.Type.MouseMove),
@@ -130,8 +132,10 @@ class QubeApplication(QApplication):
                         gpos = QCursor.pos()
                     ctrl.show_tip(anchor, gpos, text)
                     return True
-        if et in _ET_HIDE:
+        if et in _ET_HIDE_IMMEDIATE:
             ctrl.hide_tip()
+        elif et in _ET_HIDE_IF_LEFT:
+            ctrl.hide_if_cursor_left_anchor()
         elif et in _ET_MOVE:
             ctrl.hide_if_cursor_left_anchor()
         return super().notify(receiver, event)

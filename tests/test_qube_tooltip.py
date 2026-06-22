@@ -121,6 +121,22 @@ class TestTooltipClip(unittest.TestCase):
         pos = _clamp_tip_position(QPoint(90, 70), QSize(40, 30), bounds)
         self.assertEqual(pos, QPoint(60, 50))
 
+    def test_leave_does_not_hide_when_cursor_still_on_anchor(self) -> None:
+        ctrl = QubeToolTipController.instance()
+        parent = QWidget()
+        parent.show()
+        anchor = QLabel(parent)
+        anchor.setGeometry(20, 20, 72, 22)
+        anchor.setToolTip("Verified size chip tooltip")
+        anchor.show()
+        anchor_pos = anchor.mapToGlobal(QPoint(36, 11))
+        ctrl.show_tip(anchor, anchor_pos, "Verified size chip tooltip")
+        self.assertTrue(ctrl._popup is not None and ctrl._popup.isVisible())
+        # Simulate a spurious Leave while the cursor remains over the anchor.
+        ctrl.hide_if_cursor_left_anchor()
+        self.assertTrue(ctrl._popup.isVisible())
+        ctrl.hide_tip()
+
 
 if __name__ == "__main__":
     unittest.main()
