@@ -191,7 +191,7 @@ class SettingsView(
     ui_language_changed = pyqtSignal()
     cognition_model_changed = pyqtSignal()
     embedding_model_changed = pyqtSignal()
-    embedding_mode_change_requested = pyqtSignal(str)
+    embedding_mode_change_requested = pyqtSignal(str, str)
     stt_model_changed = pyqtSignal()
     tts_model_changed = pyqtSignal()
     mic_vu_hint_requested = pyqtSignal()

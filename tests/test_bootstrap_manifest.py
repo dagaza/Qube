@@ -8,9 +8,15 @@ from pathlib import Path
 import pytest
 
 from core.bootstrap_manifest import (
+    ADVANCED_ORDER,
     BOOTSTRAP_MODELS,
     BootstrapModelId,
+    BootstrapModelTier,
+    RECOMMENDED_ORDER,
+    bootstrap_model_tier,
+    bootstrap_tier_tag,
     default_selection,
+    format_bootstrap_tier_tag_tooltip,
     format_byte_size,
     normalize_selection,
     OPTIONAL_RECOMMENDED_IDS,
@@ -35,25 +41,58 @@ from core.bootstrap_selection import (
 
 def test_recommended_defaults_include_locked_core():
     selected = default_selection(advanced=False)
-    assert BootstrapModelId.NOMIC_EMBED in selected
     assert BootstrapModelId.SIDECAR_QWEN17 in selected
     assert BootstrapModelId.WHISPER_SMALL in selected
     assert BootstrapModelId.KOKORO_TTS in selected
+    assert BootstrapModelId.SEARCH_PRESET_BALANCED in selected
     assert BootstrapModelId.LLM_QWEN35_9B in selected
     assert BootstrapModelId.LLM_GEMMA4_E4B not in selected
 
 
-def test_advanced_defaults_only_core():
+def test_bootstrap_model_tiers():
+    assert bootstrap_model_tier(BootstrapModelId.SIDECAR_QWEN17) is BootstrapModelTier.REQUIRED
+    assert bootstrap_model_tier(BootstrapModelId.WHISPER_SMALL) is BootstrapModelTier.RECOMMENDED
+    assert bootstrap_model_tier(BootstrapModelId.LLM_QWEN35_9B) is BootstrapModelTier.RECOMMENDED
+    assert bootstrap_model_tier(BootstrapModelId.SIDECAR_QWEN05) is BootstrapModelTier.OPTIONAL
+    assert bootstrap_model_tier(BootstrapModelId.LLM_GEMMA4_E4B) is BootstrapModelTier.OPTIONAL
+
+
+def test_bootstrap_tier_tag_labels():
+    assert bootstrap_tier_tag(BootstrapModelId.SIDECAR_QWEN17) == (
+        "Required",
+        "BootstrapTierTagRequired",
+    )
+    assert bootstrap_tier_tag(BootstrapModelId.KOKORO_TTS) == (
+        "Recommended",
+        "BootstrapTierTagRecommended",
+    )
+    assert bootstrap_tier_tag(BootstrapModelId.LLM_NEMOTRON_NANO) == (
+        "Optional",
+        "BootstrapTierTagOptional",
+    )
+
+
+def test_bootstrap_tier_tag_tooltips():
+    required = format_bootstrap_tier_tag_tooltip(BootstrapModelId.SIDECAR_QWEN17)
+    assert "Required" in required
+    assert "Technical:" in required
+    recommended = format_bootstrap_tier_tag_tooltip(BootstrapModelId.WHISPER_SMALL)
+    assert "Recommended" in recommended
+    optional = format_bootstrap_tier_tag_tooltip(BootstrapModelId.SIDECAR_QWEN05)
+    assert "Optional" in optional
+    assert "alternative" in optional.lower()
+
+
+def test_advanced_defaults_include_core_and_balanced_search():
     selected = default_selection(advanced=True)
     assert selected == {
-        BootstrapModelId.NOMIC_EMBED,
         BootstrapModelId.SIDECAR_QWEN17,
+        BootstrapModelId.SEARCH_PRESET_BALANCED,
     }
 
 
 def test_normalize_selection_mutual_exclusion():
     both_sidecars = {
-        BootstrapModelId.NOMIC_EMBED,
         BootstrapModelId.SIDECAR_QWEN17,
         BootstrapModelId.SIDECAR_QWEN05,
     }
@@ -62,7 +101,7 @@ def test_normalize_selection_mutual_exclusion():
     assert BootstrapModelId.SIDECAR_QWEN05 not in normalized
 
     both_llms = {
-        BootstrapModelId.NOMIC_EMBED,
+        BootstrapModelId.SIDECAR_QWEN17,
         BootstrapModelId.LLM_QWEN35_9B,
         BootstrapModelId.LLM_GEMMA4_E4B,
     }
@@ -83,12 +122,14 @@ def test_total_selected_bytes_matches_catalog():
 def test_total_selected_bytes_uses_dynamic_sizes():
     from core.bootstrap_selection import total_selected_bytes as selection_total
 
-    selected = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
-    sizes = {
-        BootstrapModelId.NOMIC_EMBED: 100,
-        BootstrapModelId.SIDECAR_QWEN17: 200,
-    }
-    assert selection_total(selected, sizes=sizes) == 300
+    selected = {BootstrapModelId.SIDECAR_QWEN17}
+    sizes = {BootstrapModelId.SIDECAR_QWEN17: 200}
+    assert selection_total(selected, sizes=sizes) == 200
+
+
+def test_balanced_search_in_recommended_order():
+    assert BootstrapModelId.SEARCH_PRESET_BALANCED in RECOMMENDED_ORDER
+    assert BootstrapModelId.SEARCH_PRESET_BALANCED in ADVANCED_ORDER
 
 
 def test_selection_serialization_roundtrip():
@@ -102,6 +143,7 @@ def test_optional_recommended_ids():
     assert OPTIONAL_RECOMMENDED_IDS == {
         BootstrapModelId.WHISPER_SMALL,
         BootstrapModelId.KOKORO_TTS,
+        BootstrapModelId.SEARCH_PRESET_BALANCED,
         BootstrapModelId.LLM_QWEN35_9B,
     }
 
@@ -129,7 +171,7 @@ def test_seed_existing_install_does_not_skip_consent(monkeypatch):
     from core.settings_store import SettingsStore
 
     schema_path = Path(__file__).resolve().parent.parent / "assets" / "config" / "settings.schema.json"
-    inferred = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+    inferred = {BootstrapModelId.SIDECAR_QWEN17}
     with tempfile.TemporaryDirectory() as tmp:
         store = SettingsStore(user_path=Path(tmp) / "settings.json", schema_path=schema_path)
         monkeypatch.setattr(
@@ -168,7 +210,7 @@ def test_save_bootstrap_selection_persists_voice_defaults(monkeypatch):
         )
         monkeypatch.setattr("core.bootstrap_selection.apply_bootstrap_selection", lambda _s: None)
 
-        voice_only = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+        voice_only = {BootstrapModelId.SIDECAR_QWEN17}
         save_bootstrap_selection(voice_only)
 
         assert store.get(KEY_COMPLETED) is True

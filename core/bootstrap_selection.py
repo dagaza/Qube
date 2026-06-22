@@ -147,6 +147,12 @@ def apply_bootstrap_selection(selected: set[BootstrapModelId]) -> None:
         if path and os.path.isfile(path):
             set_internal_model_path(path)
 
+    if BootstrapModelId.SEARCH_PRESET_BALANCED in selected:
+        from core.embedding_models import mark_embedding_preset_available
+        from core.embedding_modes import DEFAULT_MODE
+
+        mark_embedding_preset_available(DEFAULT_MODE)
+
 
 def _resolved_download_path(model_id: BootstrapModelId) -> str:
     from core.bootstrap_download import resolve_model_destination
@@ -225,6 +231,8 @@ def preflight_download(
     *,
     sizes: dict[BootstrapModelId, int] | None = None,
 ) -> tuple[bool, str]:
+    if not selected:
+        return True, ""
     required = required_bytes_for(selected, sizes=sizes)
     free = available_disk_bytes()
     if free < required:
@@ -244,7 +252,39 @@ def should_show_bootstrap_consent() -> bool:
 
 
 def effective_bootstrap_selection() -> set[BootstrapModelId]:
+    if is_bootstrap_completed():
+        return get_selected_model_ids()
     selected = get_selected_model_ids()
     if selected:
         return selected
     return default_selection(advanced=False)
+
+
+def apply_downloaded_bootstrap_model(model_id: BootstrapModelId) -> None:
+    """Apply runtime settings after a single on-demand bootstrap download."""
+    from core.bootstrap_download import resolve_model_destination
+
+    if model_id == BootstrapModelId.WHISPER_SMALL:
+        return
+    if model_id == BootstrapModelId.KOKORO_TTS:
+        return
+    if model_id in {BootstrapModelId.SIDECAR_QWEN17, BootstrapModelId.SIDECAR_QWEN05}:
+        dest = resolve_model_destination(model_id)
+        if dest is not None and dest.is_file():
+            set_sidecar_enabled(True)
+            set_sidecar_model_path(str(dest))
+        return
+    if model_id in {
+        BootstrapModelId.LLM_QWEN35_9B,
+        BootstrapModelId.LLM_GEMMA4_E4B,
+        BootstrapModelId.LLM_NEMOTRON_NANO,
+    }:
+        path = _resolved_download_path(model_id)
+        if path and os.path.isfile(path):
+            set_internal_model_path(path)
+        return
+    if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+        from core.embedding_models import mark_embedding_preset_available
+        from core.embedding_modes import DEFAULT_MODE
+
+        mark_embedding_preset_available(DEFAULT_MODE)

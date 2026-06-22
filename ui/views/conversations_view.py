@@ -1516,6 +1516,7 @@ class ConversationsView(QWidget):
         self._stt_ms_value: float | None = None
         self._pending_ttft_ms: float | None = None
         self._stop_requested_callback = None
+        self._before_send_callback = None
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
@@ -3057,6 +3058,9 @@ class ConversationsView(QWidget):
         self._composer_draft.body = self.text_input.toPlainText()
         if self._composer_draft.is_empty():
             return
+        before_send = self._before_send_callback
+        if callable(before_send) and not before_send():
+            return
         raw = serialize_draft(self._composer_draft)
         clean, attachments, enforced_skills = parse_composer_input(raw)
         self._reset_composer_draft()
@@ -3861,6 +3865,9 @@ class ConversationsView(QWidget):
 
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
+
+    def set_before_send_callback(self, callback) -> None:
+        self._before_send_callback = callback
 
     def _will_play_tts_after_response(self) -> bool:
         """Match main.py: voice output must be unmuted and the toolbar toggle on."""

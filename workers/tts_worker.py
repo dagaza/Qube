@@ -28,8 +28,8 @@ def _pcm_peak_level(pcm: bytes) -> float:
     return min(1.0, rms * 2.8)
 
 
-def ensure_bundled_kokoro_assets(model_path: str) -> None:
-    """Download bundled Kokoro ONNX + voices when the default model path is missing."""
+def ensure_bundled_kokoro_assets(model_path: str, *, allow_download: bool = False) -> None:
+    """Ensure Kokoro ONNX + voices exist locally; download only when explicitly allowed."""
     from core.tts_models import (
         BUNDLED_DEFAULT_FILENAME,
         BUNDLED_VOICES_FILENAME,
@@ -53,6 +53,11 @@ def ensure_bundled_kokoro_assets(model_path: str) -> None:
 
     for file_path, url in files_to_check.items():
         if not os.path.exists(file_path):
+            if not allow_download:
+                raise FileNotFoundError(
+                    f"Missing Kokoro asset: {os.path.basename(file_path)} "
+                    "(download from Settings → Voice & Audio or first-run bootstrap)."
+                )
             print(f"[SYSTEM] Downloading missing required file: {os.path.basename(file_path)}...")
             response = requests.get(url, stream=True)
             with open(file_path, "wb") as f:
@@ -61,9 +66,9 @@ def ensure_bundled_kokoro_assets(model_path: str) -> None:
             print(f"[SYSTEM] Download complete: {os.path.basename(file_path)}")
 
 
-def ensure_model_exists(model_path: str):
-    """Backward-compatible alias for bundled Kokoro bootstrap."""
-    ensure_bundled_kokoro_assets(model_path)
+def ensure_model_exists(model_path: str) -> None:
+    """Backward-compatible alias; allows network fetch when caller expects bootstrap."""
+    ensure_bundled_kokoro_assets(model_path, allow_download=True)
 
 class PiperAdapter:
     def __init__(self, model_path):
@@ -90,7 +95,7 @@ class KokoroAdapter:
         voices_path = os.path.join(base_dir, BUNDLED_VOICES_FILENAME)
 
         if is_protected_tts_model(model_path):
-            ensure_bundled_kokoro_assets(model_path)
+            ensure_bundled_kokoro_assets(model_path, allow_download=False)
         
         if not os.path.exists(voices_path):
             raise FileNotFoundError(f"Kokoro voices file not found at {voices_path}")

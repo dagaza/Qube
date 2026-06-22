@@ -128,13 +128,22 @@ class Qube:
             tick("Loading embeddings…")
             try:
                 self.embedder = EmbeddingModel()
-            except FileNotFoundError as exc:
+            except Exception as exc:
                 logger.warning("Embedding model unavailable at startup: %s", exc)
                 self.embedder = None
         tick("Preparing storage…")
-        self.store = DocumentStore(expected_vector_dim=self.embedder.vector_dim)
+        from core.embedding_modes import DEFAULT_MODE, get_mode_spec
+
+        expected_dim = (
+            self.embedder.vector_dim
+            if self.embedder is not None
+            else get_mode_spec(DEFAULT_MODE).vector_dim
+        )
+        self.store = DocumentStore(expected_vector_dim=expected_dim)
         self.db_manager = DatabaseManager()
         self.reindex_worker = None
+        self._reindex_revert_embedding_mode: str | None = None
+        self._reindex_target_mode: str | None = None
 
     def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
         from core.bootstrap_manifest import BootstrapModelId
@@ -361,6 +370,7 @@ class Qube:
 
     def _start_reindex_for_mode(self, mode_id: str) -> None:
         target_mode = normalize_mode_id(mode_id)
+        self._reindex_target_mode = target_mode
         set_embedding_mode(target_mode)
         set_embedding_model_path("")
         self._start_reindex_worker(target_mode=target_mode, reload_embedder=True)
@@ -368,6 +378,8 @@ class Qube:
     def _on_reindex_complete(self, mode_id: str) -> None:
         from workers.intent_router import EmbeddingCache
 
+        self._reindex_revert_embedding_mode = None
+        self._reindex_target_mode = None
         self.llm_worker.embedder = self.embedder
         self.llm_worker.embedding_cache = EmbeddingCache(self.embedder)
         self.enrichment_worker.embedder = self.embedder
@@ -411,16 +423,49 @@ class Qube:
                 sv._sync_active_embedding_label()
 
     def _on_reindex_error(self, message: str) -> None:
+        from core.app_settings import get_embedding_mode, set_embedding_mode
+        from core.bootstrap_search_models import (
+            format_search_preset_download_failure,
+            is_likely_embedding_load_failure,
+        )
+        from core.embedding_modes import normalize_mode_id
+
+        revert = self._reindex_revert_embedding_mode
+        failed_target = self._reindex_target_mode
+        self._reindex_revert_embedding_mode = None
+        self._reindex_target_mode = None
+        if revert is not None:
+            set_embedding_mode(revert)
+            if hasattr(self.window, "settings_view"):
+                sv = self.window.settings_view
+                if hasattr(sv, "_sync_embedding_mode_selector"):
+                    sv._sync_embedding_mode_selector()
+                if hasattr(sv, "_sync_active_embedding_label"):
+                    sv._sync_active_embedding_label()
+                if hasattr(sv, "_sync_bootstrap_download_visibility"):
+                    sv._sync_bootstrap_download_visibility()
+
+        body = (
+            "Reprocessing failed. Your library may be incomplete — try again.\n\n"
+            f"{message}"
+        )
+        if is_likely_embedding_load_failure(message):
+            mode_for_hint = normalize_mode_id(
+                failed_target or get_embedding_mode()
+            )
+            body += f"\n\n{format_search_preset_download_failure(mode_for_hint)}"
+
         self._finish_embedding_job_ui()
         self.window.library_view.show_error(
-            f"Reprocessing failed. Your library may be incomplete — try again.\n\n{message}",
+            body,
             title="Reprocessing Failed",
         )
         self.window._activity_reducer.set_background_busy(False)
         self.window._sync_tray_presence()
         self.window.update_status("Idle", force=True)
 
-    def _on_embedding_mode_change_requested(self, mode_id: str) -> None:
+    def _on_embedding_mode_change_requested(self, mode_id: str, previous_mode: str) -> None:
+        self._reindex_revert_embedding_mode = normalize_mode_id(previous_mode)
         self._start_reindex_for_mode(mode_id)
 
     def _reload_stt_from_settings(self) -> None:
@@ -550,6 +595,7 @@ class Qube:
         # _on_llm_response_finished so provenance is exact.
         self.llm_worker.enrichment_context_ready.connect(self._on_enrichment_context_ready)
         w.conversations_view.set_stop_requested_callback(self.stop_active_response)
+        w.conversations_view.set_before_send_callback(self._before_chat_send)
 
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
@@ -696,10 +742,27 @@ class Qube:
         if hasattr(self, 'tts_worker'):
             self.tts_worker.enqueue_turn_complete(session_id)
 
+    def _before_chat_send(self) -> bool:
+        from ui.bootstrap_feature_prompts import ensure_main_llm_for_chat
+
+        return ensure_main_llm_for_chat(
+            self.window,
+            is_dark=getattr(self.window, "_is_dark_theme", True),
+        )
+
     def _handle_voice_prompt(self, text: str):
+        from ui.bootstrap_feature_prompts import ensure_main_llm_for_chat
+
         cleaned = (text or "").strip()
         if not cleaned:
             self.window.emit_notification(stt_failed_event())
+            self.window.update_status("Idle", force=True)
+            return
+
+        if not ensure_main_llm_for_chat(
+            self.window,
+            is_dark=getattr(self.window, "_is_dark_theme", True),
+        ):
             self.window.update_status("Idle", force=True)
             return
 
@@ -1318,6 +1381,7 @@ if __name__ == "__main__":
         )
 
     def _on_qube_ready(qube: Qube) -> None:
+        qube.window._qube = qube
         if is_bootstrap_completed():
             if hasattr(qube.window, "voice_input_toggle"):
                 qube.window.voice_input_toggle.setChecked(get_voice_input_default())

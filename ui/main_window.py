@@ -3293,7 +3293,7 @@ class MainWindow(QMainWindow):
         elif action_id == "open_settings_voice_tts":
             self._open_settings_section("voice.audio", anchor="tts_models")
         elif action_id == "open_settings_knowledge_embedding":
-            self._open_settings_section("knowledge", anchor="embedding_model")
+            self._open_settings_section("knowledge", anchor="embedding_mode")
         elif action_id == "open_settings_ai_cognition":
             self._open_settings_section("ai.models", anchor="cognition")
 
@@ -3308,43 +3308,55 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, lambda: self.settings_view.select_settings_section(section, anchor=anchor))
 
     def _guard_embedding_feature_toggle(self, toggle, checked: bool) -> bool:
-        from core.bootstrap_missing_models import guard_enable_embedding_feature
-
-        allowed, event = guard_enable_embedding_feature(checked)
-        if allowed:
+        if not checked:
             return True
-        toggle.blockSignals(True)
-        toggle.setChecked(False)
-        toggle.blockSignals(False)
-        if event:
-            self.emit_notification(event)
-        return False
+        from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+        label = "Knowledge and library features"
+        if not ensure_search_models_for_feature(
+            self,
+            feature_label=label,
+            is_dark=self._is_dark_theme,
+        ):
+            toggle.blockSignals(True)
+            toggle.setChecked(False)
+            toggle.blockSignals(False)
+            return False
+        return True
 
     def _on_voice_input_toggle(self, checked: bool) -> None:
-        from core.bootstrap_missing_models import guard_enable_stt
+        if checked:
+            from core.bootstrap_manifest import BootstrapModelId
+            from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
 
-        allowed, event = guard_enable_stt(checked)
-        if not allowed:
-            self.voice_input_toggle.blockSignals(True)
-            self.voice_input_toggle.setChecked(False)
-            self.voice_input_toggle.blockSignals(False)
-            if event:
-                self.emit_notification(event)
-            return
+            if not ensure_bootstrap_model_downloaded(
+                self,
+                BootstrapModelId.WHISPER_SMALL,
+                feature_label="Voice input",
+                is_dark=self._is_dark_theme,
+            ):
+                self.voice_input_toggle.blockSignals(True)
+                self.voice_input_toggle.setChecked(False)
+                self.voice_input_toggle.blockSignals(False)
+                return
         if self._audio_worker:
             self._audio_worker.set_paused(not checked)
 
     def _on_voice_bypass_toggle(self, checked: bool) -> None:
-        from core.bootstrap_missing_models import guard_enable_tts
+        if checked:
+            from core.bootstrap_manifest import BootstrapModelId
+            from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
 
-        allowed, event = guard_enable_tts(checked)
-        if not allowed:
-            self.voice_bypass_toggle.blockSignals(True)
-            self.voice_bypass_toggle.setChecked(False)
-            self.voice_bypass_toggle.blockSignals(False)
-            if event:
-                self.emit_notification(event)
-            return
+            if not ensure_bootstrap_model_downloaded(
+                self,
+                BootstrapModelId.KOKORO_TTS,
+                feature_label="Voice output (TTS)",
+                is_dark=self._is_dark_theme,
+            ):
+                self.voice_bypass_toggle.blockSignals(True)
+                self.voice_bypass_toggle.setChecked(False)
+                self.voice_bypass_toggle.blockSignals(False)
+                return
         if self._tts_worker:
             self._tts_worker.set_mute(not checked)
 

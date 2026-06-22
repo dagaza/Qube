@@ -301,7 +301,11 @@ def feasible_recommended_selection(
             selected = trial
             break
 
-    for opt_id in (BootstrapModelId.WHISPER_SMALL, BootstrapModelId.KOKORO_TTS):
+    for opt_id in (
+        BootstrapModelId.WHISPER_SMALL,
+        BootstrapModelId.KOKORO_TTS,
+        BootstrapModelId.SEARCH_PRESET_BALANCED,
+    ):
         if opt_id not in target_preset or opt_id in selected:
             continue
         fit = assess_model_feasibility(opt_id, selected, assessment)
@@ -347,8 +351,12 @@ def feasible_selection_from_preset(
 def can_proceed_with_selection(
     selected: set[BootstrapModelId],
     assessment: BootstrapSessionAssessment,
+    *,
+    allow_empty: bool = False,
 ) -> tuple[bool, str]:
     if not selected:
+        if allow_empty:
+            return True, ""
         return False, "Select at least one model to download."
     if not selection_within_budget(selected, sizes=assessment.size_bytes):
         return False, (
@@ -359,6 +367,23 @@ def can_proceed_with_selection(
     if not memory_ok:
         return False, memory_message
     return True, ""
+
+
+def format_shell_install_warning_message() -> str:
+    """Body text for the barebones (no models) bootstrap confirmation dialog."""
+    from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
+
+    sidecar_label = BOOTSTRAP_MODELS[BootstrapModelId.SIDECAR_QWEN17].label
+    return (
+        "You chose not to download any models during setup. Qube can start in a "
+        "minimal shell mode, but many features stay unavailable until you download "
+        "models later from Settings.\n\n"
+        f"Without at least {sidecar_label} (auxiliary cognition), you may see "
+        "degraded behavior — titles, memory enrichment, and routing assistance may "
+        "not work. In rare cases, missing core models can contribute to instability "
+        "or crashes when enabling those features.\n\n"
+        "Continue with a barebones install?"
+    )
 
 
 def selected_session_feasible(

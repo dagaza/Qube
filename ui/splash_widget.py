@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
 
 # Startup steps shown beside the spinner (index must match splash_overlay phase order).
 SPLASH_STEP_LABELS: tuple[str, ...] = (
-    "Embedding model (Nomic v1.5)",
+    "Search models (Balanced)",
     "Document store & qube_data.db",
     "Audio, STT, native LLM, sidecar",
     "Memory enrichment workers",

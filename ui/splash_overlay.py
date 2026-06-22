@@ -70,6 +70,7 @@ _EMBEDDER_DONE_PERCENT = 22
 _PHASE_STEPS = (1, 2, 3, 4, 5, 6, 7)
 _PHASE_PERCENTS = (22, 38, 52, 70, 82, 92, 100)
 _SPLASH_CHROME_MARGIN = 8
+_SPLASH_CHROME_BTN_GAP = 6
 _SPLASH_MINIMIZE_BTN_SIZE = 28
 
 SplashPhaseCallback = Callable[[int, int], None]
@@ -182,56 +183,83 @@ class _StartupSplashShell(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAutoFillBackground(False)
         self.setStyleSheet("background: transparent;")
-        self._minimize_btn = self._create_minimize_button()
+        self._minimize_btn = self._create_chrome_button(
+            "QubeSplashMinimizeButton",
+            "fa5s.minus",
+            "Minimise",
+            self.showMinimized,
+        )
+        self._close_btn = self._create_chrome_button(
+            "QubeSplashCloseButton",
+            "fa5s.times",
+            "Close",
+            self.close,
+        )
 
-    def _create_minimize_button(self) -> QPushButton:
+    def _create_chrome_button(
+        self,
+        object_name: str,
+        icon_name: str,
+        tooltip: str,
+        on_click: Callable[[], None],
+    ) -> QPushButton:
         import qtawesome as qta
 
         btn = QPushButton(self)
-        btn.setObjectName("QubeSplashMinimizeButton")
+        btn.setObjectName(object_name)
         btn.setProperty("class", "WindowControlButton")
         btn.setFixedSize(_SPLASH_MINIMIZE_BTN_SIZE, _SPLASH_MINIMIZE_BTN_SIZE)
-        btn.setIcon(qta.icon("fa5s.minus", color="#94a3b8"))
+        btn.setIcon(qta.icon(icon_name, color="#94a3b8"))
         btn.setIconSize(QSize(12, 12))
-        btn.setToolTip("Minimise")
+        btn.setToolTip(tooltip)
         btn.setCursor(Qt.CursorShape.ArrowCursor)
-        btn.clicked.connect(self.showMinimized)
+        btn.clicked.connect(on_click)
         btn.setStyleSheet(
-            """
-            QPushButton#QubeSplashMinimizeButton {
+            f"""
+            QPushButton#{object_name} {{
                 background: rgba(18, 21, 31, 0.72);
                 border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 6px;
-            }
-            QPushButton#QubeSplashMinimizeButton:hover {
+            }}
+            QPushButton#{object_name}:hover {{
                 background: rgba(30, 34, 48, 0.9);
                 border-color: rgba(255, 255, 255, 0.2);
-            }
+            }}
             """
         )
         return btn
 
-    def _position_minimize_button(self) -> None:
+    def _position_chrome_buttons(self) -> None:
         margin = _SPLASH_CHROME_MARGIN
-        btn = self._minimize_btn
+        gap = _SPLASH_CHROME_BTN_GAP
         if _splash_minimize_leading_edge():
             x = margin
+            for btn in (self._minimize_btn, self._close_btn):
+                btn.move(x, margin)
+                btn.raise_()
+                x += btn.width() + gap
         else:
-            x = max(margin, self.width() - btn.width() - margin)
-        btn.move(x, margin)
-        btn.raise_()
+            x = self.width() - margin
+            for btn in (self._close_btn, self._minimize_btn):
+                x -= btn.width()
+                btn.move(x, margin)
+                btn.raise_()
+                x -= gap
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._position_minimize_button()
+        self._position_chrome_buttons()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        self._position_minimize_button()
+        self._position_chrome_buttons()
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
-        if event is not None and self._controller.consent_pending():
-            logger.info("First-run consent dismissed from splash; exiting.")
+        if event is not None:
+            if self._controller.consent_pending():
+                logger.info("First-run consent dismissed from splash; exiting.")
+            else:
+                logger.info("Startup splash closed before app ready; exiting.")
             event.accept()
             app = QApplication.instance()
             if app is not None:
@@ -561,13 +589,28 @@ class StartupSplashController(QObject):
     def _load_embedder_worker() -> object | None:
         from rag.embedder import EmbeddingModel
 
-        if not model_is_present(BootstrapModelId.NOMIC_EMBED):
+        try:
+            return EmbeddingModel()
+        except Exception as exc:
+            logger.warning("Search model load failed during splash: %s", exc)
             return None
-        return EmbeddingModel()
+
+    def _splash_should_load_embedder(self) -> bool:
+        from core.bootstrap_manifest import BootstrapModelId
+        from core.embedding_models import gguf_override_available
+
+        if BootstrapModelId.SEARCH_PRESET_BALANCED in self._selected_models:
+            return True
+        return gguf_override_available()
 
     def _begin_embedder_load(self) -> None:
+        if not self._splash_should_load_embedder():
+            self._view.set_download_detail("Skipping search model load (not selected).")
+            self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
+            QTimer.singleShot(0, lambda: self._finish_bootstrap(None))
+            return
         self._set_logo_rotating(True)
-        self._view.set_download_detail("")
+        self._view.set_download_detail("Preparing search models (Balanced)…")
         self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
         self._embedder_outcome = None
         self._embedder_thread = threading.Thread(

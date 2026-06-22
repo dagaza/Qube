@@ -93,6 +93,17 @@ def resolve_bootstrap_size(model_id: BootstrapModelId) -> ResolvedBootstrapSize:
             detail="Systran/faster-whisper-small cache footprint (approximate)",
         )
 
+    if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+        from core.embedding_modes import DEFAULT_MODE, get_mode_spec
+
+        mode_spec = get_mode_spec(DEFAULT_MODE)
+        return ResolvedBootstrapSize(
+            model_id=model_id,
+            size_bytes=fallback,
+            source=BootstrapSizeSource.ESTIMATE,
+            detail=f"fastembed ONNX preset ({mode_spec.fastembed_model})",
+        )
+
     if not spec.hf_repo or not spec.hf_filename:
         return ResolvedBootstrapSize(
             model_id=model_id,
@@ -124,3 +135,31 @@ def resolve_all_bootstrap_sizes() -> dict[BootstrapModelId, ResolvedBootstrapSiz
 
 def size_map(resolved: dict[BootstrapModelId, ResolvedBootstrapSize]) -> dict[BootstrapModelId, int]:
     return {mid: entry.size_bytes for mid, entry in resolved.items()}
+
+
+def format_bootstrap_size_tag_tooltip(entry: ResolvedBootstrapSize) -> str:
+    """Hover text for Verified / Estimated chips in the bootstrap consent UI."""
+    detail = entry.detail.strip() or "catalogue entry"
+    if entry.source is BootstrapSizeSource.HUGGINGFACE:
+        return (
+            "Verified — exact download size\n"
+            "We checked this file on Hugging Face, so the size shown should match "
+            "what you download.\n\n"
+            f"Technical: confirmed via Hugging Face file metadata ({detail}). "
+            "Disk totals and feasibility use this byte count."
+        )
+    if detail.lower().startswith("loading"):
+        return (
+            "Estimated — checking online\n"
+            "We're still contacting Hugging Face for exact file sizes. Totals use "
+            "built-in estimates until verification finishes.\n\n"
+            "Technical: offline catalogue sizes are shown while metadata loads."
+        )
+    return (
+        "Estimated — approximate size\n"
+        "We couldn't verify this file online (no connection, blocked access, or no "
+        "direct file mapping). The size is a planning estimate and may differ slightly "
+        "from the real download.\n\n"
+        f"Technical: offline estimate ({detail}). Voice models (Whisper/Kokoro) use "
+        "approximate cache footprints. Connect to the internet for live Hugging Face sizes."
+    )

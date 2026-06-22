@@ -438,11 +438,12 @@ def get_embedding_model_path() -> str:
 
 
 def set_embedding_model_path(path: str) -> None:
-    from core.embedding_models import validate_embedding_model_path
+    from core.embedding_models import clear_embedding_availability_cache, validate_embedding_model_path
 
     cleaned = str(path or "").strip()
     if not cleaned:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+        clear_embedding_availability_cache()
         return
     ok, _msg = validate_embedding_model_path(cleaned)
     if ok:
@@ -453,6 +454,7 @@ def set_embedding_model_path(path: str) -> None:
         _store().set(KEY_EMBEDDING_MODEL_PATH, cleaned)
     else:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+    clear_embedding_availability_cache()
 
 
 def get_embedding_mode() -> str:
@@ -464,8 +466,10 @@ def get_embedding_mode() -> str:
 
 def set_embedding_mode(mode: str) -> None:
     from core.embedding_modes import normalize_mode_id
+    from core.embedding_models import clear_embedding_availability_cache
 
     _store().set(KEY_EMBEDDING_MODE, normalize_mode_id(mode))
+    clear_embedding_availability_cache()
 
 
 def get_advanced_speech_models_unlocked() -> bool:

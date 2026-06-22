@@ -350,45 +350,61 @@ class MemoryHandlersMixin:
             )
 
     def _on_rag_kb_settings_toggled(self, checked: bool) -> None:
-        from core.bootstrap_missing_models import guard_enable_embedding_feature
-
-        allowed, event = guard_enable_embedding_feature(checked)
-        if not allowed:
-            self.rag_kb_cb.blockSignals(True)
-            self.rag_kb_cb.setChecked(False)
-            self.rag_kb_cb.blockSignals(False)
+        if checked:
             win = self.window()
-            if event and hasattr(win, "emit_notification"):
-                win.emit_notification(event)
-            return
+            from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Library knowledge base",
+            ):
+                self.rag_kb_cb.blockSignals(True)
+                self.rag_kb_cb.setChecked(False)
+                self.rag_kb_cb.blockSignals(False)
+                return
         self.rag_kb_toggle.emit(checked)
 
     def _on_auto_activator_settings_toggled(self, checked: bool) -> None:
-        from core.bootstrap_missing_models import guard_enable_embedding_feature
-
-        allowed, event = guard_enable_embedding_feature(checked)
-        if not allowed:
-            self.auto_activator_cb.blockSignals(True)
-            self.auto_activator_cb.setChecked(False)
-            self.auto_activator_cb.blockSignals(False)
+        if checked:
             win = self.window()
-            if event and hasattr(win, "emit_notification"):
-                win.emit_notification(event)
-            return
+            from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Library search phrases",
+            ):
+                self.auto_activator_cb.blockSignals(True)
+                self.auto_activator_cb.setChecked(False)
+                self.auto_activator_cb.blockSignals(False)
+                return
         self.auto_activator_toggle.emit(checked)
 
     def _on_memory_enrichment_toggled(self, checked: bool):
-        from core.bootstrap_missing_models import guard_enable_memory_enrichment
-
-        allowed, event = guard_enable_memory_enrichment(checked)
-        if not allowed:
-            self.memory_enrichment_toggle.blockSignals(True)
-            self.memory_enrichment_toggle.setChecked(False)
-            self.memory_enrichment_toggle.blockSignals(False)
+        if checked:
             win = self.window()
-            if event and hasattr(win, "emit_notification"):
-                win.emit_notification(event)
-            return
+            from core.bootstrap_manifest import BootstrapModelId
+            from ui.bootstrap_feature_prompts import (
+                ensure_bootstrap_model_downloaded,
+                ensure_search_models_for_feature,
+            )
+
+            if not ensure_bootstrap_model_downloaded(
+                win,
+                BootstrapModelId.SIDECAR_QWEN17,
+                feature_label="Memory enrichment",
+            ):
+                self.memory_enrichment_toggle.blockSignals(True)
+                self.memory_enrichment_toggle.setChecked(False)
+                self.memory_enrichment_toggle.blockSignals(False)
+                return
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Memory enrichment",
+            ):
+                self.memory_enrichment_toggle.blockSignals(True)
+                self.memory_enrichment_toggle.setChecked(False)
+                self.memory_enrichment_toggle.blockSignals(False)
+                return
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
         self._sync_memory_promotion_controls_for_enrichment()

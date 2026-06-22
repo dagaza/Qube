@@ -26,9 +26,14 @@ from core.bootstrap_feasibility import (
     build_session_assessment,
     can_proceed_with_selection,
     feasible_recommended_selection,
+    format_shell_install_warning_message,
     models_blocked_for_session,
 )
-from core.bootstrap_hf_metadata import BootstrapSizeSource, ResolvedBootstrapSize
+from core.bootstrap_hf_metadata import (
+    BootstrapSizeSource,
+    ResolvedBootstrapSize,
+    format_bootstrap_size_tag_tooltip,
+)
 from core.bootstrap_manifest import (
     ADVANCED_ORDER,
     BOOTSTRAP_MODELS,
@@ -37,7 +42,9 @@ from core.bootstrap_manifest import (
     MAIN_LLM_GROUP,
     RECOMMENDED_ORDER,
     SIDECAR_GROUP,
+    bootstrap_tier_tag,
     default_selection,
+    format_bootstrap_tier_tag_tooltip,
     format_byte_size,
     locked_recommended_ids,
     normalize_selection,
@@ -54,6 +61,7 @@ from core.bootstrap_selection import (
 from workers.bootstrap_metadata_worker import BootstrapMetadataWorker
 from workers.model_download_worker import SAFETY_BUFFER_BYTES
 from ui.app_icon import apply_window_branding, finalize_window_branding
+from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import resolve_splash_logo_path
 
 
@@ -123,6 +131,34 @@ class _BootstrapModelRow(QFrame):
             super().mouseReleaseEvent(event)
             return
         if self._disk_blocked and not self._checkbox.isChecked():
+            event.accept()
+            return
+        self._checkbox.toggle()
+        event.accept()
+
+
+class _BootstrapRowChip(QLabel):
+    """Small row chip (tier / size) with hover tooltip; click toggles the row checkbox."""
+
+    def __init__(
+        self,
+        checkbox: QCheckBox,
+        row: "_BootstrapModelRow",
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._checkbox = checkbox
+        self._row = row
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
+        if event is None or event.button() != Qt.MouseButton.LeftButton:
+            super().mouseReleaseEvent(event)
+            return
+        if self._row._locked or not self._checkbox.isEnabled():
+            super().mouseReleaseEvent(event)
+            return
+        if self._row._disk_blocked and not self._checkbox.isChecked():
             event.accept()
             return
         self._checkbox.toggle()
@@ -245,6 +281,7 @@ class BootstrapConsentPanel(QWidget):
         self._checkboxes: dict[BootstrapModelId, QCheckBox] = {}
         self._rows: dict[BootstrapModelId, _BootstrapModelRow] = {}
         self._feasibility_notes: dict[BootstrapModelId, QLabel] = {}
+        self._tier_tags: dict[BootstrapModelId, QLabel] = {}
         self._size_tags: dict[BootstrapModelId, QLabel] = {}
         self._block_tags: dict[BootstrapModelId, QLabel] = {}
         self._assessment = self._initial_assessment()
@@ -259,6 +296,7 @@ class BootstrapConsentPanel(QWidget):
             if embedded
             else "BootstrapConsentPanel"
         )
+        self.setProperty("qube_tooltip_clip", True)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(False)
         if split_embedded:
@@ -450,12 +488,15 @@ class BootstrapConsentPanel(QWidget):
     def _format_hardware_summary(self) -> str:
         return self._assessment.hardware_summary().replace(" \u00b7 ", " | ")
 
+    def _format_hf_status(self, base: str) -> str:
+        return base.strip()
+
     def _on_metadata_resolved(self, resolved: object) -> None:
         if not isinstance(resolved, dict):
             return
         self._assessment = build_session_assessment(resolved=resolved)
         self._hardware_summary.setText(self._format_hardware_summary())
-        self._hf_status.setText(self._assessment.size_source_summary())
+        self._hf_status.setText(self._format_hf_status(self._assessment.size_source_summary()))
         if not self._advanced and not self._user_touched_selection:
             self._apply_recommended_preset(expand_details_if_skipped=True)
         else:
@@ -464,8 +505,10 @@ class BootstrapConsentPanel(QWidget):
 
     def _on_metadata_failed(self, message: str) -> None:
         self._hf_status.setText(
-            f"Could not verify all sizes with Hugging Face ({message}). "
-            "Using offline estimates for download totals."
+            self._format_hf_status(
+                f"Could not verify all sizes with Hugging Face ({message}). "
+                "Using offline estimates for download totals."
+            )
         )
         if not self._advanced and not self._user_touched_selection:
             self._apply_recommended_preset(expand_details_if_skipped=True)
@@ -485,9 +528,13 @@ class BootstrapConsentPanel(QWidget):
         entry = self._assessment.resolved_sizes.get(model_id)
         if entry is None:
             return ""
-        if entry.source is BootstrapSizeSource.HUGGINGFACE:
-            return f"Download size verified on Hugging Face ({entry.detail})."
-        return f"Estimated download size ({entry.detail})."
+        return format_bootstrap_size_tag_tooltip(entry)
+
+    def _size_tag_tooltip(self, model_id: BootstrapModelId) -> str:
+        entry = self._assessment.resolved_sizes.get(model_id)
+        if entry is None:
+            return ""
+        return format_bootstrap_size_tag_tooltip(entry)
 
     def _feasible_recommended_set(self) -> set[BootstrapModelId]:
         return feasible_recommended_selection(
@@ -553,6 +600,20 @@ class BootstrapConsentPanel(QWidget):
             return "Verified", "BootstrapSizeTagVerified"
         return "Estimated", "BootstrapSizeTagEstimate"
 
+    def _tier_tag_tooltip(self, model_id: BootstrapModelId) -> str:
+        return format_bootstrap_tier_tag_tooltip(model_id)
+
+    def _apply_tier_tag(self, model_id: BootstrapModelId) -> None:
+        tag = self._tier_tags.get(model_id)
+        if tag is None:
+            return
+        text, style = bootstrap_tier_tag(model_id)
+        tag.setText(text)
+        tag.setToolTip(self._tier_tag_tooltip(model_id))
+        tag.setObjectName(style)
+        tag.style().unpolish(tag)
+        tag.style().polish(tag)
+
     def _blocked_models_detail(
         self,
         blocked: dict[BootstrapModelId, BootstrapModelFeasibility],
@@ -568,6 +629,7 @@ class BootstrapConsentPanel(QWidget):
     def _refresh_model_labels(self) -> None:
         for model_id, cb in self._checkboxes.items():
             cb.setText(self._model_checkbox_label(model_id))
+            self._apply_tier_tag(model_id)
             self._apply_size_tag(model_id)
         self._update_feasibility_notes()
 
@@ -577,6 +639,7 @@ class BootstrapConsentPanel(QWidget):
             return
         text, style = self._size_tag_for(model_id)
         tag.setText(text)
+        tag.setToolTip(self._size_tag_tooltip(model_id))
         tag.setObjectName(style)
         tag.style().unpolish(tag)
         tag.style().polish(tag)
@@ -585,6 +648,8 @@ class BootstrapConsentPanel(QWidget):
         selected = self._effective_selection()
         visible = set(self._visible_model_ids())
         blocked = models_blocked_for_session(selected, visible, self._assessment)
+        for model_id in self._tier_tags:
+            self._apply_tier_tag(model_id)
         for model_id, size_tag in self._size_tags.items():
             self._apply_size_tag(model_id)
         for model_id, block_tag in self._block_tags.items():
@@ -773,6 +838,33 @@ class BootstrapConsentPanel(QWidget):
                 background: rgba(148, 163, 184, 0.1);
                 color: #94a3b8;
                 border: 1px solid rgba(148, 163, 184, 0.2);
+                border-radius: 8px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QLabel#BootstrapTierTagRequired {
+                background: rgba(139, 92, 246, 0.16);
+                color: #c4b5fd;
+                border: 1px solid rgba(139, 92, 246, 0.35);
+                border-radius: 8px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QLabel#BootstrapTierTagRecommended {
+                background: rgba(56, 189, 248, 0.14);
+                color: #7dd3fc;
+                border: 1px solid rgba(56, 189, 248, 0.28);
+                border-radius: 8px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QLabel#BootstrapTierTagOptional {
+                background: rgba(148, 163, 184, 0.08);
+                color: #94a3b8;
+                border: 1px solid rgba(148, 163, 184, 0.18);
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -1108,6 +1200,7 @@ class BootstrapConsentPanel(QWidget):
         self._checkboxes.clear()
         self._rows.clear()
         self._feasibility_notes.clear()
+        self._tier_tags.clear()
         self._size_tags.clear()
         self._block_tags.clear()
         while self._scroll_layout.count():
@@ -1149,17 +1242,20 @@ class BootstrapConsentPanel(QWidget):
             _BootstrapModelRow._transparent_label_background(title_row)
             title_layout = QHBoxLayout(title_row)
             title_layout.setContentsMargins(0, 0, 0, 0)
-            title_layout.setSpacing(6)
+            title_layout.setSpacing(4)
             title_layout.addWidget(cb, 1)
-            size_tag = QLabel()
+            tier_tag = _BootstrapRowChip(cb, row)
+            tier_tag.setObjectName("BootstrapTierTagOptional")
+            size_tag = _BootstrapRowChip(cb, row)
             size_tag.setObjectName("BootstrapSizeTagEstimate")
             block_tag = QLabel()
             block_tag.setObjectName("BootstrapBlockTagDisk")
             block_tag.hide()
-            _BootstrapModelRow._pass_clicks_to_row(size_tag)
             _BootstrapModelRow._pass_clicks_to_row(block_tag)
+            title_layout.addWidget(tier_tag)
             title_layout.addWidget(size_tag)
             title_layout.addWidget(block_tag)
+            self._tier_tags[model_id] = tier_tag
             self._size_tags[model_id] = size_tag
             self._block_tags[model_id] = block_tag
             _BootstrapModelRow._pass_clicks_to_row(title_row)
@@ -1204,8 +1300,8 @@ class BootstrapConsentPanel(QWidget):
         if self._advanced:
             self._title.setText("Advanced configuration")
             self._intro.setText(
-                "Fine-tune downloads. Core models are on by default; review row guidance "
-                "before unchecking."
+                "Fine-tune downloads or continue without models for a minimal shell install. "
+                "Features you enable later can prompt you to download the models they need."
             )
             self._legend.setText(self._legend_text())
             self._legend.show()
@@ -1213,7 +1309,7 @@ class BootstrapConsentPanel(QWidget):
             self._recommended_btn.show()
             self._advanced_btn.hide()
         else:
-            self._title.setText("Recommended configuration")
+            self._sync_recommended_title()
             self._intro.setText(
                 "Pick optional models below or open Advanced Configuration. "
                 "Required models stay selected and respect your disk and memory limits."
@@ -1237,12 +1333,20 @@ class BootstrapConsentPanel(QWidget):
         out.update(locked_recommended_ids())
         return normalize_selection(out)
 
-    def _is_on_view_preset(self) -> bool:
-        """True when the current view's default preset is already selected."""
+    def _is_on_recommended_preset(self) -> bool:
+        """True when the current selection matches the feasible Recommended preset."""
         selected = normalize_selection(self._current_selection())
+        if not self._advanced:
+            selected = self._enforce_locked_recommended(selected)
+        return selected == self._feasible_recommended_set()
+
+    def _sync_recommended_title(self) -> None:
         if self._advanced:
-            return selected == self._advanced_preset_set()
-        return self._enforce_locked_recommended(selected) == self._feasible_recommended_set()
+            return
+        if self._is_on_recommended_preset():
+            self._title.setText("Recommended configuration")
+        else:
+            self._title.setText("Custom configuration")
 
     def _current_selection(self) -> set[BootstrapModelId]:
         self._persist_checkbox_state()
@@ -1386,7 +1490,12 @@ class BootstrapConsentPanel(QWidget):
         selected = self._effective_selection()
         download_bytes = total_selected_bytes(selected, sizes=sizes)
         headroom = budget_headroom_bytes(selected, sizes=sizes)
-        can_proceed, proceed_message = can_proceed_with_selection(selected, self._assessment)
+        allow_shell = self._advanced and not selected
+        can_proceed, proceed_message = can_proceed_with_selection(
+            selected,
+            self._assessment,
+            allow_empty=allow_shell,
+        )
 
         if headroom < 0:
             self._disk_summary.setObjectName("BootstrapDiskSummaryOver")
@@ -1444,7 +1553,12 @@ class BootstrapConsentPanel(QWidget):
             )
         else:
             self._total_label.setText(f"Download total: {format_byte_size(download_bytes)}")
-        self._recommended_btn.setEnabled(not self._is_on_view_preset())
+        self._sync_recommended_title()
+        self._recommended_btn.setEnabled(not self._is_on_recommended_preset())
+        if allow_shell:
+            self._download_btn.setText("Continue without models")
+        else:
+            self._download_btn.setText("Download && Continue")
         self._download_btn.setEnabled(can_proceed)
         block_reason = self._download_block_reason(
             can_proceed=can_proceed,
@@ -1474,19 +1588,37 @@ class BootstrapConsentPanel(QWidget):
 
     def _use_recommended(self) -> None:
         self._user_touched_selection = False
-        if self._advanced:
-            self._apply_advanced_preset()
-        else:
-            self._apply_recommended_preset(expand_details_if_skipped=True)
+        self._apply_recommended_preset(expand_details_if_skipped=True)
+
+    def _confirm_shell_install(self) -> bool:
+        parent = self.window() if self._embedded else self
+        dlg = PrestigeDialog(
+            parent,
+            "Continue without models?",
+            format_shell_install_warning_message(),
+            is_dark=True,
+            tone="danger",
+            dialog_width=480,
+            confirm_text="Continue without models",
+            cancel_text="Go back",
+        )
+        return bool(dlg.exec())
 
     def _accept_selection(self) -> None:
         selected = self._current_selection()
-        can_proceed, message = can_proceed_with_selection(selected, self._assessment)
+        allow_empty = self._advanced and not selected
+        can_proceed, message = can_proceed_with_selection(
+            selected,
+            self._assessment,
+            allow_empty=allow_empty,
+        )
         if not can_proceed:
             if "disk space" in message.lower():
                 QMessageBox.warning(self, "Insufficient disk space", message)
             else:
                 QMessageBox.warning(self, "Models may not run on this system", message)
+            return
+        if allow_empty and not self._confirm_shell_install():
             return
         ok, message = preflight_download(selected, sizes=self._resolved_sizes())
         if not ok:
@@ -1506,6 +1638,7 @@ class BootstrapConsentDialog(QDialog):
         super().__init__(parent)
         self._selected: set[BootstrapModelId] | None = None
         self.setObjectName("BootstrapConsentDialog")
+        self.setProperty("qube_tooltip_clip", True)
         self.setWindowTitle("Welcome to Qube")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(

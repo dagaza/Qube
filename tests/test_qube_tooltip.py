@@ -1,13 +1,16 @@
 import unittest
 
 from core.qube_tooltip import (
+    _clamp_tip_position,
     _TOOLTIP_MAX_WIDTH_PX,
+    _tooltip_clip_rect,
     _tooltip_label_width_px,
     _tooltip_text_height,
     _tooltip_widget_and_text,
     QubeToolTipController,
 )
-from PyQt6.QtWidgets import QApplication, QLabel, QSpinBox
+from PyQt6.QtCore import QPoint, QRect, QSize
+from PyQt6.QtWidgets import QApplication, QLabel, QSpinBox, QWidget
 
 
 class TestTooltipLabelWidth(unittest.TestCase):
@@ -74,6 +77,49 @@ class TestTooltipContentSize(unittest.TestCase):
             _tooltip_text_height(tip, ctrl._label, _TOOLTIP_MAX_WIDTH_PX),
         )
         self.assertGreater(size.height(), ctrl._label.fontMetrics().height() * 2)
+
+
+class TestTooltipClip(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._app = QApplication.instance() or QApplication([])
+
+    def test_clip_rect_from_ancestor_property(self) -> None:
+        parent = QWidget()
+        parent.setProperty("qube_tooltip_clip", True)
+        parent.resize(400, 300)
+        child = QLabel(parent)
+        child.move(50, 50)
+        parent.show()
+        clip = _tooltip_clip_rect(child)
+        self.assertIsNotNone(clip)
+        assert clip is not None
+        self.assertGreaterEqual(clip.width(), 350)
+        self.assertGreaterEqual(clip.height(), 250)
+
+    def test_place_tip_stays_inside_clip_rect(self) -> None:
+        ctrl = QubeToolTipController.instance()
+        parent = QWidget()
+        parent.setProperty("qube_tooltip_clip", True)
+        parent.setGeometry(100, 100, 320, 240)
+        parent.show()
+        anchor = QLabel(parent)
+        anchor.setGeometry(250, 200, 40, 16)
+        anchor.show()
+        anchor_pos = anchor.mapToGlobal(QPoint(anchor.width(), anchor.height()))
+        sz = QSize(200, 120)
+        placed = ctrl._place_tip(anchor_pos, sz, anchor=anchor)
+        clip = _tooltip_clip_rect(anchor)
+        assert clip is not None
+        self.assertGreaterEqual(placed.x(), clip.left())
+        self.assertGreaterEqual(placed.y(), clip.top())
+        self.assertLessEqual(placed.x() + sz.width(), clip.right() + 1)
+        self.assertLessEqual(placed.y() + sz.height(), clip.bottom() + 1)
+
+    def test_clamp_tip_position(self) -> None:
+        bounds = QRect(0, 0, 100, 80)
+        pos = _clamp_tip_position(QPoint(90, 70), QSize(40, 30), bounds)
+        self.assertEqual(pos, QPoint(60, 50))
 
 
 if __name__ == "__main__":

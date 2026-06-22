@@ -57,7 +57,7 @@ def test_main_llm_blocked_when_exceeds_inference_budget():
             BootstrapModelId.LLM_QWEN35_9B: int(12 * 1024**3),
         },
     )
-    selected = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+    selected = {BootstrapModelId.SIDECAR_QWEN17}
     fit = assess_model_feasibility(BootstrapModelId.LLM_QWEN35_9B, selected, assessment)
 
     assert fit.block_reason is BootstrapBlockReason.MEMORY
@@ -75,7 +75,7 @@ def test_disk_block_when_adding_model_exceeds_budget(monkeypatch):
             tier=HardwareTier.ENTHUSIAST,
         )
     )
-    selected = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+    selected = {BootstrapModelId.SIDECAR_QWEN17}
     huge = BootstrapModelId.LLM_NEMOTRON_NANO
 
     monkeypatch.setattr("core.bootstrap_selection.available_disk_bytes", lambda: 1)
@@ -87,13 +87,13 @@ def test_disk_block_when_adding_model_exceeds_budget(monkeypatch):
 
 def test_models_blocked_for_session_skips_already_selected():
     assessment = _assessment()
-    selected = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+    selected = {BootstrapModelId.SIDECAR_QWEN17}
     blocked = models_blocked_for_session(
         selected,
-        {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.LLM_QWEN35_9B},
+        {BootstrapModelId.SIDECAR_QWEN17, BootstrapModelId.LLM_QWEN35_9B},
         assessment,
     )
-    assert BootstrapModelId.NOMIC_EMBED not in blocked
+    assert BootstrapModelId.SIDECAR_QWEN17 not in blocked
 
 
 def test_feasible_recommended_falls_back_to_gemma_when_qwen_too_large(monkeypatch):
@@ -151,7 +151,7 @@ def test_can_proceed_requires_disk_and_memory(monkeypatch):
 
     assessment = _assessment()
     monkeypatch.setattr("core.bootstrap_selection.available_disk_bytes", lambda: int(64 * 1024**3))
-    core = {BootstrapModelId.NOMIC_EMBED, BootstrapModelId.SIDECAR_QWEN17}
+    core = {BootstrapModelId.SIDECAR_QWEN17}
     ok, _ = can_proceed_with_selection(core, assessment)
     assert ok
 
@@ -203,7 +203,6 @@ def test_selected_session_feasible_flags_oversized_main_llm():
         },
     )
     selected = {
-        BootstrapModelId.NOMIC_EMBED,
         BootstrapModelId.SIDECAR_QWEN17,
         BootstrapModelId.LLM_QWEN35_9B,
     }

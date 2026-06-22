@@ -7,7 +7,7 @@ Linux compositors; we intercept QEvent.ToolTip (QHelpEvent) and paint our own.
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QObject, QPoint, QSize, Qt, QTimer
+from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, QTimer
 from PyQt6.QtGui import QCursor, QHelpEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -21,6 +21,7 @@ import weakref
 
 # Long tooltips wrap at this cap; shorter strings shrink to content width.
 _TOOLTIP_MAX_WIDTH_PX = 420
+_TOOLTIP_CLIP_MARGIN_PX = 8
 
 def _tooltip_label_width_px(natural_text_width: int) -> int:
     """Clamp label width: compact for short tips, capped for multi-line copy."""
@@ -36,6 +37,48 @@ def _tooltip_widget_and_text(widget: QWidget) -> tuple[QWidget, str]:
             return current, str(raw)
         current = current.parentWidget()
     return widget, ""
+
+
+def _tooltip_clip_rect(anchor: QWidget | None) -> QRect | None:
+    """Global clip rect for tooltips when an ancestor sets ``qube_tooltip_clip``."""
+    if anchor is None:
+        return None
+    widget: QWidget | None = anchor
+    while widget is not None:
+        if bool(widget.property("qube_tooltip_clip")):
+            top_left = widget.mapToGlobal(QPoint(0, 0))
+            rect = QRect(top_left, widget.size())
+            return rect.adjusted(
+                _TOOLTIP_CLIP_MARGIN_PX,
+                _TOOLTIP_CLIP_MARGIN_PX,
+                -_TOOLTIP_CLIP_MARGIN_PX,
+                -_TOOLTIP_CLIP_MARGIN_PX,
+            )
+        widget = widget.parentWidget()
+    return None
+
+
+def _clamp_tip_position(
+    pos: QPoint,
+    sz: QSize,
+    bounds: QRect | None,
+) -> QPoint:
+    if bounds is None or bounds.isEmpty():
+        return pos
+    x, y = pos.x(), pos.y()
+    max_x = bounds.right() - sz.width() + 1
+    max_y = bounds.bottom() - sz.height() + 1
+    if max_x < bounds.left():
+        x = bounds.left()
+    else:
+        x = min(x, max_x)
+        x = max(x, bounds.left())
+    if max_y < bounds.top():
+        y = bounds.top()
+    else:
+        y = min(y, max_y)
+        y = max(y, bounds.top())
+    return QPoint(x, y)
 
 
 def _tooltip_text_height(text: str, label: QLabel, label_w: int) -> int:
@@ -228,7 +271,12 @@ class QubeToolTipController(QObject):
         self._popup.setFixedSize(shell_size)
         return shell_size
 
-    def _place_tip(self, help_global_pos: QPoint, sz: QSize) -> QPoint:
+    def _place_tip(
+        self,
+        help_global_pos: QPoint,
+        sz: QSize,
+        anchor: QWidget | None = None,
+    ) -> QPoint:
         offset = QPoint(12, 18)
         p = help_global_pos + offset
         screen = QApplication.screenAt(p) or QApplication.primaryScreen()
@@ -240,6 +288,9 @@ class QubeToolTipController(QObject):
             if y + sz.height() > geo.bottom():
                 y = max(geo.top(), help_global_pos.y() - sz.height() - 8)
             p = QPoint(x, y)
+        clip = _tooltip_clip_rect(anchor)
+        if clip is not None:
+            p = _clamp_tip_position(p, sz, clip)
         return p
 
     def _refine_tip_if_still_current(self, token: int) -> None:
@@ -247,13 +298,14 @@ class QubeToolTipController(QObject):
             return
         if self._popup is None or self._label is None or not self._popup.isVisible():
             return
+        anchor = self._anchor_ref() if self._anchor_ref is not None else None
         sz = self._size_tip_to_content()
-        self._popup.move(self._place_tip(self._refine_anchor_pos, sz))
+        self._popup.move(self._place_tip(self._refine_anchor_pos, sz, anchor=anchor))
 
-    def show_tip(self, _anchor: QWidget, global_pos: QPoint, text: str) -> None:
+    def show_tip(self, anchor: QWidget, global_pos: QPoint, text: str) -> None:
         self._ensure_popup()
         assert self._popup is not None and self._label is not None
-        self._anchor_ref = weakref.ref(_anchor)
+        self._anchor_ref = weakref.ref(anchor)
         self._hide_timer.stop()
         self._refine_seq += 1
         refine_token = self._refine_seq
@@ -261,7 +313,7 @@ class QubeToolTipController(QObject):
 
         self._label.setText(text)
         sz = self._size_tip_to_content()
-        self._popup.move(self._place_tip(global_pos, sz))
+        self._popup.move(self._place_tip(global_pos, sz, anchor=anchor))
         self._popup.show()
         self._popup.raise_()
         self._hide_timer.start(15_000)

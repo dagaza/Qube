@@ -1297,6 +1297,9 @@ POSITIVE EXAMPLES (illustrative only — do NOT copy these facts verbatim):
         if is_reindex_in_progress():
             logger.info("[Memory v6] Skipping memory writes during library reprocessing.")
             return 0
+        if self.embedder is None:
+            logger.info("[Memory v6] Skipping memory store — search embedder not loaded.")
+            return 0
         turn_context = turn_context or {}
         session_id = str(turn_context.get("session_id") or "")
         source_message_ids = list(turn_context.get("source_message_ids") or [])

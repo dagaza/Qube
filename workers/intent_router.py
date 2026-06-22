@@ -31,10 +31,12 @@ class EmbeddingCache:
         self._cache = None
         self._last_text = None
 
-    def get_embedding(self, text: str) -> np.ndarray:
+    def get_embedding(self, text: str) -> np.ndarray | None:
+        if self.embedder is None:
+            logger.debug("Embedding unavailable — skipping vector for routing.")
+            return None
         if self._cache is None or self._last_text != text:
             logger.debug("Generating new embedding vector for intent routing...")
-            # Using your existing embed_query method
             self._cache = self.embedder.embed_query(text)
             self._last_text = text
         return self._cache
@@ -50,8 +52,7 @@ class IntentRouter:
     def _score_intents(self, user_vec: np.ndarray):
         scores = []
         for intent in self.registry.all():
-            # Nomic v1.5 outputs L2 normalized vectors. 
-            # Therefore, Dot Product is mathematically identical to Cosine Similarity.
+            # L2-normalized fastembed vectors: dot product equals cosine similarity.
             score = float(np.dot(user_vec, intent.centroid))
             scores.append((intent.name, score, intent))
         

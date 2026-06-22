@@ -5,6 +5,9 @@ from __future__ import annotations
 from core.auxiliary_cognition import cognition_model_available
 from core.bootstrap_download import model_is_present
 from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
+from core.embedding_models import embedding_model_available
+from core.embedding_modes import get_mode_spec
+from core.app_settings import get_embedding_mode
 from core.notification_types import NotificationEvent, NotificationSeverity
 
 ACTION_OPEN_SETTINGS_VOICE_STT = "open_settings_voice_stt"
@@ -19,10 +22,6 @@ def stt_model_available() -> bool:
 
 def tts_model_available() -> bool:
     return model_is_present(BootstrapModelId.KOKORO_TTS)
-
-
-def embedding_model_available() -> bool:
-    return model_is_present(BootstrapModelId.NOMIC_EMBED)
 
 
 def cognition_model_present() -> bool:
@@ -70,12 +69,12 @@ def missing_tts_notification() -> NotificationEvent:
 
 
 def missing_embedding_notification() -> NotificationEvent:
-    spec = BOOTSTRAP_MODELS[BootstrapModelId.NOMIC_EMBED]
+    spec = get_mode_spec(get_embedding_mode())
     return NotificationEvent(
-        title="Embedding model required",
+        title="Search models not ready",
         body=(
-            f"Library and knowledge features need {spec.label}. "
-            "Download it from Settings → Knowledge → Embedding model."
+            f"Connect to the internet to download {spec.label} search models "
+            f"({spec.fastembed_model}), or open Settings → Knowledge → Search quality."
         ),
         severity=NotificationSeverity.WARNING,
         category="system",
@@ -130,9 +129,13 @@ def guard_enable_embedding_feature(enabling: bool) -> tuple[bool, NotificationEv
 
 
 def guard_enable_memory_enrichment(enabling: bool) -> tuple[bool, NotificationEvent | None]:
-    if not enabling or cognition_model_present():
+    if not enabling:
         return True, None
-    return False, missing_cognition_notification()
+    if not cognition_model_present():
+        return False, missing_cognition_notification()
+    if not embedding_model_available():
+        return False, missing_embedding_notification()
+    return True, None
 
 
 def guard_library_upload() -> tuple[bool, NotificationEvent | None]:

@@ -16,13 +16,20 @@ from core.app_settings import (
     set_embedding_model_path,
     set_embedding_mode,
 )
+from core.bootstrap_search_models import (
+    format_embedding_mode_switch_confirm_body,
+    format_search_preset_download_failure,
+)
 from core.embedding_modes import get_mode_spec, list_mode_specs, normalize_mode_id
 from core.embedding_models import (
     get_embedding_models_dir,
+    gguf_override_available,
     list_selectable_embedding_models,
+    preset_embedder_ready,
     resolve_active_gguf_path,
     validate_embedding_model_path,
 )
+from ui.views.settings.handlers.bootstrap_downloads import EmbeddingWarmupWorker
 from ui.components.prestige_dialog import PrestigeDialog
 
 logger = logging.getLogger("Qube.UI.Settings")
@@ -79,8 +86,8 @@ class KnowledgeHandlersMixin:
 
     def _on_embedding_mode_selected(self, mode_id: str) -> None:
         mode_id = normalize_mode_id(str(mode_id or ""))
-        current = normalize_mode_id(get_embedding_mode())
-        if mode_id == current and not resolve_active_gguf_path():
+        previous_mode = normalize_mode_id(get_embedding_mode())
+        if mode_id == previous_mode and not resolve_active_gguf_path():
             self._sync_embedding_mode_selector()
             return
 
@@ -89,21 +96,78 @@ class KnowledgeHandlersMixin:
         dlg = PrestigeDialog(
             self.window(),
             f"Switch to {spec.label}?",
-            "Switching will reprocess your library and memories. "
-            "This can take from a few minutes to several hours for large libraries. "
-            "Progress appears in the banner below the top bar and on the Library page.\n\n"
-            "Continue?",
+            format_embedding_mode_switch_confirm_body(mode_id),
             is_dark=is_dark,
             tone="danger",
-            dialog_width=420,
+            dialog_width=460,
         )
         if not dlg.exec():
             self._sync_embedding_mode_selector()
             return
 
+        needs_download = (
+            not gguf_override_available() and not preset_embedder_ready(mode_id=mode_id)
+        )
+        if needs_download:
+            self._download_preset_then_switch(mode_id, previous_mode)
+        else:
+            self._commit_embedding_mode_switch(mode_id, previous_mode)
+
+    def _commit_embedding_mode_switch(self, mode_id: str, previous_mode: str) -> None:
         set_embedding_mode(mode_id)
         self._sync_embedding_mode_selector()
-        self.embedding_mode_change_requested.emit(mode_id)
+        self.embedding_mode_change_requested.emit(mode_id, previous_mode)
+
+    def _download_preset_then_switch(self, mode_id: str, previous_mode: str) -> None:
+        if getattr(self, "_embedding_mode_warmup_worker", None) is not None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Search models busy",
+                "Search model download is already in progress.",
+                is_dark=is_dark,
+            ).exec()
+            self._sync_embedding_mode_selector()
+            return
+
+        spec = get_mode_spec(mode_id)
+        win = self.window()
+        detail = f"Downloading {spec.label} search model…"
+        if hasattr(win, "begin_background_progress"):
+            win.begin_background_progress(detail)
+        if hasattr(win, "update_status"):
+            win.update_status(detail)
+
+        worker = EmbeddingWarmupWorker(mode_id=mode_id)
+        self._embedding_mode_warmup_worker = worker
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+
+        def _finish_download_ui() -> None:
+            if hasattr(win, "finish_background_progress"):
+                win.finish_background_progress()
+            if hasattr(win, "update_status"):
+                win.update_status("Idle", force=True)
+
+        def _on_ok() -> None:
+            self._embedding_mode_warmup_worker = None
+            _finish_download_ui()
+            self._commit_embedding_mode_switch(mode_id, previous_mode)
+
+        def _on_failed(err: str) -> None:
+            self._embedding_mode_warmup_worker = None
+            _finish_download_ui()
+            self._sync_embedding_mode_selector()
+            PrestigeDialog(
+                self.window(),
+                "Search model not ready",
+                str(err or format_search_preset_download_failure(mode_id)),
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
 
     def _sync_embedding_models_dir_label(self) -> None:
         if hasattr(self, "embedding_dir_label"):

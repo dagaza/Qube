@@ -63,3 +63,43 @@ def test_migrate_stale_embedding_override_clears_invalid_path():
     ), patch("core.app_settings.set_embedding_model_path") as set_path:
         assert em.migrate_stale_embedding_override() is True
         set_path.assert_called_once_with("")
+
+
+def test_embedding_model_available_with_gguf_override():
+    def body(root: Path) -> None:
+        emb_dir = em.get_embedding_models_dir()
+        custom = Path(emb_dir) / "custom-embed.gguf"
+        custom.write_bytes(b"z" * 100)
+        with patch(
+            "core.embedding_models.get_embedding_model_path",
+            return_value=str(custom.resolve()),
+        ):
+            assert em.gguf_override_available() is True
+            assert em.embedding_model_available() is True
+            assert em.preset_embedder_ready() is False
+
+    _run_in_tmp(body)
+
+
+def test_preset_embedder_ready_uses_cache():
+    em.clear_embedding_availability_cache()
+    em.mark_embedding_preset_available("balanced")
+    with patch("core.embedding_models.get_embedding_mode", return_value="balanced"):
+        assert em.preset_embedder_ready() is True
+        assert em.embedding_model_available() is True
+
+
+def test_embedding_model_available_uses_preset_cache():
+    em.clear_embedding_availability_cache()
+    em.mark_embedding_preset_available("balanced")
+    with patch("core.embedding_models.get_embedding_mode", return_value="balanced"):
+        assert em.embedding_model_available() is True
+
+
+def test_probe_embedding_preset_available_marks_cache_on_success():
+    em.clear_embedding_availability_cache()
+    fake_backend = type("B", (), {"vector_dim": 512, "unload": lambda self: None})()
+    fake_model = type("M", (), {"vector_dim": 512, "_backend": fake_backend})()
+    with patch("rag.embedder.EmbeddingModel", return_value=fake_model):
+        assert em.probe_embedding_preset_available(force=True) is True
+    assert em.embedding_model_available() is True

@@ -16,14 +16,22 @@ class BootstrapHintLevel(StrEnum):
 
 
 class BootstrapModelId(StrEnum):
-    NOMIC_EMBED = "nomic_embed"
     SIDECAR_QWEN17 = "sidecar_qwen17"
     SIDECAR_QWEN05 = "sidecar_qwen05"
     WHISPER_SMALL = "whisper_small"
     KOKORO_TTS = "kokoro_tts"
+    SEARCH_PRESET_BALANCED = "search_preset_balanced"
     LLM_QWEN35_9B = "llm_qwen35_9b"
     LLM_GEMMA4_E4B = "llm_gemma4_e4b"
     LLM_NEMOTRON_NANO = "llm_nemotron_nano"
+
+
+class BootstrapModelTier(StrEnum):
+    """Catalogue importance tier shown beside each bootstrap model row."""
+
+    REQUIRED = "required"
+    RECOMMENDED = "recommended"
+    OPTIONAL = "optional"
 
 
 @dataclass(frozen=True)
@@ -58,22 +66,6 @@ _MB = 1024 * 1024
 _GB = 1024 * _MB
 
 BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
-    BootstrapModelId.NOMIC_EMBED: BootstrapModelSpec(
-        model_id=BootstrapModelId.NOMIC_EMBED,
-        label="Nomic Embed",
-        size_bytes=74 * _MB,
-        description_recommended="Enables RAG & memory capabilities (Required)",
-        description_advanced=(
-            "Core RAG & memory. (Unchecking disables Library features and may cause app instability)"
-        ),
-        locked_in_recommended=True,
-        default_recommended=True,
-        default_advanced=True,
-        hint_level=BootstrapHintLevel.CORE_WARNING,
-        hf_repo="nomic-ai/nomic-embed-text-v1.5-GGUF",
-        hf_filename="nomic-embed-text-v1.5.Q4_K_M.gguf",
-        source_display="huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF",
-    ),
     BootstrapModelId.SIDECAR_QWEN17: BootstrapModelSpec(
         model_id=BootstrapModelId.SIDECAR_QWEN17,
         label="Qwen 1.7B Sidecar",
@@ -129,6 +121,21 @@ BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
         default_recommended=True,
         default_advanced=False,
         source_display="huggingface.co/hexgrad/Kokoro-82M",
+    ),
+    BootstrapModelId.SEARCH_PRESET_BALANCED: BootstrapModelSpec(
+        model_id=BootstrapModelId.SEARCH_PRESET_BALANCED,
+        label="Balanced search",
+        size_bytes=130 * _MB,
+        description_recommended=(
+            "Default search quality for library uploads and memory retrieval (Recommended)"
+        ),
+        description_advanced=(
+            "Fastembed ONNX preset for library and memory semantic search."
+        ),
+        locked_in_recommended=False,
+        default_recommended=True,
+        default_advanced=True,
+        source_display="fastembed / jinaai/jina-embeddings-v2-small-en",
     ),
     BootstrapModelId.LLM_QWEN35_9B: BootstrapModelSpec(
         model_id=BootstrapModelId.LLM_QWEN35_9B,
@@ -196,10 +203,10 @@ MAIN_LLM_GROUP = frozenset(
 )
 
 RECOMMENDED_ORDER: tuple[BootstrapModelId, ...] = (
-    BootstrapModelId.NOMIC_EMBED,
     BootstrapModelId.SIDECAR_QWEN17,
     BootstrapModelId.WHISPER_SMALL,
     BootstrapModelId.KOKORO_TTS,
+    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.LLM_QWEN35_9B,
     BootstrapModelId.LLM_GEMMA4_E4B,
     BootstrapModelId.LLM_NEMOTRON_NANO,
@@ -212,11 +219,11 @@ OPTIONAL_RECOMMENDED_IDS: frozenset[BootstrapModelId] = frozenset(
 )
 
 ADVANCED_ORDER: tuple[BootstrapModelId, ...] = (
-    BootstrapModelId.NOMIC_EMBED,
     BootstrapModelId.SIDECAR_QWEN17,
     BootstrapModelId.SIDECAR_QWEN05,
     BootstrapModelId.WHISPER_SMALL,
     BootstrapModelId.KOKORO_TTS,
+    BootstrapModelId.SEARCH_PRESET_BALANCED,
     BootstrapModelId.LLM_QWEN35_9B,
     BootstrapModelId.LLM_GEMMA4_E4B,
     BootstrapModelId.LLM_NEMOTRON_NANO,
@@ -265,6 +272,61 @@ def locked_recommended_ids() -> frozenset[BootstrapModelId]:
         spec.model_id
         for spec in BOOTSTRAP_MODELS.values()
         if spec.locked_in_recommended
+    )
+
+
+def bootstrap_model_tier(model_id: BootstrapModelId) -> BootstrapModelTier:
+    """Stable catalogue tier for Required / Recommended / Optional chips."""
+    spec = BOOTSTRAP_MODELS[model_id]
+    if spec.locked_in_recommended:
+        return BootstrapModelTier.REQUIRED
+    if spec.default_recommended:
+        return BootstrapModelTier.RECOMMENDED
+    return BootstrapModelTier.OPTIONAL
+
+
+def bootstrap_tier_tag(model_id: BootstrapModelId) -> tuple[str, str]:
+    """Return (chip label, Qt objectName) for the tier chip on a model row."""
+    tier = bootstrap_model_tier(model_id)
+    labels = {
+        BootstrapModelTier.REQUIRED: "Required",
+        BootstrapModelTier.RECOMMENDED: "Recommended",
+        BootstrapModelTier.OPTIONAL: "Optional",
+    }
+    object_names = {
+        BootstrapModelTier.REQUIRED: "BootstrapTierTagRequired",
+        BootstrapModelTier.RECOMMENDED: "BootstrapTierTagRecommended",
+        BootstrapModelTier.OPTIONAL: "BootstrapTierTagOptional",
+    }
+    return labels[tier], object_names[tier]
+
+
+def format_bootstrap_tier_tag_tooltip(model_id: BootstrapModelId) -> str:
+    """Hover text for Required / Recommended / Optional chips."""
+    spec = BOOTSTRAP_MODELS[model_id]
+    label = spec.label
+    tier = bootstrap_model_tier(model_id)
+    if tier is BootstrapModelTier.REQUIRED:
+        return (
+            "Required — core download\n"
+            f"{label} is part of Qube's core stack. The Recommended preset always "
+            "includes it and you cannot turn it off there.\n\n"
+            "Technical: catalogue tier locked_in_recommended — needed for stable core features."
+        )
+    if tier is BootstrapModelTier.RECOMMENDED:
+        return (
+            "Recommended — included by default\n"
+            f"{label} is pre-selected in the Recommended preset for the best "
+            "out-of-box experience. You can opt out if disk, memory, or features "
+            "do not need it.\n\n"
+            "Technical: default_recommended catalogue entry; part of the "
+            "Recommended preset download set."
+        )
+    return (
+        "Optional — add if you want it\n"
+        f"{label} is not in the Recommended preset. Add it for alternatives "
+        "(lighter sidecar, different main LLM, low-spec hardware) or Advanced tuning.\n\n"
+        "Technical: not default_recommended; optional advanced/alternative pick."
     )
 
 

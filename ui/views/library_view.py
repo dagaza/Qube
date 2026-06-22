@@ -1101,13 +1101,12 @@ class LibraryView(QWidget):
             ).exec()
             return
 
-        from core.bootstrap_missing_models import guard_library_upload
+        from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
 
-        allowed, event = guard_library_upload()
-        if not allowed:
-            win = self.window()
-            if event and hasattr(win, "emit_notification"):
-                win.emit_notification(event)
+        if not ensure_search_models_for_feature(
+            self.window(),
+            feature_label="Library document upload",
+        ):
             return
 
         files, _ = QFileDialog.getOpenFileNames(

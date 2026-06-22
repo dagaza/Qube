@@ -64,9 +64,11 @@ def test_guard_memory_enrichment_requires_cognition():
     assert event.action_id == ACTION_OPEN_SETTINGS_AI_COGNITION
 
 
-def test_missing_embedding_notification_mentions_nomic():
+def test_missing_embedding_notification_mentions_search_quality():
     event = missing_embedding_notification()
-    assert "Nomic" in event.body or "embedding" in event.body.lower()
+    assert "Search quality" in event.body
+    assert "Connect to the internet" in event.body
+    assert "Nomic" not in event.body
 
 
 def test_guard_passes_when_models_present():

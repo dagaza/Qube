@@ -13,10 +13,8 @@ MAX_CONTEXT_CHARS = 12000
 # ============================================================
 # T4.1: HARD semantic-relevance floor for RAG vector hits.
 # ------------------------------------------------------------
-# Nomic v1.5 embeddings are L2-normalised, so
-#   semantic_score = max(0, 1 - _distance)
-# is a proxy for cosine similarity. Anything below this floor is
-# topically unrelated — and yet top-k vector search will still return
+# L2-normalized fastembed vectors — semantic_score (1 - distance) is a cosine proxy.
+# Anything below this floor is topically unrelated — and yet top-k vector search will still return
 # the nearest chunks in the library (by construction there is ALWAYS
 # a "nearest" row, no matter how semantically distant it is).
 #

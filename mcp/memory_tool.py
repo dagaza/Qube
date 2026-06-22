@@ -42,9 +42,8 @@ SOFT_DISTANCE_CUTOFF = 0.85
 # ============================================================
 # v6.1: HARD semantic-similarity floor.
 # ------------------------------------------------------------
-# Nomic v1.5 embeddings are L2-normalized, so semantic_score (1 - distance)
-# is a proxy for cosine similarity. Anything below this floor is
-# topically unrelated — injecting such rows into the LLM prompt is how a
+# L2-normalized fastembed vectors — semantic_score (1 - distance) is a cosine proxy.
+# Anything below this floor is topically unrelated — injecting such rows into the LLM prompt is how a
 # stored "my mom's name is Cornelia" memory ended up in a file-lookup
 # query about "Dr. Evelyn", confusing the model into emitting a bare
 # citation token. This is a HARD cutoff that runs *after* the soft

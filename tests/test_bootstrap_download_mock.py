@@ -26,7 +26,7 @@ class BootstrapDownloadMockTests(unittest.TestCase):
             self.assertFalse(bootstrap_download_mock_enabled())
 
     def test_estimate_seconds_scales_with_selection_size(self) -> None:
-        small = {BootstrapModelId.NOMIC_EMBED}
+        small = {BootstrapModelId.SIDECAR_QWEN05}
         large = default_selection(advanced=False)
         self.assertLess(
             estimate_mock_download_seconds(small, speed_multiplier=10),
@@ -34,7 +34,7 @@ class BootstrapDownloadMockTests(unittest.TestCase):
         )
 
     def test_simulate_emits_monotonic_progress(self) -> None:
-        selected = {BootstrapModelId.NOMIC_EMBED}
+        selected = {BootstrapModelId.SIDECAR_QWEN05}
         events: list[tuple[str, int]] = []
 
         def on_progress(step_label: str, filename: str, percent: int, _source: str) -> None:
@@ -84,7 +84,7 @@ class BootstrapDownloadMockTests(unittest.TestCase):
             self.assertTrue(settings_bootstrap_download_should_mock())
 
     def test_run_bootstrap_model_download_uses_mock_when_env_set(self) -> None:
-        selected = {BootstrapModelId.NOMIC_EMBED}
+        selected = {BootstrapModelId.SIDECAR_QWEN05}
         with patch.dict(os.environ, {"QUBE_BOOTSTRAP_MOCK_DOWNLOAD": "1"}, clear=False):
             with patch(
                 "core.bootstrap_download.simulate_bootstrap_downloads",

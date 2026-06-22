@@ -2224,12 +2224,15 @@ class LLMWorker(QThread):
             }
         elif self.USE_COGNITIVE_ROUTER:
             intent_vector = self.embedding_cache.get_embedding(routing_query)
-            self._ensure_recall_centroid()
-            decision = self.cognitive_router.route(
-                routing_query,
-                intent_vector=intent_vector,
-                weights=self.router_tuner.get_weights() if self.USE_ADAPTIVE_ROUTER else None
-            )
+            if intent_vector is None:
+                decision = {"route": "none", "strategy": "no_embedder"}
+            else:
+                self._ensure_recall_centroid()
+                decision = self.cognitive_router.route(
+                    routing_query,
+                    intent_vector=intent_vector,
+                    weights=self.router_tuner.get_weights() if self.USE_ADAPTIVE_ROUTER else None
+                )
         else:
             decision = {"route": "none", "strategy": "fallback"}
 
@@ -2601,6 +2604,14 @@ class LLMWorker(QThread):
 
         if execution_route in ["MEMORY", "RAG", "HYBRID"]:
             query_vector = self.embedding_cache.get_embedding(retrieval_query)
+            if query_vector is None:
+                logger.warning(
+                    "[LLM Worker] Embedder unavailable; retrieval routes disabled for this turn."
+                )
+                execution_route = "NONE"
+                if isinstance(decision, dict):
+                    decision["route"] = "none"
+                    decision["embedder_unavailable"] = True
 
         # ---- MEMORY ----
         if execution_route in ["MEMORY", "HYBRID"]:

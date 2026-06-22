@@ -9,7 +9,7 @@ import numpy as np
 
 from core.app_settings import get_embedding_mode
 from core.embedding_modes import DEFAULT_MODE, ModeId, get_mode_spec, normalize_mode_id
-from core.embedding_models import resolve_active_gguf_path
+from core.embedding_models import mark_embedding_preset_available, resolve_active_gguf_path
 from rag.backends.fastembed_backend import FastembedBackend
 from rag.backends.gguf_backend import GgufEmbeddingBackend
 from rag.embed_utils import MAX_EMBED_CHARS, truncate_for_embed
@@ -74,6 +74,7 @@ class EmbeddingModel:
             self._model_path = gguf_path
             self._mode_id = None
             self._backend = GgufEmbeddingBackend(gguf_path)
+            mark_embedding_preset_available()
             return
 
         from core.app_settings import get_embedding_mode
@@ -82,6 +83,7 @@ class EmbeddingModel:
         self._mode_id = resolved_mode
         self._model_path = ""
         self._backend = FastembedBackend(get_mode_spec(resolved_mode))
+        mark_embedding_preset_available(resolved_mode)
 
     def embed(self, texts: list[str]) -> np.ndarray:
         if not texts:

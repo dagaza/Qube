@@ -44,7 +44,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
     host.embedding_mode_selector.setToolTip(
         "Fast — lightest on memory. Balanced — recommended default. "
-        "Power — best search quality, uses more memory."
+        "Power — best search quality, uses more memory. "
+        "Presets download automatically when online; use Prepare search models below if needed."
     )
 
     host.embedding_mode_description = QLabel()
@@ -54,21 +55,21 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     mode_form.addRow("", host.embedding_mode_description)
     layout.addWidget(wrap_subsection(mode_inner, anchor="embedding_mode"))
 
-    add_subsection_to_layout(layout, "Advanced embedding", anchor="embedding_model")
-
     embedding_download_row = make_bootstrap_download_row(
         host,
         row_attr="embedding_bootstrap_download_row",
         label_attr="embedding_bootstrap_missing_lbl",
         button_attr="download_base_embedding_btn",
-        handler_name="_download_bootstrap_embedding",
+        handler_name="_warm_embedding_preset",
         label_text=(
-            "Nomic Embed is not installed. Library uploads and knowledge toggles need "
-            "this base embedding model."
+            "Search models are not ready. Library uploads and knowledge toggles need "
+            "the active Fast/Balanced/Power preset. Change mode under Search quality above."
         ),
-        button_text="Download base embedding model",
+        button_text="Prepare search models",
     )
     layout.addWidget(embedding_download_row)
+
+    add_subsection_to_layout(layout, "Advanced embedding", anchor="embedding_model")
 
     _adv_tip = (
         "Advanced embedding controls are not for everyday use.\n\n"
@@ -106,6 +107,19 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     adv_panel_layout = QVBoxLayout(host.advanced_embedding_panel)
     adv_panel_layout.setContentsMargins(0, 8, 0, 0)
     adv_panel_layout.setSpacing(12)
+
+    all_presets_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="embedding_all_presets_download_row",
+        label_attr="embedding_all_presets_missing_lbl",
+        button_attr="download_all_search_presets_btn",
+        handler_name="_download_all_search_presets",
+        label_text=(
+            "Optional: download every search preset (Fast, Balanced, Power) for offline use."
+        ),
+        button_text="Download all search presets",
+    )
+    adv_panel_layout.addWidget(all_presets_download_row)
 
     embedding_inner = QWidget()
     embedding_form = QFormLayout(embedding_inner)

@@ -11,7 +11,7 @@ from pathlib import Path
 import requests
 from huggingface_hub import hf_hub_url
 
-from core.app_settings import get_llm_models_dir, set_embedding_model_path
+from core.app_settings import get_llm_models_dir
 from core.auxiliary_cognition import get_cognition_models_dir
 from core.bootstrap_manifest import (
     BOOTSTRAP_MODELS,
@@ -19,7 +19,6 @@ from core.bootstrap_manifest import (
     format_byte_size,
     total_selected_bytes,
 )
-from core.embedding_models import bundled_default_path as embedding_default_path
 from core.stt_models import BUNDLED_STT_MODEL_ID, get_stt_models_dir
 from core.tts_models import bundled_default_path as tts_default_path
 from workers.model_download_worker import SAFETY_BUFFER_BYTES, _sanitize_repo_file_path, _sanitize_repo_id
@@ -118,6 +117,10 @@ def _mock_progress_filename(model_id: BootstrapModelId) -> str:
     spec = BOOTSTRAP_MODELS[model_id]
     if model_id == BootstrapModelId.WHISPER_SMALL:
         return "Whisper Small"
+    if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+        from core.embedding_modes import DEFAULT_MODE, get_mode_spec
+
+        return get_mode_spec(DEFAULT_MODE).fastembed_model
     return spec.hf_filename or spec.label
 
 
@@ -169,8 +172,6 @@ def resolve_model_destination(model_id: BootstrapModelId) -> Path | None:
     spec = BOOTSTRAP_MODELS.get(model_id)
     if spec is None:
         return None
-    if model_id == BootstrapModelId.NOMIC_EMBED:
-        return Path(embedding_default_path())
     if model_id in {BootstrapModelId.SIDECAR_QWEN17, BootstrapModelId.SIDECAR_QWEN05}:
         return Path(get_cognition_models_dir()) / spec.hf_filename
     if model_id in {
@@ -210,6 +211,11 @@ def model_is_present(model_id: BootstrapModelId) -> bool:
             and (base / BUNDLED_VOICES_FILENAME).is_file()
         )
 
+    if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+        from core.bootstrap_search_models import balanced_search_preset_present
+
+        return balanced_search_preset_present()
+
     dest = resolve_model_destination(model_id)
     return dest is not None and dest.is_file()
 
@@ -217,8 +223,6 @@ def model_is_present(model_id: BootstrapModelId) -> bool:
 def infer_installed_selection() -> set[BootstrapModelId] | None:
     """Infer bootstrap selection from on-disk assets for upgrade migration."""
     found = {mid for mid in BootstrapModelId if model_is_present(mid)}
-    if BootstrapModelId.NOMIC_EMBED in found:
-        return found
     if BootstrapModelId.SIDECAR_QWEN17 in found or BootstrapModelId.SIDECAR_QWEN05 in found:
         return found
     return None
@@ -301,6 +305,26 @@ def _download_kokoro(on_progress: DownloadProgressCallback, spec) -> None:
         break
 
 
+def _download_balanced_search_preset(on_progress: DownloadProgressCallback, spec) -> None:
+    from core.bootstrap_search_models import balanced_search_preset_present
+    from core.embedding_modes import DEFAULT_MODE, get_mode_spec
+    from core.embedding_models import probe_embedding_preset_available
+
+    mode_spec = get_mode_spec(DEFAULT_MODE)
+    filename = mode_spec.fastembed_model
+    step_label = f"Downloading {spec.label}"
+    source = spec.source_display
+    if balanced_search_preset_present():
+        on_progress(step_label, filename, 100, source)
+        return
+    on_progress(step_label, filename, 0, source)
+    if not probe_embedding_preset_available(mode_id=DEFAULT_MODE, force=True):
+        from core.bootstrap_search_models import format_search_preset_download_failure
+
+        raise RuntimeError(format_search_preset_download_failure(DEFAULT_MODE))
+    on_progress(step_label, filename, 100, source)
+
+
 def download_bootstrap_models(
     selected: set[BootstrapModelId],
     on_progress: DownloadProgressCallback,
@@ -319,12 +343,14 @@ def download_bootstrap_models(
             if model_id == BootstrapModelId.KOKORO_TTS:
                 _download_kokoro(on_progress, spec)
                 continue
+            if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+                _download_balanced_search_preset(on_progress, spec)
+                continue
 
             dest = resolve_model_destination(model_id)
             if dest is None:
-                continue
-            if not spec.hf_repo or not spec.hf_filename:
-                errors.append(f"No download source for {spec.label}.")
+                if not spec.hf_repo or not spec.hf_filename:
+                    errors.append(f"No download source for {spec.label}.")
                 continue
 
             _download_gguf(
@@ -335,8 +361,6 @@ def download_bootstrap_models(
                 step_label=step_label,
                 source_display=spec.source_display,
             )
-            if model_id == BootstrapModelId.NOMIC_EMBED:
-                set_embedding_model_path(str(dest))
         except Exception as exc:
             logger.exception("Bootstrap download failed for %s", spec.label)
             errors.append(f"{spec.label}: {exc}")

@@ -67,8 +67,103 @@ def resolve_active_gguf_path() -> str:
     return ""
 
 
-def embedding_model_available() -> bool:
+_preset_available_cache: dict[str, bool] = {}
+
+
+def clear_embedding_availability_cache() -> None:
+    _preset_available_cache.clear()
+
+
+def mark_embedding_preset_available(mode_id: str | None = None) -> None:
+    from core.app_settings import get_embedding_mode
+    from core.embedding_modes import normalize_mode_id
+
+    key = normalize_mode_id(mode_id or get_embedding_mode())
+    _preset_available_cache[key] = True
+
+
+def probe_embedding_preset_available(
+    *,
+    mode_id: str | None = None,
+    force: bool = False,
+) -> bool:
+    """Verify the active Fast/Balanced/Power preset can load (may download on first use)."""
+    from core.app_settings import get_embedding_mode
+    from core.embedding_modes import normalize_mode_id
+
+    if resolve_active_gguf_path():
+        return True
+
+    mode = normalize_mode_id(mode_id or get_embedding_mode())
+    if not force and _preset_available_cache.get(mode, False):
+        return True
+
+    try:
+        from rag.embedder import EmbeddingModel
+
+        model = EmbeddingModel(mode_id=mode)
+        if model.vector_dim <= 0:
+            _preset_available_cache[mode] = False
+            return False
+        mark_embedding_preset_available(mode)
+        backend = model._backend
+        if backend is not None and hasattr(backend, "unload"):
+            try:
+                backend.unload()
+            except Exception:
+                logger.debug("Probe backend unload failed", exc_info=True)
+        return True
+    except Exception as exc:
+        logger.debug("Embedding preset probe failed for mode=%s: %s", mode, exc)
+        _preset_available_cache[mode] = False
+        return False
+
+
+def gguf_override_available() -> bool:
+    """True when a valid custom GGUF override is configured (advanced path)."""
     return bool(resolve_active_gguf_path())
+
+
+def preset_embedder_ready(
+    *,
+    mode_id: str | None = None,
+    probe: bool = False,
+) -> bool:
+    """True when the active Fast/Balanced/Power preset is cached or loadable."""
+    if gguf_override_available():
+        return False
+    from core.app_settings import get_embedding_mode
+    from core.embedding_modes import normalize_mode_id
+
+    mode = normalize_mode_id(mode_id or get_embedding_mode())
+    if _preset_available_cache.get(mode, False):
+        return True
+    if probe:
+        return probe_embedding_preset_available(mode_id=mode, force=True)
+    return False
+
+
+def all_presets_embedder_ready(probe: bool = False) -> bool:
+    """True when every Fast/Balanced/Power preset is cached or loadable."""
+    if gguf_override_available():
+        return True
+    from core.embedding_modes import MODE_IDS
+
+    for mode in MODE_IDS:
+        if _preset_available_cache.get(mode, False):
+            continue
+        if probe:
+            if not probe_embedding_preset_available(mode_id=mode, force=True):
+                return False
+        else:
+            return False
+    return True
+
+
+def embedding_model_available() -> bool:
+    if gguf_override_available():
+        return True
+    return preset_embedder_ready(probe=True)
 
 
 def validate_embedding_model_path(path: str) -> tuple[bool, str]:
@@ -139,7 +234,7 @@ def is_protected_embedding_model(path: str) -> bool:
 
 
 def migrate_legacy_embedding_layout() -> bool:
-    """No-op: bundled Nomic layout removed."""
+    """No-op: legacy bundled embedding layout removed."""
     return False
 
 

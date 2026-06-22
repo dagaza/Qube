@@ -967,7 +967,7 @@ class CognitiveRouterV4:
         """Phase B semantic recall score in [0, 1].
 
         When an embedding centroid + query vector are available we use
-        cosine similarity (Nomic v1.5 vectors are L2 normalized so dot
+        cosine similarity (L2-normalized fastembed vectors so dot
         product = cosine). Falls back to the substring detector from
         ``core.memory_filters.detect_recall_intent`` (returns 1.0 / 0.0)
         when no embedding is available.

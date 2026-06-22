@@ -46,7 +46,17 @@ class IngestionWorker(QThread):
     def run(self):
         total_chunks = 0
         total_files = len(self.file_paths)
-        
+
+        if self.embedder is None:
+            msg = (
+                "Search models are not ready. Open Settings → Knowledge → Search quality "
+                "and tap Prepare search models, then try again."
+            )
+            logger.warning("Ingestion aborted: embedder not loaded.")
+            self.error_occurred.emit(msg)
+            self.ingestion_complete.emit(0)
+            return
+
         logger.info(f"Starting ingestion sequence for {total_files} files.")
         
         for i, path in enumerate(self.file_paths):

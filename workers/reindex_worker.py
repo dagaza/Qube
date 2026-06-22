@@ -46,7 +46,12 @@ class ReindexWorker(QThread):
 
             if self.reload_embedder and self.target_mode is not None:
                 spec = get_mode_spec(self.target_mode)
-                self.status_update.emit(f"Loading {spec.label} embedding model…")
+                from core.embedding_models import preset_embedder_ready
+
+                if preset_embedder_ready(mode_id=self.target_mode):
+                    self.status_update.emit(f"Loading {spec.label} embedding model…")
+                else:
+                    self.status_update.emit(f"Downloading {spec.label} search model…")
                 self.embedder.reload(mode_id=self.target_mode)
             else:
                 self.status_update.emit("Reprocessing with current embedding model…")
