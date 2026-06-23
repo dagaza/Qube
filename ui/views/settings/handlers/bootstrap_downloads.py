@@ -70,7 +70,9 @@ class EmbeddingWarmupWorker(QThread):
                 from core.app_settings import get_embedding_mode
 
                 mode = normalize_mode_id(self._mode_id or get_embedding_mode())
-                self.failed.emit(format_search_preset_download_failure(mode))
+                self.failed.emit(
+                    format_search_preset_download_failure(mode, during_mode_switch=False)
+                )
         except Exception as exc:
             logger.exception("Embedding warmup failed")
             self.failed.emit(str(exc))
@@ -408,14 +410,25 @@ class BootstrapDownloadsHandlersMixin:
         worker.start()
 
     def _sync_bootstrap_download_visibility(self) -> None:
+        from core.app_settings import get_embedding_mode
+        from core.bootstrap_search_models import embedding_preset_cached_on_disk
+
         def _embedding_row_visible() -> bool:
             if gguf_override_available():
+                return False
+            mode = get_embedding_mode()
+            if embedding_preset_cached_on_disk(mode):
                 return False
             return not preset_embedder_ready(probe=True)
 
         def _all_presets_row_visible() -> bool:
             if gguf_override_available():
                 return False
+            from core.embedding_modes import MODE_IDS
+
+            for mode in MODE_IDS:
+                if not embedding_preset_cached_on_disk(mode):
+                    return True
             return not all_presets_embedder_ready()
 
         rows = (

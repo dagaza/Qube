@@ -70,6 +70,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     layout.addWidget(embedding_download_row)
 
+    all_presets_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="embedding_all_presets_download_row",
+        label_attr="embedding_all_presets_missing_lbl",
+        button_attr="download_all_search_presets_btn",
+        handler_name="_download_all_search_presets",
+        label_text=(
+            "Download Fast, Balanced, and Power presets for offline mode switching "
+            f"(ONNX under ~/.qube/models/search/)."
+        ),
+        button_text="Download all search presets",
+    )
+    layout.addWidget(all_presets_download_row)
+
     add_subsection_to_layout(layout, "Advanced embedding", anchor="embedding_model")
 
     _adv_tip = (
@@ -108,19 +122,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     adv_panel_layout = QVBoxLayout(host.advanced_embedding_panel)
     adv_panel_layout.setContentsMargins(0, 8, 0, 0)
     adv_panel_layout.setSpacing(12)
-
-    all_presets_download_row = make_bootstrap_download_row(
-        host,
-        row_attr="embedding_all_presets_download_row",
-        label_attr="embedding_all_presets_missing_lbl",
-        button_attr="download_all_search_presets_btn",
-        handler_name="_download_all_search_presets",
-        label_text=(
-            "Optional: download every search preset (Fast, Balanced, Power) for offline use."
-        ),
-        button_text="Download all search presets",
-    )
-    adv_panel_layout.addWidget(all_presets_download_row)
 
     embedding_inner = QWidget()
     embedding_form = QFormLayout(embedding_inner)

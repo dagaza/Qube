@@ -31,28 +31,52 @@ def default_search_preset_size_bytes() -> int:
     return search_preset_size_bytes(DEFAULT_MODE)
 
 
+def fastembed_model_cache_markers(fastembed_model: str) -> tuple[str, ...]:
+    """Path fragments that identify a preset in the fastembed ONNX cache."""
+    slug = fastembed_model.replace("/", "--")
+    base = fastembed_model.rsplit("/", 1)[-1]
+    return tuple(dict.fromkeys((fastembed_model, slug, base)))
+
+
+def _path_matches_fastembed_markers(path_text: str, markers: tuple[str, ...]) -> bool:
+    lower = path_text.lower()
+    return any(marker.lower() in lower for marker in markers)
+
+
 def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
     """True when fastembed ONNX assets for a mode appear present locally (no load)."""
     configure_user_model_paths()
     mode = normalize_mode_id(mode_id)
     model_name = get_mode_spec(mode).fastembed_model
-    slug = model_name.replace("/", "--")
+    markers = fastembed_model_cache_markers(model_name)
 
     cache_candidates: list[Path] = [search_models_cache_dir()]
     fastembed_env = os.environ.get("FASTEMBED_CACHE_PATH", "").strip()
     if fastembed_env:
-        cache_candidates.append(Path(fastembed_env))
-    cache_candidates.append(Path.home() / ".cache" / "fastembed")
+        env_path = Path(fastembed_env)
+        if env_path not in cache_candidates:
+            cache_candidates.append(env_path)
+    legacy = Path.home() / ".cache" / "fastembed"
+    if legacy not in cache_candidates:
+        cache_candidates.append(legacy)
     xdg_cache = os.environ.get("XDG_CACHE_HOME", "").strip()
     if xdg_cache:
-        cache_candidates.append(Path(xdg_cache) / "fastembed")
+        xdg_path = Path(xdg_cache) / "fastembed"
+        if xdg_path not in cache_candidates:
+            cache_candidates.append(xdg_path)
 
     for root in cache_candidates:
         if not root.is_dir():
             continue
         for onnx_path in root.rglob("*.onnx"):
-            path_text = onnx_path.as_posix()
-            if slug in path_text or model_name in path_text:
+            if _path_matches_fastembed_markers(onnx_path.as_posix(), markers):
+                return True
+        for child in root.iterdir():
+            if not child.is_dir() or not child.name.startswith("models--"):
+                continue
+            if not _path_matches_fastembed_markers(child.name, markers):
+                continue
+            if any(child.rglob("*.onnx")):
                 return True
 
     hf_home = os.environ.get("HF_HOME", "").strip()
@@ -61,9 +85,13 @@ def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
         if hf_home
         else Path.home() / ".cache" / "huggingface" / "hub"
     )
-    repo_dir = hf_cache / f"models--{slug}"
-    if repo_dir.is_dir() and any(repo_dir.rglob("*.onnx")):
-        return True
+    for child in hf_cache.glob("models--*"):
+        if not child.is_dir():
+            continue
+        if not _path_matches_fastembed_markers(child.name, markers):
+            continue
+        if any(child.rglob("*.onnx")):
+            return True
     return False
 
 
@@ -104,12 +132,27 @@ def format_embedding_mode_switch_confirm_body(mode_id: str) -> str:
     return "\n\n".join(lines) + "\n\nContinue?"
 
 
-def format_search_preset_download_failure(mode_id: str) -> str:
+def format_search_preset_download_failure(
+    mode_id: str,
+    *,
+    during_mode_switch: bool = False,
+) -> str:
     spec = get_mode_spec(mode_id)
-    return (
+    cache_dir = search_models_cache_dir()
+    lead = (
         f"Could not download the {spec.label} search model ({spec.fastembed_model}). "
-        "Connect to the internet and try again, or use Prepare search models in "
-        "Settings → Knowledge → Search quality."
+        "Check your internet connection and try again."
+    )
+    if during_mode_switch:
+        return (
+            f"{lead}\n\n"
+            f"After a successful download, ONNX files are stored under {cache_dir} "
+            "(not in the embedding GGUF folder). Try switching again once the download completes."
+        )
+    return (
+        f"{lead}\n\n"
+        f"Use Prepare search models on this page, or Download all search presets under "
+        f"Advanced embedding. Files are stored under {cache_dir}."
     )
 
 

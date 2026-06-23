@@ -157,10 +157,16 @@ class KnowledgeHandlersMixin:
             self._embedding_mode_warmup_worker = None
             _finish_download_ui()
             self._sync_embedding_mode_selector()
+            message = str(err or "").strip()
+            if not message:
+                message = format_search_preset_download_failure(
+                    mode_id,
+                    during_mode_switch=True,
+                )
             PrestigeDialog(
                 self.window(),
                 "Search model not ready",
-                str(err or format_search_preset_download_failure(mode_id)),
+                message,
                 is_dark=is_dark,
                 tone="danger",
             ).exec()
