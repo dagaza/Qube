@@ -66,6 +66,10 @@ from core.model_chat_contract import (
     map_chat_contract_to_llama_chat_format,
     resolve_chat_contract,
 )
+from core.template_output_profile import (
+    TemplateOutputProfile,
+    resolve_template_output_profile,
+)
 from core.prompt_template_router import RenderPromptBundle, build_prompt_bundle
 from core.chat_format_mode import ChatFormatMode
 from core.llm_truth_diff import emit_l1_engine_request, emit_l2_prompt
@@ -253,6 +257,7 @@ class NativeLlamaEngine(QThread):
         self._last_chat_template_kwargs: dict[str, Any] = {}
         self._publisher_guidance: Any = None
         self._publisher_guidance_service = PublisherGuidanceService()
+        self._template_output_profile: Optional[TemplateOutputProfile] = None
         self._last_retrieval_context: str = ""
         self._inference_transparency_native: Optional[Dict[str, Any]] = None
 
@@ -481,7 +486,13 @@ class NativeLlamaEngine(QThread):
             if self._inference_transparency_native
             else {"loaded": False, "role": "native"}
         )
+        top = self._template_output_profile
+        if top is not None:
+            out.update(top.to_telemetry_dict())
         return out
+
+    def get_template_output_profile(self) -> Optional[TemplateOutputProfile]:
+        return self._template_output_profile
 
     def _log_chat_contract_violation_if_any(self, text: str) -> None:
         bad, markers = detect_chat_contract_violation(text or "")
@@ -778,6 +789,36 @@ class NativeLlamaEngine(QThread):
                 logger.warning("[ChatContract] bind failed: %s", e)
                 self._chat_contract = None
 
+            try:
+                locked_cf = str(getattr(self._llama, "chat_format", "") or "").strip()
+                self._template_output_profile = resolve_template_output_profile(
+                    self._llama,
+                    model_path=path,
+                    harmony_model_active=bool(self._harmony_model_active),
+                    effective_chat_format=locked_cf or None,
+                    supports_thinking_tokens=bool(
+                        self._model_reasoning_profile.supports_thinking_tokens
+                        if self._model_reasoning_profile
+                        else False
+                    ),
+                )
+                top = self._template_output_profile
+                logger.info(
+                    "[TemplateOutputProfile] family=%s tier=%s runtime=%s jinja=%s scaffolds=%d",
+                    top.family,
+                    top.grammar_tier,
+                    top.runtime_chat_format,
+                    top.jinja_runtime,
+                    len(top.scaffold_tokens()),
+                )
+                _debug_logger.info(
+                    "[LLM-DEBUG] template_output_profile=%s",
+                    top.to_telemetry_dict(),
+                )
+            except Exception as e:
+                logger.warning("[TemplateOutputProfile] resolve failed: %s", e)
+                self._template_output_profile = None
+
             reg_name = (
                 (self._model_reasoning_profile.model_name if self._model_reasoning_profile else "")
                 or ""
@@ -968,6 +1009,7 @@ class NativeLlamaEngine(QThread):
         self._bundle_contract_id = None
         self._model_reasoning_profile = None
         self._publisher_guidance = None
+        self._template_output_profile = None
         self._execution_mode = "unknown"
         self.execution_policy = None
         self._model_behavior_profile = None
@@ -1262,6 +1304,7 @@ class NativeLlamaEngine(QThread):
                 suppress_gguf_metadata=_unsafe_template,
                 prompt_contract_stops=list(contract.stop or []),
                 publisher_guidance=self._publisher_guidance,
+                template_output_profile=self._template_output_profile,
             )
             prompt_txt = bundle.prompt
             merged_stops = list(bundle.stop_tokens)

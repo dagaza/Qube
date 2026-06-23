@@ -579,7 +579,6 @@ class CompanionHandlersMixin:
         mapping = {
             "idle": AssistantActivity.IDLE_LISTEN,
             "working": AssistantActivity.WORKING,
-            "writing": AssistantActivity.WORKING,
             "capturing": AssistantActivity.CAPTURING,
             "speaking": AssistantActivity.SPEAKING,
         }

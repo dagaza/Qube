@@ -162,6 +162,15 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         self.assertNotIn("<|end|>", out)
         self.assertIn("Mechanics of Project Management", out)
 
+    def test_nemotron_closing_assistant_marker_stripped(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = "4\n</|assistant|>\n"
+        out = strip_output_artifacts(raw, harmony_active=False, reasoning_family=True)
+        self.assertEqual(out.strip(), "4")
+        self.assertNotIn("</|assistant|>", out)
+        self.assertNotIn("<|assistant|>", out)
+
     def test_harmony_scaffold_stripped_by_content_even_without_reasoning_family_flag(self) -> None:
         from core.output_artifact_strip import strip_output_artifacts
 

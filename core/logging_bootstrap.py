@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 
+from core.app_log_sink import attach_app_log_file_sink, default_app_log_path
 from core.llm_debug_sink import attach_llm_debug_file_sink, quiet_llm_debug_logger_for_terminal
 from core.routing_debug_sink import (
     attach_routing_debug_file_sink,
@@ -18,6 +19,7 @@ from core.skills.debug_sink import (
 _LLM_DEBUG_INIT = False
 _ROUTING_DEBUG_INIT = False
 _SKILLS_DEBUG_INIT = False
+_APP_LOG_INIT = False
 
 
 def init_llm_debug_logging() -> None:
@@ -78,6 +80,31 @@ def init_skills_debug_logging() -> None:
 
 def skills_debug_logging_initialized() -> bool:
     return _SKILLS_DEBUG_INIT
+
+
+def init_app_logging() -> None:
+    """
+    Route general ``Qube.*`` logs to ~/.qube/logs/qube.log (rotating, INFO by default).
+
+    Terminal output is unchanged. Disable with ``QUBE_APP_LOG=0``; verbose file
+    capture with ``QUBE_APP_LOG_LEVEL=DEBUG``.
+    """
+    global _APP_LOG_INIT
+    if _APP_LOG_INIT:
+        return
+
+    handler = attach_app_log_file_sink()
+    if handler is not None:
+        logging.getLogger("Qube.Core").info(
+            "App log file initialized at %s (level=%s)",
+            default_app_log_path(),
+            logging.getLevelName(handler.level),
+        )
+    _APP_LOG_INIT = True
+
+
+def app_logging_initialized() -> bool:
+    return _APP_LOG_INIT
 
 
 def ensure_root_logging_minimal() -> None:

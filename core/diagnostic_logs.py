@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable
 
+from core.app_log_sink import default_app_log_path
 from core.llm_debug_sink import default_llm_debug_log_path
 from core.paths import logs_dir
 from core.routing_debug_sink import default_routing_debug_log_path
@@ -30,6 +31,16 @@ class DiagnosticLogSpec:
 
 
 DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
+    DiagnosticLogSpec(
+        id="app_log",
+        title="Application log",
+        description=(
+            "General runtime events: boot, voice capture, status transitions, model load, "
+            "and errors from all Qube modules (INFO by default)."
+        ),
+        path_fn=default_app_log_path,
+        note="Disable with QUBE_APP_LOG=0. Verbose file capture: QUBE_APP_LOG_LEVEL=DEBUG.",
+    ),
     DiagnosticLogSpec(
         id="llm_debug",
         title="LLM debug log",

@@ -7,7 +7,7 @@ from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from core import app_settings
-from core.assistant_activity import AssistantActivity
+from core.assistant_activity import AssistantActivity, user_presence_label
 from core.assistant_presence import AssistantPhase, AssistantPresenceSnapshot
 from core.companion_personas import CompanionPersonaId, DEFAULT_COMPANION_PERSONA, normalize_companion_persona
 from core.companion_verbal_prompts import truncate_companion_caption
@@ -33,6 +33,7 @@ def _demo_snapshot(
         activity=activity,
         phase=phase,
         display_text="",
+        presence_label=user_presence_label(activity),
         bubble_state="idle",
         voice_input_paused=False,
         voice_output_muted=False,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import unittest
 
-from core.assistant_activity import AssistantActivity
+from core.assistant_activity import AssistantActivity, user_presence_label
 from core.assistant_presence import AssistantPresenceSnapshot
 from core.companion_cognition.observations import observe, trigger_event_from_legacy
 from core.companion_cognition.types import CompanionTriggerEvent
@@ -18,6 +18,7 @@ def _ctx(**kwargs) -> CompanionVerbalGateContext:
         activity=AssistantActivity.IDLE_LISTEN,
         phase=None,
         display_text="",
+        presence_label=user_presence_label(AssistantActivity.IDLE_LISTEN),
         bubble_state="idle",
         voice_input_paused=False,
         voice_output_muted=False,

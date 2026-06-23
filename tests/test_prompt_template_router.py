@@ -200,6 +200,47 @@ class TestBuildPromptBundle(unittest.TestCase):
         _args, kwargs = mock_r.call_args
         self.assertEqual(kwargs.get("chat_template_kwargs"), {"enable_thinking": False})
 
+    def test_nemotron_jinja_filters_thinking_stops_but_keeps_template_markers(self) -> None:
+        llama = _F()
+        llama.chat_format = "chat_template.default"
+        llama.metadata = {
+            "general.name": "NVIDIA-Nemotron-3-Nano-4B",
+            "tokenizer.chat_template": (
+                "<|im_start|>assistant\n<|assistant|>\n</|assistant|>"
+            ),
+        }
+        llama.model_path = "/models/NVIDIA-Nemotron-3-Nano-4B-Q8_0.gguf"
+        pol = ExecutionPolicy(
+            execution_mode="direct",
+            allow_thinking_tokens=False,
+            strip_thinking_output=True,
+            ui_display_thinking=False,
+            tts_strip_thinking=True,
+            enforcement_mode="soft",
+        )
+        prompt = (
+            "<|im_start|>system\nYou are Qube.<|im_end|>\n"
+            "<|im_start|>user\nWhat is 2+2?<|im_end|>\n"
+            "<|im_start|>assistant\n<|assistant|>\n"
+        )
+        with patch(
+            "core.prompt_template_router.reconstruct_formatted_prompt",
+            return_value=(prompt, ["<|im_end|>"], "n"),
+        ):
+            bundle, _note, _ = build_prompt_bundle(
+                llama,
+                [{"role": "user", "content": "What is 2+2?"}],
+                None,
+                pol,
+                effective_chat_format="chat_template.default",
+                prompt_contract_stops=["<|im_end|>"],
+            )
+        self.assertIn("<|im_end|>", bundle.stop_tokens)
+        self.assertIn("<|assistant|>", bundle.stop_tokens)
+        self.assertIn("</|assistant|>", bundle.stop_tokens)
+        self.assertNotIn("<think>", bundle.stop_tokens)
+        self.assertNotIn("</think>", bundle.stop_tokens)
+
 
 if __name__ == "__main__":
     unittest.main()

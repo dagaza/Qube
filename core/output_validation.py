@@ -107,6 +107,7 @@ _ENGLISH_STOPWORDS = frozenset(
 _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\[INST\]|\[/INST\]", re.I),
     re.compile(r"<\|im_start\|>|<\|im_end\|>", re.I),
+    re.compile(r"<\|assistant\|>|</\|assistant\|>", re.I),
     re.compile(r"^\s*(User|Assistant)\s*:", re.I | re.M),
     # Harmony / OSS chat template scaffolding leaked into completion text
     re.compile(r"<\|channel\|>|<\|message\|>|<\|final\|>", re.I),
@@ -121,7 +122,10 @@ _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
 _ROLE_START = re.compile(r"^\s*(User|System)\s*:", re.I)
 _ROLE_DIALOG = re.compile(r"(?:^|\n)\s*User\s*:.*(?:^|\n)\s*Assistant\s*:", re.I | re.S)
 _ABRUPT_END = re.compile(r"(?:\.\.\.|[,;:\-\(\[])\s*$")
-_STOP_ARTIFACT_END = re.compile(r"(?:<\|im_end\|>|\[/INST\]|\[INST\])\s*$", re.I)
+_STOP_ARTIFACT_END = re.compile(
+    r"(?:<\|im_end\|>|</\|assistant\|>|\[/INST\]|\[INST\])\s*$",
+    re.I,
+)
 _TOKENISH = re.compile(r"[a-zA-Z0-9]")
 _WORD = re.compile(r"[a-zA-Z0-9]{2,}")
 _STRUCTURED_BULLET_LINE = re.compile(

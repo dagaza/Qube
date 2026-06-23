@@ -5,7 +5,9 @@ from unittest.mock import patch
 from core.assistant_activity import (
     AssistantActivity,
     AssistantActivityReducer,
+    composer_placeholder_text,
     menu_status_line,
+    resolve_presence_label,
     tray_tooltip_for_activity,
     user_presence_label,
 )
@@ -29,6 +31,7 @@ def test_reducer_maps_legacy_recording_message_to_listening():
     reducer = AssistantActivityReducer()
     transition = reducer.reduce("🎙️ RECORDING...")
     assert transition.bubble_state == "listening"
+    assert transition.presence_label == "Listening"
     assert transition.display_text.strip() == "Listening"
 
 
@@ -38,7 +41,7 @@ def test_reducer_allows_voice_capture_idle():
     ok = reducer.reduce("Voice capture idle")
     assert ok.blocked is False
     assert ok.bubble_state == "idle"
-    assert ok.display_text.strip() == "Idle"
+    assert ok.presence_label == "Idle"
 
 
 def test_stale_listening_for_phrase_after_capture_idle_stays_idle():
@@ -56,6 +59,7 @@ def test_reducer_maps_working_to_working_activity():
     t = reducer.reduce("Working...")
     assert t.activity == AssistantActivity.WORKING
     assert t.bubble_state == "thinking"
+    assert t.presence_label == "Working"
     assert t.display_text.strip() == "Working"
 
 
@@ -65,22 +69,31 @@ def test_reducer_maps_legacy_thinking_message_to_working_activity():
     t = reducer.reduce("Thinking...")
     assert t.activity == AssistantActivity.WORKING
     assert t.bubble_state == "thinking"
-    assert t.display_text.strip() == "Working"
+    assert t.presence_label == "Working"
 
 
-def test_reducer_maps_transcribing_to_working_display():
+def test_transcribing_message_is_ignored_for_presence():
     reducer = AssistantActivityReducer()
     t = reducer.reduce("Transcribing...")
-    assert t.activity == AssistantActivity.WORKING
-    assert t.display_text.strip() == "Working"
+    assert t.activity == AssistantActivity.IDLE_LISTEN
+    assert t.bubble_state == "idle"
 
 
-def test_reducer_writing_when_voice_output_muted():
+def test_reducer_working_label_unchanged_when_voice_output_muted():
     reducer = AssistantActivityReducer()
     reducer.set_voice_output_muted(True)
     t = reducer.reduce("Working...")
-    assert t.bubble_state == "writing"
-    assert t.display_text.strip() == "Writing"
+    assert t.bubble_state == "thinking"
+    assert t.presence_label == "Working"
+
+
+def test_reducer_ingesting_shows_working_not_raw_detail():
+    reducer = AssistantActivityReducer()
+    t = reducer.reduce("Ingesting Documents...")
+    assert t.activity == AssistantActivity.BACKGROUND_BUSY
+    assert t.presence_label == "Working"
+    assert t.display_text.strip() == "Working"
+    assert "Ingesting" not in t.display_text
 
 
 def test_reducer_blocks_stray_idle_during_thinking():
@@ -99,13 +112,12 @@ def test_reducer_allows_forced_idle_after_thinking():
     assert ok.bubble_state == "idle"
 
 
-
 def test_reducer_maps_voice_input_deactivated_to_idle():
     reducer = AssistantActivityReducer()
     t = reducer.reduce("Voice Input Deactivated", force=True)
     assert t.activity == AssistantActivity.IDLE_LISTEN
     assert t.bubble_state == "idle"
-    assert t.display_text.strip() == "Idle"
+    assert t.presence_label == "Idle"
 
 
 def test_reducer_maps_native_model_ready_with_thinking_in_filename_to_idle():
@@ -113,7 +125,7 @@ def test_reducer_maps_native_model_ready_with_thinking_in_filename_to_idle():
     t = reducer.reduce("Native model ready: Qwen3-32B-Thinking-Q4_K_M.gguf")
     assert t.activity == AssistantActivity.IDLE_LISTEN
     assert t.bubble_state == "idle"
-    assert t.display_text.strip() == "Idle"
+    assert t.presence_label == "Idle"
 
 
 def test_reducer_maps_loading_native_model_to_idle():
@@ -128,7 +140,7 @@ def test_user_presence_label_speaking_and_idle():
     assert user_presence_label(AssistantActivity.CAPTURING) == "Listening"
     assert user_presence_label(AssistantActivity.SPEAKING) == "Speaking"
     assert user_presence_label(AssistantActivity.WORKING) == "Working"
-    assert user_presence_label(AssistantActivity.WORKING, voice_output_muted=True) == "Writing"
+    assert user_presence_label(AssistantActivity.BACKGROUND_BUSY) == "Working"
 
 
 def test_tray_and_menu_use_unified_labels():
@@ -137,12 +149,15 @@ def test_tray_and_menu_use_unified_labels():
     assert tray_tooltip_for_activity(AssistantActivity.CAPTURING) == "Qube — Listening"
 
 
-def test_presence_service_emits_phase_for_transcribing():
-    service = AssistantPresenceService()
-    service.reduce("Transcribing...")
-    snap = service.snapshot()
-    assert snap.activity == AssistantActivity.WORKING
-    assert snap.phase == AssistantPhase.STT
+def test_composer_placeholder_from_presence_label():
+    assert composer_placeholder_text("Working") == "Working..."
+    assert composer_placeholder_text("Idle", stop_mode=True) == "Working..."
+    assert composer_placeholder_text("Idle", stop_mode=False) is None
+
+
+def test_presence_label_single_origin_for_display():
+    label = resolve_presence_label("Working...", AssistantActivity.WORKING, "thinking")
+    assert label == "Working"
 
 
 def test_phase_from_message_working_is_llm():
@@ -168,14 +183,15 @@ def test_presence_service_auto_caption_while_working():
     with patch("core.app_settings.get_companion_show_caption", return_value=True):
         service.reduce("Working...")
         assert service.snapshot().caption_text == "Working"
+        assert service.snapshot().presence_label == "Working"
 
 
-def test_presence_service_writing_caption_when_muted():
+def test_presence_service_caption_stays_working_when_muted():
     service = AssistantPresenceService()
     service.set_voice_output_muted(True)
     with patch("core.app_settings.get_companion_show_caption", return_value=True):
         service.reduce("Working...")
-        assert service.snapshot().caption_text == "Writing"
+        assert service.snapshot().caption_text == "Working"
 
 
 def test_presence_service_caption_roundtrip():
@@ -203,4 +219,4 @@ def test_ingestion_complete_must_force_idle_after_background_busy():
     assert ok.blocked is False
     assert ok.bubble_state == "idle"
     assert ok.activity == AssistantActivity.IDLE_LISTEN
-    assert ok.display_text.strip() == "Idle"
+    assert ok.presence_label == "Idle"

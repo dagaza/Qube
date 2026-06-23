@@ -11,6 +11,7 @@ from core.assistant_activity import (
     ActivityTransition,
     AssistantActivity,
     AssistantActivityReducer,
+    resolve_presence_label,
     user_presence_label,
 )
 from core.platform.companion_capabilities import CompanionPlatformTier, detect_companion_platform_tier
@@ -37,6 +38,7 @@ class AssistantPresenceSnapshot:
     activity: AssistantActivity
     phase: AssistantPhase | None
     display_text: str
+    presence_label: str
     bubble_state: str
     voice_input_paused: bool
     voice_output_muted: bool
@@ -72,8 +74,6 @@ def phase_from_message(message: str, activity: AssistantActivity, bubble_state: 
     if activity != AssistantActivity.WORKING:
         return None
 
-    if "TRANSCRIBING" in msg_upper:
-        return AssistantPhase.STT
     if any(k in msg_upper for k in ("LOADING NATIVE", "LOADING MODEL", "UNLOADING")):
         return AssistantPhase.MODEL_LOAD
     if "SEARCHING" in msg_upper:
@@ -90,13 +90,12 @@ def _is_capture_phase_message(msg_upper: str) -> bool:
 def companion_status_caption(
     activity: AssistantActivity,
     phase: AssistantPhase | None,
-    *,
-    voice_output_muted: bool = False,
 ) -> str | None:
     """Short companion chip text — mirrors user_presence_label (never Idle; see companion UI)."""
+    _ = phase
     if activity in (AssistantActivity.NEEDS_ATTENTION, AssistantActivity.IDLE_LISTEN):
         return None
-    return user_presence_label(activity, voice_output_muted=voice_output_muted)
+    return user_presence_label(activity)
 
 
 class AssistantPresenceService(QObject):
@@ -107,7 +106,6 @@ class AssistantPresenceService(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._reducer = AssistantActivityReducer()
-        self._voice_output_muted = False
         self._dnd = False
         self._caption_text: str | None = None
         self._audio_level = 0.0
@@ -132,9 +130,8 @@ class AssistantPresenceService(QObject):
         self._publish_from_current("")
 
     def set_voice_output_muted(self, muted: bool) -> None:
-        self._voice_output_muted = muted
-        self._reducer.set_voice_output_muted(muted)
-        self._publish_from_current("")
+        """Retained for API compatibility; labels no longer depend on TTS mute."""
+        _ = muted
 
     def set_dnd(self, enabled: bool) -> None:
         self._dnd = enabled
@@ -172,6 +169,7 @@ class AssistantPresenceService(QObject):
                 activity=activity,
                 bubble_state=bubble,
                 display_text=self._reducer._format_display("", bubble, activity),
+                presence_label=resolve_presence_label("", activity, bubble),
             ),
             "",
         )
@@ -183,6 +181,7 @@ class AssistantPresenceService(QObject):
             activity=activity,
             bubble_state=bubble,
             display_text=self._reducer._format_display("", bubble, activity),
+            presence_label=resolve_presence_label("", activity, bubble),
         )
         self._publish(transition, message)
 
@@ -209,16 +208,16 @@ class AssistantPresenceService(QObject):
                 caption = companion_status_caption(
                     activity,
                     phase,
-                    voice_output_muted=self._voice_output_muted,
                 )
 
         return AssistantPresenceSnapshot(
             activity=activity,
             phase=phase,
             display_text=transition.display_text,
+            presence_label=transition.presence_label,
             bubble_state=transition.bubble_state,
             voice_input_paused=False,
-            voice_output_muted=self._voice_output_muted,
+            voice_output_muted=False,
             dnd=self._dnd,
             background_busy=background_busy,
             caption_text=caption,

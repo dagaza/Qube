@@ -74,6 +74,7 @@ from core.router_centroid_install import clear_router_embedding_state, install_r
 import logging
 
 from core.logging_bootstrap import (
+    init_app_logging,
     init_llm_debug_logging,
     init_routing_debug_logging,
     init_skills_debug_logging,
@@ -94,6 +95,8 @@ init_llm_debug_logging()
 init_routing_debug_logging()
 # Skill activation telemetry (Qube.SkillsDebug) -> logs/skills_debug.log only; not the terminal
 init_skills_debug_logging()
+# General Qube.* lifecycle logs -> ~/.qube/logs/qube.log (terminal unchanged)
+init_app_logging()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
@@ -596,6 +599,7 @@ class Qube:
         self.llm_worker.enrichment_context_ready.connect(self._on_enrichment_context_ready)
         w.conversations_view.set_stop_requested_callback(self.stop_active_response)
         w.conversations_view.set_before_send_callback(self._before_chat_send)
+        w.conversations_view.set_manual_voice_callback(self._start_manual_voice_capture)
 
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
@@ -755,6 +759,9 @@ class Qube:
 
         cleaned = (text or "").strip()
         if not cleaned:
+            conv = self.window.conversations_view
+            conv._voice_turn_active = False
+            conv._voice_capture_active = False
             self.window.emit_notification(stt_failed_event())
             self.window.update_status("Idle", force=True)
             return
@@ -763,6 +770,9 @@ class Qube:
             self.window,
             is_dark=getattr(self.window, "_is_dark_theme", True),
         ):
+            conv = self.window.conversations_view
+            conv._voice_turn_active = False
+            conv._voice_capture_active = False
             self.window.update_status("Idle", force=True)
             return
 
@@ -776,12 +786,18 @@ class Qube:
             conv_view.active_session_id = session_id
             conv_view._refresh_history_list()
 
-        # 🔑 FIX: Lock the UI while processing a voice command
-        self.window.conversations_view.set_input_enabled(False)
+        conv = self.window.conversations_view
+        conv._llm_in_progress = True
+        conv._voice_turn_active = True
+        conv.set_input_enabled(False)
+        conv._refresh_send_stop_button()
+        conv.apply_presence_label(
+            self.window._presence_service.snapshot().presence_label
+        )
 
         from core.composer_skills import parse_composer_input
 
-        self.window.conversations_view.log_user_message(text, pending_assistant=True)
+        conv.log_user_message(text, pending_assistant=True)
         clean, attachments, enforced_skills = parse_composer_input(cleaned)
         prompt = clean if clean else cleaned
         self.llm_worker.generate_response(
@@ -826,6 +842,31 @@ class Qube:
         else:
             logger.info("Wakeword detected; voice capture will start on the audio thread.")
 
+    def _start_manual_voice_capture(self) -> None:
+        """Push-to-talk from the chat composer mic button."""
+        logger = logging.getLogger("Qube.Main")
+        audio_worker = getattr(self, "audio_worker", None)
+        if audio_worker is None or audio_worker.is_capturing_voice:
+            return
+
+        from core.bootstrap_manifest import BootstrapModelId
+        from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
+
+        if not ensure_bootstrap_model_downloaded(
+            self.window,
+            BootstrapModelId.WHISPER_SMALL,
+            feature_label="Voice input",
+            is_dark=getattr(self.window, "_is_dark_theme", True),
+        ):
+            conv = getattr(self.window, "conversations_view", None)
+            if conv is not None and hasattr(conv, "composer_voice_btn"):
+                conv.composer_voice_btn.setEnabled(conv.text_input.isEnabled())
+            return
+
+        self._on_wakeword_detected()
+        audio_worker.request_manual_capture()
+        logger.info("Manual voice capture requested from chat composer.")
+
     def stop_active_response(self):
         """Manual UI stop: cancel voice capture, LLM, and/or TTS; unlock text input."""
         logger.info("[Main] Manual Stop requested from chat UI.")
@@ -856,6 +897,9 @@ class Qube:
             self.window.update_status("Idle", force=True)
         elif voice_capturing and conv is not None:
             conv.on_voice_capture_stopped()
+        elif conv is not None and getattr(conv, "_voice_turn_active", False):
+            conv.on_generation_stopped()
+            self.window.update_status("Idle", force=True)
     
     def _handle_tts_finished(self):
         """Safely resets the UI state based on the current microphone status."""

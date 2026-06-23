@@ -53,7 +53,12 @@ def detect_template_override(model_name: str, tokenizer_info: dict[str, Any]) ->
         return TemplateOverride(
             template_type="chatml",
             force_prefix="",
-            extra_stops=["<redacted_thinking>", "</redacted_thinking>"],
+            extra_stops=[
+                "<think>",
+                "</think>",
+                "<|assistant|>",
+                "</|assistant|>",
+            ],
             enforce_assistant_anchor=True,
         )
 

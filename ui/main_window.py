@@ -3408,18 +3408,29 @@ class MainWindow(QMainWindow):
         self._sync_tray_presence()
 
         if hasattr(self, "conversations_view"):
-            label = transition.display_text.strip()
-            self.conversations_view.update_action_placeholder(label)
+            from core.assistant_activity import _is_assistant_working_message
+
+            msg_upper = message.upper().strip()
+            conv = self.conversations_view
+            voice_turn_active = bool(getattr(conv, "_voice_turn_active", False))
+            llm_in_progress = bool(getattr(conv, "_llm_in_progress", False))
+            voice_capture_active = bool(getattr(conv, "_voice_capture_active", False))
+
             if new_state == "idle":
-                self.conversations_view.on_turn_complete_idle()
+                # Mic gate closed — STT/LLM may still be running; do not tear down the turn UI.
+                if msg_upper != "VOICE CAPTURE IDLE" or not (voice_turn_active or llm_in_progress):
+                    conv.on_turn_complete_idle()
             elif new_state == "listening":
-                self.conversations_view.on_voice_capture_started()
-            else:
-                if getattr(self.conversations_view, "_voice_capture_active", False):
-                    self.conversations_view.on_voice_capture_ended()
-                self.conversations_view.set_input_enabled(
-                    new_state in ("idle", "speaking", "needs_model")
-                )
+                conv.on_voice_capture_started()
+            elif _is_assistant_working_message(msg_upper) and (
+                voice_capture_active or voice_turn_active
+            ):
+                conv.on_voice_capture_processing()
+            elif voice_capture_active:
+                conv.on_voice_capture_ended()
+
+            conv.set_input_enabled(new_state in ("idle", "speaking", "needs_model"))
+            conv.apply_presence_label(transition.presence_label)
 
         msg_upper = message.upper().strip()
         if "MIC ERROR" in msg_upper and "NO INPUT DEVICE" not in msg_upper:

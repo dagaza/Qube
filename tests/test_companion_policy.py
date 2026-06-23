@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from core.assistant_activity import AssistantActivity
+from core.assistant_activity import AssistantActivity, user_presence_label
 from core.assistant_presence import AssistantPresenceSnapshot
 from core.companion_policy import (
     CompanionSuppressReason,
@@ -20,6 +20,7 @@ def _snap(activity: AssistantActivity = AssistantActivity.IDLE_LISTEN) -> Assist
         activity=activity,
         phase=None,
         display_text="",
+        presence_label=user_presence_label(activity),
         bubble_state="idle",
         voice_input_paused=False,
         voice_output_muted=False,

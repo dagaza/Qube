@@ -50,6 +50,12 @@ class TestOutputValidation(unittest.TestCase):
         self.assertIn("template_leakage", res.issues)
         self.assertEqual(res.severity, "high")
 
+    def test_nemotron_assistant_close_marker_is_template_leakage(self) -> None:
+        res = validate_output("4\n</|assistant|>", _contract())
+        self.assertFalse(res.is_valid)
+        self.assertIn("template_leakage", res.issues)
+        self.assertEqual(res.severity, "high")
+
     def test_short_complete_answer_is_not_truncated(self) -> None:
         res = validate_output("Hello", _contract())
         self.assertTrue(res.is_valid)

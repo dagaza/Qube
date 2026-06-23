@@ -18,7 +18,7 @@ from core.diagnostic_logs import (
 class DiagnosticLogsTests(unittest.TestCase):
     def test_catalog_contains_expected_logs(self) -> None:
         ids = {spec.id for spec in iter_diagnostic_logs()}
-        self.assertEqual(ids, {"llm_debug", "routing_debug", "skills_debug"})
+        self.assertEqual(ids, {"app_log", "llm_debug", "routing_debug", "skills_debug"})
 
     def test_routing_log_supports_recording_toggle(self) -> None:
         spec = get_diagnostic_log("routing_debug")
@@ -27,6 +27,10 @@ class DiagnosticLogsTests(unittest.TestCase):
         self.assertNotIn("QUBE_", spec.description)
 
     def test_get_diagnostic_log(self) -> None:
+        spec = get_diagnostic_log("app_log")
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.title, "Application log")
         spec = get_diagnostic_log("llm_debug")
         self.assertIsNotNone(spec)
         assert spec is not None
@@ -66,18 +70,22 @@ class DiagnosticLogsTests(unittest.TestCase):
         self.assertTrue(spec.supports_recording_toggle)
         self.assertIn("skill", spec.description.lower())
 
+    @patch("core.app_log_sink.logs_dir")
     @patch("core.routing_debug_sink.logs_dir")
     @patch("core.llm_debug_sink.logs_dir")
     def test_default_paths_live_under_logs_dir(
-        self, llm_logs_dir_mock, routing_logs_dir_mock
+        self, llm_logs_dir_mock, routing_logs_dir_mock, app_logs_dir_mock
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             llm_logs_dir_mock.return_value = root
             routing_logs_dir_mock.return_value = root
+            app_logs_dir_mock.return_value = root
+            app = get_diagnostic_log("app_log")
             llm = get_diagnostic_log("llm_debug")
             routing = get_diagnostic_log("routing_debug")
-            assert llm is not None and routing is not None
+            assert app is not None and llm is not None and routing is not None
+            self.assertEqual(app.path_fn(), root / "qube.log")
             self.assertEqual(llm.path_fn(), root / "llm_debug.log")
             self.assertEqual(routing.path_fn(), root / "routing_debug.log")
 

@@ -91,6 +91,15 @@ from core.output_artifact_strip import (
     LeakedHarmonyScaffoldStreamFilter,
     strip_output_artifacts,
 )
+from core.delimiter_grammar_extractor import (
+    DelimiterGrammarStreamFilter,
+    extract_delimiter_grammar,
+)
+from core.output_artifact_report import (
+    build_output_artifact_report,
+    log_output_artifact_report,
+)
+from core.template_output_profile import TemplateOutputProfile
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
@@ -3885,12 +3894,21 @@ class LLMWorker(QThread):
         )
         harmony_parser = HarmonyStreamParser() if use_harmony_parser else None
         harmony_active = self._harmony_model_active()
+        output_profile: TemplateOutputProfile | None = None
+        if self._native_engine is not None:
+            output_profile = self._native_engine.get_template_output_profile()
+        delimiter_filter = (
+            DelimiterGrammarStreamFilter(output_profile)
+            if output_profile is not None and output_profile.grammar_tier == "delimiter"
+            else None
+        )
         reasoning_family_harmony_leak_strip = (
             self._reasoning_family_harmony_leak_strip_active()
+            and delimiter_filter is None
         )
         harmony_scaffold_filter = (
             LeakedHarmonyScaffoldStreamFilter()
-            if harmony_parser is None and not harmony_active
+            if harmony_parser is None and not harmony_active and delimiter_filter is None
             else None
         )
         current_sentence = ""
@@ -3932,7 +3950,7 @@ class LLMWorker(QThread):
                 return
             if harmony_parser is not None and is_harmony_orphan_stream_fragment(fragment):
                 return
-            if harmony_parser is None:
+            if harmony_parser is None and delimiter_filter is None:
                 fragment = strip_output_artifacts(
                     fragment,
                     harmony_active=harmony_active,
@@ -3956,6 +3974,8 @@ class LLMWorker(QThread):
             tail = ""
             if harmony_parser is not None:
                 tail = harmony_parser.flush()
+            elif delimiter_filter is not None:
+                tail = delimiter_filter.flush()
             if gemma_filter is not None:
                 tail = gemma_filter.feed(tail)
                 tail += gemma_filter.flush()
@@ -3989,6 +4009,8 @@ class LLMWorker(QThread):
                 raw_parts.append(raw_text)
                 if harmony_parser is not None:
                     stream_in = harmony_parser.feed(raw_text)
+                elif delimiter_filter is not None:
+                    stream_in = delimiter_filter.feed(raw_text)
                 else:
                     stream_in = raw_text
                 stream_piece = stream_in
@@ -4002,6 +4024,8 @@ class LLMWorker(QThread):
                     repair_triggers: list[str] = []
                     if harmony_parser is not None and stream_in != raw_text:
                         repair_triggers.append("harmony_parser")
+                    if delimiter_filter is not None and stream_in != raw_text:
+                        repair_triggers.append("delimiter_grammar")
                     if gemma_filter is not None and stream_piece != stream_in:
                         repair_triggers.append("gemma_thought_filter")
                     if clean_piece != stream_in:
@@ -4068,6 +4092,8 @@ class LLMWorker(QThread):
                     raw_parts.append(raw_text)
                 if harmony_parser is not None:
                     stream_in = harmony_parser.feed(raw_text)
+                elif delimiter_filter is not None:
+                    stream_in = delimiter_filter.feed(raw_text)
                 else:
                     stream_in = raw_text
                 stream_piece = stream_in
@@ -4148,11 +4174,15 @@ class LLMWorker(QThread):
             self._queue_tts_sentence(current_sentence)
             current_sentence = ""
 
-        emitted_text = strip_output_artifacts(
-            final_text,
-            harmony_active=harmony_active,
-            reasoning_family=reasoning_family_harmony_leak_strip,
-        ).strip()
+        emitted_text = (
+            final_text.strip()
+            if delimiter_filter is not None
+            else strip_output_artifacts(
+                final_text,
+                harmony_active=harmony_active,
+                reasoning_family=reasoning_family_harmony_leak_strip,
+            ).strip()
+        )
         raw_complete_text = native_end_text or "".join(raw_parts)
         if harmony_parser is not None:
             cut = harmony_parser.degeneration_cut
@@ -4164,8 +4194,14 @@ class LLMWorker(QThread):
             for chunk in raw_for_parse:
                 after_harmony_text += replay.feed(chunk)
             after_harmony_text += replay.flush()
+            parse_path = "harmony_channel"
+        elif delimiter_filter is not None and output_profile is not None:
+            parsed = extract_delimiter_grammar(raw_complete_text, output_profile)
+            after_harmony_text = parsed.visible_text
+            parse_path = "delimiter_grammar"
         else:
             after_harmony_text = raw_complete_text
+            parse_path = "fallback_strip"
         authoritative_text = (
             _sanitize_complete_native_text(after_harmony_text or raw_complete_text)
             if raw_complete_text
@@ -4230,6 +4266,17 @@ class LLMWorker(QThread):
                     "harmony_channel": harmony_parser.current_channel,
                 }
             )
+        if delimiter_filter is not None:
+            trace_extra["delimiter_grammar_parser"] = True
+        artifact_report = build_output_artifact_report(
+            raw_text=raw_complete_text or "",
+            visible_text=final_text or "",
+            profile=output_profile,
+            parse_path=parse_path,
+            parse_confidence="high" if parse_path != "fallback_strip" else "low",
+        )
+        log_output_artifact_report(artifact_report)
+        trace_extra["output_artifact_report"] = artifact_report.to_dict()
 
         self._completion_output_snapshot = CompletionOutputSnapshot(
             engine_mode="internal",

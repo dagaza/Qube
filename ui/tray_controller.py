@@ -267,19 +267,11 @@ class TrayController(QWidget):
             self._tray_icon.show()
 
     def _refresh_presence(self) -> None:
-        line = menu_status_line(
-            self._activity,
-            voice_output_muted=self._voice_output_muted,
-        )
+        line = menu_status_line(self._activity)
         if self._status_action is not None:
             self._status_action.setText(f"● {line}")
         if self._tray_icon is not None:
-            self._tray_icon.setToolTip(
-                tray_tooltip_for_activity(
-                    self._activity,
-                    voice_output_muted=self._voice_output_muted,
-                )
-            )
+            self._tray_icon.setToolTip(tray_tooltip_for_activity(self._activity))
 
     def refresh_icon(self) -> None:
         """Re-apply the static Qube logo tray icon."""

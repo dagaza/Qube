@@ -71,7 +71,7 @@ _MISTRAL_INST_MARKERS = re.compile(r"\s*\[/?INST\]\s*")
 _MISTRAL_EOS_TAIL = re.compile(r"\s*</s>\s*$")
 # Harmony/gpt-oss control tokens sometimes leak from Nemotron/Qwen3-family completions.
 _REASONING_FAMILY_HARMONY_LEAK = re.compile(
-    r"(?i)<\|start\|>|<\|end\|>|<\|return\|>|<\|assistant\|>"
+    r"(?i)<\|start\|>|<\|end\|>|<\|return\|>|</?\|assistant\|>"
 )
 _REASONING_FAMILY_HARMONY_HEADER = re.compile(
     r"(?is)^\s*<\|start\|>\s*assistant\s*<\|end\|>\s*"
@@ -82,6 +82,7 @@ _SCAFFOLD_TOKEN_NEEDLES: tuple[str, ...] = (
     "<|end|>",
     "<|return|>",
     "<|assistant|>",
+    "</|assistant|>",
 )
 
 

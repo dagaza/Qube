@@ -66,7 +66,7 @@ class STTWorker(QThread):
         if self.stt_model is None:
             self.status_update.emit("STT: model not loaded")
             return
-        self.status_update.emit("Transcribing...")
+        self.status_update.emit("Working...")
         start_time = time.time() 
         audio_int16 = np.frombuffer(self.audio_data, np.int16)
         audio_float32 = audio_int16.astype(np.float32) / 32768.0

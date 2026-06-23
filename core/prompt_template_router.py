@@ -22,10 +22,12 @@ from core.qwen3_thinking_policy import (
     is_qwen3_model,
     template_kwargs_for_thinking_policy,
 )
+from core.stop_token_filter import filter_stop_tokens
 from core.template_override import TemplateOverride, detect_template_override
 
 if TYPE_CHECKING:
     from core.model_reasoning_profile import ModelReasoningProfile
+    from core.template_output_profile import TemplateOutputProfile
 
 logger = logging.getLogger("Qube.PromptTemplateRouter")
 
@@ -284,6 +286,7 @@ def build_prompt_bundle(
     suppress_gguf_metadata: bool = False,
     prompt_contract_stops: Optional[Sequence[str]] = None,
     publisher_guidance: Optional[Any] = None,
+    template_output_profile: Optional["TemplateOutputProfile"] = None,
 ) -> tuple[RenderPromptBundle, str, Any]:
     """
     Build RenderPromptBundle using existing reconstruct_formatted_prompt + policy overlays + stops.
@@ -391,6 +394,33 @@ def build_prompt_bundle(
                 len(pg_tags),
                 getattr(publisher_guidance, "default_reasoning_without_system", "unknown"),
             )
+    protected_stops: list[str] = []
+    if fmt_stop:
+        if isinstance(fmt_stop, str):
+            protected_stops.append(fmt_stop)
+        else:
+            protected_stops.extend(str(s) for s in fmt_stop if s)
+    if prompt_contract_stops:
+        protected_stops.extend(str(s) for s in prompt_contract_stops if s)
+    from core.template_output_profile import resolve_template_output_profile
+
+    profile = template_output_profile or resolve_template_output_profile(
+        llama,
+        model_path=model_path,
+        effective_chat_format=effective_chat_format,
+        supports_thinking_tokens=bool(
+            model_profile.supports_thinking_tokens if model_profile else False
+        ),
+    )
+    bundle.stop_tokens, _stop_filter_report = filter_stop_tokens(
+        llama,
+        bundle.stop_tokens,
+        template_type=template_type,
+        model_name=model_name,
+        model_path=model_path,
+        effective_chat_format=effective_chat_format or profile.runtime_chat_format,
+        protected_stops=protected_stops,
+    )
     logger.info(
         "[LLM-PROMPT-ROUTER] template=%s reasoning=%s stop_count=%d",
         template_type,

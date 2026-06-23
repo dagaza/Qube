@@ -1553,10 +1553,12 @@ class ConversationsView(QWidget):
         self._pending_ttft_ms: float | None = None
         self._stop_requested_callback = None
         self._before_send_callback = None
+        self._manual_voice_callback = None
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
         self._voice_capture_active = False
+        self._voice_turn_active = False
         self._layout_mode: str = LAYOUT_CENTERED_COLUMN
         self._font_scale: float = 1.0
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
@@ -2626,6 +2628,22 @@ class ConversationsView(QWidget):
             "Add file, tool, skill, or conversation (@)"
         )
 
+        self.composer_voice_btn = QPushButton()
+        self.composer_voice_btn.setObjectName("ComposerVoiceButton")
+        self.composer_voice_btn.setFixedSize(32, 32)
+        self.composer_voice_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.composer_voice_btn.setToolTip(
+            "Speak your message (push-to-talk)"
+        )
+
+        composer_side_col = QWidget()
+        composer_side_layout = QVBoxLayout(composer_side_col)
+        composer_side_layout.setContentsMargins(0, 0, 0, 0)
+        composer_side_layout.setSpacing(4)
+        composer_side_layout.addWidget(self.composer_attach_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        composer_side_layout.addWidget(self.composer_voice_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        composer_side_layout.addStretch(1)
+
         self.text_input = ChatComposerEdit()
         self.text_input.setPlaceholderText("Type a message to Qube...")
         self.text_input.setObjectName("ChatTextInput")
@@ -2637,7 +2655,7 @@ class ConversationsView(QWidget):
         self.send_btn.setProperty("class", "SendButton")
         self.send_btn.setToolTip("Send message")
 
-        input_layout.addWidget(self.composer_attach_btn)
+        input_layout.addWidget(composer_side_col)
         input_layout.addWidget(self.text_input, stretch=1)
         input_layout.addWidget(self.send_btn)
         bottom_stack_layout.addWidget(input_container)
@@ -2656,11 +2674,12 @@ class ConversationsView(QWidget):
         layout.addWidget(self._composer_row_host)
 
         self.composer_attach_btn.clicked.connect(self._open_composer_palette_from_button)
+        self.composer_voice_btn.clicked.connect(self._handle_manual_voice_input)
         self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.submit_requested.connect(self._handle_text_submit)
         self.text_input.textChanged.connect(self._on_composer_body_changed)
         self.text_input.bind_mention_host(self)
-        self._style_composer_attach_button(is_dark=True)
+        self._style_composer_side_buttons(is_dark=True)
         self._refresh_composer_chip_strip()
 
         return frame
@@ -2947,29 +2966,44 @@ class ConversationsView(QWidget):
     def _web_toggle_active(self) -> bool:
         return bool(getattr(self, "web_btn", None) and self.web_btn.isChecked())
 
-    def _style_composer_attach_button(self, is_dark: bool) -> None:
-        if not hasattr(self, "composer_attach_btn"):
-            return
-        icon_color = "#a6adc8" if is_dark else "#64748b"
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-        self.composer_attach_btn.setIcon(qta.icon("fa5s.at", color=icon_color))
-        self.composer_attach_btn.setIconSize(QSize(16, 16))
-        self.composer_attach_btn.setStyleSheet(
-            f"""
-            QPushButton#ComposerAttachButton {{
+    def _composer_action_icon_color(self, is_dark: bool) -> str:
+        """Match Send button icon color (see refresh_button_themes)."""
+        return "#8b5cf6" if is_dark else "#1e293b"
+
+    def _composer_action_hover_bg(self, is_dark: bool) -> str:
+        return "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+
+    def _style_composer_side_buttons(self, is_dark: bool) -> None:
+        icon_color = self._composer_action_icon_color(is_dark)
+        hover_bg = self._composer_action_hover_bg(is_dark)
+        button_qss = f"""
+            QPushButton#ComposerAttachButton,
+            QPushButton#ComposerVoiceButton {{
                 background: transparent;
                 border: none;
                 border-radius: 8px;
                 padding: 4px;
             }}
-            QPushButton#ComposerAttachButton:hover {{
+            QPushButton#ComposerAttachButton:hover,
+            QPushButton#ComposerVoiceButton:hover {{
                 background-color: {hover_bg};
             }}
-            QPushButton#ComposerAttachButton:disabled {{
+            QPushButton#ComposerAttachButton:disabled,
+            QPushButton#ComposerVoiceButton:disabled {{
                 opacity: 0.45;
             }}
-            """
-        )
+        """
+        if hasattr(self, "composer_attach_btn"):
+            self.composer_attach_btn.setIcon(qta.icon("fa5s.at", color=icon_color))
+            self.composer_attach_btn.setIconSize(QSize(16, 16))
+            self.composer_attach_btn.setStyleSheet(button_qss)
+        if hasattr(self, "composer_voice_btn"):
+            self.composer_voice_btn.setIcon(qta.icon("fa5s.microphone", color=icon_color))
+            self.composer_voice_btn.setIconSize(QSize(16, 16))
+            self.composer_voice_btn.setStyleSheet(button_qss)
+
+    def _style_composer_attach_button(self, is_dark: bool) -> None:
+        self._style_composer_side_buttons(is_dark)
 
     def _notify_composer_one_source_limit(self) -> None:
         """Show a short in-app toast; bypasses notification policy so it appears while typing."""
@@ -3602,19 +3636,19 @@ class ConversationsView(QWidget):
         )
 
     def refresh_button_themes(self, is_dark: bool):
+        """Dynamically updates the colors of the New Chat and Send buttons."""
         if hasattr(self, "text_input") and hasattr(self.text_input, "apply_mention_theme"):
             self.text_input.apply_mention_theme(is_dark)
         if hasattr(self, "composer_chip_strip"):
             self.composer_chip_strip.apply_theme(is_dark)
-        self._style_composer_attach_button(is_dark)
-        """Dynamically updates the colors of the New Chat and Send buttons."""
+        self._style_composer_side_buttons(is_dark)
         import qtawesome as qta
         
         # Base icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
-        base_icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        base_icon_color = self._composer_action_icon_color(is_dark)
         
         # Subtle hover background: faint white wash for Dark, faint black wash for Light
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        hover_bg = self._composer_action_hover_bg(is_dark)
         
         # 1. Update New Chat Button (+)
         if hasattr(self, 'new_chat_btn'):
@@ -3878,32 +3912,54 @@ class ConversationsView(QWidget):
             self.text_input.setEnabled(enabled)
             if hasattr(self, "composer_attach_btn"):
                 self.composer_attach_btn.setEnabled(enabled)
+            if hasattr(self, "composer_voice_btn"):
+                self.composer_voice_btn.setEnabled(enabled)
             # Keep stop clickable while text input is disabled.
             self.send_btn.setEnabled(True)
-            
             if enabled:
-                # 🔑 RESET: Back to normal
+                self._voice_turn_active = False
+
+            if enabled:
                 self.text_input.setPlaceholderText("Type a message to Qube...")
                 self.text_input.setFocus()
-            else:
-                # 🔑 DEFAULT LOCK: We will update this dynamically in a millisecond
+            elif not self._is_stop_mode():
                 self.text_input.setPlaceholderText("Qube is working...")
         self._refresh_send_stop_button()
 
-    # 🔑 NEW: A dynamic receiver to update the text box live
+    def apply_presence_label(self, presence_label: str) -> None:
+        """Composer placeholder — always driven from canonical presence_label."""
+        from core.assistant_activity import composer_placeholder_text
+
+        if not hasattr(self, "text_input"):
+            return
+        placeholder = composer_placeholder_text(
+            presence_label,
+            stop_mode=self._is_stop_mode(),
+        )
+        if placeholder is None:
+            return
+        self.text_input.setPlaceholderText(placeholder)
+
     def update_action_placeholder(self, status: str):
-        """Dynamically updates the text box placeholder from unified presence labels."""
-        label = (status or "").strip()
-        if not self.text_input.isEnabled() and label.lower() != "idle":
-            self.text_input.setPlaceholderText(
-                label if label.endswith("...") else f"{label}..."
-            )
+        """Backward-compatible alias; prefer apply_presence_label with presence_label."""
+        self.apply_presence_label(status)
 
     def set_stop_requested_callback(self, callback) -> None:
         self._stop_requested_callback = callback
 
     def set_before_send_callback(self, callback) -> None:
         self._before_send_callback = callback
+
+    def set_manual_voice_callback(self, callback) -> None:
+        self._manual_voice_callback = callback
+
+    def _handle_manual_voice_input(self) -> None:
+        if self._voice_capture_active:
+            return
+        cb = self._manual_voice_callback
+        if not callable(cb):
+            return
+        cb()
 
     def _will_play_tts_after_response(self) -> bool:
         """Match main.py: voice output must be unmuted and the toolbar toggle on."""
@@ -3926,30 +3982,50 @@ class ConversationsView(QWidget):
     def on_voice_capture_started(self) -> None:
         """Wakeword listening window — expose Stop so false triggers can be dismissed."""
         self._voice_capture_active = True
+        self._voice_turn_active = True
         if hasattr(self, "text_input") and hasattr(self, "send_btn"):
             self.text_input.setEnabled(False)
             if hasattr(self, "composer_attach_btn"):
                 self.composer_attach_btn.setEnabled(False)
-            self.text_input.setPlaceholderText("Listening...")
+            if hasattr(self, "composer_voice_btn"):
+                self.composer_voice_btn.setEnabled(False)
+            self.send_btn.setEnabled(True)
+        self._refresh_send_stop_button()
+
+    def on_voice_capture_processing(self) -> None:
+        """Mic gate closed; STT/LLM pipeline still running — keep Stop available."""
+        if not self._voice_capture_active and not self._voice_turn_active:
+            return
+        self._voice_capture_active = False
+        self._voice_turn_active = True
+        if hasattr(self, "text_input") and hasattr(self, "send_btn"):
+            self.text_input.setEnabled(False)
+            if hasattr(self, "composer_attach_btn"):
+                self.composer_attach_btn.setEnabled(False)
+            if hasattr(self, "composer_voice_btn"):
+                self.composer_voice_btn.setEnabled(False)
             self.send_btn.setEnabled(True)
         self._refresh_send_stop_button()
 
     def on_voice_capture_ended(self) -> None:
-        """Listening window closed; STT/LLM may follow without re-enabling chat yet."""
+        """Listening aborted without entering the STT/LLM voice pipeline."""
         if not self._voice_capture_active:
             return
         self._voice_capture_active = False
+        self._voice_turn_active = False
         self._refresh_send_stop_button()
 
     def on_voice_capture_stopped(self) -> None:
         """User cancelled a mistaken wakeword before utterance capture finished."""
         self._voice_capture_active = False
+        self._voice_turn_active = False
         self.set_input_enabled(True)
         self._refresh_send_stop_button()
 
     def on_turn_complete_idle(self) -> None:
         """Status bubble returned to idle — release stop mode if generation is done."""
         self._voice_capture_active = False
+        self._voice_turn_active = False
         self._restore_send_mode_if_idle()
 
     def on_llm_response_finished(self, session_id: str, final_text: str = "") -> None:
@@ -4018,6 +4094,7 @@ class ConversationsView(QWidget):
         self._awaiting_tts_end = False
         self._tts_playing = False
         self._voice_capture_active = False
+        self._voice_turn_active = False
         self.set_input_enabled(True)
         self.clear_stale_agent_pointer()
         self._refresh_send_stop_button()
@@ -4025,15 +4102,14 @@ class ConversationsView(QWidget):
     def _is_stop_mode(self) -> bool:
         return (
             self._voice_capture_active
+            or self._voice_turn_active
             or self._llm_in_progress
             or self._awaiting_tts_end
             or self._tts_playing
         )
 
     def _stop_button_tooltip(self) -> str:
-        if self._voice_capture_active and not (
-            self._llm_in_progress or self._awaiting_tts_end or self._tts_playing
-        ):
+        if self._voice_capture_active:
             return "Stop listening"
         if self._is_stop_mode():
             return "Stop response"
