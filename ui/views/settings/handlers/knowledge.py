@@ -83,6 +83,8 @@ class KnowledgeHandlersMixin:
         self.embedding_mode_selector.setText(spec.label)
         if hasattr(self, "embedding_mode_description"):
             self.embedding_mode_description.setText(spec.short_description)
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
 
     def _on_embedding_mode_selected(self, mode_id: str) -> None:
         mode_id = normalize_mode_id(str(mode_id or ""))

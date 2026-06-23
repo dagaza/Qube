@@ -380,7 +380,9 @@ class Qube:
 
     def _on_reindex_complete(self, mode_id: str) -> None:
         from workers.intent_router import EmbeddingCache
+        from core.embedding_models import clear_embedding_availability_cache
 
+        clear_embedding_availability_cache()
         self._reindex_revert_embedding_mode = None
         self._reindex_target_mode = None
         self.llm_worker.embedder = self.embedder
@@ -424,6 +426,8 @@ class Qube:
                 sv._sync_embedding_mode_selector()
             if hasattr(sv, "_sync_active_embedding_label"):
                 sv._sync_active_embedding_label()
+            if hasattr(sv, "_sync_bootstrap_download_visibility"):
+                sv._sync_bootstrap_download_visibility()
 
     def _on_reindex_error(self, message: str) -> None:
         from core.app_settings import get_embedding_mode, set_embedding_mode

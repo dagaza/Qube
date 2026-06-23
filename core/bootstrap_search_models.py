@@ -71,7 +71,11 @@ def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
         for onnx_path in root.rglob("*.onnx"):
             if _path_matches_fastembed_markers(onnx_path.as_posix(), markers):
                 return True
-        for child in root.iterdir():
+        try:
+            children = root.iterdir()
+        except OSError:
+            continue
+        for child in children:
             if not child.is_dir() or not child.name.startswith("models--"):
                 continue
             if not _path_matches_fastembed_markers(child.name, markers):
@@ -102,6 +106,37 @@ def balanced_search_preset_present() -> bool:
     if gguf_override_available():
         return True
     return embedding_preset_cached_on_disk(DEFAULT_MODE)
+
+
+def active_search_preset_satisfied(*, probe: bool = False) -> bool:
+    """True when the active Fast/Balanced/Power preset needs no Prepare action."""
+    from core.app_settings import get_embedding_mode
+    from core.embedding_models import gguf_override_available, preset_embedder_ready
+    from core.embedding_modes import normalize_mode_id
+
+    if gguf_override_available():
+        return True
+    mode = normalize_mode_id(get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        return True
+    if probe:
+        return preset_embedder_ready(mode_id=mode, probe=True)
+    return False
+
+
+def all_search_presets_satisfied(*, probe: bool = False) -> bool:
+    """True when every Fast/Balanced/Power preset is cached (hide Download all row)."""
+    from core.embedding_models import all_presets_embedder_ready, gguf_override_available
+    from core.embedding_modes import MODE_IDS
+
+    if gguf_override_available():
+        return True
+    for mode in MODE_IDS:
+        if not embedding_preset_cached_on_disk(mode):
+            return False
+    if probe:
+        return all_presets_embedder_ready(probe=True)
+    return True
 
 
 def embedding_mode_switch_needs_download(mode_id: str) -> bool:

@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 from core.bootstrap_manifest import BootstrapModelId
 from core.bootstrap_search_models import (
+    active_search_preset_satisfied,
+    all_search_presets_satisfied,
     balanced_search_preset_present,
     embedding_preset_cached_on_disk,
     fastembed_model_cache_markers,
@@ -39,7 +41,7 @@ def test_balanced_search_preset_present_uses_disk_cache():
 
 def test_format_search_preset_download_failure_mode_switch():
     body = format_search_preset_download_failure("fast", during_mode_switch=True)
-    assert "try switching again" in body
+    assert "Try switching again" in body
     assert "Prepare search models on this page" not in body
 
 
@@ -81,6 +83,9 @@ def test_embedding_preset_cached_on_disk_matches_qdrant_fastembed_layout():
 
 def test_embedding_preset_cached_on_disk_checks_hf_hub_layout():
     with patch("pathlib.Path.is_dir", return_value=True), patch(
+        "pathlib.Path.iterdir",
+        return_value=[],
+    ), patch(
         "pathlib.Path.rglob",
         return_value=[],
     ):
@@ -91,3 +96,50 @@ def test_fastembed_model_cache_markers_include_model_basename():
     markers = fastembed_model_cache_markers("BAAI/bge-small-en-v1.5")
     assert "bge-small-en-v1.5" in markers
     assert "BAAI--bge-small-en-v1.5" in markers
+
+
+def test_active_search_preset_satisfied_when_active_mode_cached():
+    with patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=True,
+    ), patch(
+        "core.embedding_models.gguf_override_available",
+        return_value=False,
+    ):
+        assert active_search_preset_satisfied() is True
+
+
+def test_active_search_preset_satisfied_false_when_missing():
+    with patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=False,
+    ), patch(
+        "core.embedding_models.preset_embedder_ready",
+        return_value=False,
+    ), patch(
+        "core.embedding_models.gguf_override_available",
+        return_value=False,
+    ):
+        assert active_search_preset_satisfied(probe=True) is False
+
+
+def test_all_search_presets_satisfied_when_one_missing_on_disk():
+    with patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        side_effect=lambda mode: mode != "balanced",
+    ), patch(
+        "core.embedding_models.gguf_override_available",
+        return_value=False,
+    ):
+        assert all_search_presets_satisfied() is False
+
+
+def test_all_search_presets_satisfied_when_all_cached():
+    with patch(
+        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        return_value=True,
+    ), patch(
+        "core.embedding_models.gguf_override_available",
+        return_value=False,
+    ):
+        assert all_search_presets_satisfied() is True

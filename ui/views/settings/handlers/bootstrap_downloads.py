@@ -89,6 +89,7 @@ def make_bootstrap_download_row(
     button_text: str,
 ) -> QWidget:
     row = QWidget()
+    row.setVisible(False)
     layout = QVBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(6)
@@ -410,32 +411,19 @@ class BootstrapDownloadsHandlersMixin:
         worker.start()
 
     def _sync_bootstrap_download_visibility(self) -> None:
-        from core.app_settings import get_embedding_mode
-        from core.bootstrap_search_models import embedding_preset_cached_on_disk
-
-        def _embedding_row_visible() -> bool:
-            if gguf_override_available():
-                return False
-            mode = get_embedding_mode()
-            if embedding_preset_cached_on_disk(mode):
-                return False
-            return not preset_embedder_ready(probe=True)
-
-        def _all_presets_row_visible() -> bool:
-            if gguf_override_available():
-                return False
-            from core.embedding_modes import MODE_IDS
-
-            for mode in MODE_IDS:
-                if not embedding_preset_cached_on_disk(mode):
-                    return True
-            return not all_presets_embedder_ready()
+        from core.bootstrap_search_models import (
+            active_search_preset_satisfied,
+            all_search_presets_satisfied,
+        )
 
         rows = (
             ("stt_bootstrap_download_row", stt_model_available),
             ("tts_bootstrap_download_row", tts_model_available),
-            ("embedding_bootstrap_download_row", _embedding_row_visible),
-            ("embedding_all_presets_download_row", _all_presets_row_visible),
+            (
+                "embedding_bootstrap_download_row",
+                active_search_preset_satisfied,
+            ),
+            ("embedding_all_presets_download_row", all_search_presets_satisfied),
             ("cognition_bootstrap_download_row", cognition_model_present),
         )
         for attr, available_fn in rows:
