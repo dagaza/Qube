@@ -164,8 +164,9 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
             step_label="SETUP TOUR",
             title="Hidden feature found",
             body=(
-                "You unlocked the composer @ picker — release the modifier after @ "
-                "to attach files, conversations, tools, skills, and commands. "
+                "You unlocked the composer @ picker — @ alone browses categories; "
+                "keep typing to search files, conversations, tools, skills, and commands. "
+                "Enter or Tab to select; Shift+Enter still adds a newline. "
                 "Type @@ for a literal @; add another @ for each extra escape.\n\n"
                 "For the full guide (mixing limits, every skill, and token formats), "
                 "open Settings → Help → Open @ Composer Guide."

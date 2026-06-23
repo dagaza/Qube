@@ -2,6 +2,92 @@
 
 from __future__ import annotations
 
+_MENTION_ROOT_CATEGORIES: tuple[tuple[str, str, str], ...] = (
+    ("file", "Files", "Reference a library document"),
+    ("conversation", "Conversations", "Reference another chat"),
+    ("tool", "Tools", "Internet, library, or memory"),
+    ("skill", "Skills", "Reasoning frameworks"),
+    ("command", "Commands", "App actions and guidance"),
+)
+
+
+def _root_category_matches(idx: int, query: str) -> bool:
+    kind, title, subtitle = _MENTION_ROOT_CATEGORIES[idx]
+    title_l = title.lower()
+    kind_l = kind.lower()
+    sub_l = subtitle.lower()
+    return (
+        title_l.startswith(query)
+        or kind_l.startswith(query)
+        or query in title_l
+        or query in kind_l
+        or query in sub_l
+    )
+
+
+def filter_root_row_indices(query: str) -> list[int]:
+    """Root-menu row indices matching a composer-typed ``@`` suffix."""
+    q = (query or "").strip().lower()
+    if not q:
+        return list(range(len(_MENTION_ROOT_CATEGORIES)))
+    return [
+        idx
+        for idx in range(len(_MENTION_ROOT_CATEGORIES))
+        if _root_category_matches(idx, q)
+    ]
+
+
+def resolve_auto_drill_kind(query: str) -> str | None:
+    """Return a single category kind when ``query`` maps unambiguously, else None."""
+    q = (query or "").strip().lower()
+    if not q:
+        return None
+
+    substring_matches: list[str] = []
+    for kind, title, subtitle in _MENTION_ROOT_CATEGORIES:
+        title_l = title.lower()
+        kind_l = kind.lower()
+        sub_l = subtitle.lower()
+        if (
+            title_l.startswith(q)
+            or kind_l.startswith(q)
+            or q in title_l
+            or q in kind_l
+            or q in sub_l
+        ):
+            substring_matches.append(kind)
+
+    if len(substring_matches) == 1:
+        return substring_matches[0]
+
+    prefix_matches: list[str] = []
+    for kind, title, _subtitle in _MENTION_ROOT_CATEGORIES:
+        title_l = title.lower()
+        kind_l = kind.lower()
+        if title_l.startswith(q) or kind_l.startswith(q):
+            prefix_matches.append(kind)
+
+    if len(prefix_matches) == 1:
+        return prefix_matches[0]
+
+    return None
+
+
+def root_row_index_for_query(query: str) -> int:
+    """Best root-menu row for a composer query (0-based index)."""
+    q = (query or "").strip().lower()
+    if not q:
+        return 0
+    prefix_matches = [
+        idx
+        for idx, (kind, title, _subtitle) in enumerate(_MENTION_ROOT_CATEGORIES)
+        if title.lower().startswith(q) or kind.lower().startswith(q)
+    ]
+    if prefix_matches:
+        return prefix_matches[0]
+    matches = filter_root_row_indices(query)
+    return matches[0] if matches else 0
+
 
 def is_valid_mention_anchor(text_before_cursor: str) -> bool:
     """True when ``@`` may be inserted (word boundary or extending an ``@`` run)."""

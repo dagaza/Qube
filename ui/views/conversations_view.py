@@ -85,10 +85,10 @@ from core.composer_draft import (
 )
 from core.composer_skills import parse_composer_input, strip_all_composer_tokens_for_display
 from core.composer_commands import execute_composer_command
+from core.composer_mention_search import ComposerPaletteView
 from core.composer_mention_trigger import (
     escape_strip_index,
     is_valid_mention_anchor,
-    menu_trigger_strip_index,
     mention_query_suffix,
     resolve_mention_release,
 )
@@ -1195,25 +1195,23 @@ class ChatComposerEdit(QPlainTextEdit):
         mod = self._modifier_flag_for_key(key)
         return bool(mod and (self._mention_arm_modifiers & mod))
 
-    def _open_mention_menu(self, arm_at: int, query: str | None = None) -> None:
+    def _open_mention_menu(self, at_pos: int, query: str | None = None) -> None:
         popup = self._mention_popup
         if popup is None:
             return
         text = self.toPlainText()
         if query is None:
-            query = mention_query_suffix(text, arm_at)
-        strip_idx = menu_trigger_strip_index(text, arm_at)
-        if strip_idx < 0:
+            query = mention_query_suffix(text, at_pos)
+        if at_pos < 0 or at_pos >= len(text) or text[at_pos] != "@":
             return
         self._sync_mention_context()
-        self._remove_composer_range(strip_idx, strip_idx + 1)
-        self._mention_start_pos = self.textCursor().position()
+        self._mention_start_pos = at_pos
         self._mention_session_active = True
         gpos = self._mention_global_pos()
         popup.show_root(gpos)
-        if query:
-            popup.seed_type_buffer(query)
+        popup.set_composer_query(query or "", global_pos=gpos)
         self._maybe_show_at_discovery(popup)
+        self.setFocus()
 
     def _complete_mention_arm(self) -> None:
         if not self._mention_armed:
@@ -1245,7 +1243,7 @@ class ChatComposerEdit(QPlainTextEdit):
             lambda: present_composer_at_mention_discovery(
                 win,
                 popup,
-                on_finished=lambda: popup._list.setFocus(),
+                on_finished=lambda: self.setFocus(),
             ),
         )
 
@@ -1253,30 +1251,21 @@ class ChatComposerEdit(QPlainTextEdit):
         if not self._mention_popup:
             return
         popup = self._mention_popup
-        if self._mention_armed:
-            return
         active = self._active_mention_query()
         if active is None:
-            if self._mention_session_active and popup.isVisible():
-                return
-            self._mention_session_active = False
-            popup.close_mention()
-            self._mention_start_pos = -1
+            if self._mention_session_active or popup.isVisible():
+                self._mention_session_active = False
+                popup.close_mention()
+                self._mention_start_pos = -1
             return
         start, query = active
+        self._mention_start_pos = start
+        self._mention_session_active = True
         self._sync_mention_context()
-        if popup._mode is not None:
-            popup._filter.setText(query)
-            popup._run_search()
-            if not popup.isVisible():
-                popup.show()
-                popup._filter.setFocus()
-            return
-        if query:
-            if not popup.isVisible():
-                self._open_mention_menu(start, query)
-            elif popup._mode is None:
-                popup.seed_type_buffer(query)
+        gpos = self._mention_global_pos()
+        if not popup.isVisible():
+            popup.show_root(gpos)
+        popup.set_composer_query(query, global_pos=gpos)
 
     def _insert_mention_token(self, attachment) -> None:
         host = self._mention_host
@@ -1314,12 +1303,23 @@ class ChatComposerEdit(QPlainTextEdit):
         popup = self._mention_popup
         if popup is None:
             return
+        active = self._active_mention_query()
+        if active is None:
+            cursor = self.textCursor()
+            start = cursor.position()
+            cursor.insertText("@")
+            self.setTextCursor(cursor)
+            query = ""
+        else:
+            start, query = active
         self._sync_mention_context()
-        self._mention_start_pos = self.textCursor().position()
+        self._mention_start_pos = start
         self._mention_session_active = True
         gpos = global_pos or self._mention_global_pos()
         popup.show_root(gpos)
+        popup.set_composer_query(query, global_pos=gpos)
         self._maybe_show_at_discovery(popup)
+        self.setFocus()
 
     def _clear_mention_trigger(self) -> None:
         cursor = self.textCursor()
@@ -1389,32 +1389,71 @@ class ChatComposerEdit(QPlainTextEdit):
         self._disarm_mention_trigger()
         self.setFocus()
 
+    def _mention_palette_active(self) -> bool:
+        popup = self._mention_popup
+        return bool(
+            self._mention_session_active
+            and popup is not None
+            and popup.isVisible()
+        )
+
     def keyPressEvent(self, event):
         win = self.window()
         nc = getattr(win, "notification_center", None)
         if nc is not None and nc.handle_key(event):
             return
-        if self._mention_popup and self._mention_popup.isVisible():
-            if self._mention_popup.handle_key(event):
-                return
+
+        mention_active = self._mention_palette_active()
+        if mention_active and self._mention_popup is not None:
+            key = event.key()
+            nav_keys = (
+                Qt.Key.Key_Up,
+                Qt.Key.Key_Down,
+                Qt.Key.Key_Tab,
+                Qt.Key.Key_Backspace,
+                Qt.Key.Key_Escape,
+                Qt.Key.Key_Return,
+                Qt.Key.Key_Enter,
+            )
+            if key in nav_keys or (
+                self._mention_popup._view_mode == ComposerPaletteView.BROWSE
+                and (
+                    Qt.Key.Key_1 <= key <= Qt.Key.Key_5
+                    or (
+                        getattr(Qt.Key, "Keypad1", None) is not None
+                        and Qt.Key.Keypad1 <= key <= Qt.Key.Keypad5
+                    )
+                )
+            ):
+                if self._mention_popup.handle_navigation_key(event):
+                    return
+
         if event.text() == "@":
             before = self.toPlainText()[: self.textCursor().position()]
             if is_valid_mention_anchor(before):
+                super().keyPressEvent(event)
                 if self._mention_armed:
                     self._mention_arm_count += 1
                 else:
                     self._mention_armed = True
-                    self._mention_arm_at = self.textCursor().position()
+                    self._mention_arm_at = self.textCursor().position() - 1
                     self._mention_arm_count = 1
                     self._mention_arm_modifiers = event.modifiers()
                     self._mention_arm_trigger_key = event.key()
+                event.accept()
+                return
         key = event.key()
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
                 super().keyPressEvent(event)
                 return
+            if mention_active:
+                return
             event.accept()
             self.submit_requested.emit()
+            return
+        if mention_active:
+            super().keyPressEvent(event)
             return
         if key == Qt.Key.Key_Up and self._at_top_visual_line():
             cursor = self.textCursor()

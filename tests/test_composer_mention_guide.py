@@ -13,6 +13,7 @@ class ComposerMentionGuideTests(unittest.TestCase):
         text = build_composer_mention_guide_text()
         self.assertIn("COMPOSER @ GUIDE", text)
         self.assertIn("MIXING CAPABILITIES", text)
+        self.assertIn("search everything", text)
         self.assertIn("@[tool:internet]", text)
         self.assertIn("@[skill:decision_analysis]", text)
         self.assertIn("first one in your message", text)
