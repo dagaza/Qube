@@ -84,6 +84,12 @@ from core.composer_draft import (
     serialize_draft,
 )
 from core.composer_skills import parse_composer_input, strip_all_composer_tokens_for_display
+from core.conversation_export import (
+    export_conversation_markdown,
+    export_folder_zip,
+    format_conversation_markdown,
+    sanitize_export_filename,
+)
 from core.composer_commands import execute_composer_command
 from core.composer_mention_search import ComposerPaletteView
 from core.composer_mention_trigger import (
@@ -2371,25 +2377,48 @@ class ConversationsView(QWidget):
             QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
         )
         self.high_contrast_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
+        if hasattr(self, "conversation_download_btn"):
+            self.conversation_download_btn.setIcon(
+                qta.icon("fa5s.download", color=icon_muted)
+            )
+            self.conversation_download_btn.setIconSize(
+                QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+            )
+            self.conversation_download_btn.setFixedSize(
+                _CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN
+            )
+        if hasattr(self, "conversation_copy_btn"):
+            self.conversation_copy_btn.setIcon(qta.icon("fa5s.copy", color=icon_muted))
+            self.conversation_copy_btn.setIconSize(
+                QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
+            )
+            self.conversation_copy_btn.setFixedSize(
+                _CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN
+            )
+        utility_icon_style = f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QPushButton:hover {{
+                background-color: {hover_bg};
+            }}
+            QPushButton:disabled {{
+                opacity: 0.45;
+            }}
+        """
         for btn in (
             self.line_height_btn,
             self.text_align_btn,
             self.reader_focus_btn,
             self.high_contrast_btn,
+            getattr(self, "conversation_download_btn", None),
+            getattr(self, "conversation_copy_btn", None),
         ):
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 4px;
-                }}
-                QPushButton:hover {{
-                    background-color: {hover_bg};
-                }}
-                """
-            )
+            if btn is not None:
+                btn.setStyleSheet(utility_icon_style)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -2572,8 +2601,40 @@ class ConversationsView(QWidget):
         read_row.addWidget(self.high_contrast_btn)
         read_row.addWidget(self.layout_mode_btn)
 
+        conversation_actions_host = QWidget()
+        conversation_actions_host.setSizePolicy(
+            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
+        )
+        conversation_actions_layout = QHBoxLayout(conversation_actions_host)
+        conversation_actions_layout.setContentsMargins(0, 0, 0, 0)
+        conversation_actions_layout.setSpacing(6)
+
+        self.conversation_download_btn = QPushButton()
+        self.conversation_download_btn.setObjectName("ConversationDownloadButton")
+        self.conversation_download_btn.setProperty("class", "IconButton")
+        self.conversation_download_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.conversation_download_btn.setToolTip("Download conversation as Markdown")
+        self.conversation_download_btn.clicked.connect(self._export_active_conversation)
+
+        self.conversation_copy_btn = QPushButton()
+        self.conversation_copy_btn.setObjectName("ConversationCopyButton")
+        self.conversation_copy_btn.setProperty("class", "IconButton")
+        self.conversation_copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.conversation_copy_btn.setToolTip("Copy conversation to clipboard")
+        self.conversation_copy_btn.clicked.connect(
+            self._copy_active_conversation_to_clipboard
+        )
+        self.conversation_download_btn.setEnabled(False)
+        self.conversation_copy_btn.setEnabled(False)
+
+        conversation_actions_layout.addWidget(self.conversation_download_btn)
+        conversation_actions_layout.addWidget(self.conversation_copy_btn)
+
         utility_layout.addWidget(readability_host, 0, Qt.AlignmentFlag.AlignLeft)
         utility_layout.addStretch(1)
+        utility_layout.addWidget(
+            conversation_actions_host, 0, Qt.AlignmentFlag.AlignRight
+        )
         layout.addWidget(utility_toolbar)
 
         # 1. The New Architecture: A Scroll Area containing a vertical list of message widgets
@@ -2787,6 +2848,7 @@ class ConversationsView(QWidget):
 
         if pending_assistant:
             self._show_agent_typing_row()
+        self._refresh_conversation_action_buttons()
 
     def _show_agent_typing_row(self) -> None:
         """Assistant row with animated dots until the first streamed token arrives."""
@@ -2956,6 +3018,7 @@ class ConversationsView(QWidget):
         # Hybrid streaming markdown: stable prefix is parsed as Markdown; the live tail is
         # escaped so partial ** / list / table syntax renders literally until complete.
         self._schedule_coalesced_agent_markdown()
+        self._refresh_conversation_action_buttons()
 
     def _clear_placeholders(self):
         if hasattr(self, 'placeholder_lbl') and self.placeholder_lbl:
@@ -3005,6 +3068,7 @@ class ConversationsView(QWidget):
                 QCoreApplication.sendPostedEvents(None, int(etype))
             except RuntimeError:
                 pass
+        self._refresh_conversation_action_buttons()
 
     # --------------------------------------------------------- #
     #  INTERACTION & LOGIC                                      #
@@ -3370,6 +3434,48 @@ class ConversationsView(QWidget):
         if self.db.move_session_to_folder(session_id, folder_id):
             self._refresh_history_list()
 
+    def _transcript_has_messages(self) -> bool:
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, MessageWrapper):
+                return True
+        return False
+
+    def _refresh_conversation_action_buttons(self) -> None:
+        enabled = self._transcript_has_messages()
+        for attr in ("conversation_download_btn", "conversation_copy_btn"):
+            btn = getattr(self, attr, None)
+            if btn is not None:
+                btn.setEnabled(enabled)
+
+    def _active_conversation_export_target(self) -> tuple[str, str] | None:
+        session_id = getattr(self, "active_session_id", None)
+        if not session_id:
+            return None
+        session = self.db.get_session(session_id)
+        if session is None:
+            return None
+        return session_id, str(session.get("title") or "Untitled")
+
+    def _export_active_conversation(self) -> None:
+        if not self._transcript_has_messages():
+            return
+        target = self._active_conversation_export_target()
+        if not target:
+            return
+        session_id, title = target
+        self._trigger_export_chat(session_id, title)
+
+    def _copy_active_conversation_to_clipboard(self) -> None:
+        if not self._transcript_has_messages():
+            return
+        target = self._active_conversation_export_target()
+        if not target:
+            return
+        session_id, title = target
+        messages = self.db.get_session_history(session_id)
+        body = format_conversation_markdown(title, messages)
+        QApplication.clipboard().setText(body)
+
     def _trigger_export_chat(self, session_id: str, title: str) -> None:
         default_name = f"{sanitize_export_filename(title)}.md"
         dest, _ = QFileDialog.getSaveFileName(
@@ -3521,6 +3627,7 @@ class ConversationsView(QWidget):
             self._flush_pending_stream_for_active_session()
             self._refresh_ancillary_transcript_labels()
             self._scroll_to_bottom()
+            self._refresh_conversation_action_buttons()
             return
 
         for msg in history:
@@ -3539,6 +3646,7 @@ class ConversationsView(QWidget):
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
+        self._refresh_conversation_action_buttons()
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
