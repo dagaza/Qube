@@ -36,7 +36,11 @@ SPLASH_STEP_LABELS: tuple[str, ...] = (
     "Kokoro TTS & audio runtime",
 )
 
-_SPLASH_CHUNK_PROGRESS_HEIGHT = 22
+_SPLASH_CHUNK_PROGRESS_TEXT_PX = 10
+_SPLASH_CHUNK_PROGRESS_TEXT_PAD_V = 2
+_SPLASH_CHUNK_PROGRESS_HEIGHT = (
+    _SPLASH_CHUNK_PROGRESS_TEXT_PX + 2 * _SPLASH_CHUNK_PROGRESS_TEXT_PAD_V
+)
 
 
 class _SplashChunkProgressBar(QProgressBar):
@@ -77,10 +81,17 @@ class _SplashChunkProgressBar(QProgressBar):
 
         if self.isTextVisible():
             text_font = QFont(painter.font())
-            text_font.setPixelSize(10)
+            text_font.setPixelSize(_SPLASH_CHUNK_PROGRESS_TEXT_PX)
             painter.setFont(text_font)
             painter.setPen(self._TEXT)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text())
+            pad = _SPLASH_CHUNK_PROGRESS_TEXT_PAD_V
+            text_rect = QRectF(
+                rect.left(),
+                rect.top() + pad,
+                rect.width(),
+                rect.height() - 2 * pad,
+            )
+            painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.text())
         painter.end()
 
 
