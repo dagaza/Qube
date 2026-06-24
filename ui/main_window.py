@@ -897,8 +897,8 @@ class MainWindow(QMainWindow):
         self.web_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
         center_layout.addWidget(self.web_status_dot)
 
-        self.hybrid_status_dot = QLabel("● HYB")
-        self.hybrid_status_dot.setFixedWidth(60)
+        self.hybrid_status_dot = QLabel("● HYBRID")
+        self.hybrid_status_dot.setFixedWidth(85)
         self.hybrid_status_dot.setObjectName("HybridStatusDot")
         self.hybrid_status_dot.setToolTip("Hybrid Internet Mode is off")
         self.hybrid_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
@@ -1126,7 +1126,7 @@ class MainWindow(QMainWindow):
         return f"color: {color}; font-weight: bold; font-size: 11px;"
 
     def refresh_web_indicator(self) -> None:
-        """Sync the top-bar WEB/HYB indicators from toolbar toggles and chat Web button."""
+        """Sync the top-bar WEB/HYBRID indicators from toolbar toggles and chat Web button."""
         self._web_indicator_force = self._resolve_web_force_enabled()
         self._web_indicator_hybrid = self._resolve_web_hybrid_enabled()
         self._apply_web_indicator()
@@ -1137,7 +1137,7 @@ class MainWindow(QMainWindow):
         via_direct: bool = False,
         via_hybrid: bool = False,
     ) -> None:
-        """Highlight WEB/HYB while an in-flight web search contributes to the turn."""
+        """Highlight WEB/HYBRID while an in-flight web search contributes to the turn."""
         self._web_indicator_active = bool(active)
         self._web_indicator_active_direct = bool(active and via_direct)
         self._web_indicator_active_hybrid = bool(active and via_hybrid)
@@ -1170,6 +1170,9 @@ class MainWindow(QMainWindow):
         if active_direct:
             web_color = self._RETRIEVAL_COLOR_ACTIVE
             web_tooltip = "Web search is active for this turn"
+        elif active_hybrid:
+            web_color = self._RETRIEVAL_COLOR_ACTIVE
+            web_tooltip = "Web search is active via Hybrid mode for this turn"
         elif force_on:
             web_color = self._WEB_COLOR_STANDBY
             web_tooltip = "Web search enabled for every message in this chat"

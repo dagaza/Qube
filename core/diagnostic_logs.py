@@ -13,10 +13,24 @@ from core.llm_debug_sink import default_llm_debug_log_path
 from core.paths import logs_dir
 from core.routing_debug_sink import default_routing_debug_log_path
 from core.skills.debug_sink import default_skills_debug_log_path
+from core.web_search_audit_sink import default_web_search_audit_log_path
 
 logger = logging.getLogger("Qube.DiagnosticLogs")
 
 PathFn = Callable[[], Path]
+
+_HANDLER_LOGGER_NAMES = (
+    "Qube.NativeLLM.Debug",
+    "Qube.RoutingDebug",
+    "Qube.SkillsDebug",
+    "Qube.WebSearchAudit",
+)
+
+
+@dataclass(frozen=True)
+class ClearLogResult:
+    success: bool
+    detail: str
 
 
 @dataclass(frozen=True)
@@ -39,7 +53,12 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "and errors from all Qube modules (INFO by default)."
         ),
         path_fn=default_app_log_path,
-        note="Disable with QUBE_APP_LOG=0. Verbose file capture: QUBE_APP_LOG_LEVEL=DEBUG.",
+        note=(
+            "Terminal output is unchanged when file logging is off. "
+            "Verbose file capture: QUBE_APP_LOG_LEVEL=DEBUG."
+        ),
+        supports_recording_toggle=True,
+        recording_toggle_label="Record application events to this log",
     ),
     DiagnosticLogSpec(
         id="llm_debug",
@@ -49,6 +68,12 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "discourse events, and optional token/causality JSON."
         ),
         path_fn=default_llm_debug_log_path,
+        note=(
+            "This toggle controls file recording only. Heavy native introspection may "
+            "still run when QUBE_LLM_DEBUG is enabled at launch."
+        ),
+        supports_recording_toggle=True,
+        recording_toggle_label="Record LLM debug output to this log",
     ),
     DiagnosticLogSpec(
         id="routing_debug",
@@ -62,6 +87,22 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
         recording_toggle_label="Record routing decisions to this log",
     ),
     DiagnosticLogSpec(
+        id="web_search_audit",
+        title="Web search log",
+        description=(
+            "Structured audit of live web searches: trigger reason, query text (raw and "
+            "resolved), result URLs, and relevance-gate outcomes. DuckDuckGo SERP snippets "
+            "only — individual result pages are not fetched."
+        ),
+        path_fn=default_web_search_audit_log_path,
+        note=(
+            "Privacy: set QUBE_WEB_SEARCH_AUDIT_REDACT=1 at launch to hash queries and "
+            "omit snippet bodies in the log file."
+        ),
+        supports_recording_toggle=True,
+        recording_toggle_label="Record web searches to this log",
+    ),
+    DiagnosticLogSpec(
         id="skills_debug",
         title="Skills debug log",
         description=(
@@ -69,6 +110,10 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "Enable recording below, then send a chat message to capture entries."
         ),
         path_fn=default_skills_debug_log_path,
+        note=(
+            "Requires Skills to be enabled under AI & Models. With Skills off, no "
+            "activation telemetry is produced regardless of this log toggle."
+        ),
         supports_recording_toggle=True,
         recording_toggle_label="Record skill activation to this log",
     ),
@@ -133,6 +178,21 @@ def describe_routing_log_status(path: Path) -> str:
     return f"{recording} · {describe_log_file(path)}"
 
 
+def describe_web_search_audit_log_status(path: Path) -> str:
+    from core.app_settings import get_web_search_audit_log_enabled
+    from core.web_search_audit import (
+        web_search_audit_log_env_override,
+        web_search_audit_log_enabled,
+    )
+
+    if web_search_audit_log_env_override() is not None:
+        recording = "Recording on" if web_search_audit_log_enabled() else "Recording off"
+        recording += " (launch setting)"
+    else:
+        recording = "Recording on" if get_web_search_audit_log_enabled() else "Recording off"
+    return f"{recording} · {describe_log_file(path)}"
+
+
 def describe_skills_log_status(path: Path) -> str:
     from core.app_settings import get_skills_debug_log_enabled
 
@@ -140,12 +200,149 @@ def describe_skills_log_status(path: Path) -> str:
     return f"{recording} · {describe_log_file(path)}"
 
 
+def describe_app_log_status(path: Path) -> str:
+    from core.app_log_sink import app_log_env_override
+    from core.logging_bootstrap import effective_app_log_file_enabled
+
+    override = app_log_env_override()
+    if override is not None:
+        recording = "Recording on" if override else "Recording off"
+        recording += " (launch setting)"
+    else:
+        recording = "Recording on" if effective_app_log_file_enabled() else "Recording off"
+    return f"{recording} · {describe_log_file(path)}"
+
+
+def describe_llm_debug_log_status(path: Path) -> str:
+    from core.llm_debug_sink import llm_debug_log_env_override
+    from core.logging_bootstrap import effective_llm_debug_file_enabled
+
+    if llm_debug_log_env_override() is not None:
+        recording = "Recording on" if effective_llm_debug_file_enabled() else "Recording off"
+        recording += " (launch setting)"
+    else:
+        recording = (
+            "Recording on" if effective_llm_debug_file_enabled() else "Recording off"
+        )
+    return f"{recording} · {describe_log_file(path)}"
+
+
+def diagnostic_log_recording_enabled(log_id: str) -> bool:
+    if log_id == "routing_debug":
+        from mcp.routing_debug import routing_debug_log_enabled
+
+        return routing_debug_log_enabled()
+    if log_id == "web_search_audit":
+        from core.web_search_audit import web_search_audit_log_enabled
+
+        return web_search_audit_log_enabled()
+    if log_id == "skills_debug":
+        from core.app_settings import get_skills_debug_log_enabled
+
+        return get_skills_debug_log_enabled()
+    if log_id == "app_log":
+        from core.logging_bootstrap import effective_app_log_file_enabled
+
+        return effective_app_log_file_enabled()
+    if log_id == "llm_debug":
+        from core.logging_bootstrap import effective_llm_debug_file_enabled
+
+        return effective_llm_debug_file_enabled()
+    return False
+
+
 def describe_log_status(spec: DiagnosticLogSpec) -> str:
     if spec.id == "routing_debug":
         return describe_routing_log_status(spec.path_fn())
+    if spec.id == "web_search_audit":
+        return describe_web_search_audit_log_status(spec.path_fn())
     if spec.id == "skills_debug":
         return describe_skills_log_status(spec.path_fn())
+    if spec.id == "app_log":
+        return describe_app_log_status(spec.path_fn())
+    if spec.id == "llm_debug":
+        return describe_llm_debug_log_status(spec.path_fn())
     return describe_log_file(spec.path_fn())
+
+
+def _find_file_handler(path: Path) -> logging.Handler | None:
+    target = path.resolve()
+    handlers: list[logging.Handler] = list(logging.getLogger().handlers)
+    for name in _HANDLER_LOGGER_NAMES:
+        handlers.extend(logging.getLogger(name).handlers)
+    for handler in handlers:
+        base = getattr(handler, "baseFilename", None)
+        if not base:
+            continue
+        try:
+            if Path(base).resolve() == target:
+                return handler
+        except OSError:
+            continue
+    return None
+
+
+def _truncate_handler_stream(handler: logging.Handler) -> bool:
+    stream = getattr(handler, "stream", None)
+    if stream is None:
+        return False
+    if hasattr(handler, "acquire"):
+        handler.acquire()
+    try:
+        stream.seek(0)
+        stream.truncate(0)
+        if hasattr(stream, "flush"):
+            stream.flush()
+        return True
+    finally:
+        if hasattr(handler, "release"):
+            handler.release()
+
+
+def _truncate_log_file(path: Path) -> bool:
+    handler = _find_file_handler(path)
+    if handler is not None and _truncate_handler_stream(handler):
+        return True
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8"):
+            pass
+        return True
+    except OSError as exc:
+        logger.warning("Could not truncate diagnostic log %s: %s", path, exc)
+        return False
+
+
+def _delete_rotation_backups(path: Path) -> int:
+    deleted = 0
+    for backup in path.parent.glob(f"{path.name}.*"):
+        if not backup.is_file() or backup == path:
+            continue
+        try:
+            backup.unlink()
+            deleted += 1
+        except OSError as exc:
+            logger.warning("Could not delete log backup %s: %s", backup, exc)
+    return deleted
+
+
+def clear_diagnostic_log(spec: DiagnosticLogSpec) -> ClearLogResult:
+    """Clear log contents and rotated backups. Safe while handlers are attached."""
+    path = spec.path_fn()
+    existed = path.is_file()
+    if not _truncate_log_file(path):
+        return ClearLogResult(
+            success=False,
+            detail=f"Could not clear {path}.",
+        )
+    backups_removed = _delete_rotation_backups(path)
+    if existed or backups_removed:
+        detail = f"Cleared {spec.title}."
+        if backups_removed:
+            detail += f" Removed {backups_removed} rotated backup file(s)."
+    else:
+        detail = f"{spec.title} was already empty."
+    return ClearLogResult(success=True, detail=detail)
 
 
 def open_path_in_system(path: Path) -> bool:

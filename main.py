@@ -78,6 +78,8 @@ from core.logging_bootstrap import (
     init_llm_debug_logging,
     init_routing_debug_logging,
     init_skills_debug_logging,
+    init_web_search_audit_logging,
+    sync_diagnostic_file_sinks_from_settings,
 )
 from core.boot_args import parse_boot_args
 from core.paths import install_root, resource_path, configure_user_model_paths
@@ -95,8 +97,11 @@ init_llm_debug_logging()
 init_routing_debug_logging()
 # Skill activation telemetry (Qube.SkillsDebug) -> logs/skills_debug.log only; not the terminal
 init_skills_debug_logging()
+# Web search audit (Qube.WebSearchAudit) -> logs/web_search.log only; not the terminal
+init_web_search_audit_logging()
 # General Qube.* lifecycle logs -> ~/.qube/logs/qube.log (terminal unchanged)
 init_app_logging()
+sync_diagnostic_file_sinks_from_settings()
 
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")

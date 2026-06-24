@@ -69,8 +69,8 @@ def attach_llm_debug_file_sink(
     return handler
 
 
-def detach_llm_debug_file_sink_for_tests() -> None:
-    """Remove rotating sink(s) marked by us (tests only)."""
+def detach_llm_debug_file_sink() -> None:
+    """Remove rotating sink(s) marked by us."""
     lg = logging.getLogger(LLM_DEBUG_LOGGER_NAME)
     to_remove = [h for h in lg.handlers if getattr(h, _HANDLER_ATTR, False)]
     for h in to_remove:
@@ -79,6 +79,24 @@ def detach_llm_debug_file_sink_for_tests() -> None:
             h.close()
         except Exception:
             pass
+
+
+def detach_llm_debug_file_sink_for_tests() -> None:
+    """Remove rotating sink(s) marked by us (tests only)."""
+    detach_llm_debug_file_sink()
+
+
+def is_llm_debug_file_sink_attached() -> bool:
+    lg = logging.getLogger(LLM_DEBUG_LOGGER_NAME)
+    return any(getattr(h, _HANDLER_ATTR, False) for h in lg.handlers)
+
+
+def llm_debug_log_env_override() -> bool | None:
+    """When set at launch, overrides the in-app LLM debug file recording toggle."""
+    raw = os.getenv("QUBE_LLM_DEBUG_LOG")
+    if raw is None:
+        return None
+    return raw.strip().lower() not in ("0", "false", "no", "off")
 
 
 def quiet_llm_debug_logger_for_terminal() -> None:

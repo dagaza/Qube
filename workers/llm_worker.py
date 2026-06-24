@@ -207,6 +207,12 @@ from core.discourse_query import (
     web_query_rewrite_failed,
 )
 from core.retrieval_relevance import filter_web_results
+from core.web_search_audit import (
+    STATUS_VETOED_TOOL_DISABLED,
+    STATUS_VETOED_UNGROUNDED,
+    build_audit_event_from_llm_turn,
+    record_web_search_audit,
+)
 from core.discourse_state import (
     DiscourseState,
     promote_referent_after_assistant,
@@ -2755,6 +2761,38 @@ class LLMWorker(QThread):
 
         # ---- WEB + HYBRID ----
         web_search_attempted = False
+        _web_audit_common = {
+            "force_web": force_web,
+            "manual_web": manual_web,
+            "auto_web": auto_web,
+            "composer_internet": bool(getattr(self, "_composer_internet_requested", False)),
+            "query_raw": resolved_retrieval.raw_text,
+            "query_resolved": apply_tool_policy(
+                resolved_retrieval.web_text,
+                preference_policy,
+                tool="internet",
+            ),
+            "query_rewrite_reason": resolved_retrieval.web_rewrite_reason,
+            "query_rewrite_failed": web_query_rewrite_failed(
+                resolved_retrieval.raw_text,
+                follow_up,
+                resolved_retrieval.web_text,
+                explicit_web=explicit_web_request,
+            ),
+        }
+        if isinstance(decision, dict):
+            if decision.get("web_vetoed_tool_disabled"):
+                self._emit_web_search_audit(
+                    **_web_audit_common,
+                    execution_route="WEB",
+                    veto_status=STATUS_VETOED_TOOL_DISABLED,
+                )
+            elif decision.get("discourse_vetoed_web"):
+                self._emit_web_search_audit(
+                    **_web_audit_common,
+                    execution_route="WEB",
+                    veto_status=STATUS_VETOED_UNGROUNDED,
+                )
         if should_run_internet_search_for_route(
             execution_route,
             clean_prompt,
@@ -2765,6 +2803,10 @@ class LLMWorker(QThread):
             composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
         ) and (self.mcp_internet_enabled or force_web):
             web_search_attempted = True
+            web_audit_t0 = time.time()
+            web_results_raw_for_audit = None
+            web_results_kept_for_audit = None
+            web_audit_rel_diag = None
             via_direct = bool(
                 force_web
                 or manual_web
@@ -2834,6 +2876,10 @@ class LLMWorker(QThread):
                 )
 
             web_results = search_internet(web_query)
+            if isinstance(web_results, list):
+                web_results_raw_for_audit = [
+                    dict(r) for r in web_results if isinstance(r, dict)
+                ]
 
             # Defensive guard: when search_internet fails (e.g. DNS /
             # connection reset / no-result sentinel) it still returns a
@@ -2878,6 +2924,7 @@ class LLMWorker(QThread):
                     )
                     if isinstance(decision, dict):
                         decision.update(rel_diag)
+                    web_audit_rel_diag = rel_diag
                     kept = rel_diag.get("web_results_kept_count", 0)
                     dropped = len(rel_diag.get("web_relevance_dropped") or [])
                     logger.info(
@@ -2889,6 +2936,7 @@ class LLMWorker(QThread):
                     )
                     if filtered:
                         web_results = filtered
+                        web_results_kept_for_audit = [dict(r) for r in filtered]
                     else:
                         logger.info(
                             "[LLM Worker] Web results dropped (relevance gate); "
@@ -2959,6 +3007,20 @@ class LLMWorker(QThread):
                     len(web_items),
                     len(web_context),
                 )
+
+            if web_results_kept_for_audit is None and web_results:
+                web_results_kept_for_audit = [
+                    dict(r) for r in web_results if isinstance(r, dict)
+                ]
+
+            self._emit_web_search_audit(
+                **_web_audit_common,
+                execution_route=execution_route,
+                web_results_raw=web_results_raw_for_audit,
+                web_results_kept=web_results_kept_for_audit,
+                relevance_diag=web_audit_rel_diag,
+                latency_ms=(time.time() - web_audit_t0) * 1000,
+            )
 
         digest_mem_eligible = bool(
             memory_context and mem_result.get("memory_sources")
@@ -4452,6 +4514,49 @@ class LLMWorker(QThread):
             except Exception:
                 pass
             self._active_stream_response = None
+
+    def _emit_web_search_audit(
+        self,
+        *,
+        execution_route: str,
+        query_raw: str,
+        query_resolved: str,
+        query_rewrite_reason: str | None,
+        query_rewrite_failed: bool,
+        force_web: bool,
+        manual_web: bool,
+        auto_web: bool,
+        composer_internet: bool,
+        veto_status: str | None = None,
+        web_results_raw=None,
+        web_results_kept=None,
+        relevance_diag=None,
+        latency_ms: float | None = None,
+    ) -> None:
+        try:
+            event = build_audit_event_from_llm_turn(
+                session_id=self.session_id,
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+                user_prompt=self.prompt or "",
+                execution_route=execution_route,
+                internet_tool_enabled=bool(self.mcp_internet_enabled),
+                force_web=force_web,
+                manual_web=manual_web,
+                auto_web=auto_web,
+                composer_internet=composer_internet,
+                query_raw=query_raw,
+                query_resolved=query_resolved,
+                query_rewrite_reason=query_rewrite_reason,
+                query_rewrite_failed=query_rewrite_failed,
+                veto_status=veto_status,
+                web_results_raw=web_results_raw,
+                web_results_kept=web_results_kept,
+                relevance_diag=relevance_diag,
+                latency_ms=latency_ms,
+            )
+            record_web_search_audit(event)
+        except Exception:
+            pass
 
     def _persist_routing_debug_record(self, record) -> None:
         """

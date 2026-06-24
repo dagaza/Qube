@@ -20,13 +20,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.app_settings import (
-    get_routing_debug_log_enabled,
-    get_skills_debug_log_enabled,
-)
+from core.app_log_sink import app_log_env_override
+from core.llm_debug_sink import llm_debug_log_env_override
+from core.web_search_audit import web_search_audit_log_env_override
 from core.diagnostic_logs import (
     DiagnosticLogSpec,
     describe_log_status,
+    diagnostic_log_recording_enabled,
     open_path_in_system,
     read_log_tail,
 )
@@ -75,13 +75,21 @@ class DiagnosticLogViewerDialog(QDialog):
     def sync_recording_toggle(self) -> None:
         if self._recording_toggle is None:
             return
-        env_override = routing_debug_log_env_override() if self._spec.id == "routing_debug" else None
+
+        env_override = None
+        if self._spec.id == "routing_debug":
+            env_override = routing_debug_log_env_override()
+        elif self._spec.id == "web_search_audit":
+            env_override = web_search_audit_log_env_override()
+        elif self._spec.id == "app_log":
+            env_override = app_log_env_override()
+        elif self._spec.id == "llm_debug":
+            env_override = llm_debug_log_env_override()
+
         self._recording_toggle.blockSignals(True)
-        if self._spec.id == "skills_debug":
-            self._recording_toggle.setChecked(get_skills_debug_log_enabled())
-        else:
-            self._recording_toggle.setChecked(get_routing_debug_log_enabled())
+        self._recording_toggle.setChecked(diagnostic_log_recording_enabled(self._spec.id))
         self._recording_toggle.blockSignals(False)
+
         if env_override is None:
             self._recording_toggle.setEnabled(True)
             if self._recording_note_lbl is not None:
@@ -143,15 +151,18 @@ class DiagnosticLogViewerDialog(QDialog):
             recording_row.setSpacing(10)
             recording_label = self._spec.recording_toggle_label or "Record entries to this log"
             recording_lbl = QLabel(recording_label)
+            recording_lbl.setWordWrap(True)
             recording_lbl.setObjectName("DiagnosticLogViewerDescription")
             self._recording_toggle = PrestigeToggle()
             self._recording_toggle.setToolTip(
                 "When enabled, Qube appends one JSON line per chat turn on your next message."
             )
             self._recording_toggle.toggled.connect(self._on_recording_toggle_changed)
-            recording_row.addWidget(recording_lbl)
-            recording_row.addWidget(self._recording_toggle)
-            recording_row.addStretch()
+            recording_row.addWidget(
+                self._recording_toggle,
+                alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+            )
+            recording_row.addWidget(recording_lbl, stretch=1)
             root.addLayout(recording_row)
 
             self._recording_note_lbl = QLabel("")

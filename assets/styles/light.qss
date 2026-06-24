@@ -224,6 +224,45 @@ QLabel[class="SettingsHint"] {
     font-weight: normal;
 }
 
+#SettingsHint {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsActionStatus {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+    padding: 2px 0 0 0;
+}
+
+#SettingsLogCard {
+    background-color: rgba(241, 245, 249, 0.9);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+#SettingsLogTitle {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#SettingsLogDescription,
+#SettingsLogNote {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsLogStatus {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: normal;
+    font-style: italic;
+}
+
 /* --- 3. INPUTS & TEXT AREAS --- */
 QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
     background-color: #ffffff;
@@ -770,6 +809,12 @@ QLabel#AgentMessage {
     border-radius: 6px;
     margin-bottom: 4px;
     background-color: #E9EFF5;
+}
+
+/* Trigger phrase rows use setItemWidget; zero item padding so row widgets are not clipped */
+#SettingsTriggerList::item {
+    padding: 0px;
+    margin-bottom: 0px;
 }
 
 /* Do not inherit QListWidget::item:selected font-weight — conflicts with fixed QFontMetrics row height */

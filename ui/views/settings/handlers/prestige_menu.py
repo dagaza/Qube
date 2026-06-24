@@ -223,7 +223,10 @@ class PrestigeMenuMixin:
         """)
 
     def _handle_selection(self, button, label, data, callback):
+        from ui.views.settings.widgets import refit_settings_selector_width
+
         button.setText(label)
+        refit_settings_selector_width(button)
         if hasattr(button, "update"):
             button.update()
         callback(data)

@@ -230,6 +230,9 @@ class CompanionHandlersMixin:
 
         current = normalize_companion_verbal_trait(_cs.get_companion_verbal_trait_preset())
         self.companion_verbal_trait_selector.setText(TRAIT_LABELS[current])
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.companion_verbal_trait_selector)
 
     def _build_companion_verbal_frequency_menu(self) -> None:
         if not hasattr(self, "companion_verbal_frequency_selector"):
@@ -274,6 +277,9 @@ class CompanionHandlersMixin:
         }
         current = normalize_companion_verbal_frequency(_cs.get_companion_verbal_frequency())
         self.companion_verbal_frequency_selector.setText(labels[current])
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.companion_verbal_frequency_selector)
 
     def _build_companion_expression_freedom_menu(self) -> None:
         if not hasattr(self, "companion_expression_freedom_selector"):
@@ -310,6 +316,9 @@ class CompanionHandlersMixin:
         self.companion_expression_freedom_selector.setText(
             labels.get(current, "Balanced")
         )
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.companion_expression_freedom_selector)
 
     def _on_companion_verbal_prompt_changed(self) -> None:
         from core.app_settings import set_companion_verbal_system_prompt
@@ -568,6 +577,9 @@ class CompanionHandlersMixin:
             "Idle",
         )
         self.companion_demo_selector.setText(label)
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.companion_demo_selector)
         self.companion_demo_selector.update()
 
     def _on_companion_demo_state_selected(self, key: str) -> None:

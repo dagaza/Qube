@@ -742,6 +742,11 @@ class SettingsView(
         if stack_idx is None:
             return
         self.settings_section_stack.setCurrentIndex(int(stack_idx))
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if section_id == "advanced" and hasattr(
+            self, "_sync_all_diagnostic_log_recording_toggles"
+        ):
+            self._sync_all_diagnostic_log_recording_toggles()
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
     def _update_settings_section_nav_colors(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)

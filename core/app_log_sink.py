@@ -24,6 +24,7 @@ _EXCLUDED_LOGGER_NAMES = frozenset(
         "Qube.NativeLLM.Debug",
         "Qube.RoutingDebug",
         "Qube.SkillsDebug",
+        "Qube.WebSearchAudit",
     }
 )
 
@@ -120,8 +121,8 @@ def attach_app_log_file_sink(
     return handler
 
 
-def detach_app_log_file_sink_for_tests() -> None:
-    """Remove rotating sink(s) marked by us (tests only)."""
+def detach_app_log_file_sink() -> None:
+    """Remove rotating sink(s) marked by us."""
     root = logging.getLogger()
     to_remove = [h for h in root.handlers if getattr(h, _HANDLER_ATTR, False)]
     for h in to_remove:
@@ -130,3 +131,21 @@ def detach_app_log_file_sink_for_tests() -> None:
             h.close()
         except Exception:
             pass
+
+
+def detach_app_log_file_sink_for_tests() -> None:
+    """Remove rotating sink(s) marked by us (tests only)."""
+    detach_app_log_file_sink()
+
+
+def is_app_log_file_sink_attached() -> bool:
+    root = logging.getLogger()
+    return any(getattr(h, _HANDLER_ATTR, False) for h in root.handlers)
+
+
+def app_log_env_override() -> bool | None:
+    """When set at launch, overrides the in-app application log toggle."""
+    raw = os.getenv("QUBE_APP_LOG")
+    if raw is None:
+        return None
+    return raw.strip().lower() not in ("0", "false", "no", "off")

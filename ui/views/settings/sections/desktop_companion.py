@@ -18,7 +18,12 @@ from PyQt6.QtCore import Qt
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from core.ui_language import tr
-from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer
+from ui.views.settings.widgets import (
+    add_subsection_to_layout,
+    add_section_reset_footer,
+    register_settings_selector_width,
+    schedule_settings_selector_refit,
+)
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -206,12 +211,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     freedom_lbl.setToolTip(_companion_freedom_tip)
     freedom_row.addWidget(freedom_lbl)
     host.companion_expression_freedom_selector = SelectorButton("Balanced", is_dark=is_dark)
-    host.companion_expression_freedom_selector.setMaximumWidth(250)
+    register_settings_selector_width(
+        host.companion_expression_freedom_selector,
+        "Conservative",
+        "Balanced",
+        "Expressive",
+    )
     host.companion_expression_freedom_selector.setToolTip(_companion_freedom_tip)
     host.companion_expression_freedom_selector.setMenu(
         QMenu(host.companion_expression_freedom_selector)
     )
-    host._build_companion_expression_freedom_menu()
     freedom_row.addWidget(host.companion_expression_freedom_selector)
     freedom_row.addStretch()
     companion_layout.addLayout(freedom_row)
@@ -241,11 +250,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     trait_lbl = QLabel("Personality")
     trait_lbl.setToolTip(_companion_trait_tip)
     trait_row.addWidget(trait_lbl)
+    from core.companion_verbal_traits import CompanionVerbalTraitPreset, TRAIT_LABELS
+
     host.companion_verbal_trait_selector = SelectorButton("Neutral", is_dark=is_dark)
-    host.companion_verbal_trait_selector.setMaximumWidth(250)
+    register_settings_selector_width(
+        host.companion_verbal_trait_selector,
+        *[TRAIT_LABELS[preset] for preset in CompanionVerbalTraitPreset],
+    )
     host.companion_verbal_trait_selector.setToolTip(_companion_trait_tip)
     host.companion_verbal_trait_selector.setMenu(QMenu(host.companion_verbal_trait_selector))
-    host._build_companion_verbal_trait_menu()
     trait_row.addWidget(host.companion_verbal_trait_selector)
     trait_row.addStretch()
     companion_layout.addLayout(trait_row)
@@ -266,12 +279,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     freq_lbl.setToolTip(_companion_freq_tip)
     freq_row.addWidget(freq_lbl)
     host.companion_verbal_frequency_selector = SelectorButton("Normal", is_dark=is_dark)
-    host.companion_verbal_frequency_selector.setMaximumWidth(250)
+    register_settings_selector_width(
+        host.companion_verbal_frequency_selector,
+        "Rare",
+        "Normal",
+        "Chatty",
+    )
     host.companion_verbal_frequency_selector.setToolTip(_companion_freq_tip)
     host.companion_verbal_frequency_selector.setMenu(
         QMenu(host.companion_verbal_frequency_selector)
     )
-    host._build_companion_verbal_frequency_menu()
     freq_row.addWidget(host.companion_verbal_frequency_selector)
     freq_row.addStretch()
     companion_layout.addLayout(freq_row)
@@ -448,8 +465,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     demo_lbl.setToolTip(_companion_demo_tip)
     demo_row.addWidget(demo_lbl)
     host.companion_demo_selector = SelectorButton("", is_dark=is_dark)
-    host.companion_demo_selector.setMinimumWidth(180)
-    host.companion_demo_selector.setMaximumWidth(250)
+    register_settings_selector_width(
+        host.companion_demo_selector,
+        "Idle",
+        "Listening",
+        "Working",
+        "Speaking",
+    )
     host.companion_demo_selector.setToolTip(_companion_demo_tip)
     host.companion_demo_selector.setMenu(QMenu(host.companion_demo_selector))
     host._companion_demo_items = [
@@ -458,12 +480,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         ("Working", "working"),
         ("Speaking", "speaking"),
     ]
-    host._build_prestige_menu(
-        host.companion_demo_selector,
-        host._companion_demo_items,
-        host._on_companion_demo_state_selected,
-    )
-    host._sync_companion_demo_selector_label("idle")
     demo_row.addWidget(host.companion_demo_selector)
     demo_row.addStretch()
     companion_layout.addLayout(demo_row)
@@ -476,9 +492,29 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     companion_layout.addWidget(host.companion_preview)
 
     host.companion_preview.set_persona(current_persona)
+
+    host._build_companion_expression_freedom_menu()
+    host._build_companion_verbal_trait_menu()
+    host._build_companion_verbal_frequency_menu()
+    host._build_prestige_menu(
+        host.companion_demo_selector,
+        host._companion_demo_items,
+        host._on_companion_demo_state_selected,
+    )
+    host._sync_companion_demo_selector_label("idle")
     host._on_companion_demo_state_selected("idle")
 
     host._sync_companion_verbal_controls_enabled()
+
+    for attr in (
+        "companion_expression_freedom_selector",
+        "companion_verbal_trait_selector",
+        "companion_verbal_frequency_selector",
+        "companion_demo_selector",
+    ):
+        selector = getattr(host, attr, None)
+        if selector is not None:
+            schedule_settings_selector_refit(selector)
 
     add_section_reset_footer(companion_layout, host, "companion.desktop", is_dark=is_dark)
 

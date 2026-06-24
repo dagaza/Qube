@@ -701,6 +701,11 @@ class PersistenceHandlersMixin:
             self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
         if hasattr(self, "_reload_sidecar_from_settings"):
             self._reload_sidecar_from_settings()
+        from core.logging_bootstrap import sync_diagnostic_file_sinks_from_settings
+
+        sync_diagnostic_file_sinks_from_settings()
+        if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
+            self._sync_all_diagnostic_log_recording_toggles()
         if hasattr(self, "cognition_model_changed"):
             self.cognition_model_changed.emit()
         llm = getattr(self, "llm_worker", None)

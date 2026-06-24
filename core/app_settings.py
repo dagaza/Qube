@@ -46,6 +46,9 @@ KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
+KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
+KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
+KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
 KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
 KEY_SKILLS_MAX_ACTIVE = "qube.skills.max_active_skills"
@@ -277,6 +280,33 @@ def get_routing_debug_log_enabled() -> bool:
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_app_log_file_enabled() -> bool:
+    """When True, general Qube.* logs are written to ~/.qube/logs/qube.log."""
+    return bool(_store().get(KEY_APP_LOG_FILE_ENABLED, True))
+
+
+def set_app_log_file_enabled(enabled: bool) -> None:
+    _store().set(KEY_APP_LOG_FILE_ENABLED, enabled)
+
+
+def get_llm_debug_log_file_enabled() -> bool:
+    """When True, LLM introspection is written to ~/.qube/logs/llm_debug.log."""
+    return bool(_store().get(KEY_LLM_DEBUG_LOG_FILE_ENABLED, True))
+
+
+def set_llm_debug_log_file_enabled(enabled: bool) -> None:
+    _store().set(KEY_LLM_DEBUG_LOG_FILE_ENABLED, enabled)
+
+
+def get_web_search_audit_log_enabled() -> bool:
+    """When True, append one JSON line per web search attempt to web_search.log."""
+    return bool(_store().get(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, False))
+
+
+def set_web_search_audit_log_enabled(enabled: bool) -> None:
+    _store().set(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, enabled)
 
 
 def get_skills_enabled() -> bool:

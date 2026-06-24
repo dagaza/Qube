@@ -282,18 +282,6 @@ class StylingMixin:
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         if hasattr(self, 'mem_promotion_label'):
             self.mem_promotion_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
-        if hasattr(self, "local_llm_tour_hint_lbl"):
-            self.local_llm_tour_hint_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px;"
-            )
-        if hasattr(self, "settings_json_hint_lbl"):
-            self.settings_json_hint_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px;"
-            )
-        if hasattr(self, "settings_file_status_lbl"):
-            self.settings_file_status_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 12px;"
-            )
         
         # 🔑 Style the NLP Trigger input & list
         if hasattr(self, 'trigger_input'):
@@ -315,12 +303,14 @@ class StylingMixin:
             
         if hasattr(self, 'trigger_list'):
             self.trigger_list.setStyleSheet(f"""
-                QListWidget {{
+                #SettingsTriggerList {{
                     background-color: transparent;
                     border: 1px solid {border_color};
                     border-radius: 8px;
                 }}
-                QListWidget::item {{
+                #SettingsTriggerList::item {{
+                    padding: 0px;
+                    margin-bottom: 0px;
                     border-bottom: 1px solid {border_color};
                 }}
             """)
