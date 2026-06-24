@@ -2675,11 +2675,19 @@ class ConversationsView(QWidget):
             "Speak your message (push-to-talk)"
         )
 
+        self.composer_side_divider = QFrame()
+        self.composer_side_divider.setObjectName("ComposerSideDivider")
+        self.composer_side_divider.setFrameShape(QFrame.Shape.NoFrame)
+        self.composer_side_divider.setFixedSize(16, 1)
+
         composer_side_col = QWidget()
         composer_side_layout = QVBoxLayout(composer_side_col)
         composer_side_layout.setContentsMargins(0, 0, 0, 0)
-        composer_side_layout.setSpacing(4)
+        composer_side_layout.setSpacing(2)
         composer_side_layout.addWidget(self.composer_attach_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        composer_side_layout.addWidget(
+            self.composer_side_divider, 0, Qt.AlignmentFlag.AlignHCenter
+        )
         composer_side_layout.addWidget(self.composer_voice_btn, 0, Qt.AlignmentFlag.AlignLeft)
         composer_side_layout.addStretch(1)
 
@@ -3012,6 +3020,10 @@ class ConversationsView(QWidget):
     def _composer_action_hover_bg(self, is_dark: bool) -> str:
         return "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
 
+    def _composer_side_divider_color(self, is_dark: bool) -> str:
+        """Muted line matching chat input border / placeholder tone."""
+        return "rgba(255, 255, 255, 0.10)" if is_dark else "#cbd5e1"
+
     def _style_composer_side_buttons(self, is_dark: bool) -> None:
         icon_color = self._composer_action_icon_color(is_dark)
         hover_bg = self._composer_action_hover_bg(is_dark)
@@ -3040,6 +3052,11 @@ class ConversationsView(QWidget):
             self.composer_voice_btn.setIcon(qta.icon("fa5s.microphone", color=icon_color))
             self.composer_voice_btn.setIconSize(QSize(16, 16))
             self.composer_voice_btn.setStyleSheet(button_qss)
+        if hasattr(self, "composer_side_divider"):
+            line_color = self._composer_side_divider_color(is_dark)
+            self.composer_side_divider.setStyleSheet(
+                f"QFrame#ComposerSideDivider {{ background-color: {line_color}; border: none; }}"
+            )
 
     def _style_composer_attach_button(self, is_dark: bool) -> None:
         self._style_composer_side_buttons(is_dark)
