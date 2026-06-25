@@ -3275,6 +3275,8 @@ class ConversationsView(QWidget):
                 )
 
         if self.llm:
+            from core.input_source import INPUT_SOURCE_TEXT
+
             prompt = clean if clean else raw
             self.llm.generate_response(
                 prompt,
@@ -3282,6 +3284,7 @@ class ConversationsView(QWidget):
                 attachments=attachments,
                 enforced_skills=enforced_skills,
                 persist_content=raw,
+                input_source=INPUT_SOURCE_TEXT,
             )
 
     def update_stt_latency(self, ms: float) -> None:

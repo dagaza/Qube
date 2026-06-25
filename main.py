@@ -155,12 +155,13 @@ class Qube:
 
     def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
         from core.bootstrap_manifest import BootstrapModelId
+        from core.bootstrap_missing_models import stt_model_available
         from core.bootstrap_selection import get_selected_model_ids
 
         tick("Starting core services…")
         self.audio_worker = AudioListenerWorker()
         stt_selected = BootstrapModelId.WHISPER_SMALL in get_selected_model_ids()
-        self.stt_worker = STTWorker(eager_load=stt_selected)
+        self.stt_worker = STTWorker(eager_load=stt_selected or stt_model_available())
         self.native_llama_engine = NativeLlamaEngine()
         self.native_llama_engine.start()
 
@@ -270,6 +271,7 @@ class Qube:
         tick("Ready")
         self._pending_enrichment_context = {}
         self._pending_turn_session_id: str | None = None
+        self._voice_stt_epoch = 0
 
     # ------------------------------------------------------------------ #
     #  Signal wiring                                                       #
@@ -614,12 +616,13 @@ class Qube:
         w.conversations_view.set_manual_voice_callback(self._start_manual_voice_capture)
 
         # Background Data Pipeline
-        self.audio_worker.audio_captured.connect(self.stt_worker.process_audio)
+        self.audio_worker.audio_captured.connect(self._on_audio_captured)
         self.audio_worker.wakeword_detected.connect(
             self._on_wakeword_detected,
             QtCore.Qt.ConnectionType.BlockingQueuedConnection,
         )
         self.stt_worker.transcription_ready.connect(self._handle_voice_prompt)
+        self.stt_worker.transcription_failed.connect(self._on_stt_transcription_failed)
         
         # 🔑 UI BRIDGE: Ensure the session_id is passed from the LLM to the TTS
         self.llm_worker.sentence_ready.connect(self.tts_worker.add_to_queue)
@@ -766,8 +769,82 @@ class Qube:
             is_dark=getattr(self.window, "_is_dark_theme", True),
         )
 
-    def _handle_voice_prompt(self, text: str):
+    def _on_audio_captured(self, audio_bytes: bytes) -> None:
+        """Assign a monotonic job epoch and hand captured audio to STT."""
+        from core.voice_stt_pipeline import bump_voice_stt_epoch
+
+        self._voice_stt_epoch = bump_voice_stt_epoch(self._voice_stt_epoch)
+        epoch = self._voice_stt_epoch
+        logger.info(
+            "[Main] Voice audio captured; dispatching STT (job_epoch=%s, bytes=%d).",
+            epoch,
+            len(audio_bytes or b""),
+        )
+        self.stt_worker.process_audio(audio_bytes, epoch)
+
+    def _on_stt_transcription_failed(self, reason: str, job_epoch: int = 0) -> None:
+        """Release voice-turn UI when STT cannot run (model missing, load error, etc.)."""
+        from core.voice_stt_pipeline import is_voice_stt_job_current
+
+        if not is_voice_stt_job_current(int(job_epoch), int(self._voice_stt_epoch)):
+            logger.info(
+                "[Main] Ignoring stale STT failure "
+                "(job_epoch=%s, current=%s, reason=%r).",
+                job_epoch,
+                self._voice_stt_epoch,
+                reason,
+            )
+            return
+
+        logger.warning(
+            "[Main] Voice STT failed (job_epoch=%s, reason=%r).",
+            job_epoch,
+            reason,
+        )
+        conv = getattr(self.window, "conversations_view", None)
+        if conv is not None:
+            conv._voice_turn_active = False
+            conv._voice_capture_active = False
+            if not getattr(conv, "_llm_in_progress", False):
+                conv.set_input_enabled(True)
+            conv._refresh_send_stop_button()
+
+        reason_lower = (reason or "").strip().lower()
+        if "model not loaded" in reason_lower or "model load failed" in reason_lower:
+            from core.bootstrap_missing_models import missing_stt_notification
+
+            self.window.emit_notification(missing_stt_notification())
+        else:
+            self.window.emit_notification(stt_failed_event(reason=reason))
+        self.window.update_status("Idle", force=True)
+
+    def _cancel_pending_voice_stt(self) -> None:
+        """Invalidate in-flight voice STT and request thread interruption."""
+        from core.voice_stt_pipeline import bump_voice_stt_epoch
+
+        self._voice_stt_epoch = bump_voice_stt_epoch(self._voice_stt_epoch)
+        logger.info(
+            "[Main] Voice STT cancelled (job_epoch=%s).",
+            self._voice_stt_epoch,
+        )
+        stt_worker = getattr(self, "stt_worker", None)
+        if stt_worker is not None:
+            stt_worker.cancel_transcription()
+
+    def _handle_voice_prompt(self, text: str, job_epoch: int = 0):
+        from core.input_source import INPUT_SOURCE_VOICE
+        from core.voice_stt_pipeline import is_voice_stt_job_current
         from ui.bootstrap_feature_prompts import ensure_main_llm_for_chat
+
+        if not is_voice_stt_job_current(int(job_epoch), int(self._voice_stt_epoch)):
+            logger.info(
+                "[Main] Ignoring stale voice transcription "
+                "(job_epoch=%s, current=%s, preview=%r).",
+                job_epoch,
+                self._voice_stt_epoch,
+                (text or "")[:80],
+            )
+            return
 
         cleaned = (text or "").strip()
         if not cleaned:
@@ -811,6 +888,12 @@ class Qube:
 
         from core.composer_skills import parse_composer_input
 
+        logger.info(
+            "[Main] Voice prompt accepted (job_epoch=%s, session_id=%s, preview=%r).",
+            job_epoch,
+            session_id,
+            cleaned[:80],
+        )
         conv.log_user_message(text, pending_assistant=True)
         clean, attachments, enforced_skills = parse_composer_input(cleaned)
         prompt = clean if clean else cleaned
@@ -820,6 +903,7 @@ class Qube:
             attachments=attachments,
             enforced_skills=enforced_skills,
             persist_content=cleaned.strip(),
+            input_source=INPUT_SOURCE_VOICE,
         )
 
     def _on_audio_status(self, message: str) -> None:
@@ -892,9 +976,19 @@ class Qube:
         voice_capturing = bool(
             audio_worker is not None and getattr(audio_worker, "is_capturing_voice", False)
         )
+        stt_running = bool(
+            hasattr(self, "stt_worker") and self.stt_worker.isRunning()
+        )
+        conv = getattr(self.window, "conversations_view", None)
+        voice_turn_active = bool(
+            conv is not None and getattr(conv, "_voice_turn_active", False)
+        )
 
         if voice_capturing and audio_worker is not None:
             audio_worker.cancel_voice_capture()
+
+        if voice_capturing or stt_running or voice_turn_active:
+            self._cancel_pending_voice_stt()
 
         session_id = getattr(self, "_pending_turn_session_id", None)
         if session_id:
@@ -904,14 +998,13 @@ class Qube:
         if tts_playing:
             self.tts_worker.stop_playback()
 
-        conv = getattr(self.window, "conversations_view", None)
         if llm_running or tts_playing:
             if conv is not None:
                 conv.on_generation_stopped()
             self.window.update_status("Idle", force=True)
         elif voice_capturing and conv is not None:
             conv.on_voice_capture_stopped()
-        elif conv is not None and getattr(conv, "_voice_turn_active", False):
+        elif conv is not None and voice_turn_active:
             conv.on_generation_stopped()
             self.window.update_status("Idle", force=True)
     
@@ -1323,7 +1416,7 @@ class Qube:
 
         stt = getattr(self, "stt_worker", None)
         if stt is not None and stt.isRunning():
-            stt.requestInterruption()
+            stt.cancel_transcription()
             if self._wait_worker_shutdown(stt, 10_000, label="STT worker") is False:
                 logger.warning("[Shutdown] STT worker still running; terminating thread.")
                 stt.terminate()

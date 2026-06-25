@@ -1700,16 +1700,33 @@ class LLMWorker(QThread):
         attachments: list | None = None,
         enforced_skills: tuple[str, ...] | list[str] | None = None,
         persist_content: str | None = None,
+        input_source: str = "text",
     ):
         """Sets the parameters and starts the thread work."""
+        from core.input_source import INPUT_SOURCE_TEXT
+
+        source = (input_source or INPUT_SOURCE_TEXT).strip().lower() or INPUT_SOURCE_TEXT
+        if source not in ("text", "voice"):
+            source = INPUT_SOURCE_TEXT
         if self.isRunning():
             logger.warning(
-                "[LLM] Ignoring new generate_response while previous turn is active (session_id=%s).",
+                "[LLM] Ignoring new generate_response while previous turn is active "
+                "(input_source=%s, session_id=%s).",
+                source,
                 session_id,
             )
             return
 
-        self.prompt = (text or "").strip()
+        self._input_source = source
+        prompt = (text or "").strip()
+        logger.info(
+            "[LLM] generate_response accepted input_source=%s session_id=%s prompt_len=%d preview=%r",
+            source,
+            session_id,
+            len(prompt),
+            prompt[:80],
+        )
+        self.prompt = prompt
         self._persist_content = (persist_content or self.prompt).strip()
         self._turn_attachments = list(attachments or [])
         self._turn_enforced_skills = tuple(enforced_skills or ())
@@ -3897,7 +3914,8 @@ class LLMWorker(QThread):
         )
         self._active_generation_debug_recorder = gen_debug
         logger.info(
-            "[ChatFormatMode] mode=%s route=%s query_preview=%r risk=%s",
+            "[ChatFormatMode] input_source=%s mode=%s route=%s query_preview=%r risk=%s",
+            getattr(self, "_input_source", "text"),
             chat_format_mode,
             execution_route,
             (str(self.prompt or "")[:80]),
