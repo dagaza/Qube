@@ -226,7 +226,7 @@
   "qube.tts.modelPath": {
     "type": "string",
     "default": "",
-    "description": "Absolute path to optional TTS .onnx under models/tts/; empty uses bundled Kokoro v1.0."
+    "description": "Absolute path to optional Kokoro or Piper TTS .onnx under models/tts/; empty uses bundled Kokoro v1.0."
   },
   "qube.profile.units": {
     "type": ["string", "null"],

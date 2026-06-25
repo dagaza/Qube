@@ -240,10 +240,13 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
 
     _tts_adv_tip = (
         "Advanced TTS controls are not for everyday use.\n\n"
-        "Unlocks optional text-to-speech model selection. Place .onnx files under "
-        "models/tts/ (Kokoro also needs voices-v1.0.bin in the same folder), then "
-        "select one here.\n\n"
-        "The bundled Kokoro v1.0 default cannot be deleted."
+        "Supported engines: Kokoro ONNX (default, 30+ voices) and Piper ONNX "
+        "(one voice per model file). Place .onnx files under models/tts/ — Kokoro "
+        "also needs voices-v1.0.bin in the same folder; Piper needs a sibling "
+        ".onnx.json config (or \"piper\" in the filename). Other ONNX engines are "
+        "not supported.\n\n"
+        "Use Reset to default if speech stops working. The bundled Kokoro v1.0 "
+        "default cannot be deleted."
     )
     form.addRow(
         "",
@@ -272,7 +275,8 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
     host.tts_dir_label = QLabel(get_tts_models_dir())
     host.tts_dir_label.setWordWrap(True)
     host.tts_dir_label.setToolTip(
-        "Bundled Kokoro v1.0 lives here. Place optional .onnx TTS models in this folder."
+        "Bundled Kokoro v1.0 lives here. Optional Kokoro or Piper ONNX models also "
+        "belong in this folder (Piper: include the .onnx.json sidecar)."
     )
 
     tts_row = QHBoxLayout()
@@ -280,13 +284,17 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
     host.tts_model_list.setMinimumHeight(80)
     host.tts_model_list.setMaximumHeight(120)
     host.tts_model_list.setToolTip(
-        "Select a text-to-speech model, then click Use selected."
+        "Kokoro and Piper ONNX models in models/tts/. Select one, then click Use selected."
     )
     tts_row.addWidget(host.tts_model_list, stretch=1)
     tts_btn_col = QVBoxLayout()
     tts_btn_col.setSpacing(8)
     host.use_tts_model_btn = QPushButton("Use selected")
     apply_brand_primary(host.use_tts_model_btn)
+    host.use_tts_model_btn.setToolTip(
+        "Load the selected model for spoken replies. Custom models require confirmation; "
+        "load must succeed before the choice is saved."
+    )
     host.use_tts_model_btn.clicked.connect(host._apply_selected_tts_model)
     tts_btn_col.addWidget(host.use_tts_model_btn, alignment=Qt.AlignmentFlag.AlignTop)
     host.reset_tts_model_btn = QPushButton("Reset to default")
@@ -340,7 +348,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.device_selector.setToolTip(
         "Speaker or headset used for text-to-speech playback."
     )
-    host.voice_selector.setToolTip("Default text-to-speech voice for spoken responses.")
+    host.voice_selector.setToolTip(
+        "Default text-to-speech voice. Kokoro exposes many voices; Piper models use a "
+        "single voice per .onnx file."
+    )
 
     host.audio_output_preview_btn = _preview_play_button(
         host,

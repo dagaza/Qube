@@ -126,6 +126,24 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     add_section_divider_to_layout(layout, is_dark=is_dark)
 
+    # --- TTS models ---
+    add_subsection_to_layout(layout, "Text-to-speech models", anchor="tts-models")
+
+    layout.addWidget(
+        _build_help_info_card(
+            "Default voice output uses Kokoro ONNX (~/.qube/models/tts/kokoro-v1.0.onnx "
+            "with voices-v1.0.bin).\n\n"
+            "Advanced TTS settings (Settings → Voice & Audio) also supports Piper ONNX: "
+            "place model.onnx and model.onnx.json in the same folder, refresh the list, "
+            "and choose Use selected. Other ONNX TTS engines are not supported.\n\n"
+            "Piper voices: https://github.com/rhasspy/piper/blob/master/README.md#voices",
+            "If speech stops after a model swap, open Advanced TTS settings and choose "
+            "Reset to default to return to Kokoro.",
+        )
+    )
+
+    add_section_divider_to_layout(layout, is_dark=is_dark)
+
     # --- Wakeword models ---
     add_subsection_to_layout(layout, "Wakeword models", anchor="wakeword-models")
 

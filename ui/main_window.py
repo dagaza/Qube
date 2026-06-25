@@ -3348,9 +3348,10 @@ class MainWindow(QMainWindow):
     def _on_voice_bypass_toggle(self, checked: bool) -> None:
         if checked:
             from core.bootstrap_manifest import BootstrapModelId
+            from core.tts_models import any_supported_tts_model_on_disk
             from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
 
-            if not ensure_bootstrap_model_downloaded(
+            if not any_supported_tts_model_on_disk() and not ensure_bootstrap_model_downloaded(
                 self,
                 BootstrapModelId.KOKORO_TTS,
                 feature_label="Voice output (TTS)",

@@ -126,8 +126,73 @@ def test_tts_custom_onnx_listed():
         (tts_dir / tm.BUNDLED_VOICES_FILENAME).write_bytes(b"b")
         custom = tts_dir / "en_US-lessac-medium.onnx"
         custom.write_bytes(b"c")
+        (custom.with_suffix(".onnx.json")).write_text("{}")
         names = [e.display_name for e in tm.list_selectable_tts_models()]
         assert tm.BUNDLED_TTS_LABEL in names
         assert "en_US-lessac-medium.onnx" in names
+
+    _run_in_tmp(body)
+
+
+def test_tts_classify_architecture():
+    def body(_root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        kokoro = tts_dir / tm.BUNDLED_DEFAULT_FILENAME
+        kokoro.write_bytes(b"x")
+        assert tm.classify_tts_architecture(str(kokoro.resolve())) == "kokoro"
+        piper = tts_dir / "en_US-lessac-medium.onnx"
+        piper.write_bytes(b"x")
+        (piper.with_suffix(".onnx.json")).write_text("{}")
+        assert tm.classify_tts_architecture(str(piper.resolve())) == "piper"
+        unknown = tts_dir / "other-tts.onnx"
+        unknown.write_bytes(b"x")
+        assert tm.classify_tts_architecture(str(unknown.resolve())) is None
+
+    _run_in_tmp(body)
+
+
+def test_tts_validate_rejects_unsupported_onnx():
+    def body(root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        unknown = tts_dir / "other-tts.onnx"
+        unknown.write_bytes(b"x")
+        ok, msg = tm.validate_tts_model_path(str(unknown.resolve()))
+        assert not ok
+        assert "Kokoro and Piper" in msg
+
+    _run_in_tmp(body)
+
+
+def test_tts_validate_piper_requires_json_sidecar():
+    def body(root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        piper = tts_dir / "en_GB-alba-medium.onnx"
+        piper.write_bytes(b"x")
+        ok, msg = tm.validate_tts_model_path(str(piper.resolve()))
+        assert not ok
+        assert "Piper" in msg
+
+    _run_in_tmp(body)
+
+
+def test_tts_any_supported_on_disk():
+    def body(root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        piper = tts_dir / "en_US-lessac-medium.onnx"
+        piper.write_bytes(b"x")
+        (piper.with_suffix(".onnx.json")).write_text("{}")
+        assert tm.any_supported_tts_model_on_disk() is True
+
+    _run_in_tmp(body)
+
+
+def test_tts_resolve_boot_falls_back_to_piper():
+    def body(root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        piper = tts_dir / "en_US-lessac-medium.onnx"
+        piper.write_bytes(b"x")
+        (piper.with_suffix(".onnx.json")).write_text("{}")
+        boot = tm.resolve_boot_tts_path()
+        assert boot == str(piper.resolve())
 
     _run_in_tmp(body)

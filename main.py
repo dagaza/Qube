@@ -21,7 +21,7 @@ from core.sidecar_llm import SidecarLlmClient
 from core.auxiliary_cognition import migrate_stale_sidecar_override
 from core.embedding_models import migrate_stale_embedding_override
 from core.stt_models import migrate_stale_stt_override
-from core.tts_models import migrate_legacy_tts_layout, migrate_stale_tts_override, resolve_active_tts_path
+from core.tts_models import migrate_legacy_tts_layout, migrate_stale_tts_override, resolve_boot_tts_path
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
 from ui.main_window import MainWindow
@@ -266,7 +266,7 @@ class Qube:
     def _boot_runtime(self, tick: Callable[[str], None]) -> None:
         tick("Starting audio and voice…")
         self.audio_worker.start()
-        self.tts_worker.load_voice(resolve_active_tts_path())
+        self.tts_worker.load_voice(resolve_boot_tts_path())
         tick("Ready")
         self._pending_enrichment_context = {}
         self._pending_turn_session_id: str | None = None
@@ -492,9 +492,11 @@ class Qube:
                 sv._refresh_stt_model_list()
 
     def _reload_tts_from_settings(self) -> None:
-        from core.tts_models import resolve_active_tts_path
+        from core.tts_models import resolve_boot_tts_path
 
-        self.tts_worker.load_voice(resolve_active_tts_path())
+        ok = self.tts_worker.load_voice(resolve_boot_tts_path())
+        if not ok:
+            logger.warning("[TTS] Failed to reload model from settings")
         w = self.window
         if hasattr(w, "settings_view"):
             sv = w.settings_view
@@ -524,6 +526,7 @@ class Qube:
         self.tts_worker.playback_started.connect(w.conversations_view.on_tts_playback_started)
         self.tts_worker.playback_finished.connect(w.conversations_view.on_tts_playback_finished)
         self.tts_worker.turn_settled.connect(w.conversations_view.on_tts_turn_settled)
+        self.tts_worker.turn_settled.connect(self._handle_tts_turn_settled)
 
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_tts_voice_dropdowns)
@@ -798,6 +801,8 @@ class Qube:
         conv = self.window.conversations_view
         conv._llm_in_progress = True
         conv._voice_turn_active = True
+        conv._awaiting_tts_end = False
+        conv._tts_playing = False
         conv.set_input_enabled(False)
         conv._refresh_send_stop_button()
         conv.apply_presence_label(
@@ -927,6 +932,12 @@ class Qube:
             # signal pipeline so the Top Bar and Input Box catch the update!
             if hasattr(self, 'tts_worker'):
                 self.tts_worker.status_update.emit(safe_status)
+
+    def _handle_tts_turn_settled(self) -> None:
+        """Backstop: return to Idle if playback_finished did not run (should be rare)."""
+        bubble = getattr(self.window._presence_service, "bubble_state", "idle")
+        if bubble in ("thinking", "writing", "speaking"):
+            self.window.update_status("Idle", force=True)
 
     def _handle_internet_search(self, query: str):
         """Spawns the async internet worker and connects it to the UI."""

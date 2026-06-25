@@ -128,9 +128,9 @@ def _reload_runtime_for_model(parent: QWidget, model_id: BootstrapModelId) -> No
         tts = workers.get("tts")
         if tts is not None:
             try:
-                from core.tts_models import resolve_active_tts_path
+                from core.tts_models import resolve_boot_tts_path
 
-                tts.load_voice(resolve_active_tts_path())
+                tts.load_voice(resolve_boot_tts_path())
             except Exception:
                 logger.debug("TTS reload after download failed", exc_info=True)
         return

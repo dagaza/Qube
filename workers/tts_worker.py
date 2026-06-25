@@ -191,41 +191,59 @@ class TTSWorker(QThread):
     def _normalize_tts_queue_key(self, text: str) -> str:
         return " ".join(str(text or "").split()).strip().lower()
 
-    def load_voice(self, model_path):
-        self.model_path = model_path
-        filename = os.path.basename(model_path).lower()
-        
+    def load_voice(self, model_path) -> bool:
+        """Load a TTS ONNX model. Returns True on success; restores the prior adapter on failure."""
+        from core.tts_models import UNSUPPORTED_TTS_ARCHITECTURE_MSG, classify_tts_architecture
+
+        previous_adapter = self.active_adapter
+        previous_path = getattr(self, "model_path", "")
+        previous_voice = self.active_voice_name
+        previous_stream = self.stream
+
+        architecture = classify_tts_architecture(model_path)
+        if architecture is None:
+            self.status_update.emit(f"TTS error: {UNSUPPORTED_TTS_ARCHITECTURE_MSG}")
+            return False
+
         try:
-            if "kokoro" in filename:
-                self.active_adapter = KokoroAdapter(model_path)
-            elif "piper" in filename or os.path.exists(model_path + ".json"):
-                self.active_adapter = PiperAdapter(model_path)
+            if architecture == "kokoro":
+                new_adapter = KokoroAdapter(model_path)
             else:
-                self.status_update.emit("Error: Unsupported Model Architecture.")
-                return
+                new_adapter = PiperAdapter(model_path)
 
-            self.active_voice_name = self.active_adapter.available_voices[0]
-            
-            if self.stream:
+            if previous_stream:
                 try:
-                    self.stream.stop_stream()
-                    self.stream.close()
-                except: pass
+                    previous_stream.stop_stream()
+                    previous_stream.close()
+                except Exception:
+                    pass
 
-            self.stream = self.audio.open(
+            new_stream = self.audio.open(
                 format=pyaudio.paInt16,
                 channels=1,
-                rate=self.active_adapter.sample_rate,
+                rate=new_adapter.sample_rate,
                 output=True,
                 output_device_index=self.current_device_index,
-                frames_per_buffer=1024
+                frames_per_buffer=1024,
             )
-            
+
+            self.model_path = model_path
+            self.active_adapter = new_adapter
+            self.stream = new_stream
+            self.active_voice_name = self.active_adapter.available_voices[0]
+
             self.model_loaded.emit(os.path.basename(model_path), self.active_adapter.available_voices)
             self.status_update.emit(f"TTS Engine Ready ({self.active_adapter.sample_rate}Hz)")
-            
+            return True
+
         except Exception as e:
-            self.status_update.emit(f"Failed to load model: {e}")
+            self.active_adapter = previous_adapter
+            self.model_path = previous_path
+            self.active_voice_name = previous_voice
+            self.stream = previous_stream
+            logger.exception("[TTS] Failed to load model %s: %s", model_path, e)
+            self.status_update.emit(f"Failed to load TTS model: {e}")
+            return False
 
     def add_to_queue(self, text, session_id="default"):
         """Modified to accept a session_id for the Memory Brain."""
@@ -299,7 +317,13 @@ class TTSWorker(QThread):
                 if item is _END_OF_LLM_TURN:
                     logger.debug("[TTS] End-of-turn sentinel received.")
                     self._last_queued_tts_key = ""
-                    self._signal_playback_finished()
+                    if self._playback_active:
+                        self._signal_playback_finished()
+                    else:
+                        # No audio was output (muted, missing adapter, empty response).
+                        # Still signal end-of-turn so main.py can return to Idle.
+                        self.playback_level.emit(0.0)
+                        self.playback_finished.emit()
                     self.turn_settled.emit()
                     continue
 
@@ -332,11 +356,17 @@ class TTSWorker(QThread):
                         if getattr(self, 'pyaudio_instance', None) is None:
                             self.pyaudio_instance = pyaudio.PyAudio()
 
+                        sample_rate = (
+                            self.active_adapter.sample_rate
+                            if self.active_adapter is not None
+                            else 24000
+                        )
                         self.stream = self.pyaudio_instance.open(
                             format=pyaudio.paInt16,
                             channels=1,
-                            rate=24000,
-                            output=True
+                            rate=sample_rate,
+                            output=True,
+                            output_device_index=self.current_device_index,
                         )
                     except Exception as e:
                         self.status_update.emit(f"Failed to rebuild stream: {e}")

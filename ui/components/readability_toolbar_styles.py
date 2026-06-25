@@ -5,7 +5,7 @@ from __future__ import annotations
 
 def readability_font_pair_stylesheet(*, is_dark: bool, button_px: int = 30) -> str:
     """Theme-stable stylesheet for the font size pair; not coupled to LLM/TTS state."""
-    base_icon_color = "#8b5cf6" if is_dark else "#1e293b"
+    base_icon_color = "#8b5cf6"
     hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
     dis = "#6c7086" if is_dark else "#94a3b8"
     return f"""

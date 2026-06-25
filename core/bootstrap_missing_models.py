@@ -9,6 +9,7 @@ from core.embedding_models import embedding_model_available
 from core.embedding_modes import get_mode_spec
 from core.app_settings import get_embedding_mode
 from core.notification_types import NotificationEvent, NotificationSeverity
+from core.tts_models import get_tts_models_dir, any_supported_tts_model_on_disk
 
 ACTION_OPEN_SETTINGS_VOICE_STT = "open_settings_voice_stt"
 ACTION_OPEN_SETTINGS_VOICE_TTS = "open_settings_voice_tts"
@@ -21,7 +22,8 @@ def stt_model_available() -> bool:
 
 
 def tts_model_available() -> bool:
-    return model_is_present(BootstrapModelId.KOKORO_TTS)
+    """True when a supported TTS ONNX model exists on disk (Kokoro or Piper)."""
+    return any_supported_tts_model_on_disk()
 
 
 def cognition_model_present() -> bool:
@@ -49,11 +51,14 @@ def missing_stt_notification() -> NotificationEvent:
 
 
 def missing_tts_notification() -> NotificationEvent:
+    tts_dir = get_tts_models_dir()
     return NotificationEvent(
         title="Text-to-speech model required",
         body=(
-            "TTS Voice needs the bundled Kokoro model. "
-            "Download it from Settings → Voice & Audio → Text-to-speech (TTS)."
+            "TTS Voice needs a supported text-to-speech model (Kokoro or Piper ONNX). "
+            "Download Kokoro from Settings → Voice & Audio → Text-to-speech (TTS), "
+            f"or place a Piper .onnx (+ .onnx.json) under {tts_dir}/ and select it in "
+            "Advanced TTS settings."
         ),
         severity=NotificationSeverity.WARNING,
         category="voice",

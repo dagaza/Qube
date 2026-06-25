@@ -179,6 +179,8 @@ _LINE_SPACING_ICON = os.path.abspath(
 # Chat utility toolbar: uniform icon / hit-target sizes
 _CHAT_UTILITY_BTN = 30
 _CHAT_UTILITY_ICON_PX = 18
+_BRAND_PURPLE = "#8b5cf6"
+_BRAND_PURPLE_ACTIVE = "#c4b5fd"
 
 # Readability (transcript-local; no persistence yet)
 _BASE_CHAT_FONT_PT = 10.0
@@ -1750,7 +1752,7 @@ class ConversationsView(QWidget):
             return
         if is_dark is None:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        icon_color = _BRAND_PURPLE
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
             btn.setIcon(
@@ -2331,8 +2333,8 @@ class ConversationsView(QWidget):
             self.reader_focus_btn.blockSignals(False)
             self.high_contrast_btn.blockSignals(False)
         hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
-        icon_muted = "#8b5cf6" if is_dark else "#1e293b"
-        icon_active = "#c4b5fd" if is_dark else "#2563eb"
+        icon_muted = _BRAND_PURPLE
+        icon_active = _BRAND_PURPLE_ACTIVE
         is_justify = self._transcript_alignment == ALIGN_JUSTIFY
         self.text_align_btn.setToolTip(
             "Text alignment: Justified (click for left)"
@@ -3078,8 +3080,8 @@ class ConversationsView(QWidget):
         return bool(getattr(self, "web_btn", None) and self.web_btn.isChecked())
 
     def _composer_action_icon_color(self, is_dark: bool) -> str:
-        """Match Send button icon color (see refresh_button_themes)."""
-        return "#8b5cf6" if is_dark else "#1e293b"
+        """Qube brand purple for composer/sidebar icon buttons (theme-independent)."""
+        return _BRAND_PURPLE
 
     def _composer_action_hover_bg(self, is_dark: bool) -> str:
         return "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
@@ -3808,7 +3810,6 @@ class ConversationsView(QWidget):
         self._style_composer_side_buttons(is_dark)
         import qtawesome as qta
         
-        # Base icon color: Catppuccin Purple in Dark Mode, Deep Slate in Light Mode
         base_icon_color = self._composer_action_icon_color(is_dark)
         
         # Subtle hover background: faint white wash for Dark, faint black wash for Light
@@ -4198,32 +4199,40 @@ class ConversationsView(QWidget):
             self._pending_stream_tokens_by_session.pop(sid, None)
             self._pending_stream_sources_by_session.pop(sid, None)
         active = str(getattr(self, "active_session_id", "") or "")
-        if not active or sid != active:
-            return
-        cleaned = self._sanitize_agent_stream_text(final_text or "")
-        if cleaned:
-            cur = getattr(self, "current_agent_msg", None)
-            if cur is None:
-                self.log_agent_token(cleaned)
-            else:
-                # The finished worker text is the sanitized source of truth.
-                # Replace the active bubble instead of appending/reconciling around leaked prefix text.
-                self._agent_text_buffer = cleaned
-                self._schedule_coalesced_agent_markdown()
-            try:
-                cite_sources = []
-                if cur is not None:
-                    cite_sources = getattr(cur, "_citation_sources", None) or []
-                report = analyze_citations(cleaned, cite_sources)
-                log_citation_integrity(
-                    report,
-                    phase="ui_finalize",
-                    session_id=sid,
-                )
-            except Exception:
-                logger.debug("[CitationIntegrity] ui_finalize telemetry failed", exc_info=True)
-        self._flush_agent_markdown_coalesce_immediate(finalize=True)
-        self._hide_agent_typing_row()
+        if active and sid == active:
+            cleaned = self._sanitize_agent_stream_text(final_text or "")
+            if cleaned:
+                cur = getattr(self, "current_agent_msg", None)
+                if cur is None:
+                    self.log_agent_token(cleaned)
+                else:
+                    # The finished worker text is the sanitized source of truth.
+                    # Replace the active bubble instead of appending/reconciling around leaked prefix text.
+                    self._agent_text_buffer = cleaned
+                    self._schedule_coalesced_agent_markdown()
+                try:
+                    cite_sources = []
+                    if cur is not None:
+                        cite_sources = getattr(cur, "_citation_sources", None) or []
+                    report = analyze_citations(cleaned, cite_sources)
+                    log_citation_integrity(
+                        report,
+                        phase="ui_finalize",
+                        session_id=sid,
+                    )
+                except Exception:
+                    logger.debug("[CitationIntegrity] ui_finalize telemetry failed", exc_info=True)
+            self._flush_agent_markdown_coalesce_immediate(finalize=True)
+            self._hide_agent_typing_row()
+        elif self._llm_in_progress:
+            logger.warning(
+                "[ChatUI] LLM finished for session %s but active is %s; releasing UI anyway.",
+                sid,
+                active or "(none)",
+            )
+            self._flush_agent_markdown_coalesce_immediate(finalize=True)
+            self._hide_agent_typing_row()
+
         self._llm_in_progress = False
         tts_expected = self._will_play_tts_after_response()
         self._awaiting_tts_end = tts_expected
@@ -4232,6 +4241,7 @@ class ConversationsView(QWidget):
             tts_expected,
         )
         if not tts_expected:
+            self._voice_turn_active = False
             self.set_input_enabled(True)
         self._refresh_send_stop_button()
 
@@ -4248,6 +4258,8 @@ class ConversationsView(QWidget):
 
     def on_tts_turn_settled(self) -> None:
         """End-of-turn sentinel processed (even when no audio was output)."""
+        self._voice_turn_active = False
+        self._awaiting_tts_end = False
         self._restore_send_mode_if_idle()
 
     def on_generation_stopped(self) -> None:

@@ -86,6 +86,7 @@ _PREVIEW_TITLE_SOFT_BREAK = "\u200b"
 _CHAT_WITH_DOC_FAB_SIZE = 52
 _CHAT_WITH_DOC_FAB_MARGIN = 24
 _BRAND_PURPLE = "#8b5cf6"
+_BRAND_PURPLE_ACTIVE = "#c4b5fd"
 
 
 def _filename_title_for_label(text: str) -> str:
@@ -583,7 +584,7 @@ class LibraryView(QWidget):
             return
         if is_dark is None:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        icon_color = _BRAND_PURPLE
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
             btn.setIcon(
@@ -764,8 +765,8 @@ class LibraryView(QWidget):
             self.reader_focus_btn.blockSignals(False)
             self.high_contrast_btn.blockSignals(False)
         hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
-        icon_muted = "#8b5cf6" if is_dark else "#1e293b"
-        icon_active = "#c4b5fd" if is_dark else "#2563eb"
+        icon_muted = _BRAND_PURPLE
+        icon_active = _BRAND_PURPLE_ACTIVE
         is_justify = self._transcript_alignment == ALIGN_JUSTIFY
         self.text_align_btn.setToolTip(
             "Text alignment: Justified (click for left)"
@@ -1235,7 +1236,7 @@ class LibraryView(QWidget):
             self.ingest_progress_row.apply_theme(is_dark)
         
         # Keep utility-toolbar button colors theme-based only (not status-coupled).
-        base_icon_color = "#8b5cf6" if is_dark else "#1e293b"
+        base_icon_color = _BRAND_PURPLE
         
         # Subtle hover background
         hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
