@@ -1,0 +1,39 @@
+{
+  "version": "1",
+  "description": "Deep research eval corpus — merged bundle quality (Phase 4+) and topical relevance (Phase 5 slice 1).",
+  "queries": [
+    {
+      "id": "ace_inhibitors_hf",
+      "query": "ACE inhibitors heart failure mortality evidence",
+      "expect_adapters": ["pubmed", "openalex"],
+      "min_merged_sources": 2,
+      "min_coverage_rank": "adequate",
+      "expect_any_tokens": ["ace", "angiotensin", "acei", "arb"],
+      "reject_title_patterns": ["takotsubo", "chagas", "chemotherapy-induced cardiotoxicity"],
+      "relevance_top_n": 3,
+      "min_relevant_in_top": 2
+    },
+    {
+      "id": "sglt2_hf",
+      "query": "SGLT2 inhibitors heart failure hospitalization trials",
+      "expect_adapters": ["pubmed"],
+      "min_merged_sources": 2,
+      "min_coverage_rank": "adequate",
+      "expect_any_tokens": ["sglt2", "sglt-2", "empagliflozin", "dapagliflozin", "canagliflozin"],
+      "reject_title_patterns": ["takotsubo", "chagas"],
+      "relevance_top_n": 3,
+      "min_relevant_in_top": 2
+    },
+    {
+      "id": "statin_primary_prevention",
+      "query": "statin primary prevention cardiovascular risk meta-analysis",
+      "expect_adapters": ["pubmed", "openalex"],
+      "min_merged_sources": 2,
+      "min_coverage_rank": "adequate",
+      "expect_any_tokens": ["statin", "lipid-lowering", "ldl", "hmg-coa"],
+      "reject_title_patterns": ["takotsubo", "chagas"],
+      "relevance_top_n": 3,
+      "min_relevant_in_top": 2
+    }
+  ]
+}

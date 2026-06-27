@@ -58,6 +58,8 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_MCP_RAG_AUTO_ACTIVATOR,
         app.KEY_ADVANCED_EMBEDDING_UNLOCKED,
         app.KEY_EMBEDDING_MODEL_PATH,
+        app.KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
+        app.KEY_DEEP_RESEARCH_ENABLED,
     ),
     "companion.desktop": (
         app.KEY_COMPANION_ENABLED,

@@ -45,7 +45,9 @@ from PyQt6.QtCore import (
     QSize,
     pyqtSignal,
 )
+import json
 import math
+import uuid
 import qtawesome as qta
 import logging
 from urllib.parse import unquote
@@ -70,13 +72,15 @@ from core.citation_integrity import (
 from core.citation_integrity_telemetry import log_citation_integrity
 from core.app_settings import get_citation_integrity_ui_linkify
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
-from core.composer_attachments import validate_file_token
+from core.composer_attachments import resolve_attachment_routing, validate_file_token
 from core.composer_draft import (
     ComposerDraft,
     ROUTING_REJECT_ONE_SOURCE,
     add_routing_attachment,
     add_skill,
     composer_one_source_limit_request,
+    composer_prompt_required_request,
+    deep_research_unavailable_request,
     draft_from_text,
     merge_drafts,
     remove_routing_at,
@@ -100,10 +104,17 @@ from core.composer_mention_trigger import (
 )
 from core.app_settings import (
     get_composer_at_mention_discovered,
+    get_deep_research_enabled,
     get_engine_mode,
+    get_external_knowledge_v2_enabled,
     set_composer_at_mention_discovered,
     set_native_reasoning_display_enabled,
 )
+from core.knowledge.deep_research_ui import (
+    deep_research_available,
+    deep_research_progress_percent,
+)
+from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
@@ -132,6 +143,7 @@ from ui.components.stream_markdown_split import (
 from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.composer_context_chips import ComposerContextChipStrip
 from ui.components.hidden_feature_discovery import present_composer_at_mention_discovery
+from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
 
 logger = logging.getLogger("Qube.UI.Conversations")
@@ -1592,8 +1604,10 @@ class ConversationsView(QWidget):
         self.llm = workers.get("llm")
         self.tts = workers.get("tts")
         self._pending_citation_sources = None
+        self._pending_evidence_transparency = None
         self._pending_stream_tokens_by_session: dict[str, str] = {}
         self._pending_stream_sources_by_session: dict[str, list] = {}
+        self._pending_stream_transparency_by_session: dict[str, dict] = {}
         self._user_turn_id = 0
         self._stt_ms_for_turn: int | None = None
         self._stt_ms_value: float | None = None
@@ -1621,6 +1635,9 @@ class ConversationsView(QWidget):
         self._active_folder_id: str | None = None
         self._folder_controller: SidebarFolderListController | None = None
         self._composer_draft = ComposerDraft()
+        self._active_deep_research_request_id: str | None = None
+        self._deep_research_session_id: str | None = None
+        self._deep_research_in_progress = False
 
         self._setup_ui()
         self._start_new_chat()
@@ -1964,11 +1981,13 @@ class ConversationsView(QWidget):
         if not sources:
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        transparency = getattr(agent, "_evidence_transparency", None)
         dlg = CitationSourcesDialog(
             sources,
             self,
             is_dark=is_dark,
             on_open_source=self.open_source_preview,
+            transparency=transparency,
         )
         dlg.exec()
 
@@ -2715,6 +2734,10 @@ class ConversationsView(QWidget):
         self.composer_chip_strip.skill_removed.connect(self._on_composer_skill_removed)
         bottom_stack_layout.addWidget(self.composer_chip_strip)
 
+        self.deep_research_progress_row = IngestProgressRow()
+        self.deep_research_progress_row.hide()
+        bottom_stack_layout.addWidget(self.deep_research_progress_row)
+
         # 3. Input Bar Area
         input_container = QFrame()
         input_container.setObjectName("ChatInputContainer")
@@ -2966,7 +2989,13 @@ class ConversationsView(QWidget):
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
 
-    def log_agent_token(self, token: str, *, citation_sources=_UNSET_SOURCES) -> None:
+    def log_agent_token(
+        self,
+        token: str,
+        *,
+        citation_sources=_UNSET_SOURCES,
+        evidence_transparency=None,
+    ) -> None:
         token = self._sanitize_agent_stream_text(str(token or ""))
         if not token:
             return
@@ -3003,6 +3032,12 @@ class ConversationsView(QWidget):
                 self.current_agent_msg._citation_sources = _snapshot_citation_sources(citation_sources)
             else:
                 self._attach_pending_citation_sources(self.current_agent_msg)
+            if evidence_transparency:
+                self.current_agent_msg._evidence_transparency = copy.deepcopy(
+                    evidence_transparency
+                )
+            else:
+                self._attach_pending_evidence_transparency(self.current_agent_msg)
 
             self.agent_msg_container.attach_agent(self.current_agent_msg)
             self._add_agent_copy_button(self.agent_msg_container, self.current_agent_msg)
@@ -3129,11 +3164,13 @@ class ConversationsView(QWidget):
 
     def _notify_composer_one_source_limit(self) -> None:
         """Show a short in-app toast; bypasses notification policy so it appears while typing."""
-        win = self.window()
-        nc = getattr(win, "notification_center", None)
+        self._notify_composer_toast(composer_one_source_limit_request())
+
+    def _notify_composer_toast(self, request) -> None:
+        nc = getattr(self.window(), "notification_center", None)
         if nc is None:
             return
-        nc.show_notification(composer_one_source_limit_request())
+        nc.show_notification(request)
 
     def _refresh_composer_chip_strip(self) -> None:
         if not hasattr(self, "composer_chip_strip"):
@@ -3250,11 +3287,23 @@ class ConversationsView(QWidget):
         self._composer_draft.body = self.text_input.toPlainText()
         if self._composer_draft.is_empty():
             return
+        if self._composer_draft.routing_requires_body():
+            self._notify_composer_toast(composer_prompt_required_request())
+            return
         before_send = self._before_send_callback
         if callable(before_send) and not before_send():
             return
         raw = serialize_draft(self._composer_draft)
         clean, attachments, enforced_skills = parse_composer_input(raw)
+        routing = resolve_attachment_routing(attachments)
+        if routing and routing.get("route") == "deep_research":
+            self._reset_composer_draft()
+            self._submit_deep_research(
+                raw=raw,
+                query=clean,
+                enforced_skills=enforced_skills,
+            )
+            return
         self._reset_composer_draft()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
@@ -3286,6 +3335,160 @@ class ConversationsView(QWidget):
                 persist_content=raw,
                 input_source=INPUT_SOURCE_TEXT,
             )
+
+    def _ensure_active_session_for_send(self) -> str:
+        if not hasattr(self, "active_session_id") or not self.active_session_id:
+            recent_sessions = self.db.get_recent_sessions(limit=1)
+            if recent_sessions:
+                self.active_session_id = recent_sessions[0]["id"]
+            else:
+                folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+                self.active_session_id = self.db.create_session(
+                    "Text Conversation", folder_id=folder_id
+                )
+        return str(self.active_session_id)
+
+    def _submit_deep_research(
+        self,
+        *,
+        raw: str,
+        query: str,
+        enforced_skills: tuple[str, ...],
+    ) -> None:
+        _ = enforced_skills
+        v2_on = get_external_knowledge_v2_enabled()
+        deep_on = get_deep_research_enabled()
+        if not deep_research_available(enabled=deep_on, external_v2=v2_on):
+            missing = "both"
+            if deep_on and not v2_on:
+                missing = "external_v2"
+            elif v2_on and not deep_on:
+                missing = "deep_research"
+            self._notify_composer_toast(deep_research_unavailable_request(missing=missing))
+            return
+
+        session_id = self._ensure_active_session_for_send()
+        self.db.add_message(session_id, "user", raw)
+        self.log_user_message(raw, pending_assistant=False)
+
+        worker = (self.workers or {}).get("deep_research")
+        if worker is None:
+            self._notify_composer_toast(deep_research_unavailable_request())
+            return
+
+        request_id = str(uuid.uuid4())
+        self._active_deep_research_request_id = request_id
+        self._deep_research_session_id = session_id
+        self._deep_research_in_progress = True
+        self._begin_deep_research_progress("Starting deep research…")
+        self._refresh_send_stop_button()
+        worker.enqueue(
+            {
+                "request_id": request_id,
+                "session_id": session_id,
+                "query": query,
+                "knowledge_service": SERVICE_SCIENTIFIC_EVIDENCE,
+            }
+        )
+
+    def _begin_deep_research_progress(self, detail: str = "") -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self.deep_research_progress_row.apply_theme(is_dark)
+        self.deep_research_progress_row.begin(detail=detail)
+        self.deep_research_progress_row.show()
+
+    def _hide_deep_research_progress(self) -> None:
+        if hasattr(self, "deep_research_progress_row"):
+            self.deep_research_progress_row.finish()
+            self.deep_research_progress_row.hide()
+
+    def _deep_research_progress_detail(self, payload: dict) -> str:
+        message = str(payload.get("message") or "").strip()
+        phase = str(payload.get("phase") or "")
+        sources_found = int(payload.get("sources_found") or 0)
+        if phase == "retrieving":
+            idx = max(0, int(payload.get("sub_query_index") or 0))
+            total = max(1, int(payload.get("sub_query_total") or 1))
+            if message:
+                detail = message
+            else:
+                detail = f"Retrieving evidence ({idx}/{total})…"
+            if sources_found > 0:
+                detail = f"{detail} · {sources_found} source(s) found"
+            return detail
+        if message:
+            return message
+        labels = {
+            "decomposing": "Planning sub-queries…",
+            "merging": "Merging and de-duplicating sources…",
+            "reporting": "Building bibliography…",
+            "synthesizing": "Synthesizing findings from evidence…",
+        }
+        return labels.get(phase, "Deep research in progress…")
+
+    def on_deep_research_progress(self, payload: dict) -> None:
+        request_id = str(payload.get("request_id") or "")
+        if request_id != getattr(self, "_active_deep_research_request_id", None):
+            return
+        tracked_session = str(getattr(self, "_deep_research_session_id", "") or "")
+        active = str(getattr(self, "active_session_id", "") or "")
+        if tracked_session and active and tracked_session != active:
+            return
+        detail = self._deep_research_progress_detail(payload)
+        percent = deep_research_progress_percent(payload)
+        if not self.deep_research_progress_row.isVisible():
+            self._begin_deep_research_progress(detail=detail)
+        self.deep_research_progress_row.update_progress(percent, detail=detail)
+
+    def on_deep_research_finished(self, payload: dict) -> None:
+        request_id = str(payload.get("request_id") or "")
+        session_id = str(payload.get("session_id") or "")
+        if request_id == getattr(self, "_active_deep_research_request_id", None):
+            self._hide_deep_research_progress()
+            self._active_deep_research_request_id = None
+            self._deep_research_session_id = None
+            self._deep_research_in_progress = False
+            self._refresh_send_stop_button()
+
+        status = str(payload.get("status") or "")
+        if status == "cancelled":
+            return
+        report = str(payload.get("report_markdown") or "").strip()
+        if status == "error":
+            report = f"**Deep research failed:** {payload.get('error', 'unknown error')}"
+        elif status == "no_results" and not report:
+            report = "Deep research completed but found no matching sources."
+
+        sources = list(payload.get("sources") or [])
+        transparency = dict(payload.get("evidence_transparency") or {})
+        bundle_id = payload.get("bundle_id")
+        bundle_id_str = str(bundle_id) if bundle_id else None
+
+        if session_id and report:
+            from core.knowledge.ui_sources_payload import encode_sources_payload
+
+            src_payload = encode_sources_payload(
+                sources,
+                transparency=transparency or None,
+            )
+            self.db.add_message(
+                session_id,
+                "assistant",
+                report,
+                sources_json=src_payload,
+                evidence_bundle_id=bundle_id_str,
+            )
+
+        active = str(getattr(self, "active_session_id", "") or "")
+        if active and session_id == active and report:
+            self.log_agent_token(
+                report,
+                citation_sources=sources,
+                evidence_transparency=transparency or None,
+            )
+            self._flush_agent_markdown_coalesce_immediate(finalize=True)
+            self._is_agent_typing = False
+            self.current_agent_msg = None
 
     def update_stt_latency(self, ms: float) -> None:
         self._stt_ms_for_turn = self._user_turn_id + 1
@@ -3642,6 +3845,7 @@ class ConversationsView(QWidget):
                 self.log_agent_token(
                     msg["content"],
                     citation_sources=msg.get("sources"),
+                    evidence_transparency=msg.get("evidence_transparency"),
                 )
                 self._is_agent_typing = False
 
@@ -3810,6 +4014,8 @@ class ConversationsView(QWidget):
             self.text_input.apply_mention_theme(is_dark)
         if hasattr(self, "composer_chip_strip"):
             self.composer_chip_strip.apply_theme(is_dark)
+        if hasattr(self, "deep_research_progress_row"):
+            self.deep_research_progress_row.apply_theme(is_dark)
         self._style_composer_side_buttons(is_dark)
         import qtawesome as qta
         
@@ -3954,6 +4160,12 @@ class ConversationsView(QWidget):
         else:
             label._citation_sources = []
 
+    def _attach_pending_evidence_transparency(self, label: AgentMessageLabel) -> None:
+        pending = getattr(self, "_pending_evidence_transparency", None)
+        if pending:
+            label._evidence_transparency = copy.deepcopy(pending)
+            self._pending_evidence_transparency = None
+
     def _flush_pending_stream_for_active_session(self) -> None:
         """Render stream chunks that arrived while this session was off-screen."""
         sid = str(getattr(self, "active_session_id", "") or "")
@@ -3965,6 +4177,9 @@ class ConversationsView(QWidget):
         src = self._pending_stream_sources_by_session.pop(sid, None)
         if src is not None:
             self._pending_citation_sources = _snapshot_citation_sources(src)
+        transparency = self._pending_stream_transparency_by_session.pop(sid, None)
+        if transparency:
+            self._pending_evidence_transparency = copy.deepcopy(transparency)
         self.log_agent_token(buffered)
 
     def on_llm_token_streamed(self, session_id: str, token: str) -> None:
@@ -4006,6 +4221,26 @@ class ConversationsView(QWidget):
             self._sync_agent_sources_button(cur)
             if (getattr(self, "_agent_text_buffer", "") or "").strip():
                 self._schedule_coalesced_agent_markdown()
+
+    def on_evidence_transparency_found(self, session_id: str, transparency: dict) -> None:
+        """Attach retrieval transparency during foreground streaming (@evidence / @trusted)."""
+        active = str(getattr(self, "active_session_id", "") or "")
+        sid = str(session_id or "")
+        if not transparency:
+            return
+        snapshot = copy.deepcopy(transparency)
+        if not active or sid != active:
+            if sid:
+                self._pending_stream_transparency_by_session[sid] = snapshot
+            return
+        cur = getattr(self, "current_agent_msg", None)
+        if cur is not None and getattr(cur, "_assistant_turn_id", None) == getattr(
+            self, "_user_turn_id", -1
+        ):
+            cur._evidence_transparency = snapshot
+            self._sync_agent_sources_button(cur)
+        else:
+            self._pending_evidence_transparency = snapshot
 
     def _resolve_citation_link_for_label(self, label: AgentMessageLabel, link_text: str):
         """Resolve href from this bubble's isolated _citation_sources (label-bound, not sender())."""
@@ -4076,6 +4311,8 @@ class ConversationsView(QWidget):
 
     def set_input_enabled(self, enabled: bool):
         """Locks the text input bar and resets its placeholder."""
+        if getattr(self, "_deep_research_in_progress", False) and not self._llm_in_progress:
+            enabled = True
         if hasattr(self, 'text_input') and hasattr(self, 'send_btn'):
             self.text_input.setEnabled(enabled)
             if hasattr(self, "composer_attach_btn"):
@@ -4088,8 +4325,9 @@ class ConversationsView(QWidget):
                 self._voice_turn_active = False
 
             if enabled:
-                self.text_input.setPlaceholderText("Type a message to Qube...")
-                self.text_input.setFocus()
+                if not getattr(self, "_deep_research_in_progress", False):
+                    self.text_input.setPlaceholderText("Type a message to Qube...")
+                    self.text_input.setFocus()
             elif not self._is_stop_mode():
                 self.text_input.setPlaceholderText("Qube is working...")
         self._refresh_send_stop_button()
@@ -4201,6 +4439,7 @@ class ConversationsView(QWidget):
         if sid:
             self._pending_stream_tokens_by_session.pop(sid, None)
             self._pending_stream_sources_by_session.pop(sid, None)
+            self._pending_stream_transparency_by_session.pop(sid, None)
         active = str(getattr(self, "active_session_id", "") or "")
         if active and sid == active:
             cleaned = self._sanitize_agent_stream_text(final_text or "")
@@ -4285,11 +4524,14 @@ class ConversationsView(QWidget):
             or self._llm_in_progress
             or self._awaiting_tts_end
             or self._tts_playing
+            or getattr(self, "_deep_research_in_progress", False)
         )
 
     def _stop_button_tooltip(self) -> str:
         if self._voice_capture_active:
             return "Stop listening"
+        if getattr(self, "_deep_research_in_progress", False):
+            return "Stop deep research"
         if self._is_stop_mode():
             return "Stop response"
         return "Send message"

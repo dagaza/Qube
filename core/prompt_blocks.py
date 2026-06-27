@@ -12,6 +12,7 @@ from typing import Any, Literal
 RetrievalWrapperMode = Literal["grounded", "background", "none"]
 
 from core.memory_filters import (
+    CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX,
     CHAT_PERSONALITY_SUFFIX,
     CITATION_DISCIPLINE_SUFFIX,
     CONVERSATION_REF_SYSTEM_SUFFIX,
@@ -25,6 +26,7 @@ from core.memory_filters import (
     RAG_CAPABILITY_DISABLED_SUFFIX,
     STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
+    SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -134,6 +136,7 @@ def build_prompt_blocks(
     web_capability_blocked: bool = False,
     rag_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
+    scientific_medical_disclaimer: bool = False,
     strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
@@ -179,6 +182,9 @@ def build_prompt_blocks(
     elif explicit_web_empty_results:
         persona = _BASE_PERSONA
         suffixes.append(EXPLICIT_WEB_EMPTY_SUFFIX)
+    elif scientific_medical_disclaimer:
+        persona = _BASE_PERSONA
+        suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True
@@ -243,6 +249,18 @@ def build_prompt_blocks(
         and not no_sources
     ):
         suffixes.append(CHAT_PERSONALITY_SUFFIX)
+
+    if (
+        route == "NONE"
+        and follow_up_active
+        and not has_retrieval_sources
+        and not explicit_remember_active
+        and not web_capability_blocked
+        and not rag_capability_blocked
+        and not explicit_web_empty_results
+        and not no_sources
+    ):
+        suffixes.append(CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX)
 
     wrapper_mode = retrieval_wrapper_mode
     if wrapper_mode is None:

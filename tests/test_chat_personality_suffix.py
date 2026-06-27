@@ -114,6 +114,18 @@ class TestChatPersonalitySuffix(unittest.TestCase):
         )
         self.assertNotIn(CHAT_PERSONALITY_SUFFIX, compose_system_prompt(blocks))
 
+    def test_follow_up_none_turn_gets_no_cite_suffix(self) -> None:
+        from core.memory_filters import CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX
+
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            follow_up_active=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn(CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX, sys_p)
+
 
 if __name__ == "__main__":
     unittest.main()

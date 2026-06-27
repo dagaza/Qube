@@ -20,7 +20,8 @@ class SkillRegistryTests(unittest.TestCase):
         self.assertIn("software_engineering", ids)
         self.assertIn("problem_solving", ids)
         self.assertIn("prompt_engineering", ids)
-        self.assertEqual(len(ids), 18)
+        self.assertIn("scientific_research", ids)
+        self.assertEqual(len(ids), 19)
 
     def test_get_skill(self) -> None:
         skill = get_skill("task_decomposition")

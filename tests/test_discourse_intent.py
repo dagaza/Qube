@@ -359,6 +359,21 @@ class TestMetaWebQueryRewrite(unittest.TestCase):
         prior = prior_substantive_user_query(history, history[-1]["content"])
         self.assertEqual(prior, "Why do birds take dust baths?")
 
+    def test_prior_substantive_user_query_skips_tool_only_turn(self) -> None:
+        history = [
+            {"role": "user", "content": "What is the capital of Romania?"},
+            {"role": "assistant", "content": "Bucharest is the capital of Romania."},
+            {"role": "user", "content": "And how about its population size?"},
+            {"role": "assistant", "content": "About 1.8 million in the city proper."},
+            {"role": "user", "content": "@[tool:internet]"},
+            {
+                "role": "user",
+                "content": "Can you also check online for the answer?",
+            },
+        ]
+        prior = prior_substantive_user_query(history, history[-1]["content"])
+        self.assertEqual(prior, "And how about its population size?")
+
 
 class TestDiscoursePhase15(unittest.TestCase):
     def test_its_is_deictic_prompt(self) -> None:

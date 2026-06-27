@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
+from core.knowledge.types import EvidenceBundleSummary
+
 
 @dataclass(frozen=True)
 class SkillContext:
@@ -25,6 +27,8 @@ class SkillContext:
     router_top_intent: str | None = None
     router_trace_summary: str | None = None
     query_embedding: Any | None = None
+    knowledge_service: str | None = None
+    evidence_summary: EvidenceBundleSummary | None = None
 
 
 @dataclass(frozen=True)

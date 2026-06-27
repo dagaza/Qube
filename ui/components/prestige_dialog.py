@@ -54,6 +54,81 @@ def _center_dialog_on_host(dialog: QDialog) -> None:
     dialog.move(frame.topLeft())
 
 
+_CITATION_SOURCES_MIN_W = 680
+_CITATION_SOURCES_MIN_H = 420
+_CITATION_SOURCES_DEFAULT_W = 880
+_CITATION_SOURCES_DEFAULT_H = 580
+_CITATION_SOURCES_SNIPPET_MAX = 320
+_CITATION_SOURCES_HOST_MARGIN_PX = 28
+
+
+def _frame_dialog_within_host(
+    dialog: QDialog,
+    *,
+    preferred_width: int,
+    preferred_height: int,
+    min_width: int,
+    min_height: int,
+    host_margin: int = _CITATION_SOURCES_HOST_MARGIN_PX,
+    max_width_fraction: float = 0.94,
+    max_height_fraction: float = 0.86,
+) -> None:
+    """Size and center a dialog so it stays inside the parent app window."""
+    from PyQt6.QtWidgets import QApplication
+
+    host = _resolve_host_window(dialog.parent())
+    if (
+        host is None
+        or not host.isVisible()
+        or host.width() <= 0
+        or host.height() <= 0
+    ):
+        dialog.resize(preferred_width, preferred_height)
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        frame = dialog.frameGeometry()
+        frame.moveCenter(screen.availableGeometry().center())
+        dialog.move(frame.topLeft())
+        return
+
+    host_rect = host.frameGeometry()
+    inset = max(0, int(host_margin))
+    avail_w = max(1, host_rect.width() - 2 * inset)
+    avail_h = max(1, host_rect.height() - 2 * inset)
+    max_w = min(avail_w, int(host_rect.width() * max_width_fraction) - 2 * inset)
+    max_h = min(avail_h, int(host_rect.height() * max_height_fraction) - 2 * inset)
+    max_w = max(1, max_w)
+    max_h = max(1, max_h)
+
+    width = min(preferred_width, max_w)
+    height = min(preferred_height, max_h)
+    width = max(min(min_width, max_w), width)
+    height = max(min(min_height, max_h), height)
+
+    dialog.resize(width, height)
+
+    w = dialog.width()
+    h = dialog.height()
+    x = host_rect.center().x() - w // 2
+    y = host_rect.center().y() - h // 2
+
+    min_x = host_rect.left() + inset
+    min_y = host_rect.top() + inset
+    max_x = host_rect.right() - inset - w + 1
+    max_y = host_rect.bottom() - inset - h + 1
+    if max_x < min_x:
+        x = min_x
+    else:
+        x = max(min_x, min(x, max_x))
+    if max_y < min_y:
+        y = min_y
+    else:
+        y = max(min_y, min(y, max_y))
+
+    dialog.move(x, y)
+
+
 class PrestigeDialog(QDialog):
     def __init__(
         self,
@@ -347,6 +422,9 @@ def _source_sort_key(src: dict) -> tuple:
 
 def _source_type_label(src: dict) -> str:
     st = str(src.get("type") or "").strip().lower()
+    adapter = str(src.get("source_adapter") or "").strip()
+    if adapter:
+        return adapter.replace("_", " ").title()
     if st == "web":
         return "Web"
     if st == "memory":
@@ -354,6 +432,32 @@ def _source_type_label(src: dict) -> str:
     if st == "rag":
         return "Document"
     return st.title() if st else "Source"
+
+
+def _source_metadata_line(src: dict) -> str:
+    parts: list[str] = []
+    venue = str(src.get("venue") or "").strip()
+    if venue:
+        parts.append(venue)
+    pub = str(src.get("publication_date") or "").strip()
+    if pub:
+        parts.append(pub)
+    fetch = str(src.get("fetch_status") or "").strip()
+    if fetch and fetch != "snippet_only":
+        parts.append(fetch.replace("_", " "))
+    doi = str(src.get("doi") or "").strip()
+    if doi:
+        parts.append(f"DOI {doi}")
+    rel = src.get("relevance_score")
+    auth = src.get("authority_score")
+    if rel is not None and auth is not None:
+        try:
+            parts.append(f"rel {float(rel):.2f} · auth {float(auth):.2f}")
+        except (TypeError, ValueError):
+            pass
+    if src.get("preprint"):
+        parts.append("preprint")
+    return " · ".join(parts)
 
 
 def _source_cite_label(src: dict) -> str:
@@ -393,6 +497,7 @@ class CitationSourcesDialog(QDialog):
         *,
         is_dark: bool | None = None,
         on_open_source=None,
+        transparency: dict | None = None,
     ):
         super().__init__(parent)
         if is_dark is None:
@@ -401,11 +506,13 @@ class CitationSourcesDialog(QDialog):
         self._on_open_source = on_open_source
         src_list = [s for s in (sources or []) if isinstance(s, dict)]
         src_list = sorted(src_list, key=_source_sort_key)
+        self._src_list = src_list
+        transparency = dict(transparency or {})
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumSize(520, 360)
-        self.resize(620, 480)
+        self.setMinimumSize(_CITATION_SOURCES_MIN_W, _CITATION_SOURCES_MIN_H)
+        self.resize(_CITATION_SOURCES_DEFAULT_W, _CITATION_SOURCES_DEFAULT_H)
 
         bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
         accent = "#89b4fa"
@@ -449,6 +556,23 @@ class CitationSourcesDialog(QDialog):
         inner.addWidget(header)
         inner.addWidget(subtitle)
 
+        why_summary = str(transparency.get("why_summary") or "").strip()
+        if why_summary:
+            why_hdr = QLabel("WHY THESE SOURCES")
+            why_hdr.setStyleSheet(
+                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px;"
+            )
+            why_body = QLabel(why_summary.replace("\n", "\n"))
+            why_body.setWordWrap(True)
+            why_body.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            why_body.setStyleSheet(
+                f"color: {fg}; font-size: 12px; line-height: 1.45; padding: 8px 0;"
+            )
+            inner.addWidget(why_hdr)
+            inner.addWidget(why_body)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -458,7 +582,7 @@ class CitationSourcesDialog(QDialog):
         list_host = QWidget()
         list_layout = QVBoxLayout(list_host)
         list_layout.setContentsMargins(0, 0, 0, 0)
-        list_layout.setSpacing(10)
+        list_layout.setSpacing(12)
 
         for src in src_list:
             row = _CitationSourceRow(
@@ -484,10 +608,11 @@ class CitationSourcesDialog(QDialog):
             """
             )
             row_layout = QVBoxLayout(row)
-            row_layout.setContentsMargins(14, 12, 14, 12)
-            row_layout.setSpacing(6)
+            row_layout.setContentsMargins(16, 14, 16, 14)
+            row_layout.setSpacing(8)
 
             title_row = QHBoxLayout()
+            title_row.setSpacing(10)
             cite_lbl = QLabel(_source_cite_label(src))
             cite_lbl.setStyleSheet(
                 f"color: {accent}; font-weight: bold; font-size: 13px;"
@@ -501,19 +626,35 @@ class CitationSourcesDialog(QDialog):
             title_lbl.setStyleSheet(
                 f"color: {fg}; font-size: 14px; font-weight: 600;"
             )
+            title_row.addWidget(cite_lbl, 0)
+            title_row.addWidget(title_lbl, 1)
+            row_layout.addLayout(title_row)
+
             type_lbl = QLabel(_source_type_label(src))
+            type_lbl.setWordWrap(True)
             type_lbl.setStyleSheet(
                 f"color: {muted}; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;"
             )
-            title_row.addWidget(cite_lbl, 0)
-            title_row.addWidget(title_lbl, 1)
-            title_row.addWidget(type_lbl, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-            row_layout.addLayout(title_row)
+            row_layout.addWidget(type_lbl)
+
+            meta_line = _source_metadata_line(src)
+            if meta_line:
+                meta_lbl = QLabel(meta_line)
+                meta_lbl.setWordWrap(True)
+                meta_lbl.setStyleSheet(
+                    f"color: {muted}; font-size: 11px; font-weight: 600;"
+                )
+                row_layout.addWidget(meta_lbl)
 
             snippet = str(src.get("content") or "").strip()
             url = str(src.get("url") or "").strip()
             if snippet:
-                preview = snippet if len(snippet) <= 220 else snippet[:217].rstrip() + "…"
+                cap = _CITATION_SOURCES_SNIPPET_MAX
+                preview = (
+                    snippet
+                    if len(snippet) <= cap
+                    else snippet[: cap - 1].rstrip() + "…"
+                )
                 body_lbl = QLabel(preview)
                 body_lbl.setWordWrap(True)
                 body_lbl.setStyleSheet(
@@ -535,6 +676,41 @@ class CitationSourcesDialog(QDialog):
         inner.addWidget(scroll, stretch=1)
 
         btn_row = QHBoxLayout()
+        if src_list:
+            from PyQt6.QtWidgets import QApplication
+
+            from core.knowledge.evidence_citations import sources_to_apa, sources_to_bibtex
+
+            bibtex_btn = QPushButton("COPY BIBTEX")
+            apa_btn = QPushButton("COPY APA")
+            export_style = f"""
+                QPushButton {{
+                    padding: 10px 14px;
+                    min-height: 28px;
+                    border-radius: 10px;
+                    font-weight: bold;
+                    font-size: 11px;
+                    letter-spacing: 0.5px;
+                    color: {fg};
+                    border: 1px solid {border};
+                    background: transparent;
+                }}
+                QPushButton:hover {{
+                    background: rgba(255, 255, 255, 0.05);
+                }}
+            """
+            bibtex_btn.setStyleSheet(export_style)
+            apa_btn.setStyleSheet(export_style)
+            bibtex_btn.clicked.connect(
+                lambda: QApplication.clipboard().setText(
+                    sources_to_bibtex(src_list)
+                )
+            )
+            apa_btn.clicked.connect(
+                lambda: QApplication.clipboard().setText(sources_to_apa(src_list))
+            )
+            btn_row.addWidget(bibtex_btn)
+            btn_row.addWidget(apa_btn)
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
         close_btn.setStyleSheet(
@@ -560,3 +736,15 @@ class CitationSourcesDialog(QDialog):
         inner.addLayout(btn_row)
 
         outer.addWidget(container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        _frame_dialog_within_host(
+            self,
+            preferred_width=_CITATION_SOURCES_DEFAULT_W,
+            preferred_height=_CITATION_SOURCES_DEFAULT_H,
+            min_width=_CITATION_SOURCES_MIN_W,
+            min_height=_CITATION_SOURCES_MIN_H,
+        )
+        self.raise_()
+        self.activateWindow()

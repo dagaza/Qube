@@ -3433,7 +3433,11 @@ class MainWindow(QMainWindow):
             elif voice_capture_active:
                 conv.on_voice_capture_ended()
 
-            conv.set_input_enabled(new_state in ("idle", "speaking", "needs_model"))
+            deep_research_active = bool(getattr(conv, "_deep_research_in_progress", False))
+            if deep_research_active and not llm_in_progress and not voice_turn_active:
+                conv.set_input_enabled(True)
+            else:
+                conv.set_input_enabled(new_state in ("idle", "speaking", "needs_model"))
             conv.apply_presence_label(transition.presence_label)
 
         msg_upper = message.upper().strip()

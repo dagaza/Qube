@@ -10,11 +10,15 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QListWidgetItem
 
 from core.app_settings import (
+    KEY_DEEP_RESEARCH_ENABLED,
+    KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
     get_advanced_embedding_unlocked,
     get_embedding_mode,
     set_advanced_embedding_unlocked,
+    set_deep_research_enabled,
     set_embedding_model_path,
     set_embedding_mode,
+    set_external_knowledge_v2_enabled,
 )
 from core.bootstrap_search_models import (
     format_embedding_mode_switch_confirm_body,
@@ -39,6 +43,18 @@ EMBEDDING_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 3
 
 class KnowledgeHandlersMixin:
     """Embedding model loader and related Knowledge settings behavior."""
+
+    def _emit_external_settings_changed(self, *keys: str) -> None:
+        if hasattr(self, "external_settings_reloaded"):
+            self.external_settings_reloaded.emit(set(keys))
+
+    def _on_external_knowledge_v2_toggled(self, checked: bool) -> None:
+        set_external_knowledge_v2_enabled(checked)
+        self._emit_external_settings_changed(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED)
+
+    def _on_deep_research_enabled_toggled(self, checked: bool) -> None:
+        set_deep_research_enabled(checked)
+        self._emit_external_settings_changed(KEY_DEEP_RESEARCH_ENABLED)
 
     def _on_advanced_embedding_toggled(self, checked: bool) -> None:
         if checked:

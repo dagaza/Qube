@@ -49,6 +49,9 @@ KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
+KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED = "qube.knowledge.external_v2_enabled"
+KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
+KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
 KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
 KEY_SKILLS_MAX_ACTIVE = "qube.skills.max_active_skills"
@@ -307,6 +310,59 @@ def get_web_search_audit_log_enabled() -> bool:
 
 def set_web_search_audit_log_enabled(enabled: bool) -> None:
     _store().set(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, enabled)
+
+
+def get_external_knowledge_v2_enabled() -> bool:
+    """When True, web retrieval runs through the evidence pipeline (Phase 0)."""
+    return bool(_store().get(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, False))
+
+
+def set_external_knowledge_v2_enabled(enabled: bool) -> None:
+    _store().set(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, enabled)
+
+
+def external_knowledge_v2_env_override() -> bool | None:
+    raw = os.getenv("QUBE_EXTERNAL_KNOWLEDGE_V2")
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def external_knowledge_v2_enabled() -> bool:
+    """Effective external knowledge v2 flag (env override wins)."""
+    override = external_knowledge_v2_env_override()
+    if override is not None:
+        return override
+    return get_external_knowledge_v2_enabled()
+
+
+def get_deep_research_enabled() -> bool:
+    """When True, background deep-research jobs may run (Phase 4 scaffold)."""
+    return bool(_store().get(KEY_DEEP_RESEARCH_ENABLED, False))
+
+
+def set_deep_research_enabled(enabled: bool) -> None:
+    _store().set(KEY_DEEP_RESEARCH_ENABLED, enabled)
+
+
+def get_default_knowledge_service() -> str:
+    """Default v2 knowledge service when no composer tool is attached."""
+    from core.knowledge.types import SERVICE_GENERAL_WEB, SERVICE_SCIENTIFIC_EVIDENCE, SERVICE_TRUSTED_KNOWLEDGE
+
+    raw = str(_store().get(KEY_DEFAULT_KNOWLEDGE_SERVICE, SERVICE_GENERAL_WEB) or "")
+    sid = raw.strip().lower()
+    if sid in {SERVICE_GENERAL_WEB, SERVICE_TRUSTED_KNOWLEDGE, SERVICE_SCIENTIFIC_EVIDENCE}:
+        return sid
+    return SERVICE_GENERAL_WEB
+
+
+def set_default_knowledge_service(service_id: str) -> None:
+    from core.knowledge.types import SERVICE_GENERAL_WEB, SERVICE_SCIENTIFIC_EVIDENCE, SERVICE_TRUSTED_KNOWLEDGE
+
+    sid = (service_id or SERVICE_GENERAL_WEB).strip().lower()
+    if sid not in {SERVICE_GENERAL_WEB, SERVICE_TRUSTED_KNOWLEDGE, SERVICE_SCIENTIFIC_EVIDENCE}:
+        sid = SERVICE_GENERAL_WEB
+    _store().set(KEY_DEFAULT_KNOWLEDGE_SERVICE, sid)
 
 
 def get_skills_enabled() -> bool:

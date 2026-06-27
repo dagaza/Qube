@@ -53,6 +53,13 @@ def parse_composer_input(
     return clean, attachments, enforced
 
 
+def substantive_composer_prompt(text: str) -> str | None:
+    """Return user-visible prompt text after stripping composer tokens, or None if empty."""
+    clean, _attachments, _skills = parse_composer_input(text or "")
+    clean = clean.strip()
+    return clean or None
+
+
 def strip_all_composer_tokens_for_display(text: str) -> str:
     """Remove attachment and skill tokens for compact display."""
     _, without_skills = strip_skill_tokens(text or "")

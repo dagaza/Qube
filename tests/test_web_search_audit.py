@@ -38,6 +38,17 @@ class TestWebSearchTriggerResolution(unittest.TestCase):
                 force_web=False,
                 manual_web=True,
                 composer_internet=True,
+                composer_trusted=True,
+                auto_web=True,
+                execution_route="WEB",
+            ),
+            "composer_trusted",
+        )
+        self.assertEqual(
+            resolve_web_search_trigger(
+                force_web=False,
+                manual_web=True,
+                composer_internet=True,
                 auto_web=True,
                 execution_route="WEB",
             ),

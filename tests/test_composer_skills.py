@@ -11,6 +11,7 @@ from core.composer_skills import (
     parse_composer_input,
     strip_all_composer_tokens_for_display,
     strip_skill_tokens,
+    substantive_composer_prompt,
 )
 
 
@@ -55,6 +56,13 @@ class ComposerSkillTokenTests(unittest.TestCase):
         )
         self.assertEqual(enforced, ("software_engineering",))
         self.assertEqual(attachments, [])
+
+    def test_substantive_composer_prompt_strips_tokens(self) -> None:
+        self.assertIsNone(substantive_composer_prompt("@[tool:internet]"))
+        self.assertEqual(
+            substantive_composer_prompt("@[tool:internet] What is the capital?"),
+            "What is the capital?",
+        )
 
 
 if __name__ == "__main__":

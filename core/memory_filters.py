@@ -477,6 +477,13 @@ NO_SOURCES_SYSTEM_SUFFIX: str = (
     "invent names, dates, affiliations, or other details."
 )
 
+CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX: str = (
+    " This is a follow-up in plain chat — no retrieved sources are attached "
+    "to this turn. Do NOT use bracket citation tokens like [1], [2], or [W]. "
+    "Answer only the user's latest question; do not repeat or recap prior "
+    "assistant answers unless the user explicitly asks for a summary."
+)
+
 WEB_CAPABILITY_DISABLED_SUFFIX: str = (
     " IMPORTANT: the user asked for live or real-time information, but "
     "internet access is disabled in Qube settings. In one or two sentences, "
@@ -494,6 +501,13 @@ EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     "Do NOT claim you lack internet access or cannot browse. "
     "Do NOT emit bracket citation tokens such as [W]. "
     "You may answer from general knowledge when appropriate."
+)
+
+SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved scientific abstracts are for informational "
+    "summarization only — not medical advice. Do not diagnose, prescribe, "
+    "or recommend treatment changes. Encourage consulting a qualified "
+    "clinician for personal health decisions."
 )
 
 RAG_CAPABILITY_DISABLED_SUFFIX: str = (
@@ -900,6 +914,8 @@ def should_run_internet_search_for_route(
     manual_web: bool = False,
     auto_web: bool = False,
     composer_internet: bool = False,
+    composer_trusted: bool = False,
+    composer_web_tool: bool = False,
 ) -> bool:
     """WEB/INTERNET always search; HYBRID only when live-web intent is explicit."""
     route = str(execution_route or "").upper()
@@ -911,7 +927,9 @@ def should_run_internet_search_for_route(
         force_web
         or manual_web
         or auto_web
+        or composer_web_tool
         or composer_internet
+        or composer_trusted
         or query_implies_live_web_intent(query, decision=decision)
     )
 
