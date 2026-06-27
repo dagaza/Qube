@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "description": "Phase 2 scientific retrieval eval corpus (manual + harness)",
+  "queries": [
+    {
+      "id": "bio_001",
+      "query": "Ozempic semaglutide cardiovascular outcomes randomized trial",
+      "expect_adapters": ["pubmed"],
+      "expect_abstract": true,
+      "medical": true
+    },
+    {
+      "id": "bio_002",
+      "query": "mRNA vaccine myocarditis incidence adolescents",
+      "expect_adapters": ["pubmed", "openalex"],
+      "expect_abstract": true,
+      "medical": true
+    },
+    {
+      "id": "cs_001",
+      "query": "transformer attention mechanism neural machine translation",
+      "expect_adapters": ["arxiv", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "phys_001",
+      "query": "gravitational wave detection LIGO binary black hole",
+      "expect_adapters": ["arxiv", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "cross_001",
+      "query": "climate change Arctic sea ice extent satellite observations",
+      "expect_adapters": ["openalex"],
+      "expect_abstract": true,
+      "medical": false
+    }
+  ]
+}

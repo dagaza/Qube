@@ -14,7 +14,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.app_settings import get_advanced_embedding_unlocked
+from core.app_settings import (
+    get_advanced_embedding_unlocked,
+    get_deep_research_enabled,
+    get_external_knowledge_v2_enabled,
+)
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
@@ -54,6 +58,54 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     mode_form.addRow("Mode", host.embedding_mode_selector)
     mode_form.addRow("", host.embedding_mode_description)
     layout.addWidget(wrap_subsection(mode_inner, anchor="embedding_mode"))
+
+    add_subsection_to_layout(layout, "External knowledge", anchor="external_knowledge")
+
+    host.external_knowledge_v2_toggle = PrestigeToggle()
+    host.external_knowledge_v2_label = QLabel("External knowledge pipeline (v2)")
+    host.external_knowledge_v2_label.setWordWrap(True)
+    _external_v2_tip = (
+        "Routes @internet, @trusted, and @evidence through the evidence pipeline "
+        "(PubMed, OpenAlex, arXiv, etc.). Required for @research deep research."
+    )
+    host.external_knowledge_v2_toggle.setToolTip(_external_v2_tip)
+    host.external_knowledge_v2_label.setToolTip(_external_v2_tip)
+    external_v2_row = QWidget()
+    external_v2_row_layout = QHBoxLayout(external_v2_row)
+    external_v2_row_layout.setContentsMargins(0, 0, 0, 0)
+    external_v2_row_layout.addWidget(
+        host.external_knowledge_v2_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    external_v2_row_layout.addWidget(host.external_knowledge_v2_label, stretch=1)
+    host.external_knowledge_v2_toggle.blockSignals(True)
+    host.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
+    host.external_knowledge_v2_toggle.blockSignals(False)
+    host.external_knowledge_v2_toggle.toggled.connect(
+        host._on_external_knowledge_v2_toggled
+    )
+    layout.addWidget(external_v2_row)
+
+    host.deep_research_toggle = PrestigeToggle()
+    host.deep_research_label = QLabel("Deep research (@research)")
+    host.deep_research_label.setWordWrap(True)
+    _deep_research_tip = (
+        "Runs multi-step evidence jobs in the background when you use the "
+        "@research composer tool. Does not block normal chat."
+    )
+    host.deep_research_toggle.setToolTip(_deep_research_tip)
+    host.deep_research_label.setToolTip(_deep_research_tip)
+    deep_research_row = QWidget()
+    deep_research_row_layout = QHBoxLayout(deep_research_row)
+    deep_research_row_layout.setContentsMargins(0, 0, 0, 0)
+    deep_research_row_layout.addWidget(
+        host.deep_research_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    deep_research_row_layout.addWidget(host.deep_research_label, stretch=1)
+    host.deep_research_toggle.blockSignals(True)
+    host.deep_research_toggle.setChecked(get_deep_research_enabled())
+    host.deep_research_toggle.blockSignals(False)
+    host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
+    layout.addWidget(deep_research_row)
 
     embedding_download_row = make_bootstrap_download_row(
         host,

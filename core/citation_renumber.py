@@ -8,9 +8,13 @@ from typing import Callable
 from core.citation_integrity import (
     CITATION_TOKEN_RE,
     normalize_citation_id,
+    repair_orphan_citations,
     source_citation_match_keys,
 )
-from core.citation_normalize import normalize_labeled_citation_tokens
+from core.citation_normalize import (
+    dedupe_bookend_citation_tokens,
+    normalize_labeled_citation_tokens,
+)
 
 
 def extract_citation_ids_in_order(text: str) -> list[str]:
@@ -75,10 +79,16 @@ def renumber_citations_by_appearance(
     and renumber bracket tokens contiguously from ``[1]``.
     """
     src_list = [s for s in (sources or []) if isinstance(s, dict)]
-    if not text or not src_list:
-        return text or "", []
+    if not text:
+        return "", []
 
     appearance = extract_citation_ids_in_order(text)
+    if not src_list:
+        if appearance:
+            stripped, _ = repair_orphan_citations(text, [], mode="strip")
+            return stripped, []
+        return text, []
+
     if not appearance:
         return text, []
 
@@ -97,7 +107,12 @@ def renumber_citations_by_appearance(
         cited_sources.append(row)
 
     if not cited_sources:
-        return text, []
+        if appearance:
+            stripped, _ = repair_orphan_citations(text, src_list, mode="strip")
+            return stripped, []
+        return text or "", []
 
     remapped = remap_citation_ids_in_text(text, id_map)
-    return remapped, cited_sources
+    repaired, _ = repair_orphan_citations(remapped, cited_sources, mode="strip")
+    repaired = dedupe_bookend_citation_tokens(repaired)
+    return repaired, cited_sources

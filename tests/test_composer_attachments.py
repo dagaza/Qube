@@ -80,6 +80,13 @@ class TestComposerAttachments(unittest.TestCase):
         assert patch is not None
         self.assertEqual(patch["route"], "rag")
 
+    def test_resolve_tool_research(self):
+        att = ComposerAttachment(kind="tool", id="research", label="Deep research")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "deep_research")
+        self.assertEqual(patch["strategy"], "attachment_tool_research")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -39,6 +39,8 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
     get_skills_enabled,
+    get_deep_research_enabled,
+    get_external_knowledge_v2_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -326,6 +328,14 @@ class PersistenceHandlersMixin:
             self.skills_enabled_toggle.blockSignals(True)
             self.skills_enabled_toggle.setChecked(get_skills_enabled())
             self.skills_enabled_toggle.blockSignals(False)
+        if hasattr(self, "external_knowledge_v2_toggle"):
+            self.external_knowledge_v2_toggle.blockSignals(True)
+            self.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
+            self.external_knowledge_v2_toggle.blockSignals(False)
+        if hasattr(self, "deep_research_toggle"):
+            self.deep_research_toggle.blockSignals(True)
+            self.deep_research_toggle.setChecked(get_deep_research_enabled())
+            self.deep_research_toggle.blockSignals(False)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_toggle.blockSignals(True)
             self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())

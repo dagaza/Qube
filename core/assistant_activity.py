@@ -127,6 +127,8 @@ def _is_assistant_working_message(msg_upper: str) -> bool:
     """Canonical in-flight turn statuses only — not arbitrary substrings in filenames."""
     if msg_upper.startswith(("WORKING", "THINKING", "GENERATING", "SYNTHESIZING")):
         return True
+    if msg_upper.startswith("DEEP RESEARCH"):
+        return True
     return "SEARCHING" in msg_upper and "WEB" in msg_upper
 
 
@@ -184,6 +186,10 @@ class AssistantActivityReducer:
             activity = AssistantActivity.WORKING
             new_bubble = "thinking"
         elif "INGESTING" in msg_upper or "REPROCESSING" in msg_upper:
+            new_bubble = "thinking"
+            activity = AssistantActivity.BACKGROUND_BUSY
+            self._forced_activity = AssistantActivity.BACKGROUND_BUSY
+        elif msg_upper.startswith("DEEP RESEARCH"):
             new_bubble = "thinking"
             activity = AssistantActivity.BACKGROUND_BUSY
             self._forced_activity = AssistantActivity.BACKGROUND_BUSY

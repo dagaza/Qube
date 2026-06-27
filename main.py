@@ -33,6 +33,7 @@ from core.app_settings import (
     get_enable_memory_promotion,
     get_enable_memory_consolidation,
     get_enable_memory_v7_salvage,
+    get_deep_research_enabled,
     get_engine_mode,
     get_auto_load_last_model_on_startup,
     get_internal_model_path,
@@ -42,6 +43,7 @@ from core.app_settings import (
     KEY_AUDIO_INPUT_DEVICE,
     KEY_AUDIO_OUTPUT_DEVICE,
     KEY_ENGINE_MODE,
+    KEY_DEEP_RESEARCH_ENABLED,
     KEY_MEMORY_ENRICHMENT,
     KEY_NATIVE_CHAT_FORMAT,
     KEY_NATIVE_CPU_THREADS,
@@ -51,6 +53,7 @@ from core.app_settings import (
     KEY_WAKEWORD_THRESHOLDS,
 )
 from core.notification_types import (
+    deep_research_complete_event,
     enrichment_complete_event,
     format_retry_in_progress_event,
     ingestion_complete_event,
@@ -59,6 +62,7 @@ from core.notification_types import (
     turn_complete_event,
 )
 from workers.enrichment_worker import EnrichmentWorker
+from workers.deep_research_worker import DeepResearchWorker
 from workers.ingestion_worker import IngestionWorker
 from workers.reindex_worker import ReindexWorker
 from workers.memory_reflection_worker import MemoryReflectionWorker
@@ -214,6 +218,10 @@ class Qube:
         self.memory_consolidation_worker.set_enabled(get_enable_memory_consolidation())
         self.memory_consolidation_worker.start()
 
+        self.deep_research_worker = DeepResearchWorker(synthesis_llm=self.llm_worker)
+        self.deep_research_worker.set_enabled(get_deep_research_enabled())
+        self.deep_research_worker.start()
+
     def _workers_for_main_window(self) -> dict:
         return {
             "audio": self.audio_worker,
@@ -226,6 +234,7 @@ class Qube:
             "native_engine": self.native_llama_engine,
             "sidecar": self.sidecar_client,
             "sidecar_worker": self.sidecar_worker,
+            "deep_research": self.deep_research_worker,
         }
 
     def _boot_main_window(
@@ -530,6 +539,9 @@ class Qube:
         self.tts_worker.turn_settled.connect(w.conversations_view.on_tts_turn_settled)
         self.tts_worker.turn_settled.connect(self._handle_tts_turn_settled)
 
+        self.deep_research_worker.progress.connect(self._on_deep_research_progress)
+        self.deep_research_worker.finished.connect(self._on_deep_research_finished)
+
         # Settings View Routing
         self.tts_worker.model_loaded.connect(self.window.update_tts_voice_dropdowns)
         if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_kb_toggle'):
@@ -603,6 +615,9 @@ class Qube:
         self.llm_worker.token_streamed.connect(w.conversations_view.on_llm_token_streamed)
         self.llm_worker.stream_replaced.connect(w.conversations_view.on_llm_stream_replaced)
         self.llm_worker.sources_found.connect(w.conversations_view.on_sources_found)
+        self.llm_worker.evidence_transparency_found.connect(
+            w.conversations_view.on_evidence_transparency_found
+        )
         # 🔑 THE FIXES: Send the live status to the text box, and unlock it when finished!
         self.llm_worker.response_finished.connect(self._on_llm_response_finished)
         self.llm_worker.turn_notice.connect(self._on_llm_turn_notice)
@@ -705,6 +720,76 @@ class Qube:
         connections so a plain attribute assignment is safe.
         """
         self._pending_enrichment_context = payload or {}
+
+    def _on_deep_research_progress(self, payload: dict) -> None:
+        logger.info(
+            "[DeepResearch] progress request_id=%s phase=%s %s",
+            payload.get("request_id"),
+            payload.get("phase"),
+            payload.get("message"),
+        )
+        self._set_deep_research_presence(active=True, payload=payload)
+        conv = getattr(getattr(self, "window", None), "conversations_view", None)
+        if conv is not None and hasattr(conv, "on_deep_research_progress"):
+            conv.on_deep_research_progress(payload)
+
+    def _set_deep_research_presence(self, *, active: bool, payload: dict | None = None) -> None:
+        w = getattr(self, "window", None)
+        if w is None:
+            return
+        reducer = getattr(w, "_activity_reducer", None)
+        if active:
+            if getattr(self, "_deep_research_presence_active", False):
+                phase = str((payload or {}).get("phase") or "")
+                detail = str((payload or {}).get("message") or "").strip()
+                if phase == "synthesizing":
+                    w.update_status("Deep research: synthesizing…")
+                elif detail:
+                    w.update_status(f"Deep research: {detail.rstrip('…')}")
+                return
+            self._deep_research_presence_active = True
+            if reducer is not None:
+                reducer.set_background_busy(True)
+            if hasattr(w, "_sync_tray_presence"):
+                w._sync_tray_presence()
+            w.update_status("Deep research…")
+            return
+        if not getattr(self, "_deep_research_presence_active", False):
+            return
+        self._deep_research_presence_active = False
+        if reducer is not None:
+            reducer.set_background_busy(False)
+        if hasattr(w, "_sync_tray_presence"):
+            w._sync_tray_presence()
+        w.update_status("Idle", force=True)
+
+    def _on_deep_research_finished(self, payload: dict) -> None:
+        logger.info(
+            "[DeepResearch] finished request_id=%s status=%s sources=%s latency_ms=%s synthesis=%s",
+            payload.get("request_id"),
+            payload.get("status"),
+            payload.get("source_count"),
+            payload.get("latency_ms"),
+            payload.get("synthesis_applied"),
+        )
+        conv = getattr(getattr(self, "window", None), "conversations_view", None)
+        if conv is not None and hasattr(conv, "on_deep_research_finished"):
+            conv.on_deep_research_finished(payload)
+
+        status = str(payload.get("status") or "")
+        session_id = str(payload.get("session_id") or "")
+        active = str(getattr(conv, "active_session_id", "") or "") if conv else ""
+        if status == "ok" and session_id and session_id != active:
+            if hasattr(self, "window") and hasattr(self.window, "emit_notification"):
+                self.window.emit_notification(
+                    deep_research_complete_event(
+                        session_id=session_id,
+                        query=str(payload.get("query") or ""),
+                        source_count=int(payload.get("source_count") or 0),
+                        synthesis_applied=bool(payload.get("synthesis_applied")),
+                    )
+                )
+        self._set_deep_research_presence(active=False)
 
     def _on_llm_turn_notice(self, session_id: str, payload: dict) -> None:
         kind = str((payload or {}).get("kind") or "")
@@ -983,6 +1068,23 @@ class Qube:
         voice_turn_active = bool(
             conv is not None and getattr(conv, "_voice_turn_active", False)
         )
+        deep_research_active = bool(
+            conv is not None and getattr(conv, "_deep_research_in_progress", False)
+        )
+
+        if deep_research_active and conv is not None:
+            request_id = getattr(conv, "_active_deep_research_request_id", None)
+            worker = getattr(self, "deep_research_worker", None)
+            if worker is not None and request_id:
+                worker.cancel_request(str(request_id))
+            conv._deep_research_in_progress = False
+            conv._active_deep_research_request_id = None
+            conv._deep_research_session_id = None
+            if hasattr(conv, "_hide_deep_research_progress"):
+                conv._hide_deep_research_progress()
+            conv._refresh_send_stop_button()
+            self._set_deep_research_presence(active=False)
+            return
 
         if voice_capturing and audio_worker is not None:
             audio_worker.cancel_voice_capture()
@@ -1179,6 +1281,8 @@ class Qube:
                 self.enrichment_worker.set_enabled(enabled)
             if hasattr(self, "memory_reflection_worker"):
                 self.memory_reflection_worker.set_enabled(enabled)
+        if KEY_DEEP_RESEARCH_ENABLED in changed and hasattr(self, "deep_research_worker"):
+            self.deep_research_worker.set_enabled(get_deep_research_enabled())
         if KEY_ENGINE_MODE in changed:
             self._on_engine_mode_changed(get_engine_mode())
             return

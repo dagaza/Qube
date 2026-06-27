@@ -31,6 +31,11 @@ class TestPolicyForTask(unittest.TestCase):
         self.assertFalse(p.include_harmony_phrase_stops)
         self.assertTrue(p.require_role_separated_messages)
 
+    def test_deep_research_synthesis_matches_extraction_policy(self) -> None:
+        p = policy_for_task(PrimaryEngineTask.deep_research_synthesis)
+        self.assertFalse(p.include_harmony_reply_guidance)
+        self.assertTrue(p.require_role_separated_messages)
+
 
 class TestNormalizeMessagesForTask(unittest.TestCase):
     def test_chat_accepts_multi_turn(self) -> None:

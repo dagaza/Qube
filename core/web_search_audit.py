@@ -105,9 +105,15 @@ def resolve_web_search_trigger(
     force_web: bool,
     manual_web: bool,
     composer_internet: bool,
+    composer_trusted: bool = False,
+    composer_evidence: bool = False,
     auto_web: bool,
     execution_route: str,
 ) -> str:
+    if composer_trusted:
+        return "composer_trusted"
+    if composer_evidence:
+        return "composer_evidence"
     if composer_internet:
         return "composer_internet"
     if force_web:
@@ -265,6 +271,8 @@ def build_audit_event_from_llm_turn(
     manual_web: bool,
     auto_web: bool,
     composer_internet: bool,
+    composer_trusted: bool = False,
+    composer_evidence: bool = False,
     query_raw: str,
     query_resolved: str,
     query_rewrite_reason: str | None,
@@ -311,6 +319,8 @@ def build_audit_event_from_llm_turn(
             force_web=force_web,
             manual_web=manual_web,
             composer_internet=composer_internet,
+            composer_trusted=composer_trusted,
+            composer_evidence=composer_evidence,
             auto_web=auto_web,
             execution_route=execution_route,
         ),

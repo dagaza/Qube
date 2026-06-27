@@ -16,6 +16,8 @@ from core.harmony_reply_guidance import HARMONY_FINAL_REPLY_GUIDANCE
 class PrimaryEngineTask(str, Enum):
     chat = "chat"
     memory_extraction = "memory_extraction"
+    deep_research_synthesis = "deep_research_synthesis"
+    deep_research_decompose = "deep_research_decompose"
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,20 @@ def policy_for_task(
         else PrimaryEngineTask(str(task).strip())
     )
     if t == PrimaryEngineTask.memory_extraction:
+        return TaskPromptPolicy(
+            task=t,
+            include_harmony_reply_guidance=False,
+            include_harmony_phrase_stops=False,
+            require_role_separated_messages=True,
+        )
+    if t == PrimaryEngineTask.deep_research_synthesis:
+        return TaskPromptPolicy(
+            task=t,
+            include_harmony_reply_guidance=False,
+            include_harmony_phrase_stops=False,
+            require_role_separated_messages=True,
+        )
+    if t == PrimaryEngineTask.deep_research_decompose:
         return TaskPromptPolicy(
             task=t,
             include_harmony_reply_guidance=False,

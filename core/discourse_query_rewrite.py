@@ -47,6 +47,11 @@ _AREA_FRAME = re.compile(
     r"^\s*(?:and\s+)?what\s+is\s+(?:its|their|his|her)\s+area\b",
     re.I,
 )
+_SURFACE_AREA_FRAME = re.compile(
+    r"^\s*(?:great,?\s+and\s+)?(?:(?:how\s+about|what\s+is|what'?s)\s+)?"
+    r"(?:its|their|his|her)\s+surface\s+area\b",
+    re.I,
+)
 _EXPLICIT_ENTITY = re.compile(
     r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b|\"[^\"]{2,}\"|\'[^\']{2,}\'",
 )
@@ -122,6 +127,12 @@ def resolve_ambiguous_user_query(
         resolved = f"What is the population of {referent}?"
         subs.append(("its", referent))
         result = ResolvedUserQuery(original, resolved, tuple(subs), 0.88, "frame_template")
+        return _finalize_resolved_query(result, discourse)
+
+    if _SURFACE_AREA_FRAME.search(working):
+        resolved = f"What is the surface area of {referent}?"
+        subs.append(("its", referent))
+        result = ResolvedUserQuery(original, resolved, tuple(subs), 0.86, "frame_template")
         return _finalize_resolved_query(result, discourse)
 
     if _AREA_FRAME.search(working):

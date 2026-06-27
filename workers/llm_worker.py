@@ -206,7 +206,16 @@ from core.discourse_query import (
     should_veto_ungrounded_web_follow_up,
     web_query_rewrite_failed,
 )
-from core.retrieval_relevance import filter_web_results
+from core.app_settings import (
+    external_knowledge_v2_enabled,
+    get_default_knowledge_service,
+)
+from core.knowledge.registry import (
+    WEB_COMPOSER_TOOLS,
+    adapter_filter_for_composer_tool,
+    resolve_turn_knowledge_service,
+)
+from core.knowledge.web_retrieval import run_web_retrieval
 from core.web_search_audit import (
     STATUS_VETOED_TOOL_DISABLED,
     STATUS_VETOED_UNGROUNDED,
@@ -247,7 +256,6 @@ from core.composer_attachments import (
 )
 
 from mcp.rag_tool import rag_search
-from mcp.internet_tool import search_internet
 from mcp.memory_tool import memory_search
 from workers.intent_router import EmbeddingCache
 
@@ -298,6 +306,7 @@ class LLMWorker(QThread):
     web_search_active = pyqtSignal(bool, bool, bool)
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
+    evidence_transparency_found = pyqtSignal(str, dict)  # session_id, transparency
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
     sidecar_telemetry_updated = pyqtSignal(dict)
     routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
@@ -645,6 +654,16 @@ class LLMWorker(QThread):
             self.session_id or "",
             copy.deepcopy(all_ui_sources or []),
         )
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if evidence_bundle is not None:
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            self._turn_evidence_transparency = transparency
+            self.evidence_transparency_found.emit(
+                self.session_id or "",
+                copy.deepcopy(transparency),
+            )
 
     def _finalize_turn_citations(
         self,
@@ -657,6 +676,7 @@ class LLMWorker(QThread):
     ) -> tuple[str, list, bool]:
         """Citation retry (optional), then cited-only renumber + UI source sync."""
         retry_replaced = False
+        before_text = final_text or ""
         if (
             allow_missing_retry
             and (final_text or "").strip()
@@ -674,6 +694,12 @@ class LLMWorker(QThread):
             all_ui_sources,
         )
         self._sync_turn_citation_sources(all_ui_sources)
+        if (
+            (final_text or "").strip() != (before_text or "").strip()
+            and (final_text or "").strip()
+            and not retry_replaced
+        ):
+            self.stream_replaced.emit(self.session_id or "", final_text)
         return final_text, all_ui_sources, retry_replaced
 
     def _maybe_retry_missing_web_citations(
@@ -1065,8 +1091,27 @@ class LLMWorker(QThread):
             )
 
         src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
+        bundle_id = None
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        transparency = None
+        if evidence_bundle is not None:
+            bundle_id = str(getattr(evidence_bundle, "bundle_id", "") or "") or None
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+            from core.knowledge.ui_sources_payload import encode_sources_payload
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            src_payload = encode_sources_payload(
+                list(all_ui_sources or []),
+                transparency=transparency,
+            )
+        elif all_ui_sources:
+            src_payload = json.dumps(all_ui_sources)
         self._turn_last_assistant_msg_id = self.db.add_message(
-            self.session_id, "assistant", history_content, sources_json=src_payload
+            self.session_id,
+            "assistant",
+            history_content,
+            sources_json=src_payload,
+            evidence_bundle_id=bundle_id,
         )
 
         gen_debug = getattr(self, "_active_generation_debug_recorder", None)
@@ -1932,6 +1977,7 @@ class LLMWorker(QThread):
         self._reset_turn_enrichment_flags()
         self._pending_salvage_message_ids = []
         self._turn_all_ui_sources: list = []
+        self._turn_evidence_bundle = None
 
         if self.session_id:
             user_content = getattr(self, "_persist_content", None) or self.prompt
@@ -2142,7 +2188,9 @@ class LLMWorker(QThread):
         attachment_conversation_active = False
         self._turn_source_filter = None
         self._turn_attachment_context = ""
+        self._composer_knowledge_tool = None
         self._composer_internet_requested = False
+        self._composer_trusted_requested = False
 
         if attachment_patch:
             if attachment_patch.get("attachment_file"):
@@ -2169,17 +2217,19 @@ class LLMWorker(QThread):
                             len(self._turn_attachment_context),
                         )
                     self._mark_skip_enrichment("composer_conversation_ref")
-            if attachment_patch.get("attachment_tool") == "internet":
-                self._composer_internet_requested = True
-                # Explicit @internet must behave like the toolbar Web toggle:
-                # force a web search for this turn (not gated on Settings).
+            composer_tool = attachment_patch.get("attachment_tool")
+            if composer_tool in WEB_COMPOSER_TOOLS:
+                self._composer_knowledge_tool = composer_tool
+                self._composer_internet_requested = composer_tool == "internet"
+                self._composer_trusted_requested = composer_tool == "trusted"
                 force_web = True
                 if attachment_patch.get("route") != "web":
                     attachment_patch = dict(attachment_patch)
                     attachment_patch["route"] = "web"
-                    attachment_patch["strategy"] = "attachment_tool_internet"
+                    attachment_patch["strategy"] = f"attachment_tool_{composer_tool}"
                 logger.info(
-                    "[LLM Worker] Composer @internet: forcing WEB search for this turn"
+                    "[LLM Worker] Composer @%s: forcing WEB search for this turn",
+                    composer_tool,
                 )
 
         scoped_library_active = file_search_active or attachment_file_active
@@ -2451,7 +2501,7 @@ class LLMWorker(QThread):
                 and execution_route == "WEB"
                 and not force_web
                 and not manual_web
-                and not getattr(self, "_composer_internet_requested", False)
+                and not getattr(self, "_composer_knowledge_tool", None)
             ):
                 logger.info(
                     "[Discourse] ungrounded follow-up (no topic); "
@@ -2690,7 +2740,7 @@ class LLMWorker(QThread):
             and not explicit_remember_active
             and not scoped_library_active
             and not attachment_conversation_active
-            and not getattr(self, "_composer_internet_requested", False)
+            and not getattr(self, "_composer_knowledge_tool", None)
         ):
             # T3.4 §3.3 "default every turn (even CHAT)": on a plain chat
             # turn (router picked ``none``) run a cheap preferences-only
@@ -2783,6 +2833,9 @@ class LLMWorker(QThread):
             "manual_web": manual_web,
             "auto_web": auto_web,
             "composer_internet": bool(getattr(self, "_composer_internet_requested", False)),
+            "composer_trusted": bool(getattr(self, "_composer_trusted_requested", False)),
+            "composer_evidence": getattr(self, "_composer_knowledge_tool", None)
+            == "evidence",
             "query_raw": resolved_retrieval.raw_text,
             "query_resolved": apply_tool_policy(
                 resolved_retrieval.web_text,
@@ -2817,7 +2870,9 @@ class LLMWorker(QThread):
             force_web=force_web,
             manual_web=manual_web,
             auto_web=auto_web,
+            composer_web_tool=bool(getattr(self, "_composer_knowledge_tool", None)),
             composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
+            composer_trusted=bool(getattr(self, "_composer_trusted_requested", False)),
         ) and (self.mcp_internet_enabled or force_web):
             web_search_attempted = True
             web_audit_t0 = time.time()
@@ -2827,7 +2882,7 @@ class LLMWorker(QThread):
             via_direct = bool(
                 force_web
                 or manual_web
-                or getattr(self, "_composer_internet_requested", False)
+                or getattr(self, "_composer_knowledge_tool", None)
             )
             via_hybrid = bool(
                 auto_web
@@ -2892,88 +2947,114 @@ class LLMWorker(QThread):
                     raw_prompt[:120],
                 )
 
-            web_results = search_internet(web_query)
-            if isinstance(web_results, list):
-                web_results_raw_for_audit = [
-                    dict(r) for r in web_results if isinstance(r, dict)
-                ]
-
-            # Defensive guard: when search_internet fails (e.g. DNS /
-            # connection reset / no-result sentinel) it still returns a
-            # list of the shape [{"title": "", "snippet": "Internet search
-            # failed..."}]. Previously we injected that sentinel into the
-            # prompt with a "[W]" tag, and the small-LLM happily looped
-            # "[W][W][W]" until StreamRepetitionGuard cancelled the turn.
-            # Treat any such sentinel as "no web data for this turn".
-            if isinstance(web_results, list):
-                _snips = " ".join(
-                    str((r or {}).get("snippet") or "") if isinstance(r, dict) else str(r or "")
-                    for r in web_results
+            try:
+                web_query_vector = self.embedding_cache.get_embedding(
+                    web_semantic or web_query
                 )
-                if (
-                    "Internet search failed" in _snips
-                    or "No relevant internet results found" in _snips
-                    or not _snips.strip()
-                ):
+            except Exception:
+                web_query_vector = None
+
+            turn_knowledge_service = resolve_turn_knowledge_service(
+                composer_tool=getattr(self, "_composer_knowledge_tool", None),
+                composer_trusted=bool(
+                    getattr(self, "_composer_trusted_requested", False)
+                ),
+                composer_internet=bool(
+                    getattr(self, "_composer_internet_requested", False)
+                ),
+                default_service=(
+                    get_default_knowledge_service()
+                    if external_knowledge_v2_enabled()
+                    else None
+                ),
+            )
+            turn_adapter_filter = adapter_filter_for_composer_tool(
+                getattr(self, "_composer_knowledge_tool", None)
+            )
+
+            _web_outcome = run_web_retrieval(
+                query=web_query,
+                semantic_query=web_semantic or web_query,
+                query_vector=web_query_vector,
+                embed_fn=self.embedding_cache.get_embedding,
+                use_v2=external_knowledge_v2_enabled(),
+                knowledge_service=turn_knowledge_service,
+                adapter_filter=turn_adapter_filter,
+                session_id=self.session_id,
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+            )
+            web_results = _web_outcome.web_results
+            web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit
+            web_results_kept_for_audit = _web_outcome.web_results_kept_for_audit
+            web_audit_rel_diag = _web_outcome.relevance_diag
+            self._turn_evidence_bundle = _web_outcome.bundle
+
+            if _web_outcome.skip_enrichment:
+                if _web_outcome.relevance_diag is None:
                     logger.info(
-                        "[LLM Worker] Web results dropped (empty / failure sentinel); not injecting [W] context."
+                        "[LLM Worker] Web results dropped (empty / failure sentinel); "
+                        "not injecting [W] context."
                     )
-                    web_results = None
-                    # T3.3: a web-route turn without web data is effectively
-                    # a capability failure — skip enrichment so the thin /
-                    # "I couldn't find anything online" style reply is not
-                    # mined as a user fact.
-                    if execution_route in ("WEB", "INTERNET", "HYBRID"):
-                        self._mark_skip_enrichment("web_tool_failure")
-                elif web_results:
-                    try:
-                        web_query_vector = self.embedding_cache.get_embedding(
-                            web_semantic or web_query
-                        )
-                    except Exception:
-                        web_query_vector = None
-                    filtered, rel_diag = filter_web_results(
-                        web_semantic or web_query,
-                        [r for r in web_results if isinstance(r, dict)],
-                        query_vector=web_query_vector,
-                        embed_text_fn=self.embedding_cache.get_embedding,
-                        use_embedding_gate=True,
+                else:
+                    kept = _web_outcome.relevance_diag.get("web_results_kept_count", 0)
+                    dropped = len(
+                        _web_outcome.relevance_diag.get("web_relevance_dropped") or []
                     )
-                    if isinstance(decision, dict):
-                        decision.update(rel_diag)
-                    web_audit_rel_diag = rel_diag
-                    kept = rel_diag.get("web_results_kept_count", 0)
-                    dropped = len(rel_diag.get("web_relevance_dropped") or [])
                     logger.info(
                         "[WebPipeline] relevance_gate kept=%d dropped=%d "
                         "min_overlap=%.2f",
                         kept,
                         dropped,
-                        rel_diag.get("web_relevance_min_overlap", 0.15),
+                        _web_outcome.relevance_diag.get(
+                            "web_relevance_min_overlap", 0.15
+                        ),
                     )
-                    if filtered:
-                        web_results = filtered
-                        web_results_kept_for_audit = [dict(r) for r in filtered]
-                    else:
-                        logger.info(
-                            "[LLM Worker] Web results dropped (relevance gate); "
-                            "not injecting [W] context."
+                    logger.info(
+                        "[LLM Worker] Web results dropped (relevance gate); "
+                        "not injecting [W] context."
+                    )
+                if execution_route in ("WEB", "INTERNET", "HYBRID"):
+                    self._mark_skip_enrichment("web_tool_failure")
+            elif web_audit_rel_diag:
+                kept = web_audit_rel_diag.get("web_results_kept_count", 0)
+                dropped = len(web_audit_rel_diag.get("web_relevance_dropped") or [])
+                logger.info(
+                    "[WebPipeline] relevance_gate kept=%d dropped=%d "
+                    "min_overlap=%.2f",
+                    kept,
+                    dropped,
+                    web_audit_rel_diag.get("web_relevance_min_overlap", 0.15),
+                )
+                if isinstance(decision, dict):
+                    decision.update(web_audit_rel_diag)
+                if hasattr(self, "routing_debug_buffer"):
+                    try:
+                        self.routing_debug_buffer.merge_web_pipeline_into_latest(
+                            {
+                                "web_query_resolved": web_query,
+                                "web_query_rewrite_reason": search_target.rewrite_reason,
+                                "web_query_rewrite_failed": rewrite_failed,
+                                **web_audit_rel_diag,
+                            }
                         )
-                        web_results = None
-                        if execution_route in ("WEB", "INTERNET", "HYBRID"):
-                            self._mark_skip_enrichment("web_tool_failure")
-                    if hasattr(self, "routing_debug_buffer"):
-                        try:
-                            self.routing_debug_buffer.merge_web_pipeline_into_latest(
-                                {
-                                    "web_query_resolved": web_query,
-                                    "web_query_rewrite_reason": search_target.rewrite_reason,
-                                    "web_query_rewrite_failed": rewrite_failed,
-                                    **rel_diag,
-                                }
-                            )
-                        except Exception:
-                            pass
+                    except Exception:
+                        pass
+            if (
+                external_knowledge_v2_enabled()
+                and _web_outcome.bundle is not None
+                and isinstance(decision, dict)
+            ):
+                decision["external_knowledge_v2"] = True
+                decision["knowledge_service"] = (
+                    _web_outcome.bundle.knowledge_service
+                    if _web_outcome.bundle is not None
+                    else turn_knowledge_service
+                )
+                decision["evidence_bundle_id"] = _web_outcome.bundle.bundle_id
+                decision["evidence_coverage"] = _web_outcome.bundle.coverage
+                decision["evidence_confidence"] = round(
+                    _web_outcome.bundle.confidence, 4
+                )
 
             if web_results:
                 web_items: list[dict] = []
@@ -3120,6 +3201,16 @@ class LLMWorker(QThread):
         self._turn_all_ui_sources = copy.deepcopy(all_ui_sources)
         if all_ui_sources:
             self.sources_found.emit(self.session_id or "", copy.deepcopy(all_ui_sources))
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if evidence_bundle is not None:
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            self._turn_evidence_transparency = transparency
+            self.evidence_transparency_found.emit(
+                self.session_id or "",
+                copy.deepcopy(transparency),
+            )
 
         # ============================================================
         # TELEMETRY + SELF TUNING
@@ -3225,7 +3316,7 @@ class LLMWorker(QThread):
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
-            and not getattr(self, "_composer_internet_requested", False)
+            and not getattr(self, "_composer_knowledge_tool", None)
         ):
             logger.info(
                 "[LLM Worker] All retrieval channels empty after relevance "
@@ -3236,13 +3327,15 @@ class LLMWorker(QThread):
                 self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
         elif (
-            getattr(self, "_composer_internet_requested", False)
+            getattr(self, "_composer_knowledge_tool", None)
             and execution_route in ("WEB", "INTERNET")
             and not all_ui_sources
         ):
+            tool_label = f"@{getattr(self, '_composer_knowledge_tool', 'internet')}"
             logger.warning(
-                "[LLM Worker] Composer @internet: web search returned no "
-                "sources; keeping WEB route with empty-results guidance."
+                "[LLM Worker] Composer %s: web search returned no "
+                "sources; keeping WEB route with empty-results guidance.",
+                tool_label,
             )
             self._mark_skip_enrichment("web_route_no_sources")
             tool_context += (
@@ -3258,6 +3351,12 @@ class LLMWorker(QThread):
             and self.mcp_internet_enabled
             and execution_route == "NONE"
         )
+        scientific_medical_disclaimer = False
+        _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if _evidence_bundle is not None:
+            scientific_medical_disclaimer = "medical_disclaimer" in (
+                _evidence_bundle.warnings or ()
+            )
         self._turn_execution_route = execution_route
         if self.session_id:
             self._prior_execution_route_by_session[str(self.session_id)] = execution_route
@@ -3431,13 +3530,13 @@ class LLMWorker(QThread):
                 len(attachment_ctx),
             )
         if (
-            getattr(self, "_composer_internet_requested", False)
+            getattr(self, "_composer_knowledge_tool", None)
             and not all_ui_sources
             and tool_context.strip()
         ):
             retrieval_prompt_body = tool_context.strip()
             logger.info(
-                "[LLM Worker] Composer @internet: injected web guidance (%d chars)",
+                "[LLM Worker] Composer web tool: injected web guidance (%d chars)",
                 len(retrieval_prompt_body),
             )
         if retrieval_prompt_body:
@@ -3563,12 +3662,33 @@ class LLMWorker(QThread):
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
             rag_capability_blocked=rag_capability_blocked,
+            knowledge_service=(
+                str(decision.get("knowledge_service"))
+                if isinstance(decision, dict) and decision.get("knowledge_service")
+                else None
+            ),
+            evidence_summary=(
+                _evidence_bundle.summary_for_skills()
+                if _evidence_bundle is not None
+                else None
+            ),
         )
         skill_result = activate_skills(
             skill_ctx,
             settings=get_skill_settings(),
             forced_skill_ids=tuple(
-                getattr(self, "_turn_enforced_skills", ()) or ()
+                dict.fromkeys(
+                    (
+                        *(getattr(self, "_turn_enforced_skills", ()) or ()),
+                        *(
+                            ("scientific_research",)
+                            if _evidence_bundle is not None
+                            and _evidence_bundle.knowledge_service == "scientific_evidence"
+                            and _evidence_bundle.sources
+                            else ()
+                        ),
+                    )
+                )
             ),
         )
         if get_skills_debug_log_enabled():
@@ -3604,6 +3724,7 @@ class LLMWorker(QThread):
             composer_conversation_ref=attachment_conversation_active,
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
+            scientific_medical_disclaimer=scientific_medical_disclaimer,
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(
@@ -4545,6 +4666,8 @@ class LLMWorker(QThread):
         manual_web: bool,
         auto_web: bool,
         composer_internet: bool,
+        composer_trusted: bool = False,
+        composer_evidence: bool = False,
         veto_status: str | None = None,
         web_results_raw=None,
         web_results_kept=None,
@@ -4562,6 +4685,8 @@ class LLMWorker(QThread):
                 manual_web=manual_web,
                 auto_web=auto_web,
                 composer_internet=composer_internet,
+                composer_trusted=composer_trusted,
+                composer_evidence=composer_evidence,
                 query_raw=query_raw,
                 query_resolved=query_resolved,
                 query_rewrite_reason=query_rewrite_reason,

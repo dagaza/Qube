@@ -71,12 +71,25 @@ class CitationRenumberTests(unittest.TestCase):
         self.assertEqual(new_text, "Sunny [1].")
         self.assertEqual(new_sources[0]["id"], 1)
 
-    def test_remap_preserves_uncited_orphans_for_integrity_pass(self) -> None:
+    def test_orphan_citations_stripped_when_no_matching_sources(self) -> None:
         sources = [{"id": 1, "type": "web"}, {"id": 2, "type": "web"}]
         text = "See [9] for detail."
         new_text, new_sources = renumber_citations_by_appearance(text, sources)
-        self.assertEqual(new_text, text)
+        self.assertEqual(new_text, "See for detail.")
         self.assertEqual(new_sources, [])
+
+    def test_orphan_citations_stripped_when_no_sources_at_all(self) -> None:
+        text = "Bucharest has about 547 square kilometers. [2]"
+        new_text, new_sources = renumber_citations_by_appearance(text, [])
+        self.assertEqual(new_text, "Bucharest has about 547 square kilometers.")
+        self.assertEqual(new_sources, [])
+
+    def test_partial_orphan_citations_stripped_after_renumber(self) -> None:
+        sources = [{"id": 1, "type": "web", "filename": "A"}]
+        text = "Capital fact [1]. Old surface area [2]."
+        new_text, new_sources = renumber_citations_by_appearance(text, sources)
+        self.assertEqual(new_text, "Capital fact [1]. Old surface area .")
+        self.assertEqual(len(new_sources), 1)
 
     def test_remap_citation_ids_in_text(self) -> None:
         self.assertEqual(

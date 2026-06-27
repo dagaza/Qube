@@ -22,6 +22,8 @@ def build_skill_context(
     web_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
     rag_capability_blocked: bool = False,
+    knowledge_service: str | None = None,
+    evidence_summary: EvidenceBundleSummary | None = None,
 ) -> SkillContext:
     sources = list(all_ui_sources or [])
     top_intent = None
@@ -51,4 +53,6 @@ def build_skill_context(
         router_top_intent=top_intent,
         router_trace_summary=trace_summary,
         query_embedding=query_embedding,
+        knowledge_service=knowledge_service,
+        evidence_summary=evidence_summary,
     )

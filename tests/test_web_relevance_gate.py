@@ -131,6 +131,52 @@ class TestMetaWebPipeline(unittest.TestCase):
         )
         self.assertEqual(web_q, target.query)
 
+    def test_meta_web_rewrite_skips_tool_only_prior_turn(self) -> None:
+        history = [
+            {"role": "user", "content": "What is the capital of Romania?"},
+            {"role": "assistant", "content": "Bucharest is the capital of Romania."},
+            {"role": "user", "content": "And how about its population size?"},
+            {"role": "assistant", "content": "About 1.8 million in the city proper."},
+            {"role": "user", "content": "@[tool:internet]"},
+            {
+                "role": "user",
+                "content": "Can you also check online for the answer?",
+            },
+        ]
+        follow_up = classify_follow_up(history[-1]["content"], history, None)
+        state = update_discourse_state(history, None, history[-1]["content"])
+        target = resolve_search_target(
+            history[-1]["content"],
+            follow_up,
+            state,
+            history,
+        )
+        self.assertEqual(target.rewrite_reason, "meta_prior_turn")
+        self.assertIn("Bucharest", target.query)
+        self.assertIn("population", target.query.lower())
+
+    def test_meta_web_rewrite_grounds_deictic_prior_with_referent(self) -> None:
+        history = [
+            {"role": "user", "content": "What is the capital of Romania?"},
+            {"role": "assistant", "content": "Bucharest is the capital of Romania."},
+            {"role": "user", "content": "Great, and how about its surface area?"},
+            {"role": "assistant", "content": "About 228 km²."},
+            {
+                "role": "user",
+                "content": "Can you check for the answer online to that last question?",
+            },
+        ]
+        follow_up = classify_follow_up(history[-1]["content"], history, None)
+        state = update_discourse_state(history, None, history[-1]["content"])
+        target = resolve_search_target(
+            history[-1]["content"],
+            follow_up,
+            state,
+            history,
+        )
+        self.assertEqual(target.rewrite_reason, "meta_prior_turn")
+        self.assertEqual(target.query, "What is the surface area of Bucharest?")
+
 
 if __name__ == "__main__":
     unittest.main()

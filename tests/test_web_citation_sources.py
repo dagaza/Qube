@@ -98,6 +98,21 @@ class TestWebCitationSources(unittest.TestCase):
             "See [2], [3] here.",
         )
 
+    def test_bookend_duplicate_citation_stripped(self) -> None:
+        raw = (
+            "[1] Semaglutide reduces MACE in people with obesity. [1]  \n"
+            "[2] Heart failure outcomes improved versus placebo. [2]"
+        )
+        self.assertEqual(
+            normalize_labeled_citation_tokens(raw),
+            "Semaglutide reduces MACE in people with obesity. [1]  \n"
+            "Heart failure outcomes improved versus placebo. [2]",
+        )
+
+    def test_leading_citation_kept_when_unique(self) -> None:
+        raw = "[1] Only cite at start."
+        self.assertEqual(normalize_labeled_citation_tokens(raw), raw)
+
 
 if __name__ == "__main__":
     unittest.main()

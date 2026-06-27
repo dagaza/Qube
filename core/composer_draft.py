@@ -31,6 +31,12 @@ class ComposerDraft:
     def is_empty(self) -> bool:
         return not (self.body or "").strip() and not self.routing and not self.skills
 
+    def routing_requires_body(self) -> bool:
+        """True when tool/file chips are present but the composer body is empty."""
+        if (self.body or "").strip():
+            return False
+        return any(att.kind in ("tool", "file") for att in self.routing)
+
     def clone(self) -> ComposerDraft:
         return ComposerDraft(
             body=self.body,
@@ -111,7 +117,7 @@ def add_routing_attachment(
     if (
         skip_internet_when_web_active
         and attachment.kind == "tool"
-        and attachment.id == "internet"
+        and attachment.id in {"internet", "trusted", "evidence", "research", "wikipedia", "pubmed", "arxiv"}
     ):
         return draft, False, None
     key = (attachment.kind, attachment.id)
@@ -170,7 +176,13 @@ def routing_chip_icon(attachment: ComposerAttachment) -> str:
         return "fa5s.comments"
     if attachment.kind == "tool":
         icons = {
+            "trusted": "fa5s.shield-alt",
+            "evidence": "fa5s.microscope",
+            "research": "fa5s.search-plus",
             "internet": "fa5s.globe",
+            "wikipedia": "fa5s.book-open",
+            "pubmed": "fa5s.notes-medical",
+            "arxiv": "fa5s.atom",
             "library": "fa5s.book",
             "memory": "fa5s.brain",
         }
@@ -204,6 +216,54 @@ def composer_one_source_limit_request():
         severity="info",
         category="system",
         dedupe_key="composer_one_source_limit",
+    )
+
+
+def composer_prompt_required_request():
+    """In-app toast when the user tries to send a routing chip without prompt text."""
+    from core.app_notification_types import AppNotificationRequest
+
+    return AppNotificationRequest(
+        title="Add a question or instruction",
+        body="Type what you want to search or ask, then send.",
+        auto_dismiss_ms=COMPOSER_ONE_SOURCE_DISMISS_MS,
+        show_countdown=True,
+        icon_name="fa5s.info-circle",
+        severity="info",
+        category="system",
+        dedupe_key="composer_prompt_required",
+    )
+
+
+def deep_research_unavailable_request(*, missing: str = "both"):
+    """In-app toast when @research is used but deep research is disabled."""
+    from core.app_notification_types import AppNotificationRequest
+
+    if missing == "deep_research":
+        body = (
+            "Turn on Deep research (@research) under Settings → Knowledge → "
+            "External knowledge."
+        )
+    elif missing == "external_v2":
+        body = (
+            "Turn on External knowledge pipeline (v2) under Settings → Knowledge → "
+            "External knowledge."
+        )
+    else:
+        body = (
+            "Enable external knowledge v2 and deep research under Settings → Knowledge → "
+            "External knowledge."
+        )
+
+    return AppNotificationRequest(
+        title="Deep research unavailable",
+        body=body,
+        auto_dismiss_ms=COMPOSER_ONE_SOURCE_DISMISS_MS,
+        show_countdown=True,
+        icon_name="fa5s.info-circle",
+        severity="info",
+        category="system",
+        dedupe_key="deep_research_unavailable",
     )
 
 

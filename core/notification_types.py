@@ -268,3 +268,28 @@ def enrichment_complete_event(*, session_id: str, facts_stored: int) -> Notifica
         dedupe_key=f"enrichment:{session_id}:{facts_stored}",
         coalesce_group="enrichment_complete",
     )
+
+
+def deep_research_complete_event(
+    *,
+    session_id: str,
+    query: str,
+    source_count: int,
+    synthesis_applied: bool = False,
+) -> NotificationEvent:
+    preview = (query or "").strip()
+    if len(preview) > 72:
+        preview = preview[:69] + "…"
+    detail = f"{source_count} source(s)"
+    if synthesis_applied:
+        detail = f"synthesized report · {detail}"
+    body = f"{preview} — {detail}" if preview else detail
+    return NotificationEvent(
+        title="Deep research complete",
+        body=body,
+        severity=NotificationSeverity.SUCCESS,
+        category="system",
+        auto_dismiss_ms=8000,
+        dedupe_key=f"deep_research:{session_id}:{preview}",
+        coalesce_group="deep_research_complete",
+    )

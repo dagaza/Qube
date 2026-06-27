@@ -151,6 +151,14 @@ class DatabaseManager:
                 except sqlite3.OperationalError:
                     pass
 
+                try:
+                    cursor.execute(
+                        "ALTER TABLE messages ADD COLUMN evidence_bundle_id TEXT"
+                    )
+                    logger.info("Added messages.evidence_bundle_id column.")
+                except sqlite3.OperationalError:
+                    pass
+
                 for alter_sql in (
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
                     "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
@@ -769,20 +777,22 @@ class DatabaseManager:
         role: str,
         content: str,
         sources_json: str | None = None,
+        evidence_bundle_id: str | None = None,
     ) -> str:
         """Insert a message and return its generated id.
 
         The id is used by the memory enrichment pipeline to record the exact
         source message(s) for each extracted fact (``source_message_ids`` on
-        the LanceDB payload). Existing callers that ignore the return value
-        are unaffected.
+        the LanceDB payload). ``evidence_bundle_id`` links assistant turns to
+        external knowledge bundles (Phase 4).
         """
         msg_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO messages (id, session_id, role, content, sources_json) VALUES (?, ?, ?, ?, ?)",
-                (msg_id, session_id, role, content, sources_json),
+                "INSERT INTO messages (id, session_id, role, content, sources_json, evidence_bundle_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (msg_id, session_id, role, content, sources_json, evidence_bundle_id),
             )
             cursor.execute(
                 "UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -794,7 +804,7 @@ class DatabaseManager:
     def get_session_history(self, session_id: str) -> list[dict]:
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT id, role, content, sources_json FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
+                "SELECT id, role, content, sources_json, evidence_bundle_id FROM messages WHERE session_id = ? ORDER BY timestamp ASC",
                 (session_id,)
             )
             rows = []
@@ -804,12 +814,19 @@ class DatabaseManager:
                     "role": row["role"],
                     "content": row["content"],
                 }
+                bundle_id = row["evidence_bundle_id"]
+                if bundle_id:
+                    entry["evidence_bundle_id"] = bundle_id
                 raw = row["sources_json"]
                 if raw:
                     try:
-                        parsed = json.loads(raw)
-                        if isinstance(parsed, list):
-                            entry["sources"] = parsed
+                        from core.knowledge.ui_sources_payload import decode_sources_payload
+
+                        sources, transparency = decode_sources_payload(raw)
+                        if sources:
+                            entry["sources"] = sources
+                        if transparency:
+                            entry["evidence_transparency"] = transparency
                     except json.JSONDecodeError:
                         logger.warning("Bad sources_json for session %s", session_id)
                 rows.append(entry)

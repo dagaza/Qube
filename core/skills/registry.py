@@ -20,6 +20,7 @@ from core.skills.builtin.problem_solving import PROBLEM_SOLVING
 from core.skills.builtin.productivity_planning import PRODUCTIVITY_PLANNING
 from core.skills.builtin.prompt_engineering import PROMPT_ENGINEERING
 from core.skills.builtin.research_synthesis import RESEARCH_SYNTHESIS
+from core.skills.builtin.scientific_research import SCIENTIFIC_RESEARCH
 from core.skills.builtin.software_engineering import SOFTWARE_ENGINEERING
 from core.skills.builtin.socratic_tutor import SOCRATIC_TUTOR
 from core.skills.builtin.task_decomposition import TASK_DECOMPOSITION
@@ -35,6 +36,7 @@ _BUILTIN_SKILLS: tuple[Skill, ...] = (
     MEETING_PROCESSOR,
     PROMPT_ENGINEERING,
     RESEARCH_SYNTHESIS,
+    SCIENTIFIC_RESEARCH,
     DEBATE_CRITICAL_THINKING,
     CONSUMER_BUYING,
     WRITING_ASSISTANCE,

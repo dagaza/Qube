@@ -20,11 +20,48 @@ _TOKEN_RE = re.compile(
 
 CONVERSATION_REF_BUDGET = 7000
 
-COMPOSER_TOOLS: list[dict[str, str]] = [
+COMPOSER_TOOLS: list[dict[str, str | bool]] = [
+    {
+        "id": "trusted",
+        "label": "Trusted",
+        "description": "Wikipedia and allowlisted sources",
+    },
+    {
+        "id": "evidence",
+        "label": "Evidence",
+        "description": "PubMed, OpenAlex, and arXiv abstracts",
+    },
+    {
+        "id": "research",
+        "label": "Deep research",
+        "description": "Multi-step evidence report (async, non-blocking)",
+    },
     {"id": "internet", "label": "Internet", "description": "Live web search"},
     {"id": "library", "label": "Library", "description": "Search your documents"},
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
+    {
+        "id": "wikipedia",
+        "label": "Wikipedia",
+        "description": "Wikipedia intro extracts only",
+        "advanced": True,
+    },
+    {
+        "id": "pubmed",
+        "label": "PubMed",
+        "description": "Biomedical literature abstracts",
+        "advanced": True,
+    },
+    {
+        "id": "arxiv",
+        "label": "arXiv",
+        "description": "Preprint abstracts (CS, physics, math)",
+        "advanced": True,
+    },
 ]
+
+_WEB_COMPOSER_TOOLS = frozenset(
+    {"internet", "trusted", "evidence", "wikipedia", "pubmed", "arxiv"}
+)
 
 _ROLE_HEADINGS = {
     "user": "User",
@@ -147,10 +184,17 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     tool_id = primary.id
-    if tool_id == "internet":
+    if tool_id in _WEB_COMPOSER_TOOLS:
         return {
             "route": "web",
-            "strategy": "attachment_tool_internet",
+            "strategy": f"attachment_tool_{tool_id}",
+            "attachment_tool": tool_id,
+            "composer_attachments": _attachments_telemetry(attachments),
+        }
+    if tool_id == "research":
+        return {
+            "route": "deep_research",
+            "strategy": "attachment_tool_research",
             "attachment_tool": tool_id,
             "composer_attachments": _attachments_telemetry(attachments),
         }
