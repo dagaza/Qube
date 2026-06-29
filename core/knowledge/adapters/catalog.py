@@ -6,10 +6,9 @@ from dataclasses import dataclass
 
 from core.knowledge.types import (
     SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
 )
-
-SERVICE_LEGAL_KNOWLEDGE = "legal_knowledge"
 
 
 @dataclass(frozen=True)
@@ -151,7 +150,7 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "CourtListener",
         SERVICE_LEGAL_KNOWLEDGE,
         "Legal",
-        implemented=False,
+        implemented=True,
     ),
     AdapterCatalogEntry(
         "eur_lex",

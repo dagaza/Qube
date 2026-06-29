@@ -6,7 +6,9 @@ import unittest
 from core.memory_filters import (
     CITATION_DISCIPLINE_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
+    FINANCE_SOURCES_EMPTY_SUFFIX,
     GROUNDED_ANSWER_SYSTEM_SUFFIX,
+    LEGAL_SOURCES_EMPTY_SUFFIX,
     NARRATIVE_RECALL_SYSTEM_SUFFIX,
     NO_SOURCES_SYSTEM_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
@@ -334,6 +336,30 @@ class TestPromptBlocks(unittest.TestCase):
         )
         sys_p = compose_system_prompt(blocks)
         self.assertNotIn("REASONING GUIDANCE", sys_p)
+
+    def test_legal_sources_empty_blocks_parametric_case_law(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            legal_sources_empty=True,
+            legal_disclaimer=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn(LEGAL_SOURCES_EMPTY_SUFFIX, sys_p)
+        self.assertTrue(blocks.no_sources_mode)
+
+    def test_finance_sources_empty_blocks_parametric_filings(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            finance_sources_empty=True,
+            financial_disclaimer=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn(FINANCE_SOURCES_EMPTY_SUFFIX, sys_p)
+        self.assertTrue(blocks.no_sources_mode)
 
 
 if __name__ == "__main__":

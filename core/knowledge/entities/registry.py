@@ -19,6 +19,7 @@ from core.knowledge.entities.types import (
 )
 from core.knowledge.types import (
     SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_GENERAL_WEB,
     SERVICE_INTERNAL_CORPUS,
     SERVICE_SCIENTIFIC_EVIDENCE,
@@ -31,6 +32,7 @@ ENTITY_PACK_HINTS: dict[str, tuple[str, ...]] = {
     SERVICE_GENERAL_WEB: ("bibliographic",),
     SERVICE_INTERNAL_CORPUS: ("bibliographic",),
     SERVICE_FINANCE_KNOWLEDGE: ("bibliographic",),
+    SERVICE_LEGAL_KNOWLEDGE: ("bibliographic",),
 }
 
 _EXTRACTORS: dict[str, EntityExtractor] = {

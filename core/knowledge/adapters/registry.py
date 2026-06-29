@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from core.knowledge.adapters.courtlistener import search_courtlistener
 from core.knowledge.adapters.arxiv_api import search_arxiv
 from core.knowledge.adapters.openalex import search_openalex
 from core.knowledge.adapters.pubmed_eutils import search_pubmed
@@ -16,6 +17,7 @@ SEARCH_FUNCTIONS: dict[str, SearchFn] = {
     "openalex": search_openalex,
     "arxiv": search_arxiv,
     "sec_edgar": search_sec_edgar,
+    "courtlistener": search_courtlistener,
 }
 
 

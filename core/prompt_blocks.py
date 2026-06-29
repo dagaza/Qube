@@ -28,6 +28,9 @@ from core.memory_filters import (
     EXPLICIT_WEB_EMPTY_SUFFIX,
     SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
     FINANCIAL_DISCLAIMER_SUFFIX,
+    FINANCE_SOURCES_EMPTY_SUFFIX,
+    LEGAL_DISCLAIMER_SUFFIX,
+    LEGAL_SOURCES_EMPTY_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -139,6 +142,9 @@ def build_prompt_blocks(
     explicit_web_empty_results: bool = False,
     scientific_medical_disclaimer: bool = False,
     financial_disclaimer: bool = False,
+    legal_disclaimer: bool = False,
+    legal_sources_empty: bool = False,
+    finance_sources_empty: bool = False,
     strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
@@ -184,12 +190,23 @@ def build_prompt_blocks(
     elif explicit_web_empty_results:
         persona = _BASE_PERSONA
         suffixes.append(EXPLICIT_WEB_EMPTY_SUFFIX)
+    elif legal_sources_empty:
+        no_sources = True
+        persona = _BASE_PERSONA
+        suffixes.append(LEGAL_SOURCES_EMPTY_SUFFIX)
+    elif finance_sources_empty:
+        no_sources = True
+        persona = _BASE_PERSONA
+        suffixes.append(FINANCE_SOURCES_EMPTY_SUFFIX)
     elif scientific_medical_disclaimer:
         persona = _BASE_PERSONA
         suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
     elif financial_disclaimer:
         persona = _BASE_PERSONA
         suffixes.append(FINANCIAL_DISCLAIMER_SUFFIX)
+    elif legal_disclaimer:
+        persona = _BASE_PERSONA
+        suffixes.append(LEGAL_DISCLAIMER_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True

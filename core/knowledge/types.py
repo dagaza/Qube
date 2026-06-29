@@ -18,6 +18,7 @@ SERVICE_SCIENTIFIC_EVIDENCE = "scientific_evidence"
 SERVICE_WIKIPEDIA = "wikipedia"
 SERVICE_INTERNAL_CORPUS = "internal_corpus"
 SERVICE_FINANCE_KNOWLEDGE = "finance_knowledge"
+SERVICE_LEGAL_KNOWLEDGE = "legal_knowledge"
 
 
 @dataclass(frozen=True)

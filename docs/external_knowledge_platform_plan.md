@@ -1,6 +1,6 @@
 # External Knowledge Platform — Design & Implementation Plan
 
-**Status:** Phases 0–4 validated; Phase 5 complete; **Phase 6 Slices 2–5a implemented** (2026-06-25) — internal corpus, entities, research map, `@finance`/SEC EDGAR, user-configurable source preferences  
+**Status:** Phases 0–4 validated; Phase 5 complete; **Phase 6 Slices 2–5b implemented** — internal corpus, entities, research map, `@finance`/SEC EDGAR, `@legal`/CourtListener, user-configurable source preferences  
 **Date:** 2026-06-25 (updated 2026-06-26)  
 **Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [§21 — ADR 002 Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
 
@@ -294,6 +294,7 @@ Three concepts must stay distinct as the platform grows:
 
 - `@evidence` / `@science` → `scientific_evidence` (scholarly literature across all disciplines)
 - `@finance` → `finance_knowledge` (SEC EDGAR, etc.)
+- `@legal` → `legal_knowledge` (CourtListener, etc.)
 - `@trusted` → `trusted_knowledge`
 
 Medicine is **one scientific discipline**, not synonymous with “scientific.” Economics, psychology, and political science are scientific disciplines that should eventually live as **discipline packs inside `scientific_evidence`**, not as separate top-level Knowledge Services. Finance and legal are **not** scientific disciplines — they remain separate services.
@@ -1001,7 +1002,7 @@ flowchart LR
 - Real-time collaborative graph editing
 - Multi-hop foreground tool chains (still one retrieval invocation per turn)
 
-**Status:** Slices 2–5a implemented — `@finance` + SEC EDGAR (live eval 4/4); user-configurable **Preferred sources** in Settings → Knowledge; legal/standards domains remain. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [Slice 5a Finance](./manual_qa_phase6_slice5_finance.md).
+**Status:** Slices 2–5b implemented — `@finance` + SEC EDGAR (live eval 4/4); `@legal` + CourtListener; user-configurable **Preferred sources** in Settings → Knowledge; standards domain remains. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [Slice 5a Finance](./manual_qa_phase6_slice5_finance.md), [Slice 5b Legal](./manual_qa_phase6_slice5_legal.md).
 
 ---
 

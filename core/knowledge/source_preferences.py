@@ -31,8 +31,8 @@ def normalize_preferences(raw: dict | None) -> dict[str, list[str]]:
                 continue
             seen.add(aid)
             ids.append(aid)
-        if ids:
-            out[sid] = ids
+        # Preserve explicit empty lists (user disabled all adapters for a service).
+        out[sid] = ids
     return out
 
 
@@ -55,6 +55,8 @@ def get_effective_enabled_adapters(
     enabled = tuple(aid for aid in selected if aid in allowed)
     if enabled:
         return enabled
+    if selected is not None:
+        return ()
     return default_enabled_adapter_ids(sid)
 
 
@@ -92,10 +94,7 @@ def set_adapter_enabled(
             current.append(aid)
     else:
         current = [x for x in current if x != aid]
-    if current:
-        merged[sid] = current
-    elif sid in merged:
-        del merged[sid]
+    merged[sid] = current
     return merged
 
 

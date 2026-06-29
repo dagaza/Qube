@@ -3409,18 +3409,36 @@ class LLMWorker(QThread):
             and execution_route in ("WEB", "INTERNET")
             and not all_ui_sources
         ):
-            tool_label = f"@{getattr(self, '_composer_knowledge_tool', 'internet')}"
+            composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
+            tool_label = f"@{composer_tool or 'internet'}"
             logger.warning(
                 "[LLM Worker] Composer %s: web search returned no "
                 "sources; keeping WEB route with empty-results guidance.",
                 tool_label,
             )
             self._mark_skip_enrichment("web_route_no_sources")
-            tool_context += (
-                "\n[WEB SEARCH: No live results were returned for this query. "
-                "Tell the user you could not retrieve web results right now. "
-                "Do NOT invent facts or emit [W] citations without sources.]\n"
-            )
+            if composer_tool == "legal":
+                tool_context += (
+                    "\n[@legal: No case law sources were retrieved. Preferred legal "
+                    "sources may be disabled in Settings → Knowledge. Tell the user "
+                    "briefly that case law could not be retrieved. Do NOT answer from "
+                    "general model knowledge about cases, holdings, or citations. "
+                    "Do NOT emit [1], [2], or [W].]\n"
+                )
+            elif composer_tool == "finance":
+                tool_context += (
+                    "\n[@finance: No SEC or finance sources were retrieved. Preferred "
+                    "finance sources may be disabled in Settings → Knowledge. Tell the "
+                    "user briefly that finance filings could not be retrieved. Do NOT "
+                    "answer from general model knowledge about filings or tickers. "
+                    "Do NOT emit [1], [2], or [W].]\n"
+                )
+            else:
+                tool_context += (
+                    "\n[WEB SEARCH: No live results were returned for this query. "
+                    "Tell the user you could not retrieve web results right now. "
+                    "Do NOT invent facts or emit [W] citations without sources.]\n"
+                )
 
         explicit_web_empty_results = bool(
             explicit_web_request
@@ -3431,11 +3449,20 @@ class LLMWorker(QThread):
         )
         scientific_medical_disclaimer = False
         financial_disclaimer = False
+        legal_disclaimer = False
+        composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
+        legal_sources_empty = composer_tool == "legal" and not all_ui_sources
+        finance_sources_empty = composer_tool == "finance" and not all_ui_sources
         _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
         if _evidence_bundle is not None:
             warnings = _evidence_bundle.warnings or ()
             scientific_medical_disclaimer = "medical_disclaimer" in warnings
-            financial_disclaimer = "not_financial_advice" in warnings
+            financial_disclaimer = (
+                "not_financial_advice" in warnings and not finance_sources_empty
+            )
+            legal_disclaimer = (
+                "not_legal_advice" in warnings and not legal_sources_empty
+            )
         self._turn_execution_route = execution_route
         if self.session_id:
             self._prior_execution_route_by_session[str(self.session_id)] = execution_route
@@ -3805,6 +3832,9 @@ class LLMWorker(QThread):
             explicit_web_empty_results=explicit_web_empty_results,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,
+            legal_disclaimer=legal_disclaimer,
+            legal_sources_empty=legal_sources_empty,
+            finance_sources_empty=finance_sources_empty,
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(

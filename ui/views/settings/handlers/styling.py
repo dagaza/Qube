@@ -185,6 +185,11 @@ class StylingMixin:
         ):
             if isinstance(choice_cbs, dict):
                 yield from choice_cbs.values()
+        knowledge_cbs = getattr(self, "knowledge_source_checkboxes", None)
+        if isinstance(knowledge_cbs, dict):
+            for cb_list in knowledge_cbs.values():
+                if isinstance(cb_list, list):
+                    yield from cb_list
 
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
