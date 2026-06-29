@@ -9,6 +9,7 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 | `v1_scientific.json` | `scientific_evidence` | Multi-disciplinary scholarly literature (`@evidence` / `@science`) — biomedical, CS, physics, climate; PubMed only for medically-scoped queries |
 | `v1_trusted.json` | `trusted_knowledge` | Phase 6 Slice 1 `@trusted` — Wikipedia-first, authority tiers |
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |
+| `v1_legal.json` | `legal_knowledge` | Phase 6 Slice 5b `@legal` — CourtListener case law |
 | `v1_deep_research.json` | deep research merge | Phase 5 topical relevance on merged bundles |
 
 ## Commands
@@ -22,6 +23,9 @@ python3 tools/evaluate_retrieval.py --live --service trusted_knowledge
 
 # Finance (Phase 6 Slice 5a — expect ≥ 3/4 ok)
 python3 tools/evaluate_retrieval.py --live --service finance_knowledge --min-pass 3
+
+# Legal (Phase 6 Slice 5b — expect ≥ 3/4 ok)
+python3 tools/evaluate_retrieval.py --live --service legal_knowledge --min-pass 3
 
 # Deep research (Phase 5 — expect 3/3 relevance_ok)
 python3 tools/evaluate_deep_research.py --live --require-relevance --min-relevance-ok 3

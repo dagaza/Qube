@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from core.knowledge.types import (  # noqa: E402
     SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
 )
@@ -38,15 +39,18 @@ _SERVICE_BY_NAME = {
     "scientific_evidence": SERVICE_SCIENTIFIC_EVIDENCE,
     "trusted_knowledge": SERVICE_TRUSTED_KNOWLEDGE,
     "finance_knowledge": SERVICE_FINANCE_KNOWLEDGE,
+    "legal_knowledge": SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE: SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE: SERVICE_TRUSTED_KNOWLEDGE,
     SERVICE_FINANCE_KNOWLEDGE: SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_LEGAL_KNOWLEDGE: SERVICE_LEGAL_KNOWLEDGE,
 }
 
 _DEFAULT_CORPUS = {
     SERVICE_SCIENTIFIC_EVIDENCE: ROOT / "eval" / "retrieval_corpus" / "v1_scientific.json",
     SERVICE_TRUSTED_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_trusted.json",
     SERVICE_FINANCE_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_finance.json",
+    SERVICE_LEGAL_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_legal.json",
 }
 
 
@@ -195,7 +199,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--service",
-        choices=["scientific_evidence", "trusted_knowledge", "finance_knowledge"],
+        choices=["scientific_evidence", "trusted_knowledge", "finance_knowledge", "legal_knowledge"],
         default=None,
         help="Knowledge service (overrides corpus service field when set with --corpus)",
     )

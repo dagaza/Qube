@@ -37,6 +37,11 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
         "description": "SEC EDGAR company filings (10-K, 10-Q, 8-K)",
     },
     {
+        "id": "legal",
+        "label": "Legal",
+        "description": "U.S. case law opinions via CourtListener",
+    },
+    {
         "id": "research",
         "label": "Deep research",
         "description": "Multi-step evidence report (async, non-blocking)",
@@ -71,7 +76,7 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
 ]
 
 _WEB_COMPOSER_TOOLS = frozenset(
-    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance"}
+    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
 )
 
 _ROLE_HEADINGS = {

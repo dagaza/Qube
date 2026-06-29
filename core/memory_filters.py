@@ -518,6 +518,31 @@ FINANCIAL_DISCLAIMER_SUFFIX: str = (
     "professional for personal investment decisions."
 )
 
+LEGAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved case law and court opinions are for "
+    "informational summarization only — not legal advice. Do not "
+    "recommend specific legal actions or predict case outcomes. "
+    "Encourage consulting a qualified attorney for personal legal matters."
+)
+
+LEGAL_SOURCES_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user explicitly used @legal but no case law sources "
+    "were retrieved (preferred legal sources may be disabled in Settings). "
+    "In one or two sentences, say you could not retrieve case law for this "
+    "question. Do NOT answer from general model knowledge about cases, "
+    "holdings, citations, or legal rules. Do NOT emit bracket citation "
+    "tokens such as [1], [2], or [W]."
+)
+
+FINANCE_SOURCES_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user explicitly used @finance but no SEC or finance "
+    "sources were retrieved (preferred finance sources may be disabled in "
+    "Settings). In one or two sentences, say you could not retrieve filings "
+    "or finance data for this question. Do NOT answer from general model "
+    "knowledge about filings, tickers, or financial facts. Do NOT emit "
+    "bracket citation tokens such as [1], [2], or [W]."
+)
+
 RAG_CAPABILITY_DISABLED_SUFFIX: str = (
     " IMPORTANT: the user asked about their local files or Knowledge Base, "
     "but library search is turned off in Qube settings. In one or two "

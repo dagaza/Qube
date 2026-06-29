@@ -18,6 +18,7 @@ from core.knowledge.types import (
     SERVICE_GENERAL_WEB,
     SERVICE_INTERNAL_CORPUS,
     SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
     SERVICE_WIKIPEDIA,
@@ -29,6 +30,7 @@ STRATEGY_WIKI_API_ALLOWLIST = "wiki_api_allowlist_ddg"
 STRATEGY_SCIENTIFIC_PARALLEL = "pubmed_openalex_arxiv_ranked"
 STRATEGY_INTERNAL_CORPUS = "lancedb_hybrid_library"
 STRATEGY_FINANCE_SEC = "sec_edgar_submissions"
+STRATEGY_LEGAL_COURTLISTENER = "courtlistener_search"
 
 
 def _legacy_row_to_evidence(
@@ -205,6 +207,15 @@ def build_empty_bundle(
         )
     if knowledge_service == SERVICE_FINANCE_KNOWLEDGE:
         return build_finance_knowledge_bundle(
+            query_raw=query_raw,
+            query_resolved=query_resolved,
+            kept_rows=[],
+            rejected_count=rejected_count,
+            latency_ms=latency_ms,
+            stop_reason=stop_reason,
+        )
+    if knowledge_service == SERVICE_LEGAL_KNOWLEDGE:
+        return build_legal_knowledge_bundle(
             query_raw=query_raw,
             query_resolved=query_resolved,
             kept_rows=[],
@@ -785,6 +796,127 @@ def build_finance_knowledge_bundle(
         query_resolved=query_resolved,
         knowledge_service=knowledge_service,
         retrieval_strategy=STRATEGY_FINANCE_SEC,
+        profile_version=PROFILE_VERSION,
+        retrieved_at=retrieved_at,
+        latency_ms=latency_ms,
+        confidence=confidence,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        authority_summary=authority_summary,
+        reliability_summary=reliability_summary,
+        diversity_summary=diversity_summary,
+        sources=sources,
+        rejected_count=rejected_count,
+        warnings=tuple(dict.fromkeys(warnings)),
+        conflicts=(),
+        stop_reason=stop_reason if sources else "no_evidence",
+        adapter_calls=adapter_calls,
+    )
+
+
+def _legal_row_to_evidence(
+    row: dict[str, Any],
+    *,
+    index: int,
+    retrieved_at: float,
+) -> EvidenceObject:
+    title = str(row.get("title") or "").strip() or f"Court opinion {index}"
+    snippet = str(row.get("snippet") or "").strip()
+    url = str(row.get("url") or "").strip() or None
+    relevance = float(row.get("_web_token_overlap") or 0.82)
+    authority = float(row.get("authority_score") or 0.82)
+
+    return EvidenceObject(
+        id=f"ek_{index}",
+        source_id=str(row.get("cluster_id") or url or title[:96]),
+        adapter=str(row.get("_adapter") or "courtlistener"),
+        retrieval_method="courtlistener_search",
+        title=title,
+        excerpt=snippet,
+        full_text=None,
+        url=url,
+        document_type=str(row.get("document_type") or "court_opinion"),
+        publication_date=row.get("publication_date"),
+        venue=str(row.get("venue") or "CourtListener"),
+        authors=(),
+        relevance_score=max(0.0, min(1.0, relevance)),
+        authority_score=max(0.0, min(1.0, authority)),
+        reliability_score=0.88,
+        freshness_score=freshness_score(row.get("publication_date")),
+        retrieved_at=retrieved_at,
+        fetch_status="abstract",
+        raw_metadata={
+            "court": row.get("court"),
+            "court_id": row.get("court_id"),
+            "citation": row.get("citation"),
+            "docket_number": row.get("docket_number"),
+            "judge": row.get("judge"),
+        },
+    )
+
+
+def _compute_legal_coverage(
+    sources: tuple[EvidenceObject, ...],
+) -> tuple[str, str]:
+    if not sources:
+        return COVERAGE_NONE, "No case law opinions found."
+    courts = {
+        str((s.raw_metadata or {}).get("court_id") or s.venue)
+        for s in sources
+    }
+    if len(sources) >= 2 and len(courts) >= 2:
+        return COVERAGE_EXCELLENT, "Multiple opinions from distinct courts."
+    if len(sources) >= 2:
+        return COVERAGE_ADEQUATE, "Multiple related opinions retrieved."
+    return COVERAGE_ADEQUATE, "Single opinion retrieved."
+
+
+def _compute_legal_confidence(sources: tuple[EvidenceObject, ...]) -> float:
+    if not sources:
+        return 0.0
+    avg_auth = sum(s.authority_score for s in sources) / len(sources)
+    count_factor = min(1.0, len(sources) / 2.0)
+    return max(0.0, min(0.9, avg_auth * 0.6 + count_factor * 0.3))
+
+
+def build_legal_knowledge_bundle(
+    *,
+    query_raw: str,
+    query_resolved: str,
+    kept_rows: list[dict[str, Any]],
+    rejected_count: int,
+    latency_ms: float,
+    adapter_calls: tuple[str, ...] = ("courtlistener",),
+    stop_reason: str = "budget_exhausted",
+    knowledge_service: str = SERVICE_LEGAL_KNOWLEDGE,
+) -> EvidenceBundle:
+    """Build a legal-knowledge bundle from CourtListener rows."""
+    retrieved_at = time.time()
+    sources = tuple(
+        _legal_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
+        for i, row in enumerate(kept_rows, start=1)
+    )
+    coverage, coverage_rationale = _compute_legal_coverage(sources)
+    confidence = _compute_legal_confidence(sources)
+
+    warnings: list[str] = ["not_legal_advice"]
+    if not sources:
+        warnings.append("no_case_law")
+
+    authority_summary = (
+        sum(s.authority_score for s in sources) / len(sources) if sources else 0.0
+    )
+    reliability_summary = (
+        sum(s.reliability_score for s in sources) / len(sources) if sources else 0.0
+    )
+    diversity_summary = min(1.0, len({s.adapter for s in sources}))
+
+    return EvidenceBundle(
+        bundle_id=str(uuid.uuid4()),
+        query_raw=query_raw,
+        query_resolved=query_resolved,
+        knowledge_service=knowledge_service,
+        retrieval_strategy=STRATEGY_LEGAL_COURTLISTENER,
         profile_version=PROFILE_VERSION,
         retrieved_at=retrieved_at,
         latency_ms=latency_ms,
