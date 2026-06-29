@@ -70,7 +70,7 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             },
         )
         self.assertNotIn("pubmed", resolved)
-        self.assertIn("openalex", resolved)
+        self.assertEqual(resolved, ("arxiv", "openalex"))
 
     def test_resolve_medical_includes_pubmed_when_enabled(self) -> None:
         resolved = resolve_service_adapters(

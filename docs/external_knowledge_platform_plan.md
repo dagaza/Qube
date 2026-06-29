@@ -301,7 +301,7 @@ Medicine is **one scientific discipline**, not synonymous with “scientific.”
 
 **Retrieval planner (Stage 1 today):** conversational → keyword query; medical entity keyword extraction when the biomedical activator matches. PubMed is called only for medically-scoped queries; OpenAlex + arXiv are the default for other scholarly queries.
 
-**Retrieval planner (Stage 2 — deferred):** discipline detection → discipline pack activation → adapter set (RePEc, SSRN, DBLP, etc.).
+**Retrieval planner (Stage 2 — Slice 6a implemented):** heuristic discipline detection → catalog UI-group adapter order (CS → arXiv/OpenAlex; economics → OpenAlex; biomedical → PubMed gating). Discipline entity packs and RePEc/SSRN/DBLP adapters remain Slice 6b+.
 
 **User-configurable adapters:** Implemented via Settings → Knowledge → **Preferred sources**. Preferences are stored in `qube.knowledge.source_preferences` and resolved at retrieval time through `core/knowledge/source_preferences.py` and `core/knowledge/adapters/catalog.py`. Composer overrides (`@pubmed`, `@arxiv`) still take precedence for a single turn.
 
@@ -947,6 +947,8 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 
 #### Slice 6 — Specialist index routing
 
+**Slice 6a status:** IMPLEMENTED — `detect_scientific_discipline()` + catalog UI-group adapter ordering; trace fields `scientific_discipline`, `scientific_discipline_ui_group`.
+
 **Goal:** Query-class detection routes to bibliographic indexes already listed in §17, without hardcoding in `LLMWorker`.
 
 | Task | Notes |
@@ -1002,7 +1004,7 @@ flowchart LR
 - Real-time collaborative graph editing
 - Multi-hop foreground tool chains (still one retrieval invocation per turn)
 
-**Status:** Slices 2–5b implemented — `@finance` + SEC EDGAR (live eval 4/4); `@legal` + CourtListener; user-configurable **Preferred sources** in Settings → Knowledge; standards domain remains. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [Slice 5a Finance](./manual_qa_phase6_slice5_finance.md), [Slice 5b Legal](./manual_qa_phase6_slice5_legal.md).
+**Status:** Slices 2–5b implemented; **Slice 6a implemented** — heuristic discipline routing for `scientific_evidence` (`scientific_discipline.py`). Slice 6b (RePEc stub + tagged eval harness) remains. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [5a Finance](./manual_qa_phase6_slice5_finance.md), [5b Legal](./manual_qa_phase6_slice5_legal.md).
 
 ---
 

@@ -13,6 +13,7 @@ from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_evidence_bundle
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.scientific_adapters import is_medical_query
+from core.knowledge.scientific_discipline import detect_scientific_discipline
 from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
 from core.knowledge.source_preferences import resolve_service_adapters
 from core.knowledge.evidence_cache import get_cached_rows, make_cache_key, set_cached_rows
@@ -88,6 +89,7 @@ class ScientificEvidencePipeline:
             composer_adapter_filter=ctx.adapter_filter,
             stored_preferences=get_knowledge_source_preferences(),
         )
+        discipline_match = detect_scientific_discipline(ctx.query)
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
         candidates: list[dict[str, Any]] = []
@@ -166,7 +168,7 @@ class ScientificEvidencePipeline:
                     stop_reason="relevance_filtered",
                     knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
                 ),
-                {"scientific_relevance_dropped": len(rejected), "scientific_adapters_selected": list(adapter_ids)},
+                {"scientific_relevance_dropped": len(rejected), "scientific_adapters_selected": list(adapter_ids), "scientific_discipline": discipline_match.discipline, "scientific_discipline_ui_group": discipline_match.ui_group},
                 raw_audit,
             )
 
@@ -204,6 +206,9 @@ class ScientificEvidencePipeline:
             "scientific_entity_keywords": list(plan.entity_keywords),
             "scientific_trial_signals": sorted(trial_signals),
             "scientific_adapters_selected": list(adapter_ids),
+            "scientific_discipline": discipline_match.discipline,
+            "scientific_discipline_ui_group": discipline_match.ui_group,
+            "scientific_discipline_scores": discipline_match.scores,
         }
         return bundle, rel_diag, raw_audit
 

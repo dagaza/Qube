@@ -5,6 +5,7 @@
     {
       "id": "bio_001",
       "query": "Ozempic semaglutide cardiovascular outcomes randomized trial",
+      "discipline": "biomedical",
       "expect_adapters": ["pubmed"],
       "expect_abstract": true,
       "medical": true
@@ -19,6 +20,7 @@
     {
       "id": "cs_001",
       "query": "transformer attention mechanism neural machine translation",
+      "discipline": "computer_science",
       "expect_adapters": ["arxiv", "openalex"],
       "expect_abstract": true,
       "medical": false
@@ -26,6 +28,7 @@
     {
       "id": "phys_001",
       "query": "gravitational wave detection LIGO binary black hole",
+      "discipline": "physics",
       "expect_adapters": ["arxiv", "openalex"],
       "expect_abstract": true,
       "medical": false
@@ -33,6 +36,15 @@
     {
       "id": "cross_001",
       "query": "climate change Arctic sea ice extent satellite observations",
+      "discipline": "general_science",
+      "expect_adapters": ["openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "econ_001",
+      "query": "monetary policy inflation econometric VAR model central bank",
+      "discipline": "economics",
       "expect_adapters": ["openalex"],
       "expect_abstract": true,
       "medical": false

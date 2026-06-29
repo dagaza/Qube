@@ -1,27 +1,19 @@
-"""Scientific service adapter selection policy (medical gating + user prefs)."""
+"""Scientific service adapter selection policy (discipline routing + user prefs)."""
 
 from __future__ import annotations
-
-import re
 
 from core.knowledge.adapters.arxiv_api import ADAPTER_ID as ARXIV_ID
 from core.knowledge.adapters.openalex import ADAPTER_ID as OPENALEX_ID
 from core.knowledge.adapters.pubmed_eutils import ADAPTER_ID as PUBMED_ID
-from core.knowledge.entities.activators.biomedical import BIOMEDICAL_ACTIVATOR
+from core.knowledge.scientific_discipline import (
+    SCIENTIFIC_DISCIPLINE_BIOMEDICAL,
+    detect_scientific_discipline,
+    is_medical_query,
+    preferred_adapters_for_discipline,
+)
 
 _MEDICAL_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
 _SCHOLARLY_ADAPTERS = (OPENALEX_ID, ARXIV_ID)
-
-_MEDICAL_HINTS = re.compile(
-    r"\b(drug|medication|medicine|disease|symptom|treatment|clinical|patient|"
-    r"therapy|diagnosis|fda|vaccine|diabetes|cancer|ozempic|semaglutide)\b",
-    re.IGNORECASE,
-)
-
-
-def is_medical_query(query: str) -> bool:
-    text = query or ""
-    return bool(BIOMEDICAL_ACTIVATOR.matches_query(text) or _MEDICAL_HINTS.search(text))
 
 
 def apply_scientific_adapter_policy(
@@ -30,16 +22,21 @@ def apply_scientific_adapter_policy(
     query: str = "",
     medical_query: bool | None = None,
 ) -> tuple[str, ...]:
-    """Filter user-enabled scientific adapters by query discipline (medical vs general)."""
-    is_medical = is_medical_query(query) if medical_query is None else bool(medical_query)
-    if is_medical:
-        ordered = [aid for aid in _MEDICAL_ADAPTERS if aid in enabled]
-        return tuple(ordered) if ordered else _fallback_from_enabled(enabled, _MEDICAL_ADAPTERS)
+    """Filter and order user-enabled adapters by detected query discipline."""
+    match = detect_scientific_discipline(query, medical_query=medical_query)
+    preferred = preferred_adapters_for_discipline(match.discipline)
 
-    without_pubmed = tuple(aid for aid in enabled if aid != PUBMED_ID)
-    if without_pubmed:
-        return without_pubmed
-    return _fallback_from_enabled(enabled, _SCHOLARLY_ADAPTERS)
+    pool = enabled
+    if match.discipline != SCIENTIFIC_DISCIPLINE_BIOMEDICAL:
+        pool = tuple(aid for aid in enabled if aid != PUBMED_ID)
+
+    ordered = [aid for aid in preferred if aid in pool]
+    if ordered:
+        return tuple(ordered)
+
+    if match.discipline == SCIENTIFIC_DISCIPLINE_BIOMEDICAL:
+        return _fallback_from_enabled(pool, _MEDICAL_ADAPTERS)
+    return _fallback_from_enabled(pool, _SCHOLARLY_ADAPTERS)
 
 
 def default_scientific_adapters_for_query(
@@ -50,9 +47,8 @@ def default_scientific_adapters_for_query(
     """Legacy default when no user preferences are stored."""
     if composer_adapter_filter:
         return composer_adapter_filter
-    if is_medical_query(query):
-        return _MEDICAL_ADAPTERS
-    return _SCHOLARLY_ADAPTERS
+    match = detect_scientific_discipline(query)
+    return preferred_adapters_for_discipline(match.discipline)
 
 
 def _fallback_from_enabled(
