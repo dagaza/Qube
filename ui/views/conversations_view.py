@@ -118,6 +118,7 @@ from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
+from ui.components.research_map_dialog import ResearchMapDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
 from ui.components.sidebar_folder_list import (
@@ -1982,12 +1983,41 @@ class ConversationsView(QWidget):
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         transparency = getattr(agent, "_evidence_transparency", None)
+        research_map_graph = None
+        on_open_research_map = None
+        from core.app_settings import get_research_map_enabled
+
+        if get_research_map_enabled() and getattr(self, "active_session_id", None):
+            from core.knowledge.graph.build import subgraph_for_bundle
+
+            session_graph = self.db.get_session_knowledge_graph(
+                str(self.active_session_id)
+            )
+            if session_graph:
+                bundle_id = str((transparency or {}).get("bundle_id") or "")
+                research_map_graph = (
+                    subgraph_for_bundle(session_graph, bundle_id)
+                    if bundle_id
+                    else session_graph
+                )
+                if research_map_graph.get("nodes"):
+
+                    def _open_map() -> None:
+                        ResearchMapDialog(
+                            research_map_graph,
+                            self,
+                            is_dark=is_dark,
+                        ).exec()
+
+                    on_open_research_map = _open_map
         dlg = CitationSourcesDialog(
             sources,
             self,
             is_dark=is_dark,
             on_open_source=self.open_source_preview,
             transparency=transparency,
+            research_map_graph=research_map_graph,
+            on_open_research_map=on_open_research_map,
         )
         dlg.exec()
 
@@ -3478,6 +3508,20 @@ class ConversationsView(QWidget):
                 sources_json=src_payload,
                 evidence_bundle_id=bundle_id_str,
             )
+            from core.app_settings import get_research_map_enabled
+
+            if get_research_map_enabled():
+                bundle_dict = payload.get("bundle_dict")
+                if isinstance(bundle_dict, dict) and bundle_dict:
+                    from core.knowledge.graph.bundle_codec import bundle_from_dict
+                    from core.knowledge.graph.service import record_bundle_in_session_graph
+
+                    bundle = bundle_from_dict(bundle_dict)
+                    record_bundle_in_session_graph(
+                        self.db,
+                        session_id=session_id,
+                        bundle=bundle,
+                    )
 
         active = str(getattr(self, "active_session_id", "") or "")
         if active and session_id == active and report:

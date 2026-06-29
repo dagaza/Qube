@@ -12,14 +12,23 @@ from PyQt6.QtWidgets import QListWidgetItem
 from core.app_settings import (
     KEY_DEEP_RESEARCH_ENABLED,
     KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
+    KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED,
+    KEY_KNOWLEDGE_SOURCE_PREFERENCES,
+    KEY_RESEARCH_MAP_ENABLED,
     get_advanced_embedding_unlocked,
     get_embedding_mode,
+    get_knowledge_source_preferences,
     set_advanced_embedding_unlocked,
     set_deep_research_enabled,
     set_embedding_model_path,
     set_embedding_mode,
     set_external_knowledge_v2_enabled,
+    set_internal_corpus_knowledge_enabled,
+    set_knowledge_source_preferences,
+    set_research_map_enabled,
 )
+from core.knowledge.source_preferences import set_adapter_enabled
+from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
 from core.bootstrap_search_models import (
     format_embedding_mode_switch_confirm_body,
     format_search_preset_download_failure,
@@ -52,9 +61,33 @@ class KnowledgeHandlersMixin:
         set_external_knowledge_v2_enabled(checked)
         self._emit_external_settings_changed(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED)
 
+    def _on_internal_corpus_knowledge_toggled(self, checked: bool) -> None:
+        set_internal_corpus_knowledge_enabled(checked)
+        self._emit_external_settings_changed(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED)
+
+    def _on_research_map_toggled(self, checked: bool) -> None:
+        set_research_map_enabled(checked)
+        self._emit_external_settings_changed(KEY_RESEARCH_MAP_ENABLED)
+
     def _on_deep_research_enabled_toggled(self, checked: bool) -> None:
         set_deep_research_enabled(checked)
         self._emit_external_settings_changed(KEY_DEEP_RESEARCH_ENABLED)
+
+    def _on_knowledge_source_toggled(
+        self,
+        service_id: str,
+        adapter_id: str,
+        checked: bool,
+    ) -> None:
+        prefs = set_adapter_enabled(
+            get_knowledge_source_preferences(),
+            service_id=service_id,
+            adapter_id=adapter_id,
+            enabled=checked,
+        )
+        set_knowledge_source_preferences(prefs)
+        sync_knowledge_source_checkboxes(self)
+        self._emit_external_settings_changed(KEY_KNOWLEDGE_SOURCE_PREFERENCES)
 
     def _on_advanced_embedding_toggled(self, checked: bool) -> None:
         if checked:

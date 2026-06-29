@@ -109,6 +109,8 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict[str, Any]]:
             if _format_author(a)
         )
         doi = _extract_doi(article)
+        publication_types = _extract_publication_types(art)
+        mesh_terms = _extract_mesh_terms(medline)
         url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
         excerpt = abstract[:600] if abstract else title
         rows.append(
@@ -127,6 +129,8 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict[str, Any]]:
                 "open_access": None,
                 "document_type": "journal_abstract",
                 "pmid": pmid or None,
+                "publication_types": publication_types,
+                "mesh_terms": mesh_terms,
             }
         )
     return rows
@@ -155,6 +159,24 @@ def _format_pub_date(pub_el: ET.Element | None) -> str:
     if year and month:
         return f"{year}-{month}"
     return year
+
+
+def _extract_publication_types(article: ET.Element) -> tuple[str, ...]:
+    types = [
+        (el.text or "").strip()
+        for el in article.findall("PublicationTypeList/PublicationType")
+        if (el.text or "").strip()
+    ]
+    return tuple(dict.fromkeys(types))
+
+
+def _extract_mesh_terms(medline: ET.Element) -> tuple[str, ...]:
+    terms = [
+        (el.text or "").strip()
+        for el in medline.findall("MeshHeadingList/MeshHeading/DescriptorName")
+        if (el.text or "").strip()
+    ]
+    return tuple(dict.fromkeys(terms))
 
 
 def _extract_doi(article: ET.Element) -> str | None:

@@ -187,6 +187,26 @@
     "default": false,
     "description": "When true, route live web retrieval through the external knowledge evidence pipeline (Phase 0; DDG parity behind a flag)."
   },
+  "qube.knowledge.internal_corpus_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true with external v2, route @library through the internal corpus evidence service (LanceDB library index) instead of implicit RAG injection."
+  },
+  "qube.knowledge.research_map_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, build a session-local knowledge graph from evidence bundles and show the Research map in the Sources dialog."
+  },
+  "qube.knowledge.entity_resolution_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, attach stable biomedical entity_ids to evidence objects and use entity-aware merge dedupe."
+  },
+  "qube.knowledge.rxnorm_entity_lookup_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true with entity resolution, augment drug names via cached RxNorm API lookups (network)."
+  },
   "qube.knowledge.default_service": {
     "type": "string",
     "default": "general_web",
@@ -197,6 +217,11 @@
     "type": "boolean",
     "default": false,
     "description": "When true, enable the async DeepResearchWorker for multi-step evidence jobs (Phase 4)."
+  },
+  "qube.knowledge.source_preferences": {
+    "type": "object",
+    "default": {},
+    "description": "Per knowledge-service enabled adapter ids (user-configured retrieval sources). Keys: scientific_evidence, finance_knowledge, legal_knowledge."
   },
   "qube.skills.enabled": {
     "type": "boolean",

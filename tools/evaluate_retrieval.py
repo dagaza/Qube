@@ -1,42 +1,96 @@
 #!/usr/bin/env python3
-"""Evaluate external knowledge retrieval against a JSON corpus."""
+"""Evaluate external knowledge retrieval against a JSON corpus (Phase 2 + Phase 6 Slice 1)."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE  # noqa: E402
+from core.knowledge.types import (  # noqa: E402
+    SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_SCIENTIFIC_EVIDENCE,
+    SERVICE_TRUSTED_KNOWLEDGE,
+)
 from core.knowledge.web_retrieval import run_v2_web_retrieval  # noqa: E402
 
+_COVERAGE_RANK = {
+    "none": 0,
+    "poor": 1,
+    "adequate": 2,
+    "excellent": 3,
+}
 
-def _load_corpus(path: Path) -> list[dict]:
+_FETCH_RANK = {
+    "snippet_only": 0,
+    "snippet": 0,
+    "abstract": 1,
+    "full_text": 2,
+}
+
+_SERVICE_BY_NAME = {
+    "scientific_evidence": SERVICE_SCIENTIFIC_EVIDENCE,
+    "trusted_knowledge": SERVICE_TRUSTED_KNOWLEDGE,
+    "finance_knowledge": SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_SCIENTIFIC_EVIDENCE: SERVICE_SCIENTIFIC_EVIDENCE,
+    SERVICE_TRUSTED_KNOWLEDGE: SERVICE_TRUSTED_KNOWLEDGE,
+    SERVICE_FINANCE_KNOWLEDGE: SERVICE_FINANCE_KNOWLEDGE,
+}
+
+_DEFAULT_CORPUS = {
+    SERVICE_SCIENTIFIC_EVIDENCE: ROOT / "eval" / "retrieval_corpus" / "v1_scientific.json",
+    SERVICE_TRUSTED_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_trusted.json",
+    SERVICE_FINANCE_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_finance.json",
+}
+
+
+def _load_corpus(path: Path) -> tuple[dict, list[dict]]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    return list(data.get("queries") or [])
+    return data, list(data.get("queries") or [])
 
 
-def _evaluate_query(entry: dict, *, live: bool) -> dict:
+def _resolve_service(corpus_meta: dict, override: str | None) -> str:
+    if override:
+        key = override.strip().lower()
+        if key not in _SERVICE_BY_NAME:
+            raise ValueError(f"Unknown service: {override}")
+        return _SERVICE_BY_NAME[key]
+    service = str(corpus_meta.get("service") or SERVICE_SCIENTIFIC_EVIDENCE)
+    return _SERVICE_BY_NAME.get(service, service)
+
+
+def _best_fetch_rank(sources) -> str:
+    ranks = [_FETCH_RANK.get(str(s.fetch_status or ""), 0) for s in sources]
+    if not ranks:
+        return "none"
+    best = max(ranks)
+    for label, value in _FETCH_RANK.items():
+        if value == best:
+            return label
+    return "snippet_only"
+
+
+def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
     query = str(entry.get("query") or "").strip()
     if not query:
         return {"id": entry.get("id"), "status": "skipped", "reason": "empty_query"}
 
     if not live:
-        return {
-            "id": entry.get("id"),
-            "query": query,
-            "status": "dry_run",
-        }
+        payload = {"id": entry.get("id"), "query": query, "status": "dry_run"}
+        if knowledge_service == SERVICE_TRUSTED_KNOWLEDGE:
+            payload["trusted_criteria"] = True
+        return payload
 
     outcome = run_v2_web_retrieval(
         query=query,
         semantic_query=query,
-        knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+        knowledge_service=knowledge_service,
     )
     bundle = outcome.bundle
     if bundle is None or not bundle.sources:
@@ -44,27 +98,90 @@ def _evaluate_query(entry: dict, *, live: bool) -> dict:
             "id": entry.get("id"),
             "query": query,
             "status": "no_results",
-            "latency_ms": outcome.latency_ms,
+            "latency_ms": round(outcome.latency_ms, 1),
+            "knowledge_service": knowledge_service,
         }
 
-    adapters = {s.adapter for s in bundle.sources}
-    abstract_hits = sum(1 for s in bundle.sources if s.fetch_status == "abstract")
+    sources = bundle.sources
+    adapters = {s.adapter for s in sources}
+    abstract_hits = sum(1 for s in sources if s.fetch_status == "abstract")
+    max_authority = max(s.authority_score for s in sources)
+    has_wikipedia = any(s.adapter == "wikipedia_api" for s in sources)
+    fetch_rank = _best_fetch_rank(sources)
+
     expect = set(entry.get("expect_adapters") or [])
-    adapter_hit = bool(expect.intersection(adapters)) if expect else True
-    expect_abstract = bool(entry.get("expect_abstract", True))
+    adapter_ok = bool(expect.intersection(adapters)) if expect else True
+
+    min_sources = max(1, int(entry.get("min_sources") or 1))
+    sources_ok = len(sources) >= min_sources
+
+    expect_abstract = bool(entry.get("expect_abstract", False))
     abstract_ok = (not expect_abstract) or abstract_hits >= 1
+
+    min_authority = entry.get("min_authority")
+    authority_ok = (
+        min_authority is None or max_authority >= float(min_authority)
+    )
+
+    require_wikipedia = bool(entry.get("require_wikipedia", False))
+    wikipedia_ok = (not require_wikipedia) or has_wikipedia
+
+    min_fetch = str(entry.get("min_fetch_rank") or "").strip().lower()
+    fetch_ok = (
+        not min_fetch
+        or _FETCH_RANK.get(fetch_rank, 0) >= _FETCH_RANK.get(min_fetch, 0)
+    )
+
+    min_cov = str(entry.get("min_coverage_rank") or "").lower()
+    cov_ok = (
+        not min_cov
+        or _COVERAGE_RANK.get(bundle.coverage, 0)
+        >= _COVERAGE_RANK.get(min_cov, 0)
+    )
+
+    require_warning = str(entry.get("require_warning") or "").strip()
+    warning_ok = (not require_warning) or require_warning in (bundle.warnings or ())
+
+    checks_ok = all(
+        (
+            adapter_ok,
+            sources_ok,
+            abstract_ok,
+            authority_ok,
+            wikipedia_ok,
+            fetch_ok,
+            cov_ok,
+            warning_ok,
+        )
+    )
+    status = "ok" if checks_ok else "partial"
 
     return {
         "id": entry.get("id"),
         "query": query,
-        "status": "ok" if adapter_hit and abstract_ok else "partial",
+        "status": status,
         "latency_ms": round(outcome.latency_ms, 1),
+        "knowledge_service": knowledge_service,
         "adapters": sorted(adapters),
+        "source_count": len(sources),
         "abstract_hits": abstract_hits,
+        "max_authority": round(max_authority, 3),
+        "has_wikipedia": has_wikipedia,
+        "best_fetch_rank": fetch_rank,
         "coverage": bundle.coverage,
         "confidence": round(bundle.confidence, 3),
         "stop_reason": bundle.stop_reason,
-        "titles": [s.title for s in bundle.sources],
+        "titles": [s.title for s in sources[:5]],
+        "checks": {
+            "adapter_ok": adapter_ok,
+            "sources_ok": sources_ok,
+            "abstract_ok": abstract_ok,
+            "authority_ok": authority_ok,
+            "wikipedia_ok": wikipedia_ok,
+            "fetch_ok": fetch_ok,
+            "coverage_ok": cov_ok,
+            "warning_ok": warning_ok,
+        },
     }
 
 
@@ -73,20 +190,81 @@ def main() -> int:
     parser.add_argument(
         "--corpus",
         type=Path,
-        default=ROOT / "eval" / "retrieval_corpus" / "v1_scientific.json",
+        default=None,
+        help="Corpus JSON path (default: v1_scientific or v1_trusted by --service)",
+    )
+    parser.add_argument(
+        "--service",
+        choices=["scientific_evidence", "trusted_knowledge", "finance_knowledge"],
+        default=None,
+        help="Knowledge service (overrides corpus service field when set with --corpus)",
     )
     parser.add_argument(
         "--live",
         action="store_true",
         help="Run live adapter calls (requires network)",
     )
+    parser.add_argument(
+        "--min-pass",
+        type=int,
+        default=None,
+        help="Exit non-zero unless at least N entries status=ok (live only)",
+    )
     args = parser.parse_args()
 
-    entries = _load_corpus(args.corpus)
-    results = [_evaluate_query(e, live=args.live) for e in entries]
-    ok = sum(1 for r in results if r.get("status") in {"ok", "dry_run"})
-    print(json.dumps({"corpus": str(args.corpus), "results": results}, indent=2))
-    print(f"\nSummary: {ok}/{len(results)} entries ok or dry-run", file=sys.stderr)
+    corpus_path = args.corpus
+    if corpus_path is None:
+        service_key = args.service or SERVICE_SCIENTIFIC_EVIDENCE
+        corpus_path = _DEFAULT_CORPUS.get(
+            _SERVICE_BY_NAME.get(service_key, service_key),
+            _DEFAULT_CORPUS[SERVICE_SCIENTIFIC_EVIDENCE],
+        )
+
+    corpus_meta, entries = _load_corpus(corpus_path)
+    knowledge_service = _resolve_service(corpus_meta, args.service)
+
+    results = []
+    for i, entry in enumerate(entries):
+        if args.live and i > 0 and knowledge_service in {
+            SERVICE_TRUSTED_KNOWLEDGE,
+            SERVICE_FINANCE_KNOWLEDGE,
+        }:
+            time.sleep(1.2)
+        results.append(
+            _evaluate_query(entry, live=args.live, knowledge_service=knowledge_service)
+        )
+    ok = sum(1 for r in results if r.get("status") == "ok")
+    partial = sum(1 for r in results if r.get("status") == "partial")
+    dry = sum(1 for r in results if r.get("status") == "dry_run")
+    summary = {
+        "corpus": str(corpus_path),
+        "service": knowledge_service,
+        "results": results,
+        "ok": ok,
+        "partial": partial,
+        "dry_run": dry,
+        "total": len(results),
+    }
+    print(json.dumps(summary, indent=2))
+
+    if not args.live:
+        return 0
+
+    min_pass = args.min_pass
+    if min_pass is None:
+        if knowledge_service == SERVICE_TRUSTED_KNOWLEDGE:
+            min_pass = max(1, len(results) - 1)  # ≥ 4/5 default
+        elif knowledge_service == SERVICE_FINANCE_KNOWLEDGE:
+            min_pass = max(3, len(results) - 1)  # ≥ 3/4 default
+        else:
+            min_pass = len(results)  # 5/5 default for scientific
+
+    print(
+        f"\nSummary: {ok}/{len(results)} ok, {partial} partial (min_pass={min_pass})",
+        file=sys.stderr,
+    )
+    if ok < min_pass:
+        return 1
     return 0
 
 

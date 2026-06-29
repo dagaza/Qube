@@ -1,0 +1,13 @@
+{
+  "cik": "0000320193",
+  "name": "Apple Inc.",
+  "filings": {
+    "recent": {
+      "accessionNumber": ["0000320193-25-000079", "0000320193-26-000013"],
+      "filingDate": ["2025-10-31", "2026-05-01"],
+      "reportDate": ["2025-09-27", "2026-03-28"],
+      "form": ["10-K", "10-Q"],
+      "primaryDocument": ["aapl-20250927.htm", "aapl-20260328.htm"]
+    }
+  }
+}

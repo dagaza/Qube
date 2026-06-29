@@ -16,6 +16,8 @@ from core.knowledge.types import (
     EvidenceBundle,
     EvidenceObject,
     SERVICE_GENERAL_WEB,
+    SERVICE_INTERNAL_CORPUS,
+    SERVICE_FINANCE_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
     SERVICE_WIKIPEDIA,
@@ -25,6 +27,8 @@ PROFILE_VERSION = "0.4.0"
 STRATEGY_DDG_RELEVANCE_GATE = "ddg_serp_relevance_gate"
 STRATEGY_WIKI_API_ALLOWLIST = "wiki_api_allowlist_ddg"
 STRATEGY_SCIENTIFIC_PARALLEL = "pubmed_openalex_arxiv_ranked"
+STRATEGY_INTERNAL_CORPUS = "lancedb_hybrid_library"
+STRATEGY_FINANCE_SEC = "sec_edgar_submissions"
 
 
 def _legacy_row_to_evidence(
@@ -190,6 +194,24 @@ def build_empty_bundle(
             latency_ms=latency_ms,
             stop_reason=stop_reason,
         )
+    if knowledge_service == SERVICE_INTERNAL_CORPUS:
+        return build_internal_corpus_bundle(
+            query_raw=query_raw,
+            query_resolved=query_resolved,
+            kept_rows=[],
+            rejected_count=rejected_count,
+            latency_ms=latency_ms,
+            stop_reason=stop_reason,
+        )
+    if knowledge_service == SERVICE_FINANCE_KNOWLEDGE:
+        return build_finance_knowledge_bundle(
+            query_raw=query_raw,
+            query_resolved=query_resolved,
+            kept_rows=[],
+            rejected_count=rejected_count,
+            latency_ms=latency_ms,
+            stop_reason=stop_reason,
+        )
     return build_general_web_bundle(
         query_raw=query_raw,
         query_resolved=query_resolved,
@@ -232,6 +254,8 @@ def _trusted_row_to_evidence(
     authority = authority_score_for_url(url)
     fetch_status = "abstract" if full_text else "snippet_only"
     source_id = url or f"{adapter}:{title[:96]}"
+    reliability = max(0.0, min(1.0, relevance * 0.85))
+    fresh = freshness_score(row.get("publication_date"))
 
     return EvidenceObject(
         id=f"ek_{index}",
@@ -515,6 +539,264 @@ def build_scientific_evidence_bundle(
         sources=sources,
         rejected_count=rejected_count,
         warnings=tuple(warnings),
+        conflicts=(),
+        stop_reason=stop_reason if sources else "no_evidence",
+        adapter_calls=adapter_calls,
+    )
+
+
+def _library_chunk_to_evidence(
+    row: dict[str, Any],
+    *,
+    index: int,
+    retrieved_at: float,
+) -> EvidenceObject:
+    title = str(row.get("title") or row.get("source") or "").strip() or f"Library chunk {index}"
+    snippet = str(row.get("snippet") or "").strip()
+    full_text = row.get("full_text")
+    if isinstance(full_text, str):
+        full_text = full_text.strip() or None
+    else:
+        full_text = None
+
+    semantic = row.get("_library_semantic_score")
+    relevance = float(semantic) if semantic is not None else 0.75
+    chunk_id = str(row.get("chunk_id") or "").strip()
+    source_name = str(row.get("source") or title).strip()
+    source_id = chunk_id or f"library:{source_name[:96]}"
+
+    content_len = len(full_text or snippet)
+    fetch_status = "full_text" if content_len > 400 else "snippet"
+
+    return EvidenceObject(
+        id=f"ek_{index}",
+        source_id=source_id,
+        adapter="lancedb_library",
+        retrieval_method="hybrid_vector_fts",
+        title=title,
+        excerpt=snippet[:2000],
+        full_text=full_text,
+        url=None,
+        document_type="library_chunk",
+        relevance_score=max(0.0, min(1.0, relevance)),
+        authority_score=0.92,
+        reliability_score=max(0.0, min(1.0, relevance * 0.9)),
+        freshness_score=0.85,
+        retrieved_at=retrieved_at,
+        fetch_status=fetch_status,
+        raw_metadata={
+            "chunk_id": chunk_id or None,
+            "source": source_name,
+            "semantic_score": semantic,
+        },
+    )
+
+
+def _compute_internal_corpus_coverage(
+    sources: tuple[EvidenceObject, ...],
+) -> tuple[str, str]:
+    if not sources:
+        return COVERAGE_NONE, "No library chunks matched the query."
+
+    count = len(sources)
+    avg_rel = sum(s.relevance_score for s in sources) / count
+    if count >= 3 and avg_rel >= 0.35:
+        return (
+            COVERAGE_EXCELLENT,
+            f"{count} library chunks with average relevance {avg_rel:.2f}.",
+        )
+    if count >= 2:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{count} library chunk(s) retrieved from your indexed documents.",
+        )
+    return (
+        COVERAGE_POOR,
+        "Single library chunk; corroboration may be limited.",
+    )
+
+
+def _compute_internal_corpus_confidence(sources: tuple[EvidenceObject, ...]) -> float:
+    if not sources:
+        return 0.0
+    avg_rel = sum(s.relevance_score for s in sources) / len(sources)
+    count_factor = min(1.0, len(sources) / 3.0)
+    return max(0.0, min(0.95, avg_rel * 0.5 + count_factor * 0.35 + 0.1))
+
+
+def build_internal_corpus_bundle(
+    *,
+    query_raw: str,
+    query_resolved: str,
+    kept_rows: list[dict[str, Any]],
+    rejected_count: int,
+    latency_ms: float,
+    adapter_calls: tuple[str, ...] = ("lancedb_library",),
+    stop_reason: str = "budget_exhausted",
+    knowledge_service: str = SERVICE_INTERNAL_CORPUS,
+) -> EvidenceBundle:
+    """Build an internal-corpus bundle from LanceDB library chunk rows."""
+    retrieved_at = time.time()
+    sources = tuple(
+        _library_chunk_to_evidence(row, index=i, retrieved_at=retrieved_at)
+        for i, row in enumerate(kept_rows, start=1)
+    )
+    coverage, coverage_rationale = _compute_internal_corpus_coverage(sources)
+    confidence = _compute_internal_corpus_confidence(sources)
+
+    warnings: list[str] = []
+    if sources and all(s.fetch_status == "snippet" for s in sources):
+        warnings.append("snippet_only")
+
+    authority_summary = (
+        sum(s.authority_score for s in sources) / len(sources) if sources else 0.0
+    )
+    reliability_summary = (
+        sum(s.reliability_score for s in sources) / len(sources) if sources else 0.0
+    )
+    diversity_summary = min(1.0, len({s.source_id.split(":")[0] for s in sources}) / 3.0)
+
+    return EvidenceBundle(
+        bundle_id=str(uuid.uuid4()),
+        query_raw=query_raw,
+        query_resolved=query_resolved,
+        knowledge_service=knowledge_service,
+        retrieval_strategy=STRATEGY_INTERNAL_CORPUS,
+        profile_version=PROFILE_VERSION,
+        retrieved_at=retrieved_at,
+        latency_ms=latency_ms,
+        confidence=confidence,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        authority_summary=authority_summary,
+        reliability_summary=reliability_summary,
+        diversity_summary=diversity_summary,
+        sources=sources,
+        rejected_count=rejected_count,
+        warnings=tuple(warnings),
+        conflicts=(),
+        stop_reason=stop_reason,
+        adapter_calls=adapter_calls,
+    )
+
+
+def _finance_row_to_evidence(
+    row: dict[str, Any],
+    *,
+    index: int,
+    retrieved_at: float,
+) -> EvidenceObject:
+    title = str(row.get("title") or "").strip() or f"SEC filing {index}"
+    snippet = str(row.get("snippet") or "").strip()
+    url = str(row.get("url") or "").strip() or None
+    form = str(row.get("form") or "").strip()
+    relevance = float(row.get("_web_token_overlap") or 0.82)
+
+    return EvidenceObject(
+        id=f"ek_{index}",
+        source_id=str(row.get("accession_number") or url or title[:96]),
+        adapter=str(row.get("_adapter") or "sec_edgar"),
+        retrieval_method="sec_submissions",
+        title=title,
+        excerpt=snippet,
+        full_text=None,
+        url=url,
+        document_type=str(row.get("document_type") or "sec_filing"),
+        publication_date=row.get("publication_date"),
+        venue=str(row.get("venue") or "SEC EDGAR"),
+        authors=(),
+        relevance_score=max(0.0, min(1.0, relevance)),
+        authority_score=0.95,
+        reliability_score=0.9,
+        freshness_score=freshness_score(row.get("publication_date")),
+        retrieved_at=retrieved_at,
+        fetch_status="abstract",
+        raw_metadata={
+            "form": form,
+            "company": row.get("company"),
+            "cik": row.get("cik"),
+            "report_date": row.get("report_date"),
+        },
+    )
+
+
+def _compute_finance_coverage(
+    sources: tuple[EvidenceObject, ...],
+) -> tuple[str, str]:
+    if not sources:
+        return COVERAGE_NONE, "No SEC filings found."
+    forms = {str((s.raw_metadata or {}).get("form") or s.title.split("—")[0].strip()) for s in sources}
+    if len(sources) >= 2 and len(forms) >= 2:
+        return (
+            COVERAGE_EXCELLENT,
+            f"{len(sources)} SEC filing(s) across {len(forms)} form types.",
+        )
+    if len(sources) >= 1:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} SEC filing(s) retrieved from EDGAR.",
+        )
+    return COVERAGE_POOR, "Limited SEC filing coverage."
+
+
+def _compute_finance_confidence(sources: tuple[EvidenceObject, ...]) -> float:
+    if not sources:
+        return 0.0
+    avg_auth = sum(s.authority_score for s in sources) / len(sources)
+    count_factor = min(1.0, len(sources) / 2.0)
+    return max(0.0, min(0.9, avg_auth * 0.6 + count_factor * 0.3))
+
+
+def build_finance_knowledge_bundle(
+    *,
+    query_raw: str,
+    query_resolved: str,
+    kept_rows: list[dict[str, Any]],
+    rejected_count: int,
+    latency_ms: float,
+    adapter_calls: tuple[str, ...] = ("sec_edgar",),
+    stop_reason: str = "budget_exhausted",
+    knowledge_service: str = SERVICE_FINANCE_KNOWLEDGE,
+) -> EvidenceBundle:
+    """Build a finance-knowledge bundle from SEC EDGAR rows."""
+    retrieved_at = time.time()
+    sources = tuple(
+        _finance_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
+        for i, row in enumerate(kept_rows, start=1)
+    )
+    coverage, coverage_rationale = _compute_finance_coverage(sources)
+    confidence = _compute_finance_confidence(sources)
+
+    warnings: list[str] = ["not_financial_advice"]
+    if not sources:
+        warnings.append("no_sec_filings")
+
+    authority_summary = (
+        sum(s.authority_score for s in sources) / len(sources) if sources else 0.0
+    )
+    reliability_summary = (
+        sum(s.reliability_score for s in sources) / len(sources) if sources else 0.0
+    )
+    diversity_summary = min(1.0, len({s.adapter for s in sources}))
+
+    return EvidenceBundle(
+        bundle_id=str(uuid.uuid4()),
+        query_raw=query_raw,
+        query_resolved=query_resolved,
+        knowledge_service=knowledge_service,
+        retrieval_strategy=STRATEGY_FINANCE_SEC,
+        profile_version=PROFILE_VERSION,
+        retrieved_at=retrieved_at,
+        latency_ms=latency_ms,
+        confidence=confidence,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        authority_summary=authority_summary,
+        reliability_summary=reliability_summary,
+        diversity_summary=diversity_summary,
+        sources=sources,
+        rejected_count=rejected_count,
+        warnings=tuple(dict.fromkeys(warnings)),
         conflicts=(),
         stop_reason=stop_reason if sources else "no_evidence",
         adapter_calls=adapter_calls,

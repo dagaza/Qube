@@ -498,12 +498,16 @@ class CitationSourcesDialog(QDialog):
         is_dark: bool | None = None,
         on_open_source=None,
         transparency: dict | None = None,
+        research_map_graph: dict | None = None,
+        on_open_research_map=None,
     ):
         super().__init__(parent)
         if is_dark is None:
             is_dark = _resolve_is_dark_from_parent(parent)
 
         self._on_open_source = on_open_source
+        self._research_map_graph = research_map_graph
+        self._on_open_research_map = on_open_research_map
         src_list = [s for s in (sources or []) if isinstance(s, dict)]
         src_list = sorted(src_list, key=_source_sort_key)
         self._src_list = src_list
@@ -676,6 +680,22 @@ class CitationSourcesDialog(QDialog):
         inner.addWidget(scroll, stretch=1)
 
         btn_row = QHBoxLayout()
+        export_style = f"""
+            QPushButton {{
+                padding: 10px 14px;
+                min-height: 28px;
+                border-radius: 10px;
+                font-weight: bold;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+                color: {fg};
+                border: 1px solid {border};
+                background: transparent;
+            }}
+            QPushButton:hover {{
+                background: rgba(255, 255, 255, 0.05);
+            }}
+        """
         if src_list:
             from PyQt6.QtWidgets import QApplication
 
@@ -683,22 +703,6 @@ class CitationSourcesDialog(QDialog):
 
             bibtex_btn = QPushButton("COPY BIBTEX")
             apa_btn = QPushButton("COPY APA")
-            export_style = f"""
-                QPushButton {{
-                    padding: 10px 14px;
-                    min-height: 28px;
-                    border-radius: 10px;
-                    font-weight: bold;
-                    font-size: 11px;
-                    letter-spacing: 0.5px;
-                    color: {fg};
-                    border: 1px solid {border};
-                    background: transparent;
-                }}
-                QPushButton:hover {{
-                    background: rgba(255, 255, 255, 0.05);
-                }}
-            """
             bibtex_btn.setStyleSheet(export_style)
             apa_btn.setStyleSheet(export_style)
             bibtex_btn.clicked.connect(
@@ -711,6 +715,11 @@ class CitationSourcesDialog(QDialog):
             )
             btn_row.addWidget(bibtex_btn)
             btn_row.addWidget(apa_btn)
+        if research_map_graph and callable(on_open_research_map):
+            map_btn = QPushButton("RESEARCH MAP")
+            map_btn.setStyleSheet(export_style)
+            map_btn.clicked.connect(on_open_research_map)
+            btn_row.addWidget(map_btn)
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
         close_btn.setStyleSheet(

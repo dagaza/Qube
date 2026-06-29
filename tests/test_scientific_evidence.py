@@ -15,6 +15,7 @@ from core.composer_attachments import (  # noqa: E402
     ComposerAttachment,
     resolve_attachment_routing,
 )
+from core.knowledge.registry import resolve_turn_knowledge_service  # noqa: E402
 from core.knowledge.conflicts.detect import detect_conflicts  # noqa: E402
 from core.knowledge.types import (  # noqa: E402
     EvidenceObject,
@@ -57,22 +58,42 @@ _OPENALEX_ROW = {
 class TestScientificEvidence(unittest.TestCase):
     def test_composer_evidence_routing(self) -> None:
         patch = resolve_attachment_routing(
-            [ComposerAttachment(kind="tool", id="evidence", label="Evidence")]
+            [ComposerAttachment(kind="tool", id="evidence", label="Scientific literature")]
         )
         self.assertIsNotNone(patch)
         assert patch is not None
         self.assertEqual(patch["route"], "web")
         self.assertEqual(patch["attachment_tool"], "evidence")
 
+    def test_composer_science_alias_routing(self) -> None:
+        patch = resolve_attachment_routing(
+            [ComposerAttachment(kind="tool", id="science", label="Scientific literature")]
+        )
+        self.assertIsNotNone(patch)
+        assert patch is not None
+        self.assertEqual(patch["route"], "web")
+        self.assertEqual(patch["attachment_tool"], "science")
+
+    def test_resolve_science_alias_service(self) -> None:
+        self.assertEqual(
+            resolve_turn_knowledge_service(composer_tool="science"),
+            SERVICE_SCIENTIFIC_EVIDENCE,
+        )
+        self.assertEqual(
+            resolve_turn_knowledge_service(composer_tool="evidence"),
+            SERVICE_SCIENTIFIC_EVIDENCE,
+        )
+
     @patch("core.knowledge.pipeline_scientific.get_cached_rows", return_value=None)
     @patch("core.knowledge.pipeline_scientific.set_cached_rows")
     @patch.dict(
-        "core.knowledge.pipeline_scientific._ADAPTER_FNS",
+        "core.knowledge.adapters.registry.SEARCH_FUNCTIONS",
         {
             "pubmed": lambda q, max_results=3: [_PUBMED_ROW],
             "openalex": lambda q, max_results=3: [_OPENALEX_ROW],
             "arxiv": lambda q, max_results=3: [],
         },
+        clear=False,
     )
     def test_v2_scientific_bundle(self, _set_cache, _get_cache) -> None:
         outcome = run_v2_web_retrieval(

@@ -41,6 +41,8 @@ from core.app_settings import (
     get_skills_enabled,
     get_deep_research_enabled,
     get_external_knowledge_v2_enabled,
+    get_internal_corpus_knowledge_enabled,
+    get_research_map_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -332,10 +334,22 @@ class PersistenceHandlersMixin:
             self.external_knowledge_v2_toggle.blockSignals(True)
             self.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
             self.external_knowledge_v2_toggle.blockSignals(False)
+        if hasattr(self, "internal_corpus_toggle"):
+            self.internal_corpus_toggle.blockSignals(True)
+            self.internal_corpus_toggle.setChecked(get_internal_corpus_knowledge_enabled())
+            self.internal_corpus_toggle.blockSignals(False)
+        if hasattr(self, "research_map_toggle"):
+            self.research_map_toggle.blockSignals(True)
+            self.research_map_toggle.setChecked(get_research_map_enabled())
+            self.research_map_toggle.blockSignals(False)
         if hasattr(self, "deep_research_toggle"):
             self.deep_research_toggle.blockSignals(True)
             self.deep_research_toggle.setChecked(get_deep_research_enabled())
             self.deep_research_toggle.blockSignals(False)
+        if hasattr(self, "knowledge_source_checkboxes"):
+            from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
+
+            sync_knowledge_source_checkboxes(self)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_toggle.blockSignals(True)
             self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())

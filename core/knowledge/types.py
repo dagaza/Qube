@@ -16,6 +16,8 @@ SERVICE_GENERAL_WEB = "general_web"
 SERVICE_TRUSTED_KNOWLEDGE = "trusted_knowledge"
 SERVICE_SCIENTIFIC_EVIDENCE = "scientific_evidence"
 SERVICE_WIKIPEDIA = "wikipedia"
+SERVICE_INTERNAL_CORPUS = "internal_corpus"
+SERVICE_FINANCE_KNOWLEDGE = "finance_knowledge"
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,7 @@ class EvidenceObject:
     retrieved_at: float = 0.0
     fetch_status: str = "snippet_only"
     raw_metadata: dict[str, Any] = field(default_factory=dict)
+    entity_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -141,6 +144,8 @@ class RetrievalContext:
     embed_fn: Callable[[str], np.ndarray] | None = None
     budget: RetrievalBudget = field(default_factory=RetrievalBudget)
     adapter_filter: tuple[str, ...] | None = None
+    library_store: Any | None = None
+    source_filter: str | None = None
 
 
 @dataclass(frozen=True)

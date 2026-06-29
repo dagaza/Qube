@@ -510,6 +510,14 @@ SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX: str = (
     "clinician for personal health decisions."
 )
 
+FINANCIAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved SEC filings and financial metadata are for "
+    "informational summarization only — not financial, investment, or "
+    "tax advice. Do not recommend buying or selling securities based "
+    "solely on these sources. Encourage consulting a qualified financial "
+    "professional for personal investment decisions."
+)
+
 RAG_CAPABILITY_DISABLED_SUFFIX: str = (
     " IMPORTANT: the user asked about their local files or Knowledge Base, "
     "but library search is turned off in Qube settings. In one or two "

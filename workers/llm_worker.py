@@ -209,12 +209,15 @@ from core.discourse_query import (
 from core.app_settings import (
     external_knowledge_v2_enabled,
     get_default_knowledge_service,
+    internal_corpus_knowledge_enabled,
+    research_map_enabled,
 )
 from core.knowledge.registry import (
     WEB_COMPOSER_TOOLS,
     adapter_filter_for_composer_tool,
     resolve_turn_knowledge_service,
 )
+from core.knowledge.types import SERVICE_INTERNAL_CORPUS
 from core.knowledge.web_retrieval import run_web_retrieval
 from core.web_search_audit import (
     STATUS_VETOED_TOOL_DISABLED,
@@ -659,6 +662,17 @@ class LLMWorker(QThread):
             from core.knowledge.evidence_transparency import build_evidence_transparency
 
             transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
             self._turn_evidence_transparency = transparency
             self.evidence_transparency_found.emit(
                 self.session_id or "",
@@ -1100,6 +1114,17 @@ class LLMWorker(QThread):
             from core.knowledge.ui_sources_payload import encode_sources_payload
 
             transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
             src_payload = encode_sources_payload(
                 list(all_ui_sources or []),
                 transparency=transparency,
@@ -1113,6 +1138,19 @@ class LLMWorker(QThread):
             sources_json=src_payload,
             evidence_bundle_id=bundle_id,
         )
+        if (
+            research_map_enabled()
+            and evidence_bundle is not None
+            and getattr(self, "_turn_last_assistant_msg_id", None)
+        ):
+            from core.knowledge.graph.service import record_bundle_in_session_graph
+
+            record_bundle_in_session_graph(
+                self.db,
+                session_id=str(self.session_id or ""),
+                bundle=evidence_bundle,
+                message_id=self._turn_last_assistant_msg_id,
+            )
 
         gen_debug = getattr(self, "_active_generation_debug_recorder", None)
         if isinstance(gen_debug, GenerationDebugRecorder):
@@ -2218,7 +2256,22 @@ class LLMWorker(QThread):
                         )
                     self._mark_skip_enrichment("composer_conversation_ref")
             composer_tool = attachment_patch.get("attachment_tool")
-            if composer_tool in WEB_COMPOSER_TOOLS:
+            library_knowledge_active = (
+                composer_tool == "library"
+                and external_knowledge_v2_enabled()
+                and internal_corpus_knowledge_enabled()
+            )
+            if library_knowledge_active:
+                self._composer_knowledge_tool = "library"
+                force_web = True
+                if attachment_patch.get("route") != "web":
+                    attachment_patch = dict(attachment_patch)
+                    attachment_patch["route"] = "web"
+                    attachment_patch["strategy"] = "attachment_tool_library"
+                logger.info(
+                    "[LLM Worker] Composer @library: forcing internal corpus WEB path"
+                )
+            elif composer_tool in WEB_COMPOSER_TOOLS:
                 self._composer_knowledge_tool = composer_tool
                 self._composer_internet_requested = composer_tool == "internet"
                 self._composer_trusted_requested = composer_tool == "trusted"
@@ -2971,6 +3024,16 @@ class LLMWorker(QThread):
             turn_adapter_filter = adapter_filter_for_composer_tool(
                 getattr(self, "_composer_knowledge_tool", None)
             )
+            library_store = (
+                self.store
+                if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                else None
+            )
+            corpus_source_filter = (
+                getattr(self, "_turn_source_filter", None)
+                if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                else None
+            )
 
             _web_outcome = run_web_retrieval(
                 query=web_query,
@@ -2982,6 +3045,8 @@ class LLMWorker(QThread):
                 adapter_filter=turn_adapter_filter,
                 session_id=self.session_id,
                 turn_id=getattr(self, "_routing_debug_turn_seq", None),
+                library_store=library_store,
+                source_filter=corpus_source_filter,
             )
             web_results = _web_outcome.web_results
             web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit
@@ -3093,7 +3158,9 @@ class LLMWorker(QThread):
                     all_ui_sources.append(src)
 
                 web_hdr = (
-                    "WEB SEARCH RESULTS"
+                    "LIBRARY SEARCH RESULTS"
+                    if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                    else "WEB SEARCH RESULTS"
                 )
                 if tool_context:
                     tool_context = f"{tool_context}\n\n{web_hdr}:\n{web_context}"
@@ -3206,6 +3273,17 @@ class LLMWorker(QThread):
             from core.knowledge.evidence_transparency import build_evidence_transparency
 
             transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
             self._turn_evidence_transparency = transparency
             self.evidence_transparency_found.emit(
                 self.session_id or "",
@@ -3352,11 +3430,12 @@ class LLMWorker(QThread):
             and execution_route == "NONE"
         )
         scientific_medical_disclaimer = False
+        financial_disclaimer = False
         _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
         if _evidence_bundle is not None:
-            scientific_medical_disclaimer = "medical_disclaimer" in (
-                _evidence_bundle.warnings or ()
-            )
+            warnings = _evidence_bundle.warnings or ()
+            scientific_medical_disclaimer = "medical_disclaimer" in warnings
+            financial_disclaimer = "not_financial_advice" in warnings
         self._turn_execution_route = execution_route
         if self.session_id:
             self._prior_execution_route_by_session[str(self.session_id)] = execution_route
@@ -3725,6 +3804,7 @@ class LLMWorker(QThread):
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
+            financial_disclaimer=financial_disclaimer,
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "service": "trusted_knowledge",
+  "description": "Phase 6 Slice 1 — trusted knowledge eval corpus (@trusted / Wikipedia-first)",
+  "queries": [
+    {
+      "id": "geo_001",
+      "query": "What is the capital of Romania?",
+      "expect_adapters": ["wikipedia_api"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_wikipedia": true,
+      "min_fetch_rank": "abstract"
+    },
+    {
+      "id": "hist_001",
+      "query": "French Revolution causes and timeline overview",
+      "expect_adapters": ["wikipedia_api"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_wikipedia": true
+    },
+    {
+      "id": "sci_001",
+      "query": "photosynthesis process plants light energy",
+      "expect_adapters": ["wikipedia_api"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_wikipedia": true
+    },
+    {
+      "id": "bio_001",
+      "query": "Theory of relativity",
+      "expect_adapters": ["wikipedia_api"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_wikipedia": true
+    },
+    {
+      "id": "gov_001",
+      "query": "Vaccination policy United States",
+      "expect_adapters": ["wikipedia_api", "duckduckgo"],
+      "min_sources": 1,
+      "min_authority": 0.82,
+      "require_wikipedia": false
+    }
+  ]
+}

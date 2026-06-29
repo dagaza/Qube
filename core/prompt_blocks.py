@@ -27,6 +27,7 @@ from core.memory_filters import (
     STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
     SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
+    FINANCIAL_DISCLAIMER_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -137,6 +138,7 @@ def build_prompt_blocks(
     rag_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
     scientific_medical_disclaimer: bool = False,
+    financial_disclaimer: bool = False,
     strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
@@ -185,6 +187,9 @@ def build_prompt_blocks(
     elif scientific_medical_disclaimer:
         persona = _BASE_PERSONA
         suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
+    elif financial_disclaimer:
+        persona = _BASE_PERSONA
+        suffixes.append(FINANCIAL_DISCLAIMER_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True
