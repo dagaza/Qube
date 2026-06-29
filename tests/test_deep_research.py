@@ -138,6 +138,36 @@ class TestDeepResearch(unittest.TestCase):
         self.assertGreaterEqual(dropped, 1)
         self.assertIn("merged_anchor_tokens", diag)
 
+    def test_merged_relevance_gate_reorders_when_nothing_dropped(self) -> None:
+        query = "statin primary prevention cardiovascular risk meta-analysis"
+        bundle = _bundle(
+            sources=(
+                _source(
+                    sid="ek_1",
+                    title="Statins for the primary prevention of cardiovascular disease",
+                    relevance_score=1.0,
+                ),
+                _source(
+                    sid="ek_2",
+                    title="Cardiovascular Outcomes in Individuals With Diabetes",
+                    relevance_score=0.57,
+                ),
+                _source(
+                    sid="ek_3",
+                    title="Evaluating the effectiveness of simvastatin in multiple sclerosis",
+                    relevance_score=0.55,
+                ),
+            ),
+            query=query,
+        )
+        filtered, dropped, diag = apply_merged_relevance_gate(query=query, bundle=bundle)
+        assert filtered is not None
+        self.assertEqual(dropped, 0)
+        self.assertEqual(diag.get("merged_ranker_version"), "2.0")
+        titles = [s.title for s in filtered.sources]
+        self.assertEqual(titles[0], "Statins for the primary prevention of cardiovascular disease")
+        self.assertIn("simvastatin", titles[1].lower())
+
     def test_dedupe_keeps_highest_scored_duplicate_title(self) -> None:
         low = _source(
             sid="ek_1",

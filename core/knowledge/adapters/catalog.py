@@ -80,7 +80,7 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "DBLP",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Computer Science",
-        implemented=False,
+        implemented=True,
     ),
     # Economics
     AdapterCatalogEntry(
@@ -88,7 +88,7 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "RePEc",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Economics",
-        implemented=False,
+        implemented=True,
     ),
     AdapterCatalogEntry(
         "ssrn",

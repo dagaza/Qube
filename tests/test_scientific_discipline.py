@@ -66,12 +66,12 @@ class TestDisciplineAdapterPolicy(unittest.TestCase):
         )
         self.assertEqual(resolved, ("arxiv", "openalex"))
 
-    def test_economics_openalex_only_when_repec_unimplemented(self) -> None:
+    def test_economics_repec_before_openalex(self) -> None:
         resolved = apply_scientific_adapter_policy(
-            ("pubmed", "openalex", "arxiv"),
+            ("pubmed", "openalex", "arxiv", "repec"),
             query="GDP inflation monetary policy econometric",
         )
-        self.assertEqual(resolved, ("openalex",))
+        self.assertEqual(resolved, ("repec", "openalex"))
 
     def test_biomedical_includes_pubmed_first(self) -> None:
         resolved = apply_scientific_adapter_policy(
@@ -82,7 +82,7 @@ class TestDisciplineAdapterPolicy(unittest.TestCase):
 
     def test_catalog_cs_group_order(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE)
-        self.assertEqual(order, ("arxiv", "openalex"))
+        self.assertEqual(order, ("arxiv", "openalex", "dblp"))
 
     def test_resolve_service_adapters_cs_order(self) -> None:
         resolved = resolve_service_adapters(

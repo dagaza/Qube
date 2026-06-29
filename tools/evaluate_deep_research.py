@@ -45,7 +45,7 @@ def _score_relevance(entry: dict, sources) -> dict:
     )
 
 
-def _evaluate_query(entry: dict, *, live: bool) -> dict:
+def _evaluate_query(entry: dict, *, live: bool, decompose_mode: str | None) -> dict:
     query = str(entry.get("query") or "").strip()
     if not query:
         return {"id": entry.get("id"), "status": "skipped", "reason": "empty_query"}
@@ -54,9 +54,15 @@ def _evaluate_query(entry: dict, *, live: bool) -> dict:
         payload = {"id": entry.get("id"), "query": query, "status": "dry_run"}
         if _entry_has_relevance_criteria(entry):
             payload["relevance_criteria"] = True
+        if decompose_mode:
+            payload["decompose_mode"] = decompose_mode
         return payload
 
-    result = run_deep_research(query, knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE)
+    result = run_deep_research(
+        query,
+        knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+        decompose_mode=decompose_mode,
+    )
     bundle = result.merged_bundle
     diagnostics = dict(result.diagnostics or {})
     if bundle is None or not bundle.sources:
@@ -66,6 +72,7 @@ def _evaluate_query(entry: dict, *, live: bool) -> dict:
             "status": "no_results",
             "latency_ms": round(result.latency_ms, 1),
             "sub_queries": list(result.sub_queries),
+            "decompose_mode": diagnostics.get("decompose_mode"),
             "relevance_ok": False if _entry_has_relevance_criteria(entry) else None,
             "diagnostics": diagnostics,
         }
@@ -87,6 +94,7 @@ def _evaluate_query(entry: dict, *, live: bool) -> dict:
         "status": "ok" if ok else "partial",
         "latency_ms": round(result.latency_ms, 1),
         "sub_queries": list(result.sub_queries),
+        "decompose_mode": diagnostics.get("decompose_mode"),
         "adapters": sorted(adapters),
         "merged_sources": len(bundle.sources),
         "coverage": bundle.coverage,
@@ -111,6 +119,12 @@ def main() -> int:
     )
     parser.add_argument("--live", action="store_true", help="Run live retrieval (network)")
     parser.add_argument(
+        "--decompose",
+        choices=["heuristic", "llm", "hybrid"],
+        default="heuristic",
+        help="Sub-query decomposition mode for live eval (default: heuristic)",
+    )
+    parser.add_argument(
         "--require-relevance",
         action="store_true",
         help="Exit non-zero unless relevance_ok meets --min-relevance-ok",
@@ -124,12 +138,17 @@ def main() -> int:
     args = parser.parse_args()
 
     entries = _load_corpus(args.corpus)
-    results = [_evaluate_query(entry, live=args.live) for entry in entries]
+    decompose_mode = args.decompose if args.live else None
+    results = [
+        _evaluate_query(entry, live=args.live, decompose_mode=decompose_mode)
+        for entry in entries
+    ]
     ok = sum(1 for r in results if r.get("status") == "ok")
     partial = sum(1 for r in results if r.get("status") == "partial")
     relevance_scored = [r for r in results if r.get("relevance_ok") is not None]
     relevance_ok = sum(1 for r in relevance_scored if r.get("relevance_ok") is True)
     summary = {
+        "decompose_mode": decompose_mode,
         "results": results,
         "ok": ok,
         "partial": partial,

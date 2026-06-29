@@ -81,9 +81,17 @@ def decompose_query(
     *,
     max_sub_queries: int = MAX_SUB_QUERIES,
     generate_fn: Callable[[str, str], str] | None = None,
+    mode: str = "heuristic",
 ) -> tuple[str, ...]:
-    """Bounded sub-query split; optional LLM planner when ``generate_fn`` is provided."""
-    if generate_fn is not None:
+    """Bounded sub-query split; optional LLM or hybrid planner when ``generate_fn`` is set."""
+    normalized_mode = (mode or "heuristic").strip().lower()
+    if normalized_mode == "hybrid" and generate_fn is not None:
+        return decompose_query_hybrid(
+            query,
+            generate_fn,
+            max_sub_queries=max_sub_queries,
+        )
+    if normalized_mode == "llm" and generate_fn is not None:
         from core.knowledge.deep_research_decompose_llm import decompose_query_with_llm
 
         return decompose_query_with_llm(
@@ -93,6 +101,34 @@ def decompose_query(
         )
 
     return _decompose_query_heuristic(query, max_sub_queries=max_sub_queries)
+
+
+def decompose_query_hybrid(
+    query: str,
+    generate_fn: Callable[[str, str], str],
+    *,
+    max_sub_queries: int = MAX_SUB_QUERIES,
+) -> tuple[str, ...]:
+    """Merge heuristic domain angles with LLM sub-queries (deduped, bounded)."""
+    from core.knowledge.deep_research_decompose_llm import decompose_query_with_llm
+
+    heuristic = _decompose_query_heuristic(query, max_sub_queries=max_sub_queries)
+    llm = decompose_query_with_llm(
+        query,
+        generate_fn,
+        max_sub_queries=max_sub_queries,
+    )
+    merged: list[str] = []
+    seen: set[str] = set()
+    for item in (*heuristic, *llm):
+        key = item.strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(item.strip())
+    if not merged:
+        return heuristic or llm
+    return tuple(merged[: max(1, max_sub_queries)])
 
 
 def _decompose_query_heuristic(

@@ -6,7 +6,7 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 
 | File | Service | Purpose |
 |------|---------|---------|
-| `v1_scientific.json` | `scientific_evidence` | Multi-disciplinary scholarly literature (`@evidence` / `@science`) — includes optional `discipline` tags for Slice 6 routing |
+| `v1_scientific.json` | `scientific_evidence` | Multi-disciplinary scholarly literature (`@evidence` / `@science`) — `discipline` + `primary_adapter` tags for Slice 6 routing eval |
 | `v1_trusted.json` | `trusted_knowledge` | Phase 6 Slice 1 `@trusted` — Wikipedia-first, authority tiers |
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |
 | `v1_legal.json` | `legal_knowledge` | Phase 6 Slice 5b `@legal` — CourtListener case law |
@@ -15,8 +15,8 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 ## Commands
 
 ```bash
-# Scientific (Phase 2 sign-off — expect 5/5 ok)
-QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py --live --service scientific_evidence --min-pass 5
+# Scientific (Phase 2 sign-off — expect 6/6 ok, discipline primary ≥ 70%)
+QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py --live --service scientific_evidence --min-pass 6
 
 # Trusted (Phase 6 Slice 1 — expect ≥ 4/5 ok)
 python3 tools/evaluate_retrieval.py --live --service trusted_knowledge

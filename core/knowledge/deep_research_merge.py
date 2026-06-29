@@ -1,4 +1,4 @@
-"""Post-merge relevance filtering for deep research bundles (Phase 5 v2)."""
+"""Post-merge relevance ranking for deep research bundles (Merge Ranker v2)."""
 
 from __future__ import annotations
 
@@ -7,16 +7,20 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from core.knowledge.types import EvidenceObject
-from core.retrieval_relevance import (
-    _semantic_score_from_vectors,
-    _token_set,
-    query_snippet_token_overlap,
+from core.knowledge.ranking.merged_source import (
+    DEEP_RESEARCH_MIN_MERGED_SCORE,
+    DEFAULT_MERGE_WEIGHTS,
+    MERGE_RANKER_VERSION,
+    resolve_query_entity_ids,
+    score_merged_source,
 )
+from core.knowledge.types import EvidenceObject
+from core.retrieval_relevance import _token_set
 
 DEEP_RESEARCH_MIN_MERGED_OVERLAP = 0.20
 DEEP_RESEARCH_MIN_SEMANTIC = 0.32
 DEEP_RESEARCH_MIN_KEEP = 2
+DEEP_RESEARCH_MERGE_TOP_K = 8
 
 _GENERIC_ANCHOR_STOPWORDS = frozenset(
     {
@@ -108,7 +112,7 @@ _GENERIC_MERGE_REJECT_PATTERNS: tuple[str, ...] = ("takotsubo", "chagas")
 
 
 def extract_query_anchor_tokens(query: str) -> tuple[str, ...]:
-    """Domain anchor tokens required in merged sources (beyond generic HF/medical terms)."""
+    """Domain anchor tokens for merge scoring (beyond generic HF/medical terms)."""
     normalized = re.sub(r"\s+", " ", (query or "").lower()).strip()
     anchors: list[str] = []
     for phrase, expanded in _QUERY_ANCHOR_EXPANSIONS:
@@ -161,14 +165,91 @@ def source_passes_title_merge_gate(
     anchors: tuple[str, ...],
     reject_patterns: tuple[str, ...],
 ) -> bool:
-    """Title must match a domain anchor and not hit a reject pattern (Phase 5 slice 4)."""
+    """Legacy helper: title must match anchor and not hit reject (eval utilities)."""
     if source_title_matches_reject(title, reject_patterns):
         return False
     return source_passes_anchor_gate(title, anchors)
 
 
-def _source_combined_text(src: EvidenceObject) -> str:
-    return f"{src.title} {src.excerpt or ''}".strip()
+def rank_merged_sources_for_query(
+    query: str,
+    sources: list[EvidenceObject],
+    *,
+    min_score: float = DEEP_RESEARCH_MIN_MERGED_SCORE,
+    min_keep: int = DEEP_RESEARCH_MIN_KEEP,
+    top_k: int = DEEP_RESEARCH_MERGE_TOP_K,
+    query_vector: Optional[np.ndarray] = None,
+    embed_fn: Optional[Callable[[str], np.ndarray]] = None,
+    weights: dict[str, float] | None = None,
+) -> tuple[list[EvidenceObject], int, dict[str, Any]]:
+    """
+    Rank merged deep-research sources.
+
+    Hard drops: reject title patterns only.
+    All other signals contribute to a weighted score; top-K sources are kept.
+    """
+    if not sources:
+        return [], 0, {"merged_anchor_tokens": list(extract_query_anchor_tokens(query))}
+
+    anchors = extract_query_anchor_tokens(query)
+    reject_patterns = extract_merge_reject_title_patterns(query)
+    query_entity_ids = resolve_query_entity_ids(query)
+    use_embed = bool(query_vector is not None and embed_fn is not None)
+
+    scored: list[tuple[float, EvidenceObject, dict[str, float]]] = []
+    title_reject_dropped = 0
+
+    for src in sources:
+        title = str(src.title or "")
+        if source_title_matches_reject(title, reject_patterns):
+            title_reject_dropped += 1
+            continue
+
+        result = score_merged_source(
+            query,
+            src,
+            anchors=anchors,
+            query_entity_ids=query_entity_ids,
+            query_vector=query_vector,
+            embed_fn=embed_fn,
+            weights=weights,
+        )
+        if result.total < min_score:
+            continue
+        scored.append((result.total, src, result.features))
+
+    scored.sort(key=lambda row: (row[0], row[1].relevance_score, row[1].authority_score), reverse=True)
+
+    if scored:
+        keep_count = max(min_keep, min(top_k, len(scored)))
+        kept_rows = scored[:keep_count]
+    else:
+        kept_rows = []
+
+    kept = [src for _, src, _ in kept_rows]
+    dropped = len(sources) - len(kept)
+
+    top_features = [features for _, _, features in kept_rows[:3]]
+
+    diag: dict[str, Any] = {
+        "merged_ranker_version": MERGE_RANKER_VERSION,
+        "merged_anchor_tokens": list(anchors),
+        "merged_reject_title_patterns": list(reject_patterns),
+        "merged_title_reject_dropped": title_reject_dropped,
+        "merged_title_first_gate": False,
+        "merged_title_anchor_dropped": 0,
+        "merged_anchor_dropped": title_reject_dropped,
+        "merged_semantic_gate": use_embed,
+        "merged_semantic_dropped": 0,
+        "merged_relevance_min_score": min_score,
+        "merged_relevance_min_overlap": DEEP_RESEARCH_MIN_MERGED_OVERLAP,
+        "merged_feature_weights": dict(weights or DEFAULT_MERGE_WEIGHTS),
+        "merged_top_feature_scores": top_features,
+        "merged_query_entity_count": len(query_entity_ids),
+    }
+    if use_embed:
+        diag["merged_relevance_min_semantic"] = DEEP_RESEARCH_MIN_SEMANTIC
+    return kept, dropped, diag
 
 
 def filter_merged_sources_for_query(
@@ -181,70 +262,12 @@ def filter_merged_sources_for_query(
     query_vector: Optional[np.ndarray] = None,
     embed_fn: Optional[Callable[[str], np.ndarray]] = None,
 ) -> tuple[list[EvidenceObject], int, dict[str, Any]]:
-    """
-    Drop tangential merged hits using title-first anchors, reject patterns,
-    lexical overlap, and optional embeddings.
-    """
-    if not sources:
-        return [], 0, {"merged_anchor_tokens": list(extract_query_anchor_tokens(query))}
-
-    anchors = extract_query_anchor_tokens(query)
-    reject_patterns = extract_merge_reject_title_patterns(query)
-    use_embed = bool(query_vector is not None and embed_fn is not None)
-    scored: list[tuple[float, EvidenceObject]] = []
-    title_reject_dropped = 0
-    title_anchor_dropped = 0
-    semantic_dropped = 0
-
-    for src in sources:
-        title = str(src.title or "")
-        if source_title_matches_reject(title, reject_patterns):
-            title_reject_dropped += 1
-            continue
-        if not source_passes_anchor_gate(title, anchors):
-            title_anchor_dropped += 1
-            continue
-
-        combined = _source_combined_text(src)
-        overlap = query_snippet_token_overlap(query, combined)
-
-        semantic_score = 0.0
-        passes_semantic = True
-        if use_embed and combined:
-            try:
-                text_vector = embed_fn(combined[:512])
-                semantic_score = _semantic_score_from_vectors(query_vector, text_vector)
-                passes_semantic = semantic_score >= min_semantic
-            except Exception:
-                passes_semantic = overlap >= min_overlap
-        passes_lexical = overlap >= min_overlap
-        if not (passes_lexical or (use_embed and passes_semantic)):
-            semantic_dropped += 1
-            continue
-        score = max(overlap, semantic_score if use_embed else 0.0) + 0.05
-        scored.append((score, src))
-
-    scored.sort(key=lambda row: row[0], reverse=True)
-    kept = [src for _, src in scored]
-    dropped = len(sources) - len(kept)
-
-    if len(kept) < min_keep and scored:
-        kept = [src for _, src in scored[: max(1, min(min_keep, len(scored)))]]
-        dropped = len(sources) - len(kept)
-
-    anchor_dropped = title_reject_dropped + title_anchor_dropped
-
-    diag: dict[str, Any] = {
-        "merged_anchor_tokens": list(anchors),
-        "merged_reject_title_patterns": list(reject_patterns),
-        "merged_title_reject_dropped": title_reject_dropped,
-        "merged_title_anchor_dropped": title_anchor_dropped,
-        "merged_anchor_dropped": anchor_dropped,
-        "merged_title_first_gate": True,
-        "merged_semantic_gate": use_embed,
-        "merged_semantic_dropped": semantic_dropped,
-        "merged_relevance_min_overlap": min_overlap,
-    }
-    if use_embed:
-        diag["merged_relevance_min_semantic"] = min_semantic
-    return kept, dropped, diag
+    """Backward-compatible entry point; delegates to Merge Ranker v2."""
+    del min_overlap, min_semantic
+    return rank_merged_sources_for_query(
+        query,
+        sources,
+        min_keep=min_keep,
+        query_vector=query_vector,
+        embed_fn=embed_fn,
+    )
