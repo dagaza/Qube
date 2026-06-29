@@ -50,7 +50,12 @@ KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
 KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED = "qube.knowledge.external_v2_enabled"
+KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"
+KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"
+KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
+KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
+KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
 KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
@@ -336,6 +341,69 @@ def external_knowledge_v2_enabled() -> bool:
     return get_external_knowledge_v2_enabled()
 
 
+def get_internal_corpus_knowledge_enabled() -> bool:
+    """When True, @library routes through the internal corpus evidence service."""
+    return bool(_store().get(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, False))
+
+
+def set_internal_corpus_knowledge_enabled(enabled: bool) -> None:
+    _store().set(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, enabled)
+
+
+def internal_corpus_knowledge_env_override() -> bool | None:
+    raw = os.getenv("QUBE_INTERNAL_CORPUS_KNOWLEDGE")
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def internal_corpus_knowledge_enabled() -> bool:
+    """Effective internal corpus knowledge flag (env override wins)."""
+    override = internal_corpus_knowledge_env_override()
+    if override is not None:
+        return override
+    return get_internal_corpus_knowledge_enabled()
+
+
+def get_research_map_enabled() -> bool:
+    """When True, build session knowledge graphs and show Research map UI."""
+    return bool(_store().get(KEY_RESEARCH_MAP_ENABLED, False))
+
+
+def set_research_map_enabled(enabled: bool) -> None:
+    _store().set(KEY_RESEARCH_MAP_ENABLED, enabled)
+
+
+def research_map_enabled() -> bool:
+    return get_research_map_enabled()
+
+
+def get_entity_resolution_enabled() -> bool:
+    """When True, attach stable entity_ids to evidence objects (offline heuristics)."""
+    return bool(_store().get(KEY_ENTITY_RESOLUTION_ENABLED, True))
+
+
+def set_entity_resolution_enabled(enabled: bool) -> None:
+    _store().set(KEY_ENTITY_RESOLUTION_ENABLED, enabled)
+
+
+def entity_resolution_enabled() -> bool:
+    return get_entity_resolution_enabled()
+
+
+def get_rxnorm_entity_lookup_enabled() -> bool:
+    """When True, optional RxNorm API lookups augment entity resolution (cached)."""
+    return bool(_store().get(KEY_RXNORM_ENTITY_LOOKUP_ENABLED, False))
+
+
+def set_rxnorm_entity_lookup_enabled(enabled: bool) -> None:
+    _store().set(KEY_RXNORM_ENTITY_LOOKUP_ENABLED, enabled)
+
+
+def rxnorm_entity_lookup_enabled() -> bool:
+    return get_rxnorm_entity_lookup_enabled()
+
+
 def get_deep_research_enabled() -> bool:
     """When True, background deep-research jobs may run (Phase 4 scaffold)."""
     return bool(_store().get(KEY_DEEP_RESEARCH_ENABLED, False))
@@ -343,6 +411,22 @@ def get_deep_research_enabled() -> bool:
 
 def set_deep_research_enabled(enabled: bool) -> None:
     _store().set(KEY_DEEP_RESEARCH_ENABLED, enabled)
+
+
+def get_knowledge_source_preferences() -> dict[str, list[str]]:
+    """Per-service enabled adapter ids (user-configured knowledge sources)."""
+    from core.knowledge.source_preferences import normalize_preferences
+
+    raw = _store().get(KEY_KNOWLEDGE_SOURCE_PREFERENCES, {})
+    if not isinstance(raw, dict):
+        return {}
+    return normalize_preferences(raw)
+
+
+def set_knowledge_source_preferences(preferences: dict[str, list[str]]) -> None:
+    from core.knowledge.source_preferences import normalize_preferences
+
+    _store().set(KEY_KNOWLEDGE_SOURCE_PREFERENCES, normalize_preferences(preferences))
 
 
 def get_default_knowledge_service() -> str:

@@ -61,8 +61,12 @@ def score_rows(
     query_vector: np.ndarray | None = None,
     embed_fn: Callable[[str], np.ndarray] | None = None,
     min_score: float = 0.12,
+    trial_signals: frozenset[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Score rows and partition into kept vs rejected by min_score."""
+    if trial_signals:
+        from core.knowledge.ranking.trial_grounding import trial_grounding_boost
+
     kept: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     for row in rows:
@@ -73,6 +77,11 @@ def score_rows(
             query_vector=query_vector,
             embed_fn=embed_fn,
         )
+        if trial_signals:
+            boost = trial_grounding_boost(copy, trial_signals)
+            if boost:
+                copy["_trial_grounding_boost"] = boost
+                rel = min(1.0, rel + boost)
         copy["_scientific_relevance"] = rel
         if rel >= min_score:
             kept.append(copy)

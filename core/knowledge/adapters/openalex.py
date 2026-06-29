@@ -64,7 +64,9 @@ def search_openalex(
             if isinstance(a, dict)
         )
         authors = tuple(a for a in authors if a)
-        venue = str((work.get("primary_location") or {}).get("source", {}).get("display_name") or "").strip()
+        primary_location = work.get("primary_location") if isinstance(work.get("primary_location"), dict) else {}
+        source = primary_location.get("source") if isinstance(primary_location.get("source"), dict) else {}
+        venue = str(source.get("display_name") or "").strip()
         pub_year = work.get("publication_year")
         pub_date = str(pub_year) if pub_year else None
         oa = work.get("open_access") if isinstance(work.get("open_access"), dict) else {}

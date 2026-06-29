@@ -159,6 +159,32 @@ class DatabaseManager:
                 except sqlite3.OperationalError:
                     pass
 
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS session_knowledge_graphs (
+                        session_id TEXT PRIMARY KEY,
+                        graph_json TEXT NOT NULL,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
+                    )
+                """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS evidence_bundle_snapshots (
+                        bundle_id TEXT PRIMARY KEY,
+                        session_id TEXT NOT NULL,
+                        message_id TEXT,
+                        query_resolved TEXT,
+                        knowledge_service TEXT,
+                        entity_keys TEXT,
+                        bundle_json TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
+                    )
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_bundle_snapshots_session
+                    ON evidence_bundle_snapshots(session_id, created_at DESC)
+                """)
+
                 for alter_sql in (
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
                     "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
@@ -1077,3 +1103,147 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to remove RAG trigger '{phrase}': {e}")
             return False
+
+    # --------------------------------------------------------- #
+    # Knowledge graph (Phase 6 Slice 4)
+    # --------------------------------------------------------- #
+
+    def get_session_knowledge_graph_json(self, session_id: str) -> str | None:
+        sid = str(session_id or "").strip()
+        if not sid:
+            return None
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT graph_json FROM session_knowledge_graphs WHERE session_id = ?",
+                    (sid,),
+                ).fetchone()
+                if row and row["graph_json"]:
+                    return str(row["graph_json"])
+        except Exception as e:
+            logger.error("Failed to load knowledge graph for session %s: %s", sid, e)
+        return None
+
+    def get_session_knowledge_graph(self, session_id: str) -> dict | None:
+        raw = self.get_session_knowledge_graph_json(session_id)
+        if not raw:
+            return None
+        from core.knowledge.graph.build import graph_from_json
+
+        return graph_from_json(raw)
+
+    def save_session_knowledge_graph(self, session_id: str, graph_json: str) -> None:
+        sid = str(session_id or "").strip()
+        if not sid or not graph_json:
+            return
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO session_knowledge_graphs (session_id, graph_json, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(session_id) DO UPDATE SET
+                        graph_json = excluded.graph_json,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (sid, graph_json),
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error("Failed to save knowledge graph for session %s: %s", sid, e)
+
+    def save_evidence_bundle_snapshot(
+        self,
+        *,
+        bundle_id: str,
+        session_id: str,
+        message_id: str | None,
+        query_resolved: str,
+        knowledge_service: str,
+        entity_keys: tuple[str, ...],
+        bundle_json: str,
+    ) -> None:
+        bid = str(bundle_id or "").strip()
+        sid = str(session_id or "").strip()
+        if not bid or not sid or not bundle_json:
+            return
+        keys_blob = "|".join(sorted(entity_keys))
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO evidence_bundle_snapshots (
+                        bundle_id, session_id, message_id, query_resolved,
+                        knowledge_service, entity_keys, bundle_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(bundle_id) DO UPDATE SET
+                        session_id = excluded.session_id,
+                        message_id = excluded.message_id,
+                        query_resolved = excluded.query_resolved,
+                        knowledge_service = excluded.knowledge_service,
+                        entity_keys = excluded.entity_keys,
+                        bundle_json = excluded.bundle_json,
+                        created_at = CURRENT_TIMESTAMP
+                    """,
+                    (
+                        bid,
+                        sid,
+                        message_id,
+                        query_resolved,
+                        knowledge_service,
+                        keys_blob,
+                        bundle_json,
+                    ),
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error("Failed to save bundle snapshot %s: %s", bid, e)
+
+    def find_evidence_bundle_snapshots_by_entities(
+        self,
+        *,
+        entity_keys: set[str],
+        exclude_session_id: str | None = None,
+        limit: int = 5,
+    ) -> list[dict]:
+        if not entity_keys:
+            return []
+        exclude = str(exclude_session_id or "").strip()
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT bundle_id, session_id, message_id, query_resolved,
+                           knowledge_service, entity_keys, created_at
+                    FROM evidence_bundle_snapshots
+                    ORDER BY created_at DESC
+                    LIMIT 500
+                    """
+                )
+                matches: list[dict] = []
+                for row in cursor.fetchall():
+                    sid = str(row["session_id"] or "")
+                    if exclude and sid == exclude:
+                        continue
+                    row_keys = {
+                        k for k in str(row["entity_keys"] or "").split("|") if k
+                    }
+                    if not row_keys.intersection(entity_keys):
+                        continue
+                    matches.append(
+                        {
+                            "bundle_id": row["bundle_id"],
+                            "session_id": sid,
+                            "message_id": row["message_id"],
+                            "query_resolved": row["query_resolved"],
+                            "knowledge_service": row["knowledge_service"],
+                            "created_at": row["created_at"],
+                            "shared_entities": sorted(row_keys.intersection(entity_keys)),
+                        }
+                    )
+                    if len(matches) >= max(1, limit):
+                        break
+                return matches
+        except Exception as e:
+            logger.error("Failed to find prior bundle snapshots: %s", e)
+            return []

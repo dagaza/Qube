@@ -60,6 +60,23 @@ class TestDeepResearchDecomposeLlm(unittest.TestCase):
         self.assertIn("ACE inhibitors heart failure evidence", parts)
         self.assertGreaterEqual(len(parts), 2)
 
+    def test_decompose_accepts_bound_positional_callback(self) -> None:
+        """DeepResearchWorker passes _decompose_generate as a positional callback."""
+
+        class WorkerLike:
+            def _decompose_generate(self, system: str, user: str) -> str:
+                return (
+                    '{"sub_queries": ['
+                    '"ACE inhibitors heart failure mortality randomized trial", '
+                    '"ACE inhibitors heart failure systematic review meta-analysis"]}'
+                )
+
+        parts = decompose_query(
+            "ACE inhibitors heart failure evidence",
+            generate_fn=WorkerLike()._decompose_generate,
+        )
+        self.assertGreaterEqual(len(parts), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

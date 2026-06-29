@@ -7,11 +7,12 @@ from core.knowledge.types import EvidenceBundle, EvidenceObject
 
 def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
     """Produce a legacy ``all_ui_sources`` row (additive evidence fields)."""
+    source_type = "library" if obj.document_type == "library_chunk" else "web"
     row: dict = {
         "id": ui_id,
         "filename": obj.title,
         "content": obj.excerpt,
-        "type": "web",
+        "type": source_type,
         "evidence_id": obj.id,
         "source_adapter": obj.adapter,
         "document_type": obj.document_type,
@@ -23,6 +24,8 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["url"] = obj.url
     if obj.doi:
         row["doi"] = obj.doi
+    if obj.entity_ids:
+        row["entity_ids"] = list(obj.entity_ids)
     if obj.venue:
         row["venue"] = obj.venue
     if obj.authors:

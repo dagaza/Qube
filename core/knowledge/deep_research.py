@@ -9,6 +9,9 @@ from typing import Any, Callable
 
 import numpy as np
 
+from core.knowledge.entities.enrich import enrich_evidence_object
+from core.knowledge.entities.policy import dedupe_cluster_entity_ids
+from core.knowledge.entities.types import EntityResolutionContext
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.types import (
     COVERAGE_ADEQUATE,
@@ -64,8 +67,12 @@ def _normalize_title(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
 
 
-def _dedupe_sources(sources: list[EvidenceObject]) -> list[EvidenceObject]:
-    """Dedupe cross sub-query hits; keep highest-scored row per DOI/title/URL."""
+def _dedupe_sources(
+    sources: list[EvidenceObject],
+    *,
+    ctx: EntityResolutionContext | None = None,
+) -> list[EvidenceObject]:
+    """Dedupe cross sub-query hits; prefer DOI → entity cluster → title → URL."""
     best: dict[str, EvidenceObject] = {}
     order: list[str] = []
 
@@ -73,6 +80,12 @@ def _dedupe_sources(sources: list[EvidenceObject]) -> list[EvidenceObject]:
         doi = (src.doi or "").strip().lower()
         if doi:
             return f"doi:{doi}"
+
+        enriched = enrich_evidence_object(src, ctx)
+        cluster = dedupe_cluster_entity_ids(enriched.entity_ids)
+        if cluster:
+            return f"cluster:{'|'.join(cluster)}"
+
         title_key = _normalize_title(src.title)
         if title_key:
             return f"title:{title_key}"
@@ -108,8 +121,14 @@ def merge_evidence_bundles(
     if not nonempty:
         return None
 
+    resolution_ctx = EntityResolutionContext(
+        query_resolved=normalize_deep_research_query(query),
+        knowledge_service=knowledge_service,
+    )
+
     merged_sources = _dedupe_sources(
-        [src for bundle in nonempty for src in bundle.sources]
+        [enrich_evidence_object(src, resolution_ctx) for bundle in nonempty for src in bundle.sources],
+        ctx=resolution_ctx,
     )
     merged_sources.sort(
         key=lambda s: (s.relevance_score, s.authority_score),
@@ -164,7 +183,9 @@ def merge_evidence_bundles(
     latency_ms = sum(bundle.latency_ms for bundle in nonempty)
     conflicts = detect_conflicts(capped, topic=query)
 
-    return EvidenceBundle(
+    from core.knowledge.entities.enrich import enrich_bundle
+
+    merged_bundle = EvidenceBundle(
         bundle_id=str(uuid.uuid4()),
         query_raw=query,
         query_resolved=normalize_deep_research_query(query),
@@ -186,6 +207,7 @@ def merge_evidence_bundles(
         stop_reason="sufficient_evidence" if len(capped) >= 3 else "budget_exhausted",
         adapter_calls=adapter_calls,
     )
+    return enrich_bundle(merged_bundle, resolution_ctx)
 
 
 def build_bibliography_report(

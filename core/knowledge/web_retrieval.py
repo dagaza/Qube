@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import numpy as np
 
+from core.app_settings import entity_resolution_enabled
 from core.knowledge.adapters.duckduckgo import is_failure_sentinel, search_duckduckgo
 from core.knowledge.observability import build_retrieval_trace, record_retrieval_trace
 from core.knowledge.registry import get_knowledge_service
@@ -84,6 +85,8 @@ def run_v2_web_retrieval(
     budget: RetrievalBudget | None = None,
     session_id: str | None = None,
     turn_id: int | None = None,
+    library_store: Any | None = None,
+    source_filter: str | None = None,
 ) -> WebRetrievalOutcome:
     """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle."""
     service = get_knowledge_service(knowledge_service)
@@ -95,8 +98,16 @@ def run_v2_web_retrieval(
         embed_fn=embed_fn,
         budget=budget or service.default_budget(),
         adapter_filter=adapter_filter,
+        library_store=library_store,
+        source_filter=source_filter,
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
+
+    if entity_resolution_enabled() and bundle.sources:
+        from core.knowledge.entities.enrich import enrich_bundle
+        from core.knowledge.entities.pipeline import context_from_bundle
+
+        bundle = enrich_bundle(bundle, context_from_bundle(bundle))
 
     kept_for_audit: list[dict[str, Any]] | None = None
     web_results: list[dict[str, Any]] | None = None
@@ -136,6 +147,8 @@ def run_web_retrieval(
     adapter_filter: tuple[str, ...] | None = None,
     session_id: str | None = None,
     turn_id: int | None = None,
+    library_store: Any | None = None,
+    source_filter: str | None = None,
 ) -> WebRetrievalOutcome:
     if use_v2:
         return run_v2_web_retrieval(
@@ -147,6 +160,8 @@ def run_web_retrieval(
             adapter_filter=adapter_filter,
             session_id=session_id,
             turn_id=turn_id,
+            library_store=library_store,
+            source_filter=source_filter,
         )
     return run_legacy_web_retrieval(
         query=query,

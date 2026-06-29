@@ -7,35 +7,21 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
-from core.knowledge.adapters.arxiv_api import ADAPTER_ID as ARXIV_ID
-from core.knowledge.adapters.arxiv_api import search_arxiv
-from core.knowledge.adapters.openalex import ADAPTER_ID as OPENALEX_ID
-from core.knowledge.adapters.openalex import search_openalex
-from core.knowledge.adapters.pubmed_eutils import ADAPTER_ID as PUBMED_ID
-from core.knowledge.adapters.pubmed_eutils import search_pubmed
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.adapters.registry import get_search_function
+from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_evidence_bundle
 from core.knowledge.conflicts.detect import detect_conflicts
+from core.knowledge.scientific_adapters import is_medical_query
+from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
+from core.knowledge.source_preferences import resolve_service_adapters
 from core.knowledge.evidence_cache import get_cached_rows, make_cache_key, set_cached_rows
 from core.knowledge.ranking.diversity import mmr_select_rows
 from core.knowledge.ranking.relevance import score_rows
+from core.knowledge.ranking.trial_grounding import extract_trial_signal
 from core.knowledge.ranking.reliability import apply_reliability_scores
 from core.knowledge.ranking.stopping import adaptive_stop_reason
 from core.knowledge.types import EvidenceBundle, RetrievalContext, SERVICE_SCIENTIFIC_EVIDENCE
-
-_DEFAULT_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
-
-_ADAPTER_FNS: dict[str, Callable[..., list[dict[str, Any]]]] = {
-    PUBMED_ID: search_pubmed,
-    OPENALEX_ID: search_openalex,
-    ARXIV_ID: search_arxiv,
-}
-
-_MEDICAL_HINTS = re.compile(
-    r"\b(drug|medication|medicine|disease|symptom|treatment|clinical|patient|"
-    r"therapy|diagnosis|fda|vaccine|diabetes|cancer|ozempic|semaglutide)\b",
-    re.IGNORECASE,
-)
 
 
 def _normalize_title(title: str) -> str:
@@ -66,6 +52,7 @@ def _rank_candidates(
     *,
     ctx: RetrievalContext,
     max_results: int,
+    trial_signals: frozenset[str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     query = sanitize_api_query(ctx.semantic_query or ctx.query)
     scored, rejected = score_rows(
@@ -74,6 +61,7 @@ def _rank_candidates(
         query_vector=ctx.query_vector,
         embed_fn=ctx.embed_fn,
         min_score=0.12,
+        trial_signals=trial_signals,
     )
     selected = mmr_select_rows(scored, max_results=max_results)
     selected = apply_reliability_scores(selected)
@@ -87,10 +75,19 @@ class ScientificEvidencePipeline:
         self, ctx: RetrievalContext
     ) -> tuple[EvidenceBundle, dict[str, Any] | None, list[dict[str, Any]]]:
         t0 = time.time()
-        query = sanitize_api_query(ctx.query)
-        semantic = sanitize_api_query(ctx.semantic_query or ctx.query)
+        plan = plan_scientific_query(
+            ctx.query,
+            semantic_query=ctx.semantic_query or ctx.query,
+        )
+        query = plan.semantic_query
+        semantic = plan.semantic_query
         budget = ctx.budget.max_results
-        adapter_ids = ctx.adapter_filter or _DEFAULT_ADAPTERS
+        adapter_ids = resolve_service_adapters(
+            SERVICE_SCIENTIFIC_EVIDENCE,
+            query=ctx.query,
+            composer_adapter_filter=ctx.adapter_filter,
+            stored_preferences=get_knowledge_source_preferences(),
+        )
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
         candidates: list[dict[str, Any]] = []
@@ -114,11 +111,18 @@ class ScientificEvidencePipeline:
         else:
             per_adapter = max(2, budget)
             with ThreadPoolExecutor(max_workers=min(3, len(adapter_ids))) as pool:
-                futures = {
-                    pool.submit(_ADAPTER_FNS[aid], query, max_results=per_adapter): aid
-                    for aid in adapter_ids
-                    if aid in _ADAPTER_FNS
-                }
+                futures = {}
+                for aid in adapter_ids:
+                    search_fn = get_search_function(aid)
+                    if search_fn is None:
+                        continue
+                    futures[
+                        pool.submit(
+                            search_fn,
+                            adapter_query_for(plan, aid),
+                            max_results=per_adapter,
+                        )
+                    ] = aid
                 for future in as_completed(futures):
                     aid = futures[future]
                     try:
@@ -143,8 +147,12 @@ class ScientificEvidencePipeline:
             budget=ctx.budget,
             adapter_filter=ctx.adapter_filter,
         )
+        trial_signals = extract_trial_signal(ctx.query)
         kept, rejected = _rank_candidates(
-            candidates, ctx=ranked_ctx, max_results=budget
+            candidates,
+            ctx=ranked_ctx,
+            max_results=budget,
+            trial_signals=trial_signals,
         )
         latency_ms = (time.time() - t0) * 1000
 
@@ -158,7 +166,7 @@ class ScientificEvidencePipeline:
                     stop_reason="relevance_filtered",
                     knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
                 ),
-                {"scientific_relevance_dropped": len(rejected)},
+                {"scientific_relevance_dropped": len(rejected), "scientific_adapters_selected": list(adapter_ids)},
                 raw_audit,
             )
 
@@ -183,7 +191,7 @@ class ScientificEvidencePipeline:
             latency_ms=latency_ms,
             adapter_calls=tuple(adapter_calls),
             stop_reason=stop_reason,
-            medical_query=bool(_MEDICAL_HINTS.search(query)),
+            medical_query=is_medical_query(query),
         )
         conflicts = detect_conflicts(bundle.sources, topic=query)
         if conflicts:
@@ -192,6 +200,10 @@ class ScientificEvidencePipeline:
             "scientific_relevance_dropped": len(rejected),
             "scientific_avg_relevance": round(avg_rel, 4),
             "scientific_cache_hit": cached is not None,
+            "scientific_keyword_query": plan.keyword_query,
+            "scientific_entity_keywords": list(plan.entity_keywords),
+            "scientific_trial_signals": sorted(trial_signals),
+            "scientific_adapters_selected": list(adapter_ids),
         }
         return bundle, rel_diag, raw_audit
 

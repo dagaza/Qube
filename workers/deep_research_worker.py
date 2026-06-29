@@ -20,6 +20,7 @@ from core.knowledge.deep_research_synthesis import (
     synthesize_deep_research_findings,
 )
 from core.knowledge.evidence_transparency import build_evidence_transparency
+from core.knowledge.graph.bundle_codec import bundle_to_dict
 from core.knowledge.observability import build_retrieval_trace, record_retrieval_trace
 from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 from core.knowledge.ui_adapter import bundle_to_ui_sources
@@ -109,7 +110,8 @@ class DeepResearchWorker(QThread):
             }
         )
 
-    def _decompose_generate(self, *, system: str, user: str) -> str:
+    def _decompose_generate(self, system: str, user: str) -> str:
+        """LLM callback for ``decompose_query_with_llm`` (positional system, user)."""
         llm = self._synthesis_llm
         if llm is None or not hasattr(llm, "generate"):
             return ""
@@ -241,7 +243,8 @@ class DeepResearchWorker(QThread):
             diagnostics=diagnostics,
             sub_queries=result.sub_queries,
         )
-        return report, sources, diagnostics, transparency
+        bundle_dict = bundle_to_dict(bundle) if bundle is not None else None
+        return report, sources, diagnostics, transparency, bundle_dict
 
     def run(self) -> None:
         while self.is_running:
@@ -289,7 +292,7 @@ class DeepResearchWorker(QThread):
                     query_vector=query_vector,
                     decompose_generate_fn=decompose_fn,
                 )
-                report, sources, diagnostics, transparency = self._finalize_report(
+                report, sources, diagnostics, transparency, bundle_dict = self._finalize_report(
                     result,
                     payload,
                     request_id=request_id,
@@ -300,6 +303,7 @@ class DeepResearchWorker(QThread):
                 finished["sources"] = sources
                 finished["diagnostics"] = diagnostics
                 finished["evidence_transparency"] = transparency
+                finished["bundle_dict"] = bundle_dict
                 finished["synthesis_applied"] = diagnostics.get("synthesis_applied", False)
                 self.finished.emit(finished)
             except DeepResearchCancelled:

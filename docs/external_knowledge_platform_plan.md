@@ -1,8 +1,8 @@
 # External Knowledge Platform — Design & Implementation Plan
 
-**Status:** Phases 0–4 validated; Phase 5 Slice 5 implemented; **Phase 6 planned** (2026-06-26)  
+**Status:** Phases 0–4 validated; Phase 5 complete; **Phase 6 Slices 2–5a implemented** (2026-06-25) — internal corpus, entities, research map, `@finance`/SEC EDGAR, user-configurable source preferences  
 **Date:** 2026-06-25 (updated 2026-06-26)  
-**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
+**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [§21 — ADR 002 Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
 
 This document is the **source of truth** for Qube’s external-knowledge architecture: trusted retrieval, scientific evidence, Knowledge Services, EvidenceBundles, and the phased rollout. It merges internal codebase analysis with external architecture review feedback.
 
@@ -265,7 +265,7 @@ A Knowledge Service owns: adapters, ranking, freshness, authority policy, metada
 |------------|------------|----------------|------------------|
 | `general_web` | General web | `@[tool:internet]` (existing) | DDG SERP → optional fetch top-1 |
 | `trusted_knowledge` | Trusted knowledge | `@[tool:trusted]` | Wikipedia API → gov/edu allowlist → constrained DDG |
-| `scientific_evidence` | Scientific evidence | `@[tool:evidence]` | PubMed + OpenAlex + arXiv parallel |
+| `scientific_evidence` | Scientific literature | `@[tool:evidence]`, `@[tool:science]` | PubMed (medical queries) + OpenAlex + arXiv |
 | `wikipedia` | Wikipedia (advanced) | `@[tool:wikipedia]` | MediaWiki API only |
 | `pubmed` / `arxiv` | (advanced) | `@[tool:pubmed]`, `@[tool:arxiv]` | Single-adapter deep query |
 
@@ -275,6 +275,34 @@ A Knowledge Service owns: adapters, ranking, freshness, authority policy, metada
 **Advanced (power users):** Wikipedia, PubMed, arXiv
 
 Palette groups in `core/composer_attachments.py` and mention popup.
+
+**Composer tokens:** `@evidence` and `@science` (advanced alias) both route to `scientific_evidence`. User-facing label: **Scientific literature** (not to be confused with the platform `EvidenceBundle` contract — see §6.5).
+
+### 6.5 Evidence vs Knowledge Services vs Discipline Packs
+
+Three concepts must stay distinct as the platform grows:
+
+| Layer | What it is | Examples |
+|-------|------------|----------|
+| **Evidence** | Universal retrieval output substrate — not a domain | `EvidenceObject`, `EvidenceBundle`, Sources dialog, citations, coverage/confidence |
+| **Knowledge Service** | Domain-specific retrieval orchestrator | `scientific_evidence`, `finance_knowledge`, `trusted_knowledge`, `internal_corpus` |
+| **Discipline pack** | Sub-domain components *within* a service (especially scientific) | `biomedical` entity pack + PubMed adapter; future economics, CS, psychology packs |
+
+**Evidence is produced by every Knowledge Service.** Finance filings, legal opinions, library chunks, and scholarly abstracts all become `EvidenceBundle` instances with the same contract.
+
+**Composer tokens are domain routers**, not names for the Evidence model:
+
+- `@evidence` / `@science` → `scientific_evidence` (scholarly literature across all disciplines)
+- `@finance` → `finance_knowledge` (SEC EDGAR, etc.)
+- `@trusted` → `trusted_knowledge`
+
+Medicine is **one scientific discipline**, not synonymous with “scientific.” Economics, psychology, and political science are scientific disciplines that should eventually live as **discipline packs inside `scientific_evidence`**, not as separate top-level Knowledge Services. Finance and legal are **not** scientific disciplines — they remain separate services.
+
+**Retrieval planner (Stage 1 today):** conversational → keyword query; medical entity keyword extraction when the biomedical activator matches. PubMed is called only for medically-scoped queries; OpenAlex + arXiv are the default for other scholarly queries.
+
+**Retrieval planner (Stage 2 — deferred):** discipline detection → discipline pack activation → adapter set (RePEc, SSRN, DBLP, etc.).
+
+**User-configurable adapters:** Implemented via Settings → Knowledge → **Preferred sources**. Preferences are stored in `qube.knowledge.source_preferences` and resolved at retrieval time through `core/knowledge/source_preferences.py` and `core/knowledge/adapters/catalog.py`. Composer overrides (`@pubmed`, `@arxiv`) still take precedence for a single turn.
 
 ### 6.4 Proposed module layout
 
@@ -600,7 +628,7 @@ Phases **0–4** built the substrate (types, services, ranking, deep research). 
 
 ---
 
-### Phase 1 — Trusted Knowledge Service (1–2 weeks) — **IMPLEMENTED (2026-06-26)**
+### Phase 1 — Trusted Knowledge Service (1–2 weeks) — **VALIDATED (2026-06-26)**
 
 | Task | Notes |
 |------|-------|
@@ -614,13 +642,15 @@ Phases **0–4** built the substrate (types, services, ranking, deep research). 
 
 **Exit criteria:** Manual QA on factual queries; audit shows adapter chain (`wikipedia_api`, optional `duckduckgo`); router eval green.
 
+**Validation (2026-06-26, Phase 6 Slice 1):** `python3 tools/evaluate_retrieval.py --live --service trusted_knowledge` → **5/5 ok** on `eval/retrieval_corpus/v1_trusted.json` (authority + Wikipedia checks). Manual QA playbook: `eval/retrieval_corpus/README.md`.
+
 **Enable:** `external_v2_enabled` + `@trusted` or set `default_service` to `trusted_knowledge`.
 
 **Marketing:** “Trusted overview” — not clinical evidence.
 
 ---
 
-### Phase 2 — Scientific Evidence Service (2–3 weeks) — **IMPLEMENTED (2026-06-26)**
+### Phase 2 — Scientific Evidence Service (2–3 weeks) — **VALIDATED (2026-06-26)**
 
 | Task | Notes |
 |------|-------|
@@ -634,6 +664,8 @@ Phases **0–4** built the substrate (types, services, ranking, deep research). 
 | Medical disclaimer | Bundle `medical_disclaimer` warning + prompt suffix |
 
 **Exit criteria:** Manual QA on factual/biomedical queries; audit shows adapter chain; eval corpus `eval/retrieval_corpus/v1_scientific.json`; abstracts for ≥80% biomedical queries.
+
+**Validation (2026-06-26, Phase 6 Slice 1):** `python3 tools/evaluate_retrieval.py --live --service scientific_evidence --min-pass 5` → **5/5 ok**. Deep-research regression unchanged: `evaluate_deep_research.py --live --require-relevance --min-relevance-ok 3`.
 
 **Enable:** `external_v2_enabled` + `@evidence` (or set `default_service` to `scientific_evidence`).
 
@@ -703,7 +735,7 @@ Phases **0–4** built the substrate (types, services, ranking, deep research). 
 
 ---
 
-### Phase 5 — Knowledge platform (ongoing) — **IN PROGRESS (Slice 5 implemented, 2026-06-26)**
+### Phase 5 — Knowledge platform — **COMPLETE (2026-06-26)**
 
 Phase 5 is split into reviewable slices. Slice 1 establishes **measurable relevance** before filter tuning or UX work.
 
@@ -768,7 +800,7 @@ Phase 5 scope ends at Slice 5. **Platform expansion (enterprise corpus, entities
 
 ---
 
-### Phase 6 — Platform expansion (strategic) — **PLANNED**
+### Phase 6 — Platform expansion (strategic) — **IN PROGRESS (Slice 3 implemented, 2026-06-26)**
 
 Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the **same Knowledge Service + EvidenceBundle contract** to internal corpora, cross-session entity linking, optional graph views, and domain-specific adapters — without breaking ADR 001 (skills consume summaries; services own retrieval).
 
@@ -809,6 +841,21 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 3. Manual QA sessions archived with `session_id`, adapter chain, and coverage rationale.
 4. Plan doc updated: Phase 1 → **VALIDATED**, Phase 2 → **VALIDATED**.
 
+**Slice 1 status:** VALIDATED (2026-06-26)
+
+| Deliverable | Location |
+|-------------|----------|
+| Trusted eval corpus | `eval/retrieval_corpus/v1_trusted.json` (5 queries) |
+| Enhanced harness | `tools/evaluate_retrieval.py` — `--service`, `--min-pass`, authority/Wikipedia checks, inter-query delay for Wiki rate limits |
+| Manual QA playbook | `eval/retrieval_corpus/README.md` |
+| Unit tests | `tests/test_evaluate_retrieval.py` |
+| Bugfix | `bundle_builder._trusted_row_to_evidence` — missing `reliability_score` / `freshness_score` |
+
+**Live eval results (2026-06-26):**
+
+- Scientific: **5/5 ok**
+- Trusted: **5/5 ok** (use default inter-query spacing; avoid rapid re-runs — Wikipedia 429)
+
 #### Slice 2 — Internal corpus service (enterprise LanceDB)
 
 **Goal:** User library documents indexed in LanceDB become retrievable as an **external-knowledge-class** bundle (provenance = `internal_corpus`), distinct from conversational memory RAG.
@@ -827,6 +874,8 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 2. Retrieval trace logged; transparency panel shows internal provenance.
 3. No duplicate injection (single bundle path into prompt).
 4. Unit tests with isolated LanceDB fixture dir (see `eval/fixtures/library/`).
+
+**Slice 2 status:** IMPLEMENTED (2026-06-26) — enable **External knowledge v2** + **Internal corpus (@library)** in Settings → Knowledge; manual QA: [Manual QA Phase 6 Slices 2–4](./manual_qa_phase6.md) (QA-2A–2C).
 
 **Non-goals (Slice 2):** Multi-tenant ACL, cloud sync, or paywalled publisher full-text.
 
@@ -847,6 +896,8 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 2. Eval corpus: entity-aware dedupe does not drop distinct drug-class sources.
 3. Offline unit tests; no network required for heuristic normalizers.
 
+**Slice 3 status:** IMPLEMENTED (2026-06-26) — compositional entity registry per [§21 ADR 002](#21-adr-002-compositional-entity-resolution-registry). Entity resolution on by default (offline heuristics); optional RxNorm off. Manual QA: [QA-3A–3D](./manual_qa_phase6.md). Unit tests: `python3 -m unittest tests.test_entity_resolution -q`.
+
 #### Slice 4 — Knowledge graph (optional)
 
 **Goal:** Lightweight, session-local graph for transparency and recall — not a standalone graph database product.
@@ -865,6 +916,8 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 3. Feature off by default; no impact on foreground latency when disabled.
 
 **Defer if:** Slice 3 entity resolution slips — graph without entities has limited value.
+
+**Slice 4 status:** IMPLEMENTED (2026-06-26) — enable **Research map** in Settings → Knowledge; manual QA: [QA-4A–4C](./manual_qa_phase6.md). Unit tests: `tests/test_knowledge_graph.py`.
 
 #### Slice 5 — Domain-specific services
 
@@ -948,7 +1001,7 @@ flowchart LR
 - Real-time collaborative graph editing
 - Multi-hop foreground tool chains (still one retrieval invocation per turn)
 
-**Status:** PLANNED — no slice started; pick Slice 1 or Slice 2 after Phase 5 validation gate.
+**Status:** Slices 2–5a implemented — `@finance` + SEC EDGAR (live eval 4/4); user-configurable **Preferred sources** in Settings → Knowledge; legal/standards domains remain. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [Slice 5a Finance](./manual_qa_phase6_slice5_finance.md).
 
 ---
 
@@ -1049,3 +1102,438 @@ That is the knowledge substrate — not “better search.”
 5. Parity tests
 
 No new composer tokens until the EvidenceBundle contract is stable and parity-tested.
+
+---
+
+## 21. ADR 002 — Compositional entity resolution registry
+
+**Status:** Accepted (design); **implemented** (2026-06-26 compositional registry refactor)  
+**Date:** 2026-06-25 (revised 2026-06-26 — compositional model)  
+**Deciders:** Qube maintainers  
+**Supersedes:** Slice 3 implementation approach (hardcoded biomedical extractors in `core/knowledge/entities/resolve.py`) — **not** the `EvidenceObject.entity_ids` contract or merge/dedupe upgrade.
+
+### Context
+
+Slice 3 shipped entity resolution as offline heuristics with biomedical extractors (drug classes, conditions, trials) and bibliographic IDs (DOI, PubMed) wired directly in `resolve.py`. That proved merge/dedupe and transparency value on the ACE/HF eval corpus, but it does **not** scale to a general scientific research platform where queries routinely span multiple domains (e.g. AI + medicine, economics + climate).
+
+An initial ADR draft modeled each domain as a monolithic **`EntityPack`** protocol combining activation, extraction, ontology lookup, and priority. SRP review rejected that shape: activation, extraction, normalization, and ontology linking change for different reasons and must not share one runtime object.
+
+The registry architecture for **KnowledgeService** adapters already separates retrieval from downstream consumers. Entity resolution follows the same pattern: a **domain-neutral pipeline** that composes small, single-purpose components. **Entity packs** are registration bundles (grouping + hints + eval), not orchestrators.
+
+### Goals
+
+- Support **interdisciplinary** queries by activating **multiple** extractors across domains when signals match.
+- Preserve **deterministic** behavior: rule-based activation, stable `entity_ids` ordering, testable caps.
+- Keep **low latency**: cheap preflight; only activated extractors run; network linkers optional and gated.
+- Enable **future domain expansion** (legal, finance, chemistry, CS/ML, NER models) without changing `EvidenceBundle`, merge shell, or `LLMWorker`.
+- Maintain **minimal coupling**: components do not import adapters, `KnowledgeService` implementations, `workers/`, `ui/`, or skills.
+- Apply **SRP**: each interface owns one stage of the resolution pipeline.
+
+### Non-goals
+
+- Replacing `KnowledgeService` routing or adapter selection (Slice 6 remains separate).
+- LLM or sidecar classifiers as **authoritative** component selectors in v1.
+- Running every registered extractor on every turn.
+- Single-label “one discipline wins” routing.
+- Entity resolution inside adapters (enrichment stays post-retrieval).
+- Paywalled ontology APIs or mandatory network calls for baseline enrichment.
+- A method-bearing “god pack” that orchestrates activation, extraction, and lookup.
+- **`EntityOccurrence` / mention-level storage** in v1 (planned evolution only — see [Future evolution](#future-evolution-planned--not-implemented)).
+
+### Decision
+
+Adopt a **compositional registry** with **bounded multi-component activation**:
+
+1. **Tier 0 — always-on extractors:** bibliographic extractor ids (DOI, arXiv, ISBN, ORCID, canonical URLs) — not tied to domain activators.
+2. **Tier 1 — service hints:** `KnowledgeService` id expands to **pack ids** → **extractor + activator ids** (priors, not filters).
+3. **Tier 2 — query activation:** `EntityActivator` rules match query text → enable component ids.
+4. **Tier 3 — source activation:** `EntityActivator` rules match `EvidenceObject` fields (adapter, venue, document_type) → enable component ids.
+5. **Execution:** `activated = union(tiers)` expanded to extractor ids; apply cap by **component priority and cost** (default `max_extractors = 8`).
+6. **Linkers (optional stage):** run only when matching `input_kinds` appear in extractor output and settings flags allow network I/O.
+7. **Dedupe policy:** central `ENTITY_KIND_POLICY` maps kinds to `work_id` vs `concept`; merge uses `work_id` kinds only.
+
+Optional ML suggestions (Slice 6 sidecar) may **add** component or pack ids above a threshold but **must not suppress** rule-activated components.
+
+Entity id format unchanged: `entity:{kind}:{normalized_key}` via `make_entity_id()`.
+
+### Core abstractions
+
+Responsibilities are split across six concepts. **Only the pipeline orchestrates; packs do not execute.**
+
+#### `EntityPackDefinition` (data only)
+
+Grouping for service hints, documentation, and eval corpora. **No runtime methods.**
+
+```python
+@dataclass(frozen=True)
+class EntityPackDefinition:
+    id: str                                    # e.g. "biomedical", "bibliographic"
+    extractor_ids: tuple[str, ...]
+    activator_ids: tuple[str, ...]
+    linker_ids: tuple[str, ...] = ()
+    service_hint_services: frozenset[str] = frozenset()
+```
+
+#### `EntityActivator` (when)
+
+Decides which component ids are **eligible** for a query/source. Does not parse entity text.
+
+| Field / method | Purpose |
+|----------------|---------|
+| `id: str` | Stable activator key |
+| `pack_id: str` | Owning pack (for hints and caps) |
+| `priority: int` | Tie-break when cap exceeded (lower = higher priority) |
+| `enables: tuple[str, ...]` | Extractor and/or linker ids to enable when matched |
+| `matches_query(query: str) -> bool` | Cheap regex/token preflight |
+| `matches_source(source: EvidenceObject) -> bool` | Adapter/venue/document_type signals |
+
+#### `EntityExtractor` (what mentions — v1)
+
+Text → canonical **`entity_ids`**. In v1, normalization is **inline** in the extractor (returns final ids via `make_entity_id()`). This is intentional compression for regex/heuristic extractors where surface form maps 1:1 to the stable key.
+
+| Field / method | Purpose |
+|----------------|---------|
+| `id: str` | Stable extractor key |
+| `pack_id: str` | Owning pack |
+| `kinds: tuple[str, ...]` | Entity kinds this extractor emits (declared; used for linker eligibility) |
+| `priority: int` | Cap tie-break |
+| `cost: Literal["cheap", "expensive"]` | Budgeting; `expensive` may defer to deep-research/async later |
+| `extract(text, *, doi: str \| None) -> tuple[str, ...]` | Side-effect-free; returns canonical ids ready for `EvidenceObject.entity_ids` |
+
+**Forward compatibility:** The compositional registry is designed so v1 extractors can later gain an optional `extract_occurrences()` (or a parallel protocol) **without** changing activators, linkers, packs, or the activation engine. See [Future evolution](#future-evolution-planned--not-implemented) below. New extractors should keep normalization logic in a dedicated module/function even when v1 calls it inline — that function becomes the seed of a shared `EntityNormalizer`.
+
+#### `EntityLinker` (ontology lookup)
+
+Augments existing `entity_ids` with authority ids (RxCUI, MeSH, Wikidata). Does not re-scan full text.
+
+| Field / method | Purpose |
+|----------------|---------|
+| `id: str` | Stable linker key |
+| `pack_id: str` | Owning pack |
+| `input_kinds: tuple[str, ...]` | Kinds this linker accepts |
+| `priority: int` | Ordering when multiple linkers match |
+| `requires_network: bool` | Gating for offline/default paths |
+| `link(entity_ids: tuple[str, ...]) -> tuple[str, ...]` | Returns augmented id set |
+
+#### Component registry
+
+`core/knowledge/entities/registry.py`:
+
+- Registers extractors, activators, linkers, and pack definitions in **fixed order** at import time.
+- Exposes `get_extractor(id)`, `get_activator(id)`, `get_linker(id)`, `get_pack(id)`, `all_packs()`.
+- Service hints expand pack → components:
+
+```python
+ENTITY_PACK_HINTS: dict[str, tuple[str, ...]] = {
+    "scientific_evidence": ("bibliographic",),
+    "general_web": ("bibliographic",),
+    "internal_corpus": ("bibliographic",),
+}
+```
+
+Discipline packs (e.g. `biomedical`) activate via query/source **activators**, not service-wide hints — so non-medical scientific queries do not always load biomedical extractors.
+
+#### Activation engine
+
+`core/knowledge/entities/activation.py`:
+
+```python
+@dataclass(frozen=True)
+class ActiveComponents:
+    extractor_ids: tuple[str, ...]
+    linker_ids: tuple[str, ...]
+
+def resolve_active_components(
+    ctx: EntityResolutionContext,
+    *,
+    source: EvidenceObject | None = None,
+    max_extractors: int = 8,
+) -> ActiveComponents: ...
+```
+
+Deterministic algorithm:
+
+1. Start with `ALWAYS_ON_EXTRACTOR_IDS` (bibliographic).
+2. Union service-hint components (pack expansion).
+3. Union `activator.enables` for each matching activator (query + source tiers).
+4. Sort extractors by priority; apply cap (always-on ids exempt from cap).
+5. Select linkers whose `input_kinds` intersect kinds produced by activated extractors, gated by settings flags.
+
+No component calls another component; the engine is the sole orchestrator of *when*.
+
+#### `EntityResolutionContext`
+
+Frozen dataclass passed into enrichment:
+
+```python
+@dataclass(frozen=True)
+class EntityResolutionContext:
+    query_resolved: str
+    knowledge_service: str
+    composer_tool: str | None = None
+    adapter_filter: tuple[str, ...] | None = None
+```
+
+Built from turn metadata (`resolve_turn_knowledge_service`, `EvidenceBundle.query_resolved`, composer tool). Feature flag `entity_resolution_enabled` remains the master switch.
+
+#### Resolution pipeline
+
+`core/knowledge/entities/pipeline.py` (orchestration; domain logic stays in components):
+
+```python
+def resolve_entity_ids(text: str, ctx: EntityResolutionContext, *, source, doi) -> tuple[str, ...]:
+    active = resolve_active_components(ctx, source=source)
+    ids = union(extractor.extract(text, doi=doi) for extractor in active.extractors)
+    ids = union(ids, linker.link(ids) for linker in active.linkers)
+    return tuple(sorted(set(ids)))
+```
+
+Public entry points (names unchanged, signatures extended):
+
+- `enrich_evidence_object(source, ctx)` — pipeline per source.
+- `enrich_bundle(bundle, ctx)` — all sources + query-level pass for aggregation.
+- `collect_bundle_entity_ids(bundle, ctx)` — union of query + per-source ids.
+
+Central dedupe policy lives in `core/knowledge/entities/policy.py` (`ENTITY_KIND_POLICY`, `dedupe_cluster_entity_ids`).
+
+### Module layout (implemented)
+
+```text
+core/knowledge/entities/
+  types.py              # EntityResolutionContext, ActiveComponents, protocols
+  ids.py                # make_entity_id, entity_kind
+  policy.py             # ENTITY_KIND_POLICY, dedupe_cluster
+  registry.py           # component + pack registration
+  activation.py         # tier union, cap, hint expansion
+  pipeline.py           # resolve_entity_ids orchestration
+  enrich.py             # enrich_bundle / enrich_evidence_object (thin wrapper)
+  extractors/
+    bibliographic.py
+    biomedical_drugs.py
+    biomedical_conditions.py
+    biomedical_trials.py
+  activators/
+    biomedical.py
+  linkers/
+    rxnorm.py
+  packs/
+    definitions.py      # EntityPackDefinition records only
+```
+
+### Stable contract (unchanged across v1 and planned v2)
+
+| Artifact | Role | v1 | Planned v2 |
+|----------|------|----|------------|
+| `EvidenceObject.entity_ids` | Canonical ids for merge, dedupe, transparency, skills | **Authoritative output** | **Still authoritative** — normalizer collapse produces this field |
+| `EvidenceBundle` schema | Pipeline handoff | unchanged | optional `entity_occurrences` field may be added later (feature-flagged) |
+| Merge dedupe | Uses `work_id` kinds from `ENTITY_KIND_POLICY` | on `entity_ids` | unchanged |
+| Research graph (Slice 4) | Entity nodes from bundle | from `entity_ids` | may add mention nodes from occurrences when enabled |
+
+Consumers (`merge_evidence_bundles`, skills, citation UX) continue to depend on **`entity_ids` only**. Richer mention data is an additive, opt-in layer — not a breaking change.
+
+### Future evolution (planned — not implemented)
+
+> **Status:** Documented direction only. **Do not implement** until compositional registry (ADR 002) is validated across multiple scientific domains and a concrete need arises (richer research graph, explainability, provenance, NER, or synonym collapse).
+>
+> A future **ADR 003** may formalize this; until then this section is the reference.
+
+#### Problem
+
+Extraction and identity are not the same operation. Surface mentions such as `"LLM"`, `"Large Language Model"`, `"GPT"`, and `"GPT models"` are distinct *occurrences* that may normalize to one or more canonical concepts (e.g. `entity:concept:large-language-model`). The v1 pipeline collapses mention → id inside `EntityExtractor.extract()`, which loses:
+
+- **Provenance** — which extractor produced the hit
+- **Offsets** — where in title/excerpt/full_text the mention appeared
+- **Confidence** — regex = 1.0; NER/model scores &lt; 1.0
+- **Explainability** — transparency can only show slugified id labels, not the original surface form
+- **Alias collapse** — multiple mentions → one entity (with traceable edges)
+
+The research graph (Slice 4) today builds **entity nodes** from flat `entity_ids` strings. It cannot represent **mention → resolves_to → entity** structure.
+
+#### Planned pipeline (v2)
+
+```text
+EntityExtractor.extract_occurrences(text) → tuple[EntityOccurrence, ...]
+EntityNormalizer.normalize(occurrences)   → tuple[str, ...]   # canonical entity_ids
+EntityLinker.link(entity_ids)             → augmented ids      # unchanged stage
+Pipeline                                  → attach entity_ids to EvidenceObject
+                                          → optional attach occurrences (graph/transparency)
+```
+
+```mermaid
+flowchart TD
+    EXT[EntityExtractor]
+    OCC[EntityOccurrence]
+    NORM[EntityNormalizer]
+    EID[canonical entity_ids]
+    LNK[EntityLinker optional]
+    EO[EvidenceObject.entity_ids]
+
+    EXT --> OCC
+    OCC --> NORM
+    NORM --> EID
+    EID --> LNK
+    LNK --> EO
+```
+
+#### Planned types (sketch — not in codebase)
+
+```python
+@dataclass(frozen=True)
+class EntityOccurrence:
+    surface: str              # verbatim mention, e.g. "LLM"
+    kind_hint: str            # proposed kind before normalization
+    extractor_id: str         # provenance
+    start: int | None = None  # char offset in source text (optional)
+    end: int | None = None
+    confidence: float = 1.0
+    context: str | None = None  # local snippet for explainability
+
+
+class EntityNormalizer(Protocol):
+    id: str
+    input_kind_hints: tuple[str, ...]
+
+    def normalize(self, occurrences: tuple[EntityOccurrence, ...]) -> tuple[str, ...]: ...
+```
+
+Regex extractors in v2 would implement `extract_occurrences()` trivially (`surface` = matched text, `confidence=1.0`). NER extractors would populate offsets and scores. Normalizers handle synonym tables, acronym expansion, and optional embedding clustering — **separate from extraction**.
+
+#### What stays the same in v2
+
+- `EntityActivator`, `EntityLinker`, `EntityPackDefinition`, activation tiers, service hints, component cap
+- `EntityResolutionContext`, registry layout, post-retrieval enrichment boundary (ADR 001)
+- **`EvidenceObject.entity_ids` as the stable merge/transparency contract**
+- `ENTITY_KIND_POLICY` for dedupe clustering
+
+#### What changes in v2 (additive)
+
+| Area | Change |
+|------|--------|
+| `EntityExtractor` | Optional `extract_occurrences()`; v1 `extract()` remains as `normalize(extract_occurrences())` shim during transition |
+| `pipeline.py` | Insert normalizer stage between extraction and linking |
+| `normalizers/` | New registry slice (e.g. `concept_aliases.py`, shared per kind) |
+| Research graph | Optional mention nodes + `resolves_to` edges when occurrence payload present |
+| Transparency | Show surface → canonical mapping when occurrences available |
+| Tests | Golden files for occurrence → id collapse (determinism) |
+
+#### Triggers to revisit (concrete gates)
+
+Introduce ADR 003 implementation when **at least one** is true:
+
+1. **Graph** — product needs mention-level provenance or highlight-in-excerpt UX
+2. **Explainability** — transparency must show *what text was matched*, not only id slugs
+3. **NER / ML extractors** — a registered extractor emits confidence &lt; 1.0 or non-exact spans
+4. **Cross-alias collapse** — a domain pack requires many-to-one mention → concept mapping (CS/ML, chemistry, economics)
+5. **Multi-domain validation** — ADR 002 registry is live for ≥2 non-biomedical domain packs with eval corpora
+
+Until then, v1 inline normalization in extractors is the **intentional** design, not technical debt to rush-fix.
+
+#### v1 authoring guidance (now)
+
+When adding extractors under ADR 002:
+
+1. Keep **surface detection** (regex, patterns) separate from **id construction** (`make_entity_id(kind, key)`) in distinct functions — even if `extract()` calls both today.
+2. Declare accurate `kinds` on the extractor — linkers and future normalizers depend on them.
+3. Do not embed ontology I/O in extractors; use linkers.
+4. Do not add occurrence fields to `EvidenceObject` until ADR 003 is accepted and feature-flagged.
+
+### Extension points
+
+| Extension | How |
+|-----------|-----|
+| New extractor (regex, NER, metadata) | Add `extractors/{name}.py`, register, reference in pack definition |
+| New domain | Add pack definition + activators + extractors; add eval corpus |
+| New `KnowledgeService` (Slice 5) | Register service; add `ENTITY_PACK_HINTS` entry |
+| Ontology linker | Add `linkers/{ontology}.py`; gate with settings flag + `requires_network` |
+| Shared normalizer | v1: keep normalize logic in extractor module as a standalone function; v2: promote to `normalizers/` registry |
+| Dedupe behavior | Extend `ENTITY_KIND_POLICY` — not per-component merge logic |
+| Transparency / graph | Consume `entity_ids` on `EvidenceObject`; no component-specific UI |
+| ML suggestions (future) | Sidecar proposes pack/component ids; activation engine merges with rule union |
+| Expensive models | Register extractor with `cost="expensive"`; engine may restrict to deep-research path |
+
+Components **must not** import from `workers/`, `ui/`, adapters, or skills.
+
+### Lifecycle in the EvidenceBundle pipeline
+
+Entity resolution is a **post-retrieval enrichment stage**. It does not change adapter contracts or `KnowledgeService.retrieve()`.
+
+```mermaid
+flowchart TD
+    A[Turn metadata] --> CTX[EntityResolutionContext]
+    KS[KnowledgeService.retrieve] --> B[EvidenceBundle raw]
+    CTX --> ACT[resolve_active_components]
+    ACT --> EXT[EntityExtractor.extract]
+    EXT --> LNK[EntityLinker.link optional]
+    LNK --> ENR[enrich_bundle]
+    B --> ENR
+    ENR --> B2[EvidenceBundle with entity_ids]
+    B2 --> TR[Transparency / why_summary]
+    B2 --> MR[merge_evidence_bundles dedupe by work_id kinds]
+    B2 --> GR[Knowledge graph builder Slice 4]
+    B2 --> UI[Sources panel / Research map]
+```
+
+**Touchpoints (to be updated in migration):**
+
+| Location | Role |
+|----------|------|
+| `core/knowledge/web_retrieval.py` | After `service.retrieve()`, build `ctx`, call `enrich_bundle` |
+| `core/knowledge/deep_research.py` | Enrich sub-bundles per sub-query ctx; merge uses enriched sources |
+| `core/knowledge/deep_research.py` | `dedupe_cluster_entity_ids()` reads central kind policy |
+| `core/knowledge/evidence_transparency.py` | Aggregates entity labels via `collect_bundle_entity_ids` |
+| `core/knowledge/graph/build.py` | Entity nodes from `entity_ids` (no contract change) |
+
+**Boundary (ADR 001 preserved):** services retrieve; pipeline enriches; skills and LLM consume bundle summaries — skills never invoke entity components directly.
+
+### Alternatives rejected
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| Monolithic `EntityPack` (activation + extract + lookup + priority) | SRP violation; blocks shared extractors/linkers; coarse caps; hard to add NER beside regex |
+| Every component always runs | Latency O(n); cross-domain false positives |
+| Classifier picks one domain | Loses interdisciplinary entities; non-deterministic without heavy constraints |
+| Adapter-owned entity extraction | Couples semantics to retrieval; duplicates logic across adapters |
+| Scores-only selection (no union) | Single winner drops valid cross-domain hits |
+| Ontology lookup inside extractors | Duplicates RxNorm/Wikidata across extractors; couples I/O to text parsing |
+
+### Migration from current biomedical implementation
+
+**Status:** Complete (2026-06-26). Steps retained for audit trail.
+
+| Step | Action | Status |
+|------|--------|--------|
+| 1 | Add protocols, `EntityResolutionContext`, `ActiveComponents`, `registry.py`, `activation.py`, `policy.py` | Done |
+| 2 | Extract bibliographic logic → `extractors/bibliographic.py`; register as always-on | Done |
+| 3 | Split drug/condition/trial modules → three extractors under `extractors/` | Done |
+| 4 | Add `activators/biomedical.py` | Done |
+| 5 | Add `packs/definitions.py` | Done |
+| 6 | Implement `pipeline.py`; `resolve.py` re-exports for compatibility | Done |
+| 7 | Thread `ctx` through `enrich.py`, `web_retrieval.py`, `deep_research.py` | Done |
+| 8 | Move dedupe kinds → `ENTITY_KIND_POLICY` | Done |
+| 9 | Wire `rxnorm.py` as `linkers/rxnorm.py` | Done |
+| 10 | Extend `tests/test_entity_resolution.py` with activation cases | Done |
+| 11 | `resolve.py` retained as thin compatibility layer | Done |
+
+**Rollback:** `entity_resolution_enabled` off bypasses the entire stage; individual components can be omitted from registry without pipeline changes.
+
+### Consequences
+
+**Positive**
+
+- Interdisciplinary queries activate fine-grained extractors across domains without new core code.
+- Shared bibliographic extraction and reusable linkers (RxNorm, Wikidata) avoid duplication.
+- New domains add components + pack definition — aligned with Slice 5 domain services.
+- NER/LLM extractors slot in as new `EntityExtractor` registrations without refactoring existing packs.
+- Deterministic golden tests for activation sets, per-extractor output, and linker gating.
+
+**Negative / trade-offs**
+
+- More types and registry wiring than a monolithic pack (acceptable for long-term maintainability).
+- Component cap may drop a low-priority extractor on noisy queries; priorities and costs must be documented and tested.
+- Contributors must learn where to add logic (activator vs extractor vs linker).
+
+**Follow-up**
+
+- Validate ADR 002 registry across **multiple scientific domain packs** (Slice 5) before ADR 003.
+- Slice 6 sidecar may propose pack/component ids under explicit allowlist rules only.
+- Revisit **`EntityOccurrence` / `EntityNormalizer`** per [Future evolution](#future-evolution-planned--not-implemented) when graph, explainability, NER, or alias-collapse needs are concrete — not before.

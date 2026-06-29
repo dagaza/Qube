@@ -18,12 +18,15 @@ from core.app_settings import (
     get_advanced_embedding_unlocked,
     get_deep_research_enabled,
     get_external_knowledge_v2_enabled,
+    get_internal_corpus_knowledge_enabled,
+    get_research_map_enabled,
 )
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
+from ui.views.settings.sections.knowledge_sources import build_knowledge_sources_section
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
 
@@ -65,8 +68,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.external_knowledge_v2_label = QLabel("External knowledge pipeline (v2)")
     host.external_knowledge_v2_label.setWordWrap(True)
     _external_v2_tip = (
-        "Routes @internet, @trusted, and @evidence through the evidence pipeline "
-        "(PubMed, OpenAlex, arXiv, etc.). Required for @research deep research."
+        "Routes @internet, @trusted, @evidence, and @library (with internal corpus) "
+        "through the evidence pipeline. Required for @research deep research."
     )
     host.external_knowledge_v2_toggle.setToolTip(_external_v2_tip)
     host.external_knowledge_v2_label.setToolTip(_external_v2_tip)
@@ -84,6 +87,54 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host._on_external_knowledge_v2_toggled
     )
     layout.addWidget(external_v2_row)
+
+    host.internal_corpus_toggle = PrestigeToggle()
+    host.internal_corpus_label = QLabel("Internal corpus (@library evidence service)")
+    host.internal_corpus_label.setWordWrap(True)
+    _internal_corpus_tip = (
+        "When external v2 is on, routes @library through the evidence pipeline "
+        "over your LanceDB library index (trace + transparency). Implicit RAG "
+        "for non-@library turns is unchanged."
+    )
+    host.internal_corpus_toggle.setToolTip(_internal_corpus_tip)
+    host.internal_corpus_label.setToolTip(_internal_corpus_tip)
+    internal_corpus_row = QWidget()
+    internal_corpus_row_layout = QHBoxLayout(internal_corpus_row)
+    internal_corpus_row_layout.setContentsMargins(0, 0, 0, 0)
+    internal_corpus_row_layout.addWidget(
+        host.internal_corpus_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    internal_corpus_row_layout.addWidget(host.internal_corpus_label, stretch=1)
+    host.internal_corpus_toggle.blockSignals(True)
+    host.internal_corpus_toggle.setChecked(get_internal_corpus_knowledge_enabled())
+    host.internal_corpus_toggle.blockSignals(False)
+    host.internal_corpus_toggle.toggled.connect(
+        host._on_internal_corpus_knowledge_toggled
+    )
+    layout.addWidget(internal_corpus_row)
+
+    host.research_map_toggle = PrestigeToggle()
+    host.research_map_label = QLabel("Research map (session knowledge graph)")
+    host.research_map_label.setWordWrap(True)
+    _research_map_tip = (
+        "Builds a lightweight graph of queries, sources, and topics across "
+        "evidence turns in this session. View it from the Sources dialog on "
+        "answers that used @evidence, @trusted, @library, or @research."
+    )
+    host.research_map_toggle.setToolTip(_research_map_tip)
+    host.research_map_label.setToolTip(_research_map_tip)
+    research_map_row = QWidget()
+    research_map_row_layout = QHBoxLayout(research_map_row)
+    research_map_row_layout.setContentsMargins(0, 0, 0, 0)
+    research_map_row_layout.addWidget(
+        host.research_map_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    research_map_row_layout.addWidget(host.research_map_label, stretch=1)
+    host.research_map_toggle.blockSignals(True)
+    host.research_map_toggle.setChecked(get_research_map_enabled())
+    host.research_map_toggle.blockSignals(False)
+    host.research_map_toggle.toggled.connect(host._on_research_map_toggled)
+    layout.addWidget(research_map_row)
 
     host.deep_research_toggle = PrestigeToggle()
     host.deep_research_label = QLabel("Deep research (@research)")
@@ -106,6 +157,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.deep_research_toggle.blockSignals(False)
     host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
     layout.addWidget(deep_research_row)
+
+    add_subsection_to_layout(layout, "Preferred sources", anchor="knowledge_sources")
+    layout.addWidget(build_knowledge_sources_section(host))
 
     embedding_download_row = make_bootstrap_download_row(
         host,

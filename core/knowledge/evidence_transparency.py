@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from core.app_settings import entity_resolution_enabled
 from core.knowledge.types import EvidenceBundle, EvidenceConflict
 
 
@@ -58,13 +59,23 @@ def build_evidence_transparency(
 
     if bundle.warnings:
         why_lines.append(f"Warnings: {', '.join(bundle.warnings)}")
+    entity_id_list: list[str] = []
+    if entity_resolution_enabled():
+        from core.knowledge.entities.enrich import format_entity_labels
+        from core.knowledge.entities.resolve import collect_bundle_entity_ids
+
+        entity_id_list = list(collect_bundle_entity_ids(bundle))
+        if entity_id_list:
+            labels = format_entity_labels(tuple(entity_id_list))
+            why_lines.append(f"Entities detected: {', '.join(labels)}")
     conflict_lines = _conflict_lines(bundle.conflicts)
     if conflict_lines:
         why_lines.append("Conflicts noted:")
         why_lines.extend(f"  {line}" for line in conflict_lines)
 
-    return {
+    payload: dict[str, Any] = {
         "query": bundle.query_resolved,
+        "bundle_id": bundle.bundle_id,
         "knowledge_service": bundle.knowledge_service,
         "retrieval_strategy": bundle.retrieval_strategy,
         "coverage": bundle.coverage,
@@ -92,3 +103,6 @@ def build_evidence_transparency(
         },
         "why_summary": "\n".join(why_lines),
     }
+    if entity_id_list:
+        payload["entity_ids"] = entity_id_list
+    return payload

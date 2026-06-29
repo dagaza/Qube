@@ -4,19 +4,23 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from core.knowledge.services.finance_knowledge import FinanceKnowledgeService
 from core.knowledge.services.general_web import GeneralWebKnowledgeService
+from core.knowledge.services.internal_corpus import InternalCorpusKnowledgeService
 from core.knowledge.services.scientific_evidence import ScientificEvidenceService
 from core.knowledge.services.trusted_knowledge import TrustedKnowledgeService
 from core.knowledge.services.wikipedia import WikipediaKnowledgeService
 from core.knowledge.types import (
     SERVICE_GENERAL_WEB,
+    SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_INTERNAL_CORPUS,
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
     SERVICE_WIKIPEDIA,
 )
 
 WEB_COMPOSER_TOOLS = frozenset(
-    {"internet", "trusted", "evidence", "wikipedia", "pubmed", "arxiv"}
+    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance"}
 )
 
 
@@ -33,6 +37,8 @@ _SERVICES: dict[str, Any] = {
     SERVICE_TRUSTED_KNOWLEDGE: TrustedKnowledgeService(),
     SERVICE_SCIENTIFIC_EVIDENCE: ScientificEvidenceService(),
     SERVICE_WIKIPEDIA: WikipediaKnowledgeService(),
+    SERVICE_INTERNAL_CORPUS: InternalCorpusKnowledgeService(),
+    SERVICE_FINANCE_KNOWLEDGE: FinanceKnowledgeService(),
 }
 
 
@@ -58,8 +64,12 @@ def resolve_turn_knowledge_service(
     if not tool and composer_internet:
         tool = "internet"
 
-    if tool == "evidence":
+    if tool in {"evidence", "science"}:
         return SERVICE_SCIENTIFIC_EVIDENCE
+    if tool == "library":
+        return SERVICE_INTERNAL_CORPUS
+    if tool == "finance":
+        return SERVICE_FINANCE_KNOWLEDGE
     if tool == "trusted":
         return SERVICE_TRUSTED_KNOWLEDGE
     if tool == "internet":

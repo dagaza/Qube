@@ -28,8 +28,13 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
     },
     {
         "id": "evidence",
-        "label": "Evidence",
+        "label": "Scientific literature",
         "description": "PubMed, OpenAlex, and arXiv abstracts",
+    },
+    {
+        "id": "finance",
+        "label": "Finance",
+        "description": "SEC EDGAR company filings (10-K, 10-Q, 8-K)",
     },
     {
         "id": "research",
@@ -39,6 +44,12 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
     {"id": "internet", "label": "Internet", "description": "Live web search"},
     {"id": "library", "label": "Library", "description": "Search your documents"},
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
+    {
+        "id": "science",
+        "label": "Scientific literature",
+        "description": "PubMed, OpenAlex, and arXiv abstracts (alias for @evidence)",
+        "advanced": True,
+    },
     {
         "id": "wikipedia",
         "label": "Wikipedia",
@@ -60,7 +71,7 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
 ]
 
 _WEB_COMPOSER_TOOLS = frozenset(
-    {"internet", "trusted", "evidence", "wikipedia", "pubmed", "arxiv"}
+    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance"}
 )
 
 _ROLE_HEADINGS = {
@@ -199,6 +210,18 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     if tool_id == "library":
+        from core.app_settings import (
+            external_knowledge_v2_enabled,
+            internal_corpus_knowledge_enabled,
+        )
+
+        if external_knowledge_v2_enabled() and internal_corpus_knowledge_enabled():
+            return {
+                "route": "web",
+                "strategy": "attachment_tool_library",
+                "attachment_tool": tool_id,
+                "composer_attachments": _attachments_telemetry(attachments),
+            }
         return {
             "route": "rag",
             "strategy": "attachment_tool_library",
