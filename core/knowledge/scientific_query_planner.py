@@ -6,8 +6,8 @@ while leaving semantic_query unchanged for OpenAlex ranking/embeddings.
 The scientific service spans all scholarly disciplines (medicine, CS, physics,
 economics, etc.). Medical entity keyword extraction here is a **medical discipline
 helper** only — activated when the biomedical activator matches the query. It is not
-the service boundary. Stage 2 will add discipline detection and adapter routing;
-see platform plan.
+the service boundary. Stage 2 adapter routing lives in `scientific_discipline.py`
+(Slice 6a); discipline entity packs and RePEc/DBLP adapters remain future work.
 """
 
 from __future__ import annotations

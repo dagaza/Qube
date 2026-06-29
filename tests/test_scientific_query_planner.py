@@ -106,7 +106,8 @@ class TestScientificPipelineAdapterSelection(unittest.TestCase):
 
         self.assertEqual(pubmed_calls, [])
         assert rel_diag is not None
-        self.assertEqual(rel_diag["scientific_adapters_selected"], ["openalex", "arxiv"])
+        self.assertEqual(rel_diag["scientific_adapters_selected"], ["arxiv", "openalex"])
+        self.assertEqual(rel_diag["scientific_discipline"], "computer_science")
 
 
 class TestScientificPipelinePlannerIntegration(unittest.TestCase):

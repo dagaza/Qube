@@ -6,7 +6,7 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 
 | File | Service | Purpose |
 |------|---------|---------|
-| `v1_scientific.json` | `scientific_evidence` | Multi-disciplinary scholarly literature (`@evidence` / `@science`) — biomedical, CS, physics, climate; PubMed only for medically-scoped queries |
+| `v1_scientific.json` | `scientific_evidence` | Multi-disciplinary scholarly literature (`@evidence` / `@science`) — includes optional `discipline` tags for Slice 6 routing |
 | `v1_trusted.json` | `trusted_knowledge` | Phase 6 Slice 1 `@trusted` — Wikipedia-first, authority tiers |
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |
 | `v1_legal.json` | `legal_knowledge` | Phase 6 Slice 5b `@legal` — CourtListener case law |

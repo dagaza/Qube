@@ -229,6 +229,19 @@ def implemented_adapter_ids(service_id: str) -> frozenset[str]:
     return frozenset(ids)
 
 
+def implemented_adapters_for_ui_group(service_id: str, ui_group: str) -> tuple[str, ...]:
+    """Ordered implemented adapter ids for a settings UI group."""
+    ids: list[str] = []
+    seen: set[str] = set()
+    for entry in catalog_entries_for_ui_group(service_id, ui_group):
+        if entry.id in seen:
+            continue
+        seen.add(entry.id)
+        if entry.implemented:
+            ids.append(entry.id)
+    return tuple(ids)
+
+
 CONFIGURABLE_KNOWLEDGE_SERVICES: tuple[tuple[str, str], ...] = (
     (SERVICE_SCIENTIFIC_EVIDENCE, "Scientific literature"),
     (SERVICE_FINANCE_KNOWLEDGE, "Finance"),
