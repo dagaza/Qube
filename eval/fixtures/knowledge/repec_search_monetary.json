@@ -1,0 +1,27 @@
+{
+  "query": "monetary policy inflation econometric",
+  "results": [
+    {
+      "title": "Monetary Policy and Inflation Dynamics: A VAR Analysis of Central Bank Responses",
+      "abstract": "This paper estimates vector autoregression models to study how central banks respond to inflation shocks and the transmission of monetary policy to price levels. Using quarterly data from major economies, we document lag structures consistent with conventional Taylor-rule frameworks and discuss identification challenges in open-economy settings.",
+      "authors": ["Elena Markovic", "James Okonkwo"],
+      "url": "https://ideas.repec.org/p/example/mpivar2020.html",
+      "handle": "RePEc:example:mpivar2020",
+      "series": "NBER Working Papers",
+      "year": "2020",
+      "preprint": true,
+      "peer_reviewed": false
+    },
+    {
+      "title": "Inflation Expectations and Monetary Policy Credibility: Panel Evidence",
+      "abstract": "We assemble a panel of inflation forecasts and central bank communication indicators to evaluate how policy announcements anchor expectations during high-inflation episodes.",
+      "authors": ["Priya Nair", "Tomás Herrera"],
+      "url": "https://ideas.repec.org/p/example/inflcred2019.html",
+      "handle": "RePEc:example:inflcred2019",
+      "series": "CEPR Discussion Papers",
+      "year": "2019",
+      "preprint": true,
+      "peer_reviewed": false
+    }
+  ]
+}

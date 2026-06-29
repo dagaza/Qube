@@ -40,7 +40,9 @@ class TestEvaluateDeepResearch(unittest.TestCase):
 
     def test_dry_run_reports_relevance_criteria(self) -> None:
         entries = self.mod._load_corpus(_CORPUS)
-        result = self.mod._evaluate_query(entries[0], live=False)
+        result = self.mod._evaluate_query(
+            entries[0], live=False, decompose_mode=None
+        )
         self.assertEqual(result["status"], "dry_run")
         self.assertTrue(result.get("relevance_criteria"))
 
@@ -70,7 +72,9 @@ class TestEvaluateDeepResearch(unittest.TestCase):
             "min_relevant_in_top": 2,
         }
         with patch.object(self.mod, "run_deep_research", return_value=mock_result):
-            result = self.mod._evaluate_query(entry, live=True)
+            result = self.mod._evaluate_query(
+                entry, live=True, decompose_mode="heuristic"
+            )
         self.assertEqual(result["status"], "ok")
         self.assertTrue(result["relevance_ok"])
         self.assertEqual(result["diagnostics"]["merged_relevance_dropped"], 1)

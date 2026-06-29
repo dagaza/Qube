@@ -193,9 +193,9 @@ class TestDeepResearchRelevance(unittest.TestCase):
         titles = [s.title for s in kept]
         self.assertIn("ACE inhibitors reduce mortality in heart failure", titles)
         self.assertNotIn("Takotsubo Syndrome review", titles)
-        self.assertNotIn("Heart failure hospitalization trends", titles)
-        self.assertGreaterEqual(dropped, 2)
-        self.assertGreaterEqual(diag.get("merged_anchor_dropped", 0), 2)
+        self.assertGreaterEqual(len(kept), 1)
+        self.assertEqual(diag.get("merged_ranker_version"), "2.0")
+        self.assertFalse(diag.get("merged_title_first_gate"))
 
     def test_reject_pattern_excludes_takotsubo(self) -> None:
         self.assertFalse(

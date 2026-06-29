@@ -19,6 +19,7 @@ from core.knowledge.types import (  # noqa: E402
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
 )
+from core.knowledge.scientific_discipline import detect_scientific_discipline  # noqa: E402
 from core.knowledge.web_retrieval import run_v2_web_retrieval  # noqa: E402
 
 _COVERAGE_RANK = {
@@ -146,6 +147,18 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
     require_warning = str(entry.get("require_warning") or "").strip()
     warning_ok = (not require_warning) or require_warning in (bundle.warnings or ())
 
+    expect_discipline = str(entry.get("discipline") or entry.get("expect_discipline") or "").strip()
+    detected_discipline = None
+    discipline_ok = True
+    if expect_discipline and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        detected_discipline = detect_scientific_discipline(query).discipline
+        discipline_ok = detected_discipline == expect_discipline
+
+    primary_adapter = str(entry.get("primary_adapter") or "").strip().lower()
+    primary_ok = True
+    if primary_adapter:
+        primary_ok = primary_adapter in {a.lower() for a in adapters}
+
     checks_ok = all(
         (
             adapter_ok,
@@ -156,11 +169,13 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
             fetch_ok,
             cov_ok,
             warning_ok,
+            discipline_ok,
+            primary_ok,
         )
     )
     status = "ok" if checks_ok else "partial"
 
-    return {
+    payload = {
         "id": entry.get("id"),
         "query": query,
         "status": status,
@@ -185,8 +200,16 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
             "fetch_ok": fetch_ok,
             "coverage_ok": cov_ok,
             "warning_ok": warning_ok,
+            "discipline_ok": discipline_ok,
+            "primary_ok": primary_ok,
         },
     }
+    if detected_discipline is not None:
+        payload["detected_discipline"] = detected_discipline
+        payload["expect_discipline"] = expect_discipline
+    if primary_adapter:
+        payload["primary_adapter"] = primary_adapter
+    return payload
 
 
 def main() -> int:
@@ -214,6 +237,12 @@ def main() -> int:
         default=None,
         help="Exit non-zero unless at least N entries status=ok (live only)",
     )
+    parser.add_argument(
+        "--min-discipline-primary-rate",
+        type=float,
+        default=None,
+        help="Exit non-zero unless discipline-tagged queries hit primary_adapter at this rate (live only)",
+    )
     args = parser.parse_args()
 
     corpus_path = args.corpus
@@ -240,6 +269,20 @@ def main() -> int:
     ok = sum(1 for r in results if r.get("status") == "ok")
     partial = sum(1 for r in results if r.get("status") == "partial")
     dry = sum(1 for r in results if r.get("status") == "dry_run")
+    discipline_tagged = [
+        (entry, result)
+        for entry, result in zip(entries, results)
+        if str(entry.get("discipline") or entry.get("expect_discipline") or "").strip()
+        and str(entry.get("primary_adapter") or "").strip()
+    ]
+    primary_hits = sum(
+        1
+        for _entry, result in discipline_tagged
+        if result.get("checks", {}).get("primary_ok")
+    )
+    primary_rate = (
+        primary_hits / len(discipline_tagged) if discipline_tagged else None
+    )
     summary = {
         "corpus": str(corpus_path),
         "service": knowledge_service,
@@ -249,6 +292,10 @@ def main() -> int:
         "dry_run": dry,
         "total": len(results),
     }
+    if primary_rate is not None:
+        summary["discipline_primary_hits"] = primary_hits
+        summary["discipline_primary_total"] = len(discipline_tagged)
+        summary["discipline_primary_rate"] = round(primary_rate, 3)
     print(json.dumps(summary, indent=2))
 
     if not args.live:
@@ -267,7 +314,26 @@ def main() -> int:
         f"\nSummary: {ok}/{len(results)} ok, {partial} partial (min_pass={min_pass})",
         file=sys.stderr,
     )
+    if primary_rate is not None:
+        min_primary = args.min_discipline_primary_rate
+        if min_primary is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+            min_primary = 0.7
+        if min_primary is not None:
+            print(
+                f"Discipline primary adapter: {primary_hits}/{len(discipline_tagged)} "
+                f"({primary_rate:.1%}, min={min_primary:.0%})",
+                file=sys.stderr,
+            )
     if ok < min_pass:
+        return 1
+    min_primary = args.min_discipline_primary_rate
+    if min_primary is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        min_primary = 0.7
+    if (
+        min_primary is not None
+        and primary_rate is not None
+        and primary_rate < min_primary
+    ):
         return 1
     return 0
 

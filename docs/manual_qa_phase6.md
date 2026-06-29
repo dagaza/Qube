@@ -2,7 +2,7 @@
 
 **Purpose:** In-app validation of internal corpus (`@library`), entity resolution, and the session research map after enabling Phase 6 knowledge features.
 
-**Related:** [External knowledge platform plan](./external_knowledge_platform_plan.md) (Phase 6), [Retrieval eval README](../eval/retrieval_corpus/README.md), [Manual QA Slice 5a Finance](./manual_qa_phase6_slice5_finance.md)
+**Related:** [External knowledge platform plan](./external_knowledge_platform_plan.md) (Phase 6), [Retrieval eval README](../eval/retrieval_corpus/README.md), [Manual QA Slice 5a Finance](./manual_qa_phase6_slice5_finance.md), [Manual QA Slice 6 Discipline routing](./manual_qa_phase6_slice6_discipline_routing.md)
 
 ---
 
