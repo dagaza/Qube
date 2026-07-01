@@ -292,7 +292,9 @@ def apply_merged_relevance_gate(
     )
     if not filtered:
         return None, dropped, filter_diag
-    if dropped <= 0 and len(filtered) == len(bundle.sources):
+    filtered_ids = [s.id for s in filtered]
+    original_ids = [s.id for s in bundle.sources]
+    if dropped <= 0 and filtered_ids == original_ids:
         return bundle, 0, filter_diag
 
     filtered_sources = tuple(filtered)
@@ -376,6 +378,7 @@ def run_deep_research(
     embed_fn: Callable[[str], np.ndarray] | None = None,
     query_vector: np.ndarray | None = None,
     decompose_generate_fn: Callable[[str, str], str] | None = None,
+    decompose_mode: str | None = None,
 ) -> DeepResearchResult:
     """Sync deep-research pipeline: decompose → retrieve → merge → report."""
     t0 = time.time()
@@ -413,11 +416,18 @@ def run_deep_research(
 
     _check_cancel()
     _emit("decomposing", "Planning sub-queries…")
+    if decompose_mode is None:
+        mode = "llm" if decompose_generate_fn is not None else "heuristic"
+    else:
+        mode = decompose_mode.strip().lower()
+    if mode in {"llm", "hybrid"} and decompose_generate_fn is None:
+        mode = "heuristic"
     sub_queries = decompose_query(
         normalized_query,
         generate_fn=decompose_generate_fn,
+        mode=mode,
     )
-    decompose_method = "llm" if decompose_generate_fn is not None else "heuristic"
+    decompose_method = mode
     if not sub_queries:
         return DeepResearchResult(
             query=normalized_query,
@@ -491,6 +501,7 @@ def run_deep_research(
             "sub_query_count": len(sub_queries),
             "sub_bundle_count": len(sub_bundles),
             "decompose_method": decompose_method,
+            "decompose_mode": mode,
             "merged_source_count": post_filter_count,
             "merged_sources_pre_filter": pre_filter_count,
             "merged_sources_post_filter": post_filter_count,

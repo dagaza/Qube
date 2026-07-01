@@ -21,7 +21,12 @@ from PyQt6.QtWidgets import (
 
 import qtawesome as qta
 
-from core.composer_attachments import COMPOSER_TOOLS, ComposerAttachment
+from core.composer_attachments import (
+    ComposerAttachment,
+    composer_tool_by_id,
+    composer_tool_tooltip,
+    composer_tools_for_palette,
+)
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 from core.composer_mention_search import (
     ComposerPaletteView,
@@ -257,8 +262,11 @@ class _ComposerContextHeader(QFrame):
         self._query_hint.hide()
         self._eyebrow.setText("ATTACH")
 
+    def set_scoped_breadcrumb_tooltip(self, text: str) -> None:
+        self._current.setToolTip(text)
+        self._icon.setToolTip(text)
+
     def set_context(self, mode: str | None, *, query: str = "") -> None:
-        """Legacy shim for callers still passing drill kind as ``mode``."""
         if mode is None:
             view = ComposerPaletteView.SEARCH if (query or "").strip() else ComposerPaletteView.BROWSE
             self.set_palette_context(view_mode=view, query=query)
@@ -820,10 +828,19 @@ class ComposerMentionPopup(QWidget):
         elif self._view_mode == ComposerPaletteView.SEARCH:
             panel_tip = _SEARCH_LIST_TOOLTIP
         else:
-            panel_tip = _SCOPED_LIST_TOOLTIP
+            panel_tip = ""
         self.setToolTip(panel_tip)
         self._shell.setToolTip(panel_tip)
         self._list.setToolTip(panel_tip)
+
+        if self._view_mode == ComposerPaletteView.SCOPED and self._scoped_kind:
+            scoped_tip = _SCOPED_LIST_TOOLTIP
+            self._context_header.set_scoped_breadcrumb_tooltip(scoped_tip)
+            self._filter.setToolTip(_FILTER_TOOLTIPS.get(self._scoped_kind, scoped_tip))
+        else:
+            self._context_header.set_scoped_breadcrumb_tooltip("")
+            if self._view_mode != ComposerPaletteView.SCOPED:
+                self._filter.setToolTip("")
 
     def _apply_row_tooltip(self, row: QListWidgetItem, text: str) -> None:
         if not text:
@@ -894,17 +911,21 @@ class ComposerMentionPopup(QWidget):
             row.setData(Qt.ItemDataRole.UserRole, hit.payload)
             if isinstance(hit.payload, tuple) and hit.payload[0] == "category":
                 kind = hit.payload[1]
-                row.setToolTip(_ROOT_ROW_TOOLTIPS.get(kind, hit.subtitle))
+                self._apply_row_tooltip(row, _ROOT_ROW_TOOLTIPS.get(kind, hit.subtitle))
             elif isinstance(hit.payload, ComposerAttachment):
                 att = hit.payload
                 if att.kind == "file":
-                    row.setToolTip(f"Attach {att.label}. Search will be scoped to this document.")
+                    tip = f"Attach {att.label}. Search will be scoped to this document."
                 elif att.kind == "conversation":
-                    row.setToolTip(
+                    tip = (
                         f'Attach "{att.label}". Includes that chat\'s transcript in this turn (~7000 chars).'
                     )
+                elif att.kind == "tool":
+                    tool = composer_tool_by_id(att.id)
+                    tip = composer_tool_tooltip(tool) if tool is not None else f"Attach {att.label}."
                 else:
-                    row.setToolTip(f"Attach {att.label}.")
+                    tip = f"Attach {att.label}."
+                self._apply_row_tooltip(row, tip)
             self._list.addItem(row)
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
 
@@ -984,8 +1005,9 @@ class ComposerMentionPopup(QWidget):
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="file", id=filename, label=filename),
             )
-            row.setToolTip(
-                f"Attach {filename}. Search will be scoped to this document."
+            self._apply_row_tooltip(
+                row,
+                f"Attach {filename}. Search will be scoped to this document.",
             )
             self._list.addItem(row)
             shown += 1
@@ -1023,8 +1045,9 @@ class ComposerMentionPopup(QWidget):
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="conversation", id=sid, label=title),
             )
-            row.setToolTip(
-                f'Attach "{title}". Includes that chat\'s transcript in this turn (~7000 chars).'
+            self._apply_row_tooltip(
+                row,
+                f'Attach "{title}". Includes that chat\'s transcript in this turn (~7000 chars).',
             )
             self._list.addItem(row)
             shown += 1
@@ -1033,20 +1056,16 @@ class ComposerMentionPopup(QWidget):
 
     def _populate_tools(self) -> None:
         q = self._search_query().lower()
-        for tool in COMPOSER_TOOLS:
+        for tool in composer_tools_for_palette(q):
             label = tool["label"]
             desc = tool["description"]
-            if q and q not in label.lower() and q not in desc.lower() and q not in tool["id"]:
-                continue
             text = f"{label} — {desc}"
             row = QListWidgetItem(text)
             row.setData(
                 Qt.ItemDataRole.UserRole,
                 ComposerAttachment(kind="tool", id=tool["id"], label=label),
             )
-            row.setToolTip(
-                f"{label}: {desc}. Inserts @[tool:{tool['id']}] to route this message."
-            )
+            self._apply_row_tooltip(row, composer_tool_tooltip(tool))
             self._list.addItem(row)
 
     def _populate_skills(self) -> None:
@@ -1062,12 +1081,12 @@ class ComposerMentionPopup(QWidget):
             row.setData(Qt.ItemDataRole.UserRole, mention)
             if desc:
                 tip = (
-                    f"{mention.label}: {desc}. "
+                    f"{mention.label}. {desc} "
                     f"Inserts @[skill:{mention.id}] as prompt guidance."
                 )
             else:
-                tip = f"Inserts @[skill:{mention.id}] as prompt guidance."
-            row.setToolTip(tip)
+                tip = f"{mention.label}. Inserts @[skill:{mention.id}] as prompt guidance."
+            self._apply_row_tooltip(row, tip)
             self._list.addItem(row)
         if self._list.count() == 0:
             self._add_empty_row("No matching skills")
@@ -1080,8 +1099,9 @@ class ComposerMentionPopup(QWidget):
             text = f"{command.label} — {command.description}"
             row = QListWidgetItem(text)
             row.setData(Qt.ItemDataRole.UserRole, command)
-            row.setToolTip(
-                f"{command.label}: {command.description}. Runs immediately when selected."
+            self._apply_row_tooltip(
+                row,
+                f"{command.label}. {command.description} Runs immediately when selected.",
             )
             self._list.addItem(row)
         if self._list.count() == 0:

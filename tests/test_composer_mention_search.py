@@ -70,6 +70,18 @@ class TestSearchComposerMentions(unittest.TestCase):
         hits = search_composer_mentions("internet", db=db, store=None)
         self.assertTrue(any(h.section == "files" for h in hits))
 
+    def test_scientific_finds_single_evidence_tool(self) -> None:
+        hits = search_composer_mentions("scientific", db=None, store=None)
+        tool_hits = [h for h in hits if h.section == "tools"]
+        evidence = [h for h in tool_hits if h.label == "Scientific literature"]
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0].payload.id, "evidence")
+
+    def test_science_id_finds_alias_tool(self) -> None:
+        hits = search_composer_mentions("science", db=None, store=None)
+        tool_hits = [h for h in hits if h.section == "tools" and h.payload.id == "science"]
+        self.assertEqual(len(tool_hits), 1)
+
 
 class TestGroupSearchHits(unittest.TestCase):
     def test_section_order(self) -> None:

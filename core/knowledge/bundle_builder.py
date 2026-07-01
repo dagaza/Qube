@@ -386,6 +386,11 @@ def build_trusted_knowledge_bundle(
 _SCIENTIFIC_AUTHORITY = {
     "pubmed": 0.92,
     "openalex": 0.86,
+    "repec": 0.88,
+    "dblp": 0.84,
+    "biorxiv": 0.78,
+    "pubchem": 0.90,
+    "inspire_hep": 0.88,
     "arxiv": 0.72,
 }
 

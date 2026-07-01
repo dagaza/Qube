@@ -7,7 +7,10 @@ import argparse
 import json
 import sys
 import time
+from collections import defaultdict
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -19,6 +22,8 @@ from core.knowledge.types import (  # noqa: E402
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
 )
+from core.knowledge.scientific_discipline import detect_scientific_discipline  # noqa: E402
+from core.knowledge.scientific_discipline_packs import normalize_discipline_id  # noqa: E402
 from core.knowledge.web_retrieval import run_v2_web_retrieval  # noqa: E402
 
 _COVERAGE_RANK = {
@@ -52,6 +57,88 @@ _DEFAULT_CORPUS = {
     SERVICE_FINANCE_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_finance.json",
     SERVICE_LEGAL_KNOWLEDGE: ROOT / "eval" / "retrieval_corpus" / "v1_legal.json",
 }
+
+
+def _discipline_tag(entry: dict) -> str:
+    return str(entry.get("discipline") or entry.get("expect_discipline") or "").strip()
+
+
+def _discipline_primary_stats(
+    entries: list[dict],
+    results: list[dict],
+) -> dict[str, dict[str, int | float]]:
+    """Primary-adapter hit rate grouped by corpus ``discipline`` tag."""
+    groups: dict[str, list[bool]] = defaultdict(list)
+    for entry, result in zip(entries, results):
+        discipline = _discipline_tag(entry)
+        primary = str(entry.get("primary_adapter") or "").strip().lower()
+        if not discipline or not primary:
+            continue
+        primary_ok = bool(result.get("checks", {}).get("primary_ok"))
+        groups[discipline].append(primary_ok)
+
+    stats: dict[str, dict[str, int | float]] = {}
+    for discipline, hits in sorted(groups.items()):
+        total = len(hits)
+        primary_hits = sum(1 for ok in hits if ok)
+        stats[discipline] = {
+            "total": total,
+            "primary_hits": primary_hits,
+            "primary_rate": round(primary_hits / total, 3) if total else 0.0,
+        }
+    return stats
+
+
+def _groups_below_threshold(
+    stats: dict[str, dict[str, int | float]],
+    *,
+    threshold: float,
+) -> list[str]:
+    failing: list[str] = []
+    for discipline, row in stats.items():
+        rate = float(row.get("primary_rate") or 0.0)
+        if rate < threshold:
+            failing.append(discipline)
+    return failing
+
+
+@contextmanager
+def _scientific_eval_preferences(*, use_user_prefs: bool):
+    """Use catalog defaults during scientific eval unless ``use_user_prefs``."""
+    if use_user_prefs:
+        yield
+        return
+    targets = (
+        "core.app_settings.get_knowledge_source_preferences",
+        "core.knowledge.pipeline_scientific.get_knowledge_source_preferences",
+    )
+    with patch(targets[0], return_value={}), patch(targets[1], return_value={}):
+        yield
+
+
+def _inter_query_delay_s(knowledge_service: str) -> float:
+    if knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        return 2.0
+    if knowledge_service in {SERVICE_TRUSTED_KNOWLEDGE, SERVICE_FINANCE_KNOWLEDGE}:
+        return 1.2
+    return 0.0
+
+
+def _evaluate_with_optional_retry(
+    entry: dict,
+    *,
+    live: bool,
+    knowledge_service: str,
+) -> dict:
+    result = _evaluate_query(entry, live=live, knowledge_service=knowledge_service)
+    if (
+        live
+        and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE
+        and result.get("status") == "no_results"
+    ):
+        time.sleep(3.0)
+        result = _evaluate_query(entry, live=live, knowledge_service=knowledge_service)
+    return result
 
 
 def _load_corpus(path: Path) -> tuple[dict, list[dict]]:
@@ -146,6 +233,20 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
     require_warning = str(entry.get("require_warning") or "").strip()
     warning_ok = (not require_warning) or require_warning in (bundle.warnings or ())
 
+    expect_discipline = str(entry.get("discipline") or entry.get("expect_discipline") or "").strip()
+    detected_discipline = None
+    discipline_ok = True
+    if expect_discipline and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        detected_discipline = detect_scientific_discipline(query).discipline
+        discipline_ok = normalize_discipline_id(detected_discipline) == normalize_discipline_id(
+            expect_discipline
+        )
+
+    primary_adapter = str(entry.get("primary_adapter") or "").strip().lower()
+    primary_ok = True
+    if primary_adapter:
+        primary_ok = primary_adapter in {a.lower() for a in adapters}
+
     checks_ok = all(
         (
             adapter_ok,
@@ -156,11 +257,13 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
             fetch_ok,
             cov_ok,
             warning_ok,
+            discipline_ok,
+            primary_ok,
         )
     )
     status = "ok" if checks_ok else "partial"
 
-    return {
+    payload = {
         "id": entry.get("id"),
         "query": query,
         "status": status,
@@ -185,8 +288,16 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
             "fetch_ok": fetch_ok,
             "coverage_ok": cov_ok,
             "warning_ok": warning_ok,
+            "discipline_ok": discipline_ok,
+            "primary_ok": primary_ok,
         },
     }
+    if detected_discipline is not None:
+        payload["detected_discipline"] = detected_discipline
+        payload["expect_discipline"] = expect_discipline
+    if primary_adapter:
+        payload["primary_adapter"] = primary_adapter
+    return payload
 
 
 def main() -> int:
@@ -214,6 +325,23 @@ def main() -> int:
         default=None,
         help="Exit non-zero unless at least N entries status=ok (live only)",
     )
+    parser.add_argument(
+        "--min-discipline-primary-rate",
+        type=float,
+        default=None,
+        help="Exit non-zero unless discipline-tagged queries hit primary_adapter at this rate (live only)",
+    )
+    parser.add_argument(
+        "--min-discipline-group-primary-rate",
+        type=float,
+        default=None,
+        help="Exit non-zero unless every discipline group meets this primary rate (live only)",
+    )
+    parser.add_argument(
+        "--user-prefs",
+        action="store_true",
+        help="Use saved knowledge source preferences instead of catalog defaults (scientific eval)",
+    )
     args = parser.parse_args()
 
     corpus_path = args.corpus
@@ -228,18 +356,40 @@ def main() -> int:
     knowledge_service = _resolve_service(corpus_meta, args.service)
 
     results = []
-    for i, entry in enumerate(entries):
-        if args.live and i > 0 and knowledge_service in {
-            SERVICE_TRUSTED_KNOWLEDGE,
-            SERVICE_FINANCE_KNOWLEDGE,
-        }:
-            time.sleep(1.2)
-        results.append(
-            _evaluate_query(entry, live=args.live, knowledge_service=knowledge_service)
-        )
+    pref_ctx = (
+        _scientific_eval_preferences(use_user_prefs=args.user_prefs)
+        if args.live and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE
+        else nullcontext()
+    )
+    with pref_ctx:
+        for i, entry in enumerate(entries):
+            if args.live and i > 0:
+                delay = _inter_query_delay_s(knowledge_service)
+                if delay > 0:
+                    time.sleep(delay)
+            results.append(
+                _evaluate_with_optional_retry(
+                    entry, live=args.live, knowledge_service=knowledge_service
+                )
+            )
     ok = sum(1 for r in results if r.get("status") == "ok")
     partial = sum(1 for r in results if r.get("status") == "partial")
     dry = sum(1 for r in results if r.get("status") == "dry_run")
+    discipline_tagged = [
+        (entry, result)
+        for entry, result in zip(entries, results)
+        if str(entry.get("discipline") or entry.get("expect_discipline") or "").strip()
+        and str(entry.get("primary_adapter") or "").strip()
+    ]
+    primary_hits = sum(
+        1
+        for _entry, result in discipline_tagged
+        if result.get("checks", {}).get("primary_ok")
+    )
+    primary_rate = (
+        primary_hits / len(discipline_tagged) if discipline_tagged else None
+    )
+    discipline_stats = _discipline_primary_stats(entries, results)
     summary = {
         "corpus": str(corpus_path),
         "service": knowledge_service,
@@ -249,6 +399,12 @@ def main() -> int:
         "dry_run": dry,
         "total": len(results),
     }
+    if primary_rate is not None:
+        summary["discipline_primary_hits"] = primary_hits
+        summary["discipline_primary_total"] = len(discipline_tagged)
+        summary["discipline_primary_rate"] = round(primary_rate, 3)
+    if discipline_stats:
+        summary["discipline_group_primary"] = discipline_stats
     print(json.dumps(summary, indent=2))
 
     if not args.live:
@@ -267,8 +423,51 @@ def main() -> int:
         f"\nSummary: {ok}/{len(results)} ok, {partial} partial (min_pass={min_pass})",
         file=sys.stderr,
     )
+    if primary_rate is not None:
+        min_primary = args.min_discipline_primary_rate
+        if min_primary is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+            min_primary = 0.7
+        if min_primary is not None:
+            print(
+                f"Discipline primary adapter: {primary_hits}/{len(discipline_tagged)} "
+                f"({primary_rate:.1%}, min={min_primary:.0%})",
+                file=sys.stderr,
+            )
+    if discipline_stats:
+        min_group = args.min_discipline_group_primary_rate
+        if min_group is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+            min_group = 0.7
+        if min_group is not None:
+            for discipline, row in sorted(discipline_stats.items()):
+                rate = float(row["primary_rate"])
+                print(
+                    f"  {discipline}: {row['primary_hits']}/{row['total']} "
+                    f"({rate:.1%})",
+                    file=sys.stderr,
+                )
+            failing = _groups_below_threshold(discipline_stats, threshold=min_group)
+            if failing:
+                print(
+                    f"Discipline groups below {min_group:.0%}: {', '.join(failing)}",
+                    file=sys.stderr,
+                )
     if ok < min_pass:
         return 1
+    min_primary = args.min_discipline_primary_rate
+    if min_primary is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        min_primary = 0.7
+    if (
+        min_primary is not None
+        and primary_rate is not None
+        and primary_rate < min_primary
+    ):
+        return 1
+    min_group = args.min_discipline_group_primary_rate
+    if min_group is None and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE:
+        min_group = 0.7
+    if min_group is not None and discipline_stats:
+        if _groups_below_threshold(discipline_stats, threshold=min_group):
+            return 1
     return 0
 
 

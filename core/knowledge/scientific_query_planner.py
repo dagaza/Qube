@@ -107,7 +107,7 @@ def plan_scientific_query(
 
 
 def adapter_query_for(plan: ScientificQueryPlan, adapter_id: str) -> str:
-    """PubMed/arXiv use keywords; OpenAlex keeps semantic query."""
-    if adapter_id in {"pubmed", "arxiv"}:
+    """Keyword adapters use stripped entity/keyword query; OpenAlex keeps semantic query."""
+    if adapter_id in {"pubmed", "arxiv", "biorxiv", "pubchem", "repec", "inspire_hep"}:
         return plan.keyword_query
     return plan.semantic_query

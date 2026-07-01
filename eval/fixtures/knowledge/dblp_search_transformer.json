@@ -1,0 +1,45 @@
+{
+  "result": {
+    "hits": {
+      "@total": "2",
+      "@sent": "2",
+      "hit": [
+        {
+          "@score": "5",
+          "@id": "100001",
+          "info": {
+            "authors": {
+              "author": [
+                {"@pid": "99/1234", "text": "Ashish Vaswani"},
+                {"@pid": "99/5678", "text": "Noam Shazeer"}
+              ]
+            },
+            "title": "Attention Is All You Need.",
+            "venue": "NeurIPS",
+            "year": "2017",
+            "type": "Conference and Workshop Papers",
+            "access": "open",
+            "doi": "10.5555/3295222.3295349",
+            "url": "https://dblp.org/rec/conf/nips/VaswaniSPUJGKP17"
+          }
+        },
+        {
+          "@score": "4",
+          "@id": "100002",
+          "info": {
+            "authors": {
+              "author": {"@pid": "12/3456", "text": "Devlin Jacob"}
+            },
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.",
+            "venue": "NAACL",
+            "year": "2019",
+            "type": "Conference and Workshop Papers",
+            "access": "open",
+            "doi": "10.18653/v1/n19-1423",
+            "url": "https://dblp.org/rec/conf/naacl/DevlinCLT19"
+          }
+        }
+      ]
+    }
+  }
+}

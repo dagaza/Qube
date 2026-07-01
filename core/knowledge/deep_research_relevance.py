@@ -110,6 +110,12 @@ def build_merge_relevance_diag(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "merged_semantic_dropped",
         "merged_relevance_min_overlap",
         "merged_relevance_min_semantic",
+        "merged_ranker_version",
+        "merged_relevance_min_score",
+        "merged_feature_weights",
+        "merged_top_feature_scores",
+        "merged_query_entity_count",
+        "decompose_mode",
     ):
         if key in diagnostics:
             diag[key] = diagnostics[key]

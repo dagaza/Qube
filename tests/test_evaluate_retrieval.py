@@ -83,6 +83,113 @@ class TestEvaluateRetrieval(unittest.TestCase):
         self.assertEqual(result["status"], "partial")
         self.assertFalse(result["checks"]["wikipedia_ok"])
 
+    def test_scientific_corpus_has_twelve_discipline_queries(self) -> None:
+        data = json.loads(_SCIENTIFIC.read_text(encoding="utf-8"))
+        queries = data["queries"]
+        self.assertGreaterEqual(len(queries), 12)
+        tagged = [
+            q for q in queries
+            if q.get("discipline") and q.get("primary_adapter")
+        ]
+        self.assertEqual(len(tagged), 12)
+        self.assertEqual(data.get("schema_version"), 2)
+
+    def test_discipline_primary_stats_grouping(self) -> None:
+        entries = [
+            {"id": "a", "discipline": "biology", "primary_adapter": "pubmed"},
+            {"id": "b", "discipline": "biology", "primary_adapter": "pubmed"},
+            {"id": "c", "discipline": "chemistry", "primary_adapter": "pubchem"},
+        ]
+        results = [
+            {"checks": {"primary_ok": True}},
+            {"checks": {"primary_ok": False}},
+            {"checks": {"primary_ok": True}},
+        ]
+        stats = self.mod._discipline_primary_stats(entries, results)
+        self.assertEqual(stats["biology"]["primary_hits"], 1)
+        self.assertEqual(stats["biology"]["total"], 2)
+        self.assertEqual(stats["biology"]["primary_rate"], 0.5)
+        self.assertEqual(
+            self.mod._groups_below_threshold(stats, threshold=0.7),
+            ["biology"],
+        )
+
+    def test_groups_below_threshold_passes_when_all_ok(self) -> None:
+        stats = {
+            "physics": {"primary_hits": 1, "total": 1, "primary_rate": 1.0},
+            "chemistry": {"primary_hits": 1, "total": 1, "primary_rate": 1.0},
+        }
+        self.assertEqual(
+            self.mod._groups_below_threshold(stats, threshold=0.7),
+            [],
+        )
+
+    def test_scientific_discipline_and_primary_checks(self) -> None:
+        from core.knowledge.types import EvidenceBundle, EvidenceObject, WebRetrievalOutcome
+
+        entry = {
+            "id": "cs_001",
+            "query": "transformer attention mechanism",
+            "discipline": "computer_science",
+            "primary_adapter": "arxiv",
+            "expect_adapters": ["arxiv"],
+            "expect_abstract": True,
+        }
+        src = EvidenceObject(
+            id="ek_1",
+            source_id="https://arxiv.org/abs/1706.03762",
+            adapter="arxiv",
+            retrieval_method="abstract",
+            title="Attention Is All You Need",
+            excerpt="We propose a new architecture.",
+            full_text="We propose a new architecture.",
+            url="https://arxiv.org/abs/1706.03762",
+            document_type="preprint",
+            relevance_score=0.85,
+            authority_score=0.72,
+            reliability_score=0.65,
+            fetch_status="abstract",
+        )
+        bundle = EvidenceBundle(
+            bundle_id="b3",
+            query_raw=entry["query"],
+            query_resolved=entry["query"],
+            knowledge_service="scientific_evidence",
+            retrieval_strategy="scientific_parallel",
+            profile_version="0.1.0",
+            retrieved_at=0.0,
+            latency_ms=120.0,
+            confidence=0.85,
+            coverage="adequate",
+            coverage_rationale="test",
+            authority_summary=0.72,
+            reliability_summary=0.65,
+            diversity_summary=0.4,
+            sources=(src,),
+            rejected_count=0,
+            warnings=(),
+            conflicts=(),
+            stop_reason="sufficient_evidence",
+            adapter_calls=("arxiv",),
+        )
+        outcome = WebRetrievalOutcome(
+            web_results=[],
+            web_results_raw_for_audit=[],
+            web_results_kept_for_audit=[],
+            relevance_diag=None,
+            skip_enrichment=False,
+            bundle=bundle,
+            latency_ms=120.0,
+        )
+        with patch.object(self.mod, "run_v2_web_retrieval", return_value=outcome):
+            result = self.mod._evaluate_query(
+                entry, live=True, knowledge_service="scientific_evidence"
+            )
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["checks"]["discipline_ok"])
+        self.assertTrue(result["checks"]["primary_ok"])
+        self.assertEqual(result["detected_discipline"], "computer_science")
+
     @staticmethod
     def _mock_outcome_wikipedia():
         from core.knowledge.types import EvidenceBundle, EvidenceObject, WebRetrievalOutcome

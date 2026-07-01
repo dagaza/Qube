@@ -1,0 +1,18 @@
+{
+  "query": "gravitational wave LIGO binary black hole",
+  "results": [
+    {
+      "title": "GW150914: First observation of gravitational waves from a binary black hole merger",
+      "abstract": "On September 14, 2015, the Laser Interferometer Gravitational-Wave Observatory (LIGO) observed a transient gravitational-wave signal from the coalescence of two black holes.",
+      "authors": ["B. P. Abbott et al."],
+      "url": "https://arxiv.org/abs/1602.03837",
+      "venue": "Physical Review Letters",
+      "year": "2016",
+      "doi": "10.1103/PhysRevLett.116.061102",
+      "preprint": false,
+      "peer_reviewed": true,
+      "inspire_recid": "1403512",
+      "citation_count": 12000
+    }
+  ]
+}

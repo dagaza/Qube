@@ -1,0 +1,29 @@
+{
+  "query": "CRISPR Cas9 gene editing off-target effects",
+  "results": [
+    {
+      "title": "High-throughput mapping of CRISPR-Cas9 off-target effects in human cells",
+      "abstract": "We profile genome-wide off-target cleavage induced by Cas9 ribonucleoprotein delivery in primary human cells. Using GUIDE-seq and targeted amplicon sequencing, we quantify editing at predicted and cryptic sites and propose design heuristics that reduce off-target activity without sacrificing on-target efficiency.",
+      "authors": ["Sarah Chen", "Marco Alvarez", "Priya Desai"],
+      "url": "https://www.biorxiv.org/content/10.1101/2023.01.15.524102v1",
+      "doi": "10.1101/2023.01.15.524102",
+      "biorxiv_id": "2023.01.15.524102",
+      "year": "2023",
+      "venue": "bioRxiv",
+      "preprint": true,
+      "peer_reviewed": false
+    },
+    {
+      "title": "Machine learning prediction of CRISPR off-target sites from chromatin context",
+      "abstract": "A gradient-boosted model trained on chromatin accessibility and mismatch topology improves off-target ranking compared to naive seed-match rules in cell-line benchmarks.",
+      "authors": ["James Okonkwo", "Elena Markovic"],
+      "url": "https://www.biorxiv.org/content/10.1101/2022.11.02.514887v2",
+      "doi": "10.1101/2022.11.02.514887",
+      "biorxiv_id": "2022.11.02.514887",
+      "year": "2022",
+      "venue": "bioRxiv",
+      "preprint": true,
+      "peer_reviewed": false
+    }
+  ]
+}

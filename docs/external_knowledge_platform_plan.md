@@ -2,7 +2,7 @@
 
 **Status:** Phases 0–4 validated; Phase 5 complete; **Phase 6 Slices 2–5b implemented** — internal corpus, entities, research map, `@finance`/SEC EDGAR, `@legal`/CourtListener, user-configurable source preferences  
 **Date:** 2026-06-25 (updated 2026-06-26)  
-**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [§21 — ADR 002 Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
+**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [ADR 002 — Merge Ranker v2](./adr/002-merge-ranker-v2-deep-research.md), [Phase 6c — Scientific Discipline Packs](./phase6c_scientific_discipline_packs.md), [Knowledge Adapter HTTP Resilience](./knowledge_adapter_http_resilience_plan.md), [§21 — Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
 
 This document is the **source of truth** for Qube’s external-knowledge architecture: trusted retrieval, scientific evidence, Knowledge Services, EvidenceBundles, and the phased rollout. It merges internal codebase analysis with external architecture review feedback.
 
@@ -301,7 +301,7 @@ Medicine is **one scientific discipline**, not synonymous with “scientific.”
 
 **Retrieval planner (Stage 1 today):** conversational → keyword query; medical entity keyword extraction when the biomedical activator matches. PubMed is called only for medically-scoped queries; OpenAlex + arXiv are the default for other scholarly queries.
 
-**Retrieval planner (Stage 2 — Slice 6a implemented):** heuristic discipline detection → catalog UI-group adapter order (CS → arXiv/OpenAlex; economics → OpenAlex; biomedical → PubMed gating). Discipline entity packs and RePEc/SSRN/DBLP adapters remain Slice 6b+.
+**Retrieval planner (Stage 2 — Slice 6a implemented):** heuristic discipline detection → catalog UI-group adapter order (CS → arXiv/OpenAlex/DBLP; economics → RePEc/OpenAlex; biomedical → PubMed gating). **Slice 6b implemented** — RePEc fixture stub + DBLP live adapter; eval harness `primary_adapter` / discipline checks with ≥70% primary hit gate.
 
 **User-configurable adapters:** Implemented via Settings → Knowledge → **Preferred sources**. Preferences are stored in `qube.knowledge.source_preferences` and resolved at retrieval time through `core/knowledge/source_preferences.py` and `core/knowledge/adapters/catalog.py`. Composer overrides (`@pubmed`, `@arxiv`) still take precedence for a single turn.
 
@@ -788,6 +788,8 @@ Phase 5 scope ends at Slice 5. **Platform expansion (enterprise corpus, entities
 
 **Slice 4 status:** VALIDATED (2026-06-26) — live eval **3/3 relevance_ok**; ACE/HF top sources now on-topic (angiotensin-converting-enzyme HF trials/meta-analyses); chemo cardiotoxicity rejected via title pattern + title anchor gate.
 
+**Slice 4 superseded (2026-06-25):** Title-first anchor gate replaced by **Merge Ranker v2** — see [ADR 002](adr/002-merge-ranker-v2-deep-research.md). Reject patterns retained; anchors and entity overlap are scoring features. QA-6B-G regression (merge collapsed to 1 source) motivated the change; live eval **3/3 relevance_ok** restored after v2.
+
 **Slice 5 exit criteria:**
 
 1. Deep research uses optional **LLM sub-query decomposition** via `PrimaryEngineTask.deep_research_decompose` when synthesis LLM is available; falls back to heuristic angles on parse failure.
@@ -949,6 +951,10 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 
 **Slice 6a status:** IMPLEMENTED — `detect_scientific_discipline()` + catalog UI-group adapter ordering; trace fields `scientific_discipline`, `scientific_discipline_ui_group`.
 
+**Slice 6b status:** IMPLEMENTED — RePEc fixture stub, DBLP live adapter, discipline-tagged eval harness (`primary_adapter`, `--min-discipline-primary-rate`).
+
+**Slice 6c status:** PLANNED (mini-phase) — expand scientific routing into a **discipline pack registry** (Medicine, Biology, Chemistry, Physics, CS, Economics, Psychology, Sociology, Political Science, …) **within `scientific_evidence` only**. Finance and Legal remain separate top-level Knowledge Services. See **[Phase 6c — Scientific Discipline Packs](./phase6c_scientific_discipline_packs.md)**.
+
 **Goal:** Query-class detection routes to bibliographic indexes already listed in §17, without hardcoding in `LLMWorker`.
 
 | Task | Notes |
@@ -1004,7 +1010,7 @@ flowchart LR
 - Real-time collaborative graph editing
 - Multi-hop foreground tool chains (still one retrieval invocation per turn)
 
-**Status:** Slices 2–5b implemented; **Slice 6a implemented** — heuristic discipline routing for `scientific_evidence` (`scientific_discipline.py`). Slice 6b (RePEc stub + tagged eval harness) remains. Manual QA: [Slices 2–4](./manual_qa_phase6.md), [5a Finance](./manual_qa_phase6_slice5_finance.md), [5b Legal](./manual_qa_phase6_slice5_legal.md).
+**Status:** Slices 2–5b implemented; **Slice 6a implemented** — heuristic discipline routing for `scientific_evidence` (`scientific_discipline.py`). **Slice 6b implemented** — RePEc fixture stub, DBLP adapter, discipline-tagged eval harness (`primary_adapter`, `--min-discipline-primary-rate`). Manual QA: [Slices 2–4](./manual_qa_phase6.md), [5a Finance](./manual_qa_phase6_slice5_finance.md), [5b Legal](./manual_qa_phase6_slice5_legal.md), [6 Discipline routing](./manual_qa_phase6_slice6_discipline_routing.md).
 
 ---
 
