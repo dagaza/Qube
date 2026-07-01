@@ -9,6 +9,14 @@ from core.knowledge.adapters.catalog import (
 )
 
 
+from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
+
+# Adapters shipped after initial v2 rollout — appended when missing from saved prefs.
+_ADDITIVE_DEFAULT_ADAPTERS: dict[str, tuple[str, ...]] = {
+    SERVICE_SCIENTIFIC_EVIDENCE: ("dblp", "repec", "biorxiv", "pubchem", "inspire_hep"),
+}
+
+
 def normalize_preferences(raw: dict | None) -> dict[str, list[str]]:
     """Normalize stored preferences to service_id → ordered adapter id list."""
     if not isinstance(raw, dict):
@@ -51,6 +59,12 @@ def get_effective_enabled_adapters(
     selected = prefs.get(sid)
     if selected is None:
         selected = list(default_enabled_adapter_ids(sid))
+    elif selected:
+        seen = set(selected)
+        for aid in _ADDITIVE_DEFAULT_ADAPTERS.get(sid, ()):
+            if aid in allowed and aid not in seen:
+                selected.append(aid)
+                seen.add(aid)
 
     enabled = tuple(aid for aid in selected if aid in allowed)
     if enabled:

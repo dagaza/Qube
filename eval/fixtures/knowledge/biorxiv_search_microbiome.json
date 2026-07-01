@@ -1,0 +1,17 @@
+{
+  "query": "microbiome diversity soil ecology metagenomics",
+  "results": [
+    {
+      "title": "Metagenomic survey of soil microbiome diversity across temperate grassland gradients",
+      "abstract": "Shotgun metagenomics from 120 soil cores reveals taxonomic turnover linked to pH and organic carbon. Functional profiling highlights nitrogen-cycle enrichment in high-diversity plots and reduced carbohydrate-active enzymes in degraded soils.",
+      "authors": ["Tomás Herrera", "Yuki Tanaka"],
+      "url": "https://www.biorxiv.org/content/10.1101/2024.03.10.584221v1",
+      "doi": "10.1101/2024.03.10.584221",
+      "biorxiv_id": "2024.03.10.584221",
+      "year": "2024",
+      "venue": "bioRxiv",
+      "preprint": true,
+      "peer_reviewed": false
+    }
+  ]
+}

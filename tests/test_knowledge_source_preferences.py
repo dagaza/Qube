@@ -29,6 +29,17 @@ from core.settings_store import SettingsStore, reset_settings_store_for_tests  #
 
 
 class TestKnowledgeSourcePreferences(unittest.TestCase):
+    def test_additive_adapters_appended_to_stored_prefs(self) -> None:
+        enabled = get_effective_enabled_adapters(
+            SERVICE_SCIENTIFIC_EVIDENCE,
+            stored_preferences={
+                SERVICE_SCIENTIFIC_EVIDENCE: ["openalex", "arxiv"],
+            },
+        )
+        self.assertIn("pubchem", enabled)
+        self.assertIn("biorxiv", enabled)
+        self.assertIn("dblp", enabled)
+
     def test_default_scientific_adapters(self) -> None:
         enabled = get_effective_enabled_adapters(
             SERVICE_SCIENTIFIC_EVIDENCE,
@@ -70,7 +81,7 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             },
         )
         self.assertNotIn("pubmed", resolved)
-        self.assertEqual(resolved, ("arxiv", "openalex"))
+        self.assertEqual(resolved, ("arxiv", "dblp", "openalex"))
 
     def test_resolve_medical_includes_pubmed_when_enabled(self) -> None:
         resolved = resolve_service_adapters(

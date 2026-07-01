@@ -6,24 +6,54 @@ import re
 from dataclasses import dataclass
 
 from core.knowledge.adapters.catalog import (
+    implemented_adapter_ids,
     implemented_adapters_for_ui_group,
 )
 from core.knowledge.entities.activators.biomedical import BIOMEDICAL_ACTIVATOR
+from core.knowledge.scientific_discipline_packs import (
+    DISCIPLINE_PACK_VERSION,
+    SCIENTIFIC_DISCIPLINE_BIOLOGY,
+    SCIENTIFIC_DISCIPLINE_BIOMEDICAL,
+    SCIENTIFIC_DISCIPLINE_CHEMISTRY,
+    SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
+    SCIENTIFIC_DISCIPLINE_ECONOMICS,
+    SCIENTIFIC_DISCIPLINE_GENERAL,
+    SCIENTIFIC_DISCIPLINE_MEDICINE,
+    SCIENTIFIC_DISCIPLINE_PHYSICS,
+    SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,
+    SCIENTIFIC_DISCIPLINE_PSYCHOLOGY,
+    SCIENTIFIC_DISCIPLINE_SOCIOLOGY,
+    SCIENTIFIC_DISCIPLINE_PACKS,
+    get_discipline_pack,
+    normalize_discipline_id,
+)
 from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 
-SCIENTIFIC_DISCIPLINE_BIOMEDICAL = "biomedical"
-SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE = "computer_science"
-SCIENTIFIC_DISCIPLINE_ECONOMICS = "economics"
-SCIENTIFIC_DISCIPLINE_PHYSICS = "physics"
-SCIENTIFIC_DISCIPLINE_GENERAL = "general_science"
-
 DISCIPLINE_UI_GROUP: dict[str, str] = {
-    SCIENTIFIC_DISCIPLINE_BIOMEDICAL: "Science",
-    SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE: "Computer Science",
-    SCIENTIFIC_DISCIPLINE_ECONOMICS: "Economics",
-    SCIENTIFIC_DISCIPLINE_PHYSICS: "Science",
-    SCIENTIFIC_DISCIPLINE_GENERAL: "Science",
+    pack.id: pack.ui_group for pack in SCIENTIFIC_DISCIPLINE_PACKS
 }
+DISCIPLINE_UI_GROUP[SCIENTIFIC_DISCIPLINE_BIOMEDICAL] = DISCIPLINE_UI_GROUP[
+    SCIENTIFIC_DISCIPLINE_MEDICINE
+]
+
+# Re-export pack ids for callers that import from this module.
+__all__ = (
+    "SCIENTIFIC_DISCIPLINE_BIOLOGY",
+    "SCIENTIFIC_DISCIPLINE_BIOMEDICAL",
+    "SCIENTIFIC_DISCIPLINE_CHEMISTRY",
+    "SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE",
+    "SCIENTIFIC_DISCIPLINE_ECONOMICS",
+    "SCIENTIFIC_DISCIPLINE_GENERAL",
+    "SCIENTIFIC_DISCIPLINE_PHYSICS",
+    "SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE",
+    "SCIENTIFIC_DISCIPLINE_PSYCHOLOGY",
+    "SCIENTIFIC_DISCIPLINE_SOCIOLOGY",
+    "DisciplineMatch",
+    "detect_scientific_discipline",
+    "discipline_pack_version",
+    "is_medical_query",
+    "preferred_adapters_for_discipline",
+)
 
 _CS_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
@@ -57,8 +87,68 @@ _PHYSICS_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 
 _MEDICAL_HINTS = re.compile(
     r"\b(drug|medication|medicine|disease|symptom|treatment|clinical|patient|"
-    r"therapy|diagnosis|fda|vaccine|diabetes|cancer|ozempic|semaglutide)\b",
+    r"therapy|diagnosis|fda|vaccine|diabetes|cancer|ozempic|semaglutide|trial|"
+    r"hospital|mortality|efficacy|randomized)\b",
     re.IGNORECASE,
+)
+
+_BIOLOGY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(crispr|cas9|gene editing|genome|genomic|proteomics|transcriptome|"
+        r"rna-seq|single.cell|metagenom|microbiome|phylogen|evolutionary|ecology|"
+        r"molecular biology|cell biology|biorxiv|protein folding|"
+        r"dna replication|plasmid|knockout mouse|species diversity|synaptic)\b",
+        r"\b(sequencing assembly|ortholog|epigenetic|chromatin|ribosome)\b",
+    )
+)
+
+_CHEMISTRY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(pubchem|smiles|inchi|stoichiometr|synthesis|catalys[ti]s|"
+        r"chromatograph|hplc|nmr|mass spectrom|molecular formula|"
+        r"molecular weight|acetylsalicylic|cyclooxygenase|cox-2|"
+        r"organic chemistry|inorganic chemistry|polymer|electrolyte|"
+        r"reaction mechanism|oxidation state|spectroscop|titration|"
+        r"ligand binding|enzyme kinetics|active site)\b",
+        r"\b(compound|covalent|ionic|solvent|mole fraction|periodic table)\b",
+    )
+)
+
+_PSYCHOLOGY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(psycholog|psychometric|cognitive psycholog|social psycholog|"
+        r"developmental psycholog|experimental psycholog|"
+        r"working memory|cognitive load|executive function|"
+        r"attention bias|reaction time|stroop|priming effect|"
+        r"personality trait|big five|perception|memory recall|learning theory)\b",
+        r"\b(behavioral experiment|dual.task|decision making psychology)\b",
+    )
+)
+
+_SOCIOLOGY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(sociolog|social stratification|social mobility|"
+        r"income inequality|gender wage gap|social capital|"
+        r"ethnograph|qualitative sociology|demographic trend|"
+        r"class consciousness|community survey|social network analysis)\b",
+        r"\b(institutional sociology|criminolog|deviance theory)\b",
+    )
+)
+
+_POLISCI_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(political science|comparative politics|international relations|"
+        r"voter turnout|electoral reform|electoral system|"
+        r"parliamentary|legislat|democratization|authoritarian|"
+        r"geopolit|foreign policy|public opinion poll|"
+        r"party affiliation|constitutional design)\b",
+        r"\b(presidential election|regime type|state capacity)\b",
+    )
 )
 
 
@@ -86,8 +176,10 @@ def detect_scientific_discipline(
     """
     Classify a scholarly query into a discipline bucket for adapter routing.
 
-    Biomedical queries take precedence (PubMed path). Otherwise the highest
-    heuristic score wins; ties prefer CS > economics > physics > general.
+    Clinical/medicine queries take precedence (PubMed-first path). Life-science
+    queries without dominant clinical framing route to biology. Chemistry queries
+    route to PubChem when compound/synthesis/spectroscopy signals dominate.
+    Social-science queries route to psychology, sociology, or political science.
     """
     text = query or ""
     if medical_query is True or (medical_query is None and is_medical_query(text)):
@@ -99,9 +191,16 @@ def detect_scientific_discipline(
         )
 
     scores = {
+        SCIENTIFIC_DISCIPLINE_BIOLOGY: _score_patterns(text, _BIOLOGY_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_CHEMISTRY: _score_patterns(text, _CHEMISTRY_PATTERNS),
         SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE: _score_patterns(text, _CS_PATTERNS),
         SCIENTIFIC_DISCIPLINE_ECONOMICS: _score_patterns(text, _ECON_PATTERNS),
         SCIENTIFIC_DISCIPLINE_PHYSICS: _score_patterns(text, _PHYSICS_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_PSYCHOLOGY: _score_patterns(text, _PSYCHOLOGY_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_SOCIOLOGY: _score_patterns(text, _SOCIOLOGY_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE: _score_patterns(
+            text, _POLISCI_PATTERNS
+        ),
     }
     best_score = max(scores.values()) if scores else 0
     if best_score <= 0:
@@ -111,6 +210,11 @@ def detect_scientific_discipline(
             SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
             SCIENTIFIC_DISCIPLINE_ECONOMICS,
             SCIENTIFIC_DISCIPLINE_PHYSICS,
+            SCIENTIFIC_DISCIPLINE_CHEMISTRY,
+            SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,
+            SCIENTIFIC_DISCIPLINE_SOCIOLOGY,
+            SCIENTIFIC_DISCIPLINE_PSYCHOLOGY,
+            SCIENTIFIC_DISCIPLINE_BIOLOGY,
         )
         discipline = next(d for d in priority if scores[d] == best_score)
 
@@ -122,8 +226,14 @@ def detect_scientific_discipline(
 
 
 def preferred_adapters_for_discipline(discipline: str) -> tuple[str, ...]:
-    """Catalog-defined adapter order for a discipline's UI group (implemented only)."""
-    if discipline == SCIENTIFIC_DISCIPLINE_PHYSICS:
+    """Adapter order from discipline pack registry (implemented adapters only)."""
+    pack = get_discipline_pack(discipline)
+    if pack is not None and pack.status == "active":
+        implemented = implemented_adapter_ids(SERVICE_SCIENTIFIC_EVIDENCE)
+        ordered = tuple(a for a in pack.resolved_adapter_order() if a in implemented)
+        if ordered:
+            return ordered
+    if normalize_discipline_id(discipline) == SCIENTIFIC_DISCIPLINE_PHYSICS:
         order = implemented_adapters_for_ui_group(
             SERVICE_SCIENTIFIC_EVIDENCE, "Computer Science"
         )
@@ -131,3 +241,7 @@ def preferred_adapters_for_discipline(discipline: str) -> tuple[str, ...]:
             return order
     ui_group = DISCIPLINE_UI_GROUP.get(discipline, "Science")
     return implemented_adapters_for_ui_group(SERVICE_SCIENTIFIC_EVIDENCE, ui_group)
+
+
+def discipline_pack_version() -> str:
+    return DISCIPLINE_PACK_VERSION

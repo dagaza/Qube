@@ -60,6 +60,66 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "Science",
         implemented=True,
     ),
+    AdapterCatalogEntry(
+        "inspire_hep",
+        "INSPIRE-HEP",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Science",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "nasa_ads",
+        "NASA ADS",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Science",
+        implemented=False,
+        requires_api_key=True,
+        default_enabled=False,
+    ),
+    # Biology / life sciences (Phase 6c-1)
+    AdapterCatalogEntry(
+        "pubmed",
+        "PubMed",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Biology",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "biorxiv",
+        "bioRxiv",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Biology",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "openalex",
+        "OpenAlex",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Biology",
+        implemented=True,
+    ),
+    # Chemistry (Phase 6c-2)
+    AdapterCatalogEntry(
+        "pubchem",
+        "PubChem",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Chemistry",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "openalex",
+        "OpenAlex",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Chemistry",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "pubmed",
+        "PubMed",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Chemistry",
+        implemented=True,
+    ),
     # Computer science (shared adapters appear in multiple UI groups)
     AdapterCatalogEntry(
         "arxiv",
@@ -103,6 +163,50 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Economics",
         implemented=True,
+    ),
+    # Psychology (Phase 6c-3)
+    AdapterCatalogEntry(
+        "pubmed",
+        "PubMed",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Psychology",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "openalex",
+        "OpenAlex",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Psychology",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "psycinfo",
+        "PsycINFO",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Psychology",
+        implemented=False,
+    ),
+    # Social science — sociology & political science (Phase 6c-3)
+    AdapterCatalogEntry(
+        "openalex",
+        "OpenAlex",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Social Science",
+        implemented=True,
+    ),
+    AdapterCatalogEntry(
+        "socarxiv",
+        "SocArXiv",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Social Science",
+        implemented=False,
+    ),
+    AdapterCatalogEntry(
+        "ssrn",
+        "SSRN",
+        SERVICE_SCIENTIFIC_EVIDENCE,
+        "Social Science",
+        implemented=False,
     ),
     # Finance
     AdapterCatalogEntry(

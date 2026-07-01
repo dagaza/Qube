@@ -2,7 +2,7 @@
 
 **Status:** Phases 0–4 validated; Phase 5 complete; **Phase 6 Slices 2–5b implemented** — internal corpus, entities, research map, `@finance`/SEC EDGAR, `@legal`/CourtListener, user-configurable source preferences  
 **Date:** 2026-06-25 (updated 2026-06-26)  
-**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [§21 — ADR 002 Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
+**Related:** [ADR 001 — Skills orthogonal to routing](./adr/001-skills-orthogonal-to-routing.md), [ADR 002 — Merge Ranker v2](./adr/002-merge-ranker-v2-deep-research.md), [Phase 6c — Scientific Discipline Packs](./phase6c_scientific_discipline_packs.md), [Knowledge Adapter HTTP Resilience](./knowledge_adapter_http_resilience_plan.md), [§21 — Compositional entity resolution](#21-adr-002-compositional-entity-resolution-registry), [§21 — Future evolution: EntityOccurrence](#future-evolution-planned--not-implemented), [Manual QA Phase 6](./manual_qa_phase6.md), [Cognitive router](./cognitive_router.md), [Sidecar tasks](./sidecar_tasks.md), [Logging & diagnostics](./logging_and_diagnostics.md)
 
 This document is the **source of truth** for Qube’s external-knowledge architecture: trusted retrieval, scientific evidence, Knowledge Services, EvidenceBundles, and the phased rollout. It merges internal codebase analysis with external architecture review feedback.
 
@@ -950,6 +950,10 @@ Phase 6 begins after Phase 5 quality/transparency gates are met. It extends the 
 #### Slice 6 — Specialist index routing
 
 **Slice 6a status:** IMPLEMENTED — `detect_scientific_discipline()` + catalog UI-group adapter ordering; trace fields `scientific_discipline`, `scientific_discipline_ui_group`.
+
+**Slice 6b status:** IMPLEMENTED — RePEc fixture stub, DBLP live adapter, discipline-tagged eval harness (`primary_adapter`, `--min-discipline-primary-rate`).
+
+**Slice 6c status:** PLANNED (mini-phase) — expand scientific routing into a **discipline pack registry** (Medicine, Biology, Chemistry, Physics, CS, Economics, Psychology, Sociology, Political Science, …) **within `scientific_evidence` only**. Finance and Legal remain separate top-level Knowledge Services. See **[Phase 6c — Scientific Discipline Packs](./phase6c_scientific_discipline_packs.md)**.
 
 **Goal:** Query-class detection routes to bibliographic indexes already listed in §17, without hardcoding in `LLMWorker`.
 

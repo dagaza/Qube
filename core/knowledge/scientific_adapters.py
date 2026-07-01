@@ -3,17 +3,40 @@
 from __future__ import annotations
 
 from core.knowledge.adapters.arxiv_api import ADAPTER_ID as ARXIV_ID
+from core.knowledge.adapters.biorxiv import ADAPTER_ID as BIORXIV_ID
+from core.knowledge.adapters.inspire_hep import ADAPTER_ID as INSPIRE_HEP_ID
 from core.knowledge.adapters.openalex import ADAPTER_ID as OPENALEX_ID
+from core.knowledge.adapters.pubchem import ADAPTER_ID as PUBCHEM_ID
 from core.knowledge.adapters.pubmed_eutils import ADAPTER_ID as PUBMED_ID
 from core.knowledge.scientific_discipline import (
     SCIENTIFIC_DISCIPLINE_BIOMEDICAL,
+    SCIENTIFIC_DISCIPLINE_BIOLOGY,
+    SCIENTIFIC_DISCIPLINE_CHEMISTRY,
+    SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,
+    SCIENTIFIC_DISCIPLINE_PHYSICS,
+    SCIENTIFIC_DISCIPLINE_PSYCHOLOGY,
+    SCIENTIFIC_DISCIPLINE_SOCIOLOGY,
     detect_scientific_discipline,
     is_medical_query,
     preferred_adapters_for_discipline,
 )
 
 _MEDICAL_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
+_BIOLOGY_ADAPTERS = (PUBMED_ID, BIORXIV_ID, OPENALEX_ID)
+_CHEMISTRY_ADAPTERS = (PUBCHEM_ID, OPENALEX_ID, PUBMED_ID)
+_PSYCHOLOGY_ADAPTERS = (PUBMED_ID, OPENALEX_ID)
+_SOCIAL_SCIENCE_ADAPTERS = (OPENALEX_ID,)
+_PHYSICS_ADAPTERS = (ARXIV_ID, INSPIRE_HEP_ID, OPENALEX_ID)
 _SCHOLARLY_ADAPTERS = (OPENALEX_ID, ARXIV_ID)
+
+_PUBMED_ELIGIBLE = frozenset(
+    {
+        SCIENTIFIC_DISCIPLINE_BIOMEDICAL,
+        SCIENTIFIC_DISCIPLINE_BIOLOGY,
+        SCIENTIFIC_DISCIPLINE_CHEMISTRY,
+        SCIENTIFIC_DISCIPLINE_PSYCHOLOGY,
+    }
+)
 
 
 def apply_scientific_adapter_policy(
@@ -27,7 +50,7 @@ def apply_scientific_adapter_policy(
     preferred = preferred_adapters_for_discipline(match.discipline)
 
     pool = enabled
-    if match.discipline != SCIENTIFIC_DISCIPLINE_BIOMEDICAL:
+    if match.discipline not in _PUBMED_ELIGIBLE:
         pool = tuple(aid for aid in enabled if aid != PUBMED_ID)
 
     ordered = [aid for aid in preferred if aid in pool]
@@ -36,6 +59,19 @@ def apply_scientific_adapter_policy(
 
     if match.discipline == SCIENTIFIC_DISCIPLINE_BIOMEDICAL:
         return _fallback_from_enabled(pool, _MEDICAL_ADAPTERS)
+    if match.discipline == SCIENTIFIC_DISCIPLINE_BIOLOGY:
+        return _fallback_from_enabled(pool, _BIOLOGY_ADAPTERS)
+    if match.discipline == SCIENTIFIC_DISCIPLINE_CHEMISTRY:
+        return _fallback_from_enabled(pool, _CHEMISTRY_ADAPTERS)
+    if match.discipline == SCIENTIFIC_DISCIPLINE_PSYCHOLOGY:
+        return _fallback_from_enabled(pool, _PSYCHOLOGY_ADAPTERS)
+    if match.discipline in (
+        SCIENTIFIC_DISCIPLINE_SOCIOLOGY,
+        SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,
+    ):
+        return _fallback_from_enabled(pool, _SOCIAL_SCIENCE_ADAPTERS)
+    if match.discipline == SCIENTIFIC_DISCIPLINE_PHYSICS:
+        return _fallback_from_enabled(pool, _PHYSICS_ADAPTERS)
     return _fallback_from_enabled(pool, _SCHOLARLY_ADAPTERS)
 
 

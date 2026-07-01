@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from core.composer_attachments import COMPOSER_TOOLS, ComposerAttachment
+from core.composer_attachments import ComposerAttachment, composer_tools_for_palette
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 from core.composer_mention_trigger import filter_root_row_indices
 from core.composer_skills import ComposerSkillMention, list_skill_mentions_for_palette
@@ -44,6 +44,7 @@ _TOOL_ALIASES: dict[str, str] = {
     "net": "internet",
     "lib": "library",
     "mem": "memory",
+    "scientific": "evidence",
 }
 
 
@@ -194,7 +195,7 @@ def search_composer_mentions(
                 )
             )
 
-    for tool in COMPOSER_TOOLS:
+    for tool in composer_tools_for_palette(q):
         score = _score_tool(q, tool)
         if score <= 0:
             continue
