@@ -13,7 +13,12 @@ from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_evidence_bundle
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.scientific_adapters import is_medical_query
-from core.knowledge.scientific_discipline import detect_scientific_discipline
+from core.knowledge.scientific_discipline import (
+    SCIENTIFIC_DISCIPLINE_CHEMISTRY,
+    SCIENTIFIC_DISCIPLINE_ECONOMICS,
+    SCIENTIFIC_DISCIPLINE_PHYSICS,
+    detect_scientific_discipline,
+)
 from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
 from core.knowledge.source_preferences import resolve_service_adapters
 from core.knowledge.evidence_cache import get_cached_rows, make_cache_key, set_cached_rows
@@ -67,6 +72,93 @@ def _rank_candidates(
     selected = mmr_select_rows(scored, max_results=max_results)
     selected = apply_reliability_scores(selected)
     return selected, rejected
+
+
+def _ensure_chemistry_pubchem_slot(
+    kept: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    *,
+    discipline: str,
+    query: str,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Reserve at least one PubChem hit for chemistry discipline queries."""
+    if discipline != SCIENTIFIC_DISCIPLINE_CHEMISTRY:
+        return kept
+    if any(str(r.get("_adapter") or "") == "pubchem" for r in kept):
+        return kept
+    pubchem_rows = [r for r in candidates if str(r.get("_adapter") or "") == "pubchem"]
+    if not pubchem_rows:
+        return kept
+    best = max(
+        pubchem_rows,
+        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
+    )
+    if best.get("_scientific_relevance") is None:
+        from core.knowledge.ranking.relevance import score_evidence_row
+
+        best = dict(best)
+        best["_scientific_relevance"] = score_evidence_row(best, query=query)
+    trimmed = kept[: max(0, max_results - 1)]
+    return [best, *trimmed]
+
+
+def _ensure_economics_repec_slot(
+    kept: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    *,
+    discipline: str,
+    query: str,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Reserve at least one RePEc hit for economics discipline queries."""
+    if discipline != SCIENTIFIC_DISCIPLINE_ECONOMICS:
+        return kept
+    if any(str(r.get("_adapter") or "") == "repec" for r in kept):
+        return kept
+    repec_rows = [r for r in candidates if str(r.get("_adapter") or "") == "repec"]
+    if not repec_rows:
+        return kept
+    best = max(
+        repec_rows,
+        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
+    )
+    if best.get("_scientific_relevance") is None:
+        from core.knowledge.ranking.relevance import score_evidence_row
+
+        best = dict(best)
+        best["_scientific_relevance"] = score_evidence_row(best, query=query)
+    trimmed = kept[: max(0, max_results - 1)]
+    return [best, *trimmed]
+
+
+def _ensure_physics_arxiv_slot(
+    kept: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    *,
+    discipline: str,
+    query: str,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Reserve at least one arXiv hit for physics discipline queries."""
+    if discipline != SCIENTIFIC_DISCIPLINE_PHYSICS:
+        return kept
+    if any(str(r.get("_adapter") or "") == "arxiv" for r in kept):
+        return kept
+    arxiv_rows = [r for r in candidates if str(r.get("_adapter") or "") == "arxiv"]
+    if not arxiv_rows:
+        return kept
+    best = max(
+        arxiv_rows,
+        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
+    )
+    if best.get("_scientific_relevance") is None:
+        from core.knowledge.ranking.relevance import score_evidence_row
+
+        best = dict(best)
+        best["_scientific_relevance"] = score_evidence_row(best, query=query)
+    trimmed = kept[: max(0, max_results - 1)]
+    return [best, *trimmed]
 
 
 class ScientificEvidencePipeline:
@@ -155,6 +247,27 @@ class ScientificEvidencePipeline:
             ctx=ranked_ctx,
             max_results=budget,
             trial_signals=trial_signals,
+        )
+        kept = _ensure_chemistry_pubchem_slot(
+            kept,
+            candidates,
+            discipline=discipline_match.discipline,
+            query=query,
+            max_results=budget,
+        )
+        kept = _ensure_economics_repec_slot(
+            kept,
+            candidates,
+            discipline=discipline_match.discipline,
+            query=query,
+            max_results=budget,
+        )
+        kept = _ensure_physics_arxiv_slot(
+            kept,
+            candidates,
+            discipline=discipline_match.discipline,
+            query=query,
+            max_results=budget,
         )
         latency_ms = (time.time() - t0) * 1000
 

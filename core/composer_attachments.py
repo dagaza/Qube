@@ -29,7 +29,7 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
     {
         "id": "evidence",
         "label": "Scientific literature",
-        "description": "PubMed, OpenAlex, and arXiv abstracts",
+        "description": "Peer-reviewed papers and preprints across disciplines",
     },
     {
         "id": "finance",
@@ -52,7 +52,7 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
     {
         "id": "science",
         "label": "Scientific literature",
-        "description": "PubMed, OpenAlex, and arXiv abstracts (alias for @evidence)",
+        "description": "Alias for @evidence (same routing)",
         "advanced": True,
     },
     {
@@ -78,6 +78,58 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
 _WEB_COMPOSER_TOOLS = frozenset(
     {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
 )
+
+_TOOL_USAGE_HINTS: dict[str, str] = {
+    "trusted": "Use for general facts from vetted allowlisted sources.",
+    "evidence": "Use when you need cited papers; discipline-specific sources are chosen automatically.",
+    "finance": "Use for SEC filings, company financials, and regulatory disclosures.",
+    "legal": "Use for U.S. court opinions and case law.",
+    "research": "Use for a multi-step async literature review report.",
+    "internet": "Use for timely web information beyond your library.",
+    "library": "Use to search only your uploaded documents.",
+    "memory": "Use to recall facts saved from past chats.",
+    "science": "Same routing as @evidence; prefer @evidence in the palette.",
+    "wikipedia": "Use for quick encyclopedia summaries only.",
+    "pubmed": "Use for biomedical papers and clinical research.",
+    "arxiv": "Use for CS, physics, and math preprints.",
+}
+
+
+def _tool_matches_palette_filter(tool: dict[str, str | bool], query: str) -> bool:
+    """Return whether a tool should appear in browse/search palettes for ``query``."""
+    tool_id = str(tool["id"]).lower()
+    if tool.get("advanced"):
+        if not query:
+            return False
+        return query == tool_id or tool_id.startswith(query) or query.startswith(tool_id)
+    if not query:
+        return True
+    label = str(tool["label"]).lower()
+    desc = str(tool["description"]).lower()
+    return query in label or query in desc or query in tool_id
+
+
+def composer_tools_for_palette(query: str = "") -> list[dict[str, str | bool]]:
+    """Tools shown in composer palettes; hides advanced aliases unless id matches."""
+    q = (query or "").strip().lower()
+    return [tool for tool in COMPOSER_TOOLS if _tool_matches_palette_filter(tool, q)]
+
+
+def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
+    for tool in COMPOSER_TOOLS:
+        if tool["id"] == tool_id:
+            return tool
+    return None
+
+
+def composer_tool_tooltip(tool: dict[str, str | bool]) -> str:
+    label = str(tool["label"])
+    desc = str(tool["description"])
+    hint = _TOOL_USAGE_HINTS.get(str(tool["id"]), "")
+    parts = [f"{label}. {desc}"]
+    if hint:
+        parts.append(hint)
+    return " ".join(parts) + f" Inserts @[tool:{tool['id']}]."
 
 _ROLE_HEADINGS = {
     "user": "User",

@@ -59,6 +59,8 @@ class TestScientificQueryPlanner(unittest.TestCase):
         self.assertNotEqual(plan.keyword_query, plan.semantic_query)
         self.assertEqual(adapter_query_for(plan, "pubmed"), plan.keyword_query)
         self.assertEqual(adapter_query_for(plan, "arxiv"), plan.keyword_query)
+        self.assertEqual(adapter_query_for(plan, "repec"), plan.keyword_query)
+        self.assertEqual(adapter_query_for(plan, "inspire_hep"), plan.keyword_query)
         self.assertEqual(adapter_query_for(plan, "openalex"), plan.semantic_query)
 
     def test_non_medical_query_skips_entity_keywords(self) -> None:
@@ -80,6 +82,9 @@ class TestScientificPipelineAdapterSelection(unittest.TestCase):
             return []
 
         with patch(
+            "core.knowledge.pipeline_scientific.resolve_service_adapters",
+            return_value=("arxiv", "openalex", "dblp"),
+        ), patch(
             "core.knowledge.adapters.registry.SEARCH_FUNCTIONS",
             {
                 "pubmed": _pubmed,

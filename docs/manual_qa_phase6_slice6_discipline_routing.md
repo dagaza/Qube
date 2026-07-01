@@ -1,8 +1,8 @@
-# Manual QA — Phase 6 Slice 6 (Discipline routing + specialist adapters)
+# Manual QA — Phase 6 Slice 6 + Phase 6c (Discipline packs)
 
-**Purpose:** In-app validation of **Slice 6a** (heuristic discipline detection and catalog-based adapter ordering within `@evidence` / `@science`) and **Slice 6b** (RePEc fixture stub, DBLP live adapter, discipline-tagged eval harness).
+**Purpose:** In-app validation of **Slice 6a/6b** (heuristic discipline routing, DBLP/RePEc) and **Phase 6c** (life sciences, chemistry, social sciences, economics depth, physics/INSPIRE-HEP, eval harness).
 
-**Related:** [External knowledge platform plan](./external_knowledge_platform_plan.md) (Phase 6 Slice 6), [Manual QA Slices 2–4](./manual_qa_phase6.md), [Retrieval eval README](../eval/retrieval_corpus/README.md)
+**Related:** [Phase 6c discipline packs](./phase6c_scientific_discipline_packs.md), [External knowledge platform plan](./external_knowledge_platform_plan.md), [Retrieval eval README](../eval/retrieval_corpus/README.md)
 
 ---
 
@@ -10,10 +10,16 @@
 
 | Slice | Behavior |
 |-------|----------|
-| **6a** | `@evidence` / `@science` queries are classified into a **discipline bucket** (biomedical, computer science, economics, physics, general science). Enabled adapters are **re-ordered** to match the Settings UI group for that discipline. PubMed is **gated off** non-biomedical queries even when enabled in preferences. |
-| **6b** | **RePEc** (Economics) and **DBLP** (Computer Science) appear as implemented preferred sources. RePEc is **fixture-only** in production (no public search API); economics queries still succeed via **OpenAlex**. The automated eval corpus now tags `discipline` + `primary_adapter` and gates on ≥70% primary-adapter hit rate. |
+| **6a** | `@evidence` / `@science` queries classified into a **discipline bucket**. Enabled adapters **re-ordered** per discipline pack. PubMed **gated off** non-biomedical queries. |
+| **6b** | **DBLP** (CS) live; **RePEc** economics routing. |
+| **6c-1** | Medicine vs **biology** split; **bioRxiv** adapter. |
+| **6c-2** | **Chemistry** → PubChem. |
+| **6c-3** | **Psychology**, **sociology**, **political science** routing. |
+| **6c-4** | **RePEc** live via EconBiz (open economics index). |
+| **6c-5** | **INSPIRE-HEP** live (open HEP/astrophysics); NASA ADS catalog stub (API key). |
+| **6c-6** | **12-query** eval corpus; harness gates **≥70% primary rate per discipline group**. |
 
-**Terminology:** `@evidence` and `@science` both route to **Scientific literature** (`scientific_evidence`). This is separate from `@finance` and `@legal`. Composer single-source overrides (`@pubmed`, `@arxiv`) still win for one turn.
+**Terminology:** `@evidence` and `@science` → **Scientific literature** (`scientific_evidence`). Separate from `@finance` / `@legal`. Composer overrides (`@pubmed`, `@arxiv`) still win for one turn.
 
 ---
 
@@ -24,18 +30,45 @@
 | Toggle / control | Required for |
 |------------------|--------------|
 | **External knowledge pipeline (v2)** | All cases — must be **ON** |
-| **Preferred sources → Scientific literature** | QA-6A / QA-6B — default adapters **checked** (see table below) |
+| **Preferred sources → Scientific literature** | QA-6A / QA-6B / QA-6C — enable discipline adapters below |
 | **Internet / web retrieval** | All live adapter calls |
 
-**Default implemented sources (Scientific literature):**
+**Implemented sources by UI group (enable for full 6c coverage):**
 
-| UI group | Adapters (default on) |
-|----------|------------------------|
-| **Science** | PubMed, OpenAlex, arXiv |
+| UI group | Adapters |
+|----------|----------|
+| **Science** | PubMed, OpenAlex, arXiv, INSPIRE-HEP |
+| **Biology** | PubMed, bioRxiv, OpenAlex |
+| **Chemistry** | PubChem, OpenAlex, PubMed |
 | **Computer Science** | arXiv, OpenAlex, DBLP |
 | **Economics** | RePEc, OpenAlex |
+| **Psychology** | PubMed, OpenAlex |
+| **Social Science** | OpenAlex |
 
-SSRN, Crossref, Semantic Scholar remain **coming soon** (disabled checkboxes).
+Stubs (disabled): SSRN, SocArXiv, PsycINFO, NASA ADS (API key), Semantic Scholar.
+
+### Automated baseline (run before manual QA)
+
+```bash
+python3 -m unittest \
+  tests.test_scientific_discipline \
+  tests.test_scientific_discipline_packs \
+  tests.test_biorxiv_adapter \
+  tests.test_pubchem_adapter \
+  tests.test_inspire_hep_adapter \
+  tests.test_repec_adapter \
+  tests.test_ssrn_adapter \
+  tests.test_dblp_adapter \
+  tests.test_knowledge_source_preferences \
+  tests.test_scientific_query_planner \
+  tests.test_evaluate_retrieval -q
+
+# Live scientific eval (12/12 ok + per-discipline primary ≥ 70%)
+QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py \
+  --live --service scientific_evidence --min-pass 12
+```
+
+**Note:** The eval harness uses **catalog default adapters**, not your saved Settings, unless you pass `--user-prefs`.
 
 ### Audit logging (recommended)
 
@@ -54,23 +87,6 @@ Enable web search audit logging so you can confirm discipline routing without gu
 | `scientific_discipline_scores` | heuristic counts | Optional tie-break detail |
 
 **Cache tip:** If you re-run the same prompt and results look stale, restart with `QUBE_EVIDENCE_CACHE=0` or use a slightly rephrased query.
-
-### Automated baseline (run before manual QA)
-
-```bash
-# Slice 6 unit + adapter tests
-python3 -m unittest \
-  tests.test_scientific_discipline \
-  tests.test_repec_adapter \
-  tests.test_dblp_adapter \
-  tests.test_knowledge_source_preferences \
-  tests.test_scientific_query_planner \
-  tests.test_evaluate_retrieval -q
-
-# Live scientific eval (6/6 ok + discipline primary ≥ 70%)
-QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py \
-  --live --service scientific_evidence --min-pass 6
-```
 
 **Domain regression (no leakage into finance / legal):**
 
@@ -119,7 +135,7 @@ All prompts use `@evidence` unless noted. Pass criteria assume default preferred
 
 ---
 
-### QA-6A-C — Physics (arXiv / OpenAlex via CS ordering)
+### QA-6A-C — Physics (arXiv + INSPIRE-HEP)
 
 **Prompt:**
 
@@ -130,7 +146,8 @@ All prompts use `@evidence` unless noted. Pass criteria assume default preferred
 **Pass if:**
 
 - Sources are astrophysics / gravitational-wave literature (arXiv preprints acceptable).
-- Trace: `scientific_discipline: physics` (UI group may still show **Computer Science** adapter order — arXiv first).
+- Trace: `scientific_discipline: physics`; `scientific_adapters_selected` includes **`arxiv`** and optionally **`inspire_hep`**.
+- **INSPIRE-HEP** may enrich metadata (citations, curated HEP index) alongside arXiv.
 - No spurious clinical PubMed-only results.
 
 ---
@@ -245,7 +262,7 @@ Repeat **QA-6A-B** using:
 
 ---
 
-### QA-6B-C — Economics RePEc stub + OpenAlex fallback
+### QA-6B-C — Economics RePEc live + OpenAlex fallback
 
 **Prompt:**
 
@@ -256,8 +273,23 @@ Repeat **QA-6A-B** using:
 **Pass if:**
 
 - Trace shows `scientific_discipline: economics` and **`repec`** in `scientific_adapters_selected`.
-- **OpenAlex** (or mixed scholarly) sources still appear in the UI — graceful fallback when RePEc returns empty.
+- **RePEc** sources appear in the bundle (live via EconBiz / IDEAS-indexed metadata) when the adapter is enabled.
+- **OpenAlex** may appear as fallback when RePEc is disabled or returns sparse hits.
 - No fabricated RePEc handles or IDEAS URLs unless actually retrieved.
+
+### QA-6C-G — Economics eval query (monetary policy / VAR)
+
+**Prompt:**
+
+```text
+@evidence monetary policy inflation econometric VAR model central bank
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: economics`.
+- **RePEc** in adapters (primary); OpenAlex optional secondary.
+- Not routed to finance_knowledge (SEC/FRED) or legal services.
 
 ---
 
@@ -330,6 +362,107 @@ Repeat **QA-6A-B** using:
 
 **Note:** A pre–Merge Ranker v2 failure mode here was `merged_sources_post_filter: 1` with `merged_title_anchor_dropped: 7` in `web_search.log`; v2 uses weighted ranking instead of a title-first anchor gate.
 
+---
+
+## Phase 6c-1 — Life sciences (Medicine vs Biology)
+
+### QA-6C-A — Biology (molecular / ecology, not clinical)
+
+**Prompt:**
+
+```text
+@evidence microbiome diversity soil ecology metagenomics
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: biology` (not `biomedical`).
+- Adapters include **PubMed**; **bioRxiv** attempted when enabled in settings.
+- No finance/legal adapters.
+
+### QA-6C-B — Medicine unchanged (clinical query)
+
+**Prompt:**
+
+```text
+@evidence Ozempic semaglutide cardiovascular outcomes randomized trial
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: biomedical` (medicine alias).
+- **PubMed** primary; discipline routing unchanged from QA-6A-A.
+
+### QA-6C-C — Chemistry (PubChem compound query)
+
+**Prompt:**
+
+```text
+@evidence aspirin acetylsalicylic acid binding COX-2 cyclooxygenase
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: chemistry`.
+- **PubChem** in adapters; compound record includes CID / molecular metadata when available.
+- Not routed to finance/legal services.
+
+### QA-6C-D — Psychology (cognitive / experimental query)
+
+**Prompt:**
+
+```text
+@evidence working memory cognitive load dual-task experiment psychology
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: psychology`.
+- **PubMed** in adapters (primary when enabled); OpenAlex as fallback.
+- Not routed to finance/legal services.
+
+### QA-6C-E — Sociology (stratification / inequality query)
+
+**Prompt:**
+
+```text
+@evidence social stratification income inequality sociology survey methods
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: sociology`.
+- **OpenAlex** in adapters; discipline UI group **Social Science**.
+
+### QA-6C-F — Political science (electoral / comparative politics query)
+
+**Prompt:**
+
+```text
+@evidence voter turnout electoral reform democracy comparative political science
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: political_science`.
+- **OpenAlex** in adapters; discipline UI group **Social Science**.
+
+### QA-6C-H — Physics depth (INSPIRE-HEP trace)
+
+**Prompt:**
+
+```text
+@evidence gravitational wave detection LIGO binary black hole
+```
+
+**Pass if:**
+
+- Trace: `scientific_discipline: physics`.
+- **arXiv** primary in bundle; **inspire_hep** in adapters or adapter trace when enabled.
+- NASA ADS not required (catalog stub — API key only).
+
+---
+
 ## Quick reference
 
 | ID | Prompt (abbrev.) | Discipline (expected) | Primary adapter signal | Sign-off |
@@ -337,7 +470,7 @@ Repeat **QA-6A-B** using:
 | QA-6A-A | `@evidence … Ozempic semaglutide … trial` | biomedical | pubmed | |
 | QA-6A-B | `@evidence … transformer attention … NMT` | computer_science | arxiv | |
 | QA-6A-C | `@evidence … LIGO … black hole` | physics | arxiv | |
-| QA-6A-D | `@evidence … monetary policy … VAR` | economics | openalex (live) | |
+| QA-6A-D | `@evidence … monetary policy … VAR` | economics | repec | |
 | QA-6A-E | `@evidence … Arctic sea ice …` | general_science | openalex | |
 | QA-6A-F | `@science … transformer attention …` | computer_science | same as 6A-B | |
 | QA-6A-G | `@evidence … quantum error correction …` | not biomedical | no pubmed-only | |
@@ -349,6 +482,14 @@ Repeat **QA-6A-B** using:
 | QA-6B-E | `@pubmed … SGLT2 …` | override | pubmed only | |
 | QA-6B-F | `@finance …` then `@legal …` | — | no scientific leakage | |
 | QA-6B-G | `@research … ACE inhibitors …` | optional | merge ok | |
+| QA-6C-A | `@evidence microbiome … metagenomics` | biology | pubmed (+ biorxiv) | |
+| QA-6C-B | `@evidence Ozempic … trial` | biomedical | pubmed | |
+| QA-6C-C | `@evidence aspirin … COX-2` | chemistry | pubchem | |
+| QA-6C-D | `@evidence working memory … dual-task` | psychology | pubmed | |
+| QA-6C-E | `@evidence social stratification … sociology` | sociology | openalex | |
+| QA-6C-F | `@evidence voter turnout … political science` | political_science | openalex | |
+| QA-6C-G | `@evidence monetary policy … VAR` | economics | repec | |
+| QA-6C-H | `@evidence … LIGO … black hole` | physics | arxiv (+ inspire_hep) | |
 
 ---
 
@@ -359,10 +500,10 @@ Record for each session:
 1. **Qube version / branch / commit**
 2. **Session ID** (from `~/.qube/logs/qube.log` if audit enabled)
 3. **Settings snapshot:** External knowledge v2 ON; which scientific adapters enabled
-4. **Automated eval result:** `6/6 ok`, discipline primary rate ___%
-5. **Manual cases passed:** QA-6A-A … QA-6B-G (checklist above)
+4. **Automated eval result:** `12/12 ok`, overall primary rate ___%, per-discipline groups all ≥70%
+5. **Manual cases passed:** QA-6A-A … QA-6C-H (checklist above)
 
-**Slice 6 manual QA completed:** ☐ Yes ☐ No — **Tester:** __________ **Date:** __________
+**Phase 6c manual QA completed:** ☐ Yes ☐ No — **Tester:** __________ **Date:** __________
 
 ---
 
@@ -371,14 +512,19 @@ Record for each session:
 ```bash
 python3 -m unittest \
   tests.test_scientific_discipline \
+  tests.test_scientific_discipline_packs \
+  tests.test_biorxiv_adapter \
+  tests.test_pubchem_adapter \
+  tests.test_inspire_hep_adapter \
   tests.test_repec_adapter \
+  tests.test_ssrn_adapter \
   tests.test_dblp_adapter \
   tests.test_knowledge_source_preferences \
   tests.test_scientific_query_planner \
   tests.test_evaluate_retrieval -q
 
 QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py \
-  --live --service scientific_evidence --min-pass 6
+  --live --service scientific_evidence --min-pass 12
 
 python3 tools/evaluate_retrieval.py --live --service finance_knowledge --min-pass 3
 python3 tools/evaluate_retrieval.py --live --service legal_knowledge --min-pass 3

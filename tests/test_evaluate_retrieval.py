@@ -83,6 +83,47 @@ class TestEvaluateRetrieval(unittest.TestCase):
         self.assertEqual(result["status"], "partial")
         self.assertFalse(result["checks"]["wikipedia_ok"])
 
+    def test_scientific_corpus_has_twelve_discipline_queries(self) -> None:
+        data = json.loads(_SCIENTIFIC.read_text(encoding="utf-8"))
+        queries = data["queries"]
+        self.assertGreaterEqual(len(queries), 12)
+        tagged = [
+            q for q in queries
+            if q.get("discipline") and q.get("primary_adapter")
+        ]
+        self.assertEqual(len(tagged), 12)
+        self.assertEqual(data.get("schema_version"), 2)
+
+    def test_discipline_primary_stats_grouping(self) -> None:
+        entries = [
+            {"id": "a", "discipline": "biology", "primary_adapter": "pubmed"},
+            {"id": "b", "discipline": "biology", "primary_adapter": "pubmed"},
+            {"id": "c", "discipline": "chemistry", "primary_adapter": "pubchem"},
+        ]
+        results = [
+            {"checks": {"primary_ok": True}},
+            {"checks": {"primary_ok": False}},
+            {"checks": {"primary_ok": True}},
+        ]
+        stats = self.mod._discipline_primary_stats(entries, results)
+        self.assertEqual(stats["biology"]["primary_hits"], 1)
+        self.assertEqual(stats["biology"]["total"], 2)
+        self.assertEqual(stats["biology"]["primary_rate"], 0.5)
+        self.assertEqual(
+            self.mod._groups_below_threshold(stats, threshold=0.7),
+            ["biology"],
+        )
+
+    def test_groups_below_threshold_passes_when_all_ok(self) -> None:
+        stats = {
+            "physics": {"primary_hits": 1, "total": 1, "primary_rate": 1.0},
+            "chemistry": {"primary_hits": 1, "total": 1, "primary_rate": 1.0},
+        }
+        self.assertEqual(
+            self.mod._groups_below_threshold(stats, threshold=0.7),
+            [],
+        )
+
     def test_scientific_discipline_and_primary_checks(self) -> None:
         from core.knowledge.types import EvidenceBundle, EvidenceObject, WebRetrievalOutcome
 

@@ -1,0 +1,14 @@
+{
+  "query": "aspirin acetylsalicylic acid binding COX-2 cyclooxygenase",
+  "results": [
+    {
+      "title": "Aspirin (CID 2244)",
+      "abstract": "Aspirin (acetylsalicylic acid) is a nonsteroidal anti-inflammatory drug that irreversibly inhibits cyclooxygenase (COX-1 and COX-2) by acetylating a serine residue near the active site. PubChem documents binding interactions relevant to prostaglandin synthesis inhibition.",
+      "cid": 2244,
+      "molecular_formula": "C9H8O4",
+      "molecular_weight": 180.16,
+      "iupac_name": "2-acetyloxybenzoic acid",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/2244"
+    }
+  ]
+}

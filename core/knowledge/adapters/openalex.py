@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import requests
@@ -29,20 +30,31 @@ def search_openalex(
         return []
 
     headers = {"User-Agent": USER_AGENT}
-    try:
-        resp = requests.get(
-            OPENALEX_WORKS,
-            params={
-                "search": q,
-                "per_page": max(1, min(max_results, 10)),
-            },
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        results = (resp.json().get("results") or [])[:max_results]
-    except Exception as exc:
-        logger.warning("[OpenAlex] search failed: %s", exc)
+    results: list[Any] = []
+    for attempt in range(2):
+        try:
+            resp = requests.get(
+                OPENALEX_WORKS,
+                params={
+                    "search": q,
+                    "per_page": max(1, min(max_results, 10)),
+                },
+                headers=headers,
+                timeout=timeout,
+            )
+            if resp.status_code in {429, 503} and attempt == 0:
+                time.sleep(3.0)
+                continue
+            resp.raise_for_status()
+            results = (resp.json().get("results") or [])[:max_results]
+            break
+        except Exception as exc:
+            if attempt == 0:
+                time.sleep(3.0)
+                continue
+            logger.warning("[OpenAlex] search failed: %s", exc)
+            return []
+    if not results:
         return []
 
     rows: list[dict[str, Any]] = []
