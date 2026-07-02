@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "2020.emnlp-demos.6",
+      "title": "Transformers: State-of-the-Art Natural Language Processing",
+      "authors": [
+        "Thomas Wolf",
+        "Lysandre Debut",
+        "Alexander Rush"
+      ],
+      "year": 2020,
+      "venue": ["emnlp"],
+      "booktitle": "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
+      "url": "https://aclanthology.org/2020.emnlp-demos.6/",
+      "snippet": "The Transformer (Vaswani et al., 2017) has rapidly become the dominant architecture for natural language processing."
+    },
+    {
+      "id": "2017.acl-long.1",
+      "title": "Attention Is All You Need",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "year": 2017,
+      "venue": ["acl"],
+      "booktitle": "Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing",
+      "url": "https://aclanthology.org/2017.acl-long.1/",
+      "abstract": "We propose the Transformer, a model architecture eschewing recurrence and relying entirely on attention mechanisms."
+    }
+  ]
+}

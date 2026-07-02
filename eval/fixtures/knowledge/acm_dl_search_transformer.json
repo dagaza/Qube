@@ -1,0 +1,16 @@
+{
+  "query": "transformer attention mechanism neural machine translation",
+  "results": [
+    {
+      "title": "Attention Is All You Need",
+      "abstract": "We propose the Transformer, a model architecture eschewing recurrence and relying entirely on attention mechanisms to draw global dependencies between input and output.",
+      "authors": ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar"],
+      "url": "https://dl.acm.org/doi/10.5555/3295222.3295349",
+      "doi": "10.5555/3295222.3295349",
+      "venue": "Communications of the ACM",
+      "year": "2017",
+      "peer_reviewed": true,
+      "document_type": "journal_abstract"
+    }
+  ]
+}

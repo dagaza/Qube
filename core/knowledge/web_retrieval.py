@@ -103,6 +103,13 @@ def run_v2_web_retrieval(
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
 
+    if rel_diag:
+        http_summary = rel_diag.get("http_summary")
+        if isinstance(http_summary, dict):
+            from core.knowledge.provider_status import apply_http_summary
+
+            apply_http_summary(http_summary)
+
     if entity_resolution_enabled() and bundle.sources:
         from core.knowledge.entities.enrich import enrich_bundle
         from core.knowledge.entities.pipeline import context_from_bundle

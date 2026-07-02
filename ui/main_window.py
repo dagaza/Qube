@@ -2898,6 +2898,15 @@ class MainWindow(QMainWindow):
         )
         self._notification_service.action_triggered.connect(self._on_notification_service_action)
         self._notification_service.notification_shown.connect(self._on_notification_shown)
+        self._setup_provider_limit_notifications()
+
+    def _setup_provider_limit_notifications(self) -> None:
+        from core.knowledge.provider_limit_events import register_provider_limit_handler
+        from core.notification_types import provider_limit_notification_event
+
+        register_provider_limit_handler(
+            lambda event: self.emit_notification(provider_limit_notification_event(event))
+        )
 
     def _is_tts_playing(self) -> bool:
         cv = getattr(self, "conversations_view", None)
@@ -3297,6 +3306,8 @@ class MainWindow(QMainWindow):
             self._open_settings_section("voice.audio", anchor="tts_models")
         elif action_id == "open_settings_knowledge_embedding":
             self._open_settings_section("knowledge", anchor="embedding_mode")
+        elif action_id == "open_settings_knowledge_credentials":
+            self._open_settings_section("knowledge", anchor="knowledge_provider_credentials")
         elif action_id == "open_settings_ai_cognition":
             self._open_settings_section("ai.models", anchor="cognition")
 

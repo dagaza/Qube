@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable
+from typing import Any
 
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 from core.knowledge.adapters.registry import get_search_function
@@ -13,6 +13,7 @@ from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_evidence_bundle
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.scientific_adapters import is_medical_query
+from core.knowledge.scientific_adapters import discipline_ordered_adapters
 from core.knowledge.scientific_discipline import (
     SCIENTIFIC_DISCIPLINE_CHEMISTRY,
     SCIENTIFIC_DISCIPLINE_ECONOMICS,
@@ -20,8 +21,19 @@ from core.knowledge.scientific_discipline import (
     detect_scientific_discipline,
 )
 from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
-from core.knowledge.source_preferences import resolve_service_adapters
+from core.knowledge.source_preferences import (
+    get_effective_enabled_adapters,
+    resolve_service_adapters,
+)
+from core.knowledge.tiered_scientific_retrieval import (
+    split_adapter_tiers,
+    tiered_fallback_threshold,
+    tiered_retrieval_diag,
+    tiered_scientific_retrieval_enabled,
+)
+from core.knowledge.scientific_query_type import query_type_routing_diag
 from core.knowledge.evidence_cache import get_cached_rows, make_cache_key, set_cached_rows
+from core.knowledge.http_metrics import begin_turn_http_metrics, snapshot_turn_http_summary
 from core.knowledge.ranking.diversity import mmr_select_rows
 from core.knowledge.ranking.relevance import score_rows
 from core.knowledge.ranking.trial_grounding import extract_trial_signal
@@ -161,6 +173,45 @@ def _ensure_physics_arxiv_slot(
     return [best, *trimmed]
 
 
+def _collect_adapter_rows(
+    adapter_ids: tuple[str, ...],
+    *,
+    plan: Any,
+    per_adapter: int,
+) -> tuple[list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Run search functions for ``adapter_ids`` in parallel."""
+    adapter_calls: list[str] = []
+    raw_audit: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    if not adapter_ids:
+        return adapter_calls, raw_audit, candidates
+
+    with ThreadPoolExecutor(max_workers=min(3, len(adapter_ids))) as pool:
+        futures = {}
+        for aid in adapter_ids:
+            search_fn = get_search_function(aid)
+            if search_fn is None:
+                continue
+            futures[
+                pool.submit(
+                    search_fn,
+                    adapter_query_for(plan, aid),
+                    max_results=per_adapter,
+                )
+            ] = aid
+        for future in as_completed(futures):
+            aid = futures[future]
+            try:
+                rows = future.result()
+            except Exception:
+                rows = []
+            if rows:
+                adapter_calls.append(aid)
+                raw_audit.extend(dict(r) for r in rows)
+                candidates.extend(dict(r) for r in rows)
+    return adapter_calls, raw_audit, candidates
+
+
 class ScientificEvidencePipeline:
     """Parallel scientific adapter collection, Phase 3 rank, and bundle assembly."""
 
@@ -168,6 +219,7 @@ class ScientificEvidencePipeline:
         self, ctx: RetrievalContext
     ) -> tuple[EvidenceBundle, dict[str, Any] | None, list[dict[str, Any]]]:
         t0 = time.time()
+        begin_turn_http_metrics()
         plan = plan_scientific_query(
             ctx.query,
             semantic_query=ctx.semantic_query or ctx.query,
@@ -182,9 +234,27 @@ class ScientificEvidencePipeline:
             stored_preferences=get_knowledge_source_preferences(),
         )
         discipline_match = detect_scientific_discipline(ctx.query)
+        discipline_adapter_order = discipline_ordered_adapters(
+            get_effective_enabled_adapters(
+                SERVICE_SCIENTIFIC_EVIDENCE,
+                stored_preferences=get_knowledge_source_preferences(),
+            ),
+            query=ctx.query,
+        )
+        query_type_diag = query_type_routing_diag(
+            query=ctx.query,
+            adapter_ids_before=discipline_adapter_order,
+            adapter_ids_after=adapter_ids,
+        )
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
         candidates: list[dict[str, Any]] = []
+        tiered_enabled = tiered_scientific_retrieval_enabled()
+        tier_primary: tuple[str, ...] = ()
+        tier_fallback: tuple[str, ...] = ()
+        tier_threshold = tiered_fallback_threshold(budget=budget)
+        phase2_invoked = False
+        candidates_after_phase1 = 0
 
         cache_key = make_cache_key(
             knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
@@ -204,29 +274,39 @@ class ScientificEvidencePipeline:
             raw_audit.extend(dict(r) for r in candidates)
         else:
             per_adapter = max(2, budget)
-            with ThreadPoolExecutor(max_workers=min(3, len(adapter_ids))) as pool:
-                futures = {}
-                for aid in adapter_ids:
-                    search_fn = get_search_function(aid)
-                    if search_fn is None:
-                        continue
-                    futures[
-                        pool.submit(
-                            search_fn,
-                            adapter_query_for(plan, aid),
-                            max_results=per_adapter,
-                        )
-                    ] = aid
-                for future in as_completed(futures):
-                    aid = futures[future]
-                    try:
-                        rows = future.result()
-                    except Exception:
-                        rows = []
-                    if rows:
-                        adapter_calls.append(aid)
-                        raw_audit.extend(dict(r) for r in rows)
-                        candidates.extend(dict(r) for r in rows)
+            if tiered_enabled:
+                tier_primary, tier_fallback = split_adapter_tiers(
+                    adapter_ids,
+                    discipline=discipline_match.discipline,
+                )
+                calls1, audit1, rows1 = _collect_adapter_rows(
+                    tier_primary,
+                    plan=plan,
+                    per_adapter=per_adapter,
+                )
+                adapter_calls.extend(calls1)
+                raw_audit.extend(audit1)
+                candidates.extend(rows1)
+                candidates_after_phase1 = len(candidates)
+                if len(candidates) < tier_threshold and tier_fallback:
+                    phase2_invoked = True
+                    calls2, audit2, rows2 = _collect_adapter_rows(
+                        tier_fallback,
+                        plan=plan,
+                        per_adapter=per_adapter,
+                    )
+                    adapter_calls.extend(calls2)
+                    raw_audit.extend(audit2)
+                    candidates.extend(rows2)
+            else:
+                calls, audit, rows = _collect_adapter_rows(
+                    adapter_ids,
+                    plan=plan,
+                    per_adapter=per_adapter,
+                )
+                adapter_calls.extend(calls)
+                raw_audit.extend(audit)
+                candidates.extend(rows)
             adapter_calls = sorted(dict.fromkeys(adapter_calls))
             candidates = _dedupe_rows(candidates)
             if candidates:
@@ -272,6 +352,24 @@ class ScientificEvidencePipeline:
         latency_ms = (time.time() - t0) * 1000
 
         if not kept:
+            rel_diag_empty = {
+                "scientific_relevance_dropped": len(rejected),
+                "scientific_adapters_selected": list(adapter_ids),
+                "scientific_discipline": discipline_match.discipline,
+                "scientific_discipline_ui_group": discipline_match.ui_group,
+                "scientific_query_type_routing": query_type_diag,
+                "scientific_tiered_retrieval": tiered_retrieval_diag(
+                    enabled=tiered_enabled,
+                    primary=tier_primary,
+                    fallback=tier_fallback,
+                    phase2_invoked=phase2_invoked,
+                    threshold=tier_threshold,
+                    candidate_count=candidates_after_phase1,
+                ),
+                "http_summary": snapshot_turn_http_summary(
+                    cache_hits_evidence=1 if cached is not None else 0,
+                ),
+            }
             return (
                 build_empty_bundle(
                     query_raw=ctx.query,
@@ -281,7 +379,7 @@ class ScientificEvidencePipeline:
                     stop_reason="relevance_filtered",
                     knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
                 ),
-                {"scientific_relevance_dropped": len(rejected), "scientific_adapters_selected": list(adapter_ids), "scientific_discipline": discipline_match.discipline, "scientific_discipline_ui_group": discipline_match.ui_group},
+                rel_diag_empty,
                 raw_audit,
             )
 
@@ -322,6 +420,18 @@ class ScientificEvidencePipeline:
             "scientific_discipline": discipline_match.discipline,
             "scientific_discipline_ui_group": discipline_match.ui_group,
             "scientific_discipline_scores": discipline_match.scores,
+            "scientific_query_type_routing": query_type_diag,
+            "scientific_tiered_retrieval": tiered_retrieval_diag(
+                enabled=tiered_enabled,
+                primary=tier_primary,
+                fallback=tier_fallback,
+                phase2_invoked=phase2_invoked,
+                threshold=tier_threshold,
+                candidate_count=candidates_after_phase1,
+            ),
+            "http_summary": snapshot_turn_http_summary(
+                cache_hits_evidence=1 if cached is not None else 0,
+            ),
         }
         return bundle, rel_diag, raw_audit
 

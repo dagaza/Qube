@@ -1,0 +1,15 @@
+{
+  "bills": [
+    {
+      "congress": 118,
+      "number": "8152",
+      "type": "HR",
+      "originChamber": "House",
+      "title": "American Privacy Rights Act of 2024",
+      "latestAction": {
+        "actionDate": "2024-06-25",
+        "text": "Referred to the House Committee on Energy and Commerce."
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-"""Legal knowledge service (@legal — CourtListener case law)."""
+"""Legal knowledge service (@legal — CourtListener and jurisdiction adapters)."""
 
 from __future__ import annotations
 

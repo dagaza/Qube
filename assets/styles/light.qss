@@ -263,6 +263,62 @@ QLabel[class="SettingsHint"] {
     font-style: italic;
 }
 
+#KnowledgeProviderStatusTable {
+    background-color: transparent;
+    border: none;
+    gridline-color: transparent;
+    outline: none;
+}
+
+#KnowledgeProviderStatusTable QAbstractScrollArea::viewport {
+    background-color: transparent;
+}
+
+#KnowledgeProviderStatusTable::item {
+    color: #334155;
+    background-color: transparent;
+    padding: 6px 10px;
+    border: none;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+#KnowledgeProviderStatusTable::item:alternate {
+    background-color: rgba(226, 232, 240, 0.65);
+}
+
+#KnowledgeProviderStatusTable QHeaderView::section {
+    background-color: rgba(248, 250, 252, 0.95);
+    color: #64748b;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+#KnowledgeProviderStatusTable QTableCornerButton::section {
+    background-color: rgba(248, 250, 252, 0.95);
+    border: none;
+}
+
+#KnowledgeProviderStatusTable QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 4px 2px 4px 0;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::handle:vertical {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 4px;
+    min-height: 24px;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::add-line:vertical,
+#KnowledgeProviderStatusTable QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
 /* --- 3. INPUTS & TEXT AREAS --- */
 QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
     background-color: #ffffff;

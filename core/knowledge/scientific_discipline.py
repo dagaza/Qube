@@ -17,6 +17,8 @@ from core.knowledge.scientific_discipline_packs import (
     SCIENTIFIC_DISCIPLINE_CHEMISTRY,
     SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
     SCIENTIFIC_DISCIPLINE_ECONOMICS,
+    SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT,
+    SCIENTIFIC_DISCIPLINE_ENGINEERING,
     SCIENTIFIC_DISCIPLINE_GENERAL,
     SCIENTIFIC_DISCIPLINE_MEDICINE,
     SCIENTIFIC_DISCIPLINE_PHYSICS,
@@ -43,6 +45,8 @@ __all__ = (
     "SCIENTIFIC_DISCIPLINE_CHEMISTRY",
     "SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE",
     "SCIENTIFIC_DISCIPLINE_ECONOMICS",
+    "SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT",
+    "SCIENTIFIC_DISCIPLINE_ENGINEERING",
     "SCIENTIFIC_DISCIPLINE_GENERAL",
     "SCIENTIFIC_DISCIPLINE_PHYSICS",
     "SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE",
@@ -151,6 +155,32 @@ _POLISCI_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     )
 )
 
+_EARTH_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(climate change|global warming|sea level rise|"
+        r"remote sensing|satellite imagery|geospatial|"
+        r"ocean temperature|sea surface temperature|"
+        r"precipitation anomaly|drought index|"
+        r"carbon cycle|greenhouse gas|atmospheric co2|"
+        r"noaa dataset|nasa earthdata|cmr collection|"
+        r"geoscience|meteorolog|hydrolog|ecosystem model|usgs publication)\b",
+        r"\b(ghrsst|modis|sentinel|landsat|reanalysis|gridded climate)\b",
+    )
+)
+
+_ENGINEERING_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\b(electrical engineering|mechanical engineering|civil engineering|"
+        r"embedded systems|signal processing|control systems|"
+        r"power electronics|robotics|semiconductor|"
+        r"ieee standard|rfc \d+|internet protocol|"
+        r"wireless communication|antenna design|vlsi|fpga)\b",
+        r"\b(structural engineering|manufacturing process|cybersecurity standard)\b",
+    )
+)
+
 
 def is_medical_query(query: str) -> bool:
     text = query or ""
@@ -201,6 +231,8 @@ def detect_scientific_discipline(
         SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE: _score_patterns(
             text, _POLISCI_PATTERNS
         ),
+        SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT: _score_patterns(text, _EARTH_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_ENGINEERING: _score_patterns(text, _ENGINEERING_PATTERNS),
     }
     best_score = max(scores.values()) if scores else 0
     if best_score <= 0:
@@ -208,7 +240,9 @@ def detect_scientific_discipline(
     else:
         priority = (
             SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
+            SCIENTIFIC_DISCIPLINE_ENGINEERING,
             SCIENTIFIC_DISCIPLINE_ECONOMICS,
+            SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT,
             SCIENTIFIC_DISCIPLINE_PHYSICS,
             SCIENTIFIC_DISCIPLINE_CHEMISTRY,
             SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,

@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "kind": "searchresults#company",
+      "description_identifier": ["incorporated-on"],
+      "company_status": "active",
+      "date_of_creation": "1947-11-27",
+      "company_type": "plc",
+      "company_number": "00445790",
+      "address": {
+        "address_line_1": "Tesco House, Shire Park",
+        "locality": "Welwyn Garden City",
+        "postal_code": "AL7 1GA",
+        "country": "England"
+      },
+      "title": "TESCO PLC",
+      "description": "00445790 - Incorporated on 27 November 1947",
+      "snippet": "TESCO PLC - Active - Private limited company"
+    }
+  ],
+  "items_per_page": 1,
+  "kind": "search#companies",
+  "page_number": 1,
+  "start_index": 0,
+  "total_results": 1
+}

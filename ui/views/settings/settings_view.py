@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QPainter, QColor, QPixmap
+from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QHideEvent, QPainter, QColor, QPixmap
 
 from core.paths import resource_path
 
@@ -262,6 +262,23 @@ class SettingsView(
             if wrapper.property("settings_anchor") == anchor:
                 scroll.ensureWidgetVisible(wrapper, 0, 80)
                 return
+
+    def _maybe_start_provider_status_refresh(self) -> None:
+        row = self.settings_section_list.currentRow()
+        if row < 0:
+            return
+        item = self.settings_section_list.item(row)
+        if item is None:
+            return
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if section_id != "knowledge":
+            return
+        from ui.views.settings.sections.knowledge_provider_status import (
+            start_provider_status_refresh_timer,
+        )
+
+        start_provider_status_refresh_timer(self)
+
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_active_native_model_label()
@@ -274,6 +291,16 @@ class SettingsView(
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
+        self._maybe_start_provider_status_refresh()
+
+    def hideEvent(self, event: QHideEvent) -> None:
+        super().hideEvent(event)
+        from ui.views.settings.sections.knowledge_provider_status import (
+            stop_provider_status_refresh_timer,
+        )
+
+        stop_provider_status_refresh_timer(self)
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -561,6 +588,13 @@ class SettingsView(
 
         if hasattr(self, "companion_preview"):
             self.companion_preview.apply_theme(is_dark)
+
+        if hasattr(self, "knowledge_provider_status_table"):
+            from ui.views.settings.sections.knowledge_provider_status import (
+                sync_provider_status_panel,
+            )
+
+            sync_provider_status_panel(self, is_dark=is_dark)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
         # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.
@@ -747,6 +781,19 @@ class SettingsView(
             self, "_sync_all_diagnostic_log_recording_toggles"
         ):
             self._sync_all_diagnostic_log_recording_toggles()
+        if section_id == "knowledge":
+            from ui.views.settings.sections.knowledge_provider_status import (
+                start_provider_status_refresh_timer,
+                stop_provider_status_refresh_timer,
+            )
+
+            start_provider_status_refresh_timer(self)
+        else:
+            from ui.views.settings.sections.knowledge_provider_status import (
+                stop_provider_status_refresh_timer,
+            )
+
+            stop_provider_status_refresh_timer(self)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
     def _update_settings_section_nav_colors(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)

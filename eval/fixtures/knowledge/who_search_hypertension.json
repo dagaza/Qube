@@ -1,0 +1,14 @@
+{
+  "value": [
+    {
+      "IndicatorCode": "NCD_CCS_BP_SVY",
+      "IndicatorName": "Has conducted a recent, national adult risk factor survey covering raised blood pressure/hypertension",
+      "Language": "EN"
+    },
+    {
+      "IndicatorCode": "NCD_CCS_BP_TARGET",
+      "IndicatorName": "Existence of a national target on blood pressure / hypertension",
+      "Language": "EN"
+    }
+  ]
+}

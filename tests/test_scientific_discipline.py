@@ -57,7 +57,7 @@ class TestScientificDisciplineDetection(unittest.TestCase):
 
     def test_general_science_fallback(self) -> None:
         match = detect_scientific_discipline(
-            "climate change Arctic sea ice extent satellite observations"
+            "reproducibility crisis open science preregistration meta-analysis"
         )
         self.assertEqual(match.discipline, SCIENTIFIC_DISCIPLINE_GENERAL)
 
@@ -182,7 +182,10 @@ class TestDisciplineAdapterPolicy(unittest.TestCase):
 
     def test_catalog_cs_group_order(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE)
-        self.assertEqual(order, ("arxiv", "dblp", "openalex"))
+        self.assertEqual(
+            order,
+            ("arxiv", "dblp", "openreview", "acl_anthology", "openalex", "acm_dl"),
+        )
 
     def test_resolve_service_adapters_cs_order(self) -> None:
         resolved = resolve_service_adapters(

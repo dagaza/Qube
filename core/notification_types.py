@@ -293,3 +293,29 @@ def deep_research_complete_event(
         dedupe_key=f"deep_research:{session_id}:{preview}",
         coalesce_group="deep_research_complete",
     )
+
+
+def provider_limit_notification_event(event: object) -> NotificationEvent:
+    """Informational notice when an anonymous provider quota is exhausted."""
+    from core.knowledge.provider_credentials import get_provider_credential_spec
+
+    provider_id = getattr(event, "provider_id", "")
+    spec = get_provider_credential_spec(str(provider_id))
+    label = spec.label if spec is not None else str(provider_id or "Provider")
+    body = (
+        f"You've reached the anonymous limit for {label} today. "
+        "Add a free API key in Settings for a higher daily budget, "
+        "or try again after midnight UTC."
+    )
+    return NotificationEvent(
+        title=f"{label} quota reached",
+        body=body,
+        severity=NotificationSeverity.INFO,
+        category="system",
+        action_label="Open Settings",
+        action_id="open_settings_knowledge_credentials",
+        auto_dismiss_ms=12000,
+        dedupe_key=f"provider_limit:{provider_id}",
+        rate_limit_key=f"provider_limit:{provider_id}",
+        rate_limit_sec=86400.0,
+    )

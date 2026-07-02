@@ -1,6 +1,6 @@
 # Knowledge Adapter HTTP Resilience — Design & Implementation Plan
 
-**Status:** Planned (not implemented)  
+**Status:** Slices 1–6 implemented  
 **Date:** 2026-06-25  
 **Parent:** [External Knowledge Platform Plan](./external_knowledge_platform_plan.md)  
 **Related:** [Phase 6c — Scientific Discipline Packs](./phase6c_scientific_discipline_packs.md), [Logging & diagnostics](./logging_and_diagnostics.md), [Eval retrieval corpus](../eval/retrieval_corpus/README.md)
@@ -442,15 +442,17 @@ Initial backend wiring may ship with env vars only; user UI follows in Slice 9 (
 
 **Goal:** Live eval reliability if Slices 1–4 insufficient.
 
+**Status:** Pacing changes **deferred** pending live eval evidence. Throttle reporting in eval JSON **implemented** (partial).
+
 **Work:**
 
-- Increase `_inter_query_delay_s` for scientific live eval (configurable, default 2 → 5s).
-- Optional `--serial-adapters` eval flag: run adapters sequentially (slower, gentler).
-- Report throttle events in eval JSON output distinctly from retrieval failure.
+- Increase `_inter_query_delay_s` for scientific live eval (configurable, default 2 → 5s). **Deferred**
+- Optional `--serial-adapters` eval flag: run adapters sequentially (slower, gentler). **Deferred**
+- Report throttle events in eval JSON output distinctly from retrieval failure. **Done** (`http_throttle_report.py`, per-query `throttle_report` + `failure_class`)
 
 **Acceptance criteria:**
 
-- 12-query live eval passes discipline gates ≥70% on 3 consecutive runs (same day, with keys).
+- 12-query live eval passes discipline gates ≥70% on 3 consecutive runs (same day, with keys). **Not validated in CI** — run manually after Slices 1–6.
 
 ---
 

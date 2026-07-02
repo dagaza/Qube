@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "description": "Tier 3–4 adapters — ACM DL, PsycINFO, Bloomberg (fixture-backed eval)",
+  "queries": [
+    {
+      "id": "11a_acm_dl",
+      "query": "transformer attention mechanism neural machine translation ACM",
+      "discipline": "computer_science",
+      "primary_adapter": "arxiv",
+      "expect_adapters": ["acm_dl", "arxiv"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "11b_psycinfo",
+      "query": "working memory cognitive load dual task psychology experiment",
+      "discipline": "psychology",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["psycinfo", "pubmed"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "11c_bloomberg",
+      "query": "Microsoft stock equity symbol lookup",
+      "discipline": null,
+      "service": "finance_knowledge",
+      "primary_adapter": "sec_edgar",
+      "expect_adapters": ["bloomberg_api"],
+      "min_sources": 1,
+      "medical": false
+    }
+  ]
+}

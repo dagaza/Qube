@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "id": "abc12",
+      "type": "preprints",
+      "attributes": {
+        "title": "Income inequality and social mobility in U.S. metropolitan areas",
+        "description": "<p>We study how rising income inequality relates to intergenerational mobility using survey and census microdata.</p>",
+        "doi": "10.31235/osf.io/abc12",
+        "date_published": "2024-06-01T00:00:00",
+        "links": {
+          "html": "https://osf.io/preprints/socarxiv/abc12/"
+        }
+      }
+    }
+  ]
+}

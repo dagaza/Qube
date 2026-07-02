@@ -1,0 +1,69 @@
+{
+  "version": "v1_slice12_p0",
+  "description": "P0 institutional adapters — health, statistics, engineering, geoscience, nutrition",
+  "queries": [
+    {
+      "id": "p0_health_001",
+      "query": "hypertension clinical trials recruiting",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["clinicaltrials_gov"],
+      "force_adapter": "clinicaltrials_gov"
+    },
+    {
+      "id": "p0_health_002",
+      "query": "lisinopril hypertension drug label",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["openfda"],
+      "force_adapter": "openfda"
+    },
+    {
+      "id": "p0_stats_001",
+      "query": "unemployment rate world bank indicator",
+      "service": "scientific_evidence",
+      "discipline": "economics",
+      "expect_adapters": ["world_bank"],
+      "force_adapter": "world_bank"
+    },
+    {
+      "id": "p0_stats_002",
+      "query": "eurozone unemployment statistics",
+      "service": "scientific_evidence",
+      "discipline": "economics",
+      "expect_adapters": ["eurostat"],
+      "force_adapter": "eurostat"
+    },
+    {
+      "id": "p0_geo_001",
+      "query": "earthquake hazard USGS publication",
+      "service": "scientific_evidence",
+      "discipline": "earth_environment",
+      "expect_adapters": ["usgs"],
+      "force_adapter": "usgs"
+    },
+    {
+      "id": "p0_nutrition_001",
+      "query": "apple nutrition food composition",
+      "service": "scientific_evidence",
+      "discipline": "general_science",
+      "expect_adapters": ["usda_fdc"],
+      "force_adapter": "usda_fdc"
+    },
+    {
+      "id": "p0_eng_001",
+      "query": "TLS 1.3 transport layer security RFC",
+      "service": "scientific_evidence",
+      "discipline": "engineering",
+      "expect_adapters": ["ietf_rfc"],
+      "force_adapter": "ietf_rfc"
+    },
+    {
+      "id": "p0_finance_001",
+      "query": "unemployment labor force statistics",
+      "service": "finance_knowledge",
+      "expect_adapters": ["world_bank"],
+      "force_adapter": "world_bank"
+    }
+  ]
+}

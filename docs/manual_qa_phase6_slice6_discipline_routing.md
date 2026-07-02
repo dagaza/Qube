@@ -88,6 +88,8 @@ Enable web search audit logging so you can confirm discipline routing without gu
 
 **Cache tip:** If you re-run the same prompt and results look stale, restart with `QUBE_EVIDENCE_CACHE=0` or use a slightly rephrased query.
 
+**Optional API keys (HTTP resilience Slice 2):** For heavier live eval or repeated `@evidence` sessions, set `QUBE_OPENALEX_API_KEY` and/or `QUBE_NCBI_API_KEY` before launch. Adapters work without them; keys only raise provider quotas. Confirm OpenAlex budget with `curl "https://api.openalex.org/rate-limit?api_key=$QUBE_OPENALEX_API_KEY"`.
+
 **Domain regression (no leakage into finance / legal):**
 
 ```bash

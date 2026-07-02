@@ -1,0 +1,16 @@
+{
+  "vulnerabilities": [
+    {
+      "cve": {
+        "id": "CVE-2024-0001",
+        "published": "2024-01-15T00:00:00.000",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Weak encryption implementation in example library."
+          }
+        ]
+      }
+    }
+  ]
+}

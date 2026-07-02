@@ -1,0 +1,38 @@
+{
+  "version": "v1_slice16",
+  "description": "Slice 16 — molecular biology and chemistry (ChEMBL, UniProt, PDB, ChemRxiv)",
+  "queries": [
+    {
+      "id": "s16_chem_001",
+      "query": "aspirin bioactive molecule ChEMBL",
+      "service": "scientific_evidence",
+      "discipline": "chemistry",
+      "expect_adapters": ["chembl"],
+      "force_adapter": "chembl"
+    },
+    {
+      "id": "s16_chem_002",
+      "query": "lithium battery chemistry preprint ChemRxiv",
+      "service": "scientific_evidence",
+      "discipline": "chemistry",
+      "expect_adapters": ["chemrxiv"],
+      "force_adapter": "chemrxiv"
+    },
+    {
+      "id": "s16_bio_001",
+      "query": "human insulin protein UniProt",
+      "service": "scientific_evidence",
+      "discipline": "biology",
+      "expect_adapters": ["uniprot"],
+      "force_adapter": "uniprot"
+    },
+    {
+      "id": "s16_bio_002",
+      "query": "hemoglobin protein structure PDB",
+      "service": "scientific_evidence",
+      "discipline": "biology",
+      "expect_adapters": ["pdb"],
+      "force_adapter": "pdb"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-import requests
+from core.knowledge.http_client import knowledge_get
 
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 
@@ -75,7 +75,7 @@ def load_company_tickers(*, force_refresh: bool = False) -> dict[str, Any]:
             logger.warning("[SEC] fixture tickers load failed: %s", exc)
 
     try:
-        resp = requests.get(COMPANY_TICKERS_URL, headers=_headers(), timeout=15.0)
+        resp = knowledge_get(COMPANY_TICKERS_URL, headers=_headers(), timeout=15.0)
         resp.raise_for_status()
         _tickers_cache = resp.json()
         _tickers_loaded_at = now
@@ -181,7 +181,7 @@ def resolve_company(query: str, tickers_json: dict[str, Any] | None = None) -> d
 def fetch_submissions(cik: int, *, timeout: float = 12.0) -> dict[str, Any] | None:
     url = SUBMISSIONS_URL.format(cik=int(cik))
     try:
-        resp = requests.get(url, headers=_headers(), timeout=timeout)
+        resp = knowledge_get(url, headers=_headers(), timeout=timeout)
         resp.raise_for_status()
         payload = resp.json()
         return payload if isinstance(payload, dict) else None

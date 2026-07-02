@@ -1,0 +1,18 @@
+{
+  "count": 2,
+  "total_hits": 2,
+  "patents": [
+    {
+      "patent_id": "11234567",
+      "patent_title": "Lithium-ion battery electrode composition",
+      "patent_date": "2024-03-15",
+      "assignee_organization": "Example Battery Corp"
+    },
+    {
+      "patent_id": "10987654",
+      "patent_title": "Solid-state lithium battery cell",
+      "patent_date": "2023-11-02",
+      "assignee_organization": "Energy Storage Inc"
+    }
+  ]
+}

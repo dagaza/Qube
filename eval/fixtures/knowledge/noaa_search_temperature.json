@@ -1,0 +1,13 @@
+{
+  "results": [
+    {
+      "uid": "gov.noaa.ncdc:C00821",
+      "id": "GHCND",
+      "name": "Global Historical Climatology Network - Daily",
+      "datacoverage": 100,
+      "mindate": "1763-01-01",
+      "maxdate": "2025-06-30",
+      "rank": 41
+    }
+  ]
+}

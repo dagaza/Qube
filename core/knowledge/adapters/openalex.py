@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.credential_resolver import merge_query_params
+from core.knowledge.http_client import BudgetExhaustedError, knowledge_get
 
 ADAPTER_ID = "openalex"
 RETRIEVAL_METHOD = "works_search"
@@ -30,30 +29,27 @@ def search_openalex(
         return []
 
     headers = {"User-Agent": USER_AGENT}
-    results: list[Any] = []
-    for attempt in range(2):
-        try:
-            resp = requests.get(
-                OPENALEX_WORKS,
-                params={
+    try:
+        resp = knowledge_get(
+            OPENALEX_WORKS,
+            params=merge_query_params(
+                {
                     "search": q,
                     "per_page": max(1, min(max_results, 10)),
                 },
-                headers=headers,
-                timeout=timeout,
-            )
-            if resp.status_code in {429, 503} and attempt == 0:
-                time.sleep(3.0)
-                continue
-            resp.raise_for_status()
-            results = (resp.json().get("results") or [])[:max_results]
-            break
-        except Exception as exc:
-            if attempt == 0:
-                time.sleep(3.0)
-                continue
-            logger.warning("[OpenAlex] search failed: %s", exc)
-            return []
+                "openalex",
+            ),
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        results = (resp.json().get("results") or [])[:max_results]
+    except BudgetExhaustedError:
+        logger.warning("[OpenAlex] daily budget exhausted; skipping retry")
+        return []
+    except Exception as exc:
+        logger.warning("[OpenAlex] search failed: %s", exc)
+        return []
     if not results:
         return []
 

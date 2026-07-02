@@ -1,0 +1,15 @@
+{
+  "results": [
+    {
+      "set_id": "sample-set-id",
+      "effective_time": "20240101",
+      "openfda": {
+        "brand_name": ["Lisinopril"],
+        "generic_name": ["lisinopril"]
+      },
+      "indications_and_usage": [
+        "Treatment of hypertension to lower blood pressure."
+      ]
+    }
+  ]
+}

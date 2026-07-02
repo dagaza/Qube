@@ -386,12 +386,50 @@ def build_trusted_knowledge_bundle(
 _SCIENTIFIC_AUTHORITY = {
     "pubmed": 0.92,
     "openalex": 0.86,
+    "crossref": 0.87,
+    "semantic_scholar": 0.88,
     "repec": 0.88,
     "dblp": 0.84,
     "biorxiv": 0.78,
     "pubchem": 0.90,
     "inspire_hep": 0.88,
+    "nasa_ads": 0.90,
     "arxiv": 0.72,
+    "europe_pmc": 0.90,
+    "socarxiv": 0.76,
+    "ssrn": 0.82,
+    "psyarxiv": 0.76,
+    "noaa": 0.92,
+    "nasa_earthdata": 0.91,
+    "acm_dl": 0.86,
+    "psycinfo": 0.91,
+    "clinicaltrials_gov": 0.94,
+    "openfda": 0.96,
+    "world_bank": 0.94,
+    "eurostat": 0.94,
+    "usgs": 0.95,
+    "usda_fdc": 0.93,
+    "nist": 0.94,
+    "ietf_rfc": 0.96,
+    "bls": 0.95,
+    "us_census": 0.95,
+    "ieee_xplore": 0.90,
+    "oecd": 0.95,
+    "nice": 0.97,
+    "cdc": 0.96,
+    "who": 0.96,
+    "ipcc": 0.97,
+    "fao": 0.95,
+    "usda": 0.94,
+    "copernicus_cds": 0.95,
+    "openreview": 0.87,
+    "acl_anthology": 0.89,
+    "chembl": 0.91,
+    "uniprot": 0.93,
+    "pdb": 0.92,
+    "chemrxiv": 0.78,
+    "uspto_patentsview": 0.90,
+    "epo_espacenet": 0.91,
 }
 
 
@@ -702,27 +740,39 @@ def _finance_row_to_evidence(
     index: int,
     retrieved_at: float,
 ) -> EvidenceObject:
-    title = str(row.get("title") or "").strip() or f"SEC filing {index}"
+    title = str(row.get("title") or "").strip() or f"Finance source {index}"
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     form = str(row.get("form") or "").strip()
+    adapter = str(row.get("_adapter") or "sec_edgar")
+    retrieval_method = str(row.get("retrieval_method") or _finance_retrieval_method(adapter))
     relevance = float(row.get("_web_token_overlap") or 0.82)
+    authority = _finance_authority(adapter)
+    venue = str(row.get("venue") or _finance_venue(adapter))
+    document_type = str(row.get("document_type") or _finance_document_type(adapter))
 
     return EvidenceObject(
         id=f"ek_{index}",
-        source_id=str(row.get("accession_number") or url or title[:96]),
-        adapter=str(row.get("_adapter") or "sec_edgar"),
-        retrieval_method="sec_submissions",
+        source_id=str(
+            row.get("accession_number")
+            or row.get("series_id")
+            or row.get("company_number")
+            or row.get("symbol")
+            or url
+            or title[:96]
+        ),
+        adapter=adapter,
+        retrieval_method=retrieval_method,
         title=title,
         excerpt=snippet,
-        full_text=None,
+        full_text=row.get("full_text") if isinstance(row.get("full_text"), str) else None,
         url=url,
-        document_type=str(row.get("document_type") or "sec_filing"),
+        document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=str(row.get("venue") or "SEC EDGAR"),
+        venue=venue,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
-        authority_score=0.95,
+        authority_score=authority,
         reliability_score=0.9,
         freshness_score=freshness_score(row.get("publication_date")),
         retrieved_at=retrieved_at,
@@ -732,27 +782,116 @@ def _finance_row_to_evidence(
             "company": row.get("company"),
             "cik": row.get("cik"),
             "report_date": row.get("report_date"),
+            "series_id": row.get("series_id"),
+            "frequency": row.get("frequency"),
+            "units": row.get("units"),
+            "company_number": row.get("company_number"),
+            "company_status": row.get("company_status"),
+            "symbol": row.get("symbol"),
+            "region": row.get("region"),
+            "currency": row.get("currency"),
         },
     )
+
+
+def _finance_retrieval_method(adapter: str) -> str:
+    return {
+        "fred": "fred_series_search",
+        "companies_house": "companies_house_search",
+        "alpha_vantage": "alpha_vantage_symbol_search",
+        "bloomberg_api": "bloomberg_instrument_search",
+    }.get(adapter, "sec_submissions")
+
+
+def _finance_venue(adapter: str) -> str:
+    return {
+        "fred": "FRED",
+        "companies_house": "Companies House",
+        "alpha_vantage": "Alpha Vantage",
+        "bloomberg_api": "Bloomberg",
+        "world_bank": "World Bank Open Data",
+        "eurostat": "Eurostat",
+        "bls": "BLS",
+        "oecd": "OECD",
+    }.get(adapter, "SEC EDGAR")
+
+
+def _finance_document_type(adapter: str) -> str:
+    return {
+        "fred": "macro_series",
+        "companies_house": "uk_company_registry",
+        "alpha_vantage": "market_symbol",
+        "bloomberg_api": "market_symbol",
+        "world_bank": "statistical_indicator",
+        "eurostat": "statistical_release",
+        "bls": "statistical_release",
+        "oecd": "statistical_release",
+    }.get(adapter, "sec_filing")
+
+
+def _finance_authority(adapter: str) -> float:
+    return {
+        "sec_edgar": 0.95,
+        "fred": 0.92,
+        "companies_house": 0.93,
+        "alpha_vantage": 0.85,
+        "bloomberg_api": 0.94,
+        "world_bank": 0.94,
+        "eurostat": 0.94,
+        "bls": 0.95,
+        "oecd": 0.95,
+    }.get(adapter, 0.9)
 
 
 def _compute_finance_coverage(
     sources: tuple[EvidenceObject, ...],
 ) -> tuple[str, str]:
     if not sources:
-        return COVERAGE_NONE, "No SEC filings found."
-    forms = {str((s.raw_metadata or {}).get("form") or s.title.split("—")[0].strip()) for s in sources}
+        return COVERAGE_NONE, "No finance sources found."
+    adapters = {s.adapter for s in sources}
+    if adapters == {"fred"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} FRED macro series matched the query.",
+        )
+    if adapters == {"companies_house"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} UK company registry match(es) from Companies House.",
+        )
+    if adapters == {"alpha_vantage"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} market symbol match(es) from Alpha Vantage.",
+        )
+    forms = {
+        str((s.raw_metadata or {}).get("form") or s.title.split("—")[0].strip())
+        for s in sources
+        if s.adapter == "sec_edgar"
+    }
+    forms.discard("")
     if len(sources) >= 2 and len(forms) >= 2:
         return (
             COVERAGE_EXCELLENT,
-            f"{len(sources)} SEC filing(s) across {len(forms)} form types.",
+            f"{len(sources)} finance source(s) across {len(forms)} SEC form types.",
         )
     if len(sources) >= 1:
+        if len(adapters) > 1:
+            labels = ", ".join(sorted(_finance_venue(a) for a in adapters))
+            return (
+                COVERAGE_ADEQUATE,
+                f"{len(sources)} finance source(s) from {labels}.",
+            )
+        if "fred" in adapters:
+            return (
+                COVERAGE_ADEQUATE,
+                f"{len(sources)} FRED macro series retrieved.",
+            )
         return (
             COVERAGE_ADEQUATE,
             f"{len(sources)} SEC filing(s) retrieved from EDGAR.",
         )
-    return COVERAGE_POOR, "Limited SEC filing coverage."
+    return COVERAGE_POOR, "Limited finance source coverage."
 
 
 def _compute_finance_confidence(sources: tuple[EvidenceObject, ...]) -> float:
@@ -825,24 +964,34 @@ def _legal_row_to_evidence(
     index: int,
     retrieved_at: float,
 ) -> EvidenceObject:
-    title = str(row.get("title") or "").strip() or f"Court opinion {index}"
+    title = str(row.get("title") or "").strip() or f"Legal source {index}"
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     relevance = float(row.get("_web_token_overlap") or 0.82)
-    authority = float(row.get("authority_score") or 0.82)
+    adapter = str(row.get("_adapter") or "courtlistener")
+    authority = float(row.get("authority_score") or _legal_authority(adapter))
+    retrieval_method = str(row.get("retrieval_method") or _legal_retrieval_method(adapter))
+    document_type = str(row.get("document_type") or _legal_document_type(adapter))
+    venue = str(row.get("venue") or _legal_venue(adapter))
 
     return EvidenceObject(
         id=f"ek_{index}",
-        source_id=str(row.get("cluster_id") or url or title[:96]),
-        adapter=str(row.get("_adapter") or "courtlistener"),
-        retrieval_method="courtlistener_search",
+        source_id=str(
+            row.get("cluster_id")
+            or row.get("celex")
+            or row.get("case_id")
+            or url
+            or title[:96]
+        ),
+        adapter=adapter,
+        retrieval_method=retrieval_method,
         title=title,
         excerpt=snippet,
         full_text=None,
         url=url,
-        document_type=str(row.get("document_type") or "court_opinion"),
+        document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=str(row.get("venue") or "CourtListener"),
+        venue=venue,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=max(0.0, min(1.0, authority)),
@@ -856,8 +1005,57 @@ def _legal_row_to_evidence(
             "citation": row.get("citation"),
             "docket_number": row.get("docket_number"),
             "judge": row.get("judge"),
+            "celex": row.get("celex"),
+            "database_id": row.get("database_id"),
+            "case_id": row.get("case_id"),
+            "jurisdiction": row.get("jurisdiction"),
         },
     )
+
+
+def _legal_retrieval_method(adapter: str) -> str:
+    return {
+        "courtlistener": "courtlistener_search",
+        "eur_lex": "eur_lex_search",
+        "canlii": "canlii_search",
+        "bailii": "bailii_search",
+        "congress_gov": "congress_gov_bill_search",
+        "govinfo": "govinfo_search",
+        "legislation_uk": "legislation_uk_search",
+    }.get(adapter, "courtlistener_search")
+
+
+def _legal_venue(adapter: str) -> str:
+    return {
+        "courtlistener": "CourtListener",
+        "eur_lex": "EUR-Lex",
+        "canlii": "CanLII",
+        "bailii": "BAILII",
+        "congress_gov": "Congress.gov",
+        "govinfo": "GovInfo",
+        "legislation_uk": "legislation.gov.uk",
+    }.get(adapter, "CourtListener")
+
+
+def _legal_document_type(adapter: str) -> str:
+    return {
+        "eur_lex": "eu_legal_act",
+        "congress_gov": "federal_bill",
+        "govinfo": "federal_publication",
+        "legislation_uk": "uk_legislation",
+    }.get(adapter, "court_opinion")
+
+
+def _legal_authority(adapter: str) -> float:
+    return {
+        "courtlistener": 0.82,
+        "eur_lex": 0.94,
+        "canlii": 0.84,
+        "bailii": 0.82,
+        "congress_gov": 0.96,
+        "govinfo": 0.95,
+        "legislation_uk": 0.96,
+    }.get(adapter, 0.82)
 
 
 def _compute_legal_coverage(
@@ -865,10 +1063,32 @@ def _compute_legal_coverage(
 ) -> tuple[str, str]:
     if not sources:
         return COVERAGE_NONE, "No case law opinions found."
+    adapters = {s.adapter for s in sources}
+    if adapters == {"eur_lex"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} EU legal act(s) matched from EUR-Lex.",
+        )
+    if adapters == {"canlii"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} Canadian case(s) matched from CanLII.",
+        )
+    if adapters == {"bailii"}:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} UK/Irish case(s) matched from BAILII.",
+        )
     courts = {
         str((s.raw_metadata or {}).get("court_id") or s.venue)
         for s in sources
     }
+    if len(sources) >= 2 and len(adapters) > 1:
+        labels = ", ".join(sorted(_legal_venue(a) for a in adapters))
+        return (
+            COVERAGE_ADEQUATE,
+            f"{len(sources)} legal source(s) from {labels}.",
+        )
     if len(sources) >= 2 and len(courts) >= 2:
         return COVERAGE_EXCELLENT, "Multiple opinions from distinct courts."
     if len(sources) >= 2:
@@ -895,7 +1115,7 @@ def build_legal_knowledge_bundle(
     stop_reason: str = "budget_exhausted",
     knowledge_service: str = SERVICE_LEGAL_KNOWLEDGE,
 ) -> EvidenceBundle:
-    """Build a legal-knowledge bundle from CourtListener rows."""
+    """Build a legal-knowledge bundle from jurisdiction adapter rows."""
     retrieved_at = time.time()
     sources = tuple(
         _legal_row_to_evidence(row, index=i, retrieved_at=retrieved_at)

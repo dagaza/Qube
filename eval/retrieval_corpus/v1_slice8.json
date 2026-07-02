@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "description": "Slice 8 — EUR-Lex, CanLII, BAILII legal jurisdiction adapters (fixture-backed eval)",
+  "queries": [
+    {
+      "id": "8_eur_lex",
+      "query": "General Data Protection Regulation personal data processing EU",
+      "service": "legal_knowledge",
+      "expect_adapters": ["eur_lex"],
+      "min_sources": 1,
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "8_canlii",
+      "query": "Canadian Charter of Rights constitutional amendment Quebec",
+      "service": "legal_knowledge",
+      "expect_adapters": ["canlii"],
+      "min_sources": 1,
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "8_bailii",
+      "query": "Donoghue v Stevenson negligence duty of care",
+      "service": "legal_knowledge",
+      "expect_adapters": ["bailii"],
+      "min_sources": 1,
+      "require_warning": "not_legal_advice"
+    }
+  ]
+}

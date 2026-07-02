@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "id": 120720,
+      "url": "https://tools.cdc.gov/api/v2/resources/media/120720.json",
+      "name": "CDC: Tips from Former Smokers - Bill: Smoking and Diabetes Don't Mix",
+      "description": "Bill, a person with diabetes, started smoking at 15, not realizing the problems it would eventually cause him and his family.",
+      "mediaType": "Video",
+      "datePublished": "2014-03-27",
+      "tags": [
+        {
+          "id": 5510,
+          "name": "Diabetes",
+          "type": "Topic"
+        }
+      ]
+    }
+  ],
+  "source": "media"
+}
