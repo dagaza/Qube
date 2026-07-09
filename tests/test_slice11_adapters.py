@@ -61,8 +61,8 @@ class TestTier3Tier4Registry(unittest.TestCase):
         self.assertIsNotNone(bbg_hint)
         assert psyc_hint is not None
         assert bbg_hint is not None
-        self.assertIn("Provider credentials", psyc_hint)
-        self.assertIn("Provider credentials", bbg_hint)
+        self.assertIn("Configure", psyc_hint)
+        self.assertIn("Configure", bbg_hint)
 
     def test_discipline_pack_updates(self) -> None:
         cs = get_discipline_pack(SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE)

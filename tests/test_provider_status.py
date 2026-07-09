@@ -150,7 +150,10 @@ class ProviderLimitNotificationTests(unittest.TestCase):
             resets_at=utc_midnight_after(),
         )
         notification = provider_limit_notification_event(event)
-        self.assertEqual(notification.action_id, "open_settings_knowledge_credentials")
+        self.assertEqual(
+            notification.action_id,
+            "open_settings_knowledge_credentials:openalex",
+        )
         self.assertIn("anonymous limit", notification.body.lower())
         self.assertEqual(notification.rate_limit_sec, 86400.0)
 

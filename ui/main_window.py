@@ -3306,20 +3306,42 @@ class MainWindow(QMainWindow):
             self._open_settings_section("voice.audio", anchor="tts_models")
         elif action_id == "open_settings_knowledge_embedding":
             self._open_settings_section("knowledge", anchor="embedding_mode")
-        elif action_id == "open_settings_knowledge_credentials":
-            self._open_settings_section("knowledge", anchor="knowledge_provider_credentials")
+        elif action_id == "open_settings_knowledge_credentials" or action_id.startswith(
+            "open_settings_knowledge_credentials:"
+        ):
+            provider_id = None
+            if ":" in action_id:
+                provider_id = action_id.split(":", 1)[1].strip() or None
+            self._open_settings_section(
+                "knowledge",
+                anchor="knowledge_live_sources",
+                configure_provider_id=provider_id,
+            )
         elif action_id == "open_settings_ai_cognition":
             self._open_settings_section("ai.models", anchor="cognition")
 
-    def _open_settings_section(self, section: str, *, anchor: str | None = None) -> None:
+    def _open_settings_section(
+        self,
+        section: str,
+        *,
+        anchor: str | None = None,
+        configure_provider_id: str | None = None,
+    ) -> None:
         self._restore_workspace_from_tray()
         if hasattr(self, "nav_settings"):
             self.nav_settings.setChecked(True)
             self._route_view(5, self.nav_settings)
-        if anchor and hasattr(self, "settings_view") and hasattr(
+        if hasattr(self, "settings_view") and hasattr(
             self.settings_view, "select_settings_section"
         ):
-            QTimer.singleShot(0, lambda: self.settings_view.select_settings_section(section, anchor=anchor))
+            QTimer.singleShot(
+                0,
+                lambda: self.settings_view.select_settings_section(
+                    section,
+                    anchor=anchor,
+                    configure_provider_id=configure_provider_id,
+                ),
+            )
 
     def _guard_embedding_feature_toggle(self, toggle, checked: bool) -> bool:
         if not checked:

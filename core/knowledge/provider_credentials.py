@@ -403,7 +403,7 @@ def list_active_provider_credential_specs() -> tuple[ProviderCredentialSpec, ...
 
 
 def adapter_credentials_hint(adapter_id: str) -> str | None:
-    """Tooltip line linking a live adapter to Provider credentials."""
+    """Tooltip line linking a live adapter to Configure."""
     pid = provider_id_for_adapter(adapter_id)
     if pid is None:
         return None
@@ -411,9 +411,9 @@ def adapter_credentials_hint(adapter_id: str) -> str | None:
     if spec is None or not provider_has_implemented_adapter(spec):
         return None
     if spec.key_required:
-        return "Configure the required API key in Provider credentials above."
+        return "Requires an API key — use Configure to add one."
     if spec.supports_free_api_key:
-        return "Optional free API key available in Provider credentials above."
+        return "Optional free API key available — use Configure to improve limits."
     return None
 
 

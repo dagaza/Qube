@@ -36,11 +36,18 @@ from core.knowledge.credentials import (
 )
 from core.knowledge.provider_status import record_provider_credential_test
 from core.knowledge.provider_credential_test import test_provider_credential
-from core.knowledge.provider_credentials import get_provider_credential_spec
+from core.knowledge.provider_credentials import (
+    get_provider_credential_spec,
+    provider_id_for_adapter,
+)
 from core.knowledge.source_preferences import set_adapter_enabled
+from ui.components.provider_credential_dialog import open_provider_credential_dialog
 from ui.views.settings.sections.knowledge_provider_credentials import sync_provider_credential_rows
 from ui.views.settings.sections.knowledge_provider_status import sync_provider_status_panel
-from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
+from ui.views.settings.sections.knowledge_sources import (
+    sync_knowledge_source_checkboxes,
+    sync_live_source_rows,
+)
 from core.bootstrap_search_models import (
     format_embedding_mode_switch_confirm_body,
     format_search_preset_download_failure,
@@ -122,8 +129,68 @@ class KnowledgeHandlersMixin:
             enabled=checked,
         )
         set_knowledge_source_preferences(prefs)
-        sync_knowledge_source_checkboxes(self)
+        sync_live_source_rows(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_SOURCE_PREFERENCES)
+        if checked:
+            self._maybe_nudge_key_required_source(adapter_id)
+
+    def _on_live_source_configure_clicked(self, adapter_id: str) -> None:
+        provider_id = provider_id_for_adapter(adapter_id)
+        if not provider_id:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        open_provider_credential_dialog(
+            self,
+            provider_id,
+            is_dark=is_dark,
+            parent=self.window(),
+        )
+
+    def _maybe_nudge_key_required_source(self, adapter_id: str) -> None:
+        """One-time nudge when enabling a key-required source without a key."""
+        from core.knowledge.adapters.catalog import get_adapter_entry
+        from core.knowledge.credentials import resolve_credential
+        from core.knowledge.source_access_summary import summarize_source_access
+
+        entry = get_adapter_entry(adapter_id)
+        if entry is None:
+            return
+        summary = summarize_source_access(entry)
+        if summary.badge != "key_required":
+            return
+
+        provider_id = summary.provider_id
+        if not provider_id:
+            return
+        cred = resolve_credential(provider_id)
+        if cred.secret:
+            return
+
+        spec = get_provider_credential_spec(provider_id)
+        label = spec.label if spec is not None else entry.label
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self.window(),
+            f"{label} needs an API key",
+            f"{label} requires an API key to return results.\n\nConfigure now?",
+            is_dark=is_dark,
+            confirm_text="CONFIGURE",
+            cancel_text="NOT NOW",
+            dialog_width=460,
+        )
+        if dlg.exec():
+            open_provider_credential_dialog(
+                self,
+                provider_id,
+                is_dark=is_dark,
+                parent=self.window(),
+            )
+
+    def _on_knowledge_setup_callout_dismiss(self) -> None:
+        self.knowledge_setup_callout_dismissed = True
+        shell = getattr(self, "knowledge_setup_callout_shell", None)
+        if shell is not None:
+            shell.setVisible(False)
 
     def _provider_credential_field(self, provider_id: str) -> QLineEdit | None:
         fields = getattr(self, "knowledge_provider_key_fields", None)
@@ -134,6 +201,7 @@ class KnowledgeHandlersMixin:
     def _on_provider_credential_editing_finished(self, provider_id: str) -> None:
         if env_override_active(provider_id):
             sync_provider_credential_rows(self)
+            sync_live_source_rows(self)
             return
         field = self._provider_credential_field(provider_id)
         if field is None:
@@ -144,6 +212,8 @@ class KnowledgeHandlersMixin:
         set_provider_api_key(provider_id, text)
         field.clear()
         sync_provider_credential_rows(self)
+        sync_live_source_rows(self)
+        sync_provider_status_panel(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
 
     def _on_provider_credential_clear(self, provider_id: str) -> None:
@@ -152,6 +222,8 @@ class KnowledgeHandlersMixin:
         if field is not None:
             field.clear()
         sync_provider_credential_rows(self)
+        sync_live_source_rows(self)
+        sync_provider_status_panel(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
 
     def _on_provider_credential_signup(self, provider_id: str) -> None:
@@ -170,6 +242,7 @@ class KnowledgeHandlersMixin:
             if field is not None:
                 field.clear()
             sync_provider_credential_rows(self)
+            sync_live_source_rows(self)
             self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
 
         worker = ProviderCredentialTestWorker(
@@ -183,6 +256,7 @@ class KnowledgeHandlersMixin:
             self._provider_credential_test_worker = None
             record_provider_credential_test(pid, ok=ok, message=message)
             sync_provider_credential_rows(self)
+            sync_live_source_rows(self)
             sync_provider_status_panel(self)
             PrestigeDialog(
                 self.window(),

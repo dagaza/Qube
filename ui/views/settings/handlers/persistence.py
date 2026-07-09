@@ -346,7 +346,11 @@ class PersistenceHandlersMixin:
             self.deep_research_toggle.blockSignals(True)
             self.deep_research_toggle.setChecked(get_deep_research_enabled())
             self.deep_research_toggle.blockSignals(False)
-        if hasattr(self, "knowledge_source_checkboxes"):
+        if hasattr(self, "knowledge_live_source_rows"):
+            from ui.views.settings.sections.knowledge_sources import sync_live_source_rows
+
+            sync_live_source_rows(self)
+        elif hasattr(self, "knowledge_source_checkboxes"):
             from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
 
             sync_knowledge_source_checkboxes(self)

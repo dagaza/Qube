@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFrame,
     QHeaderView,
-    QLabel,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from core.knowledge.provider_status import ProviderHealth, list_provider_status_rows
+from core.knowledge.provider_status import list_provider_status_rows
+from ui.views.settings.knowledge_provider_status_style import (
+    apply_provider_status_row_style,
+    apply_provider_status_table_theme,
+)
 from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
 
 _TABLE_OBJECT_NAME = "KnowledgeProviderStatusTable"
@@ -27,18 +29,7 @@ def _resolve_is_dark(host) -> bool:
     return getattr(host.window(), "_is_dark_theme", True)
 
 
-def _health_foreground(health: ProviderHealth, *, is_dark: bool) -> QColor | None:
-    """Semantic health tint; None keeps themed table text from QSS."""
-    if health == ProviderHealth.GOOD:
-        return QColor("#a6e3a1" if is_dark else "#15803d")
-    if health == ProviderHealth.DEGRADED:
-        return QColor("#f9e2af" if is_dark else "#b45309")
-    if health == ProviderHealth.UNKNOWN:
-        return QColor("#a6adc8" if is_dark else "#64748b")
-    return None
-
-
-def _configure_provider_status_table(table: QTableWidget) -> None:
+def _configure_provider_status_table(table: QTableWidget, *, is_dark: bool) -> None:
     table.setObjectName(_TABLE_OBJECT_NAME)
     table.setHorizontalHeaderLabels(["Provider", "Status", "Quota", "Health"])
     table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -56,12 +47,13 @@ def _configure_provider_status_table(table: QTableWidget) -> None:
     table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
     table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     table.setShowGrid(False)
-    table.setAlternatingRowColors(True)
+    table.setAlternatingRowColors(False)
     table.setWordWrap(True)
     table.setFrameShape(QFrame.Shape.NoFrame)
     table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    apply_provider_status_table_theme(table, is_dark=is_dark)
 
 
 def _sync_provider_status_table_height(table: QTableWidget) -> None:
@@ -102,7 +94,7 @@ def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QW
     inner_layout.addWidget(intro)
 
     table = QTableWidget(0, 4)
-    _configure_provider_status_table(table)
+    _configure_provider_status_table(table, is_dark=is_dark)
 
     shell = QWidget()
     shell.setObjectName("SettingsLogCard")
@@ -133,6 +125,8 @@ def sync_provider_status_panel(host, *, is_dark: bool | None = None) -> None:
     if is_dark is None:
         is_dark = _resolve_is_dark(host)
 
+    apply_provider_status_table_theme(table, is_dark=is_dark)
+
     rows = list_provider_status_rows()
     table.setRowCount(len(rows))
     text_alignment = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -158,9 +152,16 @@ def sync_provider_status_panel(host, *, is_dark: bool | None = None) -> None:
         quota_item.setToolTip(tooltip)
         health_item.setToolTip(tooltip)
 
-        health_color = _health_foreground(status.health, is_dark=is_dark)
-        if health_color is not None:
-            health_item.setForeground(health_color)
+        apply_provider_status_row_style(
+            row_idx=row_idx,
+            provider_item=provider_item,
+            status_item=status_item,
+            quota_item=quota_item,
+            health_item=health_item,
+            status_text=status.status,
+            health_text=status.health.value,
+            is_dark=is_dark,
+        )
 
         table.setItem(row_idx, 0, provider_item)
         table.setItem(row_idx, 1, status_item)

@@ -243,6 +243,15 @@ QLabel[class="SettingsHint"] {
     border-radius: 8px;
 }
 
+#ProviderCredentialDialogCard {
+    background: transparent;
+    border: none;
+}
+
+#ProviderCredentialDialogCard QLabel {
+    background: transparent;
+}
+
 #SettingsLogTitle {
     color: #1e293b;
     font-size: 13px;
@@ -261,6 +270,91 @@ QLabel[class="SettingsHint"] {
     font-size: 11px;
     font-weight: normal;
     font-style: italic;
+}
+
+#KnowledgeSourceGroupLabel {
+    color: #1e293b;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+#KnowledgeAccessBadge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 72px;
+}
+
+#KnowledgeAccessBadge[access="free"] {
+    color: #64748b;
+    background-color: rgba(100, 116, 139, 0.1);
+}
+
+#KnowledgeAccessBadge[access="optional_key"] {
+    color: #b45309;
+    background-color: rgba(180, 83, 9, 0.1);
+}
+
+#KnowledgeAccessBadge[access="key_required"] {
+    color: #be123c;
+    background-color: rgba(190, 18, 60, 0.1);
+}
+
+#KnowledgeAccessBadge[access="connected"] {
+    color: #15803d;
+    background-color: rgba(21, 128, 61, 0.1);
+}
+
+#KnowledgeAccessBadge[access="env_override"] {
+    color: #1d4ed8;
+    background-color: rgba(29, 78, 216, 0.1);
+}
+
+#KnowledgeAccessBadge[access="coming_soon"] {
+    color: #94a3b8;
+    background-color: rgba(148, 163, 184, 0.15);
+}
+
+#KnowledgeAccessHint {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+#KnowledgeConfigureButton {
+    padding: 4px 10px;
+    min-height: 24px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    background: transparent;
+}
+
+#KnowledgeConfigureButton:hover {
+    background-color: rgba(37, 99, 235, 0.08);
+}
+
+#KnowledgeSetupCallout {
+    background-color: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.2);
+    border-radius: 8px;
+}
+
+#KnowledgeSetupCalloutBody {
+    color: #92400e;
+    font-size: 12px;
+}
+
+#KnowledgeSetupCalloutDismiss {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    background: transparent;
 }
 
 #KnowledgeProviderStatusTable {

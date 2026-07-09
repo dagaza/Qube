@@ -26,10 +26,7 @@ from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
-from ui.views.settings.sections.knowledge_sources import build_knowledge_sources_section
-from ui.views.settings.sections.knowledge_provider_credentials import (
-    build_knowledge_provider_credentials_section,
-)
+from ui.views.settings.sections.knowledge_sources import build_knowledge_live_sources_section
 from ui.views.settings.sections.knowledge_provider_status import (
     build_knowledge_provider_status_section,
 )
@@ -164,12 +161,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
     layout.addWidget(deep_research_row)
 
-    layout.addWidget(build_knowledge_provider_credentials_section(host))
+    add_subsection_to_layout(layout, "Live sources", anchor="knowledge_live_sources")
+    layout.addWidget(build_knowledge_live_sources_section(host))
 
     layout.addWidget(build_knowledge_provider_status_section(host, is_dark=is_dark))
-
-    add_subsection_to_layout(layout, "Preferred sources", anchor="knowledge_sources")
-    layout.addWidget(build_knowledge_sources_section(host))
 
     embedding_download_row = make_bootstrap_download_row(
         host,

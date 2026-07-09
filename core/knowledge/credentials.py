@@ -236,7 +236,7 @@ def credential_mode_label(provider_id: str) -> str:
 
 
 def connection_mode_display(provider_id: str) -> str:
-    """User-facing status line for Settings → Provider credentials."""
+    """User-facing status line for Settings live source Configure dialogs."""
     from core.knowledge.provider_credentials import (
         get_provider_credential_spec,
         provider_has_implemented_adapter,

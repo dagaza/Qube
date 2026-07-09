@@ -48,7 +48,7 @@ class TestSlice13Registry(unittest.TestCase):
         hint = adapter_credentials_hint("nice")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("Provider credentials", hint)
+        self.assertIn("Configure", hint)
         spec = get_provider_credential_spec("nice")
         self.assertIsNotNone(spec)
         assert spec is not None

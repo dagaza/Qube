@@ -304,7 +304,7 @@ def provider_limit_notification_event(event: object) -> NotificationEvent:
     label = spec.label if spec is not None else str(provider_id or "Provider")
     body = (
         f"You've reached the anonymous limit for {label} today. "
-        "Add a free API key in Settings for a higher daily budget, "
+        "Add a free API key in Settings → Live sources for a higher daily budget, "
         "or try again after midnight UTC."
     )
     return NotificationEvent(
@@ -313,7 +313,7 @@ def provider_limit_notification_event(event: object) -> NotificationEvent:
         severity=NotificationSeverity.INFO,
         category="system",
         action_label="Open Settings",
-        action_id="open_settings_knowledge_credentials",
+        action_id=f"open_settings_knowledge_credentials:{provider_id}",
         auto_dismiss_ms=12000,
         dedupe_key=f"provider_limit:{provider_id}",
         rate_limit_key=f"provider_limit:{provider_id}",

@@ -308,6 +308,22 @@ def build_provider_status(provider_id: str, *, summary: Mapping[str, Any] | None
     )
 
 
+def provider_quota_hint(provider_id: str) -> str | None:
+    """Short limit hint for live source rows; None when not useful to display."""
+    label = _quota_label((provider_id or "").strip().lower(), _active_http_summary())
+    if label in {
+        "—",
+        "Policy limits apply",
+        "Key required",
+        "Token required",
+        "Credentials required",
+        "URL required",
+        "Connected token",
+    }:
+        return None
+    return label
+
+
 def list_provider_status_rows(*, summary: Mapping[str, Any] | None = None) -> list[ProviderStatus]:
     active_summary = summary if summary is not None else _active_http_summary()
     rows: list[ProviderStatus] = []

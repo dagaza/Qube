@@ -88,8 +88,8 @@ class TestP0Registry(unittest.TestCase):
         self.assertIsNotNone(ieee_hint)
         assert bls_hint is not None
         assert ieee_hint is not None
-        self.assertIn("Provider credentials", bls_hint)
-        self.assertIn("Provider credentials", ieee_hint)
+        self.assertIn("Configure", bls_hint)
+        self.assertIn("Configure", ieee_hint)
 
     def test_discipline_pack_updates(self) -> None:
         medicine = get_discipline_pack(SCIENTIFIC_DISCIPLINE_MEDICINE)

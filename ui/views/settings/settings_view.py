@@ -236,7 +236,11 @@ class SettingsView(
         self._settings_json_dialog: SettingsJsonEditorDialog | None = None
         self._setup_settings_file_watcher()
     def select_settings_section(
-        self, section: str, *, anchor: str | None = None
+        self,
+        section: str,
+        *,
+        anchor: str | None = None,
+        configure_provider_id: str | None = None,
     ) -> None:
         """Show a settings section by stable id, title, or legacy title."""
         section_id = resolve_section_id(section)
@@ -247,6 +251,23 @@ class SettingsView(
             self.settings_section_list.setCurrentRow(row)
         if anchor:
             QTimer.singleShot(0, lambda: self._scroll_to_settings_anchor(anchor))
+        if configure_provider_id:
+            pid = str(configure_provider_id).strip().lower()
+
+            def _open_configure() -> None:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                from ui.components.provider_credential_dialog import (
+                    open_provider_credential_dialog,
+                )
+
+                open_provider_credential_dialog(
+                    self,
+                    pid,
+                    is_dark=is_dark,
+                    parent=self.window(),
+                )
+
+            QTimer.singleShot(120, _open_configure)
     def _scroll_to_settings_anchor(self, anchor: str) -> None:
         scroll = self.settings_section_stack.currentWidget()
         if scroll is None or not isinstance(scroll, QScrollArea):
@@ -595,6 +616,13 @@ class SettingsView(
             )
 
             sync_provider_status_panel(self, is_dark=is_dark)
+
+        if hasattr(self, "knowledge_live_source_rows"):
+            from ui.views.settings.sections.knowledge_sources import (
+                refresh_live_source_access_badges,
+            )
+
+            refresh_live_source_access_badges(self)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
         # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.

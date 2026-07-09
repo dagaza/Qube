@@ -1,4 +1,4 @@
-"""Provider credential rows (Settings → Knowledge)."""
+"""Provider credential card builder (Settings → Knowledge live sources)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -21,30 +22,33 @@ from core.knowledge.credentials import (
 from core.knowledge.provider_credentials import (
     ProviderCredentialSpec,
     get_provider_credential_spec,
-    list_active_provider_credential_specs,
     provider_has_implemented_adapter,
 )
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
-from ui.views.settings.widgets import (
-    add_subsection_to_layout,
-    make_settings_hint,
-    wrap_subsection,
-)
 
 
-def _build_provider_credential_card(host, spec: ProviderCredentialSpec) -> QWidget:
-    """One bordered card per knowledge provider."""
+def build_provider_credential_card(
+    host,
+    spec: ProviderCredentialSpec,
+    *,
+    include_title: bool = True,
+    for_dialog: bool = False,
+) -> QWidget:
+    """Reusable credential form for inline cards or configure dialogs."""
     implemented = provider_has_implemented_adapter(spec)
 
     card = QWidget()
-    card.setObjectName("SettingsLogCard")
+    card.setObjectName(
+        "ProviderCredentialDialogCard" if for_dialog else "SettingsLogCard"
+    )
     card_layout = QVBoxLayout(card)
-    card_layout.setContentsMargins(14, 12, 14, 12)
+    card_layout.setContentsMargins(14 if not for_dialog else 0, 12 if not for_dialog else 0, 14 if not for_dialog else 0, 12 if not for_dialog else 0)
     card_layout.setSpacing(10)
 
-    title = QLabel(spec.label)
-    title.setObjectName("SettingsLogTitle")
-    card_layout.addWidget(title)
+    if include_title:
+        title = QLabel(spec.label)
+        title.setObjectName("SettingsLogTitle")
+        card_layout.addWidget(title)
 
     if spec.key_benefits:
         benefit_lbl = QLabel(spec.key_benefits)
@@ -68,7 +72,13 @@ def _build_provider_credential_card(host, spec: ProviderCredentialSpec) -> QWidg
     key_field.setEnabled(implemented and (not spec.key_required or spec.supports_free_api_key))
     if spec.key_required and not implemented:
         key_field.setEnabled(False)
-    key_field.setMinimumWidth(220)
+    if for_dialog:
+        key_field.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+    else:
+        key_field.setMinimumWidth(220)
     form.addRow("API key", key_field)
     card_layout.addLayout(form)
 
@@ -84,9 +94,7 @@ def _build_provider_credential_card(host, spec: ProviderCredentialSpec) -> QWidg
     signup_btn.setToolTip("Open the provider sign-up page in your browser.")
     signup_btn.setEnabled(bool(spec.signup_url))
     signup_btn.clicked.connect(
-        lambda _checked=False, pid=spec.provider_id, h=host: h._on_provider_credential_signup(
-            pid
-        )
+        lambda _checked=False, pid=spec.provider_id, h=host: h._on_provider_credential_signup(pid)
     )
 
     clear_btn = QPushButton("Clear saved key")
@@ -96,15 +104,24 @@ def _build_provider_credential_card(host, spec: ProviderCredentialSpec) -> QWidg
     )
     apply_brand_danger(clear_btn, icon_name="fa5s.eraser")
 
-    btn_row = QWidget()
-    btn_row_layout = QHBoxLayout(btn_row)
-    btn_row_layout.setContentsMargins(0, 0, 0, 0)
-    btn_row_layout.setSpacing(8)
-    btn_row_layout.addWidget(test_btn)
-    btn_row_layout.addWidget(signup_btn)
-    btn_row_layout.addWidget(clear_btn)
-    btn_row_layout.addStretch(1)
-    card_layout.addWidget(btn_row)
+    if for_dialog:
+        btn_col = QVBoxLayout()
+        btn_col.setContentsMargins(0, 0, 0, 0)
+        btn_col.setSpacing(8)
+        btn_col.addWidget(test_btn)
+        btn_col.addWidget(signup_btn)
+        btn_col.addWidget(clear_btn)
+        card_layout.addLayout(btn_col)
+    else:
+        btn_row = QWidget()
+        btn_row_layout = QHBoxLayout(btn_row)
+        btn_row_layout.setContentsMargins(0, 0, 0, 0)
+        btn_row_layout.setSpacing(8)
+        btn_row_layout.addWidget(test_btn)
+        btn_row_layout.addWidget(signup_btn)
+        btn_row_layout.addWidget(clear_btn)
+        btn_row_layout.addStretch(1)
+        card_layout.addWidget(btn_row)
 
     status_lbl = QLabel()
     status_lbl.setWordWrap(True)
@@ -126,38 +143,6 @@ def _build_provider_credential_card(host, spec: ProviderCredentialSpec) -> QWidg
     host.knowledge_provider_key_fields[spec.provider_id] = key_field
     host.knowledge_provider_status_labels[spec.provider_id] = status_lbl
     return card
-
-
-def build_knowledge_provider_credentials_section(host) -> QWidget:
-    """Build one credential card per knowledge provider id."""
-    container = QWidget()
-    layout = QVBoxLayout(container)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(0)
-
-    host.knowledge_provider_key_fields: dict[str, QLineEdit] = {}
-    host.knowledge_provider_status_labels: dict[str, QLabel] = {}
-
-    add_subsection_to_layout(layout, "Provider credentials", anchor="knowledge_provider_credentials")
-
-    inner = QWidget()
-    inner_layout = QVBoxLayout(inner)
-    inner_layout.setContentsMargins(0, 0, 0, 0)
-    inner_layout.setSpacing(12)
-
-    intro = make_settings_hint(
-        "Configure API keys for live retrieval providers. Qube works without keys "
-        "wherever providers allow anonymous access; optional free keys improve "
-        "quotas and reliability. Keys are stored locally on this device."
-    )
-    inner_layout.addWidget(intro)
-
-    for spec in list_active_provider_credential_specs():
-        inner_layout.addWidget(_build_provider_credential_card(host, spec))
-
-    layout.addWidget(wrap_subsection(inner, anchor="knowledge_provider_credentials"))
-    sync_provider_credential_rows(host)
-    return container
 
 
 def sync_provider_credential_rows(host) -> None:

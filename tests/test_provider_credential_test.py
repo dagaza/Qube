@@ -52,7 +52,7 @@ class TestProviderCredentialStatus(unittest.TestCase):
         hint = adapter_credentials_hint("semantic_scholar")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("Provider credentials", hint)
+        self.assertIn("Configure", hint)
 
     def test_active_provider_specs_include_slice11(self) -> None:
         active_ids = {spec.provider_id for spec in list_active_provider_credential_specs()}
@@ -63,7 +63,7 @@ class TestProviderCredentialStatus(unittest.TestCase):
         hint = adapter_credentials_hint("bloomberg_api")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("Provider credentials", hint)
+        self.assertIn("Configure", hint)
 
     def test_adapter_credentials_hint_none_for_acm_dl(self) -> None:
         self.assertIsNone(adapter_credentials_hint("acm_dl"))
@@ -72,13 +72,13 @@ class TestProviderCredentialStatus(unittest.TestCase):
         hint = adapter_credentials_hint("companies_house")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
     def test_adapter_credentials_hint_for_live_optional_key(self) -> None:
         hint = adapter_credentials_hint("openalex")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("Provider credentials", hint)
+        self.assertIn("Configure", hint)
 
     def test_openalex_anonymous_display(self) -> None:
         self.assertEqual(
