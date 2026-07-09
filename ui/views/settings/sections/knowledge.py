@@ -27,6 +27,12 @@ from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.sections.knowledge_sources import build_knowledge_sources_section
+from ui.views.settings.sections.knowledge_provider_credentials import (
+    build_knowledge_provider_credentials_section,
+)
+from ui.views.settings.sections.knowledge_provider_status import (
+    build_knowledge_provider_status_section,
+)
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
 
@@ -157,6 +163,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.deep_research_toggle.blockSignals(False)
     host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
     layout.addWidget(deep_research_row)
+
+    layout.addWidget(build_knowledge_provider_credentials_section(host))
+
+    layout.addWidget(build_knowledge_provider_status_section(host, is_dark=is_dark))
 
     add_subsection_to_layout(layout, "Preferred sources", anchor="knowledge_sources")
     layout.addWidget(build_knowledge_sources_section(host))

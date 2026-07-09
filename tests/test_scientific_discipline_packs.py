@@ -19,6 +19,7 @@ from core.knowledge.scientific_discipline_packs import (  # noqa: E402
     SCIENTIFIC_DISCIPLINE_CHEMISTRY,
     SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
     SCIENTIFIC_DISCIPLINE_ECONOMICS,
+    SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT,
     SCIENTIFIC_DISCIPLINE_MEDICINE,
     SCIENTIFIC_DISCIPLINE_PHYSICS,
     SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE,
@@ -54,14 +55,14 @@ class TestScientificDisciplinePacks(unittest.TestCase):
 
     def test_active_cs_pack_adapter_order(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE)
-        self.assertEqual(order, ("arxiv", "dblp", "openalex"))
+        self.assertEqual(order, ("arxiv", "dblp", "openalex", "acm_dl"))
 
     def test_active_biology_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_BIOLOGY)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_BIOLOGY)
-        self.assertEqual(order, ("pubmed", "biorxiv", "openalex"))
+        self.assertEqual(order, ("pubmed", "biorxiv", "openalex", "europe_pmc"))
 
     def test_active_chemistry_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
@@ -75,25 +76,33 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_PSYCHOLOGY)
-        self.assertEqual(order, ("pubmed", "openalex"))
+        self.assertEqual(order, ("pubmed", "openalex", "psyarxiv", "psycinfo"))
 
     def test_active_sociology_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_SOCIOLOGY)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_SOCIOLOGY)
-        self.assertEqual(order, ("openalex",))
+        self.assertEqual(order, ("openalex", "socarxiv"))
 
     def test_active_political_science_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE)
-        self.assertEqual(order, ("openalex",))
+        self.assertEqual(order, ("openalex", "ssrn"))
 
     def test_active_economics_pack_prefers_repec(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_ECONOMICS)
         self.assertEqual(order[0], "repec")
+        self.assertIn("ssrn", order)
+
+    def test_active_earth_environment_pack(self) -> None:
+        pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT)
+        assert pack is not None
+        self.assertEqual(pack.status, "active")
+        order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT)
+        self.assertEqual(order, ("openalex", "noaa", "nasa_earthdata", "arxiv"))
 
     def test_planned_adapters_include_future_sources(self) -> None:
         planned = planned_primary_adapter_ids()
@@ -106,7 +115,7 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_PHYSICS)
-        self.assertEqual(order, ("arxiv", "inspire_hep", "openalex"))
+        self.assertEqual(order, ("arxiv", "inspire_hep", "openalex", "nasa_ads"))
 
 
 if __name__ == "__main__":

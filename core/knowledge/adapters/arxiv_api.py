@@ -7,9 +7,8 @@ import xml.etree.ElementTree as ET
 from typing import Any
 from urllib.parse import quote
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.arXiv")
 
@@ -33,7 +32,7 @@ def search_arxiv(
 
     headers = {"User-Agent": USER_AGENT}
     try:
-        resp = requests.get(
+        resp = knowledge_get(
             ARXIV_API,
             params={
                 "search_query": f"all:{q}",

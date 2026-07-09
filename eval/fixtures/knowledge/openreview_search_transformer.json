@@ -1,0 +1,56 @@
+{
+  "count": 2,
+  "notes": [
+    {
+      "id": "fixture-openreview-001",
+      "forum": "fixture-openreview-001",
+      "pdate": 1704067200000,
+      "content": {
+        "title": {
+          "value": "TransformerFAM: Feedback attention is working memory"
+        },
+        "abstract": {
+          "value": "We propose Feedback Attention Memory (FAM), a Transformer architecture that leverages a feedback loop to enable the network to attend to its own latent representations for long-context processing."
+        },
+        "authors": {
+          "value": [
+            "Dongseong Hwang",
+            "Weiran Wang",
+            "Pedro Moreno Mengibar"
+          ]
+        },
+        "venue": {
+          "value": "ICLR 2024 Conference Submission"
+        },
+        "pdf": {
+          "value": "https://openreview.net/pdf?id=fixture-openreview-001"
+        }
+      }
+    },
+    {
+      "id": "fixture-openreview-002",
+      "forum": "fixture-openreview-002",
+      "pdate": 1514764800000,
+      "content": {
+        "title": {
+          "value": "Attention Is All You Need"
+        },
+        "abstract": {
+          "value": "We propose the Transformer, a model architecture eschewing recurrence and relying entirely on attention mechanisms."
+        },
+        "authors": {
+          "value": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ]
+        },
+        "venue": {
+          "value": "NeurIPS 2017 Workshop"
+        },
+        "html": {
+          "value": "https://openreview.net/forum?id=fixture-openreview-002"
+        }
+      }
+    }
+  ]
+}

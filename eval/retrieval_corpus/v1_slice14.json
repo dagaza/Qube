@@ -1,0 +1,38 @@
+{
+  "version": "v1_slice14",
+  "description": "Slice 14 — geoscience (IPCC, Copernicus CDS) and agriculture (FAO, USDA)",
+  "queries": [
+    {
+      "id": "s14_geo_001",
+      "query": "IPCC sea level rise assessment report",
+      "service": "scientific_evidence",
+      "discipline": "earth_environment",
+      "expect_adapters": ["ipcc"],
+      "force_adapter": "ipcc"
+    },
+    {
+      "id": "s14_geo_002",
+      "query": "ERA5 temperature reanalysis dataset",
+      "service": "scientific_evidence",
+      "discipline": "earth_environment",
+      "expect_adapters": ["copernicus_cds"],
+      "force_adapter": "copernicus_cds"
+    },
+    {
+      "id": "s14_ag_001",
+      "query": "wheat crop production FAOSTAT dataset",
+      "service": "scientific_evidence",
+      "discipline": "general_science",
+      "expect_adapters": ["fao"],
+      "force_adapter": "fao"
+    },
+    {
+      "id": "s14_ag_002",
+      "query": "USDA farm wheat production survey variable",
+      "service": "scientific_evidence",
+      "discipline": "general_science",
+      "expect_adapters": ["usda"],
+      "force_adapter": "usda"
+    }
+  ]
+}

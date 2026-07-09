@@ -1,0 +1,16 @@
+{
+  "result_set": [
+    {
+      "identifier": "1A3N",
+      "score": 1.0,
+      "title": "DEOXY HUMAN HEMOGLOBIN",
+      "deposit_date": "1998-04-08"
+    },
+    {
+      "identifier": "1IT2",
+      "score": 0.95,
+      "title": "Hagfish deoxy hemoglobin",
+      "deposit_date": "2003-06-17"
+    }
+  ]
+}

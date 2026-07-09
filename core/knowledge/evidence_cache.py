@@ -13,6 +13,17 @@ DEFAULT_TTL_SECONDS = 3600
 _CACHE_DIR = Path.home() / ".qube" / "evidence_cache"
 
 
+def evidence_cache_ttl_seconds() -> int:
+    """Resolve evidence cache TTL from ``QUBE_EVIDENCE_CACHE_TTL`` (default 3600)."""
+    raw = os.getenv("QUBE_EVIDENCE_CACHE_TTL")
+    if raw is None:
+        return DEFAULT_TTL_SECONDS
+    try:
+        return max(0, int(str(raw).strip()))
+    except ValueError:
+        return DEFAULT_TTL_SECONDS
+
+
 def evidence_cache_enabled() -> bool:
     raw = os.getenv("QUBE_EVIDENCE_CACHE")
     if raw is None:
@@ -38,9 +49,12 @@ def make_cache_key(
 def get_cached_rows(
     cache_key: str,
     *,
-    ttl_seconds: int = DEFAULT_TTL_SECONDS,
+    ttl_seconds: int | None = None,
 ) -> list[dict[str, Any]] | None:
     if not evidence_cache_enabled():
+        return None
+    ttl = evidence_cache_ttl_seconds() if ttl_seconds is None else ttl_seconds
+    if ttl <= 0:
         return None
     path = _cache_path(cache_key)
     if not path.is_file():
@@ -48,7 +62,7 @@ def get_cached_rows(
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         ts = float(payload.get("ts") or 0)
-        if (time.time() - ts) > ttl_seconds:
+        if (time.time() - ts) > ttl:
             return None
         rows = payload.get("rows")
         if isinstance(rows, list):

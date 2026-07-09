@@ -11,6 +11,56 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |
 | `v1_legal.json` | `legal_knowledge` | Phase 6 Slice 5b `@legal` — CourtListener case law |
 | `v1_deep_research.json` | deep research merge | Phase 5 topical relevance on merged bundles |
+| `v1_slice12_p0.json` | `scientific_evidence` / `finance_knowledge` | **Slice 12 (P0)** — institutional adapters (ClinicalTrials, openFDA, World Bank, Eurostat, USGS, USDA FDC, NIST, IETF, BLS, Census, IEEE) |
+| `v1_slice13.json` | `scientific_evidence` / `finance_knowledge` | **Slice 13** — OECD, NICE, CDC, WHO GHO |
+| `v1_slice14.json` | `scientific_evidence` | **Slice 14** — IPCC, FAO, USDA ERS, Copernicus CDS |
+| `v1_slice15.json` | `scientific_evidence` | **Slice 15** — OpenReview, ACL Anthology |
+| `v1_slice16.json` | `scientific_evidence` | **Slice 16** — ChEMBL, UniProt, PDB, ChemRxiv |
+| `v1_slice17.json` | `legal_knowledge` | **Slice 17** — Congress.gov, GovInfo, legislation.gov.uk |
+| `v1_slice18.json` | `scientific_evidence` | **Slice 18** — USPTO PatentsView, EPO Espacenet |
+| `v1_slice19.json` | `scientific_evidence` | **Slice 19** — query-type routing (NICE guideline, BLS statistics) |
+
+Example fixture eval for Slice 19:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice19.json --live --single-adapter
+```
+
+Example fixture eval for Slice 18:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice18.json --live --single-adapter
+```
+
+Example fixture eval for Slice 17:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice17.json --live --single-adapter
+```
+
+Example fixture eval for Slice 16:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice16.json --live --single-adapter
+```
+
+Example fixture eval for Slice 15:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice15.json --live --single-adapter
+```
+
+Example fixture eval for Slice 14:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice14.json --live --single-adapter
+```
 
 ## Scientific corpus (Phase 6c-6)
 
@@ -34,6 +84,61 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 - **Each discipline group** primary rate ≥ **70%** (e.g. both biomedical queries must hit `pubmed`)
 
 The harness uses **catalog default adapters** (not your saved Settings prefs) unless you pass `--user-prefs`. Inter-query delay (2s) and one automatic retry on `no_results` reduce OpenAlex rate-limit / 503 flakes.
+
+### Optional API keys (HTTP resilience Slice 2)
+
+OpenAlex and NCBI (PubMed + PubChem) work without keys. Optional env vars raise provider quotas for live eval and daily use:
+
+| Env var | Providers | Signup |
+|---------|-----------|--------|
+| `QUBE_OPENALEX_API_KEY` | OpenAlex | [OpenAlex account](https://openalex.org/settings/api) |
+| `QUBE_NCBI_API_KEY` | PubMed, PubChem | [NCBI account](https://www.ncbi.nlm.nih.gov/account/) |
+
+Example live run with keys and HTTP metrics:
+
+```bash
+export QUBE_OPENALEX_API_KEY=your_key
+export QUBE_NCBI_API_KEY=your_key
+QUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py \
+  --live --service scientific_evidence --min-pass 12
+```
+
+Verify OpenAlex budget: `curl "https://api.openalex.org/rate-limit?api_key=$QUBE_OPENALEX_API_KEY"`
+
+Keys unset → same anonymous behavior as before (no regression).
+
+**Evidence cache TTL:** Default is 1 hour. For live eval re-runs, use a longer TTL:
+
+```bash
+QUBE_EVIDENCE_CACHE_TTL=86400 QUBE_EVIDENCE_CACHE=1 python3 tools/evaluate_retrieval.py \
+  --live --service scientific_evidence --min-pass 12
+```
+
+Disable cache entirely with `QUBE_EVIDENCE_CACHE=0` (cold HTTP on every query).
+
+### Single-adapter slice eval (cross-cutting)
+
+Force one adapter per run (bypasses discipline routing and respects `expect_adapters` checks):
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice11.json --live --adapter acm_dl
+```
+
+When each corpus row lists exactly one `expect_adapters` entry, `--single-adapter` applies that filter automatically:
+
+```bash
+QUBE_KNOWLEDGE_FIXTURES=1 python3 tools/evaluate_retrieval.py \
+  --corpus eval/retrieval_corpus/v1_slice9_10.json --live --single-adapter
+```
+
+Per-row override in corpus JSON: `"force_adapter": "noaa"` or `"force_adapters": ["fred"]`.
+
+Validate discipline packs vs adapter registry:
+
+```bash
+python3 tools/sync_discipline_packs.py --check
+```
 
 ## Commands
 

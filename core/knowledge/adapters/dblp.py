@@ -8,9 +8,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.DBLP")
 
@@ -110,7 +109,7 @@ def fetch_search_results(
         return {"hits": {"hit": []}}
 
     try:
-        resp = requests.get(
+        resp = knowledge_get(
             DBLP_SEARCH,
             params={
                 "q": q,

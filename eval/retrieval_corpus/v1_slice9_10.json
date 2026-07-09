@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "description": "Tier 1–2 scientific adapters — SSRN, NOAA, PsyArXiv, NASA Earthdata (fixture-backed eval)",
+  "queries": [
+    {
+      "id": "9a_ssrn",
+      "query": "Taylor rule central bank inflation targeting empirical panel",
+      "discipline": "economics",
+      "primary_adapter": "repec",
+      "expect_adapters": ["ssrn", "repec"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "9b_noaa",
+      "query": "global historical temperature daily climate dataset NOAA",
+      "discipline": "earth_environment",
+      "primary_adapter": "openalex",
+      "expect_adapters": ["noaa"],
+      "min_sources": 1,
+      "medical": false
+    },
+    {
+      "id": "10a_psyarxiv",
+      "query": "working memory cognitive load dual task psychology experiment",
+      "discipline": "psychology",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["psyarxiv", "pubmed"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "10b_nasa_earthdata",
+      "query": "sea surface temperature satellite reanalysis GHRSST",
+      "discipline": "earth_environment",
+      "primary_adapter": "openalex",
+      "expect_adapters": ["nasa_earthdata"],
+      "min_sources": 1,
+      "medical": false
+    }
+  ]
+}

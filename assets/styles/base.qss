@@ -543,6 +543,62 @@ QLabel[class="SettingsHint"] {
     font-style: italic;
 }
 
+#KnowledgeProviderStatusTable {
+    background-color: transparent;
+    border: none;
+    gridline-color: transparent;
+    outline: none;
+}
+
+#KnowledgeProviderStatusTable QAbstractScrollArea::viewport {
+    background-color: transparent;
+}
+
+#KnowledgeProviderStatusTable::item {
+    color: #cdd6f4;
+    background-color: transparent;
+    padding: 6px 10px;
+    border: none;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+#KnowledgeProviderStatusTable::item:alternate {
+    background-color: rgba(69, 71, 90, 0.28);
+}
+
+#KnowledgeProviderStatusTable QHeaderView::section {
+    background-color: rgba(49, 50, 68, 0.45);
+    color: #a6adc8;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+#KnowledgeProviderStatusTable QTableCornerButton::section {
+    background-color: rgba(49, 50, 68, 0.45);
+    border: none;
+}
+
+#KnowledgeProviderStatusTable QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 4px 2px 4px 0;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::handle:vertical {
+    background: rgba(166, 173, 200, 0.35);
+    border-radius: 4px;
+    min-height: 24px;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::add-line:vertical,
+#KnowledgeProviderStatusTable QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
 /* --- 8. TELEMETRY CARDS --- */
 #HardwareCard, #LatencyCard {
     background-color: #232337;

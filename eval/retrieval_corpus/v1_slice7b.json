@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "description": "Slice 7b — SocArXiv, FRED (fixture), Europe PMC adapter smoke queries",
+  "queries": [
+    {
+      "id": "7b_socarxiv",
+      "query": "social stratification income inequality sociology survey methods",
+      "discipline": "sociology",
+      "primary_adapter": "socarxiv",
+      "expect_adapters": ["socarxiv", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "7b_europe_pmc",
+      "query": "semaglutide cardiovascular outcomes randomized trial",
+      "discipline": "biomedical",
+      "primary_adapter": "europe_pmc",
+      "expect_adapters": ["europe_pmc", "pubmed"],
+      "expect_abstract": true,
+      "medical": true
+    },
+    {
+      "id": "7b_fred",
+      "query": "US unemployment rate monthly labor force",
+      "service": "finance_knowledge",
+      "expect_adapters": ["fred"],
+      "min_sources": 1,
+      "require_warning": "not_financial_advice"
+    }
+  ]
+}

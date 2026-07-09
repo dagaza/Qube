@@ -9,9 +9,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.RePEc")
 
@@ -194,7 +193,7 @@ def _fetch_econbiz_live(
     if not q:
         return {"hits": {"hits": []}}
     try:
-        resp = requests.get(
+        resp = knowledge_get(
             ECONBIZ_SEARCH,
             params={"q": q, "size": max(1, min(max_results, 10))},
             headers={"User-Agent": USER_AGENT},

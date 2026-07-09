@@ -1,0 +1,13 @@
+{
+  "query": "Microsoft",
+  "results": [
+    {
+      "security": "MSFT US Equity",
+      "description": "MICROSOFT CORP"
+    },
+    {
+      "security": "MSFT UW Equity",
+      "description": "MICROSOFT CORP-CDR"
+    }
+  ]
+}

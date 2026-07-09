@@ -1,4 +1,4 @@
-"""bioRxiv / life-science preprint adapter (fixture stub + Europe PMC live search)."""
+"""bioRxiv / life-science preprint adapter (fixtures + Europe PMC preprint filter)."""
 
 from __future__ import annotations
 
@@ -8,16 +8,14 @@ import os
 from pathlib import Path
 from typing import Any
 
-import requests
-
+from core.knowledge.adapters.europe_pmc import row_from_europe_pmc_entry
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 
 logger = logging.getLogger("Qube.Knowledge.bioRxiv")
 
 ADAPTER_ID = "biorxiv"
 RETRIEVAL_METHOD = "biorxiv_search"
-USER_AGENT = "Qube/1.0 (local assistant; external knowledge platform)"
-EUROPE_PMC_SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+_BIORXIV_EPMC_SUFFIX = ' AND (SRC:PPR OR JOURNAL:"bioRxiv")'
 
 
 def _fixture_search_path(name: str) -> Path | None:
@@ -68,48 +66,15 @@ def _row_from_entry(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _row_from_europe_pmc(entry: dict[str, Any]) -> dict[str, Any]:
-    title = str(entry.get("title") or "").strip()
-    abstract = str(entry.get("abstractText") or "").strip()
-    doi = str(entry.get("doi") or "").strip() or None
-    pmid = str(entry.get("pmid") or "").strip()
-    url = f"https://doi.org/{doi}" if doi else None
-    if not url and pmid:
-        url = f"https://europepmc.org/article/MED/{pmid}"
-    authors: list[str] = []
-    author_list = entry.get("authorList") or {}
-    if isinstance(author_list, dict):
-        for author in author_list.get("author") or []:
-            if isinstance(author, dict):
-                name = str(author.get("fullName") or "").strip()
-                if name:
-                    authors.append(name)
-    pub_date = str(entry.get("firstPublicationDate") or entry.get("pubYear") or "")[:10]
-    excerpt = abstract[:600] if abstract else title
-    return {
-        "title": title,
-        "snippet": excerpt,
-        "full_text": abstract or None,
-        "url": url,
-        "_adapter": ADAPTER_ID,
-        "authors": tuple(authors),
-        "venue": str(entry.get("journalTitle") or "bioRxiv").strip(),
-        "publication_date": pub_date or None,
-        "doi": doi,
-        "peer_reviewed": False,
-        "preprint": True,
-        "open_access": True,
-        "document_type": "preprint",
-    }
-
-
 def fetch_search_results(
     search_query: str,
     *,
     max_results: int = 3,
     timeout: float = 12.0,
 ) -> dict[str, Any]:
-    """Load fixture rows or query Europe PMC for bioRxiv preprints (SRC:PPR)."""
+    """Load fixture rows or query Europe PMC for bioRxiv preprints."""
+    from core.knowledge.adapters.europe_pmc import fetch_search_results as epmc_fetch
+
     q = sanitize_api_query(search_query)
     if _use_fixtures():
         for name in (
@@ -132,29 +97,18 @@ def fetch_search_results(
     if not q:
         return {"results": []}
 
-    try:
-        resp = requests.get(
-            EUROPE_PMC_SEARCH,
-            params={
-                "query": f"({q}) AND (SRC:PPR OR JOURNAL:\"bioRxiv\")",
-                "format": "json",
-                "pageSize": max(1, min(max_results, 10)),
-                "resultType": "core",
-            },
-            headers={"User-Agent": USER_AGENT},
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
-    except Exception as exc:
-        logger.warning("[bioRxiv] Europe PMC search failed: %s", exc)
-        return {"results": []}
-
-    results = []
+    payload = epmc_fetch(
+        q,
+        max_results=max_results,
+        query_suffix=_BIORXIV_EPMC_SUFFIX,
+        timeout=timeout,
+    )
     result_list = payload.get("resultList") or {}
-    for entry in result_list.get("result") or []:
-        if isinstance(entry, dict) and entry.get("title"):
-            results.append(entry)
+    results = [
+        entry
+        for entry in (result_list.get("result") or [])
+        if isinstance(entry, dict) and entry.get("title")
+    ]
     return {"results": results, "source": "europe_pmc"}
 
 
@@ -176,10 +130,10 @@ def search_biorxiv(
     rows: list[dict[str, Any]] = []
     for entry in entries:
         if source == "europe_pmc":
-            row = _row_from_europe_pmc(entry)
+            row = row_from_europe_pmc_entry(entry, adapter_id=ADAPTER_ID)
         else:
             row = _row_from_entry(entry)
-        if row.get("title"):
+        if row and row.get("title"):
             rows.append(row)
         if len(rows) >= max(1, max_results):
             break

@@ -1,4 +1,4 @@
-"""Deterministic query planning for legal_knowledge (@legal / CourtListener)."""
+"""Deterministic query planning for legal_knowledge (@legal / multi-jurisdiction)."""
 
 from __future__ import annotations
 
@@ -53,7 +53,8 @@ _TRAILING_FILLER = re.compile(
 
 _LEGAL_NOISE = re.compile(
     r"\b(?:court\s*listener|case\s*law|legal\s+precedent|precedent|"
-    r"opinion|court\s+opinion|ruling|decision|judgment|judgement)\b",
+    r"opinion|court\s+opinion|ruling|decision|judgment|judgement|"
+    r"eur-lex|eurlex|canlii|bailii)\b",
     re.IGNORECASE,
 )
 
@@ -125,7 +126,7 @@ def plan_legal_query(
     *,
     semantic_query: str | None = None,
 ) -> LegalQueryPlan:
-    """Map conversational @legal prompts to CourtListener search terms."""
+    """Map conversational @legal prompts to jurisdiction adapter search terms."""
     raw = sanitize_api_query(query)
     semantic = sanitize_api_query(semantic_query or query)
     case_name = extract_case_name(raw)

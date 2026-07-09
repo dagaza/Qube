@@ -292,6 +292,36 @@ class TestEvaluateRetrieval(unittest.TestCase):
             latency_ms=80.0,
         )
 
+    def test_eval_forces_single_adapter_via_cli(self) -> None:
+        entry = {
+            "id": "acm_only",
+            "query": "transformer attention",
+            "expect_adapters": ["acm_dl", "arxiv"],
+        }
+        captured: dict = {}
+
+        def _fake_run(**kwargs):
+            captured.update(kwargs)
+            return self._mock_outcome_wikipedia()
+
+        with patch.object(self.mod, "run_v2_web_retrieval", side_effect=_fake_run):
+            self.mod._evaluate_query(
+                entry,
+                live=True,
+                knowledge_service="scientific_evidence",
+                adapter_filter=("acm_dl",),
+            )
+        self.assertEqual(captured.get("adapter_filter"), ("acm_dl",))
+
+    def test_resolve_adapter_filter_single_adapter_mode(self) -> None:
+        entry = {"expect_adapters": ["noaa"]}
+        resolved = self.mod._resolve_adapter_filter(
+            entry,
+            cli_adapters=None,
+            single_adapter=True,
+        )
+        self.assertEqual(resolved, ("noaa",))
+
 
 if __name__ == "__main__":
     unittest.main()

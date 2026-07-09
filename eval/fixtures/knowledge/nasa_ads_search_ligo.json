@@ -1,0 +1,18 @@
+{
+  "response": {
+    "numFound": 1,
+    "docs": [
+      {
+        "bibcode": "2016PhRvL.116f1102A",
+        "title": ["Observation of Gravitational Waves from a Binary Black Hole Merger"],
+        "abstract": "We report the observation of gravitational waves from a binary black hole merger by the LIGO detectors.",
+        "author": ["Abbott, B. P.", "Abbott, R."],
+        "pubdate": "2016-02",
+        "year": "2016",
+        "doi": ["10.1103/PhysRevLett.116.061102"],
+        "pub": ["Phys. Rev. Lett."],
+        "preprint": false
+      }
+    ]
+  }
+}

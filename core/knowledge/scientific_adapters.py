@@ -20,6 +20,7 @@ from core.knowledge.scientific_discipline import (
     is_medical_query,
     preferred_adapters_for_discipline,
 )
+from core.knowledge.scientific_query_type import reorder_adapters_for_query_type
 
 _MEDICAL_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
 _BIOLOGY_ADAPTERS = (PUBMED_ID, BIORXIV_ID, OPENALEX_ID)
@@ -39,13 +40,13 @@ _PUBMED_ELIGIBLE = frozenset(
 )
 
 
-def apply_scientific_adapter_policy(
+def discipline_ordered_adapters(
     enabled: tuple[str, ...],
     *,
     query: str = "",
     medical_query: bool | None = None,
 ) -> tuple[str, ...]:
-    """Filter and order user-enabled adapters by detected query discipline."""
+    """Order enabled adapters by discipline pack only (pre query-type routing)."""
     match = detect_scientific_discipline(query, medical_query=medical_query)
     preferred = preferred_adapters_for_discipline(match.discipline)
 
@@ -73,6 +74,21 @@ def apply_scientific_adapter_policy(
     if match.discipline == SCIENTIFIC_DISCIPLINE_PHYSICS:
         return _fallback_from_enabled(pool, _PHYSICS_ADAPTERS)
     return _fallback_from_enabled(pool, _SCHOLARLY_ADAPTERS)
+
+
+def apply_scientific_adapter_policy(
+    enabled: tuple[str, ...],
+    *,
+    query: str = "",
+    medical_query: bool | None = None,
+) -> tuple[str, ...]:
+    """Filter and order user-enabled adapters by discipline and query intent."""
+    ordered = discipline_ordered_adapters(
+        enabled,
+        query=query,
+        medical_query=medical_query,
+    )
+    return reorder_adapters_for_query_type(ordered, query=query, enabled=enabled)
 
 
 def default_scientific_adapters_for_query(

@@ -223,6 +223,11 @@
     "default": {},
     "description": "Per knowledge-service enabled adapter ids (user-configured retrieval sources). Keys: scientific_evidence, finance_knowledge, legal_knowledge."
   },
+  "qube.knowledge.provider_credentials": {
+    "type": "object",
+    "default": {},
+    "description": "User-stored API keys for knowledge providers (openalex, ncbi, courtlistener). Values: { provider_id: { api_key: string } }."
+  },
   "qube.skills.enabled": {
     "type": "boolean",
     "default": false,

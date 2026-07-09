@@ -6,9 +6,9 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import Any
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.credential_resolver import merge_query_params
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.PubMed")
 
@@ -32,15 +32,18 @@ def search_pubmed(
 
     headers = {"User-Agent": USER_AGENT}
     try:
-        search_resp = requests.get(
+        search_resp = knowledge_get(
             f"{EUTILS_BASE}esearch.fcgi",
-            params={
-                **EUTILS_PARAMS,
-                "db": "pubmed",
-                "term": q,
-                "retmax": max(1, min(max_results, 10)),
-                "retmode": "json",
-            },
+            params=merge_query_params(
+                {
+                    **EUTILS_PARAMS,
+                    "db": "pubmed",
+                    "term": q,
+                    "retmax": max(1, min(max_results, 10)),
+                    "retmode": "json",
+                },
+                "ncbi",
+            ),
             headers=headers,
             timeout=timeout,
         )
@@ -57,14 +60,17 @@ def search_pubmed(
         return []
 
     try:
-        fetch_resp = requests.get(
+        fetch_resp = knowledge_get(
             f"{EUTILS_BASE}efetch.fcgi",
-            params={
-                **EUTILS_PARAMS,
-                "db": "pubmed",
-                "id": ",".join(pmids),
-                "retmode": "xml",
-            },
+            params=merge_query_params(
+                {
+                    **EUTILS_PARAMS,
+                    "db": "pubmed",
+                    "id": ",".join(pmids),
+                    "retmode": "xml",
+                },
+                "ncbi",
+            ),
             headers=headers,
             timeout=timeout,
         )

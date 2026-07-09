@@ -1,0 +1,10 @@
+{
+  "dataflows": [
+    {
+      "agency_id": "OECD.ELS.IMD",
+      "dataflow_id": "DSD_LFS@DF_UNE_LF",
+      "name": "Unemployment rates and labour force participation",
+      "description": "Harmonised unemployment rates from OECD labour force statistics."
+    }
+  ]
+}

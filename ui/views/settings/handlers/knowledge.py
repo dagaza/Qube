@@ -6,14 +6,16 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QListWidgetItem
+from PyQt6.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QLineEdit, QListWidgetItem
 
 from core.app_settings import (
     KEY_DEEP_RESEARCH_ENABLED,
     KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
     KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED,
     KEY_KNOWLEDGE_SOURCE_PREFERENCES,
+    KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
     KEY_RESEARCH_MAP_ENABLED,
     get_advanced_embedding_unlocked,
     get_embedding_mode,
@@ -27,7 +29,17 @@ from core.app_settings import (
     set_knowledge_source_preferences,
     set_research_map_enabled,
 )
+from core.knowledge.credentials import (
+    clear_provider_api_key,
+    env_override_active,
+    set_provider_api_key,
+)
+from core.knowledge.provider_status import record_provider_credential_test
+from core.knowledge.provider_credential_test import test_provider_credential
+from core.knowledge.provider_credentials import get_provider_credential_spec
 from core.knowledge.source_preferences import set_adapter_enabled
+from ui.views.settings.sections.knowledge_provider_credentials import sync_provider_credential_rows
+from ui.views.settings.sections.knowledge_provider_status import sync_provider_status_panel
 from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
 from core.bootstrap_search_models import (
     format_embedding_mode_switch_confirm_body,
@@ -48,6 +60,30 @@ from ui.components.prestige_dialog import PrestigeDialog
 logger = logging.getLogger("Qube.UI.Settings")
 
 EMBEDDING_ENTRY_DELETABLE_ROLE = int(Qt.ItemDataRole.UserRole) + 3
+
+
+class ProviderCredentialTestWorker(QThread):
+    """Background probe for Settings → Provider credentials Test button."""
+
+    finished = pyqtSignal(str, bool, str)
+
+    def __init__(
+        self,
+        *,
+        provider_id: str,
+        override_secret: str | None,
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+        self._provider_id = provider_id
+        self._override_secret = override_secret
+
+    def run(self) -> None:
+        result = test_provider_credential(
+            self._provider_id,
+            override_secret=self._override_secret,
+        )
+        self.finished.emit(self._provider_id, result.ok, result.message)
 
 
 class KnowledgeHandlersMixin:
@@ -88,6 +124,76 @@ class KnowledgeHandlersMixin:
         set_knowledge_source_preferences(prefs)
         sync_knowledge_source_checkboxes(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_SOURCE_PREFERENCES)
+
+    def _provider_credential_field(self, provider_id: str) -> QLineEdit | None:
+        fields = getattr(self, "knowledge_provider_key_fields", None)
+        if not isinstance(fields, dict):
+            return None
+        return fields.get(provider_id)
+
+    def _on_provider_credential_editing_finished(self, provider_id: str) -> None:
+        if env_override_active(provider_id):
+            sync_provider_credential_rows(self)
+            return
+        field = self._provider_credential_field(provider_id)
+        if field is None:
+            return
+        text = field.text().strip()
+        if not text:
+            return
+        set_provider_api_key(provider_id, text)
+        field.clear()
+        sync_provider_credential_rows(self)
+        self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
+
+    def _on_provider_credential_clear(self, provider_id: str) -> None:
+        clear_provider_api_key(provider_id)
+        field = self._provider_credential_field(provider_id)
+        if field is not None:
+            field.clear()
+        sync_provider_credential_rows(self)
+        self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
+
+    def _on_provider_credential_signup(self, provider_id: str) -> None:
+        spec = get_provider_credential_spec(provider_id)
+        if spec is None or not spec.signup_url:
+            return
+        QDesktopServices.openUrl(QUrl(spec.signup_url))
+
+    def _on_provider_credential_test(self, provider_id: str) -> None:
+        if getattr(self, "_provider_credential_test_worker", None) is not None:
+            return
+        field = self._provider_credential_field(provider_id)
+        override = field.text().strip() if field is not None else ""
+        if override:
+            set_provider_api_key(provider_id, override)
+            if field is not None:
+                field.clear()
+            sync_provider_credential_rows(self)
+            self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
+
+        worker = ProviderCredentialTestWorker(
+            provider_id=provider_id,
+            override_secret=None,
+        )
+        self._provider_credential_test_worker = worker
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+
+        def _finish(pid: str, ok: bool, message: str) -> None:
+            self._provider_credential_test_worker = None
+            record_provider_credential_test(pid, ok=ok, message=message)
+            sync_provider_credential_rows(self)
+            sync_provider_status_panel(self)
+            PrestigeDialog(
+                self.window(),
+                "Connection test succeeded" if ok else "Connection test failed",
+                message,
+                is_dark=is_dark,
+                tone="default" if ok else "danger",
+            ).exec()
+
+        worker.finished.connect(_finish)
+        worker.start()
 
     def _on_advanced_embedding_toggled(self, checked: bool) -> None:
         if checked:

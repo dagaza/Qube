@@ -24,6 +24,11 @@ from core.knowledge.types import (  # noqa: E402
 )
 from core.knowledge.scientific_discipline import detect_scientific_discipline  # noqa: E402
 from core.knowledge.scientific_discipline_packs import normalize_discipline_id  # noqa: E402
+from core.knowledge.http_metrics import format_http_report, merge_http_summaries  # noqa: E402
+from core.knowledge.http_throttle_report import (  # noqa: E402
+    aggregate_throttle_reports,
+    attach_throttle_fields,
+)
 from core.knowledge.web_retrieval import run_v2_web_retrieval  # noqa: E402
 
 _COVERAGE_RANK = {
@@ -129,15 +134,26 @@ def _evaluate_with_optional_retry(
     *,
     live: bool,
     knowledge_service: str,
+    adapter_filter: tuple[str, ...] | None = None,
 ) -> dict:
-    result = _evaluate_query(entry, live=live, knowledge_service=knowledge_service)
+    result = _evaluate_query(
+        entry,
+        live=live,
+        knowledge_service=knowledge_service,
+        adapter_filter=adapter_filter,
+    )
     if (
         live
         and knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE
         and result.get("status") == "no_results"
     ):
         time.sleep(3.0)
-        result = _evaluate_query(entry, live=live, knowledge_service=knowledge_service)
+        result = _evaluate_query(
+            entry,
+            live=live,
+            knowledge_service=knowledge_service,
+            adapter_filter=adapter_filter,
+        )
     return result
 
 
@@ -167,7 +183,36 @@ def _best_fetch_rank(sources) -> str:
     return "snippet_only"
 
 
-def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
+def _resolve_adapter_filter(
+    entry: dict,
+    *,
+    cli_adapters: tuple[str, ...] | None,
+    single_adapter: bool,
+) -> tuple[str, ...] | None:
+    """Corpus entry override, CLI flag, or --single-adapter from expect_adapters."""
+    forced = entry.get("force_adapter") or entry.get("force_adapters")
+    if forced:
+        if isinstance(forced, str):
+            ids = (forced.strip().lower(),)
+        else:
+            ids = tuple(str(a).strip().lower() for a in forced if str(a).strip())
+        return ids or None
+    if cli_adapters:
+        return cli_adapters
+    if single_adapter:
+        expect = entry.get("expect_adapters") or []
+        if len(expect) == 1:
+            return (str(expect[0]).strip().lower(),)
+    return None
+
+
+def _evaluate_query(
+    entry: dict,
+    *,
+    live: bool,
+    knowledge_service: str,
+    adapter_filter: tuple[str, ...] | None = None,
+) -> dict:
     query = str(entry.get("query") or "").strip()
     if not query:
         return {"id": entry.get("id"), "status": "skipped", "reason": "empty_query"}
@@ -182,16 +227,20 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
         query=query,
         semantic_query=query,
         knowledge_service=knowledge_service,
+        adapter_filter=adapter_filter,
     )
     bundle = outcome.bundle
     if bundle is None or not bundle.sources:
-        return {
+        payload = {
             "id": entry.get("id"),
             "query": query,
             "status": "no_results",
             "latency_ms": round(outcome.latency_ms, 1),
             "knowledge_service": knowledge_service,
         }
+        if outcome.relevance_diag and outcome.relevance_diag.get("http_summary"):
+            payload["http_summary"] = outcome.relevance_diag["http_summary"]
+        return attach_throttle_fields(payload)
 
     sources = bundle.sources
     adapters = {s.adapter for s in sources}
@@ -297,7 +346,11 @@ def _evaluate_query(entry: dict, *, live: bool, knowledge_service: str) -> dict:
         payload["expect_discipline"] = expect_discipline
     if primary_adapter:
         payload["primary_adapter"] = primary_adapter
-    return payload
+    if adapter_filter:
+        payload["adapter_filter"] = list(adapter_filter)
+    if outcome.relevance_diag and outcome.relevance_diag.get("http_summary"):
+        payload["http_summary"] = outcome.relevance_diag["http_summary"]
+    return attach_throttle_fields(payload)
 
 
 def main() -> int:
@@ -342,7 +395,30 @@ def main() -> int:
         action="store_true",
         help="Use saved knowledge source preferences instead of catalog defaults (scientific eval)",
     )
+    parser.add_argument(
+        "--http-report",
+        action="store_true",
+        help="Include aggregated HTTP metrics in JSON stdout (live mode)",
+    )
+    parser.add_argument(
+        "--adapter",
+        action="append",
+        dest="adapters",
+        metavar="ADAPTER_ID",
+        help="Force retrieval through only this adapter (repeatable; bypasses routing)",
+    )
+    parser.add_argument(
+        "--single-adapter",
+        action="store_true",
+        help="When a corpus row has exactly one expect_adapters entry, force that adapter",
+    )
     args = parser.parse_args()
+
+    cli_adapter_filter: tuple[str, ...] | None = None
+    if args.adapters:
+        cli_adapter_filter = tuple(
+            str(a).strip().lower() for a in args.adapters if str(a).strip()
+        )
 
     corpus_path = args.corpus
     if corpus_path is None:
@@ -369,7 +445,14 @@ def main() -> int:
                     time.sleep(delay)
             results.append(
                 _evaluate_with_optional_retry(
-                    entry, live=args.live, knowledge_service=knowledge_service
+                    entry,
+                    live=args.live,
+                    knowledge_service=knowledge_service,
+                    adapter_filter=_resolve_adapter_filter(
+                        entry,
+                        cli_adapters=cli_adapter_filter,
+                        single_adapter=args.single_adapter,
+                    ),
                 )
             )
     ok = sum(1 for r in results if r.get("status") == "ok")
@@ -399,12 +482,38 @@ def main() -> int:
         "dry_run": dry,
         "total": len(results),
     }
+    if cli_adapter_filter:
+        summary["forced_adapters"] = list(cli_adapter_filter)
+    if args.single_adapter:
+        summary["single_adapter_mode"] = True
     if primary_rate is not None:
         summary["discipline_primary_hits"] = primary_hits
         summary["discipline_primary_total"] = len(discipline_tagged)
         summary["discipline_primary_rate"] = round(primary_rate, 3)
     if discipline_stats:
         summary["discipline_group_primary"] = discipline_stats
+    if args.live:
+        http_summaries = [r.get("http_summary") for r in results if r.get("http_summary")]
+        if http_summaries:
+            summary["http_report"] = merge_http_summaries(http_summaries)
+        throttle_reports = [r.get("throttle_report") for r in results if r.get("throttle_report")]
+        if throttle_reports:
+            summary["throttle_report"] = aggregate_throttle_reports(throttle_reports)
+        failure_classes = [
+            r.get("failure_class")
+            for r in results
+            if r.get("failure_class")
+        ]
+        if failure_classes:
+            summary["failure_class_counts"] = {
+                "retrieval": sum(1 for c in failure_classes if c == "retrieval"),
+                "throttle": sum(1 for c in failure_classes if c == "throttle"),
+                "mixed": sum(1 for c in failure_classes if c == "mixed"),
+            }
+    elif args.http_report:
+        http_summaries = [r.get("http_summary") for r in results if r.get("http_summary")]
+        if http_summaries:
+            summary["http_report"] = merge_http_summaries(http_summaries)
     print(json.dumps(summary, indent=2))
 
     if not args.live:
@@ -451,6 +560,29 @@ def main() -> int:
                     f"Discipline groups below {min_group:.0%}: {', '.join(failing)}",
                     file=sys.stderr,
                 )
+    http_report = summary.get("http_report")
+    if http_report:
+        print(f"\n{format_http_report(http_report)}", file=sys.stderr)
+    throttle_report = summary.get("throttle_report")
+    if throttle_report:
+        print(
+            "\nThrottle: "
+            f"{throttle_report.get('queries_throttled', 0)} queries with HTTP pressure, "
+            f"{throttle_report.get('queries_short_circuited', 0)} short-circuited",
+            file=sys.stderr,
+        )
+        failure_counts = summary.get("failure_class_counts") or {}
+        if failure_counts:
+            print(
+                "Failure classes: "
+                f"retrieval={failure_counts.get('retrieval', 0)}, "
+                f"throttle={failure_counts.get('throttle', 0)}, "
+                f"mixed={failure_counts.get('mixed', 0)}",
+                file=sys.stderr,
+            )
+        hosts_open = throttle_report.get("hosts_open") or []
+        if hosts_open:
+            print(f"  Open circuits: {', '.join(hosts_open)}", file=sys.stderr)
     if ok < min_pass:
         return 1
     min_primary = args.min_discipline_primary_rate

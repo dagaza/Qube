@@ -350,6 +350,18 @@ class PersistenceHandlersMixin:
             from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
 
             sync_knowledge_source_checkboxes(self)
+        if hasattr(self, "knowledge_provider_key_fields"):
+            from ui.views.settings.sections.knowledge_provider_credentials import (
+                sync_provider_credential_rows,
+            )
+
+            sync_provider_credential_rows(self)
+        if hasattr(self, "knowledge_provider_status_table"):
+            from ui.views.settings.sections.knowledge_provider_status import (
+                sync_provider_status_panel,
+            )
+
+            sync_provider_status_panel(self)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_toggle.blockSignals(True)
             self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())

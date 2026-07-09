@@ -6,9 +6,8 @@ import logging
 from typing import Any
 from urllib.parse import quote
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.Wikipedia")
 
@@ -31,7 +30,7 @@ def search_wikipedia(
 
     headers = {"User-Agent": USER_AGENT}
     try:
-        search_resp = requests.get(
+        search_resp = knowledge_get(
             WIKI_API,
             params={
                 "action": "query",
@@ -65,7 +64,7 @@ def search_wikipedia(
     }
 
     try:
-        extract_resp = requests.get(
+        extract_resp = knowledge_get(
             WIKI_API,
             params={
                 "action": "query",

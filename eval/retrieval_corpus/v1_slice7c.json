@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "description": "Slice 7c — Companies House and Alpha Vantage finance registry adapters (fixture-backed eval)",
+  "queries": [
+    {
+      "id": "7c_companies_house",
+      "query": "Tesco PLC UK company registration",
+      "service": "finance_knowledge",
+      "expect_adapters": ["companies_house"],
+      "min_sources": 1,
+      "require_warning": "not_financial_advice"
+    },
+    {
+      "id": "7c_alpha_vantage",
+      "query": "Microsoft stock symbol MSFT equity",
+      "service": "finance_knowledge",
+      "expect_adapters": ["alpha_vantage"],
+      "min_sources": 1,
+      "require_warning": "not_financial_advice"
+    }
+  ]
+}

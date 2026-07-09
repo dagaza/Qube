@@ -65,6 +65,7 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_RXNORM_ENTITY_LOOKUP_ENABLED,
         app.KEY_DEEP_RESEARCH_ENABLED,
         app.KEY_KNOWLEDGE_SOURCE_PREFERENCES,
+        app.KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
     ),
     "companion.desktop": (
         app.KEY_COMPANION_ENABLED,

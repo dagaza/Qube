@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ops:world-patent-data xmlns:ops="http://ops.epo.org" xmlns:exch="http://www.epo.org/exchange">
+  <ops:biblio-search total-result-count="2">
+    <ops:search-result>
+      <exch:exchange-documents>
+        <exch:exchange-document system="ops.epo.org" family-id="12345678" country="EP" doc-number="3000001" kind="A1">
+          <exch:bibliographic-data>
+            <exch:publication-reference>
+              <document-id document-id-type="docdb">
+                <country>EP</country>
+                <doc-number>3000001</doc-number>
+                <kind>A1</kind>
+                <date>20240115</date>
+              </document-id>
+            </exch:publication-reference>
+            <exch:invention-title lang="en">Lithium battery cathode material</exch:invention-title>
+          </exch:bibliographic-data>
+        </exch:exchange-document>
+        <exch:exchange-document system="ops.epo.org" family-id="87654321" country="EP" doc-number="3100002" kind="B1">
+          <exch:bibliographic-data>
+            <exch:publication-reference>
+              <document-id document-id-type="docdb">
+                <country>EP</country>
+                <doc-number>3100002</doc-number>
+                <kind>B1</kind>
+                <date>20230601</date>
+              </document-id>
+            </exch:publication-reference>
+            <exch:invention-title lang="en">Electrolyte for solid-state battery</exch:invention-title>
+          </exch:bibliographic-data>
+        </exch:exchange-document>
+      </exch:exchange-documents>
+    </ops:search-result>
+  </ops:biblio-search>
+</ops:world-patent-data>

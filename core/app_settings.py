@@ -56,6 +56,7 @@ KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
 KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
+KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
 KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
@@ -427,6 +428,25 @@ def set_knowledge_source_preferences(preferences: dict[str, list[str]]) -> None:
     from core.knowledge.source_preferences import normalize_preferences
 
     _store().set(KEY_KNOWLEDGE_SOURCE_PREFERENCES, normalize_preferences(preferences))
+
+
+def get_knowledge_provider_credentials() -> dict[str, dict[str, str]]:
+    """User-stored API keys for knowledge providers (openalex, ncbi, …)."""
+    from core.knowledge.credentials import normalize_provider_credentials
+
+    raw = _store().get(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS, {})
+    if not isinstance(raw, dict):
+        return {}
+    return normalize_provider_credentials(raw)
+
+
+def set_knowledge_provider_credentials(credentials: dict[str, dict[str, str]]) -> None:
+    from core.knowledge.credentials import normalize_provider_credentials
+
+    _store().set(
+        KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
+        normalize_provider_credentials(credentials),
+    )
 
 
 def get_default_knowledge_service() -> str:

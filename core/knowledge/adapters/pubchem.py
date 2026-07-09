@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.credential_resolver import api_key_query_params
+from core.knowledge.http_client import knowledge_get
 
 logger = logging.getLogger("Qube.Knowledge.PubChem")
 
@@ -131,7 +131,12 @@ def _fetch_cid(name: str, *, timeout: float = 10.0) -> int | None:
     encoded = quote(name, safe="")
     url = f"{PUG_BASE}/compound/name/{encoded}/cids/JSON"
     try:
-        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout)
+        resp = knowledge_get(
+            url,
+            params=api_key_query_params("ncbi"),
+            headers={"User-Agent": USER_AGENT},
+            timeout=timeout,
+        )
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
@@ -152,7 +157,12 @@ def _fetch_compound_record(cid: int, *, timeout: float = 10.0) -> dict[str, Any]
     desc_url = f"{PUG_BASE}/compound/cid/{cid}/description/JSON"
     headers = {"User-Agent": USER_AGENT}
     try:
-        props_resp = requests.get(props_url, headers=headers, timeout=timeout)
+        props_resp = knowledge_get(
+            props_url,
+            params=api_key_query_params("ncbi"),
+            headers=headers,
+            timeout=timeout,
+        )
         props_resp.raise_for_status()
         props_list = props_resp.json().get("PropertyTable", {}).get("Properties") or []
         props = props_list[0] if props_list else {}
@@ -162,7 +172,12 @@ def _fetch_compound_record(cid: int, *, timeout: float = 10.0) -> dict[str, Any]
 
     description = ""
     try:
-        desc_resp = requests.get(desc_url, headers=headers, timeout=timeout)
+        desc_resp = knowledge_get(
+            desc_url,
+            params=api_key_query_params("ncbi"),
+            headers=headers,
+            timeout=timeout,
+        )
         if desc_resp.ok:
             infos = desc_resp.json().get("Information") or []
             for info in infos:

@@ -1,0 +1,18 @@
+{
+  "message": {
+    "items": [
+      {
+        "DOI": "10.5194/tc-12-1234-2018",
+        "title": ["Arctic sea ice extent trends from satellite observations"],
+        "author": [
+          {"given": "Jane", "family": "Researcher"},
+          {"given": "John", "family": "Cryosphere"}
+        ],
+        "container-title": ["The Cryosphere"],
+        "published-print": {"date-parts": [[2018, 3, 15]]},
+        "abstract": "We analyze long-term satellite records of Arctic sea ice extent and document significant downward trends linked to warming.",
+        "URL": "https://doi.org/10.5194/tc-12-1234-2018"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "articles": [
+    {
+      "title": "Adaptive control for mobile robotics",
+      "abstract": "Control systems for autonomous mobile robots.",
+      "article_number": "9876543",
+      "publication_title": "IEEE Transactions on Robotics",
+      "publication_year": "2023"
+    }
+  ]
+}

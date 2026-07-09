@@ -8,11 +8,57 @@ from PyQt6.QtWidgets import QCheckBox, QLabel, QVBoxLayout, QWidget
 from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.adapters.catalog import (
     CONFIGURABLE_KNOWLEDGE_SERVICES,
+    AdapterCatalogEntry,
     catalog_entries_for_ui_group,
+    readiness_for_entry,
     ui_groups_for_service,
 )
+from core.knowledge.provider_credentials import adapter_credentials_hint
 from core.knowledge.source_preferences import is_adapter_enabled
-from ui.views.settings.widgets import add_subsection_to_layout, wrap_subsection
+from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
+
+
+def _preferred_source_checkbox_copy(
+    entry: AdapterCatalogEntry,
+    *,
+    service_label: str,
+) -> tuple[str, str]:
+    """Checkbox label and tooltip aligned with Provider credentials."""
+    label = entry.label
+    tooltip_lines: list[str] = []
+
+    if entry.implemented:
+        tooltip_lines.append(f"Live retrieval source for {service_label}.")
+        meta = readiness_for_entry(entry)
+        if meta.readiness == "beta":
+            label = f"{label} (beta)"
+            tooltip_lines.append(
+                "Beta source: opt-in, keyed, or indirect index — may need Provider credentials."
+            )
+        cred_hint = adapter_credentials_hint(entry.id)
+        if cred_hint:
+            tooltip_lines.append(cred_hint)
+        elif entry.requires_api_key:
+            tooltip_lines.append(
+                "Requires an API key — configure in Provider credentials above."
+            )
+        elif entry.optional_api_key:
+            tooltip_lines.append(
+                "Optional API key available in Provider credentials above."
+            )
+    else:
+        label = f"{label} — coming soon"
+        tooltip_lines.append(f"Not yet available for {service_label}.")
+        if entry.requires_api_key:
+            tooltip_lines.append(
+                "When this source ships, it will require an API key in Provider credentials."
+            )
+        elif entry.optional_api_key:
+            tooltip_lines.append(
+                "When this source ships, an optional API key may be available."
+            )
+
+    return label, " ".join(tooltip_lines)
 
 
 def build_knowledge_sources_section(host) -> QWidget:
@@ -25,14 +71,12 @@ def build_knowledge_sources_section(host) -> QWidget:
     host.knowledge_source_checkboxes: dict[tuple[str, str], list[QCheckBox]] = {}
     prefs = get_knowledge_source_preferences()
 
-    tip = (
-        "Choose which retrieval providers each knowledge domain may use. "
-        "Services define the domain (@evidence, @finance, @legal); sources "
-        "are interchangeable adapters behind that service. Unavailable providers "
-        "are shown for future releases."
+    intro = make_settings_hint(
+        "Choose which live retrieval sources each knowledge domain may use. "
+        "Sources marked coming soon are not selectable yet. For live sources that "
+        "support API keys, configure keys in Provider credentials above — keys are "
+        "not required for every source."
     )
-    intro = QLabel(tip)
-    intro.setWordWrap(True)
     layout.addWidget(intro)
 
     for service_id, service_label in CONFIGURABLE_KNOWLEDGE_SERVICES:
@@ -49,13 +93,12 @@ def build_knowledge_sources_section(host) -> QWidget:
             for entry in catalog_entries_for_ui_group(service_id, group):
                 key = (service_id, entry.id)
 
-                label = entry.label
-                if entry.requires_api_key:
-                    label = f"{label} (API key)"
-                if not entry.implemented:
-                    label = f"{label} — coming soon"
+                checkbox_label, tooltip = _preferred_source_checkbox_copy(
+                    entry,
+                    service_label=service_label,
+                )
 
-                cb = QCheckBox(label)
+                cb = QCheckBox(checkbox_label)
                 cb.setEnabled(entry.implemented)
                 enabled = is_adapter_enabled(
                     service_id,
@@ -65,10 +108,7 @@ def build_knowledge_sources_section(host) -> QWidget:
                 cb.blockSignals(True)
                 cb.setChecked(enabled and entry.implemented)
                 cb.blockSignals(False)
-                cb.setToolTip(
-                    f"{'Enabled' if entry.implemented else 'Not yet available'} "
-                    f"source for {service_label} ({service_id})."
-                )
+                cb.setToolTip(tooltip)
                 cb.toggled.connect(
                     lambda checked, sid=service_id, aid=entry.id, h=host: h._on_knowledge_source_toggled(
                         sid, aid, checked

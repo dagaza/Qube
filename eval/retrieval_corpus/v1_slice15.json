@@ -1,0 +1,22 @@
+{
+  "version": "v1_slice15",
+  "description": "Slice 15 — CS / AI venues (OpenReview, ACL Anthology)",
+  "queries": [
+    {
+      "id": "s15_cs_001",
+      "query": "transformer attention ICLR conference submission",
+      "service": "scientific_evidence",
+      "discipline": "computer_science",
+      "expect_adapters": ["openreview"],
+      "force_adapter": "openreview"
+    },
+    {
+      "id": "s15_cs_002",
+      "query": "transformer NLP ACL anthology proceedings",
+      "service": "scientific_evidence",
+      "discipline": "computer_science",
+      "expect_adapters": ["acl_anthology"],
+      "force_adapter": "acl_anthology"
+    }
+  ]
+}

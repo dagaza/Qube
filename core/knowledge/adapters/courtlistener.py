@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
-import requests
-
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
+from core.knowledge.http_client import knowledge_get
 from core.knowledge.legal_query_planner import extract_case_name_key
 
 logger = logging.getLogger("Qube.Knowledge.CourtListener")
@@ -42,8 +41,10 @@ _COURT_AUTHORITY = {
 
 
 def _headers() -> dict[str, str]:
+    from core.knowledge.credential_resolver import authorization_token
+
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-    token = os.environ.get("QUBE_COURTLISTENER_API_TOKEN", "").strip()
+    token = authorization_token("courtlistener")
     if token:
         headers["Authorization"] = f"Token {token}"
     return headers
@@ -208,26 +209,19 @@ def fetch_search_results(
         "type": "o",
         "page_size": max(10, max_results * 4),
     }
-    last_exc: Exception | None = None
-    for attempt in range(2):
-        try:
-            resp = requests.get(
-                SEARCH_URL,
-                params=params,
-                headers=_headers(),
-                timeout=20.0,
-            )
-            resp.raise_for_status()
-            payload = resp.json()
-            if isinstance(payload, dict):
-                return payload
-        except Exception as exc:
-            last_exc = exc
-            if attempt == 0:
-                continue
-            logger.warning("[CourtListener] search failed: %s", exc)
-    if last_exc is not None and last_exc:
-        logger.warning("[CourtListener] search failed: %s", last_exc)
+    try:
+        resp = knowledge_get(
+            SEARCH_URL,
+            params=params,
+            headers=_headers(),
+            timeout=20.0,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        if isinstance(payload, dict):
+            return payload
+    except Exception as exc:
+        logger.warning("[CourtListener] search failed: %s", exc)
     return {"results": []}
 
 
