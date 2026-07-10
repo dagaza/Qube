@@ -17,6 +17,6 @@ def test_resolve_qube_window_icon_path_finds_asset():
         assert path.suffix.lower() == ".png"
 
 
-def test_qube_window_icon_is_valid():
+def test_qube_window_icon_is_valid(_qube_app):
     icon = qube_window_icon()
     assert not icon.isNull()
