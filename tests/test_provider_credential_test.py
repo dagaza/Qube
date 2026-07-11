@@ -13,6 +13,9 @@ if _WS_ROOT not in sys.path:
 
 from core.knowledge.credentials import connection_mode_display  # noqa: E402
 from core.knowledge.provider_credential_test import test_provider_credential  # noqa: E402
+
+# Production probe helper — not a pytest test (would collect `provider_id` as fixture).
+test_provider_credential.__test__ = False
 from core.knowledge.provider_credentials import (  # noqa: E402
     adapter_credentials_hint,
     get_provider_credential_spec,
