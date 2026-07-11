@@ -29,8 +29,7 @@ class WebToggleStickyTests(unittest.TestCase):
         self.assertFalse(worker._force_web_enabled)
 
     def test_web_search_active_signal_declared(self) -> None:
-        worker = self._bare_worker()
-        self.assertTrue(hasattr(worker, "web_search_active"))
+        self.assertTrue(hasattr(LLMWorker, "web_search_active"))
 
 
 if __name__ == "__main__":

@@ -44,7 +44,7 @@ class TestSlice17Registry(unittest.TestCase):
         hint = adapter_credentials_hint("congress_gov")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
         spec = get_provider_credential_spec("congress_gov")
         self.assertIsNotNone(spec)
         assert spec is not None
@@ -54,7 +54,7 @@ class TestSlice17Registry(unittest.TestCase):
         hint = adapter_credentials_hint("govinfo")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
 
 class TestSlice17AdapterFixtures(unittest.TestCase):

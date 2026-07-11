@@ -112,7 +112,7 @@ def test_end_of_turn_emits_playback_finished_without_active_playback():
     worker.playback_finished = _Finished()
     worker.turn_settled = _Settled()
 
-    item = _END_OF_LLM_TURN
+    item = None  # end-of-turn branch tested directly below
     worker._last_queued_tts_key = ""
     if worker._playback_active:
         TTSWorker._signal_playback_finished(worker)

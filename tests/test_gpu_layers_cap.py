@@ -43,6 +43,7 @@ class TestAmdApuUnifiedDetection(unittest.TestCase):
             )
         )
 
+    @mock.patch("core.gpu_layers_cap.sys.platform", "linux")
     @mock.patch("core.gpu_layers_cap._nvidia_vram_bytes", return_value=0)
     @mock.patch("core.gpu_layers_cap._apple_unified_memory_proxy_bytes", return_value=0)
     @mock.patch("core.gpu_layers_cap._unified_memory_proxy_bytes", return_value=16 * 1024**3)
@@ -61,6 +62,7 @@ class TestAmdApuUnifiedDetection(unittest.TestCase):
         self.assertEqual(detect_gpu_vram_bytes(), 16 * 1024**3)
         self.assertEqual(gpu_memory_kind(), "amd_unified")
 
+    @mock.patch("core.gpu_layers_cap.sys.platform", "linux")
     @mock.patch("core.gpu_layers_cap._nvidia_vram_bytes", return_value=0)
     @mock.patch("core.gpu_layers_cap._apple_unified_memory_proxy_bytes", return_value=0)
     @mock.patch(

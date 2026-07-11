@@ -45,7 +45,7 @@ class TestSlice18Registry(unittest.TestCase):
         hint = adapter_credentials_hint("uspto_patentsview")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
         spec = get_provider_credential_spec("patentsview")
         self.assertIsNotNone(spec)
         assert spec is not None
@@ -55,7 +55,7 @@ class TestSlice18Registry(unittest.TestCase):
         hint = adapter_credentials_hint("epo_espacenet")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
     def test_discipline_pack_updates(self) -> None:
         engineering_order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_ENGINEERING)

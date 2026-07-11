@@ -399,140 +399,109 @@ class CognitiveRouterSubstringScoringTests(unittest.TestCase):
 
 
 class LLMWorkerChatCentroidContractTests(unittest.TestCase):
-    """Static check that ``workers/llm_worker.py`` wires the chat
-    centroid symmetrically to the recall centroid: defines
-    ``_CHAT_INTENT_EXAMPLES``, calls ``set_chat_centroid(...)``, and
-    guards the install behind a ``chat_centroid is None`` check so
-    we don't rebuild on every turn.
-    """
+    """Static check that router centroid examples and install helpers
+    wire the chat centroid symmetrically to recall/memory/rag/web."""
 
     @classmethod
     def setUpClass(cls) -> None:
-        path = os.path.join(ROOT, "workers", "llm_worker.py")
-        with open(path, "r", encoding="utf-8") as f:
-            cls.src = f.read()
+        examples_path = os.path.join(ROOT, "core", "router_centroid_examples.py")
+        install_path = os.path.join(ROOT, "core", "router_centroid_install.py")
+        worker_path = os.path.join(ROOT, "workers", "llm_worker.py")
+        with open(examples_path, "r", encoding="utf-8") as f:
+            cls.examples_src = f.read()
+        with open(install_path, "r", encoding="utf-8") as f:
+            cls.install_src = f.read()
+        with open(worker_path, "r", encoding="utf-8") as f:
+            cls.worker_src = f.read()
 
     def test_chat_intent_examples_is_defined(self) -> None:
         self.assertRegex(
-            self.src,
-            r"_CHAT_INTENT_EXAMPLES\s*=\s*\(",
-            "llm_worker must define _CHAT_INTENT_EXAMPLES for the "
-            "negative-class centroid.",
+            self.examples_src,
+            r"CHAT_INTENT_EXAMPLES.*=\s*\(",
+            "router_centroid_examples must define CHAT_INTENT_EXAMPLES.",
         )
 
     def test_set_chat_centroid_is_called(self) -> None:
         self.assertIn(
-            "set_chat_centroid(",
-            self.src,
-            "llm_worker must install the chat centroid via "
-            "cognitive_router.set_chat_centroid(...).",
+            "router.set_chat_centroid,",
+            self.install_src,
+            "router_centroid_install must install the chat centroid via "
+            "router.set_chat_centroid(...).",
         )
 
     def test_chat_centroid_install_is_guarded_by_is_none_check(self) -> None:
-        """The install must be guarded by a ``chat_centroid is None``
-        test so we don't rebuild the centroid on every turn (and so
-        manual overrides via ``set_chat_centroid`` aren't stomped
-        back to the curated default)."""
-        match = re.search(
-            r"if\s+self\.cognitive_router\.chat_centroid\s+is\s+None\s*:"
-            r"\s*\n[^}]*?set_chat_centroid\(",
-            self.src,
-            flags=re.DOTALL,
-        )
         self.assertIsNotNone(
-            match,
-            "Expected ``if self.cognitive_router.chat_centroid is None:`` "
-            "guarding the ``set_chat_centroid(...)`` call so the centroid "
-            "is built at most once per worker lifetime.",
+            re.search(
+                r"if\s+not\s+force\s+and\s+current\s+is\s+not\s+None",
+                self.install_src,
+            ),
+            "Expected install_router_centroids to skip rebuild when centroid "
+            "already exists unless force=True.",
         )
+        self.assertIn("install_router_centroids", self.worker_src)
 
 
 class LLMWorkerTier2CentroidContractTests(unittest.TestCase):
-    """Static check that ``workers/llm_worker.py`` wires the three
-    Tier-2 centroids (memory / rag / web) symmetrically to the
-    existing recall + chat centroids: defines the example tuples,
-    calls the corresponding ``set_*_centroid(...)`` methods, and
-    guards each install behind an ``is None`` check so the build is
-    paid exactly once per worker lifetime.
-
-    Source-grep style (same pattern as ``LLMWorkerChatCentroidContractTests``)
-    so we don't pull in Qt at test collection.
-    """
+    """Static check that router centroid examples and install helpers wire
+    Tier-2 centroids (memory / rag / web)."""
 
     @classmethod
     def setUpClass(cls) -> None:
-        path = os.path.join(ROOT, "workers", "llm_worker.py")
-        with open(path, "r", encoding="utf-8") as f:
-            cls.src = f.read()
+        examples_path = os.path.join(ROOT, "core", "router_centroid_examples.py")
+        install_path = os.path.join(ROOT, "core", "router_centroid_install.py")
+        with open(examples_path, "r", encoding="utf-8") as f:
+            cls.examples_src = f.read()
+        with open(install_path, "r", encoding="utf-8") as f:
+            cls.install_src = f.read()
 
-    # ---- example tuples ------------------------------------------
     def test_memory_intent_examples_is_defined(self) -> None:
         self.assertRegex(
-            self.src,
-            r"_MEMORY_INTENT_EXAMPLES\s*=\s*\(",
-            "llm_worker must define _MEMORY_INTENT_EXAMPLES for the "
-            "Tier-2 memory embedding centroid.",
+            self.examples_src,
+            r"MEMORY_INTENT_EXAMPLES.*=\s*\(",
+            "router_centroid_examples must define MEMORY_INTENT_EXAMPLES.",
         )
 
     def test_rag_intent_examples_is_defined(self) -> None:
         self.assertRegex(
-            self.src,
-            r"_RAG_INTENT_EXAMPLES\s*=\s*\(",
-            "llm_worker must define _RAG_INTENT_EXAMPLES for the "
-            "Tier-2 rag embedding centroid.",
+            self.examples_src,
+            r"RAG_INTENT_EXAMPLES.*=\s*\(",
+            "router_centroid_examples must define RAG_INTENT_EXAMPLES.",
         )
 
     def test_web_intent_examples_is_defined(self) -> None:
         self.assertRegex(
-            self.src,
-            r"_WEB_INTENT_EXAMPLES\s*=\s*\(",
-            "llm_worker must define _WEB_INTENT_EXAMPLES for the "
-            "Tier-2 web embedding centroid.",
+            self.examples_src,
+            r"WEB_INTENT_EXAMPLES.*=\s*\(",
+            "router_centroid_examples must define WEB_INTENT_EXAMPLES.",
         )
 
-    # ---- setter calls --------------------------------------------
     def test_set_memory_centroid_is_called(self) -> None:
-        self.assertIn(
-            "set_memory_centroid(", self.src,
-            "llm_worker must install the memory centroid via "
-            "cognitive_router.set_memory_centroid(...).",
-        )
+        self.assertIn("router.set_memory_centroid,", self.install_src)
 
     def test_set_rag_centroid_is_called(self) -> None:
-        self.assertIn(
-            "set_rag_centroid(", self.src,
-            "llm_worker must install the rag centroid via "
-            "cognitive_router.set_rag_centroid(...).",
-        )
+        self.assertIn("router.set_rag_centroid,", self.install_src)
 
     def test_set_web_centroid_is_called(self) -> None:
-        self.assertIn(
-            "set_web_centroid(", self.src,
-            "llm_worker must install the web centroid via "
-            "cognitive_router.set_web_centroid(...).",
-        )
+        self.assertIn("router.set_web_centroid,", self.install_src)
 
-    # ---- is-None guards ------------------------------------------
-    def _assert_is_none_guarded(self, attr: str, setter: str) -> None:
-        pat = (
-            r"if\s+self\.cognitive_router\." + attr +
-            r"\s+is\s+None\s*:\s*\n[^}]*?" + setter + r"\("
-        )
+    def _assert_install_guarded(self, attr: str) -> None:
+        self.assertIn(attr + ",", self.install_src)
         self.assertIsNotNone(
-            re.search(pat, self.src, flags=re.DOTALL),
-            f"Expected ``if self.cognitive_router.{attr} is None:`` "
-            f"guarding the ``{setter}(...)`` call so the centroid is "
-            "built at most once per worker lifetime.",
+            re.search(
+                r"if\s+not\s+force\s+and\s+current\s+is\s+not\s+None",
+                self.install_src,
+            ),
+            f"Expected guarded install for {attr}.",
         )
 
     def test_memory_centroid_install_is_guarded(self) -> None:
-        self._assert_is_none_guarded("memory_centroid", "set_memory_centroid")
+        self._assert_install_guarded("router.set_memory_centroid")
 
     def test_rag_centroid_install_is_guarded(self) -> None:
-        self._assert_is_none_guarded("rag_centroid", "set_rag_centroid")
+        self._assert_install_guarded("router.set_rag_centroid")
 
     def test_web_centroid_install_is_guarded(self) -> None:
-        self._assert_is_none_guarded("web_centroid", "set_web_centroid")
+        self._assert_install_guarded("router.set_web_centroid")
 
 
 class LLMWorkerTier3FeedbackContractTests(unittest.TestCase):

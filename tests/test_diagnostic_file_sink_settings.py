@@ -70,6 +70,7 @@ class DiagnosticFileSinkSettingsTests(unittest.TestCase):
                 detach_app_log_file_sink()
                 set_app_log_file_recording_enabled(True)
                 self.assertTrue(is_app_log_file_sink_attached())
+                detach_app_log_file_sink()
                 set_mock.assert_called_once_with(True)
                 get_mock.assert_called()
 
