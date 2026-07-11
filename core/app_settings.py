@@ -52,6 +52,7 @@ KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enable
 KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED = "qube.knowledge.external_v2_enabled"
 KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"
 KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"
+KEY_RETRIEVAL_PROFILE = "qube.knowledge.retrieval_profile"
 KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
 KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
@@ -377,6 +378,20 @@ def set_research_map_enabled(enabled: bool) -> None:
 
 def research_map_enabled() -> bool:
     return get_research_map_enabled()
+
+
+def get_retrieval_profile() -> str:
+    from core.knowledge.retrieval_profiles import DEFAULT_RETRIEVAL_PROFILE, normalize_profile_id
+
+    return normalize_profile_id(
+        str(_store().get(KEY_RETRIEVAL_PROFILE, DEFAULT_RETRIEVAL_PROFILE) or "")
+    )
+
+
+def set_retrieval_profile(profile: str) -> None:
+    from core.knowledge.retrieval_profiles import normalize_profile_id
+
+    _store().set(KEY_RETRIEVAL_PROFILE, normalize_profile_id(profile))
 
 
 def get_entity_resolution_enabled() -> bool:

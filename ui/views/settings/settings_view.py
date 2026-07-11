@@ -371,8 +371,17 @@ class SettingsView(
             sec_def.icon, sec_def.title, svg_icon=sec_def.svg_icon
         )
 
+        content_widget.setMinimumWidth(0)
+        content_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
         page_content = QWidget()
         page_content.setObjectName("SettingsContent")
+        page_content.setMinimumWidth(0)
+        page_content.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
         page_layout = QVBoxLayout(page_content)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(30)

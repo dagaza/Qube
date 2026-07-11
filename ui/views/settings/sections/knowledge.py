@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -27,6 +28,9 @@ from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.sections.knowledge_sources import build_knowledge_live_sources_section
+from ui.views.settings.sections.knowledge_presets import build_knowledge_presets_section
+from ui.views.settings.sections.knowledge_custom_sources import build_knowledge_custom_sources_section
+from ui.views.settings.sections.knowledge_diagnostics import build_knowledge_diagnostics_section
 from ui.views.settings.sections.knowledge_provider_status import (
     build_knowledge_provider_status_section,
 )
@@ -36,6 +40,8 @@ from ui.views.settings.widgets import add_subsection_to_layout, add_section_rese
 def build_section(host, *, is_dark: bool) -> QWidget:
     container = QWidget()
     container.setObjectName("SettingsFormContainer")
+    container.setMinimumWidth(0)
+    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     layout = QVBoxLayout(container)
     layout.setSpacing(15)
 
@@ -161,10 +167,35 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
     layout.addWidget(deep_research_row)
 
+    add_subsection_to_layout(layout, "Retrieval profile", anchor="retrieval_profile")
+
+    profile_inner = QWidget()
+    profile_form = QFormLayout(profile_inner)
+    profile_form.setSpacing(12)
+    profile_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host.retrieval_profile_selector = SelectorButton("Balanced", is_dark=is_dark)
+    host.retrieval_profile_selector.setMaximumWidth(280)
+    host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
+    host.retrieval_profile_selector.setToolTip(
+        "Controls how hard Qube searches on knowledge turns: adapter fan-out, "
+        "timeouts, and cache behavior. Independent of My knowledge presets."
+    )
+    host.retrieval_profile_description = QLabel()
+    host.retrieval_profile_description.setWordWrap(True)
+
+    profile_form.addRow("Profile", host.retrieval_profile_selector)
+    profile_form.addRow("", host.retrieval_profile_description)
+    layout.addWidget(wrap_subsection(profile_inner, anchor="retrieval_profile"))
+
     add_subsection_to_layout(layout, "Live sources", anchor="knowledge_live_sources")
     layout.addWidget(build_knowledge_live_sources_section(host))
 
     layout.addWidget(build_knowledge_provider_status_section(host, is_dark=is_dark))
+
+    layout.addWidget(build_knowledge_custom_sources_section(host, is_dark=is_dark))
+    layout.addWidget(build_knowledge_presets_section(host, is_dark=is_dark))
+    layout.addWidget(build_knowledge_diagnostics_section(host, is_dark=is_dark))
 
     embedding_download_row = make_bootstrap_download_row(
         host,
@@ -247,6 +278,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     embedding_row = QHBoxLayout()
     host.embedding_gguf_list = QListWidget()
+    host.embedding_gguf_list.setMinimumWidth(0)
     host.embedding_gguf_list.setMinimumHeight(90)
     host.embedding_gguf_list.setMaximumHeight(140)
     host.embedding_gguf_list.setToolTip(
@@ -289,6 +321,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     layout.addWidget(host.advanced_embedding_panel)
 
     host._build_embedding_mode_menu()
+
+    if hasattr(host, "_build_retrieval_profile_menu"):
+        host._build_retrieval_profile_menu()
 
     add_section_reset_footer(layout, host, "knowledge", is_dark=is_dark)
 

@@ -2010,6 +2010,7 @@ class ConversationsView(QWidget):
                         ).exec()
 
                     on_open_research_map = _open_map
+        bundle_id = str((transparency or {}).get("bundle_id") or "")
         dlg = CitationSourcesDialog(
             sources,
             self,
@@ -2018,6 +2019,8 @@ class ConversationsView(QWidget):
             transparency=transparency,
             research_map_graph=research_map_graph,
             on_open_research_map=on_open_research_map,
+            retrieval_bundle_id=bundle_id or None,
+            retrieval_db=self.db,
         )
         dlg.exec()
 

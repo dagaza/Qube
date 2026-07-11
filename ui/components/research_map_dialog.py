@@ -143,6 +143,26 @@ class ResearchMapDialog(QDialog):
         scroll.setWidget(host)
         inner.addWidget(scroll, stretch=1)
 
+        from core.knowledge.retrieval_trace_reader import (
+            format_retrieval_trace_summary,
+            read_last_retrieval_trace,
+        )
+
+        trace = read_last_retrieval_trace()
+        if trace:
+            trace_hdr = QLabel("HOW THIS WAS RETRIEVED")
+            trace_hdr.setStyleSheet(
+                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px;"
+            )
+            trace_body = QLabel(format_retrieval_trace_summary(trace))
+            trace_body.setWordWrap(True)
+            trace_body.setStyleSheet(
+                f"color: {muted}; background: {surface}; border: 1px solid {border}; "
+                f"border-radius: 10px; padding: 10px 12px; font-size: 12px;"
+            )
+            inner.addWidget(trace_hdr)
+            inner.addWidget(trace_body)
+
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")

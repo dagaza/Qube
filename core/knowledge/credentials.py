@@ -72,7 +72,9 @@ def normalize_provider_credentials(raw: Mapping[str, Any] | None) -> dict[str, d
     out: dict[str, dict[str, str]] = {}
     for provider_id, row in raw.items():
         pid = str(provider_id or "").strip().lower()
-        if not pid or get_provider_credential_spec(pid) is None:
+        if not pid:
+            continue
+        if get_provider_credential_spec(pid) is None and not pid.startswith("configured:"):
             continue
         if not isinstance(row, Mapping):
             continue
@@ -167,6 +169,20 @@ def resolve_credential(provider_id: str) -> CredentialBundle:
     Fixture mode (``QUBE_KNOWLEDGE_FIXTURES=1``) always returns anonymous with no secret.
     """
     pid = (provider_id or "").strip().lower()
+    if pid.startswith("configured:"):
+        from core.knowledge.configured_sources import resolve_configured_credential
+        from core.knowledge.secret_store import resolve_secret, store_secret
+
+        secret = resolve_secret(pid) or resolve_configured_credential(pid)
+        if secret:
+            return CredentialBundle(
+                provider_id=pid,
+                mode=CredentialMode.USER_KEY,
+                secret=secret,
+                metadata={"source": "configured"},
+            )
+        return CredentialBundle(provider_id=pid, mode=CredentialMode.ANONYMOUS)
+
     profile = _profile_for(pid)
     if profile is None:
         return CredentialBundle(provider_id=pid, mode=CredentialMode.ANONYMOUS)
@@ -207,15 +223,23 @@ def set_provider_api_key(provider_id: str, api_key: str | None) -> dict[str, dic
     )
 
     pid = (provider_id or "").strip().lower()
-    if get_provider_credential_spec(pid) is None:
+    if get_provider_credential_spec(pid) is None and not pid.startswith("configured:"):
         return get_knowledge_provider_credentials()
 
     merged = dict(get_knowledge_provider_credentials())
     text = str(api_key or "").strip()
     if text:
         merged[pid] = {"api_key": text}
+        if pid.startswith("configured:"):
+            from core.knowledge.secret_store import store_secret
+
+            store_secret(pid, text)
     else:
         merged.pop(pid, None)
+        if pid.startswith("configured:"):
+            from core.knowledge.secret_store import clear_secret
+
+            clear_secret(pid)
     set_knowledge_provider_credentials(merged)
     return merged
 

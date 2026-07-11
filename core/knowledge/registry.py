@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from core.knowledge.presets import load_preset, parse_source_pin_tool, parse_user_preset_tool
 from core.knowledge.services.finance_knowledge import FinanceKnowledgeService
 from core.knowledge.services.legal_knowledge import LegalKnowledgeService
 from core.knowledge.services.general_web import GeneralWebKnowledgeService
 from core.knowledge.services.internal_corpus import InternalCorpusKnowledgeService
+from core.knowledge.services.preset_knowledge import PresetKnowledgeService
 from core.knowledge.services.scientific_evidence import ScientificEvidenceService
 from core.knowledge.services.trusted_knowledge import TrustedKnowledgeService
 from core.knowledge.services.wikipedia import WikipediaKnowledgeService
@@ -16,13 +18,24 @@ from core.knowledge.types import (
     SERVICE_FINANCE_KNOWLEDGE,
     SERVICE_INTERNAL_CORPUS,
     SERVICE_LEGAL_KNOWLEDGE,
+    SERVICE_PRESET_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
     SERVICE_TRUSTED_KNOWLEDGE,
     SERVICE_WIKIPEDIA,
 )
 
 WEB_COMPOSER_TOOLS = frozenset(
-    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
+    {
+        "internet",
+        "trusted",
+        "evidence",
+        "science",
+        "wikipedia",
+        "pubmed",
+        "arxiv",
+        "finance",
+        "legal",
+    }
 )
 
 
@@ -42,6 +55,7 @@ _SERVICES: dict[str, Any] = {
     SERVICE_INTERNAL_CORPUS: InternalCorpusKnowledgeService(),
     SERVICE_FINANCE_KNOWLEDGE: FinanceKnowledgeService(),
     SERVICE_LEGAL_KNOWLEDGE: LegalKnowledgeService(),
+    SERVICE_PRESET_KNOWLEDGE: PresetKnowledgeService(),
 }
 
 
@@ -67,6 +81,10 @@ def resolve_turn_knowledge_service(
     if not tool and composer_internet:
         tool = "internet"
 
+    preset_id = parse_user_preset_tool(tool)
+    if preset_id and load_preset(preset_id) is not None:
+        return SERVICE_PRESET_KNOWLEDGE
+
     if tool in {"evidence", "science"}:
         return SERVICE_SCIENTIFIC_EVIDENCE
     if tool == "library":
@@ -90,10 +108,22 @@ def resolve_turn_knowledge_service(
     return SERVICE_GENERAL_WEB
 
 
+def resolve_turn_preset_id(composer_tool: str | None) -> str | None:
+    return parse_user_preset_tool((composer_tool or "").strip().lower())
+
+
 def adapter_filter_for_composer_tool(composer_tool: str | None) -> tuple[str, ...] | None:
     tool = (composer_tool or "").strip().lower()
     if tool == "pubmed":
         return ("pubmed",)
     if tool == "arxiv":
         return ("arxiv",)
+    source_id = parse_source_pin_tool(tool)
+    if source_id:
+        return (source_id,)
+    preset_id = parse_user_preset_tool(tool)
+    if preset_id:
+        preset = load_preset(preset_id)
+        if preset is not None:
+            return tuple(preset.adapters)
     return None

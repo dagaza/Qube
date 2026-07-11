@@ -500,6 +500,8 @@ class CitationSourcesDialog(QDialog):
         transparency: dict | None = None,
         research_map_graph: dict | None = None,
         on_open_research_map=None,
+        retrieval_bundle_id: str | None = None,
+        retrieval_db=None,
     ):
         super().__init__(parent)
         if is_dark is None:
@@ -508,6 +510,8 @@ class CitationSourcesDialog(QDialog):
         self._on_open_source = on_open_source
         self._research_map_graph = research_map_graph
         self._on_open_research_map = on_open_research_map
+        self._retrieval_bundle_id = retrieval_bundle_id
+        self._retrieval_db = retrieval_db
         src_list = [s for s in (sources or []) if isinstance(s, dict)]
         src_list = sorted(src_list, key=_source_sort_key)
         self._src_list = src_list
@@ -720,6 +724,32 @@ class CitationSourcesDialog(QDialog):
             map_btn.setStyleSheet(export_style)
             map_btn.clicked.connect(on_open_research_map)
             btn_row.addWidget(map_btn)
+        if retrieval_bundle_id and retrieval_db is not None:
+            inspect_btn = QPushButton("INSPECT RETRIEVAL")
+            inspect_btn.setStyleSheet(export_style)
+
+            def _open_inspector() -> None:
+                from core.knowledge.retrieval_trace_reader import read_last_retrieval_trace
+                from ui.components.retrieval_inspector import open_retrieval_inspector_dialog
+
+                record = retrieval_db.get_retrieval_record(bundle_id=retrieval_bundle_id)
+                trace = read_last_retrieval_trace()
+                preset_id = None
+                if record:
+                    preset_id = record.get("preset_id")
+                elif trace:
+                    preset_id = trace.get("preset_id")
+                open_retrieval_inspector_dialog(
+                    self,
+                    is_dark=is_dark,
+                    trace=trace,
+                    record=record,
+                    preset_id=preset_id,
+                    db=retrieval_db,
+                )
+
+            inspect_btn.clicked.connect(_open_inspector)
+            btn_row.addWidget(inspect_btn)
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
         close_btn.setStyleSheet(

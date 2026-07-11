@@ -29,6 +29,7 @@ from core.app_settings import (
     set_knowledge_source_preferences,
     set_research_map_enabled,
 )
+from core.knowledge.connectors.base import list_connector_types
 from core.knowledge.credentials import (
     clear_provider_api_key,
     env_override_active,
@@ -305,6 +306,29 @@ class KnowledgeHandlersMixin:
         )
         self._sync_embedding_mode_selector()
 
+    def _build_custom_source_connector_menu(self) -> None:
+        if not hasattr(self, "custom_source_connector_selector"):
+            return
+        items = [(connector_id, connector_id) for connector_id in list_connector_types()]
+        self._build_prestige_menu(
+            self.custom_source_connector_selector,
+            items,
+            self._on_custom_source_connector_selected,
+        )
+        self._sync_custom_source_connector_selector()
+
+    def _on_custom_source_connector_selected(self, connector_id: str) -> None:
+        self._custom_source_connector_id = str(connector_id or "rest_json")
+
+    def _sync_custom_source_connector_selector(self) -> None:
+        if not hasattr(self, "custom_source_connector_selector"):
+            return
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        connector_id = getattr(self, "_custom_source_connector_id", "rest_json")
+        self.custom_source_connector_selector.setText(connector_id)
+        refit_settings_selector_width(self.custom_source_connector_selector)
+
     def _sync_embedding_mode_selector(self) -> None:
         if not hasattr(self, "embedding_mode_selector"):
             return
@@ -557,3 +581,144 @@ class KnowledgeHandlersMixin:
         self._sync_active_embedding_label()
         self._refresh_embedding_gguf_list()
         self._sync_embedding_mode_selector()
+
+    def _save_knowledge_preset(self) -> None:
+        from ui.views.settings.sections.knowledge_presets import save_preset_from_host
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        try:
+            save_preset_from_host(self)
+        except Exception as exc:
+            PrestigeDialog(self.window(), "Preset error", str(exc), is_dark=is_dark).exec()
+
+    def _delete_knowledge_preset(self) -> None:
+        from ui.views.settings.sections.knowledge_presets import delete_selected_preset_from_host
+
+        delete_selected_preset_from_host(self)
+
+    def _explain_knowledge_preset(self) -> None:
+        from ui.views.settings.sections.knowledge_presets import explain_selected_preset_from_host
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        text = explain_selected_preset_from_host(self)
+        if not text:
+            PrestigeDialog(
+                self.window(),
+                "Explain preset",
+                "Select a preset in the table first.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        PrestigeDialog(
+            self.window(),
+            "Explain preset",
+            text,
+            is_dark=is_dark,
+            dialog_width=520,
+        ).exec()
+
+    def _build_retrieval_profile_menu(self) -> None:
+        if not hasattr(self, "retrieval_profile_selector"):
+            return
+        from core.knowledge.retrieval_profiles import list_profile_specs
+
+        items = [
+            (f"{spec.label} — {spec.short_description}", spec.id)
+            for spec in list_profile_specs()
+        ]
+        self._build_prestige_menu(
+            self.retrieval_profile_selector,
+            items,
+            self._on_retrieval_profile_selected,
+        )
+        self._sync_retrieval_profile_selector()
+
+    def _on_retrieval_profile_selected(self, profile_id: str) -> None:
+        from core.app_settings import set_retrieval_profile
+
+        set_retrieval_profile(str(profile_id))
+
+    def _sync_retrieval_profile_selector(self) -> None:
+        if not hasattr(self, "retrieval_profile_selector"):
+            return
+        from core.app_settings import get_retrieval_profile
+        from core.knowledge.retrieval_profiles import get_profile_spec
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        spec = get_profile_spec(get_retrieval_profile())
+        self.retrieval_profile_selector.setText(spec.label)
+        if hasattr(self, "retrieval_profile_description"):
+            self.retrieval_profile_description.setText(spec.short_description)
+        refit_settings_selector_width(self.retrieval_profile_selector)
+
+    def _save_custom_source(self) -> None:
+        from ui.views.settings.sections.knowledge_custom_sources import save_custom_source_from_host
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        try:
+            save_custom_source_from_host(self)
+            from ui.views.settings.sections.knowledge_presets import (
+                _refresh_preset_sources_hint,
+            )
+
+            _refresh_preset_sources_hint(self)
+        except Exception as exc:
+            PrestigeDialog(self.window(), "Source error", str(exc), is_dark=is_dark).exec()
+
+    def _test_custom_source(self) -> None:
+        from ui.views.settings.sections.knowledge_custom_sources import test_custom_source_from_host
+
+        test_custom_source_from_host(self)
+
+    def _delete_custom_source(self) -> None:
+        from ui.views.settings.sections.knowledge_custom_sources import delete_custom_source_from_host
+
+        delete_custom_source_from_host(self)
+
+    def _on_open_custom_sources_settings_clicked(self) -> None:
+        self.select_settings_section("knowledge", anchor="knowledge_custom_sources")
+
+    def _on_open_my_knowledge_settings_clicked(self) -> None:
+        self.select_settings_section("knowledge", anchor="knowledge_presets")
+
+    def _refresh_retrieval_trace(self) -> None:
+        panel = getattr(self, "retrieval_trace_panel", None)
+        if panel is not None:
+            panel.refresh()
+
+    def _export_knowledge_pack(self) -> None:
+        from core.knowledge.knowledge_pack import export_knowledge_pack_to_file
+        from core.paths import user_data_root
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        path = user_data_root() / "knowledge-pack.json"
+        export_knowledge_pack_to_file(path)
+        PrestigeDialog(
+            self.window(),
+            "Knowledge pack exported",
+            f"Saved to {path}",
+            is_dark=is_dark,
+        ).exec()
+
+    def _import_knowledge_pack(self) -> None:
+        from core.knowledge.knowledge_pack import import_knowledge_pack_from_file
+        from core.paths import user_data_root
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        path = user_data_root() / "knowledge-pack.json"
+        if not path.is_file():
+            PrestigeDialog(
+                self.window(),
+                "Import failed",
+                f"No pack found at {path}",
+                is_dark=is_dark,
+            ).exec()
+            return
+        summary = import_knowledge_pack_from_file(path)
+        PrestigeDialog(
+            self.window(),
+            "Knowledge pack imported",
+            str(summary),
+            is_dark=is_dark,
+        ).exec()
+        self._refresh_retrieval_trace()
