@@ -11,6 +11,12 @@ from typing import Any, Mapping
 
 import requests
 
+from core.knowledge.egress_policy import (
+    EgressPolicy,
+    EgressPolicyError,
+    cap_timeout,
+    validate_url,
+)
 from core.knowledge.host_scheduler import (
     HostCircuitOpenError,
     get_host_scheduler,
@@ -33,6 +39,7 @@ MAX_SERVER_ERROR_RETRIES = 3
 SERVER_ERROR_CODES = frozenset({502, 503, 504})
 DEFAULT_429_FALLBACK_SEC = 3.0
 OPENALEX_HOST = "api.openalex.org"
+DEFAULT_EGRESS_POLICY = EgressPolicy()
 
 
 class BudgetExhaustedError(Exception):
@@ -52,6 +59,44 @@ class HostUnavailableError(Exception):
         self.metrics_host = metrics_host
         self.reason = reason
         super().__init__(f"Host unavailable ({reason}): {host}")
+
+
+def _read_bounded_response(
+    resp: requests.Response,
+    *,
+    max_bytes: int,
+) -> bytes:
+    if max_bytes <= 0:
+        return resp.content
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in resp.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > max_bytes:
+            resp.close()
+            raise EgressPolicyError(
+                f"Response exceeds max_fetch_bytes ({max_bytes} bytes)"
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
+    resp._content = content
+    return content
+
+
+def _prepare_request(
+    url: str,
+    kwargs: dict[str, Any],
+    *,
+    egress_policy: EgressPolicy | None,
+) -> tuple[str, dict[str, Any], EgressPolicy]:
+    policy = egress_policy or DEFAULT_EGRESS_POLICY
+    validated_url = validate_url(url, policy)
+    out = dict(kwargs)
+    out["timeout"] = cap_timeout(out.get("timeout"), policy=policy)
+    out.setdefault("allow_redirects", True)
+    return validated_url, out, policy
 
 
 def retry_after_seconds(
@@ -230,12 +275,19 @@ def knowledge_get(
     *,
     host: str | None = None,
     is_retry: bool = False,
+    egress_policy: EgressPolicy | None = None,
+    max_response_bytes: int | None = None,
     **kwargs: Any,
 ) -> requests.Response:
     """Rate-limited ``requests.get`` with metrics and header-aware retries."""
     _ = is_retry  # Retries are tracked internally; external flag is ignored.
+    try:
+        url, kwargs, policy = _prepare_request(url, kwargs, egress_policy=egress_policy)
+    except EgressPolicyError:
+        raise
     if kwargs.get("timeout") is None:
         kwargs["timeout"] = DEFAULT_TIMEOUT_SEC
+    byte_limit = max_response_bytes if max_response_bytes is not None else policy.max_response_bytes
     hostname = host or hostname_from_url(url)
     metrics_host = metrics_host_for(hostname)
 
@@ -261,11 +313,15 @@ def knowledge_get(
                 hostname=hostname,
                 metrics_host=metrics_host,
                 is_retry=attempt_is_retry,
+                stream=byte_limit > 0,
                 **kwargs,
             )
         except Exception:
             _record_circuit_outcome(hostname, 0)
             raise
+
+        if byte_limit > 0:
+            _read_bounded_response(resp, max_bytes=byte_limit)
 
         if (
             hostname == OPENALEX_HOST
@@ -321,12 +377,19 @@ def knowledge_post(
     *,
     host: str | None = None,
     is_retry: bool = False,
+    egress_policy: EgressPolicy | None = None,
+    max_response_bytes: int | None = None,
     **kwargs: Any,
 ) -> requests.Response:
     """Rate-limited ``requests.post`` with metrics and header-aware retries."""
     _ = is_retry
+    try:
+        url, kwargs, policy = _prepare_request(url, kwargs, egress_policy=egress_policy)
+    except EgressPolicyError:
+        raise
     if kwargs.get("timeout") is None:
         kwargs["timeout"] = DEFAULT_TIMEOUT_SEC
+    byte_limit = max_response_bytes if max_response_bytes is not None else policy.max_response_bytes
     hostname = host or hostname_from_url(url)
     metrics_host = metrics_host_for(hostname)
 
@@ -352,11 +415,15 @@ def knowledge_post(
                 hostname=hostname,
                 metrics_host=metrics_host,
                 is_retry=attempt_is_retry,
+                stream=byte_limit > 0,
                 **kwargs,
             )
         except Exception:
             _record_circuit_outcome(hostname, 0)
             raise
+
+        if byte_limit > 0:
+            _read_bounded_response(resp, max_bytes=byte_limit)
 
         if resp.status_code == 429:
             if rate_limit_attempts >= MAX_RATE_LIMIT_RETRIES:

@@ -128,4 +128,10 @@ SEARCH_FUNCTIONS: dict[str, SearchFn] = {
 
 
 def get_search_function(adapter_id: str) -> SearchFn | None:
-    return SEARCH_FUNCTIONS.get((adapter_id or "").strip().lower())
+    aid = (adapter_id or "").strip().lower()
+    fn = SEARCH_FUNCTIONS.get(aid)
+    if fn is not None:
+        return fn
+    from core.knowledge.configured_sources import get_configured_source_fn
+
+    return get_configured_source_fn(aid)

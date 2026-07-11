@@ -119,18 +119,23 @@ def resolve_service_adapters(
     composer_adapter_filter: tuple[str, ...] | None = None,
     stored_preferences: dict[str, list[str]] | None = None,
     medical_query: bool | None = None,
+    preset_adapter_filter: tuple[str, ...] | None = None,
 ) -> tuple[str, ...]:
     """
     Resolve adapter ids for a retrieval turn.
 
-    Priority: composer single-adapter override → user preferences → service defaults.
+    Priority: composer single-adapter override → preset adapters → user preferences → service defaults.
     Scientific service applies medical PubMed gating when no composer override.
     """
     sid = (service_id or "").strip().lower()
 
     if composer_adapter_filter:
-        allowed = implemented_adapter_ids(sid)
-        filtered = tuple(aid for aid in composer_adapter_filter if aid in allowed)
+        filtered = _filter_allowed_adapters(sid, composer_adapter_filter)
+        if filtered:
+            return filtered
+
+    if preset_adapter_filter:
+        filtered = _filter_allowed_adapters(sid, preset_adapter_filter)
         if filtered:
             return filtered
 
@@ -149,3 +154,24 @@ def resolve_service_adapters(
         )
 
     return enabled
+
+
+def _filter_allowed_adapters(
+    service_id: str,
+    adapter_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    allowed_builtin = set(implemented_adapter_ids(service_id))
+    from core.knowledge.configured_sources import load_configured_source
+
+    out: list[str] = []
+    for aid in adapter_ids:
+        a = (aid or "").strip().lower()
+        if not a:
+            continue
+        if a in allowed_builtin:
+            out.append(a)
+            continue
+        source = load_configured_source(a)
+        if source is not None and source.knowledge_service == service_id:
+            out.append(a)
+    return tuple(out)

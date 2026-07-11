@@ -39,6 +39,12 @@ from core.knowledge.ranking.relevance import score_rows
 from core.knowledge.ranking.trial_grounding import extract_trial_signal
 from core.knowledge.ranking.reliability import apply_reliability_scores
 from core.knowledge.ranking.stopping import adaptive_stop_reason
+from core.knowledge.retrieval_profiles import (
+    get_profile_spec,
+    normalize_profile_id,
+    order_adapter_ids,
+    scientific_cache_enabled,
+)
 from core.knowledge.types import EvidenceBundle, RetrievalContext, SERVICE_SCIENTIFIC_EVIDENCE
 
 
@@ -233,6 +239,10 @@ class ScientificEvidencePipeline:
             composer_adapter_filter=ctx.adapter_filter,
             stored_preferences=get_knowledge_source_preferences(),
         )
+        profile = get_profile_spec(normalize_profile_id(ctx.retrieval_profile))
+        adapter_ids = list(
+            order_adapter_ids(tuple(adapter_ids), profile=profile)
+        )
         discipline_match = detect_scientific_discipline(ctx.query)
         discipline_adapter_order = discipline_ordered_adapters(
             get_effective_enabled_adapters(
@@ -261,7 +271,9 @@ class ScientificEvidencePipeline:
             query=semantic or query,
             adapter_filter=adapter_ids,
         )
-        cached = get_cached_rows(cache_key)
+        cached = None
+        if scientific_cache_enabled(profile):
+            cached = get_cached_rows(cache_key)
         if cached is not None:
             candidates = _dedupe_rows([dict(r) for r in cached])
             adapter_calls = sorted(
@@ -413,6 +425,7 @@ class ScientificEvidencePipeline:
             "scientific_relevance_dropped": len(rejected),
             "scientific_avg_relevance": round(avg_rel, 4),
             "scientific_cache_hit": cached is not None,
+            "retrieval_profile": profile.id,
             "scientific_keyword_query": plan.keyword_query,
             "scientific_entity_keywords": list(plan.entity_keywords),
             "scientific_trial_signals": sorted(trial_signals),

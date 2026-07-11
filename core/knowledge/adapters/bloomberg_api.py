@@ -11,6 +11,7 @@ from urllib.parse import urlencode, urlparse
 
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 from core.knowledge.credential_resolver import resolve_credential
+from core.knowledge.egress_policy import EgressPolicy, EgressPolicyError
 from core.knowledge.http_client import BudgetExhaustedError, knowledge_post
 
 logger = logging.getLogger("Qube.Knowledge.Bloomberg")
@@ -158,6 +159,7 @@ def fetch_search_results(
             headers=headers,
             host=_bloomberg_host(base_url),
             timeout=timeout,
+            egress_policy=EgressPolicy.bloomberg_default(),
         )
         resp.raise_for_status()
         payload = resp.json()
@@ -168,6 +170,9 @@ def fetch_search_results(
         return payload
     except BudgetExhaustedError:
         logger.warning("[Bloomberg] budget exhausted; skipping retry")
+        return {"results": []}
+    except EgressPolicyError as exc:
+        logger.warning("[Bloomberg] egress policy blocked request: %s", exc)
         return {"results": []}
     except Exception as exc:
         logger.warning("[Bloomberg] instrument search failed: %s", exc)

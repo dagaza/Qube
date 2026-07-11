@@ -13,7 +13,7 @@ from core.knowledge.types import EvidenceBundle, EvidenceObject
 from core.web_search_audit import web_search_audit_log_enabled
 from core.web_search_audit_sink import WEB_SEARCH_AUDIT_LOGGER_NAME
 
-RETRIEVAL_TRACE_SCHEMA_VERSION = 2
+RETRIEVAL_TRACE_SCHEMA_VERSION = 3
 RETRIEVAL_TRACE_EVENT = "retrieval_trace"
 
 
@@ -40,6 +40,10 @@ class RetrievalTrace:
     relevance_diag: Mapping[str, Any] | None = None
     session_id: str | None = None
     turn_id: int | None = None
+    preset_id: str | None = None
+    retrieval_profile: str | None = None
+    context_fingerprint: Mapping[str, Any] | None = None
+    pipeline_stages: tuple[Mapping[str, Any], ...] = ()
 
 
 def _serialize_evidence(obj: EvidenceObject) -> dict[str, Any]:
@@ -63,6 +67,10 @@ def build_retrieval_trace(
     turn_id: int | None = None,
     request_id: str | None = None,
     ts: float | None = None,
+    preset_id: str | None = None,
+    retrieval_profile: str | None = None,
+    context_fingerprint: Mapping[str, Any] | None = None,
+    pipeline_stages: Sequence[Mapping[str, Any]] | None = None,
 ) -> RetrievalTrace:
     raw_count = 0
     if relevance_diag is not None:
@@ -95,6 +103,10 @@ def build_retrieval_trace(
         relevance_diag=relevance_diag,
         session_id=session_id,
         turn_id=turn_id,
+        preset_id=preset_id,
+        retrieval_profile=retrieval_profile,
+        context_fingerprint=context_fingerprint,
+        pipeline_stages=tuple(pipeline_stages or ()),
     )
 
 
@@ -129,6 +141,14 @@ def serialize_retrieval_trace(
     }
     if trace.relevance_diag:
         payload["relevance_diag"] = dict(trace.relevance_diag)
+    if trace.preset_id:
+        payload["preset_id"] = trace.preset_id
+    if trace.retrieval_profile:
+        payload["retrieval_profile"] = trace.retrieval_profile
+    if trace.context_fingerprint:
+        payload["context_fingerprint"] = dict(trace.context_fingerprint)
+    if trace.pipeline_stages:
+        payload["pipeline_stages"] = [dict(s) for s in trace.pipeline_stages]
     return payload
 
 

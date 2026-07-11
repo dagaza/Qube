@@ -117,6 +117,8 @@ class KnowledgeSourceRow(QWidget):
         self._entry = entry
 
         self.setObjectName("KnowledgeSourceRow")
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 2)
@@ -126,19 +128,33 @@ class KnowledgeSourceRow(QWidget):
             entry,
             service_label=service_label,
         )
-        self.checkbox = QCheckBox(checkbox_label)
+        name_col = QWidget()
+        name_col.setMinimumWidth(0)
+        name_col.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        name_layout = QHBoxLayout(name_col)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.setSpacing(8)
+
+        self.checkbox = QCheckBox()
         self.checkbox.setEnabled(entry.implemented)
         self.checkbox.setToolTip(tooltip)
-        self.checkbox.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
-        )
         self.checkbox.toggled.connect(self._on_toggled)
-        layout.addWidget(self.checkbox, stretch=1)
+        name_layout.addWidget(
+            self.checkbox,
+            alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+        )
+
+        self.label = QLabel(checkbox_label)
+        self.label.setWordWrap(True)
+        self.label.setToolTip(tooltip)
+        self.label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        name_layout.addWidget(self.label, stretch=1)
+        layout.addWidget(name_col, stretch=1)
 
         status_col = QWidget()
         status_col.setObjectName("KnowledgeSourceStatusColumn")
         status_col.setFixedWidth(STATUS_COLUMN_WIDTH_PX)
+        status_col.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         status_layout = QVBoxLayout(status_col)
         status_layout.setContentsMargins(0, 0, 0, 0)
         status_layout.setSpacing(2)
@@ -151,12 +167,19 @@ class KnowledgeSourceRow(QWidget):
         status_layout.addLayout(badge_row)
 
         self.hint_label = QLabel()
+        self.hint_label.setWordWrap(True)
+        self.hint_label.setMinimumWidth(0)
+        self.hint_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Minimum,
+        )
         status_layout.addWidget(self.hint_label)
         layout.addWidget(status_col, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
         action_col = QWidget()
         action_col.setObjectName("KnowledgeSourceActionColumn")
         action_col.setFixedWidth(ACTION_COLUMN_WIDTH_PX)
+        action_col.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         action_layout = QHBoxLayout(action_col)
         action_layout.setContentsMargins(0, 0, 0, 0)
         action_layout.setSpacing(0)
@@ -261,6 +284,8 @@ def refresh_live_source_access_badges(host) -> None:
 def build_knowledge_live_sources_section(host) -> QWidget:
     """Build unified live source rows grouped by knowledge domain."""
     container = QWidget()
+    container.setMinimumWidth(0)
+    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     layout = QVBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(12)
@@ -280,16 +305,20 @@ def build_knowledge_live_sources_section(host) -> QWidget:
     layout.addWidget(intro)
 
     callout_shell = QWidget()
+    callout_shell.setMinimumWidth(0)
     callout_shell_layout = QVBoxLayout(callout_shell)
     callout_shell_layout.setContentsMargins(0, 2, 0, 2)
     callout_shell_layout.setSpacing(0)
 
     callout = QWidget()
+    callout.setMinimumWidth(0)
     callout_layout = QHBoxLayout(callout)
     callout_layout.setContentsMargins(14, 12, 14, 12)
     callout_layout.setSpacing(12)
 
     content_col = QWidget()
+    content_col.setMinimumWidth(0)
+    content_col.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     content_layout = QVBoxLayout(content_col)
     content_layout.setContentsMargins(0, 0, 0, 0)
     content_layout.setSpacing(4)

@@ -216,6 +216,7 @@ from core.knowledge.registry import (
     WEB_COMPOSER_TOOLS,
     adapter_filter_for_composer_tool,
     resolve_turn_knowledge_service,
+    resolve_turn_preset_id,
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
 from core.knowledge.web_retrieval import run_web_retrieval
@@ -255,6 +256,7 @@ from core.rag_trigger_routing import (
 from core.composer_attachments import (
     attachment_summary,
     build_referenced_conversation_context,
+    is_web_composer_tool,
     resolve_attachment_routing,
 )
 
@@ -2271,7 +2273,7 @@ class LLMWorker(QThread):
                 logger.info(
                     "[LLM Worker] Composer @library: forcing internal corpus WEB path"
                 )
-            elif composer_tool in WEB_COMPOSER_TOOLS:
+            elif composer_tool and is_web_composer_tool(composer_tool):
                 self._composer_knowledge_tool = composer_tool
                 self._composer_internet_requested = composer_tool == "internet"
                 self._composer_trusted_requested = composer_tool == "trusted"
@@ -3024,6 +3026,9 @@ class LLMWorker(QThread):
             turn_adapter_filter = adapter_filter_for_composer_tool(
                 getattr(self, "_composer_knowledge_tool", None)
             )
+            turn_preset_id = resolve_turn_preset_id(
+                getattr(self, "_composer_knowledge_tool", None)
+            )
             library_store = (
                 self.store
                 if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
@@ -3047,6 +3052,8 @@ class LLMWorker(QThread):
                 turn_id=getattr(self, "_routing_debug_turn_seq", None),
                 library_store=library_store,
                 source_filter=corpus_source_filter,
+                preset_id=turn_preset_id,
+                db=self.store,
             )
             web_results = _web_outcome.web_results
             web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit

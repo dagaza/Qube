@@ -79,6 +79,43 @@ _WEB_COMPOSER_TOOLS = frozenset(
     {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
 )
 
+
+def is_web_composer_tool(tool_id: str) -> bool:
+    tool = (tool_id or "").strip().lower()
+    if tool in _WEB_COMPOSER_TOOLS:
+        return True
+    if tool.startswith("user:") or tool.startswith("source:"):
+        return True
+    return False
+
+
+def composer_preset_tools() -> list[dict[str, str | bool]]:
+    from core.knowledge.presets import list_presets
+
+    tools: list[dict[str, str | bool]] = []
+    for preset in list_presets(composer_visible_only=True):
+        from core.knowledge.explain_preset import build_explain_preset
+        from core.app_settings import get_retrieval_profile
+
+        explain = build_explain_preset(preset.id, retrieval_profile=get_retrieval_profile())
+        uses = ", ".join(
+            str(item.get("label") or item.get("id"))
+            for item in (explain.get("uses") or [])
+        )
+        desc = preset.description or f"My knowledge preset ({preset.base_service})"
+        if uses:
+            desc = f"{desc} Uses: {uses}."
+        tools.append(
+            {
+                "id": f"user:{preset.id}",
+                "label": preset.label,
+                "description": desc,
+                "group": "My knowledge",
+            }
+        )
+    return tools
+
+
 _TOOL_USAGE_HINTS: dict[str, str] = {
     "trusted": "Use for general facts from vetted allowlisted sources.",
     "evidence": "Use when you need cited papers; discipline-specific sources are chosen automatically.",
@@ -112,11 +149,23 @@ def _tool_matches_palette_filter(tool: dict[str, str | bool], query: str) -> boo
 def composer_tools_for_palette(query: str = "") -> list[dict[str, str | bool]]:
     """Tools shown in composer palettes; hides advanced aliases unless id matches."""
     q = (query or "").strip().lower()
-    return [tool for tool in COMPOSER_TOOLS if _tool_matches_palette_filter(tool, q)]
+    tools = [tool for tool in COMPOSER_TOOLS if _tool_matches_palette_filter(tool, q)]
+    if not q or q in {"my", "user", "knowledge", "preset"}:
+        tools.extend(composer_preset_tools())
+    elif q.startswith("user:") or q.startswith("source:"):
+        tools.extend(
+            t
+            for t in composer_preset_tools()
+            if str(t["id"]).lower().startswith(q) or q in str(t["label"]).lower()
+        )
+    return tools
 
 
 def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
     for tool in COMPOSER_TOOLS:
+        if tool["id"] == tool_id:
+            return tool
+    for tool in composer_preset_tools():
         if tool["id"] == tool_id:
             return tool
     return None
@@ -189,7 +238,9 @@ def parse_attachments(text: str) -> tuple[str, list[ComposerAttachment]]:
                 label = att_id[:8] + "…" if len(att_id) > 12 else att_id
         else:
             kind = "tool"
-            tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
+            tool = composer_tool_by_id(att_id)
+            if tool is None:
+                tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
             label = tool["label"] if tool else att_id
         key = (kind, att_id)
         if key not in seen:
@@ -252,7 +303,7 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     tool_id = primary.id
-    if tool_id in _WEB_COMPOSER_TOOLS:
+    if is_web_composer_tool(tool_id):
         return {
             "route": "web",
             "strategy": f"attachment_tool_{tool_id}",

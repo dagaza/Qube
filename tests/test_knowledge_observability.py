@@ -35,7 +35,7 @@ class TestRetrievalObservability(unittest.TestCase):
         )
         payload = serialize_retrieval_trace(trace, sources=bundle.sources)
         self.assertEqual(payload["event"], RETRIEVAL_TRACE_EVENT)
-        self.assertEqual(payload["schema_version"], 2)
+        self.assertEqual(payload["schema_version"], 3)
         self.assertEqual(payload["knowledge_service"], "general_web")
         self.assertEqual(payload["bundle_id"], bundle.bundle_id)
         self.assertEqual(len(payload["sources"]), 1)

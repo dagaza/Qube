@@ -197,6 +197,11 @@
     "default": false,
     "description": "When true, build a session-local knowledge graph from evidence bundles and show the Research map in the Sources dialog."
   },
+  "qube.knowledge.retrieval_profile": {
+    "type": "string",
+    "default": "balanced",
+    "description": "Orchestration profile for knowledge turns: fast, balanced, thorough, evidence_first, or local_first."
+  },
   "qube.knowledge.entity_resolution_enabled": {
     "type": "boolean",
     "default": true,

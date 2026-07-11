@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QFrame,
     QHeaderView,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -32,10 +33,10 @@ def _resolve_is_dark(host) -> bool:
 def _configure_provider_status_table(table: QTableWidget, *, is_dark: bool) -> None:
     table.setObjectName(_TABLE_OBJECT_NAME)
     table.setHorizontalHeaderLabels(["Provider", "Status", "Quota", "Health"])
-    table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-    table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-    table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-    table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+    header = table.horizontalHeader()
+    for col in range(4):
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+    header.setStretchLastSection(True)
     table.horizontalHeader().setDefaultAlignment(
         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
     )
@@ -52,6 +53,8 @@ def _configure_provider_status_table(table: QTableWidget, *, is_dark: bool) -> N
     table.setFrameShape(QFrame.Shape.NoFrame)
     table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    table.setMinimumWidth(0)
+    table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     apply_provider_status_table_theme(table, is_dark=is_dark)
 
@@ -76,6 +79,8 @@ def _sync_provider_status_table_height(table: QTableWidget) -> None:
 
 def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QWidget:
     container = QWidget()
+    container.setMinimumWidth(0)
+    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     layout = QVBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(0)

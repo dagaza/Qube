@@ -184,6 +184,36 @@ class DatabaseManager:
                     CREATE INDEX IF NOT EXISTS idx_bundle_snapshots_session
                     ON evidence_bundle_snapshots(session_id, created_at DESC)
                 """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS retrieval_records (
+                        request_id TEXT PRIMARY KEY,
+                        bundle_id TEXT NOT NULL,
+                        session_id TEXT,
+                        turn_id INTEGER,
+                        query_raw TEXT,
+                        query_resolved TEXT,
+                        knowledge_service TEXT,
+                        retrieval_strategy TEXT,
+                        preset_id TEXT,
+                        adapter_filter_json TEXT,
+                        retrieval_profile TEXT,
+                        connector_hashes_json TEXT,
+                        context_fingerprint_json TEXT,
+                        evidence_count INTEGER,
+                        latency_ms REAL,
+                        coverage TEXT,
+                        confidence REAL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_retrieval_records_bundle
+                    ON retrieval_records(bundle_id)
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_retrieval_records_session
+                    ON retrieval_records(session_id, created_at DESC)
+                """)
 
                 for alter_sql in (
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
@@ -1247,3 +1277,139 @@ class DatabaseManager:
         except Exception as e:
             logger.error("Failed to find prior bundle snapshots: %s", e)
             return []
+
+    def save_retrieval_record(
+        self,
+        *,
+        request_id: str,
+        bundle_id: str,
+        session_id: str | None = None,
+        turn_id: int | None = None,
+        query_raw: str = "",
+        query_resolved: str = "",
+        knowledge_service: str = "",
+        retrieval_strategy: str = "",
+        preset_id: str | None = None,
+        adapter_filter_json: str = "[]",
+        retrieval_profile: str = "balanced",
+        connector_hashes_json: str = "[]",
+        context_fingerprint_json: str = "{}",
+        evidence_count: int = 0,
+        latency_ms: float = 0.0,
+        coverage: str = "",
+        confidence: float = 0.0,
+    ) -> None:
+        rid = str(request_id or "").strip()
+        bid = str(bundle_id or "").strip()
+        if not rid or not bid:
+            return
+        try:
+            with self._get_connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO retrieval_records (
+                        request_id, bundle_id, session_id, turn_id,
+                        query_raw, query_resolved, knowledge_service, retrieval_strategy,
+                        preset_id, adapter_filter_json, retrieval_profile,
+                        connector_hashes_json, context_fingerprint_json,
+                        evidence_count, latency_ms, coverage, confidence
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(request_id) DO UPDATE SET
+                        bundle_id = excluded.bundle_id,
+                        session_id = excluded.session_id,
+                        turn_id = excluded.turn_id,
+                        query_raw = excluded.query_raw,
+                        query_resolved = excluded.query_resolved,
+                        knowledge_service = excluded.knowledge_service,
+                        retrieval_strategy = excluded.retrieval_strategy,
+                        preset_id = excluded.preset_id,
+                        adapter_filter_json = excluded.adapter_filter_json,
+                        retrieval_profile = excluded.retrieval_profile,
+                        connector_hashes_json = excluded.connector_hashes_json,
+                        context_fingerprint_json = excluded.context_fingerprint_json,
+                        evidence_count = excluded.evidence_count,
+                        latency_ms = excluded.latency_ms,
+                        coverage = excluded.coverage,
+                        confidence = excluded.confidence,
+                        created_at = CURRENT_TIMESTAMP
+                    """,
+                    (
+                        rid,
+                        bid,
+                        session_id,
+                        turn_id,
+                        query_raw,
+                        query_resolved,
+                        knowledge_service,
+                        retrieval_strategy,
+                        preset_id,
+                        adapter_filter_json,
+                        retrieval_profile,
+                        connector_hashes_json,
+                        context_fingerprint_json,
+                        evidence_count,
+                        latency_ms,
+                        coverage,
+                        confidence,
+                    ),
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error("Failed to save retrieval record %s: %s", rid, e)
+
+    def get_retrieval_record(
+        self,
+        *,
+        bundle_id: str | None = None,
+        request_id: str | None = None,
+    ) -> dict | None:
+        bid = str(bundle_id or "").strip()
+        rid = str(request_id or "").strip()
+        if not bid and not rid:
+            return None
+        try:
+            with self._get_connection() as conn:
+                if rid:
+                    row = conn.execute(
+                        "SELECT * FROM retrieval_records WHERE request_id = ? LIMIT 1",
+                        (rid,),
+                    ).fetchone()
+                else:
+                    row = conn.execute(
+                        """
+                        SELECT * FROM retrieval_records
+                        WHERE bundle_id = ?
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        (bid,),
+                    ).fetchone()
+                if row is None:
+                    return None
+                return dict(row)
+        except Exception as e:
+            logger.error("Failed to load retrieval record: %s", e)
+            return None
+
+    def get_evidence_bundle_snapshot(self, *, bundle_id: str) -> dict | None:
+        bid = str(bundle_id or "").strip()
+        if not bid:
+            return None
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    """
+                    SELECT bundle_id, session_id, message_id, query_resolved,
+                           knowledge_service, entity_keys, bundle_json, created_at
+                    FROM evidence_bundle_snapshots
+                    WHERE bundle_id = ?
+                    LIMIT 1
+                    """,
+                    (bid,),
+                ).fetchone()
+                if row is None:
+                    return None
+                return dict(row)
+        except Exception as e:
+            logger.error("Failed to load bundle snapshot %s: %s", bid, e)
+            return None

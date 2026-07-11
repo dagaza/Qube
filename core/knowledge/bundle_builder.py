@@ -31,6 +31,7 @@ STRATEGY_SCIENTIFIC_PARALLEL = "pubmed_openalex_arxiv_ranked"
 STRATEGY_INTERNAL_CORPUS = "lancedb_hybrid_library"
 STRATEGY_FINANCE_SEC = "sec_edgar_submissions"
 STRATEGY_LEGAL_COURTLISTENER = "courtlistener_search"
+STRATEGY_GENERIC_PARALLEL = "generic_parallel_ranked"
 
 
 def _legacy_row_to_evidence(
@@ -1154,6 +1155,102 @@ def build_legal_knowledge_bundle(
         sources=sources,
         rejected_count=rejected_count,
         warnings=tuple(dict.fromkeys(warnings)),
+        conflicts=(),
+        stop_reason=stop_reason if sources else "no_evidence",
+        adapter_calls=adapter_calls,
+    )
+
+
+def _generic_row_to_evidence(
+    row: dict[str, Any],
+    *,
+    index: int,
+    retrieved_at: float,
+) -> EvidenceObject:
+    title = str(row.get("title") or "").strip() or f"Source {index}"
+    snippet = str(row.get("snippet") or "").strip()
+    url = str(row.get("url") or "").strip() or None
+    if url and not url.startswith(("http://", "https://", "file:")):
+        url = None
+    adapter = str(row.get("_adapter") or "generic")
+    relevance = float(row.get("_generic_relevance") or row.get("_scientific_relevance") or 0.5)
+    source_id = url or f"{adapter}:{title[:96]}"
+    return EvidenceObject(
+        id=f"ek_{index}",
+        source_id=source_id,
+        adapter=adapter,
+        retrieval_method=str(row.get("retrieval_method") or "api"),
+        title=title,
+        excerpt=snippet,
+        full_text=row.get("full_text"),
+        url=url,
+        document_type=str(row.get("document_type") or "generic"),
+        relevance_score=max(0.0, min(1.0, relevance)),
+        authority_score=authority_score_for_url(url) if url else 0.4,
+        reliability_score=max(0.0, min(1.0, relevance * 0.8)),
+        retrieved_at=retrieved_at,
+        fetch_status="snippet_only",
+        raw_metadata={
+            "source_kind": row.get("_source_kind"),
+            "connector_type": row.get("_connector_type"),
+            "config_hash": row.get("_config_hash"),
+        },
+    )
+
+
+def build_generic_bundle(
+    *,
+    query_raw: str,
+    query_resolved: str,
+    kept_rows: list[dict[str, Any]],
+    rejected_count: int,
+    latency_ms: float,
+    knowledge_service: str,
+    retrieval_strategy: str = STRATEGY_GENERIC_PARALLEL,
+    adapter_calls: tuple[str, ...] = (),
+    stop_reason: str = "budget_exhausted",
+    ranking_profile: str = "generic",
+    preset_id: str | None = None,
+) -> EvidenceBundle:
+    retrieved_at = time.time()
+    sources = tuple(
+        _generic_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
+        for i, row in enumerate(kept_rows, start=1)
+    )
+    coverage, coverage_rationale = _compute_coverage(sources)
+    confidence = (
+        sum(s.relevance_score for s in sources) / len(sources) if sources else 0.0
+    )
+    warnings: list[str] = []
+    if preset_id:
+        warnings.append(f"preset:{preset_id}")
+    if ranking_profile != "generic":
+        warnings.append(f"ranking_profile:{ranking_profile}")
+    authority_summary = (
+        sum(s.authority_score for s in sources) / len(sources) if sources else 0.0
+    )
+    reliability_summary = (
+        sum(s.reliability_score for s in sources) / len(sources) if sources else 0.0
+    )
+    diversity_summary = min(1.0, len({s.adapter for s in sources}) / 3.0)
+    return EvidenceBundle(
+        bundle_id=str(uuid.uuid4()),
+        query_raw=query_raw,
+        query_resolved=query_resolved,
+        knowledge_service=knowledge_service,
+        retrieval_strategy=retrieval_strategy,
+        profile_version=PROFILE_VERSION,
+        retrieved_at=retrieved_at,
+        latency_ms=latency_ms,
+        confidence=confidence,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        authority_summary=authority_summary,
+        reliability_summary=reliability_summary,
+        diversity_summary=diversity_summary,
+        sources=sources,
+        rejected_count=rejected_count,
+        warnings=tuple(warnings),
         conflicts=(),
         stop_reason=stop_reason if sources else "no_evidence",
         adapter_calls=adapter_calls,

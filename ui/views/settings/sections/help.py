@@ -98,6 +98,105 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     add_section_divider_to_layout(layout, is_dark=is_dark)
 
+    # --- Custom knowledge sources ---
+    add_subsection_to_layout(
+        layout, "Custom knowledge sources", anchor="custom-knowledge-sources"
+    )
+
+    host.custom_sources_help_hint_lbl = make_settings_hint(
+        "Connect your own APIs, databases, RSS feeds, or local folders to the evidence "
+        "pipeline. Open Custom sources in Knowledge settings to create and test them."
+    )
+
+    host.open_custom_sources_settings_btn = QPushButton("Open Custom sources")
+    apply_brand_primary(host.open_custom_sources_settings_btn, icon_name="fa5s.plug")
+    host.open_custom_sources_settings_btn.setToolTip(
+        "Jump to Settings → Knowledge → Custom sources."
+    )
+    host.open_custom_sources_settings_btn.clicked.connect(
+        host._on_open_custom_sources_settings_clicked
+    )
+
+    layout.addWidget(
+        _build_help_info_card(
+            "Custom sources let Qube query data you configure — REST/JSON APIs, SQLite "
+            "databases, RSS/Atom feeds, local filesystem paths, and more.\n\n"
+            "Go to Settings → Knowledge → Custom sources. Each source needs:\n"
+            "• Source id — a lowercase identifier (e.g. gamerfaqs). This becomes the "
+            "adapter id used elsewhere.\n"
+            "• Label — a friendly display name.\n"
+            "• Connector — how Qube reaches the data (rest_json for HTTP APIs is the "
+            "most common starting point).\n"
+            "• For REST connectors: Base URL and Search path. Put {query} in the path "
+            "where the search term should go (e.g. /api/search?q={query}).\n\n"
+            "Click Save source, then Test to verify connectivity. Saved sources appear "
+            "in the table on that page and are stored under "
+            "~/.qube/knowledge/sources/.",
+            "Prerequisite: turn on External knowledge pipeline (v2) in Settings → "
+            "Knowledge. A source id is not the same as a My knowledge preset id — "
+            "create the source first, then reference its id when building a composer tool.",
+        )
+    )
+    layout.addWidget(
+        _build_help_action_card(
+            host.custom_sources_help_hint_lbl,
+            host.open_custom_sources_settings_btn,
+        )
+    )
+
+    add_section_divider_to_layout(layout, is_dark=is_dark)
+
+    # --- Custom composer tools (My knowledge) ---
+    add_subsection_to_layout(
+        layout, "Custom composer tools", anchor="custom-composer-tools"
+    )
+
+    host.my_knowledge_help_hint_lbl = make_settings_hint(
+        "Bundle built-in or custom sources into your own @tool for chat — for example "
+        "@[tool:user:biology]. Open My knowledge in Knowledge settings to create one."
+    )
+
+    host.open_my_knowledge_settings_btn = QPushButton("Open My knowledge")
+    apply_brand_primary(host.open_my_knowledge_settings_btn, icon_name="fa5s.book")
+    host.open_my_knowledge_settings_btn.setToolTip(
+        "Jump to Settings → Knowledge → My knowledge."
+    )
+    host.open_my_knowledge_settings_btn.clicked.connect(
+        host._on_open_my_knowledge_settings_clicked
+    )
+
+    layout.addWidget(
+        _build_help_info_card(
+            "My knowledge presets are personal composer tools. They group one or more "
+            "source adapters so you can attach a single @token in chat instead of "
+            "listing adapters by hand.\n\n"
+            "Go to Settings → Knowledge → My knowledge. Each preset needs:\n"
+            "• Preset id — becomes user:<id> in the composer (e.g. biology → "
+            "@[tool:user:biology]).\n"
+            "• Label — shown in the @ picker.\n"
+            "• Sources — comma-separated adapter ids such as pubmed, arxiv, or a "
+            "custom source id you saved under Custom sources. This field expects "
+            "source ids, not the preset name.\n\n"
+            "Typical workflow: (1) add any custom sources you need, (2) create a "
+            "preset that lists those source ids, (3) in chat type @ and pick your tool "
+            "or attach the token directly. Presets are stored under "
+            "~/.qube/knowledge/presets/.",
+            "Prerequisite: External knowledge pipeline (v2) must be enabled. Built-in "
+            "tools like @evidence and @trusted stay as-is; My knowledge adds your own "
+            "combinations on top. Use Delete selected on the presets table to remove one.\n\n"
+            "After a knowledge answer, open Sources → Inspect Retrieval to see the "
+            "pipeline graph, replay comparison, and Explain view for presets.",
+        )
+    )
+    layout.addWidget(
+        _build_help_action_card(
+            host.my_knowledge_help_hint_lbl,
+            host.open_my_knowledge_settings_btn,
+        )
+    )
+
+    add_section_divider_to_layout(layout, is_dark=is_dark)
+
     # --- Discovery ---
     add_subsection_to_layout(layout, "Discovery", anchor="discovery")
 

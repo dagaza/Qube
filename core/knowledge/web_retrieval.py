@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 
 import numpy as np
 
-from core.app_settings import entity_resolution_enabled
+from core.app_settings import entity_resolution_enabled, get_retrieval_profile
 from core.knowledge.adapters.duckduckgo import is_failure_sentinel, search_duckduckgo
 from core.knowledge.observability import build_retrieval_trace, record_retrieval_trace
 from core.knowledge.registry import get_knowledge_service
+from core.knowledge.retrieval_profiles import normalize_profile_id
+from core.knowledge.retrieval_records import (
+    build_context_fingerprint,
+    save_retrieval_record,
+)
 from core.knowledge.types import (
     RetrievalBudget,
     RetrievalContext,
@@ -18,6 +23,9 @@ from core.knowledge.types import (
     WebRetrievalOutcome,
 )
 from core.retrieval_relevance import filter_web_results
+
+if TYPE_CHECKING:
+    from core.database import DatabaseManager
 
 
 def run_legacy_web_retrieval(
@@ -87,8 +95,12 @@ def run_v2_web_retrieval(
     turn_id: int | None = None,
     library_store: Any | None = None,
     source_filter: str | None = None,
+    preset_id: str | None = None,
+    retrieval_profile: str | None = None,
+    db: DatabaseManager | None = None,
 ) -> WebRetrievalOutcome:
     """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle."""
+    profile_id = normalize_profile_id(retrieval_profile or get_retrieval_profile())
     service = get_knowledge_service(knowledge_service)
     ctx = RetrievalContext(
         query=query,
@@ -100,6 +112,8 @@ def run_v2_web_retrieval(
         adapter_filter=adapter_filter,
         library_store=library_store,
         source_filter=source_filter,
+        preset_id=preset_id,
+        retrieval_profile=profile_id,
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
 
@@ -124,13 +138,30 @@ def run_v2_web_retrieval(
         kept_for_audit = [dict(r) for r in web_results]
 
     skip = not bundle.sources
+    fingerprint = build_context_fingerprint(ctx, retrieval_profile=profile_id)
+    pipeline_stages = None
+    if rel_diag and isinstance(rel_diag.get("pipeline_stages"), list):
+        pipeline_stages = rel_diag.get("pipeline_stages")
+
     trace = build_retrieval_trace(
         bundle,
         relevance_diag=rel_diag,
         session_id=session_id,
         turn_id=turn_id,
+        preset_id=preset_id,
+        retrieval_profile=profile_id,
+        context_fingerprint=fingerprint.to_dict(),
+        pipeline_stages=pipeline_stages,
     )
     record_retrieval_trace(trace, sources=bundle.sources)
+    save_retrieval_record(
+        db,
+        request_id=trace.request_id,
+        bundle=bundle,
+        context_fingerprint=fingerprint,
+        session_id=session_id,
+        turn_id=turn_id,
+    )
 
     return WebRetrievalOutcome(
         web_results=web_results,
@@ -156,6 +187,9 @@ def run_web_retrieval(
     turn_id: int | None = None,
     library_store: Any | None = None,
     source_filter: str | None = None,
+    preset_id: str | None = None,
+    retrieval_profile: str | None = None,
+    db: Any | None = None,
 ) -> WebRetrievalOutcome:
     if use_v2:
         return run_v2_web_retrieval(
@@ -169,6 +203,9 @@ def run_web_retrieval(
             turn_id=turn_id,
             library_store=library_store,
             source_filter=source_filter,
+            preset_id=preset_id,
+            retrieval_profile=retrieval_profile,
+            db=db,
         )
     return run_legacy_web_retrieval(
         query=query,
@@ -191,4 +228,3 @@ def _evidence_to_legacy_row(source) -> dict[str, Any]:
     if meta.get("semantic_score") is not None:
         row["_web_semantic_score"] = meta["semantic_score"]
     return row
-

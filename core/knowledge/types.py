@@ -19,6 +19,7 @@ SERVICE_WIKIPEDIA = "wikipedia"
 SERVICE_INTERNAL_CORPUS = "internal_corpus"
 SERVICE_FINANCE_KNOWLEDGE = "finance_knowledge"
 SERVICE_LEGAL_KNOWLEDGE = "legal_knowledge"
+SERVICE_PRESET_KNOWLEDGE = "preset_knowledge"
 
 
 @dataclass(frozen=True)
@@ -147,6 +148,8 @@ class RetrievalContext:
     adapter_filter: tuple[str, ...] | None = None
     library_store: Any | None = None
     source_filter: str | None = None
+    preset_id: str | None = None
+    retrieval_profile: str = "balanced"
 
 
 @dataclass(frozen=True)
