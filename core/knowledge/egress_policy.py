@@ -119,7 +119,7 @@ def _validate_host(hostname: str, policy: EgressPolicy) -> None:
     if addr is not None:
         if addr.is_loopback and not policy.allow_localhost:
             raise EgressPolicyError("Localhost access is not allowed")
-        if addr.is_private and not policy.allow_private_network:
+        if addr.is_private and not addr.is_loopback and not policy.allow_private_network:
             raise EgressPolicyError("Private network addresses are not allowed")
         if _is_blocked_ip(addr) and not (
             addr.is_loopback and policy.allow_localhost
@@ -134,7 +134,7 @@ def _validate_host(hostname: str, policy: EgressPolicy) -> None:
             continue
         if ip.is_loopback and not policy.allow_localhost:
             raise EgressPolicyError(f"Host {host} resolves to localhost ({ip})")
-        if ip.is_private and not policy.allow_private_network:
+        if ip.is_private and not ip.is_loopback and not policy.allow_private_network:
             raise EgressPolicyError(f"Host {host} resolves to private address ({ip})")
         if _is_blocked_ip(ip) and not (
             ip.is_loopback and policy.allow_localhost

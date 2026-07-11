@@ -76,7 +76,7 @@ def test_source_pin_routing():
 
 
 def test_composer_parse_user_preset_token():
-    clean, attachments, _skills = parse_attachments("@[tool:user:biology] What is CRISPR?")
+    clean, attachments = parse_attachments("@[tool:user:biology] What is CRISPR?")
     assert clean == "What is CRISPR?"
     assert attachments[0].id == "user:biology"
 
