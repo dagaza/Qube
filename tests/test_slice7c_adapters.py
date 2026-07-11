@@ -46,13 +46,13 @@ class TestSlice7cRegistry(unittest.TestCase):
         hint = adapter_credentials_hint("companies_house")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
     def test_alpha_vantage_requires_key_hint(self) -> None:
         hint = adapter_credentials_hint("alpha_vantage")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
 
 class TestCompaniesHouseAdapter(unittest.TestCase):

@@ -88,6 +88,7 @@ class AppLogSinkTests(unittest.TestCase):
                 logging.getLogger("Qube.NativeLLM.Debug").info("should not appear")
                 for h in logging.getLogger().handlers:
                     h.flush()
+                detach_app_log_file_sink_for_tests()
             text = path.read_text(encoding="utf-8")
             self.assertIn("voice capture started", text)
             self.assertNotIn("should not appear", text)

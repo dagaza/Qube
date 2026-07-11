@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from core.qube_tooltip import (
     _clamp_tip_position,
@@ -133,7 +134,8 @@ class TestTooltipClip(unittest.TestCase):
         ctrl.show_tip(anchor, anchor_pos, "Verified size chip tooltip")
         self.assertTrue(ctrl._popup is not None and ctrl._popup.isVisible())
         # Simulate a spurious Leave while the cursor remains over the anchor.
-        ctrl.hide_if_cursor_left_anchor()
+        with patch.object(anchor, "underMouse", return_value=True):
+            ctrl.hide_if_cursor_left_anchor()
         self.assertTrue(ctrl._popup.isVisible())
         ctrl.hide_tip()
 

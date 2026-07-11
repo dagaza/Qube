@@ -48,7 +48,7 @@ class TestSlice7bRegistry(unittest.TestCase):
         hint = adapter_credentials_hint("fred")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
 
 class TestEuropePmcAdapter(unittest.TestCase):

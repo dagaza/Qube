@@ -38,7 +38,7 @@ def test_bundled_default_path_uses_cognition_subdir():
             "core.auxiliary_cognition.get_cognition_models_dir",
             return_value=str(cog_dir),
         ):
-            assert ac.bundled_default_path() == str(bundled.resolve())
+            assert Path(ac.bundled_default_path()).resolve() == bundled.resolve()
             assert ac.cognition_model_available() is True
 
     _run_in_tmp(body)

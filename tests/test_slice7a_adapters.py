@@ -44,7 +44,7 @@ class TestSlice7aRegistry(unittest.TestCase):
         hint = adapter_credentials_hint("semantic_scholar")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
     def test_crossref_has_no_credentials_hint(self) -> None:
         self.assertIsNone(adapter_credentials_hint("crossref"))

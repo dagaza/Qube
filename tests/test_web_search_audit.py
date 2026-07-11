@@ -231,6 +231,7 @@ class TestWebSearchAuditRecording(unittest.TestCase):
                         raw_results=[{"title": "T", "snippet": "S", "url": "https://t.test"}],
                     )
                 )
+            detach_web_search_audit_file_sink_for_tests()
             if log_path.exists():
                 self.assertEqual(log_path.read_text(encoding="utf-8").strip(), "")
 
@@ -252,6 +253,7 @@ class TestWebSearchAuditRecording(unittest.TestCase):
                         latency_ms=50.0,
                     )
                 )
+            detach_web_search_audit_file_sink_for_tests()
             text = log_path.read_text(encoding="utf-8").strip()
             self.assertTrue(text)
             line = text.splitlines()[-1]

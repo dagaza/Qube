@@ -402,6 +402,9 @@ def build_prompt_bundle(
             protected_stops.extend(str(s) for s in fmt_stop if s)
     if prompt_contract_stops:
         protected_stops.extend(str(s) for s in prompt_contract_stops if s)
+    if publisher_guidance is not None:
+        pg_tags = getattr(publisher_guidance, "thinking_tags", None) or ()
+        protected_stops.extend(str(t) for t in pg_tags if t)
     from core.template_output_profile import resolve_template_output_profile
 
     profile = template_output_profile or resolve_template_output_profile(

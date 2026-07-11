@@ -98,14 +98,20 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             SERVICE_FINANCE_KNOWLEDGE,
             stored_preferences={},
         )
-        self.assertEqual(enabled, ("sec_edgar",))
+        self.assertEqual(
+            enabled,
+            ("sec_edgar", "fred", "world_bank", "eurostat", "bls", "oecd"),
+        )
 
     def test_legal_defaults_courtlistener(self) -> None:
         enabled = get_effective_enabled_adapters(
             SERVICE_LEGAL_KNOWLEDGE,
             stored_preferences={},
         )
-        self.assertEqual(enabled, ("courtlistener",))
+        self.assertEqual(
+            enabled,
+            ("courtlistener", "congress_gov", "govinfo", "legislation_uk"),
+        )
 
     def test_toggle_off_courtlistener(self) -> None:
         prefs = set_adapter_enabled(
@@ -118,8 +124,20 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             SERVICE_LEGAL_KNOWLEDGE,
             stored_preferences=prefs,
         )
-        self.assertEqual(enabled, ())
-        self.assertEqual(prefs, {SERVICE_LEGAL_KNOWLEDGE: []})
+        self.assertEqual(
+            enabled,
+            ("congress_gov", "govinfo", "legislation_uk"),
+        )
+        self.assertEqual(
+            prefs,
+            {
+                SERVICE_LEGAL_KNOWLEDGE: [
+                    "congress_gov",
+                    "govinfo",
+                    "legislation_uk",
+                ]
+            },
+        )
 
     def test_toggle_off_sec_edgar(self) -> None:
         prefs = set_adapter_enabled(
@@ -132,8 +150,22 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             SERVICE_FINANCE_KNOWLEDGE,
             stored_preferences=prefs,
         )
-        self.assertEqual(enabled, ())
-        self.assertEqual(prefs, {SERVICE_FINANCE_KNOWLEDGE: []})
+        self.assertEqual(
+            enabled,
+            ("fred", "world_bank", "eurostat", "bls"),
+        )
+        self.assertEqual(
+            prefs,
+            {
+                SERVICE_FINANCE_KNOWLEDGE: [
+                    "fred",
+                    "world_bank",
+                    "eurostat",
+                    "bls",
+                    "oecd",
+                ]
+            },
+        )
 
     def test_normalize_preserves_explicit_empty_service(self) -> None:
         normalized = normalize_preferences({SERVICE_LEGAL_KNOWLEDGE: []})

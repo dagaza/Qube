@@ -55,21 +55,32 @@ class TestScientificDisciplinePacks(unittest.TestCase):
 
     def test_active_cs_pack_adapter_order(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE)
-        self.assertEqual(order, ("arxiv", "dblp", "openalex", "acm_dl"))
+        self.assertEqual(order, ("arxiv", "dblp", "openreview", "acl_anthology", "openalex", "acm_dl"))
 
     def test_active_biology_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_BIOLOGY)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_BIOLOGY)
-        self.assertEqual(order, ("pubmed", "biorxiv", "openalex", "europe_pmc"))
+        self.assertEqual(order, ("pubmed", "biorxiv", "uniprot", "pdb", "openalex", "europe_pmc"))
 
     def test_active_chemistry_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
-        self.assertEqual(order, ("pubchem", "openalex", "pubmed"))
+        self.assertEqual(
+            order,
+            (
+                "pubchem",
+                "chembl",
+                "chemrxiv",
+                "uspto_patentsview",
+                "epo_espacenet",
+                "openalex",
+                "pubmed",
+            ),
+        )
 
     def test_active_psychology_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_PSYCHOLOGY)
@@ -102,7 +113,18 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_EARTH_ENVIRONMENT)
-        self.assertEqual(order, ("openalex", "noaa", "nasa_earthdata", "arxiv"))
+        self.assertEqual(
+            order,
+            (
+                "openalex",
+                "ipcc",
+                "copernicus_cds",
+                "usgs",
+                "noaa",
+                "nasa_earthdata",
+                "arxiv",
+            ),
+        )
 
     def test_planned_adapters_include_future_sources(self) -> None:
         planned = planned_primary_adapter_ids()

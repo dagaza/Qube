@@ -52,7 +52,7 @@ class TestSlice8Registry(unittest.TestCase):
         hint = adapter_credentials_hint("canlii")
         self.assertIsNotNone(hint)
         assert hint is not None
-        self.assertIn("required", hint.lower())
+        self.assertIn("api key", hint.lower())
 
 
 class TestEurLexAdapter(unittest.TestCase):

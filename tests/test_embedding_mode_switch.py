@@ -50,7 +50,7 @@ def test_embedding_mode_switch_needs_download_skips_when_gguf_override():
 def test_format_search_preset_download_failure_mentions_search_quality():
     msg = format_search_preset_download_failure("balanced")
     assert "Balanced" in msg
-    assert "Search quality" in msg
+    assert "Advanced embedding" in msg
 
 
 def test_is_likely_embedding_load_failure():
