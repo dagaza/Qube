@@ -163,30 +163,132 @@ jobs:
           name: chocolatey-package-${{ steps.version.outputs.version }}
           path: chocolatey/out/${{ steps.version.outputs.version }}/qube.${{ steps.version.outputs.version }}.nupkg
 
+  macos-build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-13
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync version into source
+        run: python scripts/set_version.py ${{ steps.version.outputs.version }}
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pillow
+          # Rebuild llama-cpp-python with Metal acceleration for Apple GPUs.
+          CMAKE_ARGS="-DGGML_METAL=on" pip install --force-reinstall --no-binary=llama-cpp-python llama-cpp-python
+
+      - name: Generate .icns icon
+        run: python scripts/generate_icns.py
+
+      - name: Build .app bundle
+        run: pyinstaller qube.spec --noconfirm
+
+      - name: Import Developer ID certificate
+        if: vars.ENABLE_MACOS_SIGNING == 'true'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: bash scripts/macos/import_codesign_cert.sh
+
+      - name: Codesign app (hardened runtime)
+        if: vars.ENABLE_MACOS_SIGNING == 'true'
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: bash scripts/macos/codesign_app.sh "dist/Qube.app"
+
+      - name: Build DMG
+        run: |
+          brew install create-dmg
+          bash scripts/macos/make_dmg.sh \
+            "dist/Qube.app" \
+            "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+
+      - name: Notarize and staple DMG
+        if: vars.ENABLE_MACOS_SIGNING == 'true'
+        env:
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+        run: bash scripts/macos/notarize.sh "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+
+      - name: Smoke test DMG
+        if: vars.ENABLE_MACOS_SIGNING == 'true'
+        run: bash scripts/release/smoke_dmg.sh "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+
+      - name: Compute SHA256
+        id: hash
+        run: |
+          f="Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+          echo "sha256=$(shasum -a 256 "$f" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg-${{ matrix.arch }}-${{ steps.version.outputs.version }}
+          path: Qube-*-${{ matrix.arch }}.dmg
+
   release:
-    needs: build
+    needs: [build, macos-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: installer-${{ needs.build.outputs.version }}
 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-dmg-*
+          merge-multiple: true
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: Qube-*-Setup.exe
+          files: |
+            Qube-*-Setup.exe
+            Qube-*.dmg
           body: |
             ## Install
+
+            **Windows**
 
             ```powershell
             winget install -e --id ${{ env.PACKAGE_ID }}
             choco install qube
             ```
 
-            **SHA256:** `${{ needs.build.outputs.installer_hash }}`
+            **macOS** (download the DMG for your architecture below)
 
-            **Silent install:** `${{ needs.build.outputs.installer_name }} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+            ```bash
+            # Apple Silicon: Qube-${{ needs.build.outputs.version }}-arm64.dmg
+            # Intel:         Qube-${{ needs.build.outputs.version }}-x86_64.dmg
+            ```
+
+            **SHA256 (Windows installer):** `${{ needs.build.outputs.installer_hash }}`
+
+            **Silent install (Windows):** `${{ needs.build.outputs.installer_name }} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
 
   winget:
     needs: [build, release]

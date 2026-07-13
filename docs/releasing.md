@@ -108,7 +108,49 @@ choco install qube
 choco upgrade qube
 ```
 
-## Code signing (optional)
+## macOS
+
+The `macos-build` job runs on the same `v*` tag trigger and produces a `.app`
+bundle (via the shared `qube.spec` `BUNDLE()` block) packaged into a DMG, one
+per architecture:
+
+| Runner | Architecture | Artifact |
+|--------|--------------|----------|
+| `macos-14` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |
+| `macos-13` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
+
+Both DMGs are attached to the same GitHub Release as the Windows installer.
+
+`llama-cpp-python` is rebuilt with `-DGGML_METAL=on` so Apple GPUs are used for
+inference (the Windows CUDA path via `pynvml` is excluded from the macOS bundle).
+
+### Signing and notarization
+
+Signing, notarization, and the DMG smoke test only run when the repository
+**variable** `ENABLE_MACOS_SIGNING=true`. Add these repository secrets:
+
+| Secret | Purpose |
+|--------|---------|
+| `MACOS_CERT_P12_BASE64` | Base64 `.p12` (Developer ID Application cert + key) |
+| `MACOS_CERT_PASSWORD` | Export password for the `.p12` |
+| `KEYCHAIN_PASSWORD` | Password for the ephemeral CI keychain |
+| `MACOS_SIGN_IDENTITY` | `Developer ID Application: dagaza (TEAMID)` |
+| `MACOS_NOTARY_APPLE_ID` | Apple ID email for `notarytool` |
+| `MACOS_NOTARY_TEAM_ID` | 10-character Team ID |
+| `MACOS_NOTARY_PASSWORD` | App-specific password (not the Apple ID password) |
+
+Until `ENABLE_MACOS_SIGNING` is set, the job still builds and uploads an
+unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs will be
+blocked by Gatekeeper on end-user machines and are not suitable for a Homebrew
+Cask — enable signing before publishing a cask.
+
+### Homebrew Cask (planned)
+
+Homebrew Cask distribution (`brew install --cask qube`) is a follow-up once
+signed, notarized DMGs are published. See the macOS distribution strategy for
+the tap and cask renderer design.
+
+## Code signing (Windows, optional)
 
 SmartScreen trust improves when binaries are Authenticode-signed.
 
