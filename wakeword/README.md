@@ -51,6 +51,10 @@ models/<phrase>/<version>/<phrase>.onnx  (+ model_card.json)
 python -m venv .venv && . .venv/Scripts/activate      # Windows
 pip install -r environment/requirements-training.txt
 
+# 1b. Pre-flight: prove the train->export->evaluate wiring in seconds on synthetic data,
+#     before committing to multi-GB downloads (the torch-gated smoke test runs here).
+python -m pytest tests/test_smoke_e2e.py -v
+
 # 2. Fetch datasets (writes datasets/licenses/<key>.license.json + manifest.lock.json)
 python scripts/download_datasets.py --list                 # see datasets + profiles
 python scripts/download_datasets.py --profile m2-min        # LibriSpeech dev-clean + MUSAN
