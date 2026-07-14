@@ -5,7 +5,10 @@ Mixes synthetic positive clips with RIRs (MIT IR Survey 16kHz) and background
 noise/music (MUSAN/FSD50K/FMA) across a signal-to-noise sweep, for robustness in
 real rooms. All augmentation sources must be commercially licensed.
 
-Status: structured stub (milestone M2/M3).
+Consumes the M3 synthetic positives (scripts/generate_positives.py) and is Dan's #2
+quality lever (far-field / noisy augmentation).
+
+Status: structured stub (milestone M4).
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     stage.load_stage_config(args)
 
     raise stage.not_implemented(
-        "M2/M3",
+        "M4",
         "Audio augmentation (RIR reverb + noise/music mixing) is not implemented yet.",
         [
             "Load RIRs from data.rir_paths and background audio from data.background_paths.",

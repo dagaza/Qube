@@ -29,12 +29,16 @@ configs/<phrase>.yaml
    ▼
 [1] scripts/download_datasets.py     → datasets/** + dataset *.license.json + lock (done, M1)
 [2] scripts/verify_licenses.py       → FAIL-CLOSED license gate (CI-enforced)   (done)
-[3] scripts/generate_positives.py    → Piper TTS positive + adversarial clips   (stub)
-[4] scripts/precompute_features.py   → embedding .npy for negatives + FP validation  (done, M2)
-[5] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)
-[6] scripts/train.py                 → openWakeWord auto-train → checkpoint
-[7] scripts/export.py                → .onnx + .tflite @ 16 kHz
-[8] scripts/evaluate.py              → metrics JSON + report on held-out corpus
+[3] scripts/generate_positives.py    → multi-speaker Piper TTS positives        (done, M3)
+[4] scripts/hard_negative_mining.py  → phonetically-similar hard negatives      (done, M3)
+[5] scripts/precompute_features.py   → embedding .npy for negatives + FP validation  (done, M2)
+[6] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)  (stub, M4)
+[7] scripts/train.py                 → openWakeWord auto-train → checkpoint      (stub, M4)
+[8] scripts/export.py                → .onnx + .tflite @ 16 kHz                  (stub, M4)
+[9] scripts/evaluate.py              → metrics JSON + report on held-out corpus  (stub, M5)
+
+    scripts/run_pilot_sweep.py       → orchestrates [3]+[4] across phonetic variants,
+                                       ranks by FP/hr + recall to pick a winner   (done, M3)
    │
    ▼
 models/<phrase>/<version>/<phrase>.onnx  (+ model_card.json)
@@ -52,14 +56,25 @@ python scripts/download_datasets.py --list                 # see datasets + prof
 python scripts/download_datasets.py --profile m2-min        # LibriSpeech dev-clean + MUSAN
 python scripts/precompute_features.py --config configs/hey_qube.yaml   # -> (N,16,96) .npy
 
-# 3. Prove every asset is commercially licensed — this MUST pass before training
+# 3. Synthesize training data (M3): multi-speaker positives + phonetic hard negatives
+python scripts/generate_positives.py    --config configs/hey_qube.yaml --pilot
+python scripts/hard_negative_mining.py  --config configs/qube.yaml --list   # inspect confusables
+python scripts/hard_negative_mining.py  --config configs/qube.yaml --pilot
+
+# 4. Prove every asset is commercially licensed — this MUST pass before training
 python scripts/verify_licenses.py --datasets datasets --require-commercial
 
-# 4. Train (the trainer re-runs the license gate first and refuses to start if it fails)
+# 5. Run the phonetic pilot sweep (M3): generate data for every candidate spelling
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml            # print the plan
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml --stage data --pilot
+
+# 6. Train (the trainer re-runs the license gate first and refuses to start if it fails)
 python scripts/train.py --config configs/hey_qube.yaml
 
-# 5. Evaluate against the held-out multi-speaker corpus
+# 7. Evaluate, then rank the sweep by real operating-point metrics
 python scripts/evaluate.py --config configs/hey_qube.yaml
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml \
+    --stage rank --results results/pilot_metrics.json
 ```
 
 ## Reproducing a released wake word
@@ -102,8 +117,19 @@ Same inputs + same params → equivalent model.
   features from that commercially-licensed audio via openWakeWord's Apache-2.0 embedding
   model — the FOSS replacement for ACAV100M. Memory-safe (shard-then-merge memmap) and
   provenance-stamped.
-- **M3–M5 (pending):** `generate_positives.py`, `augment.py`, `train.py`, `export.py`,
-  and `evaluate.py` remain **structured stubs** that define the CLI/config contract and
-  raise a clear `NotImplementedError` with next steps.
+- **M3 (done):** the synthetic-data + pilot-planning layer.
+  `generate_positives.py` synthesizes multi-speaker positives (even speaker spread +
+  per-clip rate/noise variation via `lib/tts.py`); `hard_negative_mining.py` synthesizes
+  a curated set of phonetically-similar confusables (`lib/phonetics.py` — *cube, cute,
+  tube, queue, youtube, ...*) so the model learns to reject near-misses; and
+  `run_pilot_sweep.py` drives both across the `configs/experiments.yaml` variants and
+  ranks them by the operating-point rule (recall subject to FP/hr, tie-break on noisy-room
+  robustness — `lib/experiments.py`). All Piper/synthesis calls are behind lazy imports so
+  the planning logic is fully unit-tested without a voice model.
+- **M4–M5 (pending):** `augment.py`, `train.py`, `export.py`, and `evaluate.py` remain
+  **structured stubs** that define the CLI/config contract and raise a clear
+  `NotImplementedError` with next steps. The pilot sweep's *training* step calls `train.py`
+  (M4); its *ranking* step is live and already consumes eval metrics once `evaluate.py`
+  (M5) produces them.
 
 See [`docs/roadmap.md`](docs/roadmap.md) for milestones.

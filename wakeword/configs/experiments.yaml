@@ -3,8 +3,11 @@
 # Cheap pilot run (5k examples / 10k steps) across candidate spellings to pick the
 # best per word-class BEFORE spending GPU time on full 50k production runs.
 #
-# Drive with:  python scripts/train.py --config configs/experiments.yaml --pilot
-# (each variant trains a throwaway model; evaluate.py ranks them on the held-out corpus)
+# Drive with:  python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml
+#   --stage plan   → print the variants + budget + selection rule
+#   --stage data   → synthesize pilot positives + hard negatives per variant (runnable now)
+#   --stage rank   → rank variants by eval metrics (M5) and pick a winner per word-class
+# (each variant trains a throwaway model at the pilot budget; evaluate.py feeds the rank)
 
 pilot:
   examples: 5000

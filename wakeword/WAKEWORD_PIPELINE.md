@@ -6,8 +6,10 @@
 > Where a topic has an authoritative source file, it is linked, but the substance is
 > inlined here so this document stands alone.
 >
-> **Status at time of writing:** M0, M1, M2 implemented and tested (35 passing tests,
-> lint clean). M3–M5 are structured stubs with stable CLI/config contracts.
+> **Status at time of writing:** M0, M1, M2, **M3** implemented and tested (73 passing
+> tests, lint clean). M3 adds multi-speaker TTS positives, phonetic hard-negative mining,
+> and the pilot-sweep orchestrator + winner selection. M4–M5 (augment / train / export /
+> evaluate) are structured stubs with stable CLI/config contracts.
 > Branch: `keith/wakeword-training-pipeline`.
 
 ---
@@ -130,15 +132,18 @@ wakeword/
 │   ├── hey_qube.yaml         ← "Hey Qube" (hey_keube)  ← train first
 │   └── experiments.yaml      ← M3 phonetic-variant pilot sweep
 ├── scripts/                  ← pipeline stages + shared lib/
-│   ├── lib/                  ← datasets registry, license gate, audio, features, config
-│   ├── download_datasets.py  ← [1] M1  data acquisition          (done)
-│   ├── verify_licenses.py    ← [2]     fail-closed license gate  (done)
-│   ├── generate_positives.py ← [3] M3  Piper TTS positives       (stub)
-│   ├── precompute_features.py← [4] M2  negative + FP features     (done)
-│   ├── augment.py            ← [5] M4  RIR/noise augmentation    (stub)
-│   ├── train.py              ← [6] M4  openWakeWord auto-train    (stub)
-│   ├── export.py             ← [7] M4  .onnx + .tflite export     (stub)
-│   └── evaluate.py           ← [8] M5  held-out eval + report     (stub)
+│   ├── lib/                  ← datasets registry, license gate, audio, features,
+│   │                           config, phonetics, tts, experiments
+│   ├── download_datasets.py     ← [1] M1  data acquisition            (done)
+│   ├── verify_licenses.py       ← [2]     fail-closed license gate    (done)
+│   ├── generate_positives.py    ← [3] M3  multi-speaker TTS positives (done)
+│   ├── hard_negative_mining.py  ← [4] M3  phonetic hard negatives     (done)
+│   ├── precompute_features.py   ← [5] M2  negative + FP features       (done)
+│   ├── run_pilot_sweep.py       ← [*] M3  variant sweep + selection    (done)
+│   ├── augment.py               ← [6] M4  RIR/noise augmentation      (stub)
+│   ├── train.py                 ← [7] M4  openWakeWord auto-train      (stub)
+│   ├── export.py                ← [8] M4  .onnx + .tflite export       (stub)
+│   └── evaluate.py              ← [9] M5  held-out eval + report       (stub)
 ├── datasets/                 ← downloaded/generated assets (gitignored)
 │   └── licenses/             ← *.license.json manifests + manifest.lock.json (TRACKED)
 ├── environment/              ← pinned requirements, Dockerfile, setup notes
@@ -157,22 +162,27 @@ wakeword/
 configs/<phrase>.yaml
    │
    ▼
-[1] download_datasets.py   → datasets/** + dataset *.license.json + lock   (done, M1)
-[2] verify_licenses.py     → FAIL-CLOSED license gate (CI-enforced)        (done)
-[3] generate_positives.py  → Piper TTS positive + adversarial clips        (stub, M3)
-[4] precompute_features.py → embedding .npy for negatives + FP validation  (done, M2)
-[5] augment.py             → RIR reverb + noise/music mixing (SNR sweep)   (stub, M4)
-[6] train.py               → openWakeWord auto-train → checkpoint          (stub, M4)
-[7] export.py              → .onnx + .tflite @ 16 kHz                      (stub, M4)
-[8] evaluate.py            → metrics JSON + report on held-out corpus      (stub, M5)
+[1] download_datasets.py    → datasets/** + dataset *.license.json + lock   (done, M1)
+[2] verify_licenses.py      → FAIL-CLOSED license gate (CI-enforced)        (done)
+[3] generate_positives.py   → multi-speaker Piper TTS positives             (done, M3)
+[4] hard_negative_mining.py → phonetically-similar hard negatives           (done, M3)
+[5] precompute_features.py  → embedding .npy for negatives + FP validation  (done, M2)
+[6] augment.py              → RIR reverb + noise/music mixing (SNR sweep)   (stub, M4)
+[7] train.py                → openWakeWord auto-train → checkpoint          (stub, M4)
+[8] export.py               → .onnx + .tflite @ 16 kHz                      (stub, M4)
+[9] evaluate.py             → metrics JSON + report on held-out corpus      (stub, M5)
+
+    run_pilot_sweep.py      → orchestrates [3]+[4] across phonetic variants,
+                              ranks by FP/hr + recall → winner per class     (done, M3)
    │
    ▼
 models/<phrase>/<version>/<phrase>.onnx  (+ model_card.json)
 ```
 
-Stubs are **structured**: they parse args, load+validate the config, then raise a clear
-`NotImplementedError` describing exactly which milestone implements them and the steps
-involved. This keeps the CLI/config contract stable while the heavy ML work lands.
+Remaining stubs (M4/M5) are **structured**: they parse args, load+validate the config,
+then raise a clear `NotImplementedError` describing exactly which milestone implements
+them and the steps involved. This keeps the CLI/config contract stable while the heavy ML
+work lands.
 
 ---
 
@@ -284,14 +294,29 @@ Key fields: phonetic `phrase`, `adversarial_phrases` (near-miss negatives),
 **Two-word phrases are recommended first** — a stronger acoustic signature gives better
 recall and lower false-accepts than a single word. So **train `hey_keube` first**.
 
-**M3 phonetic-variant pilot** (`configs/experiments.yaml`): cheaply train throwaway
-models (5k examples / 10k steps) across candidate spellings, then rank on the held-out
-corpus before spending full 50k GPU runs.
+**M3 synthetic training data (implemented).** Two of Dan's top quality levers ship here:
+
+- **Multi-speaker positives** (`generate_positives.py` + `lib/tts.py`): the wake phrase is
+  synthesized across many Piper speakers (even speaker spread over the 900+ LibriTTS-R
+  voices) with per-clip speaking-rate and vocal-noise variation, so the bootstrap set
+  spans a wide acoustic range instead of one robotic voice. TTS is explicitly a
+  *bootstrap* — real human recordings are folded in before shipping (M4/M5).
+- **Hard-negative mining** (`hard_negative_mining.py` + `lib/phonetics.py`): a curated
+  confusable library for the `/kjuːb/` family — *cube, cute, tube, queue, cued, cuke,
+  cupid, kubernetes, cuban, cubed, "ice cube", "youtube", ...* — merged with each config's
+  `adversarial_phrases`, synthesized across speakers so the model learns to reject the
+  near-misses that drive false-accepts on a short word.
+
+**M3 phonetic-variant pilot** (`configs/experiments.yaml` + `run_pilot_sweep.py`): cheaply
+train throwaway models (5k examples / 10k steps) across candidate spellings, then rank to
+pick the best per word-class before spending full 50k GPU runs.
 
 - Single-word candidates: `keube`, `cube`, `kyoob`, `kay_oob`, `kewb`
 - Two-word candidates: `hey_keube`, `hey_kyoob`, `hey_cube`
-- **Selection rule:** highest recall subject to **FP/hr ≤ 1.0** and **recall ≥ 0.85**,
-  tie-broken on noisy-room robustness.
+- **Selection rule** (`lib/experiments.py`): highest recall subject to **FP/hr ≤ 1.0**
+  and **recall ≥ 0.85**, tie-broken on noisy-room robustness. The sweep's `data` stage
+  (generate positives + hard negatives per variant) runs today; its `rank` stage consumes
+  the M5 eval metrics.
 
 **Evaluation** is against a **held-out, real-voice** corpus (never synthetic), captured
 per `evaluation/RECORDING_PROTOCOL.md`. Metrics: false-positives/hour, recall,
@@ -333,16 +358,19 @@ even on CPU.
 | **M0** | License audit (`docs/audit.md`), configs, pinned env | ✅ done |
 | **M1** | `download_datasets.py` registry + downloader + lock; license gate; `LICENSES.md` | ✅ done |
 | **M2** | `precompute_features.py` — `(N,16,96)` negatives + FP validation from FOSS audio | ✅ done |
-| **M3** | Pilot train (5k/10k) across 3–5 phonetic variants; pick winners | ⏳ pending |
-| **M4** | Full train (50k/50k, penalty 2500) for `hey_keube` + best single-word | ⏳ pending |
-| **M5** | Eval report + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | ⏳ pending |
+| **M3** | Multi-speaker TTS positives + phonetic hard-negative mining + pilot sweep/selection | ✅ done |
+| **M4** | `augment.py` + full train (50k/50k, penalty 2500) for `hey_keube` + best single-word; export | ⏳ pending |
+| **M5** | Eval report (FAR/FRR/DET) + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | ⏳ pending |
 
-M2 was the riskiest task (the FOSS feature regeneration). With M1 feeding it real
-LibriSpeech/MUSAN audio, M3–M5 are mostly orchestration + (optional) GPU time.
+M2 was the riskiest task (the FOSS feature regeneration). M3 lands the two biggest
+data-quality levers (hard negatives + multi-speaker positives). With M1 feeding real
+audio, M4–M5 are mostly (optional) GPU time + the held-out real-voice corpus.
 
-**Test status:** full `wakeword/` suite **35 passing** (license gate, feature
+**Test status:** full `wakeword/` suite **73 passing** (license gate, feature
 shaping/shard-merge, dataset registry integrity, selection resolution, archive
-extraction + traversal rejection, manifest gating, lock behavior). Lint clean.
+extraction + traversal rejection, manifest gating, lock behavior, **phonetic confusable
+generation, TTS synthesis planning, pilot-variant expansion + winner selection, and the
+positives / hard-negative / sweep orchestrators via injected synthesis**). Lint clean.
 
 Authoritative source: [`docs/roadmap.md`](docs/roadmap.md).
 
@@ -361,14 +389,25 @@ python scripts/download_datasets.py --profile m2-min
 # 3. Precompute features (the ACAV100M replacement → (N,16,96) .npy)
 python scripts/precompute_features.py --config configs/hey_qube.yaml
 
-# 4. Prove every asset is commercially licensed — MUST pass before training
+# 4. Synthesize training data (M3): multi-speaker positives + phonetic hard negatives
+python scripts/generate_positives.py   --config configs/hey_qube.yaml --pilot
+python scripts/hard_negative_mining.py --config configs/qube.yaml --list   # inspect confusables
+python scripts/hard_negative_mining.py --config configs/qube.yaml --pilot
+
+# 5. Prove every asset is commercially licensed — MUST pass before training
 python scripts/verify_licenses.py --datasets datasets --require-commercial
 
-# 5. Train (re-runs the gate first; refuses to start if it fails)   [M4 — stub]
+# 6. Phonetic pilot sweep (M3): print the plan, then generate data per variant
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml --stage data --pilot
+
+# 7. Train (re-runs the gate first; refuses to start if it fails)   [M4 — stub]
 python scripts/train.py --config configs/hey_qube.yaml
 
-# 6. Evaluate against the held-out, real-voice corpus               [M5 — stub]
+# 8. Evaluate, then rank the sweep by real operating-point metrics  [M5 — stub]
 python scripts/evaluate.py --config configs/hey_qube.yaml
+python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml \
+    --stage rank --results results/pilot_metrics.json
 ```
 
 ---
