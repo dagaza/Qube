@@ -9,6 +9,7 @@ from core.composer_draft import (
     add_routing_attachment,
     add_skill,
     composer_one_source_limit_request,
+    composer_prompt_required_request,
     draft_from_text,
     merge_drafts,
     remove_routing_at,
@@ -148,6 +149,24 @@ class TestComposerDraft(unittest.TestCase):
         )
         updated = remove_routing_at(draft, 0)
         self.assertEqual(len(updated.routing), 0)
+
+    def test_routing_requires_body_for_tool_without_text(self) -> None:
+        draft = ComposerDraft(
+            routing=[ComposerAttachment(kind="tool", id="internet", label="Internet")]
+        )
+        self.assertTrue(draft.routing_requires_body())
+        self.assertFalse(draft.is_empty())
+
+    def test_routing_requires_body_false_with_body(self) -> None:
+        draft = ComposerDraft(
+            body="What is the capital?",
+            routing=[ComposerAttachment(kind="tool", id="internet", label="Internet")],
+        )
+        self.assertFalse(draft.routing_requires_body())
+
+    def test_composer_prompt_required_request(self) -> None:
+        req = composer_prompt_required_request()
+        self.assertEqual(req.dedupe_key, "composer_prompt_required")
 
 
 if __name__ == "__main__":

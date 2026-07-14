@@ -58,6 +58,14 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_MCP_RAG_AUTO_ACTIVATOR,
         app.KEY_ADVANCED_EMBEDDING_UNLOCKED,
         app.KEY_EMBEDDING_MODEL_PATH,
+        app.KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
+        app.KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED,
+        app.KEY_RESEARCH_MAP_ENABLED,
+        app.KEY_ENTITY_RESOLUTION_ENABLED,
+        app.KEY_RXNORM_ENTITY_LOOKUP_ENABLED,
+        app.KEY_DEEP_RESEARCH_ENABLED,
+        app.KEY_KNOWLEDGE_SOURCE_PREFERENCES,
+        app.KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
     ),
     "companion.desktop": (
         app.KEY_COMPANION_ENABLED,
@@ -77,7 +85,15 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_COMPANION_VERBAL_REACT_INGEST,
         app.KEY_COMPANION_VERBAL_REACT_DOWNLOAD,
         app.KEY_COMPANION_PERSONA,
+        app.KEY_COMPANION_CUBE_STYLE,
         app.KEY_COMPANION_IDLE_COLOR,
+        app.KEY_COMPANION_POS_X,
+        app.KEY_COMPANION_POS_Y,
+        app.KEY_COMPANION_POS_SCREEN,
+        app.KEY_COMPANION_POS_NORM_X,
+        app.KEY_COMPANION_POS_NORM_Y,
+        app.KEY_COMPANION_DOCK_EDGE,
+        app.KEY_COMPANION_SNAP_ZONE,
     ),
     "notifications": (
         app.KEY_NOTIFICATIONS_ENABLED,
@@ -88,6 +104,9 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_NOTIFICATIONS_SHOW_PREVIEW,
         app.KEY_NOTIFICATIONS_CATEGORY_MEMORY,
     ),
+    "general": (
+        app.KEY_UI_LANGUAGE,
+    ),
 }
 
 SECTION_RESET_LABELS: dict[str, str] = {
@@ -97,6 +116,7 @@ SECTION_RESET_LABELS: dict[str, str] = {
     "knowledge": "Knowledge",
     "companion.desktop": "Desktop Companion",
     "notifications": "Notifications",
+    "general": "General",
 }
 
 

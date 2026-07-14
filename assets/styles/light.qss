@@ -61,6 +61,25 @@ QToolTip {
 #RoutingDebugWindow {
     background-color: #f1f5f9;
 }
+
+/* Frameless desktop companion host — persona paints directly; no window chrome box */
+QWidget#CompanionWindow {
+    background: transparent;
+    border: none;
+}
+
+/* @-mention popup host is transparent; card chrome is ComposerMentionShell */
+QWidget#ComposerMentionPopup {
+    background: transparent;
+    border: none;
+}
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList,
+QFrame#ComposerMentionShell QListWidget#ComposerMentionList::viewport {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
 #RoutingDebugSurface {
     background-color: #ffffff;
     border: 1px solid #cbd5e1;
@@ -205,6 +224,195 @@ QLabel[class="SettingsHint"] {
     font-weight: normal;
 }
 
+#SettingsHint {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsActionStatus {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+    padding: 2px 0 0 0;
+}
+
+#SettingsLogCard {
+    background-color: rgba(241, 245, 249, 0.9);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+#ProviderCredentialDialogCard {
+    background: transparent;
+    border: none;
+}
+
+#ProviderCredentialDialogCard QLabel {
+    background: transparent;
+}
+
+#SettingsLogTitle {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#SettingsLogDescription,
+#SettingsLogNote {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsLogStatus {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: normal;
+    font-style: italic;
+}
+
+#KnowledgeSourceGroupLabel {
+    color: #1e293b;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+#KnowledgeAccessBadge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 72px;
+}
+
+#KnowledgeAccessBadge[access="free"] {
+    color: #64748b;
+    background-color: rgba(100, 116, 139, 0.1);
+}
+
+#KnowledgeAccessBadge[access="optional_key"] {
+    color: #b45309;
+    background-color: rgba(180, 83, 9, 0.1);
+}
+
+#KnowledgeAccessBadge[access="key_required"] {
+    color: #be123c;
+    background-color: rgba(190, 18, 60, 0.1);
+}
+
+#KnowledgeAccessBadge[access="connected"] {
+    color: #15803d;
+    background-color: rgba(21, 128, 61, 0.1);
+}
+
+#KnowledgeAccessBadge[access="env_override"] {
+    color: #1d4ed8;
+    background-color: rgba(29, 78, 216, 0.1);
+}
+
+#KnowledgeAccessBadge[access="coming_soon"] {
+    color: #94a3b8;
+    background-color: rgba(148, 163, 184, 0.15);
+}
+
+#KnowledgeAccessHint {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+#KnowledgeConfigureButton {
+    padding: 4px 10px;
+    min-height: 24px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    background: transparent;
+}
+
+#KnowledgeConfigureButton:hover {
+    background-color: rgba(37, 99, 235, 0.08);
+}
+
+#KnowledgeSetupCallout {
+    background-color: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.2);
+    border-radius: 8px;
+}
+
+#KnowledgeSetupCalloutBody {
+    color: #92400e;
+    font-size: 12px;
+}
+
+#KnowledgeSetupCalloutDismiss {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+}
+
+#KnowledgeProviderStatusTable {
+    background-color: transparent;
+    border: none;
+    gridline-color: transparent;
+    outline: none;
+}
+
+#KnowledgeProviderStatusTable QAbstractScrollArea::viewport {
+    background-color: transparent;
+}
+
+#KnowledgeProviderStatusTable::item {
+    color: #334155;
+    background-color: transparent;
+    padding: 6px 10px;
+    border: none;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+#KnowledgeProviderStatusTable::item:alternate {
+    background-color: rgba(226, 232, 240, 0.65);
+}
+
+#KnowledgeProviderStatusTable QHeaderView::section {
+    background-color: rgba(248, 250, 252, 0.95);
+    color: #64748b;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+#KnowledgeProviderStatusTable QTableCornerButton::section {
+    background-color: rgba(248, 250, 252, 0.95);
+    border: none;
+}
+
+#KnowledgeProviderStatusTable QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 4px 2px 4px 0;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::handle:vertical {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 4px;
+    min-height: 24px;
+}
+
+#KnowledgeProviderStatusTable QScrollBar::add-line:vertical,
+#KnowledgeProviderStatusTable QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
 /* --- 3. INPUTS & TEXT AREAS --- */
 QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
     background-color: #ffffff;
@@ -306,21 +514,26 @@ QPushButton[class~="BrandDangerButton"]:disabled {
     border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
 
-/* Match base.qss nav hit area so icon buttons do not jump when switching themes. */
-.NavButton {
-    border: none;
-    background: transparent;
+/* Match base.qss nav hit area (44×44 fixed size) so icon buttons do not jump when switching themes. */
+QPushButton[class~="NavButton"] {
+    border: none !important;
+    background: transparent !important;
     border-radius: 8px;
-    padding: 10px;
+    padding: 0;
 }
 
-.WindowControlButton, .IconButton, .NavButton {
+QPushButton[class~="NavButton"]:hover {
+    background-color: #e2e8f0 !important;
+}
+
+QPushButton[class~="NavButton"]:checked {
+    background-color: #e2e8f0 !important;
+}
+
+.WindowControlButton, .IconButton {
     background-color: transparent; border: none;
 }
-.WindowControlButton:hover, .IconButton:hover, .NavButton:hover {
-    background-color: #e2e8f0;
-}
-.NavButton:checked {
+.WindowControlButton:hover, .IconButton:hover {
     background-color: #e2e8f0;
 }
 
@@ -748,6 +961,12 @@ QLabel#AgentMessage {
     background-color: #E9EFF5;
 }
 
+/* Trigger phrase rows use setItemWidget; zero item padding so row widgets are not clipped */
+#SettingsTriggerList::item {
+    padding: 0px;
+    margin-bottom: 0px;
+}
+
 /* Do not inherit QListWidget::item:selected font-weight — conflicts with fixed QFontMetrics row height */
 #ModelHubList::item:selected {
     font-weight: 500;
@@ -836,4 +1055,9 @@ QLabel#AgentMessage {
 #IngestProgressBar::chunk {
     background-color: #3b82f6; /* Bright blue loading bar */
     border-radius: 2px;
+}
+
+#BackgroundProgressBanner {
+    background-color: rgba(226, 232, 240, 0.85);
+    border-bottom: 1px solid #e2e8f0;
 }

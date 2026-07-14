@@ -20,7 +20,7 @@ from core.memory_filters import (
     detect_explicit_remember,
     detect_file_search_intent,
     detect_narrative_intent,
-    detect_recall_intent,
+    should_apply_recall_fusion,
 )
 from core.rag_trigger_routing import (
     apply_custom_rag_trigger_route,
@@ -170,7 +170,10 @@ def _detect_recall_fusion_triggered(
         return True
     if (
         normalize_route(execution_pre) == "hybrid"
-        and detect_recall_intent(prompt.lower().strip())
+        and should_apply_recall_fusion(
+            prompt.lower().strip(),
+            decision=decision,
+        )
     ):
         return True
     return False
@@ -352,18 +355,9 @@ def corpus_fingerprint(path: Path) -> str:
 
 
 def install_router_centroids(router: CognitiveRouterV4, embedder: Any) -> None:
-    from workers.intent_router import build_centroid
+    from core.router_centroid_install import install_router_centroids as _install
 
-    if router.recall_centroid is None:
-        router.set_recall_centroid(build_centroid(embedder, list(RECALL_INTENT_EXAMPLES)))
-    if router.chat_centroid is None:
-        router.set_chat_centroid(build_centroid(embedder, list(CHAT_INTENT_EXAMPLES)))
-    if router.memory_centroid is None:
-        router.set_memory_centroid(build_centroid(embedder, list(MEMORY_INTENT_EXAMPLES)))
-    if router.rag_centroid is None:
-        router.set_rag_centroid(build_centroid(embedder, list(RAG_INTENT_EXAMPLES)))
-    if router.web_centroid is None:
-        router.set_web_centroid(build_centroid(embedder, list(WEB_INTENT_EXAMPLES)))
+    _install(router, embedder)
 
 
 def _discourse_context(
@@ -431,7 +425,7 @@ def simulate_execution_route(
 
     if (
         not scoped_library_active
-        and detect_recall_intent(clean_prompt)
+        and should_apply_recall_fusion(clean_prompt, decision=decision)
         and execution_route in ("NONE", "MEMORY", "RAG")
     ):
         execution_route = "HYBRID"

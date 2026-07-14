@@ -5,6 +5,12 @@
     "default": "internal",
     "description": "Inference backend: in-process GGUF (internal) or OpenAI-compatible localhost server (external)."
   },
+  "qube.ui.language": {
+    "type": "string",
+    "default": "british",
+    "enum": ["british", "american"],
+    "description": "Application UI language variant (British English or American English spelling)."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,
@@ -128,7 +134,13 @@
   "qube.embedding.modelPath": {
     "type": "string",
     "default": "",
-    "description": "Absolute path to optional embedding GGUF; empty uses bundled Nomic Embed v1.5 in models/embedding/."
+    "description": "Absolute path to optional custom embedding GGUF override; empty uses the active Fast/Balanced/Power preset."
+  },
+  "qube.embedding.activeMode": {
+    "type": "string",
+    "enum": ["fast", "balanced", "power"],
+    "default": "balanced",
+    "description": "Active embedding preset for RAG and memory search."
   },
   "qube.settings.advanced_stt_unlocked": {
     "type": "boolean",
@@ -154,6 +166,72 @@
     "type": "boolean",
     "default": false,
     "description": "When true, append one JSON line per chat turn to routing_debug.log for troubleshooting."
+  },
+  "qube.diagnostics.app_log_file_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, write general Qube.* runtime events to ~/.qube/logs/qube.log."
+  },
+  "qube.diagnostics.llm_debug_log_file_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, write LLM introspection output to ~/.qube/logs/llm_debug.log."
+  },
+  "qube.diagnostics.web_search_audit_log_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, append one JSON line per web search attempt to web_search.log (queries, triggers, result URLs)."
+  },
+  "qube.knowledge.external_v2_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, route live web retrieval through the external knowledge evidence pipeline (Phase 0; DDG parity behind a flag)."
+  },
+  "qube.knowledge.internal_corpus_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true with external v2, route @library through the internal corpus evidence service (LanceDB library index) instead of implicit RAG injection."
+  },
+  "qube.knowledge.research_map_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, build a session-local knowledge graph from evidence bundles and show the Research map in the Sources dialog."
+  },
+  "qube.knowledge.retrieval_profile": {
+    "type": "string",
+    "default": "balanced",
+    "description": "Orchestration profile for knowledge turns: fast, balanced, thorough, evidence_first, or local_first."
+  },
+  "qube.knowledge.entity_resolution_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, attach stable biomedical entity_ids to evidence objects and use entity-aware merge dedupe."
+  },
+  "qube.knowledge.rxnorm_entity_lookup_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true with entity resolution, augment drug names via cached RxNorm API lookups (network)."
+  },
+  "qube.knowledge.default_service": {
+    "type": "string",
+    "default": "general_web",
+    "enum": ["general_web", "trusted_knowledge", "scientific_evidence"],
+    "description": "Default external knowledge service for auto/hybrid web turns when v2 is enabled (composer tools override this)."
+  },
+  "qube.knowledge.deep_research_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, enable the async DeepResearchWorker for multi-step evidence jobs (Phase 4)."
+  },
+  "qube.knowledge.source_preferences": {
+    "type": "object",
+    "default": {},
+    "description": "Per knowledge-service enabled adapter ids (user-configured retrieval sources). Keys: scientific_evidence, finance_knowledge, legal_knowledge."
+  },
+  "qube.knowledge.provider_credentials": {
+    "type": "object",
+    "default": {},
+    "description": "User-stored API keys for knowledge providers (openalex, ncbi, courtlistener). Values: { provider_id: { api_key: string } }."
   },
   "qube.skills.enabled": {
     "type": "boolean",
@@ -199,7 +277,7 @@
   "qube.tts.modelPath": {
     "type": "string",
     "default": "",
-    "description": "Absolute path to optional TTS .onnx under models/tts/; empty uses bundled Kokoro v1.0."
+    "description": "Absolute path to optional Kokoro or Piper TTS .onnx under models/tts/; empty uses bundled Kokoro v1.0."
   },
   "qube.profile.units": {
     "type": ["string", "null"],
@@ -493,7 +571,7 @@
   "qube.companion.showCaption": {
     "type": "boolean",
     "default": false,
-    "description": "Show the activity label (Listening, Thinking, Speaking, etc.) below the companion."
+    "description": "Show the activity label (Listening, Working, Speaking, etc.) below the companion."
   },
   "qube.companion.suppressOnFullscreen": {
     "type": "boolean",
@@ -521,11 +599,17 @@
     "enum": ["sphere", "qube"],
     "description": "Companion visual persona (sphere or qube cube)."
   },
+  "qube.companion.cubeStyle": {
+    "type": "string",
+    "default": "classic",
+    "enum": ["classic", "experimental"],
+    "description": "Qube cube persona style: classic holographic cube or experimental splash wireframe."
+  },
   "qube.companion.idleColor": {
     "type": "string",
     "default": "purple",
     "enum": ["purple", "blue"],
-    "description": "Base idle glow color for the desktop companion (purple = Qube brand, blue = legacy)."
+    "description": "Base idle glow colour for the desktop companion (purple = Qube brand, blue = legacy)."
   },
   "qube.companion.position.x": {
     "type": ["integer", "null"],
@@ -557,6 +641,12 @@
     "enum": ["none", "left", "right", "bottom"],
     "default": "none",
     "description": "Edge dock preference for companion placement."
+  },
+  "qube.companion.position.snapZone": {
+    "type": "string",
+    "default": "none",
+    "enum": ["none", "center", "n", "ne", "e", "se", "s", "sw", "w", "nw"],
+    "description": "Compass snap zone for companion placement (none = free drag position)."
   },
   "qube.companion.verbal.enabled": {
     "type": "boolean",
@@ -626,5 +716,25 @@
     "type": "boolean",
     "default": false,
     "description": "Enable rotating companion identity motifs in message selection."
+  },
+  "qube.bootstrap.completed": {
+    "type": "boolean",
+    "default": false,
+    "description": "True after the user completed first-run bootstrap model selection and downloads."
+  },
+  "qube.bootstrap.selectedModels": {
+    "type": "string",
+    "default": "",
+    "description": "JSON array of bootstrap model ids selected on first run."
+  },
+  "qube.bootstrap.voiceInputDefault": {
+    "type": "boolean",
+    "default": true,
+    "description": "Default Voice Input toggle after bootstrap (false when Whisper was skipped)."
+  },
+  "qube.bootstrap.voiceOutputDefault": {
+    "type": "boolean",
+    "default": true,
+    "description": "Default TTS Voice toggle after bootstrap (false when Kokoro was skipped)."
   }
 }

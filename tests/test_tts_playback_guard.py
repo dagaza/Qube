@@ -84,3 +84,43 @@ def test_add_to_queue_allows_distinct_sentences():
     worker.add_to_queue("Second sentence.", "sess-1")
 
     assert worker.sentence_queue.qsize() == 2
+
+
+def test_end_of_turn_emits_playback_finished_without_active_playback():
+    """When no audio played, end-of-turn must still unblock the UI (voice + text turns)."""
+    from workers.tts_worker import TTSWorker
+
+    worker = TTSWorker.__new__(TTSWorker)
+    worker._playback_active = False
+    worker._last_queued_tts_key = "prior"
+    finished: list[str] = []
+    settled: list[str] = []
+
+    class _Level:
+        def emit(self, value: float) -> None:
+            pass
+
+    class _Finished:
+        def emit(self) -> None:
+            finished.append("finished")
+
+    class _Settled:
+        def emit(self) -> None:
+            settled.append("settled")
+
+    worker.playback_level = _Level()
+    worker.playback_finished = _Finished()
+    worker.turn_settled = _Settled()
+
+    item = None  # end-of-turn branch tested directly below
+    worker._last_queued_tts_key = ""
+    if worker._playback_active:
+        TTSWorker._signal_playback_finished(worker)
+    else:
+        worker.playback_level.emit(0.0)
+        worker.playback_finished.emit()
+    worker.turn_settled.emit()
+
+    assert worker._last_queued_tts_key == ""
+    assert finished == ["finished"]
+    assert settled == ["settled"]

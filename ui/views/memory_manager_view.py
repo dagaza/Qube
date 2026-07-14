@@ -35,6 +35,7 @@ from queue import Empty, Queue
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -818,31 +819,50 @@ class MemoryManagerView(QWidget):
         profile_layout.addWidget(self.profile_body)
         root.addWidget(self.profile_card)
 
-        # Filter row
+        # Filter row: tier/category selectors shrink first (elided label) when the
+        # tools pane is open or the window is narrow; flagged toggle, search, and
+        # action buttons keep their natural widths. Extra horizontal space goes
+        # mostly to search, then the two selectors.
         filter_row = QHBoxLayout()
         filter_row.setContentsMargins(0, 0, 0, 0)
         filter_row.setSpacing(10)
+
+        selector_shrink_policy = QSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Fixed,
+        )
+        fixed_btn_policy = QSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Fixed,
+        )
+        search_policy = QSizePolicy(
+            QSizePolicy.Policy.MinimumExpanding,
+            QSizePolicy.Policy.Fixed,
+        )
 
         # T3.4 two-level filter: tier first, then category. Tier maps to
         # the structural ``qube_memory::<tier>::%`` namespace — it's a
         # more robust cut than the free-form ``category`` label.
         self.tier_selector = SelectorButton("All tiers", is_dark=is_dark)
-        self.tier_selector.setMaximumWidth(200)
+        self.tier_selector.setMinimumWidth(72)
+        self.tier_selector.setSizePolicy(selector_shrink_policy)
         self.tier_selector.setToolTip("Filter memories by tier (preference, knowledge, episode, context)")
         self._build_tier_menu()
-        filter_row.addWidget(self.tier_selector)
+        filter_row.addWidget(self.tier_selector, 1)
 
         self.category_selector = SelectorButton("All categories", is_dark=is_dark)
-        self.category_selector.setMaximumWidth(220)
+        self.category_selector.setMinimumWidth(72)
+        self.category_selector.setSizePolicy(selector_shrink_policy)
         self.category_selector.setToolTip("Filter memories by category")
         self._build_category_menu()
-        filter_row.addWidget(self.category_selector)
+        filter_row.addWidget(self.category_selector, 1)
 
         self.flagged_btn = QPushButton("Flagged only")
         self.flagged_btn.setCheckable(True)
         self.flagged_btn.setObjectName("MemoryFlaggedToggle")
         self.flagged_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.flagged_btn.setToolTip("Show only memories flagged for review")
+        self.flagged_btn.setSizePolicy(fixed_btn_policy)
         self.flagged_btn.toggled.connect(self._on_flagged_toggled)
         filter_row.addWidget(self.flagged_btn)
 
@@ -850,18 +870,25 @@ class MemoryManagerView(QWidget):
         self.search_input.setObjectName("MemorySearchInput")
         self.search_input.setPlaceholderText("Search memory text…")
         self.search_input.setToolTip("Search memory text")
+        self.search_input.setSizePolicy(search_policy)
+        _search_fm = QFontMetrics(self.search_input.font())
+        self.search_input.setMinimumWidth(
+            _search_fm.horizontalAdvance(self.search_input.placeholderText()) + 28
+        )
         self.search_input.textChanged.connect(self._on_search_changed)
-        filter_row.addWidget(self.search_input, 1)
+        filter_row.addWidget(self.search_input, 2)
 
         self.bulk_delete_btn = QPushButton("Delete all visible")
         apply_brand_danger(self.bulk_delete_btn, icon_name="fa5s.trash-alt")
         self.bulk_delete_btn.setToolTip("Delete all memories currently shown in the list")
+        self.bulk_delete_btn.setSizePolicy(fixed_btn_policy)
         self.bulk_delete_btn.clicked.connect(self._on_bulk_delete_clicked)
         filter_row.addWidget(self.bulk_delete_btn)
 
         self.export_btn = QPushButton("Export visible")
         apply_brand_primary(self.export_btn, icon_name="fa5s.file-export")
         self.export_btn.setToolTip("Export visible memories to Markdown under ~/.qube/exports/")
+        self.export_btn.setSizePolicy(fixed_btn_policy)
         self.export_btn.clicked.connect(self._on_export_visible)
         filter_row.addWidget(self.export_btn)
 

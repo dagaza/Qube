@@ -148,3 +148,79 @@ class TestStripHarmonyOssArtifacts(unittest.TestCase):
         out = strip_output_artifacts(raw, harmony_active=False)
         self.assertIn("Since you aren't experiencing", out)
         self.assertNotIn("thought", out.lower().split("since")[0])
+
+    def test_nemotron_leaked_harmony_scaffold_stripped_when_reasoning_family(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = (
+            "<|start|>assistant<|end|>\n"
+            "This document, *Mechanics of Project Management*, is a practical guide.\n"
+            "<|end|>"
+        )
+        out = strip_output_artifacts(raw, harmony_active=False, reasoning_family=True)
+        self.assertNotIn("<|start|>", out)
+        self.assertNotIn("<|end|>", out)
+        self.assertIn("Mechanics of Project Management", out)
+
+    def test_nemotron_closing_assistant_marker_stripped(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = "4\n</|assistant|>\n"
+        out = strip_output_artifacts(raw, harmony_active=False, reasoning_family=True)
+        self.assertEqual(out.strip(), "4")
+        self.assertNotIn("</|assistant|>", out)
+        self.assertNotIn("<|assistant|>", out)
+
+    def test_harmony_scaffold_stripped_by_content_even_without_reasoning_family_flag(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = (
+            "<|start|>assistant<|end|> This document, Mechanics of Project Management, "
+            "is a practical guide. <|end|>"
+        )
+        out = strip_output_artifacts(raw, harmony_active=False, reasoning_family=False)
+        self.assertNotIn("<|start|>", out)
+        self.assertNotIn("<|end|>", out)
+        self.assertIn("Mechanics of Project Management", out)
+
+    def test_leaked_harmony_scaffold_stream_filter_splits_across_chunks(self) -> None:
+        from core.output_artifact_strip import LeakedHarmonyScaffoldStreamFilter
+
+        filt = LeakedHarmonyScaffoldStreamFilter()
+        parts = [
+            "<|start|>assis",
+            "tant<|end|> This document covers ",
+            "project execution.",
+            "<|end|>",
+        ]
+        combined = ""
+        for part in parts:
+            combined += filt.feed(part)
+        combined += filt.flush()
+        self.assertNotIn("<|start|>", combined)
+        self.assertNotIn("<|end|>", combined)
+        self.assertIn("This document covers project execution.", combined)
+
+    def test_gemma_channel_preserved_when_reasoning_family_flag_off(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        raw = "thought\n<channel|>Since you aren't experiencing itching."
+        out = strip_output_artifacts(raw, harmony_active=False, reasoning_family=False)
+        self.assertIn("Since you aren't experiencing", out)
+
+    def test_reasoning_family_stream_fragments_strip_scaffold_without_gluing_words(self) -> None:
+        from core.output_artifact_strip import strip_output_artifacts
+
+        parts = (
+            "<|start|>assistant<|end|>\n",
+            "This document covers ",
+            "project execution.",
+            "<|end|>",
+        )
+        combined = "".join(
+            strip_output_artifacts(p, harmony_active=False, reasoning_family=True)
+            for p in parts
+        )
+        self.assertNotIn("<|start|>", combined)
+        self.assertNotIn("<|end|>", combined)
+        self.assertIn("This document covers project execution.", combined)

@@ -13,14 +13,23 @@ def resolve_stream_replacement(
     *,
     min_ratio: float = _DEFAULT_MIN_RATIO,
     harmony_active: bool = False,
+    reasoning_family: bool = False,
 ) -> tuple[str, str | None]:
     """
     Return ``(text_to_use, rejection_reason)``.
 
     Reject replacements that would shrink a good streamed answer the user already saw.
     """
-    rep = strip_output_artifacts((replacement or "").strip(), harmony_active=harmony_active)
-    stream = strip_output_artifacts((streamed or "").strip(), harmony_active=harmony_active)
+    rep = strip_output_artifacts(
+        (replacement or "").strip(),
+        harmony_active=harmony_active,
+        reasoning_family=reasoning_family,
+    )
+    stream = strip_output_artifacts(
+        (streamed or "").strip(),
+        harmony_active=harmony_active,
+        reasoning_family=reasoning_family,
+    )
     if not stream:
         return rep, None
     if not rep:

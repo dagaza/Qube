@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "service": "legal_knowledge",
+  "description": "Phase 6 Slice 5b — legal knowledge eval corpus (@legal / CourtListener)",
+  "queries": [
+    {
+      "id": "miranda_rights",
+      "query": "Miranda v Arizona Supreme Court rights during police interrogation",
+      "expect_adapters": ["courtlistener"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_legal_advice",
+      "min_fetch_rank": "abstract"
+    },
+    {
+      "id": "first_amendment",
+      "query": "First Amendment commercial speech Supreme Court precedent",
+      "expect_adapters": ["courtlistener"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "fourth_amendment",
+      "query": "Fourth Amendment cell phone search warrant Supreme Court",
+      "expect_adapters": ["courtlistener"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "chevron_deference",
+      "query": "Chevron deference administrative agency interpretation Supreme Court",
+      "expect_adapters": ["courtlistener"],
+      "min_sources": 1,
+      "min_authority": 0.85,
+      "require_warning": "not_legal_advice"
+    }
+  ]
+}

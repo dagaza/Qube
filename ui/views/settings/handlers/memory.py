@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import (
     QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent
+from PyQt6.QtGui import QResizeEvent, QShowEvent
+from ui.views.settings.controls import TriggerPhraseListWidget
 from core.audio_utils import get_input_devices, get_output_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.network import is_port_open
@@ -112,6 +113,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -131,6 +133,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -158,7 +161,7 @@ class MemoryHandlersMixin:
             "during chat. When off, library search still runs for custom trigger phrases "
             "if NLP Auto-Activator is enabled."
         )
-        self.rag_kb_cb.toggled.connect(self.rag_kb_toggle.emit)
+        self.rag_kb_cb.toggled.connect(self._on_rag_kb_settings_toggled)
         layout.addWidget(self.rag_kb_cb)
         
         # Instruction Label
@@ -173,7 +176,7 @@ class MemoryHandlersMixin:
             "When enabled, custom trigger phrases can search your Knowledge Base for a single turn, "
             "even if the master RAG switch is off. Add magic words below."
         )
-        self.auto_activator_cb.toggled.connect(self.auto_activator_toggle.emit)
+        self.auto_activator_cb.toggled.connect(self._on_auto_activator_settings_toggled)
         layout.addWidget(self.auto_activator_cb)
         
         # Input Row
@@ -209,16 +212,13 @@ class MemoryHandlersMixin:
         layout.addLayout(input_row)
         
         # Display List
-        self.trigger_list = QListWidget()
+        self.trigger_list = TriggerPhraseListWidget()
+        self.trigger_list.setObjectName("SettingsTriggerList")
         self.trigger_list.setMinimumHeight(180)
         self.trigger_list.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         self.trigger_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.trigger_list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
-        self.trigger_list.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
         layout.addWidget(self.trigger_list, stretch=1)
         
         self._refresh_trigger_list()
@@ -240,6 +240,8 @@ class MemoryHandlersMixin:
         list_width = max(0, self.trigger_list.viewport().width())
         if list_width <= 0:
             list_width = max(0, self.trigger_list.width())
+        # Inset avoids 1px list border clipping row widgets on the right edge.
+        row_width = max(0, list_width - 2)
         for phrase in triggers:
             item = QListWidgetItem()
             row = QWidget()
@@ -247,7 +249,9 @@ class MemoryHandlersMixin:
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
             layout = QHBoxLayout(row)
-            layout.setContentsMargins(15, 5, 10, 5)
+            layout.setContentsMargins(15, 10, 14, 10)
+            layout.setSpacing(8)
+            layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             
             lbl = QLabel(phrase)
             lbl.setObjectName("SettingsTriggerPhraseLabel")
@@ -256,6 +260,7 @@ class MemoryHandlersMixin:
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
             lbl.setStyleSheet(f"color: {text_color}; font-size: 13px; font-weight: bold;")
+            lbl.setMaximumWidth(self._trigger_row_text_width(row_width))
             
             del_btn = QPushButton()
             del_btn.setIcon(qta.icon('fa5s.trash-alt', color=icon_color))
@@ -268,32 +273,37 @@ class MemoryHandlersMixin:
             """)
             del_btn.clicked.connect(lambda checked, p=phrase: self._on_delete_trigger(p))
             
-            layout.addWidget(lbl, stretch=1)
-            layout.addWidget(del_btn, stretch=0)
+            layout.addWidget(lbl, stretch=1, alignment=Qt.AlignmentFlag.AlignVCenter)
+            layout.addWidget(del_btn, stretch=0, alignment=Qt.AlignmentFlag.AlignVCenter)
             
-            row_h = self._trigger_row_height(phrase, list_width)
-            item.setSizeHint(QSize(list_width, row_h))
+            row_h = self._measure_trigger_row(row, row_width)
+            item.setSizeHint(QSize(row_width, row_h))
             self.trigger_list.addItem(item)
             self.trigger_list.setItemWidget(item, row)
 
         self.trigger_list.doItemsLayout()
 
+    def _measure_trigger_row(self, row: QWidget, row_width: int) -> int:
+        """Height from the laid-out row widget (matches painted size, not font guesswork)."""
+        text_w = self._trigger_row_text_width(row_width)
+        lbl = row.findChild(QLabel, "SettingsTriggerPhraseLabel")
+        if lbl is not None:
+            lbl.setMaximumWidth(text_w)
+            text_h = lbl.heightForWidth(text_w)
+            content_h = max(text_h, 28)
+            # 10px top + 10px bottom layout margins
+            return max(52, content_h + 20)
+        layout = row.layout()
+        if layout is not None:
+            row.setMinimumWidth(row_width)
+            row.setMaximumWidth(row_width)
+            return max(52, layout.sizeHint().height())
+        return max(52, row.sizeHint().height())
+
     def _trigger_row_text_width(self, list_width: int) -> int:
         """Usable text width inside a trigger list row (margins + delete button)."""
-        return max(80, list_width - 68)
-
-    def _trigger_row_height(self, phrase: str, list_width: int) -> int:
-        fm = QFontMetrics(self.trigger_list.font())
-        text_w = self._trigger_row_text_width(list_width)
-        rect = fm.boundingRect(
-            0,
-            0,
-            text_w,
-            10000,
-            int(Qt.TextFlag.TextWordWrap),
-            phrase,
-        )
-        return max(44, rect.height() + 14)
+        # 15 left + 14 right + 28 delete + 8 spacing + small inset buffer
+        return max(80, list_width - 72)
 
     def _relayout_trigger_list_rows(self) -> None:
         if not hasattr(self, "trigger_list") or self.trigger_list.count() == 0:
@@ -301,6 +311,7 @@ class MemoryHandlersMixin:
         list_width = self.trigger_list.viewport().width()
         if list_width <= 0:
             return
+        row_width = max(0, list_width - 2)
         for i in range(self.trigger_list.count()):
             item = self.trigger_list.item(i)
             row = self.trigger_list.itemWidget(item)
@@ -309,8 +320,9 @@ class MemoryHandlersMixin:
             lbl = row.findChild(QLabel, "SettingsTriggerPhraseLabel")
             if lbl is None:
                 continue
-            phrase = lbl.text()
-            item.setSizeHint(QSize(list_width, self._trigger_row_height(phrase, list_width)))
+            item.setSizeHint(
+                QSize(row_width, self._measure_trigger_row(row, row_width))
+            )
         self.trigger_list.doItemsLayout()
 
     def _refresh_llm_rag_triggers(self) -> None:
@@ -342,12 +354,70 @@ class MemoryHandlersMixin:
         ):
             if widget is not None:
                 widget.setEnabled(enrichment_on)
+        preset_selector = getattr(self, "memory_promotion_preset_selector", None)
+        if preset_selector is not None:
+            self._apply_settings_menu_button_chevron_state(preset_selector)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_changed.emit(
                 enrichment_on and get_enable_memory_promotion()
             )
 
+    def _on_rag_kb_settings_toggled(self, checked: bool) -> None:
+        if checked:
+            win = self.window()
+            from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Library knowledge base",
+            ):
+                self.rag_kb_cb.blockSignals(True)
+                self.rag_kb_cb.setChecked(False)
+                self.rag_kb_cb.blockSignals(False)
+                return
+        self.rag_kb_toggle.emit(checked)
+
+    def _on_auto_activator_settings_toggled(self, checked: bool) -> None:
+        if checked:
+            win = self.window()
+            from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Library search phrases",
+            ):
+                self.auto_activator_cb.blockSignals(True)
+                self.auto_activator_cb.setChecked(False)
+                self.auto_activator_cb.blockSignals(False)
+                return
+        self.auto_activator_toggle.emit(checked)
+
     def _on_memory_enrichment_toggled(self, checked: bool):
+        if checked:
+            win = self.window()
+            from core.bootstrap_manifest import BootstrapModelId
+            from ui.bootstrap_feature_prompts import (
+                ensure_bootstrap_model_downloaded,
+                ensure_search_models_for_feature,
+            )
+
+            if not ensure_bootstrap_model_downloaded(
+                win,
+                BootstrapModelId.SIDECAR_QWEN17,
+                feature_label="Memory enrichment",
+            ):
+                self.memory_enrichment_toggle.blockSignals(True)
+                self.memory_enrichment_toggle.setChecked(False)
+                self.memory_enrichment_toggle.blockSignals(False)
+                return
+            if not ensure_search_models_for_feature(
+                win,
+                feature_label="Memory enrichment",
+            ):
+                self.memory_enrichment_toggle.blockSignals(True)
+                self.memory_enrichment_toggle.setChecked(False)
+                self.memory_enrichment_toggle.blockSignals(False)
+                return
         set_enable_memory_enrichment(checked)
         self.memory_enrichment_changed.emit(checked)
         self._sync_memory_promotion_controls_for_enrichment()
@@ -388,21 +458,20 @@ class MemoryHandlersMixin:
     def _build_profile_units_menu(self) -> None:
         if not hasattr(self, "profile_units_selector"):
             return
-        menu = QMenu(self)
-        options = [
-            ("", "Use inferred units"),
-            ("metric", "Metric"),
-            ("imperial", "Imperial"),
+        items = [
+            ("Use inferred units", ""),
+            ("Metric", "metric"),
+            ("Imperial", "imperial"),
         ]
+        self._build_prestige_menu(
+            self.profile_units_selector,
+            items,
+            self._on_profile_units_selected,
+        )
+        self._sync_profile_units_selector()
 
-        def _pick(value: str, label: str) -> None:
-            set_profile_units(value or None)
-            self.profile_units_selector.setText(label)
-
-        for value, label in options:
-            act = menu.addAction(label)
-            act.triggered.connect(lambda _checked=False, v=value, l=label: _pick(v, l))
-        self.profile_units_selector.setMenu(menu)
+    def _on_profile_units_selected(self, value: str) -> None:
+        set_profile_units(str(value) if value else None)
 
     def _sync_profile_units_selector(self) -> None:
         if not hasattr(self, "profile_units_selector"):
@@ -410,27 +479,41 @@ class MemoryHandlersMixin:
         units = get_profile_units()
         labels = {"metric": "Metric", "imperial": "Imperial"}
         self.profile_units_selector.setText(labels.get(units or "", "Use inferred units"))
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.profile_units_selector)
 
     def _build_memory_promotion_preset_menu(self) -> None:
         if not hasattr(self, "memory_promotion_preset_selector"):
             return
-        menu = QMenu(self)
+        items = [
+            ("Conservative", "conservative"),
+            ("Standard", "standard"),
+            ("Aggressive", "aggressive"),
+        ]
+        self._build_prestige_menu(
+            self.memory_promotion_preset_selector,
+            items,
+            self._on_memory_promotion_preset_selected,
+        )
+        self._sync_memory_promotion_preset_selector()
+
+    def _on_memory_promotion_preset_selected(self, key: str) -> None:
+        set_memory_promotion_preset(str(key))
+
+    def _sync_memory_promotion_preset_selector(self) -> None:
+        if not hasattr(self, "memory_promotion_preset_selector"):
+            return
         labels = {
             "conservative": "Conservative",
             "standard": "Standard",
             "aggressive": "Aggressive",
         }
         current = get_memory_promotion_preset()
-
-        def _pick(key: str, label: str) -> None:
-            set_memory_promotion_preset(key)
-            self.memory_promotion_preset_selector.setText(label)
-
-        for key, label in labels.items():
-            act = menu.addAction(label)
-            act.triggered.connect(lambda _checked=False, k=key, l=label: _pick(k, l))
-        self.memory_promotion_preset_selector.setMenu(menu)
         self.memory_promotion_preset_selector.setText(labels.get(current, "Standard"))
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        refit_settings_selector_width(self.memory_promotion_preset_selector)
 
     def _on_memory_consolidation_toggled(self, checked: bool):
         set_enable_memory_consolidation(checked)

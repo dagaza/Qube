@@ -113,7 +113,7 @@
     {
       "id": "self_005",
       "intent": "self_expression",
-      "text": "I've spent some time appreciating the color scheme.",
+      "text": "I've spent some time appreciating the colour scheme.",
       "voice": "cozy",
       "mood": [
         "playful"

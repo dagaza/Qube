@@ -8,36 +8,231 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QMenu,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
-from core.app_settings import get_advanced_embedding_unlocked
+from core.app_settings import (
+    get_advanced_embedding_unlocked,
+    get_deep_research_enabled,
+    get_external_knowledge_v2_enabled,
+    get_internal_corpus_knowledge_enabled,
+    get_research_map_enabled,
+)
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
+from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
+from ui.views.settings.sections.knowledge_sources import build_knowledge_live_sources_section
+from ui.views.settings.sections.knowledge_presets import build_knowledge_presets_section
+from ui.views.settings.sections.knowledge_custom_sources import build_knowledge_custom_sources_section
+from ui.views.settings.sections.knowledge_diagnostics import build_knowledge_diagnostics_section
+from ui.views.settings.sections.knowledge_provider_status import (
+    build_knowledge_provider_status_section,
+)
 from ui.views.settings.widgets import add_subsection_to_layout, add_section_reset_footer, wrap_subsection
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
     container = QWidget()
     container.setObjectName("SettingsFormContainer")
+    container.setMinimumWidth(0)
+    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     layout = QVBoxLayout(container)
     layout.setSpacing(15)
 
     add_subsection_to_layout(layout, "Library search phrases", anchor="triggers")
     layout.addWidget(host._build_triggers_manager())
 
-    add_subsection_to_layout(layout, "Embedding model", anchor="embedding_model")
+    add_subsection_to_layout(layout, "Search quality", anchor="embedding_mode")
+
+    mode_inner = QWidget()
+    mode_form = QFormLayout(mode_inner)
+    mode_form.setSpacing(12)
+    mode_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host.embedding_mode_selector = SelectorButton("Balanced", is_dark=is_dark)
+    host.embedding_mode_selector.setMaximumWidth(280)
+    host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
+    host.embedding_mode_selector.setToolTip(
+        "Fast — lightest on memory. Balanced — recommended default. "
+        "Power — best search quality, uses more memory. "
+        "Presets download automatically when online; use Prepare search models below if needed."
+    )
+
+    host.embedding_mode_description = QLabel()
+    host.embedding_mode_description.setWordWrap(True)
+
+    mode_form.addRow("Mode", host.embedding_mode_selector)
+    mode_form.addRow("", host.embedding_mode_description)
+    layout.addWidget(wrap_subsection(mode_inner, anchor="embedding_mode"))
+
+    add_subsection_to_layout(layout, "External knowledge", anchor="external_knowledge")
+
+    host.external_knowledge_v2_toggle = PrestigeToggle()
+    host.external_knowledge_v2_label = QLabel("External knowledge pipeline (v2)")
+    host.external_knowledge_v2_label.setWordWrap(True)
+    _external_v2_tip = (
+        "Routes @internet, @trusted, @evidence, and @library (with internal corpus) "
+        "through the evidence pipeline. Required for @research deep research."
+    )
+    host.external_knowledge_v2_toggle.setToolTip(_external_v2_tip)
+    host.external_knowledge_v2_label.setToolTip(_external_v2_tip)
+    external_v2_row = QWidget()
+    external_v2_row_layout = QHBoxLayout(external_v2_row)
+    external_v2_row_layout.setContentsMargins(0, 0, 0, 0)
+    external_v2_row_layout.addWidget(
+        host.external_knowledge_v2_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    external_v2_row_layout.addWidget(host.external_knowledge_v2_label, stretch=1)
+    host.external_knowledge_v2_toggle.blockSignals(True)
+    host.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
+    host.external_knowledge_v2_toggle.blockSignals(False)
+    host.external_knowledge_v2_toggle.toggled.connect(
+        host._on_external_knowledge_v2_toggled
+    )
+    layout.addWidget(external_v2_row)
+
+    host.internal_corpus_toggle = PrestigeToggle()
+    host.internal_corpus_label = QLabel("Internal corpus (@library evidence service)")
+    host.internal_corpus_label.setWordWrap(True)
+    _internal_corpus_tip = (
+        "When external v2 is on, routes @library through the evidence pipeline "
+        "over your LanceDB library index (trace + transparency). Implicit RAG "
+        "for non-@library turns is unchanged."
+    )
+    host.internal_corpus_toggle.setToolTip(_internal_corpus_tip)
+    host.internal_corpus_label.setToolTip(_internal_corpus_tip)
+    internal_corpus_row = QWidget()
+    internal_corpus_row_layout = QHBoxLayout(internal_corpus_row)
+    internal_corpus_row_layout.setContentsMargins(0, 0, 0, 0)
+    internal_corpus_row_layout.addWidget(
+        host.internal_corpus_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    internal_corpus_row_layout.addWidget(host.internal_corpus_label, stretch=1)
+    host.internal_corpus_toggle.blockSignals(True)
+    host.internal_corpus_toggle.setChecked(get_internal_corpus_knowledge_enabled())
+    host.internal_corpus_toggle.blockSignals(False)
+    host.internal_corpus_toggle.toggled.connect(
+        host._on_internal_corpus_knowledge_toggled
+    )
+    layout.addWidget(internal_corpus_row)
+
+    host.research_map_toggle = PrestigeToggle()
+    host.research_map_label = QLabel("Research map (session knowledge graph)")
+    host.research_map_label.setWordWrap(True)
+    _research_map_tip = (
+        "Builds a lightweight graph of queries, sources, and topics across "
+        "evidence turns in this session. View it from the Sources dialog on "
+        "answers that used @evidence, @trusted, @library, or @research."
+    )
+    host.research_map_toggle.setToolTip(_research_map_tip)
+    host.research_map_label.setToolTip(_research_map_tip)
+    research_map_row = QWidget()
+    research_map_row_layout = QHBoxLayout(research_map_row)
+    research_map_row_layout.setContentsMargins(0, 0, 0, 0)
+    research_map_row_layout.addWidget(
+        host.research_map_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    research_map_row_layout.addWidget(host.research_map_label, stretch=1)
+    host.research_map_toggle.blockSignals(True)
+    host.research_map_toggle.setChecked(get_research_map_enabled())
+    host.research_map_toggle.blockSignals(False)
+    host.research_map_toggle.toggled.connect(host._on_research_map_toggled)
+    layout.addWidget(research_map_row)
+
+    host.deep_research_toggle = PrestigeToggle()
+    host.deep_research_label = QLabel("Deep research (@research)")
+    host.deep_research_label.setWordWrap(True)
+    _deep_research_tip = (
+        "Runs multi-step evidence jobs in the background when you use the "
+        "@research composer tool. Does not block normal chat."
+    )
+    host.deep_research_toggle.setToolTip(_deep_research_tip)
+    host.deep_research_label.setToolTip(_deep_research_tip)
+    deep_research_row = QWidget()
+    deep_research_row_layout = QHBoxLayout(deep_research_row)
+    deep_research_row_layout.setContentsMargins(0, 0, 0, 0)
+    deep_research_row_layout.addWidget(
+        host.deep_research_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    deep_research_row_layout.addWidget(host.deep_research_label, stretch=1)
+    host.deep_research_toggle.blockSignals(True)
+    host.deep_research_toggle.setChecked(get_deep_research_enabled())
+    host.deep_research_toggle.blockSignals(False)
+    host.deep_research_toggle.toggled.connect(host._on_deep_research_enabled_toggled)
+    layout.addWidget(deep_research_row)
+
+    add_subsection_to_layout(layout, "Retrieval profile", anchor="retrieval_profile")
+
+    profile_inner = QWidget()
+    profile_form = QFormLayout(profile_inner)
+    profile_form.setSpacing(12)
+    profile_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+    host.retrieval_profile_selector = SelectorButton("Balanced", is_dark=is_dark)
+    host.retrieval_profile_selector.setMaximumWidth(280)
+    host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
+    host.retrieval_profile_selector.setToolTip(
+        "Controls how hard Qube searches on knowledge turns: adapter fan-out, "
+        "timeouts, and cache behavior. Independent of My knowledge presets."
+    )
+    host.retrieval_profile_description = QLabel()
+    host.retrieval_profile_description.setWordWrap(True)
+
+    profile_form.addRow("Profile", host.retrieval_profile_selector)
+    profile_form.addRow("", host.retrieval_profile_description)
+    layout.addWidget(wrap_subsection(profile_inner, anchor="retrieval_profile"))
+
+    add_subsection_to_layout(layout, "Live sources", anchor="knowledge_live_sources")
+    layout.addWidget(build_knowledge_live_sources_section(host))
+
+    layout.addWidget(build_knowledge_provider_status_section(host, is_dark=is_dark))
+
+    layout.addWidget(build_knowledge_custom_sources_section(host, is_dark=is_dark))
+    layout.addWidget(build_knowledge_presets_section(host, is_dark=is_dark))
+    layout.addWidget(build_knowledge_diagnostics_section(host, is_dark=is_dark))
+
+    embedding_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="embedding_bootstrap_download_row",
+        label_attr="embedding_bootstrap_missing_lbl",
+        button_attr="download_base_embedding_btn",
+        handler_name="_warm_embedding_preset",
+        label_text=(
+            "Search models are not ready. Library uploads and knowledge toggles need "
+            "the active Fast/Balanced/Power preset (ONNX under ~/.qube/models/search/, "
+            "not the embedding GGUF folder). Change mode under Search quality above."
+        ),
+        button_text="Prepare search models",
+    )
+    layout.addWidget(embedding_download_row)
+
+    all_presets_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="embedding_all_presets_download_row",
+        label_attr="embedding_all_presets_missing_lbl",
+        button_attr="download_all_search_presets_btn",
+        handler_name="_download_all_search_presets",
+        label_text=(
+            "Download Fast, Balanced, and Power presets for offline mode switching "
+            f"(ONNX under ~/.qube/models/search/)."
+        ),
+        button_text="Download all search presets",
+    )
+    layout.addWidget(all_presets_download_row)
+
+    add_subsection_to_layout(layout, "Advanced embedding", anchor="embedding_model")
 
     _adv_tip = (
         "Advanced embedding controls are not for everyday use.\n\n"
-        "Unlocks optional embedding model selection for RAG and memory search. "
-        "The bundled Nomic Embed v1.5 default cannot be deleted. Place alternate "
-        ".gguf embedding models in the embedding folder, then select one here.\n\n"
-        "Switching to a model with a different vector size will reset your vector "
-        "index — re-ingest library documents afterward."
+        "Unlocks optional custom .gguf embedding models for RAG and memory search. "
+        "Place files in the embedding folder, then select one here.\n\n"
+        "Using a custom model reprocesses your library and memories."
     )
     host.advanced_embedding_toggle = PrestigeToggle()
     host.advanced_embedding_label = QLabel("Show advanced embedding settings")
@@ -78,17 +273,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.embedding_dir_label = QLabel(get_embedding_models_dir())
     host.embedding_dir_label.setWordWrap(True)
     host.embedding_dir_label.setToolTip(
-        "Place optional embedding .gguf files here. The bundled Nomic default "
-        "also lives in this folder."
+        "Place optional custom embedding .gguf files here."
     )
 
     embedding_row = QHBoxLayout()
     host.embedding_gguf_list = QListWidget()
+    host.embedding_gguf_list.setMinimumWidth(0)
     host.embedding_gguf_list.setMinimumHeight(90)
     host.embedding_gguf_list.setMaximumHeight(140)
     host.embedding_gguf_list.setToolTip(
-        "Built-in Nomic Embed v1.5 default cannot be deleted. Select a custom model "
-        "and click Use selected, or Reset to default."
+        "Select a custom .gguf model and click Use selected."
     )
     embedding_row.addWidget(host.embedding_gguf_list, stretch=1)
     embedding_btn_col = QVBoxLayout()
@@ -98,12 +292,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.use_embedding_gguf_btn.clicked.connect(host._apply_selected_embedding_gguf)
     embedding_btn_col.addWidget(
         host.use_embedding_gguf_btn, alignment=Qt.AlignmentFlag.AlignTop
-    )
-    host.reset_embedding_btn = QPushButton("Reset to default")
-    apply_brand_primary(host.reset_embedding_btn, icon_name="fa5s.undo")
-    host.reset_embedding_btn.clicked.connect(host._reset_embedding_to_default)
-    embedding_btn_col.addWidget(
-        host.reset_embedding_btn, alignment=Qt.AlignmentFlag.AlignTop
     )
     host.refresh_embedding_gguf_btn = QPushButton("Refresh")
     host.refresh_embedding_gguf_btn.setToolTip(
@@ -126,11 +314,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     embedding_form.addRow("Model storage", host.embedding_dir_label)
     embedding_form.addRow("On this device", embedding_row)
-    embedding_form.addRow("Active model", host.active_embedding_model_lbl)
+    embedding_form.addRow("Custom override", host.active_embedding_model_lbl)
 
     adv_panel_layout.addWidget(wrap_subsection(embedding_inner, anchor="embedding_model"))
     host.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
     layout.addWidget(host.advanced_embedding_panel)
+
+    host._build_embedding_mode_menu()
+
+    if hasattr(host, "_build_retrieval_profile_menu"):
+        host._build_retrieval_profile_menu()
 
     add_section_reset_footer(layout, host, "knowledge", is_dark=is_dark)
 

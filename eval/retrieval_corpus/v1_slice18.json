@@ -1,0 +1,22 @@
+{
+  "version": "v1_slice18",
+  "description": "Slice 18 — patents (USPTO PatentsView, EPO Espacenet)",
+  "queries": [
+    {
+      "id": "s18_pat_001",
+      "query": "electrical engineering lithium ion battery electrode patent",
+      "service": "scientific_evidence",
+      "discipline": "engineering",
+      "expect_adapters": ["uspto_patentsview"],
+      "force_adapter": "uspto_patentsview"
+    },
+    {
+      "id": "s18_pat_002",
+      "query": "organic chemistry lithium battery cathode electrolyte European patent",
+      "service": "scientific_evidence",
+      "discipline": "chemistry",
+      "expect_adapters": ["epo_espacenet"],
+      "force_adapter": "epo_espacenet"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-import llama_cpp.llama_chat_format as llama_chat_format
+from core.qwen3_thinking_policy import is_qwen3_model, template_kwargs_for_thinking_policy
 
 logger = logging.getLogger("Qube.Qwen3SidecarInference")
 
@@ -40,11 +40,19 @@ def attach_chat_template_kwargs(model: Any, template_kwargs: dict[str, Any]) -> 
     """Wrap ``model.chat_handler`` so Jinja chat templates receive extra kwargs."""
     if not template_kwargs:
         return
-    base_handler = (
-        getattr(model, "chat_handler", None)
-        or model._chat_handlers.get(model.chat_format)
-        or llama_chat_format.get_chat_completion_handler(model.chat_format)
-    )
+    try:
+        import llama_cpp.llama_chat_format as llama_chat_format
+    except ImportError:
+        llama_chat_format = None
+
+    base_handler = getattr(model, "chat_handler", None)
+    if base_handler is None and llama_chat_format is not None:
+        base_handler = (
+            model._chat_handlers.get(model.chat_format)
+            or llama_chat_format.get_chat_completion_handler(model.chat_format)
+        )
+    if base_handler is None:
+        return
 
     def handler_with_kwargs(*args: Any, **kwargs: Any):
         merged = {**template_kwargs, **kwargs}
@@ -196,6 +204,8 @@ __all__ = [
     "CompletionDiagnostics",
     "attach_chat_template_kwargs",
     "chat_completion_complete",
+    "is_qwen3_model",
     "llama_cpp_supports_template_kwargs_via_handler",
     "raw_prompt_complete",
+    "template_kwargs_for_thinking_policy",
 ]

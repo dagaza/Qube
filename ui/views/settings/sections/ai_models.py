@@ -38,14 +38,16 @@ from core.app_settings import (
 )
 from core.auxiliary_cognition import get_cognition_models_dir
 from core.cpu_threads import max_cpu_threads_for_ui
-from core.gpu_layers_cap import max_safe_n_gpu_layers
+from core.gpu_layers_cap import max_safe_n_gpu_layers, is_unified_gpu_memory
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.controls import (
     NoScrollDoubleSpinBox,
     NoScrollSlider,
     NoScrollSpinBox,
+    SettingsScrollListWidget,
 )
 from ui.views.settings.widgets import (
     add_subsection_to_form,
@@ -68,7 +70,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(ai_form, "Engine & routing", anchor="engine")
 
     host.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
-    host.engine_selector.setObjectName("SettingsEngineSelector")
     host.provider_selector = SelectorButton("Select Provider...", is_dark=is_dark)
 
     for btn in (host.engine_selector, host.provider_selector):
@@ -102,7 +103,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.models_dir_label.setWordWrap(True)
 
     local_row = QHBoxLayout()
-    host.local_gguf_list = QListWidget()
+    host.local_gguf_list = SettingsScrollListWidget()
     host.local_gguf_list.setMinimumHeight(100)
     host.local_gguf_list.setMaximumHeight(160)
     host.local_gguf_list.setToolTip(
@@ -454,6 +455,11 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "More layers make the AI generate text much faster, but setting this too high "
         "may use up all your video memory and cause crashes."
     )
+    if is_unified_gpu_memory():
+        _gpu_tip += (
+            " On unified-memory systems (Apple Silicon or AMD APUs), layers draw from "
+            "shared system RAM — raise this toward the maximum for much better speed."
+        )
     host.gpu_layers_slider.setToolTip(_gpu_tip)
     host.gpu_layers_value_lbl.setToolTip(_gpu_tip)
     gpu_layers_row.setToolTip(_gpu_tip)
@@ -505,6 +511,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_hardware_panel.layout().addWidget(host._ai_hardware_subsection)
     host.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
     ai_form.addRow("", host.advanced_hardware_panel)
+
+    # --- Inference transparency (read-only) ---
+    track_internal_ai_label(
+        host,
+        add_subsection_to_form(ai_form, "Inference stack", anchor="inference_stack"),
+    )
+    host.inference_transparency_lbl = QLabel("Loading inference stack details…")
+    host.inference_transparency_lbl.setWordWrap(True)
+    host.inference_transparency_lbl.setProperty("class", "ToolsPaneControl")
+    host.inference_transparency_lbl.setToolTip(
+        "Read-only summary of llama.cpp build backend, hardware detection (including AMD APU "
+        "unified memory), requested GPU layer configuration, and embedder/sidecar compute paths."
+    )
+    ai_form.addRow("", host.inference_transparency_lbl)
 
     # --- Chat template ---
     track_internal_ai_label(
@@ -587,6 +607,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Auxiliary cognition ---
     add_subsection_to_form(ai_form, "Auxiliary cognition", anchor="cognition")
+
+    cognition_download_row = make_bootstrap_download_row(
+        host,
+        row_attr="cognition_bootstrap_download_row",
+        label_attr="cognition_bootstrap_missing_lbl",
+        button_attr="download_base_cognition_btn",
+        handler_name="_download_bootstrap_cognition",
+        label_text=(
+            "The bundled Qwen3 1.7B sidecar is not installed. Memory enrichment "
+            "needs this auxiliary cognition model."
+        ),
+        button_text="Download base cognition model",
+    )
+    ai_form.addRow("", cognition_download_row)
 
     _adv_tip = (
         "Advanced engine controls are not for everyday use. Only enable them if you "

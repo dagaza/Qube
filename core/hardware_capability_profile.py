@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import glob
 import platform
 import re
 import sys
 from dataclasses import dataclass
 from enum import Enum
 
-from core.gpu_layers_cap import detect_gpu_vram_bytes
+from core.gpu_layers_cap import detect_gpu_vram_bytes, gpu_memory_kind
 
 
 class HardwareTier(str, Enum):
@@ -48,6 +49,8 @@ class HardwareCapabilityProfile:
     @property
     def inference_budget_gb(self) -> float:
         """Conservative GB budget for a single Q4-class GGUF load."""
+        if self.gpu_backend in ("apple_unified", "amd_unified"):
+            return max(0.0, self.total_vram_gb * 0.85)
         if self.total_vram_gb > 0:
             return max(0.0, self.total_vram_gb * 0.85)
         return max(0.0, self.total_ram_gb * 0.55)
@@ -56,7 +59,10 @@ class HardwareCapabilityProfile:
     def summary_label(self) -> str:
         parts: list[str] = []
         if self.total_vram_gb > 0:
-            parts.append(f"{self.total_vram_gb:.1f} GB VRAM")
+            if self.gpu_backend in ("apple_unified", "amd_unified"):
+                parts.append(f"{self.total_vram_gb:.1f} GB unified GPU budget")
+            else:
+                parts.append(f"{self.total_vram_gb:.1f} GB VRAM")
         if self.total_ram_gb > 0:
             parts.append(f"{self.total_ram_gb:.0f} GB RAM")
         if self.cpu_cores > 0:
@@ -86,6 +92,20 @@ def _detect_cpu_cores() -> int:
         return 1
 
 
+def _linux_amdgpu_marketing_name() -> str | None:
+    if not sys.platform.startswith("linux"):
+        return None
+    for path in glob.glob("/sys/class/drm/card*/device/product_name"):
+        try:
+            with open(path, encoding="utf-8") as f:
+                name = f.read().strip()
+        except OSError:
+            continue
+        if name:
+            return name
+    return None
+
+
 def _detect_gpu_name() -> str | None:
     try:
         import pynvml
@@ -104,20 +124,24 @@ def _detect_gpu_name() -> str | None:
 
     if sys.platform == "darwin" and platform.machine().lower() in ("arm64", "aarch64"):
         return "Apple Silicon"
+
+    if gpu_memory_kind() == "amd_unified":
+        return _linux_amdgpu_marketing_name() or "AMD APU (unified memory)"
+
     return None
 
 
-def _detect_gpu_backend(vram_bytes: int) -> str:
-    if vram_bytes <= 0:
-        return "none"
-    if sys.platform == "darwin" and platform.machine().lower() in ("arm64", "aarch64"):
+def _detect_gpu_backend() -> str:
+    kind = gpu_memory_kind()
+    if kind == "apple_unified":
         return "apple_unified"
-    name = (_detect_gpu_name() or "").lower()
-    if "nvidia" in name or "geforce" in name or "rtx" in name or "quadro" in name:
+    if kind == "amd_unified":
+        return "amd_unified"
+    if kind == "nvidia":
         return "nvidia"
-    if "amd" in name or "radeon" in name:
+    if kind == "amd_discrete":
         return "amd"
-    if vram_bytes > 0:
+    if kind != "none":
         return "discrete"
     return "none"
 
@@ -148,13 +172,18 @@ def detect_hardware_capability_profile() -> HardwareCapabilityProfile:
         total_vram_gb=vram_gb,
         cpu_cores=_detect_cpu_cores(),
         gpu_name=_detect_gpu_name(),
-        gpu_backend=_detect_gpu_backend(vram_bytes),
+        gpu_backend=_detect_gpu_backend(),
         tier=classify_hardware_tier(vram_gb=vram_gb, ram_gb=ram_gb),
     )
 
 
 def format_tier_detail(profile: HardwareCapabilityProfile) -> str:
-    gpu = profile.gpu_name or ("Unified memory" if profile.gpu_backend == "apple_unified" else "No GPU detected")
+    if profile.gpu_backend == "apple_unified":
+        gpu = profile.gpu_name or "Apple Silicon (unified memory)"
+    elif profile.gpu_backend == "amd_unified":
+        gpu = profile.gpu_name or "AMD APU (unified memory)"
+    else:
+        gpu = profile.gpu_name or "No GPU detected"
     return (
         f"{profile.tier_label} tier — {profile.summary_label}. "
         f"GPU: {gpu}. Estimated single-model budget ~{profile.inference_budget_gb:.1f} GB (Q4-class)."

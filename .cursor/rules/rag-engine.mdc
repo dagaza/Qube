@@ -20,7 +20,7 @@ globs: rag/*.py, mcp/*.py, workers/ingestion_worker.py, workers/enrichment_worke
 
 - **Pure Python Semantic Chunking:** Documents must be sliced using paragraph/sentence overlap logic (max ~1500 chars) before embedding. Never pass massive, multi-page raw strings to the C++ engine.
 
-- **Strict Database Schema & Absolute Paths:** `rag/store.py` must enforce the correct vector dimension (e.g., `768` for Nomic). It must use absolute `Path(__file__).resolve()` routing to prevent "Ghost Database" relative-path bugs. Include auto-healing logic to `drop_table` if a dimension mismatch is detected.
+- **Strict Database Schema & Absolute Paths:** `rag/store.py` must enforce the correct vector dimension for the active embedding mode (384 Fast / 512 Balanced / 1024 Power). It must use absolute `Path(__file__).resolve()` routing to prevent "Ghost Database" relative-path bugs. Include auto-healing logic to `drop_table` if a dimension mismatch is detected.
 
 - **Worker Telemetry Contract:**
   - Workers emitting router decisions (LLMWorker, Cognitive Router) must provide telemetry signals with consistent keys.

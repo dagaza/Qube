@@ -1,0 +1,21 @@
+{
+  "hits": {
+    "hits": [
+      {
+        "id": "10159383",
+        "metadata": {
+          "title": "IPCC AR6 sea level rise assessment background dataset",
+          "description": "Supporting dataset catalogued for IPCC Sixth Assessment Report sea level projections.",
+          "doi": "10.5281/zenodo.10159383",
+          "publication_date": "2023-11-20",
+          "creators": [
+            {"name": "Intergovernmental Panel on Climate Change"}
+          ]
+        },
+        "links": {
+          "html": "https://zenodo.org/records/10159383"
+        }
+      }
+    ]
+  }
+}

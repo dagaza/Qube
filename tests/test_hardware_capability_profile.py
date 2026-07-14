@@ -47,6 +47,18 @@ class TestHardwareCapabilityProfile(unittest.TestCase):
         self.assertGreaterEqual(profile.total_ram_gb, 0.0)
         self.assertGreaterEqual(profile.cpu_cores, 1)
 
+    def test_amd_unified_backend_and_summary(self) -> None:
+        profile = HardwareCapabilityProfile(
+            total_ram_gb=32.0,
+            total_vram_gb=17.6,
+            cpu_cores=16,
+            gpu_name="AMD Radeon Graphics",
+            gpu_backend="amd_unified",
+            tier=HardwareTier.PERFORMANCE,
+        )
+        self.assertIn("unified GPU budget", profile.summary_label)
+        self.assertAlmostEqual(profile.inference_budget_gb, 17.6 * 0.85)
+
 
 if __name__ == "__main__":
     unittest.main()

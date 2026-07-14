@@ -1,0 +1,22 @@
+{
+  "feed": {
+    "entry": [
+      {
+        "concept_id": "C1234567890-POCLOUD",
+        "entry_id": "OSTIA-UKMO-L4-GLOB-REP-v2.0_2.0",
+        "short_name": "OSTIA-UKMO-L4-GLOB-REP-v2.0",
+        "dataset_id": "GHRSST Level 4 OSTIA Global Sea Surface Temperature Analysis",
+        "title": "GHRSST Level 4 OSTIA Global Sea Surface Temperature Analysis",
+        "summary": "Level-4 sea surface temperature analysis produced for climate and oceanographic research applications.",
+        "time_start": "1982-01-01T00:00:00.000Z",
+        "data_center": "POCLOUD",
+        "links": [
+          {
+            "rel": "http://esipfed.org/ns/fedsearch/1.1/metadata#",
+            "href": "https://search.earthdata.nasa.gov/search/granules?p=C1234567890-POCLOUD"
+          }
+        ]
+      }
+    ]
+  }
+}

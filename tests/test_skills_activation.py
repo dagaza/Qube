@@ -221,10 +221,10 @@ class ExtendedSkillActivationTests(unittest.TestCase):
         self.assertIn("decision_analysis", ids)
         self.assertIn("consumer_buying", ids)
 
-    def test_registry_has_eighteen_skills(self) -> None:
+    def test_registry_has_nineteen_skills(self) -> None:
         from core.skills.registry import iter_skills
 
-        self.assertEqual(len(list(iter_skills())), 18)
+        self.assertEqual(len(list(iter_skills())), 19)
 
     def test_forced_skill_bypasses_disabled_setting(self) -> None:
         result = activate_skills(

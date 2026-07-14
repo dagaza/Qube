@@ -393,6 +393,8 @@ class SettingsStore:
                 return self.default_for(key)
             return s
         if "object" in types:
+            if key == "qube.knowledge.source_preferences":
+                return self._coerce_knowledge_source_preferences(value)
             if not isinstance(value, dict):
                 return _SKIP
             out: dict[str, float] = {}
@@ -403,6 +405,14 @@ class SettingsStore:
                     continue
             return out
         return _SKIP
+
+    def _coerce_knowledge_source_preferences(self, value: Any) -> Any:
+        """Preserve service → adapter-id list maps (not float threshold objects)."""
+        from core.knowledge.source_preferences import normalize_preferences
+
+        if not isinstance(value, dict):
+            return _SKIP
+        return normalize_preferences(value)
 
 
 _SKIP = object()

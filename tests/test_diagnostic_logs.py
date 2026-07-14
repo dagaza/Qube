@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from core.diagnostic_logs import (
+    DiagnosticLogSpec,
+    clear_diagnostic_log,
     describe_log_file,
     get_diagnostic_log,
     iter_diagnostic_logs,
@@ -18,7 +21,10 @@ from core.diagnostic_logs import (
 class DiagnosticLogsTests(unittest.TestCase):
     def test_catalog_contains_expected_logs(self) -> None:
         ids = {spec.id for spec in iter_diagnostic_logs()}
-        self.assertEqual(ids, {"llm_debug", "routing_debug", "skills_debug"})
+        self.assertEqual(
+            ids,
+            {"app_log", "llm_debug", "routing_debug", "web_search_audit", "skills_debug"},
+        )
 
     def test_routing_log_supports_recording_toggle(self) -> None:
         spec = get_diagnostic_log("routing_debug")
@@ -27,6 +33,10 @@ class DiagnosticLogsTests(unittest.TestCase):
         self.assertNotIn("QUBE_", spec.description)
 
     def test_get_diagnostic_log(self) -> None:
+        spec = get_diagnostic_log("app_log")
+        self.assertIsNotNone(spec)
+        assert spec is not None
+        self.assertEqual(spec.title, "Application log")
         spec = get_diagnostic_log("llm_debug")
         self.assertIsNotNone(spec)
         assert spec is not None
@@ -65,21 +75,88 @@ class DiagnosticLogsTests(unittest.TestCase):
         assert spec is not None
         self.assertTrue(spec.supports_recording_toggle)
         self.assertIn("skill", spec.description.lower())
+        self.assertIn("AI & Models", spec.note)
 
+    def test_llm_debug_log_spec_notes_file_recording_only(self) -> None:
+        spec = get_diagnostic_log("llm_debug")
+        assert spec is not None
+        self.assertIn("file recording", spec.note.lower())
+
+    def test_web_search_audit_log_spec(self) -> None:
+        spec = get_diagnostic_log("web_search_audit")
+        assert spec is not None
+        self.assertTrue(spec.supports_recording_toggle)
+        self.assertIn("web search", spec.description.lower())
+        self.assertIn("web_search.log", str(spec.path_fn()))
+
+    @patch("core.app_log_sink.logs_dir")
     @patch("core.routing_debug_sink.logs_dir")
     @patch("core.llm_debug_sink.logs_dir")
     def test_default_paths_live_under_logs_dir(
-        self, llm_logs_dir_mock, routing_logs_dir_mock
+        self, llm_logs_dir_mock, routing_logs_dir_mock, app_logs_dir_mock
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             llm_logs_dir_mock.return_value = root
             routing_logs_dir_mock.return_value = root
+            app_logs_dir_mock.return_value = root
+            app = get_diagnostic_log("app_log")
             llm = get_diagnostic_log("llm_debug")
             routing = get_diagnostic_log("routing_debug")
-            assert llm is not None and routing is not None
+            assert app is not None and llm is not None and routing is not None
+            self.assertEqual(app.path_fn(), root / "qube.log")
             self.assertEqual(llm.path_fn(), root / "llm_debug.log")
             self.assertEqual(routing.path_fn(), root / "routing_debug.log")
+
+    def test_clear_diagnostic_log_truncates_active_handler(self) -> None:
+        from logging.handlers import RotatingFileHandler
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.log"
+            handler = RotatingFileHandler(
+                path,
+                maxBytes=1024,
+                backupCount=2,
+                encoding="utf-8",
+            )
+            root = logging.getLogger()
+            root.addHandler(handler)
+            try:
+                logging.info("line one")
+                handler.flush()
+                backup = Path(f"{path}.1")
+                backup.write_text("old backup", encoding="utf-8")
+
+                spec = DiagnosticLogSpec(
+                    id="test_clear",
+                    title="Test log",
+                    description="",
+                    path_fn=lambda: path,
+                )
+                result = clear_diagnostic_log(spec)
+
+                self.assertTrue(result.success)
+                self.assertEqual(path.read_text(encoding="utf-8"), "")
+                self.assertFalse(backup.exists())
+            finally:
+                root.removeHandler(handler)
+                handler.close()
+
+    def test_clear_diagnostic_log_without_handler(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "orphan.log"
+            path.write_text("stale content", encoding="utf-8")
+
+            spec = DiagnosticLogSpec(
+                id="test_orphan",
+                title="Orphan log",
+                description="",
+                path_fn=lambda: path,
+            )
+            result = clear_diagnostic_log(spec)
+
+            self.assertTrue(result.success)
+            self.assertEqual(path.read_text(encoding="utf-8"), "")
 
 
 if __name__ == "__main__":

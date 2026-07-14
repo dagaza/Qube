@@ -1,0 +1,17 @@
+{
+  "molecules": [
+    {
+      "pref_name": "ASPIRIN",
+      "molecule_chembl_id": "CHEMBL25",
+      "molecule_type": "Small molecule",
+      "max_phase": "4.0",
+      "molecule_properties": {
+        "full_molformula": "C9H8O4",
+        "full_mwt": "180.16"
+      },
+      "molecule_structures": {
+        "canonical_smiles": "CC(=O)OC1=CC=CC=C1C(=O)O"
+      }
+    }
+  ]
+}

@@ -104,11 +104,14 @@ def detect_baseline_recall_fusion(state: ShadowRetrievalState) -> bool:
     if bool(state.decision.get("recall_fusion")):
         return True
     try:
-        from core.memory_filters import detect_recall_intent
+        from core.memory_filters import should_apply_recall_fusion
 
         if (
             _normalize_route(state.baseline_route) == "hybrid"
-            and detect_recall_intent((state.prompt or "").lower().strip())
+            and should_apply_recall_fusion(
+                (state.prompt or "").lower().strip(),
+                decision=state.decision if isinstance(state.decision, dict) else None,
+            )
         ):
             return True
     except ImportError:

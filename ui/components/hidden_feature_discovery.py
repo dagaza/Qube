@@ -156,6 +156,7 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
         if not self._mention_popup.isVisible():
             self._cleanup()
             return
+        self._dismiss_active_onboarding_tour()
         self._surface.updateGeometry()
         self._coach = _HiddenFeatureCoachSession(
             self._host,
@@ -163,8 +164,9 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
             step_label="SETUP TOUR",
             title="Hidden feature found",
             body=(
-                "You unlocked the composer @ picker — release the modifier after @ "
-                "to attach files, conversations, tools, skills, and commands. "
+                "You unlocked the composer @ picker — @ alone browses categories; "
+                "keep typing to search files, conversations, tools, skills, and commands. "
+                "Enter or Tab to select; Shift+Enter still adds a newline. "
                 "Type @@ for a literal @; add another @ for each extra escape.\n\n"
                 "For the full guide (mixing limits, every skill, and token formats), "
                 "open Settings → Help → Open @ Composer Guide."
@@ -175,6 +177,7 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
         self._coach.present()
         self._fireworks = show_border_fireworks(
             self._surface,
+            overlay_parent=self._mention_popup,
             duration_ms=3200,
             on_finished=self._on_fireworks_finished,
         )
@@ -182,6 +185,12 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
             self._mention_popup,
             on_hidden=self._on_mention_menu_hidden,
         )
+
+    def _dismiss_active_onboarding_tour(self) -> None:
+        """Hide the setup-tour dim overlay before the celebration coach + fireworks."""
+        tour = getattr(self._host, "_local_llm_tour", None)
+        if tour is not None and getattr(tour, "is_active", False):
+            tour.finish()
 
     def _on_mention_menu_hidden(self) -> None:
         self._stop_fireworks()

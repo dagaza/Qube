@@ -1,0 +1,21 @@
+{
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT00000001",
+          "briefTitle": "Type 2 diabetes lifestyle intervention"
+        },
+        "statusModule": {
+          "overallStatus": "RECRUITING"
+        },
+        "descriptionModule": {
+          "briefSummary": "Randomized trial of lifestyle intervention for type 2 diabetes."
+        },
+        "conditionsModule": {
+          "conditions": ["Diabetes Mellitus, Type 2"]
+        }
+      }
+    }
+  ]
+}

@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QPainter, QColor, QPixmap
+from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QHideEvent, QPainter, QColor, QPixmap
 
 from core.paths import resource_path
 
@@ -115,6 +115,7 @@ from ui.views.settings.sections import (
     ai_models,
     contact_feedback,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -124,6 +125,7 @@ from ui.views.settings.sections import (
 
 from ui.views.settings.handlers import (
     AiModelsHandlersMixin,
+    BootstrapDownloadsHandlersMixin,
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
     GenerationMixin,
@@ -151,6 +153,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -166,6 +169,7 @@ class SettingsView(
     StylingMixin,
     VoiceHandlersMixin,
     AiModelsHandlersMixin,
+    BootstrapDownloadsHandlersMixin,
     MemoryHandlersMixin,
     KnowledgeHandlersMixin,
     CompanionHandlersMixin,
@@ -184,8 +188,10 @@ class SettingsView(
     memory_consolidation_changed = pyqtSignal(bool)
     engine_mode_changed = pyqtSignal(str)
     external_settings_reloaded = pyqtSignal(set)
+    ui_language_changed = pyqtSignal()
     cognition_model_changed = pyqtSignal()
     embedding_model_changed = pyqtSignal()
+    embedding_mode_change_requested = pyqtSignal(str, str)
     stt_model_changed = pyqtSignal()
     tts_model_changed = pyqtSignal()
     mic_vu_hint_requested = pyqtSignal()
@@ -220,6 +226,8 @@ class SettingsView(
         self._refresh_local_gguf_list()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        if hasattr(self, "_sync_embedding_mode_selector"):
+            self._sync_embedding_mode_selector()
         self._refresh_stt_model_list()
         self._refresh_tts_model_list()
         self._sync_active_stt_label()
@@ -228,7 +236,11 @@ class SettingsView(
         self._settings_json_dialog: SettingsJsonEditorDialog | None = None
         self._setup_settings_file_watcher()
     def select_settings_section(
-        self, section: str, *, anchor: str | None = None
+        self,
+        section: str,
+        *,
+        anchor: str | None = None,
+        configure_provider_id: str | None = None,
     ) -> None:
         """Show a settings section by stable id, title, or legacy title."""
         section_id = resolve_section_id(section)
@@ -239,6 +251,23 @@ class SettingsView(
             self.settings_section_list.setCurrentRow(row)
         if anchor:
             QTimer.singleShot(0, lambda: self._scroll_to_settings_anchor(anchor))
+        if configure_provider_id:
+            pid = str(configure_provider_id).strip().lower()
+
+            def _open_configure() -> None:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                from ui.components.provider_credential_dialog import (
+                    open_provider_credential_dialog,
+                )
+
+                open_provider_credential_dialog(
+                    self,
+                    pid,
+                    is_dark=is_dark,
+                    parent=self.window(),
+                )
+
+            QTimer.singleShot(120, _open_configure)
     def _scroll_to_settings_anchor(self, anchor: str) -> None:
         scroll = self.settings_section_stack.currentWidget()
         if scroll is None or not isinstance(scroll, QScrollArea):
@@ -254,14 +283,45 @@ class SettingsView(
             if wrapper.property("settings_anchor") == anchor:
                 scroll.ensureWidgetVisible(wrapper, 0, 80)
                 return
+
+    def _maybe_start_provider_status_refresh(self) -> None:
+        row = self.settings_section_list.currentRow()
+        if row < 0:
+            return
+        item = self.settings_section_list.item(row)
+        if item is None:
+            return
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if section_id != "knowledge":
+            return
+        from ui.views.settings.sections.knowledge_provider_status import (
+            start_provider_status_refresh_timer,
+        )
+
+        start_provider_status_refresh_timer(self)
+
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_active_native_model_label()
         self._sync_native_chat_template_label()
+        if hasattr(self, "_refresh_inference_transparency_panel"):
+            self._refresh_inference_transparency_panel()
         self._ensure_settings_file_watched()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_settings_sidebar_surface(is_dark)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
+        self._maybe_start_provider_status_refresh()
+
+    def hideEvent(self, event: QHideEvent) -> None:
+        super().hideEvent(event)
+        from ui.views.settings.sections.knowledge_provider_status import (
+            stop_provider_status_refresh_timer,
+        )
+
+        stop_provider_status_refresh_timer(self)
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -276,6 +336,8 @@ class SettingsView(
         self._theme_buttons: list = []
 
         self._init_settings_layout()
+
+        self._section_builders_for_rebuild = _SECTION_BUILDERS
 
         last_group: str | None = None
         for sec_def in SETTINGS_SECTIONS:
@@ -292,6 +354,8 @@ class SettingsView(
         collect_theme_buttons(self)
         self._finalize_settings_layout(is_dark)
         self._sync_internal_engine_subsections(get_engine_mode())
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
     _SETTINGS_STACK_ROLE = int(Qt.ItemDataRole.UserRole)
     _SETTINGS_SECTION_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 1
     def _add_settings_group_header(self, group_text: str) -> None:
@@ -307,8 +371,17 @@ class SettingsView(
             sec_def.icon, sec_def.title, svg_icon=sec_def.svg_icon
         )
 
+        content_widget.setMinimumWidth(0)
+        content_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
         page_content = QWidget()
         page_content.setObjectName("SettingsContent")
+        page_content.setMinimumWidth(0)
+        page_content.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
         page_layout = QVBoxLayout(page_content)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(30)
@@ -545,6 +618,20 @@ class SettingsView(
 
         if hasattr(self, "companion_preview"):
             self.companion_preview.apply_theme(is_dark)
+
+        if hasattr(self, "knowledge_provider_status_table"):
+            from ui.views.settings.sections.knowledge_provider_status import (
+                sync_provider_status_panel,
+            )
+
+            sync_provider_status_panel(self, is_dark=is_dark)
+
+        if hasattr(self, "knowledge_live_source_rows"):
+            from ui.views.settings.sections.knowledge_sources import (
+                refresh_live_source_access_badges,
+            )
+
+            refresh_live_source_access_badges(self)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
         # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.
@@ -726,6 +813,24 @@ class SettingsView(
         if stack_idx is None:
             return
         self.settings_section_stack.setCurrentIndex(int(stack_idx))
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if section_id == "advanced" and hasattr(
+            self, "_sync_all_diagnostic_log_recording_toggles"
+        ):
+            self._sync_all_diagnostic_log_recording_toggles()
+        if section_id == "knowledge":
+            from ui.views.settings.sections.knowledge_provider_status import (
+                start_provider_status_refresh_timer,
+                stop_provider_status_refresh_timer,
+            )
+
+            start_provider_status_refresh_timer(self)
+        else:
+            from ui.views.settings.sections.knowledge_provider_status import (
+                stop_provider_status_refresh_timer,
+            )
+
+            stop_provider_status_refresh_timer(self)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
     def _update_settings_section_nav_colors(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)

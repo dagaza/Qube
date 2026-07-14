@@ -70,6 +70,35 @@ def normalize_source_echo_citation_tokens(text: str) -> str:
     return _SOURCE_BRACKET.sub(_replace_source_bracket, text)
 
 
+def dedupe_bookend_citation_tokens(text: str) -> str:
+    """
+    Drop a leading ``[N]`` when the same id appears again on that line.
+
+    Models sometimes echo retrieval headers as both a line prefix and an
+    end-of-sentence cite (``[1] Claim text. [1]``).
+    """
+    if not text:
+        return text
+    leading = re.compile(r"^(\s*)\[\s*(\d+|[wW])\s*\]\s+")
+    lines: list[str] = []
+    for line in text.split("\n"):
+        match = leading.match(line)
+        if not match:
+            lines.append(line)
+            continue
+        ws, cid = match.group(1), match.group(2)
+        rest = line[match.end() :]
+        if str(cid).lower() == "w":
+            dup = re.search(r"\[\s*[wW]\s*\]", rest)
+        else:
+            dup = re.search(rf"\[\s*{re.escape(cid)}\s*\]", rest)
+        if dup:
+            lines.append(f"{ws}{rest}")
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def normalize_labeled_citation_tokens(text: str) -> str:
     """
     Map echoed SOURCE headers like ``[W: Live Web Search]`` → ``[W]`` so UI
@@ -80,7 +109,8 @@ def normalize_labeled_citation_tokens(text: str) -> str:
     t = normalize_source_echo_citation_tokens(text)
     t = _W_LABELED_CITE.sub("[W]", t)
     t = _NUM_LABELED_CITE.sub(r"[\1]", t)
-    return normalize_combined_numeric_citations(t)
+    t = normalize_combined_numeric_citations(t)
+    return dedupe_bookend_citation_tokens(t)
 
 
 QUBE_CITATION_HREF_PREFIX = "https://qube.invalid/cite/"

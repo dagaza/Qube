@@ -1,0 +1,20 @@
+{
+  "head": {
+    "link": [],
+    "vars": ["title", "celexDoc"]
+  },
+  "results": {
+    "bindings": [
+      {
+        "title": {
+          "type": "literal",
+          "value": "Regulation (EU) 2016/679 of the European Parliament and of the Council on the protection of natural persons with regard to the processing of personal data (General Data Protection Regulation)"
+        },
+        "celexDoc": {
+          "type": "literal",
+          "value": "celex:32016R0679"
+        }
+      }
+    ]
+  }
+}

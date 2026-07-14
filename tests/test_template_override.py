@@ -20,6 +20,13 @@ class TestTemplateOverride(unittest.TestCase):
         assert o is not None
         self.assertIn("<|return|>", o.extra_stops)
 
+    def test_nemotron_includes_assistant_marker_stops(self) -> None:
+        o = detect_template_override("NVIDIA-Nemotron-3-Nano-4B", {})
+        self.assertIsNotNone(o)
+        assert o is not None
+        self.assertIn("<|assistant|>", o.extra_stops)
+        self.assertIn("</|assistant|>", o.extra_stops)
+
 
 if __name__ == "__main__":
     unittest.main()

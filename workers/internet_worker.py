@@ -1,7 +1,11 @@
 # workers/internet_worker.py
-from PyQt6.QtCore import QThread, pyqtSignal
-from mcp.internet_tool import search_internet
 import logging
+import time
+
+from PyQt6.QtCore import QThread, pyqtSignal
+
+from core.web_search_audit import build_standalone_audit_event, record_web_search_audit
+from mcp.internet_tool import search_internet
 
 logger = logging.getLogger("Qube.Workers.InternetWorker")
 
@@ -29,14 +33,29 @@ class InternetWorker(QThread):
                 return
                 
             logger.info(f"Executing manual web search for: '{self.query}'")
-            
+
+            t0 = time.time()
             # 🔑 FIX 1: Call the standalone function directly! 
             # (Note: if your search_internet function accepts max_results, pass it here)
             raw_results = search_internet(self.query)
+            latency_ms = (time.time() - t0) * 1000
             
             # Check flag again in case user canceled during the HTTP request
             if self._stop_flag:
                 return
+
+            raw_for_audit = (
+                [dict(r) for r in raw_results if isinstance(r, dict)]
+                if isinstance(raw_results, list)
+                else None
+            )
+            record_web_search_audit(
+                build_standalone_audit_event(
+                    query=self.query,
+                    raw_results=raw_for_audit,
+                    latency_ms=latency_ms,
+                )
+            )
 
             if raw_results:
                 # 🔑 FIX 2: Stringify the list so the LLM can actually read it
@@ -51,6 +70,13 @@ class InternetWorker(QThread):
 
         except Exception as e:
             logger.error(f"InternetWorker failed: {e}")
+            record_web_search_audit(
+                build_standalone_audit_event(
+                    query=self.query,
+                    raw_results=None,
+                    error=str(e),
+                )
+            )
             self.search_error.emit(str(e))
 
     def stop(self):

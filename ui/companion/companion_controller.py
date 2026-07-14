@@ -303,40 +303,109 @@ class CompanionController(QObject):
             self._companion_visible_for_policy = False
 
     def _restore_position(self) -> None:
+        from core.companion_placement import (
+            position_from_saved,
+            resolve_companion_screen,
+            workspace_for_screen,
+        )
+
         pos = app_settings.get_companion_position()
-        screen_name = pos.get("screen") or ""
-        target_screen = None
-        for screen in QApplication.screens():
-            if screen.name() == screen_name:
-                target_screen = screen
-                break
-        if target_screen is None:
-            target_screen = QApplication.primaryScreen()
-        if target_screen is None:
+        screen = resolve_companion_screen(
+            saved_screen_name=str(pos.get("screen") or ""),
+            anchor_widget=self._main_window,
+        )
+        geo = workspace_for_screen(screen)
+        if geo is None:
             return
 
-        geo = target_screen.availableGeometry()
-        x = pos.get("x")
-        y = pos.get("y")
-        if x is None or y is None:
-            norm_x = pos.get("norm_x")
-            norm_y = pos.get("norm_y")
-            if norm_x is not None and norm_y is not None:
-                x = int(geo.left() + float(norm_x) * geo.width())
-                y = int(geo.top() + float(norm_y) * geo.height())
-            else:
-                x = geo.right() - self._window.width() - 24
-                y = geo.bottom() - self._window.height() - 24
-
-        edge = str(pos.get("dock_edge") or "none")
-        if edge == "left":
-            x = geo.left() + 4
-        elif edge == "right":
-            x = geo.right() - self._window.width() - 4
-        elif edge == "bottom":
-            y = geo.bottom() - self._window.height() - 4
-
+        width = self._window.width()
+        height = self._window.height()
+        x, y, snap_zone, fallback = position_from_saved(
+            pos,
+            geo,
+            width=width,
+            height=height,
+            anchor_widget=self._main_window,
+        )
         self._window.move(int(x), int(y))
+        if fallback:
+            self._persist_companion_position(
+                x=int(x),
+                y=int(y),
+                screen=screen,
+                geo=geo,
+                snap_zone=snap_zone,
+                dock_edge="none",
+            )
+
+    def place_at_snap_zone(self, zone: str) -> None:
+        from core.companion_placement import (
+            compute_snap_position,
+            normalize_companion_snap_zone,
+            resolve_companion_screen,
+            workspace_for_screen,
+        )
+
+        snap_zone = normalize_companion_snap_zone(zone)
+        if snap_zone == normalize_companion_snap_zone("none"):
+            return
+        screen = resolve_companion_screen(
+            saved_screen_name="",
+            anchor_widget=self._main_window,
+        )
+        geo = workspace_for_screen(screen)
+        if geo is None:
+            return
+        x, y = compute_snap_position(
+            snap_zone,
+            geo,
+            width=self._window.width(),
+            height=self._window.height(),
+        )
+        self._window.move(x, y)
+        self._persist_companion_position(
+            x=x,
+            y=y,
+            screen=screen,
+            geo=geo,
+            snap_zone=snap_zone,
+            dock_edge="none",
+        )
+        if self._window.isVisible():
+            self._window.raise_()
+
+    def reset_position_to_default(self) -> None:
+        """Clear saved coordinates and place companion at bottom-right of the main window screen."""
+        app_settings.clear_companion_position()
+        self._restore_position()
+
+    def _persist_companion_position(
+        self,
+        *,
+        x: int,
+        y: int,
+        screen,
+        geo,
+        snap_zone,
+        dock_edge: str,
+    ) -> None:
+        from core.companion_placement import normalized_position
+
+        norm_x, norm_y = normalized_position(x, y, geo)
+        app_settings.set_companion_position(
+            x=x,
+            y=y,
+            screen=screen.name() if screen is not None else "",
+            norm_x=norm_x,
+            norm_y=norm_y,
+            dock_edge=dock_edge,
+        )
+        app_settings.set_companion_snap_zone(
+            snap_zone.value if hasattr(snap_zone, "value") else str(snap_zone)
+        )
+        self._window.snap_zone_changed.emit(
+            snap_zone.value if hasattr(snap_zone, "value") else str(snap_zone)
+        )
 
     def _detect_fullscreen(self) -> None:
         if not app_settings.get_companion_suppress_on_fullscreen():
@@ -396,8 +465,9 @@ class CompanionController(QObject):
             norm_x = None
             norm_y = None
             if geo is not None:
-                norm_x = (pos.x() - geo.left()) / max(1, geo.width())
-                norm_y = (pos.y() - geo.top()) / max(1, geo.height())
+                from core.companion_placement import normalized_position
+
+                norm_x, norm_y = normalized_position(pos.x(), pos.y(), geo)
             app_settings.set_companion_position(
                 x=pos.x(),
                 y=pos.y(),
@@ -417,4 +487,5 @@ class CompanionController(QObject):
         if self._verbal_scheduler is not None:
             self._verbal_scheduler.stop()
         self._window.hide()
+        self._window._snap_overlay.hide_overlay()
         self._window.close()

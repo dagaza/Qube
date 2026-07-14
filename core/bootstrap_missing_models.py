@@ -1,0 +1,147 @@
+"""Guards and notifications when optional bootstrap models are absent (#47–#49)."""
+
+from __future__ import annotations
+
+from core.auxiliary_cognition import cognition_model_available
+from core.bootstrap_download import model_is_present
+from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
+from core.embedding_models import embedding_model_available
+from core.embedding_modes import get_mode_spec
+from core.app_settings import get_embedding_mode
+from core.notification_types import NotificationEvent, NotificationSeverity
+from core.tts_models import get_tts_models_dir, any_supported_tts_model_on_disk
+
+ACTION_OPEN_SETTINGS_VOICE_STT = "open_settings_voice_stt"
+ACTION_OPEN_SETTINGS_VOICE_TTS = "open_settings_voice_tts"
+ACTION_OPEN_SETTINGS_KNOWLEDGE_EMBEDDING = "open_settings_knowledge_embedding"
+ACTION_OPEN_SETTINGS_AI_COGNITION = "open_settings_ai_cognition"
+
+
+def stt_model_available() -> bool:
+    return model_is_present(BootstrapModelId.WHISPER_SMALL)
+
+
+def tts_model_available() -> bool:
+    """True when a supported TTS ONNX model exists on disk (Kokoro or Piper)."""
+    return any_supported_tts_model_on_disk()
+
+
+def cognition_model_present() -> bool:
+    return cognition_model_available()
+
+
+def missing_stt_notification() -> NotificationEvent:
+    return NotificationEvent(
+        title="Speech-to-text model required",
+        body=(
+            "Voice Input needs the bundled Whisper Small model. "
+            "Download it from Settings → Voice & Audio → Speech-to-text (STT)."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="voice",
+        action_label="Open Settings",
+        action_id=ACTION_OPEN_SETTINGS_VOICE_STT,
+        auto_dismiss_ms=0,
+        dedupe_key="missing_bootstrap_stt",
+        rate_limit_key="missing_bootstrap_stt",
+        rate_limit_sec=30.0,
+        tray_bump=True,
+        icon_name="fa5s.microphone",
+    )
+
+
+def missing_tts_notification() -> NotificationEvent:
+    tts_dir = get_tts_models_dir()
+    return NotificationEvent(
+        title="Text-to-speech model required",
+        body=(
+            "TTS Voice needs a supported text-to-speech model (Kokoro or Piper ONNX). "
+            "Download Kokoro from Settings → Voice & Audio → Text-to-speech (TTS), "
+            f"or place a Piper .onnx (+ .onnx.json) under {tts_dir}/ and select it in "
+            "Advanced TTS settings."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="voice",
+        action_label="Open Settings",
+        action_id=ACTION_OPEN_SETTINGS_VOICE_TTS,
+        auto_dismiss_ms=0,
+        dedupe_key="missing_bootstrap_tts",
+        rate_limit_key="missing_bootstrap_tts",
+        rate_limit_sec=30.0,
+        tray_bump=True,
+        icon_name="fa5s.volume-up",
+    )
+
+
+def missing_embedding_notification() -> NotificationEvent:
+    spec = get_mode_spec(get_embedding_mode())
+    return NotificationEvent(
+        title="Search models not ready",
+        body=(
+            f"Connect to the internet to download {spec.label} search models "
+            f"({spec.fastembed_model}), or open Settings → Knowledge → Search quality."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="system",
+        action_label="Open Settings",
+        action_id=ACTION_OPEN_SETTINGS_KNOWLEDGE_EMBEDDING,
+        auto_dismiss_ms=0,
+        dedupe_key="missing_bootstrap_embedding",
+        rate_limit_key="missing_bootstrap_embedding",
+        rate_limit_sec=30.0,
+        tray_bump=True,
+        icon_name="fa5s.book",
+    )
+
+
+def missing_cognition_notification() -> NotificationEvent:
+    spec = BOOTSTRAP_MODELS[BootstrapModelId.SIDECAR_QWEN17]
+    return NotificationEvent(
+        title="Auxiliary cognition model required",
+        body=(
+            f"Memory enrichment needs {spec.label}. "
+            "Download it from Settings → AI & Models → Auxiliary cognition."
+        ),
+        severity=NotificationSeverity.WARNING,
+        category="memory",
+        action_label="Open Settings",
+        action_id=ACTION_OPEN_SETTINGS_AI_COGNITION,
+        auto_dismiss_ms=0,
+        dedupe_key="missing_bootstrap_cognition",
+        rate_limit_key="missing_bootstrap_cognition",
+        rate_limit_sec=30.0,
+        tray_bump=True,
+        icon_name="fa5s.brain",
+    )
+
+
+def guard_enable_stt(enabling: bool) -> tuple[bool, NotificationEvent | None]:
+    if not enabling or stt_model_available():
+        return True, None
+    return False, missing_stt_notification()
+
+
+def guard_enable_tts(enabling: bool) -> tuple[bool, NotificationEvent | None]:
+    if not enabling or tts_model_available():
+        return True, None
+    return False, missing_tts_notification()
+
+
+def guard_enable_embedding_feature(enabling: bool) -> tuple[bool, NotificationEvent | None]:
+    if not enabling or embedding_model_available():
+        return True, None
+    return False, missing_embedding_notification()
+
+
+def guard_enable_memory_enrichment(enabling: bool) -> tuple[bool, NotificationEvent | None]:
+    if not enabling:
+        return True, None
+    if not cognition_model_present():
+        return False, missing_cognition_notification()
+    if not embedding_model_available():
+        return False, missing_embedding_notification()
+    return True, None
+
+
+def guard_library_upload() -> tuple[bool, NotificationEvent | None]:
+    return guard_enable_embedding_feature(True)

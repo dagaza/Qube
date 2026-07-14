@@ -87,7 +87,19 @@ from core.gemma_output_strip import (
     is_gemma_model_identity,
     strip_gemma_output_artifacts,
 )
-from core.output_artifact_strip import strip_output_artifacts
+from core.output_artifact_strip import (
+    LeakedHarmonyScaffoldStreamFilter,
+    strip_output_artifacts,
+)
+from core.delimiter_grammar_extractor import (
+    DelimiterGrammarStreamFilter,
+    extract_delimiter_grammar,
+)
+from core.output_artifact_report import (
+    build_output_artifact_report,
+    log_output_artifact_report,
+)
+from core.template_output_profile import TemplateOutputProfile
 from core.completion_output_trace import (
     CompletionOutputSnapshot,
     log_completion_output_trace,
@@ -111,6 +123,7 @@ from core.llm_debug_markers import (
     log_chat_exchange_end,
     next_exchange_id,
 )
+from core.execution_policy import execution_policy_debug_fields
 from core.conversational_follow_up import preserve_streamed_follow_up
 from core.output_token_budget import (
     probable_max_tokens_truncation,
@@ -119,15 +132,9 @@ from core.output_token_budget import (
 from core.output_validation_sanitize import sanitize_output_for_validation
 from core.output_validation_trace import log_output_validation_trace
 from core.stream_replace_policy import resolve_stream_replacement
-from core.router_centroid_examples import (
-    CHAT_INTENT_EXAMPLES as _CHAT_INTENT_EXAMPLES,
-    MEMORY_INTENT_EXAMPLES as _MEMORY_INTENT_EXAMPLES,
-    RAG_INTENT_EXAMPLES as _RAG_INTENT_EXAMPLES,
-    RECALL_INTENT_EXAMPLES as _RECALL_INTENT_EXAMPLES,
-    WEB_INTENT_EXAMPLES as _WEB_INTENT_EXAMPLES,
-)
 from core.memory_filters import (
     detect_recall_intent,
+    should_apply_recall_fusion,
     detect_explicit_remember,
     detect_hard_explicit_web_request,
     detect_file_search_intent,
@@ -135,7 +142,9 @@ from core.memory_filters import (
     is_assistant_failure_message,
     is_thin_content,
     query_implies_live_web_intent,
-    query_implies_library_intent,
+    query_explicitly_requests_library_search,
+    query_has_lexical_library_signal,
+    should_downgrade_embedding_rag_on_continuation,
     library_lane_allowed,
     should_run_internet_search_for_route,
 )
@@ -197,7 +206,26 @@ from core.discourse_query import (
     should_veto_ungrounded_web_follow_up,
     web_query_rewrite_failed,
 )
-from core.retrieval_relevance import filter_web_results
+from core.app_settings import (
+    external_knowledge_v2_enabled,
+    get_default_knowledge_service,
+    internal_corpus_knowledge_enabled,
+    research_map_enabled,
+)
+from core.knowledge.registry import (
+    WEB_COMPOSER_TOOLS,
+    adapter_filter_for_composer_tool,
+    resolve_turn_knowledge_service,
+    resolve_turn_preset_id,
+)
+from core.knowledge.types import SERVICE_INTERNAL_CORPUS
+from core.knowledge.web_retrieval import run_web_retrieval
+from core.web_search_audit import (
+    STATUS_VETOED_TOOL_DISABLED,
+    STATUS_VETOED_UNGROUNDED,
+    build_audit_event_from_llm_turn,
+    record_web_search_audit,
+)
 from core.discourse_state import (
     DiscourseState,
     promote_referent_after_assistant,
@@ -228,11 +256,11 @@ from core.rag_trigger_routing import (
 from core.composer_attachments import (
     attachment_summary,
     build_referenced_conversation_context,
+    is_web_composer_tool,
     resolve_attachment_routing,
 )
 
 from mcp.rag_tool import rag_search
-from mcp.internet_tool import search_internet
 from mcp.memory_tool import memory_search
 from workers.intent_router import EmbeddingCache
 
@@ -283,6 +311,7 @@ class LLMWorker(QThread):
     web_search_active = pyqtSignal(bool, bool, bool)
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
+    evidence_transparency_found = pyqtSignal(str, dict)  # session_id, transparency
     router_telemetry_updated = pyqtSignal(dict, dict)  # summary, tuner_state
     sidecar_telemetry_updated = pyqtSignal(dict)
     routing_debug_record_added = pyqtSignal(dict)  # serialized RoutingDebugRecord
@@ -371,6 +400,7 @@ class LLMWorker(QThread):
         self._server_kv_cleared_for_session_id = None
         self._discourse_by_session: dict[str, DiscourseState] = {}
         self._conversation_health_by_session: dict[str, ConversationHealthState] = {}
+        self._prior_execution_route_by_session: dict[str, str] = {}
         self._push_sampling_to_native()
 
     def _sampling_payload(self) -> dict:
@@ -414,6 +444,31 @@ class LLMWorker(QThread):
             base = str(snap.get("model_basename", "") or "")
             ident = f"{name} {base}".lower()
             return ("nemotron" in ident) or ("nvidia" in ident)
+        except Exception:
+            return False
+
+    def _reasoning_family_harmony_leak_strip_active(self) -> bool:
+        """Strip leaked Harmony scaffold tokens during native streaming/sanitize."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
+            return False
+        try:
+            from core.qwen3_thinking_policy import (
+                is_reasoning_family_harmony_leak_strip_candidate,
+            )
+
+            snap = self._native_engine.get_model_reasoning_telemetry() or {}
+            if not bool(snap.get("loaded")):
+                return False
+            name = str(snap.get("model_name", "") or "")
+            base = str(snap.get("model_basename", "") or "")
+            path = str(getattr(self._native_engine, "_model_path", "") or "")
+            ident_name = f"{name} {base}".strip()
+            if is_reasoning_family_harmony_leak_strip_candidate(
+                model_path=path,
+                model_name=ident_name,
+            ):
+                return True
+            return bool(snap.get("supports_thinking_tokens"))
         except Exception:
             return False
 
@@ -604,6 +659,27 @@ class LLMWorker(QThread):
             self.session_id or "",
             copy.deepcopy(all_ui_sources or []),
         )
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if evidence_bundle is not None:
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
+            self._turn_evidence_transparency = transparency
+            self.evidence_transparency_found.emit(
+                self.session_id or "",
+                copy.deepcopy(transparency),
+            )
 
     def _finalize_turn_citations(
         self,
@@ -616,6 +692,7 @@ class LLMWorker(QThread):
     ) -> tuple[str, list, bool]:
         """Citation retry (optional), then cited-only renumber + UI source sync."""
         retry_replaced = False
+        before_text = final_text or ""
         if (
             allow_missing_retry
             and (final_text or "").strip()
@@ -633,6 +710,12 @@ class LLMWorker(QThread):
             all_ui_sources,
         )
         self._sync_turn_citation_sources(all_ui_sources)
+        if (
+            (final_text or "").strip() != (before_text or "").strip()
+            and (final_text or "").strip()
+            and not retry_replaced
+        ):
+            self.stream_replaced.emit(self.session_id or "", final_text)
         return final_text, all_ui_sources, retry_replaced
 
     def _maybe_retry_missing_web_citations(
@@ -754,56 +837,15 @@ class LLMWorker(QThread):
         self._turn_skip_enrichment_reason = reason
 
     def _ensure_router_centroids(self) -> None:
-        """T4.2: lazily build and install BOTH the RECALL and CHAT
-        (negative-class) semantic centroids on the cognitive router.
-
-        Called once on the first turn that uses the cognitive router.
-        Each centroid is only built if it has not been installed yet,
-        so the method is cheap to call on every turn. The router falls
-        back to substring detection for recall if anything fails here;
-        an unset chat centroid simply returns ``chat_score = 0.0`` and
-        leaves the margin gate trivially satisfied (backwards compatible
-        with the single-centroid pre-T4.2 behaviour).
-        """
         if not getattr(self, "cognitive_router", None):
             return
         embedder = getattr(self.embedding_cache, "embedder", None)
         if embedder is None:
             return
         try:
-            from workers.intent_router import build_centroid
-            if self.cognitive_router.recall_centroid is None:
-                self.cognitive_router.set_recall_centroid(
-                    build_centroid(embedder, list(_RECALL_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Recall centroid installed.")
-            if self.cognitive_router.chat_centroid is None:
-                self.cognitive_router.set_chat_centroid(
-                    build_centroid(embedder, list(_CHAT_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Chat centroid installed.")
-            # Tier 2: install the per-lane embedding centroids. Each
-            # is gated by ``is None`` so we never stomp a manually
-            # installed centroid (e.g. in tests) and so the build
-            # cost is paid exactly once per worker lifetime. Until at
-            # least one of these is installed, the router's confidence
-            # layer stays dormant via the ``any_embedding_centroid``
-            # gate in ``CognitiveRouterV4.route(...)``.
-            if self.cognitive_router.memory_centroid is None:
-                self.cognitive_router.set_memory_centroid(
-                    build_centroid(embedder, list(_MEMORY_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Memory centroid installed.")
-            if self.cognitive_router.rag_centroid is None:
-                self.cognitive_router.set_rag_centroid(
-                    build_centroid(embedder, list(_RAG_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] RAG centroid installed.")
-            if self.cognitive_router.web_centroid is None:
-                self.cognitive_router.set_web_centroid(
-                    build_centroid(embedder, list(_WEB_INTENT_EXAMPLES))
-                )
-                logger.info("[LLM Worker] Web centroid installed.")
+            from core.router_centroid_install import install_router_centroids
+
+            install_router_centroids(self.cognitive_router, embedder)
         except Exception:
             logger.exception("[LLM Worker] Failed to build router centroids")
 
@@ -1065,9 +1107,52 @@ class LLMWorker(QThread):
             )
 
         src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
+        bundle_id = None
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        transparency = None
+        if evidence_bundle is not None:
+            bundle_id = str(getattr(evidence_bundle, "bundle_id", "") or "") or None
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+            from core.knowledge.ui_sources_payload import encode_sources_payload
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
+            src_payload = encode_sources_payload(
+                list(all_ui_sources or []),
+                transparency=transparency,
+            )
+        elif all_ui_sources:
+            src_payload = json.dumps(all_ui_sources)
         self._turn_last_assistant_msg_id = self.db.add_message(
-            self.session_id, "assistant", history_content, sources_json=src_payload
+            self.session_id,
+            "assistant",
+            history_content,
+            sources_json=src_payload,
+            evidence_bundle_id=bundle_id,
         )
+        if (
+            research_map_enabled()
+            and evidence_bundle is not None
+            and getattr(self, "_turn_last_assistant_msg_id", None)
+        ):
+            from core.knowledge.graph.service import record_bundle_in_session_graph
+
+            record_bundle_in_session_graph(
+                self.db,
+                session_id=str(self.session_id or ""),
+                bundle=evidence_bundle,
+                message_id=self._turn_last_assistant_msg_id,
+            )
 
         gen_debug = getattr(self, "_active_generation_debug_recorder", None)
         if isinstance(gen_debug, GenerationDebugRecorder):
@@ -1648,6 +1733,22 @@ class LLMWorker(QThread):
         except Exception:
             return ""
 
+    def _execution_policy_debug_payload(self) -> dict[str, Any] | None:
+        if str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or "").lower() != "internal":
+            return None
+        engine = getattr(self, "_native_engine", None)
+        if engine is None:
+            return None
+        try:
+            pol = engine.get_execution_policy()
+            return execution_policy_debug_fields(
+                pol,
+                reasoning_mode=getattr(engine, "_last_reasoning_mode", None),
+                chat_template_kwargs=getattr(engine, "_last_chat_template_kwargs", None),
+            )
+        except Exception:
+            return None
+
     def _bind_truth_diff_hooks(self) -> None:
         bind_llm_worker_truth_diff_hooks(
             l1_engine_request=self._truth_diff_hook_l1_engine_request,
@@ -1684,16 +1785,33 @@ class LLMWorker(QThread):
         attachments: list | None = None,
         enforced_skills: tuple[str, ...] | list[str] | None = None,
         persist_content: str | None = None,
+        input_source: str = "text",
     ):
         """Sets the parameters and starts the thread work."""
+        from core.input_source import INPUT_SOURCE_TEXT
+
+        source = (input_source or INPUT_SOURCE_TEXT).strip().lower() or INPUT_SOURCE_TEXT
+        if source not in ("text", "voice"):
+            source = INPUT_SOURCE_TEXT
         if self.isRunning():
             logger.warning(
-                "[LLM] Ignoring new generate_response while previous turn is active (session_id=%s).",
+                "[LLM] Ignoring new generate_response while previous turn is active "
+                "(input_source=%s, session_id=%s).",
+                source,
                 session_id,
             )
             return
 
-        self.prompt = (text or "").strip()
+        self._input_source = source
+        prompt = (text or "").strip()
+        logger.info(
+            "[LLM] generate_response accepted input_source=%s session_id=%s prompt_len=%d preview=%r",
+            source,
+            session_id,
+            len(prompt),
+            prompt[:80],
+        )
+        self.prompt = prompt
         self._persist_content = (persist_content or self.prompt).strip()
         self._turn_attachments = list(attachments or [])
         self._turn_enforced_skills = tuple(enforced_skills or ())
@@ -1783,6 +1901,7 @@ class LLMWorker(QThread):
             session_id=str(self.session_id or ""),
             user_prompt=str(getattr(self, "_persist_content", None) or self.prompt or ""),
             engine_mode=str(getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) or ""),
+            execution_policy=self._execution_policy_debug_payload(),
         )
         final_text_out = ""
         try:
@@ -1831,6 +1950,7 @@ class LLMWorker(QThread):
             final_text_out = strip_output_artifacts(
                 final_text_out or "",
                 harmony_active=self._harmony_model_active(),
+                reasoning_family=self._reasoning_family_harmony_leak_strip_active(),
             )
             turn_sources = list(getattr(self, "_turn_all_ui_sources", None) or [])
             final_text_out = self._finalize_citation_integrity_text(
@@ -1877,6 +1997,7 @@ class LLMWorker(QThread):
                 engine_queue_wait_ms=engine_queue_wait_ms,
                 engine_inference_ms=engine_inference_ms,
                 exchange_total_ms=exchange_total_ms,
+                execution_policy=self._execution_policy_debug_payload(),
             )
             self._completion_output_snapshot = None
             self.context_retrieved.emit(False)
@@ -1896,6 +2017,7 @@ class LLMWorker(QThread):
         self._reset_turn_enrichment_flags()
         self._pending_salvage_message_ids = []
         self._turn_all_ui_sources: list = []
+        self._turn_evidence_bundle = None
 
         if self.session_id:
             user_content = getattr(self, "_persist_content", None) or self.prompt
@@ -2106,7 +2228,9 @@ class LLMWorker(QThread):
         attachment_conversation_active = False
         self._turn_source_filter = None
         self._turn_attachment_context = ""
+        self._composer_knowledge_tool = None
         self._composer_internet_requested = False
+        self._composer_trusted_requested = False
 
         if attachment_patch:
             if attachment_patch.get("attachment_file"):
@@ -2133,17 +2257,34 @@ class LLMWorker(QThread):
                             len(self._turn_attachment_context),
                         )
                     self._mark_skip_enrichment("composer_conversation_ref")
-            if attachment_patch.get("attachment_tool") == "internet":
-                self._composer_internet_requested = True
-                # Explicit @internet must behave like the toolbar Web toggle:
-                # force a web search for this turn (not gated on Settings).
+            composer_tool = attachment_patch.get("attachment_tool")
+            library_knowledge_active = (
+                composer_tool == "library"
+                and external_knowledge_v2_enabled()
+                and internal_corpus_knowledge_enabled()
+            )
+            if library_knowledge_active:
+                self._composer_knowledge_tool = "library"
                 force_web = True
                 if attachment_patch.get("route") != "web":
                     attachment_patch = dict(attachment_patch)
                     attachment_patch["route"] = "web"
-                    attachment_patch["strategy"] = "attachment_tool_internet"
+                    attachment_patch["strategy"] = "attachment_tool_library"
                 logger.info(
-                    "[LLM Worker] Composer @internet: forcing WEB search for this turn"
+                    "[LLM Worker] Composer @library: forcing internal corpus WEB path"
+                )
+            elif composer_tool and is_web_composer_tool(composer_tool):
+                self._composer_knowledge_tool = composer_tool
+                self._composer_internet_requested = composer_tool == "internet"
+                self._composer_trusted_requested = composer_tool == "trusted"
+                force_web = True
+                if attachment_patch.get("route") != "web":
+                    attachment_patch = dict(attachment_patch)
+                    attachment_patch["route"] = "web"
+                    attachment_patch["strategy"] = f"attachment_tool_{composer_tool}"
+                logger.info(
+                    "[LLM Worker] Composer @%s: forcing WEB search for this turn",
+                    composer_tool,
                 )
 
         scoped_library_active = file_search_active or attachment_file_active
@@ -2168,7 +2309,7 @@ class LLMWorker(QThread):
         # ============================================================
         # 1. ROUTING PHASE
         # ============================================================
-        self.status_update.emit("Thinking...")
+        self.status_update.emit("Working...")
 
         intent_vector = None
 
@@ -2220,16 +2361,27 @@ class LLMWorker(QThread):
             }
         elif self.USE_COGNITIVE_ROUTER:
             intent_vector = self.embedding_cache.get_embedding(routing_query)
-            self._ensure_recall_centroid()
-            decision = self.cognitive_router.route(
-                routing_query,
-                intent_vector=intent_vector,
-                weights=self.router_tuner.get_weights() if self.USE_ADAPTIVE_ROUTER else None
-            )
+            if intent_vector is None:
+                decision = {"route": "none", "strategy": "no_embedder"}
+            else:
+                self._ensure_recall_centroid()
+                decision = self.cognitive_router.route(
+                    routing_query,
+                    intent_vector=intent_vector,
+                    weights=self.router_tuner.get_weights() if self.USE_ADAPTIVE_ROUTER else None
+                )
         else:
             decision = {"route": "none", "strategy": "fallback"}
 
         execution_route = decision["route"].upper()
+
+        prior_execution_route = "NONE"
+        if self.session_id:
+            prior_execution_route = self._prior_execution_route_by_session.get(
+                str(self.session_id),
+                "NONE",
+            )
+        has_prior_chat = len(history) > 1
 
         # ------------------------------------------------------------
         # Phase A: recall-intent fusion override.
@@ -2245,7 +2397,7 @@ class LLMWorker(QThread):
             not explicit_remember_active
             and not scoped_library_active
             and not attachment_patch
-            and detect_recall_intent(clean_prompt)
+            and should_apply_recall_fusion(clean_prompt, decision=decision)
             and execution_route in ("NONE", "MEMORY", "RAG")
         ):
             logger.info("[LLM Worker] Recall intent detected; routing to HYBRID")
@@ -2271,6 +2423,29 @@ class LLMWorker(QThread):
             )
             execution_route = "NONE"
             decision["route_inherited_from_discourse"] = True
+
+        if (
+            not explicit_remember_active
+            and not scoped_library_active
+            and should_downgrade_embedding_rag_on_continuation(
+                self.prompt,
+                decision=decision if isinstance(decision, dict) else None,
+                execution_route=execution_route,
+                prior_execution_route=prior_execution_route,
+                follow_up_active=follow_up.active,
+                has_chat_history=has_prior_chat,
+                scoped_library_active=scoped_library_active,
+            )
+        ):
+            logger.info(
+                "[LLM Worker] Embedding RAG/HYBRID suppressed on plain-chat "
+                "continuation (prior_route=%s); execution_route %s -> NONE",
+                prior_execution_route,
+                execution_route,
+            )
+            execution_route = "NONE"
+            if isinstance(decision, dict):
+                decision["embedding_rag_continuation_suppressed"] = True
 
         force_rag_via_trigger = False
         # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.
@@ -2381,7 +2556,7 @@ class LLMWorker(QThread):
                 and execution_route == "WEB"
                 and not force_web
                 and not manual_web
-                and not getattr(self, "_composer_internet_requested", False)
+                and not getattr(self, "_composer_knowledge_tool", None)
             ):
                 logger.info(
                     "[Discourse] ungrounded follow-up (no topic); "
@@ -2412,10 +2587,19 @@ class LLMWorker(QThread):
         ) or bool(
             web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
         )
+        explicit_library_request = query_explicitly_requests_library_search(
+            clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
+        )
         rag_capability_blocked = bool(
             library_blocked
-            and query_implies_library_intent(clean_prompt, decision=decision)
+            and explicit_library_request
             and execution_route in ("NONE", "MEMORY")
+            and (
+                rag_vetoed
+                or detect_file_search_intent(clean_prompt)
+                or query_has_lexical_library_signal(clean_prompt)
+            )
         )
         if isinstance(decision, dict):
             decision["rag_capability_blocked"] = rag_capability_blocked
@@ -2557,6 +2741,14 @@ class LLMWorker(QThread):
 
         if execution_route in ["MEMORY", "RAG", "HYBRID"]:
             query_vector = self.embedding_cache.get_embedding(retrieval_query)
+            if query_vector is None:
+                logger.warning(
+                    "[LLM Worker] Embedder unavailable; retrieval routes disabled for this turn."
+                )
+                execution_route = "NONE"
+                if isinstance(decision, dict):
+                    decision["route"] = "none"
+                    decision["embedder_unavailable"] = True
 
         # ---- MEMORY ----
         if execution_route in ["MEMORY", "HYBRID"]:
@@ -2603,7 +2795,7 @@ class LLMWorker(QThread):
             and not explicit_remember_active
             and not scoped_library_active
             and not attachment_conversation_active
-            and not getattr(self, "_composer_internet_requested", False)
+            and not getattr(self, "_composer_knowledge_tool", None)
         ):
             # T3.4 §3.3 "default every turn (even CHAT)": on a plain chat
             # turn (router picked ``none``) run a cheap preferences-only
@@ -2691,6 +2883,41 @@ class LLMWorker(QThread):
 
         # ---- WEB + HYBRID ----
         web_search_attempted = False
+        _web_audit_common = {
+            "force_web": force_web,
+            "manual_web": manual_web,
+            "auto_web": auto_web,
+            "composer_internet": bool(getattr(self, "_composer_internet_requested", False)),
+            "composer_trusted": bool(getattr(self, "_composer_trusted_requested", False)),
+            "composer_evidence": getattr(self, "_composer_knowledge_tool", None)
+            == "evidence",
+            "query_raw": resolved_retrieval.raw_text,
+            "query_resolved": apply_tool_policy(
+                resolved_retrieval.web_text,
+                preference_policy,
+                tool="internet",
+            ),
+            "query_rewrite_reason": resolved_retrieval.web_rewrite_reason,
+            "query_rewrite_failed": web_query_rewrite_failed(
+                resolved_retrieval.raw_text,
+                follow_up,
+                resolved_retrieval.web_text,
+                explicit_web=explicit_web_request,
+            ),
+        }
+        if isinstance(decision, dict):
+            if decision.get("web_vetoed_tool_disabled"):
+                self._emit_web_search_audit(
+                    **_web_audit_common,
+                    execution_route="WEB",
+                    veto_status=STATUS_VETOED_TOOL_DISABLED,
+                )
+            elif decision.get("discourse_vetoed_web"):
+                self._emit_web_search_audit(
+                    **_web_audit_common,
+                    execution_route="WEB",
+                    veto_status=STATUS_VETOED_UNGROUNDED,
+                )
         if should_run_internet_search_for_route(
             execution_route,
             clean_prompt,
@@ -2698,13 +2925,19 @@ class LLMWorker(QThread):
             force_web=force_web,
             manual_web=manual_web,
             auto_web=auto_web,
+            composer_web_tool=bool(getattr(self, "_composer_knowledge_tool", None)),
             composer_internet=bool(getattr(self, "_composer_internet_requested", False)),
+            composer_trusted=bool(getattr(self, "_composer_trusted_requested", False)),
         ) and (self.mcp_internet_enabled or force_web):
             web_search_attempted = True
+            web_audit_t0 = time.time()
+            web_results_raw_for_audit = None
+            web_results_kept_for_audit = None
+            web_audit_rel_diag = None
             via_direct = bool(
                 force_web
                 or manual_web
-                or getattr(self, "_composer_internet_requested", False)
+                or getattr(self, "_composer_knowledge_tool", None)
             )
             via_hybrid = bool(
                 auto_web
@@ -2769,82 +3002,131 @@ class LLMWorker(QThread):
                     raw_prompt[:120],
                 )
 
-            web_results = search_internet(web_query)
-
-            # Defensive guard: when search_internet fails (e.g. DNS /
-            # connection reset / no-result sentinel) it still returns a
-            # list of the shape [{"title": "", "snippet": "Internet search
-            # failed..."}]. Previously we injected that sentinel into the
-            # prompt with a "[W]" tag, and the small-LLM happily looped
-            # "[W][W][W]" until StreamRepetitionGuard cancelled the turn.
-            # Treat any such sentinel as "no web data for this turn".
-            if isinstance(web_results, list):
-                _snips = " ".join(
-                    str((r or {}).get("snippet") or "") if isinstance(r, dict) else str(r or "")
-                    for r in web_results
+            try:
+                web_query_vector = self.embedding_cache.get_embedding(
+                    web_semantic or web_query
                 )
-                if (
-                    "Internet search failed" in _snips
-                    or "No relevant internet results found" in _snips
-                    or not _snips.strip()
-                ):
+            except Exception:
+                web_query_vector = None
+
+            turn_knowledge_service = resolve_turn_knowledge_service(
+                composer_tool=getattr(self, "_composer_knowledge_tool", None),
+                composer_trusted=bool(
+                    getattr(self, "_composer_trusted_requested", False)
+                ),
+                composer_internet=bool(
+                    getattr(self, "_composer_internet_requested", False)
+                ),
+                default_service=(
+                    get_default_knowledge_service()
+                    if external_knowledge_v2_enabled()
+                    else None
+                ),
+            )
+            turn_adapter_filter = adapter_filter_for_composer_tool(
+                getattr(self, "_composer_knowledge_tool", None)
+            )
+            turn_preset_id = resolve_turn_preset_id(
+                getattr(self, "_composer_knowledge_tool", None)
+            )
+            library_store = (
+                self.store
+                if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                else None
+            )
+            corpus_source_filter = (
+                getattr(self, "_turn_source_filter", None)
+                if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                else None
+            )
+
+            _web_outcome = run_web_retrieval(
+                query=web_query,
+                semantic_query=web_semantic or web_query,
+                query_vector=web_query_vector,
+                embed_fn=self.embedding_cache.get_embedding,
+                use_v2=external_knowledge_v2_enabled(),
+                knowledge_service=turn_knowledge_service,
+                adapter_filter=turn_adapter_filter,
+                session_id=self.session_id,
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+                library_store=library_store,
+                source_filter=corpus_source_filter,
+                preset_id=turn_preset_id,
+                db=self.store,
+            )
+            web_results = _web_outcome.web_results
+            web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit
+            web_results_kept_for_audit = _web_outcome.web_results_kept_for_audit
+            web_audit_rel_diag = _web_outcome.relevance_diag
+            self._turn_evidence_bundle = _web_outcome.bundle
+
+            if _web_outcome.skip_enrichment:
+                if _web_outcome.relevance_diag is None:
                     logger.info(
-                        "[LLM Worker] Web results dropped (empty / failure sentinel); not injecting [W] context."
+                        "[LLM Worker] Web results dropped (empty / failure sentinel); "
+                        "not injecting [W] context."
                     )
-                    web_results = None
-                    # T3.3: a web-route turn without web data is effectively
-                    # a capability failure — skip enrichment so the thin /
-                    # "I couldn't find anything online" style reply is not
-                    # mined as a user fact.
-                    if execution_route in ("WEB", "INTERNET", "HYBRID"):
-                        self._mark_skip_enrichment("web_tool_failure")
-                elif web_results:
-                    try:
-                        web_query_vector = self.embedding_cache.get_embedding(
-                            web_semantic or web_query
-                        )
-                    except Exception:
-                        web_query_vector = None
-                    filtered, rel_diag = filter_web_results(
-                        web_semantic or web_query,
-                        [r for r in web_results if isinstance(r, dict)],
-                        query_vector=web_query_vector,
-                        embed_text_fn=self.embedding_cache.get_embedding,
-                        use_embedding_gate=True,
+                else:
+                    kept = _web_outcome.relevance_diag.get("web_results_kept_count", 0)
+                    dropped = len(
+                        _web_outcome.relevance_diag.get("web_relevance_dropped") or []
                     )
-                    if isinstance(decision, dict):
-                        decision.update(rel_diag)
-                    kept = rel_diag.get("web_results_kept_count", 0)
-                    dropped = len(rel_diag.get("web_relevance_dropped") or [])
                     logger.info(
                         "[WebPipeline] relevance_gate kept=%d dropped=%d "
                         "min_overlap=%.2f",
                         kept,
                         dropped,
-                        rel_diag.get("web_relevance_min_overlap", 0.15),
+                        _web_outcome.relevance_diag.get(
+                            "web_relevance_min_overlap", 0.15
+                        ),
                     )
-                    if filtered:
-                        web_results = filtered
-                    else:
-                        logger.info(
-                            "[LLM Worker] Web results dropped (relevance gate); "
-                            "not injecting [W] context."
+                    logger.info(
+                        "[LLM Worker] Web results dropped (relevance gate); "
+                        "not injecting [W] context."
+                    )
+                if execution_route in ("WEB", "INTERNET", "HYBRID"):
+                    self._mark_skip_enrichment("web_tool_failure")
+            elif web_audit_rel_diag:
+                kept = web_audit_rel_diag.get("web_results_kept_count", 0)
+                dropped = len(web_audit_rel_diag.get("web_relevance_dropped") or [])
+                logger.info(
+                    "[WebPipeline] relevance_gate kept=%d dropped=%d "
+                    "min_overlap=%.2f",
+                    kept,
+                    dropped,
+                    web_audit_rel_diag.get("web_relevance_min_overlap", 0.15),
+                )
+                if isinstance(decision, dict):
+                    decision.update(web_audit_rel_diag)
+                if hasattr(self, "routing_debug_buffer"):
+                    try:
+                        self.routing_debug_buffer.merge_web_pipeline_into_latest(
+                            {
+                                "web_query_resolved": web_query,
+                                "web_query_rewrite_reason": search_target.rewrite_reason,
+                                "web_query_rewrite_failed": rewrite_failed,
+                                **web_audit_rel_diag,
+                            }
                         )
-                        web_results = None
-                        if execution_route in ("WEB", "INTERNET", "HYBRID"):
-                            self._mark_skip_enrichment("web_tool_failure")
-                    if hasattr(self, "routing_debug_buffer"):
-                        try:
-                            self.routing_debug_buffer.merge_web_pipeline_into_latest(
-                                {
-                                    "web_query_resolved": web_query,
-                                    "web_query_rewrite_reason": search_target.rewrite_reason,
-                                    "web_query_rewrite_failed": rewrite_failed,
-                                    **rel_diag,
-                                }
-                            )
-                        except Exception:
-                            pass
+                    except Exception:
+                        pass
+            if (
+                external_knowledge_v2_enabled()
+                and _web_outcome.bundle is not None
+                and isinstance(decision, dict)
+            ):
+                decision["external_knowledge_v2"] = True
+                decision["knowledge_service"] = (
+                    _web_outcome.bundle.knowledge_service
+                    if _web_outcome.bundle is not None
+                    else turn_knowledge_service
+                )
+                decision["evidence_bundle_id"] = _web_outcome.bundle.bundle_id
+                decision["evidence_coverage"] = _web_outcome.bundle.coverage
+                decision["evidence_confidence"] = round(
+                    _web_outcome.bundle.confidence, 4
+                )
 
             if web_results:
                 web_items: list[dict] = []
@@ -2883,7 +3165,9 @@ class LLMWorker(QThread):
                     all_ui_sources.append(src)
 
                 web_hdr = (
-                    "WEB SEARCH RESULTS"
+                    "LIBRARY SEARCH RESULTS"
+                    if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                    else "WEB SEARCH RESULTS"
                 )
                 if tool_context:
                     tool_context = f"{tool_context}\n\n{web_hdr}:\n{web_context}"
@@ -2895,6 +3179,20 @@ class LLMWorker(QThread):
                     len(web_items),
                     len(web_context),
                 )
+
+            if web_results_kept_for_audit is None and web_results:
+                web_results_kept_for_audit = [
+                    dict(r) for r in web_results if isinstance(r, dict)
+                ]
+
+            self._emit_web_search_audit(
+                **_web_audit_common,
+                execution_route=execution_route,
+                web_results_raw=web_results_raw_for_audit,
+                web_results_kept=web_results_kept_for_audit,
+                relevance_diag=web_audit_rel_diag,
+                latency_ms=(time.time() - web_audit_t0) * 1000,
+            )
 
         digest_mem_eligible = bool(
             memory_context and mem_result.get("memory_sources")
@@ -2977,6 +3275,27 @@ class LLMWorker(QThread):
         self._turn_all_ui_sources = copy.deepcopy(all_ui_sources)
         if all_ui_sources:
             self.sources_found.emit(self.session_id or "", copy.deepcopy(all_ui_sources))
+        evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if evidence_bundle is not None:
+            from core.knowledge.evidence_transparency import build_evidence_transparency
+
+            transparency = build_evidence_transparency(evidence_bundle)
+            if research_map_enabled():
+                from core.knowledge.graph.transparency import (
+                    enrich_transparency_with_prior_sessions,
+                )
+
+                transparency = enrich_transparency_with_prior_sessions(
+                    transparency,
+                    db=self.db,
+                    session_id=self.session_id,
+                    bundle=evidence_bundle,
+                )
+            self._turn_evidence_transparency = transparency
+            self.evidence_transparency_found.emit(
+                self.session_id or "",
+                copy.deepcopy(transparency),
+            )
 
         # ============================================================
         # TELEMETRY + SELF TUNING
@@ -3082,7 +3401,7 @@ class LLMWorker(QThread):
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
             and not all_ui_sources
-            and not getattr(self, "_composer_internet_requested", False)
+            and not getattr(self, "_composer_knowledge_tool", None)
         ):
             logger.info(
                 "[LLM Worker] All retrieval channels empty after relevance "
@@ -3093,20 +3412,40 @@ class LLMWorker(QThread):
                 self._mark_skip_enrichment("web_route_no_sources")
             execution_route = "NONE"
         elif (
-            getattr(self, "_composer_internet_requested", False)
+            getattr(self, "_composer_knowledge_tool", None)
             and execution_route in ("WEB", "INTERNET")
             and not all_ui_sources
         ):
+            composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
+            tool_label = f"@{composer_tool or 'internet'}"
             logger.warning(
-                "[LLM Worker] Composer @internet: web search returned no "
-                "sources; keeping WEB route with empty-results guidance."
+                "[LLM Worker] Composer %s: web search returned no "
+                "sources; keeping WEB route with empty-results guidance.",
+                tool_label,
             )
             self._mark_skip_enrichment("web_route_no_sources")
-            tool_context += (
-                "\n[WEB SEARCH: No live results were returned for this query. "
-                "Tell the user you could not retrieve web results right now. "
-                "Do NOT invent facts or emit [W] citations without sources.]\n"
-            )
+            if composer_tool == "legal":
+                tool_context += (
+                    "\n[@legal: No case law sources were retrieved. Preferred legal "
+                    "sources may be disabled in Settings → Knowledge. Tell the user "
+                    "briefly that case law could not be retrieved. Do NOT answer from "
+                    "general model knowledge about cases, holdings, or citations. "
+                    "Do NOT emit [1], [2], or [W].]\n"
+                )
+            elif composer_tool == "finance":
+                tool_context += (
+                    "\n[@finance: No SEC or finance sources were retrieved. Preferred "
+                    "finance sources may be disabled in Settings → Knowledge. Tell the "
+                    "user briefly that finance filings could not be retrieved. Do NOT "
+                    "answer from general model knowledge about filings or tickers. "
+                    "Do NOT emit [1], [2], or [W].]\n"
+                )
+            else:
+                tool_context += (
+                    "\n[WEB SEARCH: No live results were returned for this query. "
+                    "Tell the user you could not retrieve web results right now. "
+                    "Do NOT invent facts or emit [W] citations without sources.]\n"
+                )
 
         explicit_web_empty_results = bool(
             explicit_web_request
@@ -3115,7 +3454,25 @@ class LLMWorker(QThread):
             and self.mcp_internet_enabled
             and execution_route == "NONE"
         )
+        scientific_medical_disclaimer = False
+        financial_disclaimer = False
+        legal_disclaimer = False
+        composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
+        legal_sources_empty = composer_tool == "legal" and not all_ui_sources
+        finance_sources_empty = composer_tool == "finance" and not all_ui_sources
+        _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
+        if _evidence_bundle is not None:
+            warnings = _evidence_bundle.warnings or ()
+            scientific_medical_disclaimer = "medical_disclaimer" in warnings
+            financial_disclaimer = (
+                "not_financial_advice" in warnings and not finance_sources_empty
+            )
+            legal_disclaimer = (
+                "not_legal_advice" in warnings and not legal_sources_empty
+            )
         self._turn_execution_route = execution_route
+        if self.session_id:
+            self._prior_execution_route_by_session[str(self.session_id)] = execution_route
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
@@ -3286,13 +3643,13 @@ class LLMWorker(QThread):
                 len(attachment_ctx),
             )
         if (
-            getattr(self, "_composer_internet_requested", False)
+            getattr(self, "_composer_knowledge_tool", None)
             and not all_ui_sources
             and tool_context.strip()
         ):
             retrieval_prompt_body = tool_context.strip()
             logger.info(
-                "[LLM Worker] Composer @internet: injected web guidance (%d chars)",
+                "[LLM Worker] Composer web tool: injected web guidance (%d chars)",
                 len(retrieval_prompt_body),
             )
         if retrieval_prompt_body:
@@ -3418,12 +3775,33 @@ class LLMWorker(QThread):
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
             rag_capability_blocked=rag_capability_blocked,
+            knowledge_service=(
+                str(decision.get("knowledge_service"))
+                if isinstance(decision, dict) and decision.get("knowledge_service")
+                else None
+            ),
+            evidence_summary=(
+                _evidence_bundle.summary_for_skills()
+                if _evidence_bundle is not None
+                else None
+            ),
         )
         skill_result = activate_skills(
             skill_ctx,
             settings=get_skill_settings(),
             forced_skill_ids=tuple(
-                getattr(self, "_turn_enforced_skills", ()) or ()
+                dict.fromkeys(
+                    (
+                        *(getattr(self, "_turn_enforced_skills", ()) or ()),
+                        *(
+                            ("scientific_research",)
+                            if _evidence_bundle is not None
+                            and _evidence_bundle.knowledge_service == "scientific_evidence"
+                            and _evidence_bundle.sources
+                            else ()
+                        ),
+                    )
+                )
             ),
         )
         if get_skills_debug_log_enabled():
@@ -3459,6 +3837,11 @@ class LLMWorker(QThread):
             composer_conversation_ref=attachment_conversation_active,
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
+            scientific_medical_disclaimer=scientific_medical_disclaimer,
+            financial_disclaimer=financial_disclaimer,
+            legal_disclaimer=legal_disclaimer,
+            legal_sources_empty=legal_sources_empty,
+            finance_sources_empty=finance_sources_empty,
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(
@@ -3769,7 +4152,8 @@ class LLMWorker(QThread):
         )
         self._active_generation_debug_recorder = gen_debug
         logger.info(
-            "[ChatFormatMode] mode=%s route=%s query_preview=%r risk=%s",
+            "[ChatFormatMode] input_source=%s mode=%s route=%s query_preview=%r risk=%s",
+            getattr(self, "_input_source", "text"),
             chat_format_mode,
             execution_route,
             (str(self.prompt or "")[:80]),
@@ -3801,7 +4185,12 @@ class LLMWorker(QThread):
             debug_session_id=str(self.session_id or ""),
         )
 
-        cot_filter = RedactedThinkingStreamFilter()
+        _native_exec_policy = self._native_engine.get_execution_policy()
+        cot_filter = (
+            RedactedThinkingStreamFilter()
+            if bool(_native_exec_policy.strip_thinking_output)
+            else None
+        )
         meta_filter = LeadingMetaInstructionStripper()
         _native_telemetry = self._native_engine.get_model_reasoning_telemetry() or {}
         use_gemma_strip = is_gemma_model_identity(
@@ -3822,6 +4211,24 @@ class LLMWorker(QThread):
             is_harmony_contract(prompt_contract) and harmony_stream_parser_enabled()
         )
         harmony_parser = HarmonyStreamParser() if use_harmony_parser else None
+        harmony_active = self._harmony_model_active()
+        output_profile: TemplateOutputProfile | None = None
+        if self._native_engine is not None:
+            output_profile = self._native_engine.get_template_output_profile()
+        delimiter_filter = (
+            DelimiterGrammarStreamFilter(output_profile)
+            if output_profile is not None and output_profile.grammar_tier == "delimiter"
+            else None
+        )
+        reasoning_family_harmony_leak_strip = (
+            self._reasoning_family_harmony_leak_strip_active()
+            and delimiter_filter is None
+        )
+        harmony_scaffold_filter = (
+            LeakedHarmonyScaffoldStreamFilter()
+            if harmony_parser is None and not harmony_active and delimiter_filter is None
+            else None
+        )
         current_sentence = ""
         final_text = ""
         raw_parts: list[str] = []
@@ -3835,13 +4242,19 @@ class LLMWorker(QThread):
         stream_wall_start = time.time()
         output_token_count = 0
         harmony_cut_cancelled = False
-        harmony_active = self._harmony_model_active()
 
         def _sanitize_complete_native_text(raw_text: str) -> str:
             return sanitize_output_for_validation(
                 raw_text,
                 harmony_active=harmony_active,
+                policy=_native_exec_policy,
+                reasoning_family=reasoning_family_harmony_leak_strip,
             )
+
+        def _apply_stream_thinking_filter(text: str) -> str:
+            if cot_filter is None:
+                return text
+            return cot_filter.feed(text)
 
         def _abort_harmony_tts_tail() -> None:
             nonlocal current_sentence
@@ -3855,10 +4268,11 @@ class LLMWorker(QThread):
                 return
             if harmony_parser is not None and is_harmony_orphan_stream_fragment(fragment):
                 return
-            if harmony_parser is None:
+            if harmony_parser is None and delimiter_filter is None:
                 fragment = strip_output_artifacts(
                     fragment,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 )
             if not fragment:
                 return
@@ -3878,12 +4292,18 @@ class LLMWorker(QThread):
             tail = ""
             if harmony_parser is not None:
                 tail = harmony_parser.flush()
+            elif delimiter_filter is not None:
+                tail = delimiter_filter.flush()
             if gemma_filter is not None:
                 tail = gemma_filter.feed(tail)
                 tail += gemma_filter.flush()
-            tail = cot_filter.feed(tail)
-            tail += cot_filter.flush()
+            if cot_filter is not None:
+                tail = cot_filter.feed(tail)
+                tail += cot_filter.flush()
             tail = meta_filter.feed(tail) + meta_filter.flush()
+            if harmony_scaffold_filter is not None:
+                tail = harmony_scaffold_filter.feed(tail)
+                tail += harmony_scaffold_filter.flush()
             _emit_filtered(tail)
 
         saw_end = False
@@ -3907,17 +4327,23 @@ class LLMWorker(QThread):
                 raw_parts.append(raw_text)
                 if harmony_parser is not None:
                     stream_in = harmony_parser.feed(raw_text)
+                elif delimiter_filter is not None:
+                    stream_in = delimiter_filter.feed(raw_text)
                 else:
                     stream_in = raw_text
                 stream_piece = stream_in
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
+                clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
+                if harmony_scaffold_filter is not None:
+                    clean_piece = harmony_scaffold_filter.feed(clean_piece)
                 chunk_events: dict[str, Any] = {}
                 if gen_debug is not None:
                     repair_triggers: list[str] = []
                     if harmony_parser is not None and stream_in != raw_text:
                         repair_triggers.append("harmony_parser")
+                    if delimiter_filter is not None and stream_in != raw_text:
+                        repair_triggers.append("delimiter_grammar")
                     if gemma_filter is not None and stream_piece != stream_in:
                         repair_triggers.append("gemma_thought_filter")
                     if clean_piece != stream_in:
@@ -3984,24 +4410,30 @@ class LLMWorker(QThread):
                     raw_parts.append(raw_text)
                 if harmony_parser is not None:
                     stream_in = harmony_parser.feed(raw_text)
+                elif delimiter_filter is not None:
+                    stream_in = delimiter_filter.feed(raw_text)
                 else:
                     stream_in = raw_text
                 stream_piece = stream_in
                 if gemma_filter is not None:
                     stream_piece = gemma_filter.feed(stream_in)
-                clean_piece = meta_filter.feed(cot_filter.feed(stream_piece))
+                clean_piece = meta_filter.feed(_apply_stream_thinking_filter(stream_piece))
+                if harmony_scaffold_filter is not None:
+                    clean_piece = harmony_scaffold_filter.feed(clean_piece)
                 _emit_filtered(clean_piece, speak=False)
             elif kind == "replace":
                 replacement = str(data or "").strip()
                 streamed_snapshot = strip_output_artifacts(
                     final_text,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 ).strip()
                 streamed_before_replace = streamed_snapshot
                 resolved, rejection = resolve_stream_replacement(
                     replacement,
                     streamed_snapshot,
                     harmony_active=harmony_active,
+                    reasoning_family=reasoning_family_harmony_leak_strip,
                 )
                 val_trace = getattr(
                     self._native_engine, "_last_output_validation_trace", None
@@ -4060,10 +4492,15 @@ class LLMWorker(QThread):
             self._queue_tts_sentence(current_sentence)
             current_sentence = ""
 
-        emitted_text = strip_output_artifacts(
-            final_text,
-            harmony_active=harmony_active,
-        ).strip()
+        emitted_text = (
+            final_text.strip()
+            if delimiter_filter is not None
+            else strip_output_artifacts(
+                final_text,
+                harmony_active=harmony_active,
+                reasoning_family=reasoning_family_harmony_leak_strip,
+            ).strip()
+        )
         raw_complete_text = native_end_text or "".join(raw_parts)
         if harmony_parser is not None:
             cut = harmony_parser.degeneration_cut
@@ -4075,8 +4512,14 @@ class LLMWorker(QThread):
             for chunk in raw_for_parse:
                 after_harmony_text += replay.feed(chunk)
             after_harmony_text += replay.flush()
+            parse_path = "harmony_channel"
+        elif delimiter_filter is not None and output_profile is not None:
+            parsed = extract_delimiter_grammar(raw_complete_text, output_profile)
+            after_harmony_text = parsed.visible_text
+            parse_path = "delimiter_grammar"
         else:
             after_harmony_text = raw_complete_text
+            parse_path = "fallback_strip"
         authoritative_text = (
             _sanitize_complete_native_text(after_harmony_text or raw_complete_text)
             if raw_complete_text
@@ -4141,6 +4584,17 @@ class LLMWorker(QThread):
                     "harmony_channel": harmony_parser.current_channel,
                 }
             )
+        if delimiter_filter is not None:
+            trace_extra["delimiter_grammar_parser"] = True
+        artifact_report = build_output_artifact_report(
+            raw_text=raw_complete_text or "",
+            visible_text=final_text or "",
+            profile=output_profile,
+            parse_path=parse_path,
+            parse_confidence="high" if parse_path != "fallback_strip" else "low",
+        )
+        log_output_artifact_report(artifact_report)
+        trace_extra["output_artifact_report"] = artifact_report.to_dict()
 
         self._completion_output_snapshot = CompletionOutputSnapshot(
             engine_mode="internal",
@@ -4316,6 +4770,53 @@ class LLMWorker(QThread):
             except Exception:
                 pass
             self._active_stream_response = None
+
+    def _emit_web_search_audit(
+        self,
+        *,
+        execution_route: str,
+        query_raw: str,
+        query_resolved: str,
+        query_rewrite_reason: str | None,
+        query_rewrite_failed: bool,
+        force_web: bool,
+        manual_web: bool,
+        auto_web: bool,
+        composer_internet: bool,
+        composer_trusted: bool = False,
+        composer_evidence: bool = False,
+        veto_status: str | None = None,
+        web_results_raw=None,
+        web_results_kept=None,
+        relevance_diag=None,
+        latency_ms: float | None = None,
+    ) -> None:
+        try:
+            event = build_audit_event_from_llm_turn(
+                session_id=self.session_id,
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+                user_prompt=self.prompt or "",
+                execution_route=execution_route,
+                internet_tool_enabled=bool(self.mcp_internet_enabled),
+                force_web=force_web,
+                manual_web=manual_web,
+                auto_web=auto_web,
+                composer_internet=composer_internet,
+                composer_trusted=composer_trusted,
+                composer_evidence=composer_evidence,
+                query_raw=query_raw,
+                query_resolved=query_resolved,
+                query_rewrite_reason=query_rewrite_reason,
+                query_rewrite_failed=query_rewrite_failed,
+                veto_status=veto_status,
+                web_results_raw=web_results_raw,
+                web_results_kept=web_results_kept,
+                relevance_diag=relevance_diag,
+                latency_ms=latency_ms,
+            )
+            record_web_search_audit(event)
+        except Exception:
+            pass
 
     def _persist_routing_debug_record(self, record) -> None:
         """

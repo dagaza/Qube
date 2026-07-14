@@ -64,7 +64,7 @@ _CUBE_SIZE_SCALE = 0.88  # ~12% smaller than the original 1.05× body factor
 _WAVEFORM_OUTER_INSET = 1.38  # waveform ring starts outside the drawn cube silhouette
 
 
-class QubeCubePersonaRenderer(CompanionPersonaRenderer):
+class QubeCubeClassicPersonaRenderer(CompanionPersonaRenderer):
     persona_id = CompanionPersonaId.QUBE
 
     def halo_extra_px(self, body_radius: float) -> int:

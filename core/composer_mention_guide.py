@@ -33,12 +33,17 @@ def build_composer_mention_guide_text() -> str:
 
     return f"""COMPOSER @ GUIDE
 
-Type @ in the chat composer to open the mention palette. Release the modifier after @
-(Shift on most keyboards). One @ opens the menu; @@ removes one @ if you wanted a
-literal at-sign.
+Type @ in the chat composer to open the mention palette.
 
-Use arrow keys, type letters to filter categories, or press 1–4 on the root menu.
-Enter or Tab selects an item.
+  • @ alone — browse the five categories (Files, Conversations, Tools, Skills, Commands).
+  • Keep typing after @ — search everything at once (tools, files, chats, skills, commands).
+  • Pick a category — browse and filter within that section only.
+
+The menu follows what you type in the composer. One @ opens the menu; @@ removes one @
+if you wanted a literal at-sign.
+
+Use arrow keys to move, or press 1–5 on the category menu for a shortcut.
+Enter or Tab selects an item. Shift+Enter still inserts a newline.
 
 
 WHAT YOU CAN ATTACH

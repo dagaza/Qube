@@ -34,6 +34,7 @@ from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
+from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.modal_backdrop import ModalBackdrop
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
@@ -68,6 +69,7 @@ from core.audio_utils import get_input_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.local_gguf_library import list_local_gguf_menu_entries
 from core.qube_tooltip import qube_tooltip_set_theme
+from core.ui_language import tr
 from core.platform.work_area import workspace_bounds_for_screen
 from ui.onboarding.local_llm_setup_tour import build_local_llm_setup_tour
 import logging
@@ -404,6 +406,16 @@ class MainWindow(QMainWindow):
         # Build the Multi-Pane Layout
         self.top_bar = self._build_top_bar()
         root_layout.addWidget(self.top_bar)
+
+        self.background_progress_banner = QWidget()
+        self.background_progress_banner.setObjectName("BackgroundProgressBanner")
+        banner_layout = QVBoxLayout(self.background_progress_banner)
+        banner_layout.setContentsMargins(16, 6, 16, 6)
+        banner_layout.setSpacing(0)
+        self.background_progress_row = IngestProgressRow(self.background_progress_banner)
+        banner_layout.addWidget(self.background_progress_row)
+        self.background_progress_banner.hide()
+        root_layout.addWidget(self.background_progress_banner)
 
         workspace_layout = QHBoxLayout()
         workspace_layout.setContentsMargins(0, 0, 0, 0)
@@ -873,7 +885,7 @@ class MainWindow(QMainWindow):
         self.rag_status_dot.setFixedWidth(60) 
         self.rag_status_dot.setObjectName("RagStatusDot")
         self.rag_status_dot.setToolTip(
-            "Knowledge base status: gray = off, blue = ready, green = retrieving"
+            tr("Knowledge base status: grey = off, blue = ready, green = retrieving")
         )
         self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
         center_layout.addWidget(self.rag_status_dot)
@@ -885,8 +897,8 @@ class MainWindow(QMainWindow):
         self.web_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
         center_layout.addWidget(self.web_status_dot)
 
-        self.hybrid_status_dot = QLabel("● HYB")
-        self.hybrid_status_dot.setFixedWidth(60)
+        self.hybrid_status_dot = QLabel("● HYBRID")
+        self.hybrid_status_dot.setFixedWidth(85)
         self.hybrid_status_dot.setObjectName("HybridStatusDot")
         self.hybrid_status_dot.setToolTip("Hybrid Internet Mode is off")
         self.hybrid_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
@@ -910,28 +922,28 @@ class MainWindow(QMainWindow):
         win_layout.setContentsMargins(0, 0, 0, 0)
         win_layout.setSpacing(8)
         
-        min_btn = QPushButton()
-        min_btn.setIcon(qta.icon('fa5s.minus'))
-        min_btn.setProperty("class", "WindowControlButton")
-        min_btn.setToolTip("Minimize window")
-        min_btn.clicked.connect(self.showMinimized)
+        self._min_btn = QPushButton()
+        self._min_btn.setIcon(qta.icon('fa5s.minus'))
+        self._min_btn.setProperty("class", "WindowControlButton")
+        self._min_btn.setToolTip(tr("Minimise window"))
+        self._min_btn.clicked.connect(self.showMinimized)
 
         self.max_btn = QPushButton()
         self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
         self.max_btn.setProperty("class", "WindowControlButton")
-        self.max_btn.setToolTip("Maximize window")
+        self.max_btn.setToolTip(tr("Maximise window"))
         self.max_btn.clicked.connect(self._toggle_maximize)
 
-        close_btn = QPushButton()
-        close_btn.setIcon(qta.icon('fa5s.times'))
-        close_btn.setProperty("class", "WindowControlButton")
-        close_btn.setToolTip("Minimize to system tray")
-        close_btn.clicked.connect(self.hide)
+        self._close_btn = QPushButton()
+        self._close_btn.setIcon(qta.icon('fa5s.times'))
+        self._close_btn.setProperty("class", "WindowControlButton")
+        self._close_btn.setToolTip(tr("Minimise to system tray"))
+        self._close_btn.clicked.connect(self.hide)
 
         win_layout.addStretch()
-        win_layout.addWidget(min_btn)
+        win_layout.addWidget(self._min_btn)
         win_layout.addWidget(self.max_btn)
-        win_layout.addWidget(close_btn)
+        win_layout.addWidget(self._close_btn)
 
         layout.addWidget(win_controls)
         
@@ -1114,7 +1126,7 @@ class MainWindow(QMainWindow):
         return f"color: {color}; font-weight: bold; font-size: 11px;"
 
     def refresh_web_indicator(self) -> None:
-        """Sync the top-bar WEB/HYB indicators from toolbar toggles and chat Web button."""
+        """Sync the top-bar WEB/HYBRID indicators from toolbar toggles and chat Web button."""
         self._web_indicator_force = self._resolve_web_force_enabled()
         self._web_indicator_hybrid = self._resolve_web_hybrid_enabled()
         self._apply_web_indicator()
@@ -1125,7 +1137,7 @@ class MainWindow(QMainWindow):
         via_direct: bool = False,
         via_hybrid: bool = False,
     ) -> None:
-        """Highlight WEB/HYB while an in-flight web search contributes to the turn."""
+        """Highlight WEB/HYBRID while an in-flight web search contributes to the turn."""
         self._web_indicator_active = bool(active)
         self._web_indicator_active_direct = bool(active and via_direct)
         self._web_indicator_active_hybrid = bool(active and via_hybrid)
@@ -1158,6 +1170,9 @@ class MainWindow(QMainWindow):
         if active_direct:
             web_color = self._RETRIEVAL_COLOR_ACTIVE
             web_tooltip = "Web search is active for this turn"
+        elif active_hybrid:
+            web_color = self._RETRIEVAL_COLOR_ACTIVE
+            web_tooltip = "Web search is active via Hybrid mode for this turn"
         elif force_on:
             web_color = self._WEB_COLOR_STANDBY
             web_tooltip = "Web search enabled for every message in this chat"
@@ -1242,21 +1257,8 @@ class MainWindow(QMainWindow):
         self._geometry_update_depth += 1
         try:
             self.setMinimumSize(target_size)
-            current = self.size()
-            if (
-                current.width() < target_size.width() - 4
-                or current.height() < target_size.height() - 4
-            ):
-                self.setGeometry(target_rect)
-            else:
-                self._startup_geometry_finalized = True
-                return
-            after = self.size()
-            if (
-                after.width() >= target_size.width() - 4
-                and after.height() >= target_size.height() - 4
-            ):
-                self._startup_geometry_finalized = True
+            self.setGeometry(target_rect)
+            self._startup_geometry_finalized = True
         finally:
             self._geometry_update_depth -= 1
 
@@ -1338,10 +1340,20 @@ class MainWindow(QMainWindow):
     def _unlock_window_size(self) -> None:
         self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))
 
+    def _apply_ui_language(self) -> None:
+        """Refresh window chrome strings after the UI language setting changes."""
+        self._min_btn.setToolTip(tr("Minimise window"))
+        self._close_btn.setToolTip(tr("Minimise to system tray"))
+        self.rag_status_dot.setToolTip(
+            tr("Knowledge base status: grey = off, blue = ready, green = retrieving")
+        )
+        maximized = bool(self.windowState() & Qt.WindowState.WindowMaximized)
+        self.max_btn.setToolTip(tr("Restore window") if maximized else tr("Maximise window"))
+
     def _apply_maximize_chrome(self, maximized: bool) -> None:
         if maximized:
             self.max_btn.setIcon(qta.icon("fa5s.compress-arrows-alt"))
-            self.max_btn.setToolTip("Restore window")
+            self.max_btn.setToolTip(tr("Restore window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;")
             )
@@ -1349,7 +1361,7 @@ class MainWindow(QMainWindow):
                 self.grip.setVisible(False)
         else:
             self.max_btn.setIcon(qta.icon("fa5s.expand-arrows-alt"))
-            self.max_btn.setToolTip("Maximize window")
+            self.max_btn.setToolTip(tr("Maximise window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;")
             )
@@ -1531,7 +1543,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.nav_chat, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_library, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.nav_memory, alignment=Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addStretch()
 
@@ -1546,7 +1558,7 @@ class MainWindow(QMainWindow):
         self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        layout.addWidget(self.nav_models, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.nav_telemetry, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.nav_settings = create_nav_btn('fa5s.cog', 5, size=20, tooltip="Settings")
         self.nav_settings.setObjectName("NavSettings")
@@ -1587,8 +1599,8 @@ class MainWindow(QMainWindow):
             self.nav_chat,
             self.nav_library,
             self.nav_memory,
-            self.nav_telemetry,
             self.nav_models,
+            self.nav_telemetry,
             self.nav_settings,
         ]
         self._nav_active_btn = self.nav_chat
@@ -1980,12 +1992,12 @@ class MainWindow(QMainWindow):
         #  WIRING TO WORKERS                                        #
         # --------------------------------------------------------- #
         if self._audio_worker:
-            self.voice_input_toggle.toggled.connect(lambda checked: self._audio_worker.set_paused(not checked))
+            self.voice_input_toggle.toggled.connect(self._on_voice_input_toggle)
             # 🔑 Catch the volume signal and route it to the VU meter
             self._audio_worker.volume_update.connect(self.update_mic_level)
 
         if self._tts_worker:
-            self.voice_bypass_toggle.toggled.connect(lambda checked: self._tts_worker.set_mute(not checked))
+            self.voice_bypass_toggle.toggled.connect(self._on_voice_bypass_toggle)
         if self._llm_worker:
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
@@ -1993,18 +2005,30 @@ class MainWindow(QMainWindow):
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.tool_rag_toggle, checked):
+                    return
                 self.set_rag_state('standby' if checked else 'off')
                 self._llm_worker.set_mcp_rag(checked)
-                
+
             self.tool_rag_toggle.toggled.connect(on_rag_toggled)
             
             # Force initial state check on boot
             self.set_rag_state('standby' if self.tool_rag_toggle.isChecked() else 'off')
 
             # 🔑 THE NEW STRICT WIRE
-            self.rag_strict_toggle.toggled.connect(self._llm_worker.set_mcp_strict)
+            def on_strict_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.rag_strict_toggle, checked):
+                    return
+                self._llm_worker.set_mcp_strict(checked)
+
+            self.rag_strict_toggle.toggled.connect(on_strict_toggled)
             # 🔑 THE NEW AUTO-ACTIVATOR WIRE
-            self.rag_auto_toggle.toggled.connect(self._llm_worker.set_mcp_auto)
+            def on_auto_toggled(checked):
+                if not self._guard_embedding_feature_toggle(self.rag_auto_toggle, checked):
+                    return
+                self._llm_worker.set_mcp_auto(checked)
+
+            self.rag_auto_toggle.toggled.connect(on_auto_toggled)
 
             # Hybrid toggle controls web search + cognitive auto-web routing.
             def on_hybrid_toggled(checked: bool):
@@ -2833,6 +2857,9 @@ class MainWindow(QMainWindow):
             if hasattr(self.library_view, '_update_row_colors'):
                 self.library_view._update_row_colors() # Force text repaint instantly!
 
+        if hasattr(self, "background_progress_row"):
+            self.background_progress_row.apply_theme(self._is_dark_theme)
+
         if hasattr(self, "memory_manager_view") and hasattr(
             self.memory_manager_view, "refresh_theme"
         ):
@@ -2871,6 +2898,15 @@ class MainWindow(QMainWindow):
         )
         self._notification_service.action_triggered.connect(self._on_notification_service_action)
         self._notification_service.notification_shown.connect(self._on_notification_shown)
+        self._setup_provider_limit_notifications()
+
+    def _setup_provider_limit_notifications(self) -> None:
+        from core.knowledge.provider_limit_events import register_provider_limit_handler
+        from core.notification_types import provider_limit_notification_event
+
+        register_provider_limit_handler(
+            lambda event: self.emit_notification(provider_limit_notification_event(event))
+        )
 
     def _is_tts_playing(self) -> bool:
         cv = getattr(self, "conversations_view", None)
@@ -3035,6 +3071,9 @@ class MainWindow(QMainWindow):
         self._companion_controller.navigate_settings_requested.connect(
             lambda: self._on_notification_action("open_settings")
         )
+        self._companion_controller.window.snap_zone_changed.connect(
+            self._on_companion_snap_zone_changed
+        )
         voice_out = (
             self.voice_bypass_toggle.isChecked()
             if hasattr(self, "voice_bypass_toggle")
@@ -3056,6 +3095,11 @@ class MainWindow(QMainWindow):
         if self._companion_controller is not None:
             self._companion_controller.set_user_enabled(enabled)
 
+    def _on_companion_snap_zone_changed(self, _zone: str) -> None:
+        settings = getattr(self, "settings_view", None)
+        if settings is not None and hasattr(settings, "_sync_companion_snap_compass"):
+            settings._sync_companion_snap_compass()
+
     def _on_tray_voice_input_toggled(self, enabled: bool) -> None:
         if hasattr(self, "voice_input_toggle"):
             self.voice_input_toggle.blockSignals(True)
@@ -3063,7 +3107,6 @@ class MainWindow(QMainWindow):
             self.voice_input_toggle.blockSignals(False)
         if self._audio_worker is not None:
             self._audio_worker.set_paused(not enabled)
-        self._activity_reducer.set_voice_paused(not enabled)
         self._sync_tray_presence()
         self._sync_tray_voice_toggles()
 
@@ -3083,7 +3126,6 @@ class MainWindow(QMainWindow):
         voice_in = self.voice_input_toggle.isChecked() if hasattr(self, "voice_input_toggle") else True
         voice_out = self.voice_bypass_toggle.isChecked() if hasattr(self, "voice_bypass_toggle") else True
         self.tray_controller.sync_voice_toggles(voice_in=voice_in, voice_out=voice_out)
-        self._activity_reducer.set_voice_paused(not voice_in)
         self._presence_service.set_voice_output_muted(not voice_out)
         self._sync_tray_presence()
 
@@ -3093,12 +3135,8 @@ class MainWindow(QMainWindow):
     def _sync_tray_presence(self) -> None:
         if self.tray_controller is None:
             return
-        voice_paused = bool(
-            self._audio_worker and getattr(self._audio_worker, "is_paused", False)
-        )
         self.tray_controller.set_activity(
             self._activity_reducer.activity,
-            voice_paused=voice_paused,
             voice_output_muted=self._presence_service.snapshot().voice_output_muted,
         )
 
@@ -3262,6 +3300,102 @@ class MainWindow(QMainWindow):
             if hasattr(self, "nav_memory"):
                 self.nav_memory.setChecked(True)
                 self._route_view(2, self.nav_memory)
+        elif action_id == "open_settings_voice_stt":
+            self._open_settings_section("voice.audio", anchor="stt_models")
+        elif action_id == "open_settings_voice_tts":
+            self._open_settings_section("voice.audio", anchor="tts_models")
+        elif action_id == "open_settings_knowledge_embedding":
+            self._open_settings_section("knowledge", anchor="embedding_mode")
+        elif action_id == "open_settings_knowledge_credentials" or action_id.startswith(
+            "open_settings_knowledge_credentials:"
+        ):
+            provider_id = None
+            if ":" in action_id:
+                provider_id = action_id.split(":", 1)[1].strip() or None
+            self._open_settings_section(
+                "knowledge",
+                anchor="knowledge_live_sources",
+                configure_provider_id=provider_id,
+            )
+        elif action_id == "open_settings_ai_cognition":
+            self._open_settings_section("ai.models", anchor="cognition")
+
+    def _open_settings_section(
+        self,
+        section: str,
+        *,
+        anchor: str | None = None,
+        configure_provider_id: str | None = None,
+    ) -> None:
+        self._restore_workspace_from_tray()
+        if hasattr(self, "nav_settings"):
+            self.nav_settings.setChecked(True)
+            self._route_view(5, self.nav_settings)
+        if hasattr(self, "settings_view") and hasattr(
+            self.settings_view, "select_settings_section"
+        ):
+            QTimer.singleShot(
+                0,
+                lambda: self.settings_view.select_settings_section(
+                    section,
+                    anchor=anchor,
+                    configure_provider_id=configure_provider_id,
+                ),
+            )
+
+    def _guard_embedding_feature_toggle(self, toggle, checked: bool) -> bool:
+        if not checked:
+            return True
+        from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
+
+        label = "Knowledge and library features"
+        if not ensure_search_models_for_feature(
+            self,
+            feature_label=label,
+            is_dark=self._is_dark_theme,
+        ):
+            toggle.blockSignals(True)
+            toggle.setChecked(False)
+            toggle.blockSignals(False)
+            return False
+        return True
+
+    def _on_voice_input_toggle(self, checked: bool) -> None:
+        if checked:
+            from core.bootstrap_manifest import BootstrapModelId
+            from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
+
+            if not ensure_bootstrap_model_downloaded(
+                self,
+                BootstrapModelId.WHISPER_SMALL,
+                feature_label="Voice input",
+                is_dark=self._is_dark_theme,
+            ):
+                self.voice_input_toggle.blockSignals(True)
+                self.voice_input_toggle.setChecked(False)
+                self.voice_input_toggle.blockSignals(False)
+                return
+        if self._audio_worker:
+            self._audio_worker.set_paused(not checked)
+
+    def _on_voice_bypass_toggle(self, checked: bool) -> None:
+        if checked:
+            from core.bootstrap_manifest import BootstrapModelId
+            from core.tts_models import any_supported_tts_model_on_disk
+            from ui.bootstrap_feature_prompts import ensure_bootstrap_model_downloaded
+
+            if not any_supported_tts_model_on_disk() and not ensure_bootstrap_model_downloaded(
+                self,
+                BootstrapModelId.KOKORO_TTS,
+                feature_label="Voice output (TTS)",
+                is_dark=self._is_dark_theme,
+            ):
+                self.voice_bypass_toggle.blockSignals(True)
+                self.voice_bypass_toggle.setChecked(False)
+                self.voice_bypass_toggle.blockSignals(False)
+                return
+        if self._tts_worker:
+            self._tts_worker.set_mute(not checked)
 
     def request_application_restart(self) -> None:
         self._force_app_exit = True
@@ -3272,6 +3406,27 @@ class MainWindow(QMainWindow):
                 manual_restart_instructions(),
                 is_dark=self._is_dark_theme,
             ).exec()
+
+    def begin_background_progress(self, detail: str = "") -> None:
+        """Show the app-wide progress strip (visible on every page)."""
+        self.background_progress_row.apply_theme(self._is_dark_theme)
+        self.background_progress_row.begin(detail=detail)
+        self.background_progress_banner.show()
+
+    def update_background_progress(self, percent: int, *, detail: str | None = None) -> None:
+        if not self.background_progress_banner.isVisible():
+            self.begin_background_progress(detail=detail or "")
+        self.background_progress_row.update_progress(percent, detail=detail)
+
+    def set_background_progress_detail(self, detail: str) -> None:
+        if not self.background_progress_banner.isVisible():
+            self.begin_background_progress(detail=detail)
+        else:
+            self.background_progress_row.set_detail(detail)
+
+    def finish_background_progress(self) -> None:
+        self.background_progress_row.finish()
+        self.background_progress_banner.hide()
 
     def update_status(self, message: str, force: bool = False) -> None:
         """Updates the top bar with a priority-based logic to prevent signal clobbering."""
@@ -3290,18 +3445,33 @@ class MainWindow(QMainWindow):
         self._sync_tray_presence()
 
         if hasattr(self, "conversations_view"):
-            label = transition.display_text.strip()
-            self.conversations_view.update_action_placeholder(label)
+            from core.assistant_activity import _is_assistant_working_message
+
+            msg_upper = message.upper().strip()
+            conv = self.conversations_view
+            voice_turn_active = bool(getattr(conv, "_voice_turn_active", False))
+            llm_in_progress = bool(getattr(conv, "_llm_in_progress", False))
+            voice_capture_active = bool(getattr(conv, "_voice_capture_active", False))
+
             if new_state == "idle":
-                self.conversations_view.on_turn_complete_idle()
+                # Mic gate closed — STT/LLM may still be running; do not tear down the turn UI.
+                if msg_upper != "VOICE CAPTURE IDLE" or not (voice_turn_active or llm_in_progress):
+                    conv.on_turn_complete_idle()
             elif new_state == "listening":
-                self.conversations_view.on_voice_capture_started()
+                conv.on_voice_capture_started()
+            elif _is_assistant_working_message(msg_upper) and (
+                voice_capture_active or voice_turn_active
+            ):
+                conv.on_voice_capture_processing()
+            elif voice_capture_active:
+                conv.on_voice_capture_ended()
+
+            deep_research_active = bool(getattr(conv, "_deep_research_in_progress", False))
+            if deep_research_active and not llm_in_progress and not voice_turn_active:
+                conv.set_input_enabled(True)
             else:
-                if getattr(self.conversations_view, "_voice_capture_active", False):
-                    self.conversations_view.on_voice_capture_ended()
-                self.conversations_view.set_input_enabled(
-                    new_state in ("idle", "speaking", "needs_model")
-                )
+                conv.set_input_enabled(new_state in ("idle", "speaking", "needs_model"))
+            conv.apply_presence_label(transition.presence_label)
 
         msg_upper = message.upper().strip()
         if "MIC ERROR" in msg_upper and "NO INPUT DEVICE" not in msg_upper:

@@ -111,6 +111,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -130,6 +131,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -221,7 +223,10 @@ class PrestigeMenuMixin:
         """)
 
     def _handle_selection(self, button, label, data, callback):
+        from ui.views.settings.widgets import refit_settings_selector_width
+
         button.setText(label)
+        refit_settings_selector_width(button)
         if hasattr(button, "update"):
             button.update()
         callback(data)

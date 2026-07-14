@@ -20,11 +20,165 @@ _TOKEN_RE = re.compile(
 
 CONVERSATION_REF_BUDGET = 7000
 
-COMPOSER_TOOLS: list[dict[str, str]] = [
+COMPOSER_TOOLS: list[dict[str, str | bool]] = [
+    {
+        "id": "trusted",
+        "label": "Trusted",
+        "description": "Wikipedia and allowlisted sources",
+    },
+    {
+        "id": "evidence",
+        "label": "Scientific literature",
+        "description": "Peer-reviewed papers and preprints across disciplines",
+    },
+    {
+        "id": "finance",
+        "label": "Finance",
+        "description": "SEC EDGAR company filings (10-K, 10-Q, 8-K)",
+    },
+    {
+        "id": "legal",
+        "label": "Legal",
+        "description": "U.S. case law opinions via CourtListener",
+    },
+    {
+        "id": "research",
+        "label": "Deep research",
+        "description": "Multi-step evidence report (async, non-blocking)",
+    },
     {"id": "internet", "label": "Internet", "description": "Live web search"},
     {"id": "library", "label": "Library", "description": "Search your documents"},
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
+    {
+        "id": "science",
+        "label": "Scientific literature",
+        "description": "Alias for @evidence (same routing)",
+        "advanced": True,
+    },
+    {
+        "id": "wikipedia",
+        "label": "Wikipedia",
+        "description": "Wikipedia intro extracts only",
+        "advanced": True,
+    },
+    {
+        "id": "pubmed",
+        "label": "PubMed",
+        "description": "Biomedical literature abstracts",
+        "advanced": True,
+    },
+    {
+        "id": "arxiv",
+        "label": "arXiv",
+        "description": "Preprint abstracts (CS, physics, math)",
+        "advanced": True,
+    },
 ]
+
+_WEB_COMPOSER_TOOLS = frozenset(
+    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
+)
+
+
+def is_web_composer_tool(tool_id: str) -> bool:
+    tool = (tool_id or "").strip().lower()
+    if tool in _WEB_COMPOSER_TOOLS:
+        return True
+    if tool.startswith("user:") or tool.startswith("source:"):
+        return True
+    return False
+
+
+def composer_preset_tools() -> list[dict[str, str | bool]]:
+    from core.knowledge.presets import list_presets
+
+    tools: list[dict[str, str | bool]] = []
+    for preset in list_presets(composer_visible_only=True):
+        from core.knowledge.explain_preset import build_explain_preset
+        from core.app_settings import get_retrieval_profile
+
+        explain = build_explain_preset(preset.id, retrieval_profile=get_retrieval_profile())
+        uses = ", ".join(
+            str(item.get("label") or item.get("id"))
+            for item in (explain.get("uses") or [])
+        )
+        desc = preset.description or f"My knowledge preset ({preset.base_service})"
+        if uses:
+            desc = f"{desc} Uses: {uses}."
+        tools.append(
+            {
+                "id": f"user:{preset.id}",
+                "label": preset.label,
+                "description": desc,
+                "group": "My knowledge",
+            }
+        )
+    return tools
+
+
+_TOOL_USAGE_HINTS: dict[str, str] = {
+    "trusted": "Use for general facts from vetted allowlisted sources.",
+    "evidence": "Use when you need cited papers; discipline-specific sources are chosen automatically.",
+    "finance": "Use for SEC filings, company financials, and regulatory disclosures.",
+    "legal": "Use for U.S. court opinions and case law.",
+    "research": "Use for a multi-step async literature review report.",
+    "internet": "Use for timely web information beyond your library.",
+    "library": "Use to search only your uploaded documents.",
+    "memory": "Use to recall facts saved from past chats.",
+    "science": "Same routing as @evidence; prefer @evidence in the palette.",
+    "wikipedia": "Use for quick encyclopedia summaries only.",
+    "pubmed": "Use for biomedical papers and clinical research.",
+    "arxiv": "Use for CS, physics, and math preprints.",
+}
+
+
+def _tool_matches_palette_filter(tool: dict[str, str | bool], query: str) -> bool:
+    """Return whether a tool should appear in browse/search palettes for ``query``."""
+    tool_id = str(tool["id"]).lower()
+    if tool.get("advanced"):
+        if not query:
+            return False
+        return query == tool_id or tool_id.startswith(query) or query.startswith(tool_id)
+    if not query:
+        return True
+    label = str(tool["label"]).lower()
+    desc = str(tool["description"]).lower()
+    return query in label or query in desc or query in tool_id
+
+
+def composer_tools_for_palette(query: str = "") -> list[dict[str, str | bool]]:
+    """Tools shown in composer palettes; hides advanced aliases unless id matches."""
+    q = (query or "").strip().lower()
+    tools = [tool for tool in COMPOSER_TOOLS if _tool_matches_palette_filter(tool, q)]
+    if not q or q in {"my", "user", "knowledge", "preset"}:
+        tools.extend(composer_preset_tools())
+    elif q.startswith("user:") or q.startswith("source:"):
+        tools.extend(
+            t
+            for t in composer_preset_tools()
+            if str(t["id"]).lower().startswith(q) or q in str(t["label"]).lower()
+        )
+    return tools
+
+
+def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
+    for tool in COMPOSER_TOOLS:
+        if tool["id"] == tool_id:
+            return tool
+    for tool in composer_preset_tools():
+        if tool["id"] == tool_id:
+            return tool
+    return None
+
+
+def composer_tool_tooltip(tool: dict[str, str | bool]) -> str:
+    label = str(tool["label"])
+    desc = str(tool["description"])
+    hint = _TOOL_USAGE_HINTS.get(str(tool["id"]), "")
+    parts = [f"{label}. {desc}"]
+    if hint:
+        parts.append(hint)
+    return " ".join(parts) + f" Inserts @[tool:{tool['id']}]."
 
 _ROLE_HEADINGS = {
     "user": "User",
@@ -84,7 +238,9 @@ def parse_attachments(text: str) -> tuple[str, list[ComposerAttachment]]:
                 label = att_id[:8] + "…" if len(att_id) > 12 else att_id
         else:
             kind = "tool"
-            tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
+            tool = composer_tool_by_id(att_id)
+            if tool is None:
+                tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
             label = tool["label"] if tool else att_id
         key = (kind, att_id)
         if key not in seen:
@@ -147,14 +303,33 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     tool_id = primary.id
-    if tool_id == "internet":
+    if is_web_composer_tool(tool_id):
         return {
             "route": "web",
-            "strategy": "attachment_tool_internet",
+            "strategy": f"attachment_tool_{tool_id}",
+            "attachment_tool": tool_id,
+            "composer_attachments": _attachments_telemetry(attachments),
+        }
+    if tool_id == "research":
+        return {
+            "route": "deep_research",
+            "strategy": "attachment_tool_research",
             "attachment_tool": tool_id,
             "composer_attachments": _attachments_telemetry(attachments),
         }
     if tool_id == "library":
+        from core.app_settings import (
+            external_knowledge_v2_enabled,
+            internal_corpus_knowledge_enabled,
+        )
+
+        if external_knowledge_v2_enabled() and internal_corpus_knowledge_enabled():
+            return {
+                "route": "web",
+                "strategy": "attachment_tool_library",
+                "attachment_tool": tool_id,
+                "composer_attachments": _attachments_telemetry(attachments),
+            }
         return {
             "route": "rag",
             "strategy": "attachment_tool_library",

@@ -11,7 +11,7 @@
     {
       "id": "phi-4-mini-instruct",
       "title": "Phi-4 Mini Instruct",
-      "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",
+      "description": "Microsoft's highly optimised lightweight reasoning model (official GGUF).",
       "publisher": "microsoft",
       "gguf_repo": "unsloth/Phi-4-mini-instruct-GGUF"
     },
@@ -32,7 +32,7 @@
     {
       "id": "granite-4.1-8b",
       "title": "IBM Granite 4.1 8B",
-      "description": "Enterprise-grade Apache-2.0 licensed model optimized heavily for structured data, local RAG pipelines, and code triaging.",
+      "description": "Enterprise-grade Apache-2.0 licensed model optimised heavily for structured data, local RAG pipelines, and code triaging.",
       "publisher": "ibm",
       "gguf_repo": "bartowski/ibm-granite_granite-4.1-8b-GGUF"
     },
@@ -46,7 +46,7 @@
     {
       "id": "Phi-3-medium-128k-instruct-imatrix-GGUF",
       "title": "Microsoft Phi-3 Medium 128K Instruct (imatrix)",
-      "description": "Microsoft's highly optimized lightweight reasoning model (official GGUF).",
+      "description": "Microsoft's highly optimised lightweight reasoning model (official GGUF).",
       "publisher": "microsoft",
       "gguf_repo": "hermes42/Phi-3-medium-128k-instruct-imatrix-GGUF"
     },

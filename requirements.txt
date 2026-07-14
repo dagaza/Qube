@@ -8,7 +8,7 @@ beautifulsoup4==4.14.3
 certifi==2026.2.25
 cffi==2.0.0
 charset-normalizer==3.4.7
-click==8.3.2
+click==8.3.3
 colorama==0.4.6
 csvw==3.7.0
 ctranslate2==4.7.1
@@ -43,7 +43,7 @@ MarkupSafe==3.0.3
 mdurl==0.1.2
 numpy==2.4.4
 nvidia-ml-py==13.595.45
-onnx==1.21.0
+onnx==1.22.0
 onnxruntime==1.24.4
 openwakeword==0.4.0
 packaging==26.0
@@ -60,7 +60,7 @@ pydantic_core==2.41.5
 Pygments==2.20.0
 pynvml==13.0.1
 pyparsing==3.3.2
-pypdf==6.10.2
+pypdf==6.13.3
 pymupdf
 PyQt6==6.11.0
 PyQt6-Qt6==6.11.0
@@ -79,11 +79,11 @@ rpds-py==0.30.0
 scikit-learn==1.8.0
 scipy==1.17.1
 segments==2.4.0
-setuptools==81.0.0
+setuptools==83.0.0
 shellingham==1.5.4
 six==1.17.0
 soundfile==0.13.1
-soupsieve==2.8.3
+soupsieve==2.8.4
 termcolor==3.3.0
 threadpoolctl==3.6.0
 tokenizers==0.22.2
@@ -94,4 +94,5 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.7.0
 llama-cpp-python>=0.3.29
+fastembed>=0.6.0
 tantivy

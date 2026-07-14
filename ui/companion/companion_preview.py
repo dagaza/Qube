@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from core import app_settings
-from core.assistant_activity import AssistantActivity
+from core.assistant_activity import AssistantActivity, user_presence_label
 from core.assistant_presence import AssistantPhase, AssistantPresenceSnapshot
 from core.companion_personas import CompanionPersonaId, DEFAULT_COMPANION_PERSONA, normalize_companion_persona
 from core.companion_verbal_prompts import truncate_companion_caption
@@ -33,6 +33,7 @@ def _demo_snapshot(
         activity=activity,
         phase=phase,
         display_text="",
+        presence_label=user_presence_label(activity),
         bubble_state="idle",
         voice_input_paused=False,
         voice_output_muted=False,
@@ -52,6 +53,7 @@ class CompanionPreviewWidget(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("CompanionPreviewFrame")
+        self.setFrameShape(QFrame.Shape.NoFrame)
         self.setFixedSize(_PREVIEW_DIMENSION, _PREVIEW_DIMENSION)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
 
@@ -102,8 +104,6 @@ class CompanionPreviewWidget(QFrame):
 
     def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
         persona_id = normalize_companion_persona(persona_id)
-        if persona_id == self._persona_id:
-            return
         self._persona_id = persona_id
         self._renderer = get_persona_renderer(persona_id)
         if not self._timer.isActive():
@@ -153,12 +153,6 @@ class CompanionPreviewWidget(QFrame):
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        bg = QColor("#11111b" if self._is_dark else "#f1f5f9")
-        border = QColor("#313244" if self._is_dark else "#cbd5e1")
-        painter.setPen(QPen(border, 1))
-        painter.setBrush(bg)
-        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 10, 10)
 
         cx = self.width() / 2
         cy = self.height() / 2

@@ -7,9 +7,11 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from core.composer_skills import substantive_composer_prompt
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
+from core.discourse_patterns import has_possessive_anaphor, is_deictic_prompt
 from core.discourse_prompt_rewrite import score_rewrite_anchor
-from core.discourse_query_rewrite import ResolvedUserQuery
+from core.discourse_query_rewrite import ResolvedUserQuery, resolve_ambiguous_user_query
 from core.discourse_referent_policy import fallback_referent
 from core.discourse_state import DiscourseState, is_deictic_topic_phrase
 from core.memory_filters import detect_hard_explicit_web_request
@@ -149,7 +151,7 @@ def prior_substantive_user_query(
     history: list[dict[str, Any]] | None,
     current_prompt: str,
 ) -> str | None:
-    """Last prior user turn that is not the current prompt or another meta web request."""
+    """Last prior user turn with real prompt text (skips meta-web and token-only sends)."""
     if not history:
         return None
     current = (current_prompt or "").strip()
@@ -161,8 +163,92 @@ def prior_substantive_user_query(
             continue
         if is_deictic_meta_web_request(content):
             continue
-        return content
+        substantive = substantive_composer_prompt(content)
+        if not substantive:
+            continue
+        return substantive
     return None
+
+
+def _expand_query_with_discourse_anchor(
+    query: str,
+    discourse: DiscourseState | None,
+    *,
+    context_prompt: str = "",
+) -> tuple[str, str]:
+    """Attach active referent/topic when the query omits the entity name."""
+    raw = (query or "").strip()
+    if not raw or discourse is None:
+        return raw, "none"
+    anchor = ""
+    rewrite_reason = "topic_expansion"
+    referent = (fallback_referent(discourse) or "").strip()
+    topic = (discourse.active_topic or "").strip()
+    aspect = (discourse.active_aspect or "").strip()
+    hint = (context_prompt or raw).strip()
+    if referent:
+        score = score_rewrite_anchor(referent, user_message=hint)
+        if score.usable:
+            anchor = referent
+            rewrite_reason = "referent_expansion"
+    elif topic and not is_deictic_topic_phrase(topic):
+        score = score_rewrite_anchor(topic, user_message=hint)
+        if score.usable:
+            anchor = topic
+    if anchor and anchor.lower() not in raw.lower():
+        expansion = raw
+        if aspect and aspect.lower() not in raw.lower():
+            expansion = f"{aspect}: {raw}"
+        return f"Regarding {anchor}: {expansion}", rewrite_reason
+    return raw, "none"
+
+
+def _discourse_at_prior_user_turn(
+    history: list[dict[str, Any]] | None,
+    prior_query: str,
+) -> DiscourseState | None:
+    """Rebuild discourse as it stood when the prior substantive user turn was asked."""
+    if not history:
+        return None
+    prior = (prior_query or "").strip()
+    if not prior:
+        return None
+    prior_substantive = substantive_composer_prompt(prior) or prior
+    prior_index = -1
+    for index, msg in enumerate(history):
+        if str(msg.get("role", "")).lower() != "user":
+            continue
+        content = str(msg.get("content") or "").strip()
+        if not content:
+            continue
+        if substantive_composer_prompt(content) == prior_substantive or content == prior:
+            prior_index = index
+            break
+    if prior_index <= 0:
+        return None
+    from core.discourse_state import update_discourse_state
+
+    return update_discourse_state(history[:prior_index], None, prior)
+
+
+def ground_prior_query_for_web_search(
+    prior: str,
+    discourse: DiscourseState | None,
+    follow_up: FollowUpClassification,
+) -> str:
+    """Resolve deictic prior user text into a standalone web search query."""
+    text = (prior or "").strip()
+    if not text or discourse is None:
+        return text
+    if follow_up.active or is_deictic_prompt(text) or has_possessive_anaphor(text):
+        rq = resolve_ambiguous_user_query(text, discourse, follow_up)
+        if rq.succeeded:
+            return rq.resolved.strip()
+    if is_deictic_prompt(text) or has_possessive_anaphor(text):
+        expanded, reason = _expand_query_with_discourse_anchor(text, discourse)
+        if reason != "none":
+            return expanded
+    return text
 
 
 def resolve_search_target(
@@ -179,7 +265,19 @@ def resolve_search_target(
     if is_deictic_meta_web_request(prompt):
         prior = prior_substantive_user_query(history, prompt)
         if prior:
-            return SearchTargetResult(prior, "meta_prior_turn")
+            search_discourse = discourse
+            replayed = _discourse_at_prior_user_turn(history, prior)
+            if replayed is not None and (
+                (replayed.active_referent or "").strip()
+                or (fallback_referent(replayed) or "").strip()
+            ):
+                search_discourse = replayed
+            grounded = ground_prior_query_for_web_search(
+                prior,
+                search_discourse,
+                follow_up,
+            )
+            return SearchTargetResult(grounded, "meta_prior_turn")
 
     if follow_up.confidence >= FOLLOW_UP_SUPPRESS_THRESHOLD:
         anchor = ""

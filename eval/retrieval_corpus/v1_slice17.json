@@ -1,0 +1,30 @@
+{
+  "version": "v1_slice17",
+  "description": "Slice 17 — U.S. and UK legislation (Congress.gov, GovInfo, legislation.gov.uk)",
+  "queries": [
+    {
+      "id": "s17_us_001",
+      "query": "American Privacy Rights Act federal bill Congress",
+      "service": "legal_knowledge",
+      "expect_adapters": ["congress_gov"],
+      "force_adapter": "congress_gov",
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "s17_us_002",
+      "query": "Privacy Act of 1974 federal statute GovInfo",
+      "service": "legal_knowledge",
+      "expect_adapters": ["govinfo"],
+      "force_adapter": "govinfo",
+      "require_warning": "not_legal_advice"
+    },
+    {
+      "id": "s17_uk_001",
+      "query": "Data Protection Act UK statute",
+      "service": "legal_knowledge",
+      "expect_adapters": ["legislation_uk"],
+      "force_adapter": "legislation_uk",
+      "require_warning": "not_legal_advice"
+    }
+  ]
+}

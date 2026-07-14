@@ -54,6 +54,35 @@ def _looks_like_ct2_whisper_dir(path: Path) -> bool:
     return path.is_dir() and (path / "model.bin").is_file()
 
 
+def iter_whisper_weight_dirs(stt_dir: Path | None = None) -> list[Path]:
+    """CTranslate2 Whisper dirs under the STT cache, including HF hub snapshots."""
+    root = stt_dir or Path(get_stt_models_dir())
+    if not root.is_dir():
+        return []
+
+    found: list[Path] = []
+    for child in sorted(root.iterdir(), key=lambda p: p.name.lower()):
+        if not child.is_dir():
+            continue
+        if _looks_like_ct2_whisper_dir(child):
+            found.append(child)
+            continue
+        if not _is_hf_hub_cache_dir(child.name):
+            continue
+        snapshots = child / "snapshots"
+        if not snapshots.is_dir():
+            continue
+        for snap in sorted(snapshots.iterdir(), key=lambda p: p.name.lower()):
+            if snap.is_dir() and _looks_like_ct2_whisper_dir(snap):
+                found.append(snap)
+    return found
+
+
+def bundled_whisper_present() -> bool:
+    """True when the bundled Whisper small weights exist under ``~/.qube/models/stt/``."""
+    return bool(iter_whisper_weight_dirs())
+
+
 def is_protected_stt_model(path: str) -> bool:
     return str(path or "").strip() == BUNDLED_STT_MODEL_ID
 
@@ -88,7 +117,7 @@ def resolve_active_stt_model_spec() -> str:
 def stt_model_available() -> bool:
     spec = resolve_active_stt_model_spec()
     if is_protected_stt_model(spec):
-        return True
+        return bundled_whisper_present()
     return bool(spec) and os.path.isdir(spec)
 
 

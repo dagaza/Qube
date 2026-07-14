@@ -1,0 +1,22 @@
+{
+  "resultList": {
+    "result": [
+      {
+        "title": "Semaglutide and cardiovascular outcomes in obesity",
+        "abstractText": "This trial evaluates semaglutide effects on major adverse cardiovascular events in adults with obesity.",
+        "doi": "10.1000/example.trial",
+        "pmid": "38123456",
+        "authorList": {
+          "author": [
+            {"fullName": "Jane Clinician"},
+            {"fullName": "John Cardio"}
+          ]
+        },
+        "journalTitle": "Lancet Demo",
+        "firstPublicationDate": "2024-01-15",
+        "source": "MED",
+        "isOpenAccess": "Y"
+      }
+    ]
+  }
+}

@@ -34,7 +34,7 @@ def _default_path() -> str:
 
 
 # Distance below which an extraction candidate is rejected.
-# Same metric as LanceDB (L2 over normalized Nomic v1.5 vectors), so a
+# Same metric as LanceDB (L2 over normalized fastembed vectors), so a
 # value of 0.20 corresponds to "very similar" but not "near-duplicate".
 DEFAULT_REJECT_DISTANCE = 0.20
 

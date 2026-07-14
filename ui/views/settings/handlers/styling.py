@@ -114,6 +114,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -133,6 +134,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -167,16 +169,27 @@ class StylingMixin:
             "companion_fullscreen_cb",
             "companion_wayland_cb",
             "companion_dock_cb",
+            "companion_verbal_enabled_cb",
+            "companion_cognition_v2_cb",
+            "companion_verbal_react_ingest_cb",
+            "companion_verbal_react_download_cb",
         ):
             cb = getattr(self, name, None)
             if cb is not None:
                 yield cb
         for choice_cbs in (
             getattr(self, "companion_persona_cbs", {}),
+            getattr(self, "companion_cube_style_cbs", {}),
             getattr(self, "companion_idle_color_cbs", {}),
+            getattr(self, "ui_language_cbs", {}),
         ):
             if isinstance(choice_cbs, dict):
                 yield from choice_cbs.values()
+        knowledge_cbs = getattr(self, "knowledge_source_checkboxes", None)
+        if isinstance(knowledge_cbs, dict):
+            for cb_list in knowledge_cbs.values():
+                if isinstance(cb_list, list):
+                    yield from cb_list
 
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
@@ -233,6 +246,8 @@ class StylingMixin:
             spinbox.setStyleSheet(style)
         if hasattr(self, "native_chat_format_selector"):
             self._apply_settings_menu_button_chevron_state(self.native_chat_format_selector)
+        if hasattr(self, "embedding_mode_selector"):
+            self._apply_settings_menu_button_chevron_state(self.embedding_mode_selector)
         if hasattr(self, "gpu_layers_slider"):
             handle = "#8b5cf6" if is_dark else "#7c3aed"
             slider_css = f"""
@@ -272,18 +287,6 @@ class StylingMixin:
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         if hasattr(self, 'mem_promotion_label'):
             self.mem_promotion_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
-        if hasattr(self, "local_llm_tour_hint_lbl"):
-            self.local_llm_tour_hint_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px;"
-            )
-        if hasattr(self, "settings_json_hint_lbl"):
-            self.settings_json_hint_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px;"
-            )
-        if hasattr(self, "settings_file_status_lbl"):
-            self.settings_file_status_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 12px;"
-            )
         
         # 🔑 Style the NLP Trigger input & list
         if hasattr(self, 'trigger_input'):
@@ -305,12 +308,14 @@ class StylingMixin:
             
         if hasattr(self, 'trigger_list'):
             self.trigger_list.setStyleSheet(f"""
-                QListWidget {{
+                #SettingsTriggerList {{
                     background-color: transparent;
                     border: 1px solid {border_color};
                     border-radius: 8px;
                 }}
-                QListWidget::item {{
+                #SettingsTriggerList::item {{
+                    padding: 0px;
+                    margin-bottom: 0px;
                     border-bottom: 1px solid {border_color};
                 }}
             """)

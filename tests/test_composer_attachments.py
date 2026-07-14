@@ -4,6 +4,8 @@ import unittest
 
 from core.composer_attachments import (
     ComposerAttachment,
+    composer_tool_tooltip,
+    composer_tools_for_palette,
     format_token,
     parse_attachments,
     resolve_attachment_routing,
@@ -79,6 +81,32 @@ class TestComposerAttachments(unittest.TestCase):
         patch = resolve_attachment_routing([att])
         assert patch is not None
         self.assertEqual(patch["route"], "rag")
+
+    def test_resolve_tool_research(self):
+        att = ComposerAttachment(kind="tool", id="research", label="Deep research")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "deep_research")
+        self.assertEqual(patch["strategy"], "attachment_tool_research")
+
+    def test_palette_hides_science_alias_by_default(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("")]
+        self.assertIn("evidence", ids)
+        self.assertNotIn("science", ids)
+
+    def test_palette_shows_science_when_id_matches(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("science")]
+        self.assertEqual(ids, ["science"])
+
+    def test_palette_scientific_shows_evidence_not_science(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("scientific")]
+        self.assertEqual(ids, ["evidence"])
+
+    def test_composer_tool_tooltip_includes_label_and_token(self):
+        tool = next(t for t in composer_tools_for_palette("") if t["id"] == "evidence")
+        tip = composer_tool_tooltip(tool)
+        self.assertIn("Scientific literature", tip)
+        self.assertIn("@[tool:evidence]", tip)
 
 
 if __name__ == "__main__":

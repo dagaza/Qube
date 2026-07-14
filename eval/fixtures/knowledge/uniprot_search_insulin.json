@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "primaryAccession": "P01308",
+      "uniProtkbId": "INS_HUMAN",
+      "proteinDescription": {
+        "recommendedName": {
+          "fullName": {
+            "value": "Insulin"
+          }
+        }
+      },
+      "genes": [
+        {
+          "geneName": {
+            "value": "INS"
+          }
+        }
+      ],
+      "organism": {
+        "scientificName": "Homo sapiens"
+      },
+      "comments": [
+        {
+          "commentType": "FUNCTION",
+          "texts": [
+            {
+              "value": "Insulin decreases blood glucose concentration by stimulating glucose uptake and inhibiting gluconeogenesis."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -908,7 +908,7 @@
     {
       "id": "self_005",
       "intent": "self_expression",
-      "text": "I've spent some time appreciating the color scheme.",
+      "text": "I've spent some time appreciating the colour scheme.",
       "voice": "cozy",
       "mood": [
         "playful"
@@ -3446,7 +3446,7 @@
     {
       "id": "ack_007",
       "intent": "acknowledge_effort",
-      "text": "The shelf has a new neighbor.",
+      "text": "The shelf has a new neighbour.",
       "voice": "playful",
       "mood": [
         "warm"
@@ -3690,7 +3690,7 @@
     {
       "id": "dp_001",
       "intent": "atmosphere",
-      "text": "The day still seems to be getting organized.",
+      "text": "The day still seems to be getting organised.",
       "voice": "observational",
       "mood": [
         "calm",

@@ -102,17 +102,24 @@ def prefer_gguf_jinja_chat_format(llama: Any) -> None:
         handlers = getattr(llama, "_chat_handlers", None) or {}
         ident = _model_identity_text(llama)
         is_nvidia_family = ("nemotron" in ident) or ("nvidia" in ident)
-        if (
-            is_nvidia_family
-            and fmt == "llama-2"
-            and "chatml" in handlers
-        ):
-            llama.chat_format = "chatml"
-            logger.info(
-                "[Native] chat_format adjusted: llama-2 -> chatml "
-                "(NVIDIA/Nemotron auto-detect)"
-            )
-            return
+        if is_nvidia_family and fmt == "llama-2":
+            if (
+                "tokenizer.chat_template" in md
+                and "chat_template.default" in handlers
+            ):
+                llama.chat_format = "chat_template.default"
+                logger.info(
+                    "[Native] chat_format adjusted: llama-2 -> chat_template.default "
+                    "(NVIDIA/Nemotron GGUF Jinja template)"
+                )
+                return
+            if "chatml" in handlers:
+                llama.chat_format = "chatml"
+                logger.info(
+                    "[Native] chat_format adjusted: llama-2 -> chatml "
+                    "(NVIDIA/Nemotron auto-detect, no embedded template)"
+                )
+                return
         if (
             fmt == "llama-2"
             and "tokenizer.chat_template" in md

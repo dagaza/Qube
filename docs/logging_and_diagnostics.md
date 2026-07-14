@@ -8,13 +8,16 @@ This document is the canonical reference for **where logs go**, **how to turn ob
 
 | Destination | Logger name | Default path | Terminal? | Always created? |
 |-------------|-------------|--------------|-----------|-----------------|
+| **Application log** | `Qube.*` (except dedicated debug loggers) | `~/.qube/logs/qube.log` | Yes | Yes (INFO default; disable with `QUBE_APP_LOG=0`) |
 | **LLM debug file** | `Qube.NativeLLM.Debug` | `~/.qube/logs/llm_debug.log` | No (file only) | Yes (sink attached at boot) |
 | **Routing debug file** | `Qube.RoutingDebug` | `~/.qube/logs/routing_debug.log` | No (file only) | Yes (sink attached at boot) |
-| **General app log** | `Qube.*` (many) | stdout / terminal | Yes | Yes (`logging.basicConfig` in `main.py`) |
+| **Skills debug file** | `Qube.SkillsDebug` | `~/.qube/logs/skills_debug.log` | No (file only) | Yes (sink attached at boot) |
+
+**Note:** The terminal still receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`). The **application log file** records `Qube.*` at **INFO** by default so post-mortems stay readable without duplicating LLM/routing/skills debug files.
 
 **Important:** LLM and routing debug log files live under **`~/.qube/logs/`** (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/` — a stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app. Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.
 
-Rotating file sinks: **10 MB** per file, **5** backups (`core/llm_debug_sink.py`, `core/routing_debug_sink.py`).
+Rotating file sinks: **10 MB** per file, **5** backups (`core/app_log_sink.py`, `core/llm_debug_sink.py`, `core/routing_debug_sink.py`).
 
 For the **canonical LLM trace debugging stack** (Truth Diff, golden traces, fingerprinting, trace diff UI), see **[canonical_llm_trace_debugging.md](canonical_llm_trace_debugging.md)**.
 
@@ -32,8 +35,10 @@ os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
 Also at startup:
 
 - `logging.basicConfig(level=logging.DEBUG, …)` — most `Qube.*` loggers print to the **terminal**
+- `init_app_logging()` — routes general `Qube.*` → `~/.qube/logs/qube.log` (INFO default; terminal unchanged)
 - `init_llm_debug_logging()` — routes `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log` only
 - `init_routing_debug_logging()` — routes `Qube.RoutingDebug` → `~/.qube/logs/routing_debug.log` only
+- `init_skills_debug_logging()` — routes `Qube.SkillsDebug` → `~/.qube/logs/skills_debug.log` only
 
 To **disable** hardcoded flags, remove or comment the `os.environ[…]` lines in `main.py`, or override in the shell **before** launch (later assignment in `main.py` wins if it runs first — edit `main.py` for a permanent off).
 
@@ -54,6 +59,16 @@ No other CLI logging flags exist today. All other diagnostics use environment va
 ## Developer CLI tools
 
 Run from the repo root:
+
+### View application log
+
+```bash
+tail -f ~/.qube/logs/qube.log
+grep -i "voice capture" ~/.qube/logs/qube.log
+grep -i "Manual voice" ~/.qube/logs/qube.log
+```
+
+Also available in **Settings → Advanced → Diagnostic logs** (“Application log”).
 
 ### View LLM debug log
 
@@ -117,6 +132,16 @@ The Routing Debug **UI** and **file log** are independent: the UI works without 
 ## Environment variables (complete list)
 
 Truthy values are usually: `1`, `true`, `yes`, `on` (case-insensitive unless noted).
+
+### General application log
+
+| Variable | Default | Log destination | Purpose |
+|----------|---------|-----------------|---------|
+| `QUBE_APP_LOG` | **`1` (on)** | `~/.qube/logs/qube.log` | Master switch for the general app log file |
+| `QUBE_APP_LOG_LEVEL` | `INFO` | same | File level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `QUBE_APP_LOG_FILE` | (unset) | custom path | Override log file location |
+
+Logger scope: all `Qube.*` except `Qube.NativeLLM.Debug`, `Qube.RoutingDebug`, and `Qube.SkillsDebug` (those stay in their dedicated files).
 
 ### Native LLM / chat inference
 
@@ -387,6 +412,7 @@ Not log files, but relevant when debugging inference:
 | Module | Role |
 |--------|------|
 | `core/logging_bootstrap.py` | Attaches file sinks at boot |
+| `core/app_log_sink.py` | `~/.qube/logs/qube.log` rotating handler (general `Qube.*`) |
 | `core/llm_debug_sink.py` | `~/.qube/logs/llm_debug.log` rotating handler |
 | `core/routing_debug_sink.py` | `~/.qube/logs/routing_debug.log` rotating handler |
 | `core/native_llm_debug.py` | Prompt reconstruction logging |
@@ -418,4 +444,4 @@ Not log files, but relevant when debugging inference:
 
 ---
 
-*Last updated to reflect `QUBE_LOG_RAW_COMPLETION` hardcoded in `main.py` and the completion output trace module.*
+*Last updated to reflect the general application log (`~/.qube/logs/qube.log`) and `QUBE_APP_LOG*` env vars.*

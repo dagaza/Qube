@@ -1,0 +1,16 @@
+{
+  "query": "central bank inflation targeting Taylor rule empirical",
+  "results": [
+    {
+      "title": "Inflation Targeting and the Taylor Rule: Empirical Estimates from Panel Data",
+      "abstract": "We estimate Taylor-rule reaction functions for a panel of inflation-targeting central banks and evaluate how parameter estimates shift across high- and low-inflation regimes.",
+      "authors": ["Daniel Cho", "Maria Lund"],
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=example12345",
+      "ssrn_id": "example12345",
+      "series": "SSRN Working Paper",
+      "year": "2022",
+      "preprint": true,
+      "peer_reviewed": false
+    }
+  ]
+}

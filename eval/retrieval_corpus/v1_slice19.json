@@ -1,0 +1,22 @@
+{
+  "version": "v1_slice19",
+  "description": "Slice 19 — query-type routing (guideline and statistics intents)",
+  "queries": [
+    {
+      "id": "s19_guideline_001",
+      "query": "How is hypertension treated in adults clinical practice guideline",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["nice"],
+      "force_adapter": "nice"
+    },
+    {
+      "id": "s19_stats_001",
+      "query": "What is the current US unemployment rate official statistics",
+      "service": "scientific_evidence",
+      "discipline": "economics",
+      "expect_adapters": ["bls"],
+      "force_adapter": "bls"
+    }
+  ]
+}

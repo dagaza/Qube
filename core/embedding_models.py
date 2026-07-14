@@ -1,31 +1,27 @@
 """
-Embedding model resolution — RAG / memory vector GGUF selection.
+Optional GGUF embedding model paths for advanced overrides.
 
-The bundled Nomic Embed v1.5 default lives under ``~/.qube/models/embedding/``
-and is protected (not deletable). Optional swaps are additional
-``models/embedding/*.gguf`` files placed by the user.
+Primary embedding selection is mode-based (Fast / Balanced / Power) via
+``core.embedding_modes``. This module only resolves custom ``.gguf`` files
+placed under ``~/.qube/models/embedding/``.
 """
 from __future__ import annotations
 
 import logging
 import os
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.app_settings import (
-    get_embedding_model_path,
-    is_secondary_gguf_shard,
-)
-from core.paths import install_root, models_root
+from core.app_settings import get_embedding_model_path, is_secondary_gguf_shard
+from core.embedding_modes import DEFAULT_MODE, get_mode_spec
+from core.paths import models_root
 
 logger = logging.getLogger("Qube.EmbeddingModels")
 
-BUNDLED_DEFAULT_FILENAME = "nomic-embed-text-v1.5.Q4_K_M.gguf"
-BUNDLED_DEFAULT_LABEL = "Nomic Embed v1.5 (bundled default)"
-BUNDLED_DEFAULT_ID = "nomic-embed-text-v1.5"
 EMBEDDING_SUBDIR = "embedding"
-EXPECTED_VECTOR_DIM = 768
+
+# Default vector dimension when no embedder is loaded (Balanced / jina).
+EXPECTED_VECTOR_DIM = get_mode_spec(DEFAULT_MODE).vector_dim
 
 
 @dataclass(frozen=True)
@@ -42,10 +38,6 @@ def get_embedding_models_dir() -> str:
     return str(path)
 
 
-def bundled_default_path() -> str:
-    return str(Path(get_embedding_models_dir()) / BUNDLED_DEFAULT_FILENAME)
-
-
 def _normalize_path(path: str) -> str:
     if not path:
         return ""
@@ -55,52 +47,6 @@ def _normalize_path(path: str) -> str:
         return os.path.abspath(path)
 
 
-def _legacy_embedding_paths() -> list[Path]:
-    return [
-        install_root() / "models" / BUNDLED_DEFAULT_FILENAME,
-        Path(os.getcwd()) / "models" / BUNDLED_DEFAULT_FILENAME,
-        models_root() / BUNDLED_DEFAULT_FILENAME,
-    ]
-
-
-def migrate_legacy_embedding_layout() -> bool:
-    """Copy the bundled default from legacy locations into ``models/embedding/``.
-
-    Returns True when a file was copied into the new layout.
-    """
-    target = Path(bundled_default_path())
-    if target.is_file():
-        return False
-    target.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        target_resolved = target.resolve()
-    except OSError:
-        target_resolved = target
-
-    for legacy in _legacy_embedding_paths():
-        if not legacy.is_file():
-            continue
-        try:
-            if legacy.resolve() == target_resolved:
-                return False
-        except OSError:
-            if os.path.abspath(str(legacy)) == os.path.abspath(str(target)):
-                return False
-        shutil.copy2(legacy, target)
-        logger.info("[Embedding] Migrated bundled model to %s", target)
-        return True
-    return False
-
-
-def is_protected_embedding_model(path: str) -> bool:
-    if not path:
-        return False
-    try:
-        return _normalize_path(path) == _normalize_path(bundled_default_path())
-    except OSError:
-        return os.path.abspath(path) == os.path.abspath(bundled_default_path())
-
-
 def _path_allowed_for_embedding(path: str) -> bool:
     if not path or not path.lower().endswith(".gguf"):
         return False
@@ -108,28 +54,140 @@ def _path_allowed_for_embedding(path: str) -> bool:
         return False
     if is_secondary_gguf_shard(path):
         return False
-    if is_protected_embedding_model(path):
-        return True
-
     norm = _normalize_path(path)
     embedding_root = _normalize_path(get_embedding_models_dir())
     return norm.startswith(embedding_root + os.sep) or norm == embedding_root
 
 
-def resolve_active_embedding_path() -> str:
-    """Resolved GGUF path for the embedder (override or bundled default)."""
+def resolve_active_gguf_path() -> str:
+    """Return a validated GGUF override path, or empty when using mode presets."""
     override = (get_embedding_model_path() or "").strip()
     if override and _path_allowed_for_embedding(override):
         return _normalize_path(override)
-    default = bundled_default_path()
-    if os.path.isfile(default):
-        return _normalize_path(default)
-    return default
+    return ""
+
+
+_preset_available_cache: dict[str, bool] = {}
+
+
+def clear_embedding_availability_cache() -> None:
+    _preset_available_cache.clear()
+
+
+def mark_embedding_preset_available(mode_id: str | None = None) -> None:
+    from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import normalize_mode_id
+
+    if resolve_active_gguf_path():
+        return
+    key = normalize_mode_id(mode_id or get_embedding_mode())
+    if not embedding_preset_cached_on_disk(key):
+        return
+    _preset_available_cache[key] = True
+
+
+def probe_embedding_preset_available(
+    *,
+    mode_id: str | None = None,
+    force: bool = False,
+) -> bool:
+    """Verify the active Fast/Balanced/Power preset can load (may download on first use)."""
+    from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import normalize_mode_id
+    from core.paths import configure_user_model_paths
+
+    configure_user_model_paths()
+
+    if resolve_active_gguf_path():
+        return True
+
+    mode = normalize_mode_id(mode_id or get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        mark_embedding_preset_available(mode)
+        return True
+    if not force and _preset_available_cache.get(mode, False):
+        return True
+
+    try:
+        from rag.embedder import EmbeddingModel
+
+        model = EmbeddingModel(mode_id=mode)
+        if model.vector_dim <= 0:
+            _preset_available_cache[mode] = False
+            return False
+        if not embedding_preset_cached_on_disk(mode):
+            _preset_available_cache[mode] = False
+            return False
+        mark_embedding_preset_available(mode)
+        backend = model._backend
+        if backend is not None and hasattr(backend, "unload"):
+            try:
+                backend.unload()
+            except Exception:
+                logger.debug("Probe backend unload failed", exc_info=True)
+        return True
+    except Exception as exc:
+        logger.debug("Embedding preset probe failed for mode=%s: %s", mode, exc)
+        _preset_available_cache[mode] = False
+        return False
+
+
+def gguf_override_available() -> bool:
+    """True when a valid custom GGUF override is configured (advanced path)."""
+    return bool(resolve_active_gguf_path())
+
+
+def preset_embedder_ready(
+    *,
+    mode_id: str | None = None,
+    probe: bool = False,
+) -> bool:
+    """True when the active Fast/Balanced/Power preset is cached or loadable."""
+    if gguf_override_available():
+        return False
+    from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import normalize_mode_id
+
+    mode = normalize_mode_id(mode_id or get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        return True
+    if probe:
+        return probe_embedding_preset_available(mode_id=mode, force=True)
+    return False
+
+
+def all_presets_embedder_ready(probe: bool = False) -> bool:
+    """True when every Fast/Balanced/Power preset is cached or loadable."""
+    if gguf_override_available():
+        return True
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import MODE_IDS
+
+    for mode in MODE_IDS:
+        if embedding_preset_cached_on_disk(mode):
+            continue
+        if probe:
+            if not probe_embedding_preset_available(mode_id=mode, force=True):
+                return False
+        else:
+            return False
+    return True
 
 
 def embedding_model_available() -> bool:
-    path = resolve_active_embedding_path()
-    return bool(path) and os.path.isfile(path)
+    if gguf_override_available():
+        return True
+    from core.app_settings import get_embedding_mode
+    from core.bootstrap_search_models import embedding_preset_cached_on_disk
+    from core.embedding_modes import normalize_mode_id
+
+    mode = normalize_mode_id(get_embedding_mode())
+    if embedding_preset_cached_on_disk(mode):
+        return True
+    return probe_embedding_preset_available(mode_id=mode, force=True)
 
 
 def validate_embedding_model_path(path: str) -> tuple[bool, str]:
@@ -150,7 +208,6 @@ def validate_embedding_model_path(path: str) -> tuple[bool, str]:
 
 
 def migrate_stale_embedding_override() -> bool:
-    """Clear an invalid persisted embedding override. Returns True when cleared."""
     override = (get_embedding_model_path() or "").strip()
     if not override:
         return False
@@ -160,7 +217,7 @@ def migrate_stale_embedding_override() -> bool:
     from core.app_settings import set_embedding_model_path
 
     logger.info(
-        "[Embedding] Clearing stale model override (no longer valid): %s",
+        "[Embedding] Clearing stale GGUF override (no longer valid): %s",
         override,
     )
     set_embedding_model_path("")
@@ -169,42 +226,52 @@ def migrate_stale_embedding_override() -> bool:
 
 def list_selectable_embedding_models() -> list[EmbeddingModelEntry]:
     entries: list[EmbeddingModelEntry] = []
-    bundled = bundled_default_path()
-    entries.append(
-        EmbeddingModelEntry(
-            path=_normalize_path(bundled) if os.path.isfile(bundled) else bundled,
-            display_name=BUNDLED_DEFAULT_LABEL,
-            is_bundled_default=True,
-            is_deletable=False,
-        )
-    )
-
-    seen: set[str] = {_normalize_path(bundled)}
     embedding_dir = Path(get_embedding_models_dir())
-    if embedding_dir.is_dir():
-        for p in sorted(embedding_dir.glob("*.gguf"), key=lambda x: x.name.lower()):
-            if is_secondary_gguf_shard(str(p)):
-                continue
-            resolved = _normalize_path(str(p.resolve()))
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            entries.append(
-                EmbeddingModelEntry(
-                    path=resolved,
-                    display_name=p.name,
-                    is_bundled_default=False,
-                    is_deletable=True,
-                )
+    if not embedding_dir.is_dir():
+        return entries
+    for p in sorted(embedding_dir.glob("*.gguf"), key=lambda x: x.name.lower()):
+        if is_secondary_gguf_shard(str(p)):
+            continue
+        resolved = _normalize_path(str(p.resolve()))
+        entries.append(
+            EmbeddingModelEntry(
+                path=resolved,
+                display_name=p.name,
+                is_bundled_default=False,
+                is_deletable=True,
             )
-
+        )
     return entries
 
 
 def active_embedding_basename() -> str:
-    path = resolve_active_embedding_path()
+    path = resolve_active_gguf_path()
     return os.path.basename(path) if path else ""
 
 
 def is_active_embedding_bundled() -> bool:
-    return is_protected_embedding_model(resolve_active_embedding_path())
+    return False
+
+
+def is_protected_embedding_model(path: str) -> bool:
+    return False
+
+
+def migrate_legacy_embedding_layout() -> bool:
+    """No-op: legacy bundled embedding layout removed."""
+    return False
+
+
+def resolve_active_embedding_path() -> str:
+    """Back-compat alias for GGUF override resolution."""
+    return resolve_active_gguf_path()
+
+
+def bundled_default_path() -> str:
+    return ""
+
+
+# Back-compat constants for tests / callers
+BUNDLED_DEFAULT_FILENAME = ""
+BUNDLED_DEFAULT_LABEL = ""
+BUNDLED_DEFAULT_ID = ""

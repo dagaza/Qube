@@ -15,9 +15,67 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.components.brand_buttons import apply_brand_caution
+from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
+SETTINGS_SELECTOR_LABELS_PROP = "settings_selector_labels"
+
+
+def fit_settings_selector_width(selector: SelectorButton, *labels: str) -> None:
+    """Size a settings ``SelectorButton`` to its widest label without eliding.
+
+    Uses the same ``elidedText`` probe as ``SelectorButton.paintEvent`` so width
+    matches what is actually painted. Call again after ``setText`` or once the
+    widget is shown if fonts were not final at construction time.
+    """
+    label_list = [label for label in labels if label]
+    if not label_list:
+        label_list = [selector.text()] if selector.text() else [""]
+
+    inset = SelectorButton.PADDING_LEFT + SelectorButton.PADDING_RIGHT
+    fm = selector.fontMetrics()
+
+    def width_for(label: str) -> int:
+        if not label:
+            return inset + 40
+        width = fm.horizontalAdvance(label) + inset
+        limit = width + 48
+        while width <= limit:
+            if (
+                fm.elidedText(label, Qt.TextElideMode.ElideRight, width - inset)
+                == label
+            ):
+                return width
+            width += 1
+        return limit
+
+    selector.setFixedWidth(max(width_for(label) for label in label_list))
+    policy = selector.sizePolicy()
+    policy.setHorizontalPolicy(QSizePolicy.Policy.Fixed)
+    selector.setSizePolicy(policy)
+
+
+def register_settings_selector_width(selector: SelectorButton, *labels: str) -> None:
+    """Remember menu labels and size the button to the widest one."""
+    selector.setProperty(SETTINGS_SELECTOR_LABELS_PROP, list(labels))
+    fit_settings_selector_width(selector, *labels)
+
+
+def refit_settings_selector_width(selector: SelectorButton) -> None:
+    """Recompute width from registered menu labels (or current text)."""
+    stored = selector.property(SETTINGS_SELECTOR_LABELS_PROP)
+    if isinstance(stored, list) and stored:
+        fit_settings_selector_width(selector, *stored)
+    elif selector.text():
+        fit_settings_selector_width(selector, selector.text())
+
+
+def schedule_settings_selector_refit(selector: SelectorButton) -> None:
+    """Refit after the event loop runs so app fonts/layout are applied."""
+    from PyQt6.QtCore import QTimer
+
+    QTimer.singleShot(0, lambda s=selector: refit_settings_selector_width(s))
 
 
 def make_settings_page_action_button(
@@ -119,6 +177,42 @@ def add_section_divider_to_form(form: QFormLayout, *, is_dark: bool = True) -> S
     divider = SettingsSectionDivider(is_dark=is_dark)
     form.addRow(divider)
     return divider
+
+
+def add_section_divider_to_layout(
+    layout: QVBoxLayout, *, is_dark: bool = True
+) -> SettingsSectionDivider:
+    """Full-width horizontal rule separating major settings blocks."""
+    divider = SettingsSectionDivider(is_dark=is_dark)
+    layout.addWidget(divider)
+    return divider
+
+
+def make_settings_hint(text: str) -> QLabel:
+    """Muted body copy for settings sections (avoids bold #SettingsFormContainer QLabel)."""
+    hint = QLabel(text)
+    hint.setWordWrap(True)
+    hint.setObjectName("SettingsHint")
+    return hint
+
+
+def make_settings_action_status_label() -> QLabel:
+    """Transient feedback line below a settings action button."""
+    lbl = QLabel("")
+    lbl.setObjectName("SettingsActionStatus")
+    lbl.setWordWrap(True)
+    return lbl
+
+
+def make_settings_action_row(button: QPushButton) -> QWidget:
+    """Left-aligned action button with trailing stretch."""
+    row = QWidget()
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(0)
+    row_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addStretch(1)
+    return row
 
 
 def wrap_subsection(content: QWidget, *, anchor: str | None = None) -> QWidget:

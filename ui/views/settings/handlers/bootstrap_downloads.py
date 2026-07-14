@@ -1,0 +1,432 @@
+"""Settings handlers for downloading missing bootstrap base models (#47–#49)."""
+
+from __future__ import annotations
+
+import logging
+
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+
+from core.app_settings import set_sidecar_enabled, set_sidecar_model_path
+from core.bootstrap_download import resolve_model_destination
+from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
+from core.bootstrap_missing_models import (
+    cognition_model_present,
+    stt_model_available,
+    tts_model_available,
+)
+from core.embedding_models import (
+    all_presets_embedder_ready,
+    gguf_override_available,
+    preset_embedder_ready,
+    probe_embedding_preset_available,
+)
+from ui.components.brand_buttons import apply_brand_primary
+from ui.components.prestige_dialog import PrestigeDialog
+
+logger = logging.getLogger("Qube.UI.Settings.BootstrapDownloads")
+
+
+class EmbeddingAllPresetsWorker(QThread):
+    """Download and load every Fast/Balanced/Power preset (offline users)."""
+
+    finished_ok = pyqtSignal()
+    failed = pyqtSignal(str)
+
+    def run(self) -> None:
+        from core.embedding_modes import MODE_IDS
+
+        try:
+            for mode in MODE_IDS:
+                if not probe_embedding_preset_available(mode_id=mode, force=True):
+                    self.failed.emit(
+                        f"Could not prepare the {mode} search preset. "
+                        "Check your internet connection and try again."
+                    )
+                    return
+            self.finished_ok.emit()
+        except Exception as exc:
+            logger.exception("All-presets embedding warmup failed")
+            self.failed.emit(str(exc))
+
+
+class EmbeddingWarmupWorker(QThread):
+    """Load a Fast/Balanced/Power preset (may download via fastembed)."""
+
+    finished_ok = pyqtSignal()
+    failed = pyqtSignal(str)
+
+    def __init__(self, mode_id: str | None = None, parent=None) -> None:
+        super().__init__(parent)
+        self._mode_id = mode_id
+
+    def run(self) -> None:
+        try:
+            if probe_embedding_preset_available(mode_id=self._mode_id, force=True):
+                self.finished_ok.emit()
+            else:
+                from core.bootstrap_search_models import format_search_preset_download_failure
+                from core.embedding_modes import normalize_mode_id
+                from core.app_settings import get_embedding_mode
+
+                mode = normalize_mode_id(self._mode_id or get_embedding_mode())
+                self.failed.emit(
+                    format_search_preset_download_failure(mode, during_mode_switch=False)
+                )
+        except Exception as exc:
+            logger.exception("Embedding warmup failed")
+            self.failed.emit(str(exc))
+
+
+def make_bootstrap_download_row(
+    host,
+    *,
+    row_attr: str,
+    label_attr: str,
+    button_attr: str,
+    handler_name: str,
+    label_text: str,
+    button_text: str,
+) -> QWidget:
+    row = QWidget()
+    row.setVisible(False)
+    layout = QVBoxLayout(row)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(6)
+    label = QLabel(label_text)
+    label.setWordWrap(True)
+    label.setStyleSheet("color: #f59e0b; font-size: 12px;")
+    btn = QPushButton(button_text)
+    apply_brand_primary(btn)
+    btn.clicked.connect(getattr(host, handler_name))
+    layout.addWidget(label)
+    layout.addWidget(btn)
+    setattr(host, row_attr, row)
+    setattr(host, label_attr, label)
+    setattr(host, button_attr, btn)
+    return row
+
+
+class BootstrapDownloadsHandlersMixin:
+    """Download missing bootstrap models from Settings subsections."""
+
+    def _download_bootstrap_stt(self) -> None:
+        self._start_bootstrap_model_download(BootstrapModelId.WHISPER_SMALL)
+
+    def _download_bootstrap_tts(self) -> None:
+        self._start_bootstrap_model_download(BootstrapModelId.KOKORO_TTS)
+
+    def _warm_embedding_preset(self) -> None:
+        if getattr(self, "_embedding_warmup_worker", None) is not None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Search models busy",
+                "Search model preparation is already in progress.",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        from core.app_settings import get_embedding_mode
+        from core.bootstrap_search_models import embedding_preset_cached_on_disk
+        from core.embedding_modes import get_mode_spec
+        from core.paths import search_models_cache_dir
+
+        mode = get_embedding_mode()
+        if gguf_override_available() or embedding_preset_cached_on_disk(mode):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            spec = get_mode_spec(mode)
+            cache_hint = (
+                f"Cached under {search_models_cache_dir()}."
+                if embedding_preset_cached_on_disk(mode)
+                else "Using your custom GGUF embedding override."
+            )
+            PrestigeDialog(
+                self.window(),
+                "Search models ready",
+                f"The {spec.label} preset ({spec.fastembed_model}) is ready.\n\n{cache_hint}",
+                is_dark=is_dark,
+            ).exec()
+            self._sync_bootstrap_download_visibility()
+            return
+
+        worker = EmbeddingWarmupWorker()
+        self._embedding_warmup_worker = worker
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._embedding_warmup_dialog = PrestigeDialog(
+            self.window(),
+            "Preparing search models",
+            "Downloading and loading the active search preset…",
+            is_dark=is_dark,
+            show_cancel=False,
+        )
+        self._embedding_warmup_dialog.show()
+
+        def _on_ok() -> None:
+            try:
+                dlg = getattr(self, "_embedding_warmup_dialog", None)
+                if dlg is not None:
+                    dlg.accept()
+            except Exception:
+                pass
+            self._embedding_warmup_worker = None
+            if hasattr(self, "_reload_embedder_from_settings"):
+                self._reload_embedder_from_settings()
+            if hasattr(self, "embedding_model_changed"):
+                self.embedding_model_changed.emit()
+            self._sync_active_embedding_label()
+            self._sync_embedding_mode_selector()
+            self._sync_bootstrap_download_visibility()
+            PrestigeDialog(
+                self.window(),
+                "Search models ready",
+                (
+                    f"The {get_mode_spec(get_embedding_mode()).label} preset is downloaded "
+                    f"and ready.\n\nONNX files are stored under {search_models_cache_dir()} "
+                    "(not in the embedding GGUF folder)."
+                ),
+                is_dark=is_dark,
+            ).exec()
+
+        def _on_failed(err: str) -> None:
+            try:
+                dlg = getattr(self, "_embedding_warmup_dialog", None)
+                if dlg is not None:
+                    dlg.reject()
+            except Exception:
+                pass
+            self._embedding_warmup_worker = None
+            PrestigeDialog(
+                self.window(),
+                "Search models not ready",
+                str(err or "Could not prepare search models."),
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
+
+    def _download_all_search_presets(self) -> None:
+        if getattr(self, "_embedding_all_presets_worker", None) is not None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Search models busy",
+                "Search model preparation is already in progress.",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        if gguf_override_available():
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Custom embedding active",
+                "Clear the custom GGUF override to use Fast/Balanced/Power presets.",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        if all_presets_embedder_ready():
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "All search presets ready",
+                "Fast, Balanced, and Power presets are loaded and ready for offline use.",
+                is_dark=is_dark,
+            ).exec()
+            self._sync_bootstrap_download_visibility()
+            return
+
+        worker = EmbeddingAllPresetsWorker()
+        self._embedding_all_presets_worker = worker
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._embedding_all_presets_dialog = PrestigeDialog(
+            self.window(),
+            "Downloading search presets",
+            "Downloading Fast, Balanced, and Power presets…",
+            is_dark=is_dark,
+            show_cancel=False,
+        )
+        self._embedding_all_presets_dialog.show()
+
+        def _on_ok() -> None:
+            try:
+                dlg = getattr(self, "_embedding_all_presets_dialog", None)
+                if dlg is not None:
+                    dlg.accept()
+            except Exception:
+                pass
+            self._embedding_all_presets_worker = None
+            if hasattr(self, "_reload_embedder_from_settings"):
+                self._reload_embedder_from_settings()
+            if hasattr(self, "embedding_model_changed"):
+                self.embedding_model_changed.emit()
+            self._sync_active_embedding_label()
+            self._sync_embedding_mode_selector()
+            self._sync_bootstrap_download_visibility()
+            PrestigeDialog(
+                self.window(),
+                "All search presets ready",
+                "Fast, Balanced, and Power presets are loaded for offline use.",
+                is_dark=is_dark,
+            ).exec()
+
+        def _on_failed(err: str) -> None:
+            try:
+                dlg = getattr(self, "_embedding_all_presets_dialog", None)
+                if dlg is not None:
+                    dlg.reject()
+            except Exception:
+                pass
+            self._embedding_all_presets_worker = None
+            PrestigeDialog(
+                self.window(),
+                "Search presets not ready",
+                str(err or "Could not prepare all search presets."),
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
+
+    def _download_bootstrap_cognition(self) -> None:
+        self._start_bootstrap_model_download(BootstrapModelId.SIDECAR_QWEN17)
+
+    def _start_bootstrap_model_download(self, model_id: BootstrapModelId) -> None:
+        if getattr(self, "_bootstrap_model_download_worker", None) is not None:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Download busy",
+                "A model download is already in progress.",
+                is_dark=is_dark,
+            ).exec()
+            return
+
+        from workers.bootstrap_model_download_worker import BootstrapModelDownloadWorker
+
+        spec = BOOTSTRAP_MODELS[model_id]
+        worker = BootstrapModelDownloadWorker(model_id)
+        self._bootstrap_model_download_worker = worker
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._bootstrap_download_dialog = PrestigeDialog(
+            self.window(),
+            f"Downloading {spec.label}",
+            "Working… this may take a while on first download.",
+            is_dark=is_dark,
+            show_cancel=False,
+        )
+        self._bootstrap_download_dialog.show()
+
+        def _apply_post_download() -> None:
+            if model_id == BootstrapModelId.WHISPER_SMALL:
+                if hasattr(self, "_reload_stt_from_settings"):
+                    self._reload_stt_from_settings()
+                if hasattr(self, "stt_model_changed"):
+                    self.stt_model_changed.emit()
+                self._sync_active_stt_label()
+                self._refresh_stt_model_list()
+            elif model_id == BootstrapModelId.KOKORO_TTS:
+                if hasattr(self, "_reload_tts_from_settings"):
+                    self._reload_tts_from_settings()
+                if hasattr(self, "tts_model_changed"):
+                    self.tts_model_changed.emit()
+                self._sync_active_tts_label()
+                self._refresh_tts_model_list()
+            elif model_id in {BootstrapModelId.SIDECAR_QWEN17, BootstrapModelId.SIDECAR_QWEN05}:
+                dest = resolve_model_destination(model_id)
+                if dest is not None and dest.is_file():
+                    set_sidecar_enabled(True)
+                    set_sidecar_model_path(str(dest))
+                if hasattr(self, "_reload_sidecar_from_settings"):
+                    self._reload_sidecar_from_settings()
+                if hasattr(self, "cognition_model_changed"):
+                    self.cognition_model_changed.emit()
+                self._sync_active_cognition_label()
+                self._refresh_cognition_gguf_list()
+            elif model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
+                from core.bootstrap_search_models import embedding_preset_cached_on_disk
+                from core.embedding_models import mark_embedding_preset_available
+                from core.embedding_modes import DEFAULT_MODE
+
+                if embedding_preset_cached_on_disk(DEFAULT_MODE):
+                    mark_embedding_preset_available(DEFAULT_MODE)
+                if hasattr(self, "_reload_embedder_from_settings"):
+                    self._reload_embedder_from_settings()
+            self._sync_bootstrap_download_visibility()
+
+        def _on_ok(used_mock: bool) -> None:
+            try:
+                dlg = getattr(self, "_bootstrap_download_dialog", None)
+                if dlg is not None:
+                    dlg.accept()
+            except Exception:
+                pass
+            self._bootstrap_model_download_worker = None
+            if not used_mock:
+                _apply_post_download()
+            else:
+                self._sync_bootstrap_download_visibility()
+            if used_mock:
+                body = (
+                    f"Mock download finished for {spec.label}. No files were written — "
+                    "guards and notifications will stay until a real download completes. "
+                    "Unset QUBE_BOOTSTRAP_MOCK_DOWNLOAD or use QUBE_BOOTSTRAP_REAL_DOWNLOAD=1."
+                )
+                title = "Mock download complete"
+            else:
+                body = f"{spec.label} is ready to use."
+                title = "Download complete"
+            PrestigeDialog(
+                self.window(),
+                title,
+                body,
+                is_dark=is_dark,
+            ).exec()
+
+        def _on_failed(err: str) -> None:
+            try:
+                dlg = getattr(self, "_bootstrap_download_dialog", None)
+                if dlg is not None:
+                    dlg.reject()
+            except Exception:
+                pass
+            self._bootstrap_model_download_worker = None
+            PrestigeDialog(
+                self.window(),
+                "Download failed",
+                str(err or "Model download failed."),
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
+
+    def _sync_bootstrap_download_visibility(self) -> None:
+        from core.bootstrap_search_models import (
+            active_search_preset_satisfied,
+            all_search_presets_satisfied,
+        )
+
+        rows = (
+            ("stt_bootstrap_download_row", stt_model_available),
+            ("tts_bootstrap_download_row", tts_model_available),
+            (
+                "embedding_bootstrap_download_row",
+                active_search_preset_satisfied,
+            ),
+            ("embedding_all_presets_download_row", all_search_presets_satisfied),
+            ("cognition_bootstrap_download_row", cognition_model_present),
+        )
+        for attr, available_fn in rows:
+            row = getattr(self, attr, None)
+            if row is not None:
+                row.setVisible(not available_fn())

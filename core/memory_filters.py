@@ -207,28 +207,32 @@ def detect_explicit_remember(user_text: str) -> Optional[str]:
 _RECALL_INTENT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
-        r"\btell\s+me\s+about\b",
-        r"\bwho\s+is\b",
-        r"\bwho\s+was\b",
-        r"\bwhat\s+is\s+[a-z]",
+        # Explicit stored-context / personal recall (avoid bare "what is X",
+        # "who is X", or "tell me about X" — those are general-knowledge chat).
         r"\bremind\s+me\s+(?:about|of)\b",
-        r"\bwhat\s+do\s+(?:i|we)\s+know\s+about\b",
+        r"\bwhat\s+do\s+(?:i|we|you)\s+know\s+about\b",
         r"\bwhat\s+did\s+(?:we|you)\s+say\s+about\b",
         r"\bsummari[sz]e\s+what\s+you\s+know\s+about\b",
         r"\brefresh\s+my\s+memory\b",
         r"\brecall\s+what\b",
         r"\bdo\s+you\s+remember\b",
-        r"\banything\s+about\b",
+        r"\btell\s+me\s+about\s+my\b",
+        r"\bwho\s+is\s+my\b",
+        r"\bwho\s+was\s+my\b",
+        r"\bwhat\s+is\s+my\b",
+        r"\banything\s+about\s+my\b",
     )
 )
 
 
 def detect_recall_intent(user_text: str) -> bool:
-    """Substring-based detector for "tell me about X" / "who is X" style queries.
+    """Substring-based detector for personal / stored-context recall queries.
 
-    Used by Phase A's fusion-for-recall override in ``llm_worker`` to upgrade
-    NONE / MEMORY / RAG routes to HYBRID when the user is asking a recall
-    question.
+    Used as the cognitive-router substring fallback for ``recall_score`` and
+    as one input to ``should_apply_recall_fusion``. Broad general-knowledge
+    phrasing ("what is the capital of …", "who is Einstein") is intentionally
+    excluded; semantic recall centroids handle ambiguous "tell me about X"
+    cases when embeddings are available.
     """
     if not user_text:
         return False
@@ -239,6 +243,38 @@ def detect_recall_intent(user_text: str) -> bool:
         if p.search(s):
             return True
     return False
+
+
+def should_apply_recall_fusion(
+    user_text: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """True when the turn should upgrade to HYBRID for memory + document recall.
+
+    Honors the router's chat-centroid margin: when ``recall_active`` is false
+    but ``recall_score`` cleared the absolute threshold, the router already
+    decided the query is chat-class — do not override with substring fusion.
+    """
+    if not user_text:
+        return False
+    s = user_text.strip()
+    if not s:
+        return False
+
+    if isinstance(decision, dict):
+        if decision.get("recall_active"):
+            return True
+        try:
+            recall_score = float(decision.get("recall_score") or 0.0)
+            recall_threshold = float(decision.get("recall_threshold") or 0.62)
+        except (TypeError, ValueError):
+            recall_score = 0.0
+            recall_threshold = 0.62
+        if recall_score >= recall_threshold and not decision.get("recall_active"):
+            return False
+
+    return detect_recall_intent(s)
 
 
 # ============================================================
@@ -441,6 +477,13 @@ NO_SOURCES_SYSTEM_SUFFIX: str = (
     "invent names, dates, affiliations, or other details."
 )
 
+CHAT_FOLLOW_UP_NO_SOURCES_SUFFIX: str = (
+    " This is a follow-up in plain chat — no retrieved sources are attached "
+    "to this turn. Do NOT use bracket citation tokens like [1], [2], or [W]. "
+    "Answer only the user's latest question; do not repeat or recap prior "
+    "assistant answers unless the user explicitly asks for a summary."
+)
+
 WEB_CAPABILITY_DISABLED_SUFFIX: str = (
     " IMPORTANT: the user asked for live or real-time information, but "
     "internet access is disabled in Qube settings. In one or two sentences, "
@@ -458,6 +501,46 @@ EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     "Do NOT claim you lack internet access or cannot browse. "
     "Do NOT emit bracket citation tokens such as [W]. "
     "You may answer from general knowledge when appropriate."
+)
+
+SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved scientific abstracts are for informational "
+    "summarization only — not medical advice. Do not diagnose, prescribe, "
+    "or recommend treatment changes. Encourage consulting a qualified "
+    "clinician for personal health decisions."
+)
+
+FINANCIAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved SEC filings and financial metadata are for "
+    "informational summarization only — not financial, investment, or "
+    "tax advice. Do not recommend buying or selling securities based "
+    "solely on these sources. Encourage consulting a qualified financial "
+    "professional for personal investment decisions."
+)
+
+LEGAL_DISCLAIMER_SUFFIX: str = (
+    " IMPORTANT: retrieved case law and court opinions are for "
+    "informational summarization only — not legal advice. Do not "
+    "recommend specific legal actions or predict case outcomes. "
+    "Encourage consulting a qualified attorney for personal legal matters."
+)
+
+LEGAL_SOURCES_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user explicitly used @legal but no case law sources "
+    "were retrieved (preferred legal sources may be disabled in Settings). "
+    "In one or two sentences, say you could not retrieve case law for this "
+    "question. Do NOT answer from general model knowledge about cases, "
+    "holdings, citations, or legal rules. Do NOT emit bracket citation "
+    "tokens such as [1], [2], or [W]."
+)
+
+FINANCE_SOURCES_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user explicitly used @finance but no SEC or finance "
+    "sources were retrieved (preferred finance sources may be disabled in "
+    "Settings). In one or two sentences, say you could not retrieve filings "
+    "or finance data for this question. Do NOT answer from general model "
+    "knowledge about filings, tickers, or financial facts. Do NOT emit "
+    "bracket citation tokens such as [1], [2], or [W]."
 )
 
 RAG_CAPABILITY_DISABLED_SUFFIX: str = (
@@ -533,6 +616,7 @@ def _router_substring_implies_library_intent(query: str, decision: dict) -> bool
 
 
 def _router_embedding_implies_library_intent(decision: dict) -> bool:
+    """Router telemetry: embedding lane won RAG (retrieval utility, not user intent)."""
     top = str(decision.get("top_intent") or "").lower()
     if top not in ("rag", "hybrid"):
         return False
@@ -546,12 +630,27 @@ def _router_embedding_implies_library_intent(decision: dict) -> bool:
     return score >= 0.30
 
 
-def query_implies_library_intent(
+def query_has_lexical_library_signal(query: str) -> bool:
+    """True when the query text itself names documents/files/library (lexical only)."""
+    from core.rag_trigger_routing import is_operational_library_prompt
+
+    lower = (query or "").lower().strip()
+    if not lower or is_operational_library_prompt(lower):
+        return False
+    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+
+
+def query_explicitly_requests_library_search(
     query: str,
     *,
     decision: dict | None = None,
 ) -> bool:
-    """True when the message plausibly expects document/library retrieval."""
+    """True when the user explicitly scoped the turn to local documents/library.
+
+    Uses file-search regexes, document-ish tokens in the query text, and
+    router substring RAG confirmation — but **not** embedding scores or
+    ``recall_fusion`` routing metadata (those belong to retrieval routing only).
+    """
     from core.rag_trigger_routing import is_operational_library_prompt
 
     q = (query or "").strip()
@@ -560,18 +659,114 @@ def query_implies_library_intent(
     lower = q.lower()
     if is_operational_library_prompt(lower):
         return False
-    if detect_recall_intent(q):
-        return True
     if detect_file_search_intent(q):
         return True
-    if isinstance(decision, dict):
-        if decision.get("recall_fusion"):
-            return True
-        if _router_embedding_implies_library_intent(decision):
-            return True
-        if _router_substring_implies_library_intent(q, decision):
-            return True
-    return any(t in lower for t in _ROUTER_RAG_SUBSTRING_TRIGGERS)
+    if query_has_lexical_library_signal(q):
+        return True
+    if isinstance(decision, dict) and _router_substring_implies_library_intent(q, decision):
+        return True
+    return False
+
+
+def query_implies_library_intent(
+    query: str,
+    *,
+    decision: dict | None = None,
+) -> bool:
+    """Alias for :func:`query_explicitly_requests_library_search` (messaging / UX gates).
+
+    Previously also accepted router embedding and ``recall_fusion`` signals;
+    those paths were removed so KB-disabled messaging tracks explicit user
+    intent rather than retrieval utility.
+    """
+    return query_explicitly_requests_library_search(query, decision=decision)
+
+
+# Short corrective / continuation phrasing on a prior plain-chat turn.
+_CONTINUATION_CORRECTION_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.I)
+    for p in (
+        r"\bactually\b",
+        r"\bit'?s not\b",
+        r"\bthat'?s not\b",
+        r"\bnot quite\b",
+        r"\bi meant\b",
+        r"\bwhat i meant\b",
+        r"\bcorrection\b",
+        r"\bto clarify\b",
+    )
+)
+
+
+def is_conversational_continuation_turn(
+    query: str,
+    *,
+    follow_up_active: bool,
+    prior_execution_route: str | None,
+    has_chat_history: bool,
+    short_token_max: int = 20,
+) -> bool:
+    """True when the turn likely continues a prior plain-chat exchange."""
+    if not has_chat_history:
+        return False
+    prior = str(prior_execution_route or "NONE").upper()
+    if prior not in ("NONE", ""):
+        return False
+    if follow_up_active:
+        return True
+    q = (query or "").strip()
+    if not q:
+        return False
+    if any(p.search(q) for p in _CONTINUATION_CORRECTION_PATTERNS):
+        return True
+    return len(q.split()) <= short_token_max
+
+
+def should_downgrade_embedding_rag_on_continuation(
+    query: str,
+    *,
+    decision: dict | None,
+    execution_route: str,
+    prior_execution_route: str | None,
+    follow_up_active: bool,
+    has_chat_history: bool,
+    scoped_library_active: bool = False,
+) -> bool:
+    """Downgrade embedding-only RAG/HYBRID picks on short plain-chat continuations."""
+    if scoped_library_active:
+        return False
+    if query_explicitly_requests_library_search(
+        query, decision=decision if isinstance(decision, dict) else None
+    ):
+        return False
+    route = str(execution_route or "").upper()
+    if route not in ("RAG", "HYBRID"):
+        return False
+    if not isinstance(decision, dict):
+        return False
+    if decision.get("recall_fusion") or decision.get("recall_active"):
+        return False
+    if route == "HYBRID" and not _router_embedding_implies_library_intent(decision):
+        rag_source = str(decision.get("rag_score_source") or "").lower()
+        if rag_source != "embedding":
+            return False
+    elif route == "RAG":
+        rag_source = str(decision.get("rag_score_source") or "").lower()
+        top_intent = str(decision.get("top_intent") or "").lower()
+        top_source = str(decision.get("top_intent_source") or "").lower()
+        embedding_rag = rag_source == "embedding" or (
+            top_intent == "rag" and top_source == "embedding"
+        )
+        if not embedding_rag:
+            return False
+    if not is_conversational_continuation_turn(
+        query,
+        follow_up_active=follow_up_active,
+        prior_execution_route=prior_execution_route,
+        has_chat_history=has_chat_history,
+    ):
+        return False
+    return True
 
 _HARD_EXPLICIT_WEB_TRIGGERS: tuple[str, ...] = (
     "look online",
@@ -752,6 +947,8 @@ def should_run_internet_search_for_route(
     manual_web: bool = False,
     auto_web: bool = False,
     composer_internet: bool = False,
+    composer_trusted: bool = False,
+    composer_web_tool: bool = False,
 ) -> bool:
     """WEB/INTERNET always search; HYBRID only when live-web intent is explicit."""
     route = str(execution_route or "").upper()
@@ -763,7 +960,9 @@ def should_run_internet_search_for_route(
         force_web
         or manual_web
         or auto_web
+        or composer_web_tool
         or composer_internet
+        or composer_trusted
         or query_implies_live_web_intent(query, decision=decision)
     )
 
@@ -930,6 +1129,7 @@ __all__ = [
     "is_thin_content",
     "detect_explicit_remember",
     "detect_recall_intent",
+    "should_apply_recall_fusion",
     "detect_narrative_intent",
     "detect_file_search_intent",
     "derive_memory_tier",
@@ -948,7 +1148,11 @@ __all__ = [
     "detect_hard_explicit_web_request",
     "detect_explicit_web_request",
     "query_implies_live_web_intent",
+    "query_has_lexical_library_signal",
+    "query_explicitly_requests_library_search",
     "query_implies_library_intent",
+    "is_conversational_continuation_turn",
+    "should_downgrade_embedding_rag_on_continuation",
     "should_run_internet_search_for_route",
     "PREFERENCE_APPLICATION_SUFFIX",
     "CHAT_PERSONALITY_SUFFIX",

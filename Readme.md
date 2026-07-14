@@ -33,7 +33,7 @@ Inference and RAG stay on-device—**no** third-party chat API. (Optional **Mode
 
 🎙️ **Lightning-Fast STT:** Powered by faster-whisper, Qube offers incredibly fast and accurate Speech-to-Text transcription right on your hardware (excellent on CPU alone).
 
-🗣️ **High-Fidelity TTS:** Uses the cutting-edge Kokoro engine for ultra-realistic Text-to-Speech, with over 30 voices included. In the Settings area you can load your own engine if you prefer something like Voxtral or Qwen TTS, but be prepared to keep an eye out on the Dashboard telemetry as these require more beefy hardware like a dedicated GPU (or a solid APU) acceleration.
+🗣️ **High-Fidelity TTS:** Uses the **Kokoro ONNX** engine by default for ultra-realistic text-to-speech, with 30+ voices included. In **Settings → Voice & Audio → Advanced TTS**, you can optionally swap to a **Piper ONNX** model (`.onnx` + sibling `.onnx.json` in `~/.qube/models/tts/`). Other TTS engines are not supported today.
 
 📚 **Advanced RAG Engine:** Built on LanceDB for blazing-fast vector storage and PyMuPDF for aggressive text extraction from complex PDFs, eBooks, and text files.
 
@@ -255,13 +255,15 @@ Open **Model Manager** from the nav to **search the Hugging Face Hub** (GGUF-ori
 
 ### 🗣️ High-Fidelity Text-to-Speech (TTS)
 
-- Uses **Kokoro ONNX engine**.
+- Default engine: **Kokoro ONNX** (30+ voices via `voices-v1.0.bin`).
+    
+- Optional swap: **Piper ONNX** via Settings → Voice & Audio → Advanced TTS (`.onnx` + `.onnx.json` under `~/.qube/models/tts/`).
     
 - Micro-chunk streaming for fast interrupt response.
     
 - Strips bracketed citations via regex before audio synthesis to ensure fluid speech.
     
-- Designed for real-time conversational playback.
+- Designed for real-time conversational playback on CPU.
     
 
 ---

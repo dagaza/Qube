@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "id": "abc123",
+      "type": "preprints",
+      "attributes": {
+        "title": "Working memory load and cognitive control in dual-task psychology experiments",
+        "description": "We examine how working memory load modulates cognitive control during dual-task performance in a preregistered laboratory study.",
+        "date_published": "2024-03-12",
+        "doi": "10.31234/osf.io/abc123",
+        "links": {
+          "html": "https://osf.io/preprints/psyarxiv/abc123"
+        }
+      }
+    }
+  ]
+}

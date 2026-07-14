@@ -1,0 +1,45 @@
+{
+  "version": "v1_slice13",
+  "description": "Slice 13 — health guidelines (NICE, CDC, WHO) and OECD statistics",
+  "queries": [
+    {
+      "id": "s13_health_001",
+      "query": "hypertension clinical guideline NICE",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["nice"],
+      "force_adapter": "nice"
+    },
+    {
+      "id": "s13_health_002",
+      "query": "diabetes CDC prevention guidance",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["cdc"],
+      "force_adapter": "cdc"
+    },
+    {
+      "id": "s13_health_003",
+      "query": "hypertension WHO health indicator",
+      "service": "scientific_evidence",
+      "discipline": "medicine",
+      "expect_adapters": ["who"],
+      "force_adapter": "who"
+    },
+    {
+      "id": "s13_stats_001",
+      "query": "OECD unemployment labour force statistics",
+      "service": "scientific_evidence",
+      "discipline": "economics",
+      "expect_adapters": ["oecd"],
+      "force_adapter": "oecd"
+    },
+    {
+      "id": "s13_finance_001",
+      "query": "OECD inflation consumer price index",
+      "service": "finance_knowledge",
+      "expect_adapters": ["oecd"],
+      "force_adapter": "oecd"
+    }
+  ]
+}

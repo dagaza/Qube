@@ -46,6 +46,19 @@ KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
+KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
+KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
+KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
+KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED = "qube.knowledge.external_v2_enabled"
+KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"
+KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"
+KEY_RETRIEVAL_PROFILE = "qube.knowledge.retrieval_profile"
+KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
+KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
+KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
+KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
+KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
+KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
 KEY_SKILLS_MIN_ACTIVATION_SCORE = "qube.skills.min_activation_score"
 KEY_SKILLS_MAX_ACTIVE = "qube.skills.max_active_skills"
@@ -56,8 +69,10 @@ KEY_CITATION_INTEGRITY_ENFORCE = "qube.citations.integrity_enforce"
 KEY_CITATION_INTEGRITY_UI_LINKIFY = "qube.citations.integrity_ui_linkify"
 KEY_CITATION_INTEGRITY_MISSING_RETRY = "qube.citations.integrity_missing_retry"
 KEY_EMBEDDING_MODEL_PATH = "qube.embedding.modelPath"
+KEY_EMBEDDING_MODE = "qube.embedding.activeMode"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
+KEY_UI_LANGUAGE = "qube.ui.language"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -133,7 +148,9 @@ KEY_COMPANION_POS_SCREEN = "qube.companion.position.screen"
 KEY_COMPANION_POS_NORM_X = "qube.companion.position.normX"
 KEY_COMPANION_POS_NORM_Y = "qube.companion.position.normY"
 KEY_COMPANION_DOCK_EDGE = "qube.companion.position.dockEdge"
+KEY_COMPANION_SNAP_ZONE = "qube.companion.position.snapZone"
 KEY_COMPANION_PERSONA = "qube.companion.persona"
+KEY_COMPANION_CUBE_STYLE = "qube.companion.cubeStyle"
 KEY_COMPANION_IDLE_COLOR = "qube.companion.idleColor"
 KEY_COMPANION_VERBAL_ENABLED = "qube.companion.verbal.enabled"
 KEY_COMPANION_VERBAL_SYSTEM_PROMPT = "qube.companion.verbal.systemPrompt"
@@ -273,6 +290,198 @@ def get_routing_debug_log_enabled() -> bool:
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_app_log_file_enabled() -> bool:
+    """When True, general Qube.* logs are written to ~/.qube/logs/qube.log."""
+    return bool(_store().get(KEY_APP_LOG_FILE_ENABLED, True))
+
+
+def set_app_log_file_enabled(enabled: bool) -> None:
+    _store().set(KEY_APP_LOG_FILE_ENABLED, enabled)
+
+
+def get_llm_debug_log_file_enabled() -> bool:
+    """When True, LLM introspection is written to ~/.qube/logs/llm_debug.log."""
+    return bool(_store().get(KEY_LLM_DEBUG_LOG_FILE_ENABLED, True))
+
+
+def set_llm_debug_log_file_enabled(enabled: bool) -> None:
+    _store().set(KEY_LLM_DEBUG_LOG_FILE_ENABLED, enabled)
+
+
+def get_web_search_audit_log_enabled() -> bool:
+    """When True, append one JSON line per web search attempt to web_search.log."""
+    return bool(_store().get(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, False))
+
+
+def set_web_search_audit_log_enabled(enabled: bool) -> None:
+    _store().set(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, enabled)
+
+
+def get_external_knowledge_v2_enabled() -> bool:
+    """When True, web retrieval runs through the evidence pipeline (Phase 0)."""
+    return bool(_store().get(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, False))
+
+
+def set_external_knowledge_v2_enabled(enabled: bool) -> None:
+    _store().set(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, enabled)
+
+
+def external_knowledge_v2_env_override() -> bool | None:
+    raw = os.getenv("QUBE_EXTERNAL_KNOWLEDGE_V2")
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def external_knowledge_v2_enabled() -> bool:
+    """Effective external knowledge v2 flag (env override wins)."""
+    override = external_knowledge_v2_env_override()
+    if override is not None:
+        return override
+    return get_external_knowledge_v2_enabled()
+
+
+def get_internal_corpus_knowledge_enabled() -> bool:
+    """When True, @library routes through the internal corpus evidence service."""
+    return bool(_store().get(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, False))
+
+
+def set_internal_corpus_knowledge_enabled(enabled: bool) -> None:
+    _store().set(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, enabled)
+
+
+def internal_corpus_knowledge_env_override() -> bool | None:
+    raw = os.getenv("QUBE_INTERNAL_CORPUS_KNOWLEDGE")
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def internal_corpus_knowledge_enabled() -> bool:
+    """Effective internal corpus knowledge flag (env override wins)."""
+    override = internal_corpus_knowledge_env_override()
+    if override is not None:
+        return override
+    return get_internal_corpus_knowledge_enabled()
+
+
+def get_research_map_enabled() -> bool:
+    """When True, build session knowledge graphs and show Research map UI."""
+    return bool(_store().get(KEY_RESEARCH_MAP_ENABLED, False))
+
+
+def set_research_map_enabled(enabled: bool) -> None:
+    _store().set(KEY_RESEARCH_MAP_ENABLED, enabled)
+
+
+def research_map_enabled() -> bool:
+    return get_research_map_enabled()
+
+
+def get_retrieval_profile() -> str:
+    from core.knowledge.retrieval_profiles import DEFAULT_RETRIEVAL_PROFILE, normalize_profile_id
+
+    return normalize_profile_id(
+        str(_store().get(KEY_RETRIEVAL_PROFILE, DEFAULT_RETRIEVAL_PROFILE) or "")
+    )
+
+
+def set_retrieval_profile(profile: str) -> None:
+    from core.knowledge.retrieval_profiles import normalize_profile_id
+
+    _store().set(KEY_RETRIEVAL_PROFILE, normalize_profile_id(profile))
+
+
+def get_entity_resolution_enabled() -> bool:
+    """When True, attach stable entity_ids to evidence objects (offline heuristics)."""
+    return bool(_store().get(KEY_ENTITY_RESOLUTION_ENABLED, True))
+
+
+def set_entity_resolution_enabled(enabled: bool) -> None:
+    _store().set(KEY_ENTITY_RESOLUTION_ENABLED, enabled)
+
+
+def entity_resolution_enabled() -> bool:
+    return get_entity_resolution_enabled()
+
+
+def get_rxnorm_entity_lookup_enabled() -> bool:
+    """When True, optional RxNorm API lookups augment entity resolution (cached)."""
+    return bool(_store().get(KEY_RXNORM_ENTITY_LOOKUP_ENABLED, False))
+
+
+def set_rxnorm_entity_lookup_enabled(enabled: bool) -> None:
+    _store().set(KEY_RXNORM_ENTITY_LOOKUP_ENABLED, enabled)
+
+
+def rxnorm_entity_lookup_enabled() -> bool:
+    return get_rxnorm_entity_lookup_enabled()
+
+
+def get_deep_research_enabled() -> bool:
+    """When True, background deep-research jobs may run (Phase 4 scaffold)."""
+    return bool(_store().get(KEY_DEEP_RESEARCH_ENABLED, False))
+
+
+def set_deep_research_enabled(enabled: bool) -> None:
+    _store().set(KEY_DEEP_RESEARCH_ENABLED, enabled)
+
+
+def get_knowledge_source_preferences() -> dict[str, list[str]]:
+    """Per-service enabled adapter ids (user-configured knowledge sources)."""
+    from core.knowledge.source_preferences import normalize_preferences
+
+    raw = _store().get(KEY_KNOWLEDGE_SOURCE_PREFERENCES, {})
+    if not isinstance(raw, dict):
+        return {}
+    return normalize_preferences(raw)
+
+
+def set_knowledge_source_preferences(preferences: dict[str, list[str]]) -> None:
+    from core.knowledge.source_preferences import normalize_preferences
+
+    _store().set(KEY_KNOWLEDGE_SOURCE_PREFERENCES, normalize_preferences(preferences))
+
+
+def get_knowledge_provider_credentials() -> dict[str, dict[str, str]]:
+    """User-stored API keys for knowledge providers (openalex, ncbi, …)."""
+    from core.knowledge.credentials import normalize_provider_credentials
+
+    raw = _store().get(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS, {})
+    if not isinstance(raw, dict):
+        return {}
+    return normalize_provider_credentials(raw)
+
+
+def set_knowledge_provider_credentials(credentials: dict[str, dict[str, str]]) -> None:
+    from core.knowledge.credentials import normalize_provider_credentials
+
+    _store().set(
+        KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
+        normalize_provider_credentials(credentials),
+    )
+
+
+def get_default_knowledge_service() -> str:
+    """Default v2 knowledge service when no composer tool is attached."""
+    from core.knowledge.types import SERVICE_GENERAL_WEB, SERVICE_SCIENTIFIC_EVIDENCE, SERVICE_TRUSTED_KNOWLEDGE
+
+    raw = str(_store().get(KEY_DEFAULT_KNOWLEDGE_SERVICE, SERVICE_GENERAL_WEB) or "")
+    sid = raw.strip().lower()
+    if sid in {SERVICE_GENERAL_WEB, SERVICE_TRUSTED_KNOWLEDGE, SERVICE_SCIENTIFIC_EVIDENCE}:
+        return sid
+    return SERVICE_GENERAL_WEB
+
+
+def set_default_knowledge_service(service_id: str) -> None:
+    from core.knowledge.types import SERVICE_GENERAL_WEB, SERVICE_SCIENTIFIC_EVIDENCE, SERVICE_TRUSTED_KNOWLEDGE
+
+    sid = (service_id or SERVICE_GENERAL_WEB).strip().lower()
+    if sid not in {SERVICE_GENERAL_WEB, SERVICE_TRUSTED_KNOWLEDGE, SERVICE_SCIENTIFIC_EVIDENCE}:
+        sid = SERVICE_GENERAL_WEB
+    _store().set(KEY_DEFAULT_KNOWLEDGE_SERVICE, sid)
 
 
 def get_skills_enabled() -> bool:
@@ -434,11 +643,12 @@ def get_embedding_model_path() -> str:
 
 
 def set_embedding_model_path(path: str) -> None:
-    from core.embedding_models import validate_embedding_model_path
+    from core.embedding_models import clear_embedding_availability_cache, validate_embedding_model_path
 
     cleaned = str(path or "").strip()
     if not cleaned:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+        clear_embedding_availability_cache()
         return
     ok, _msg = validate_embedding_model_path(cleaned)
     if ok:
@@ -449,6 +659,22 @@ def set_embedding_model_path(path: str) -> None:
         _store().set(KEY_EMBEDDING_MODEL_PATH, cleaned)
     else:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
+    clear_embedding_availability_cache()
+
+
+def get_embedding_mode() -> str:
+    from core.embedding_modes import DEFAULT_MODE, normalize_mode_id
+
+    raw = str(_store().get(KEY_EMBEDDING_MODE, DEFAULT_MODE) or DEFAULT_MODE)
+    return normalize_mode_id(raw)
+
+
+def set_embedding_mode(mode: str) -> None:
+    from core.embedding_modes import normalize_mode_id
+    from core.embedding_models import clear_embedding_availability_cache
+
+    _store().set(KEY_EMBEDDING_MODE, normalize_mode_id(mode))
+    clear_embedding_availability_cache()
 
 
 def get_advanced_speech_models_unlocked() -> bool:
@@ -1107,7 +1333,7 @@ def get_internal_native_chat_format() -> str:
 
 def get_native_reasoning_display_user_override() -> bool | None:
     """
-    None = user has not chosen; callers should combine with model telemetry defaults.
+    None = user has not chosen; callers treat unset as Think OFF (opt-in).
     True/False = persisted explicit preference for internal native chat.
     """
     store = _store()
@@ -1485,6 +1711,32 @@ def set_companion_persona(persona: str) -> None:
     _store().set(KEY_COMPANION_PERSONA, normalize_companion_persona(persona).value)
 
 
+def get_ui_language() -> "UiLanguage":
+    from core.ui_language import DEFAULT_UI_LANGUAGE, normalize_ui_language
+
+    raw = _store().get(KEY_UI_LANGUAGE, DEFAULT_UI_LANGUAGE.value)
+    return normalize_ui_language(str(raw) if raw is not None else None)
+
+
+def set_ui_language(language: str) -> None:
+    from core.ui_language import normalize_ui_language
+
+    _store().set(KEY_UI_LANGUAGE, normalize_ui_language(language).value)
+
+
+def get_companion_cube_style() -> "CompanionCubeStyle":
+    from core.companion_cube_style import DEFAULT_COMPANION_CUBE_STYLE, normalize_companion_cube_style
+
+    raw = _store().get(KEY_COMPANION_CUBE_STYLE, DEFAULT_COMPANION_CUBE_STYLE.value)
+    return normalize_companion_cube_style(str(raw) if raw is not None else None)
+
+
+def set_companion_cube_style(style: str) -> None:
+    from core.companion_cube_style import normalize_companion_cube_style
+
+    _store().set(KEY_COMPANION_CUBE_STYLE, normalize_companion_cube_style(style).value)
+
+
 def get_companion_idle_color() -> "CompanionIdleColor":
     from core.companion_idle_color import DEFAULT_COMPANION_IDLE_COLOR, normalize_companion_idle_color
 
@@ -1507,7 +1759,18 @@ def get_companion_position() -> dict:
         "norm_x": store.get(KEY_COMPANION_POS_NORM_X),
         "norm_y": store.get(KEY_COMPANION_POS_NORM_Y),
         "dock_edge": str(store.get(KEY_COMPANION_DOCK_EDGE, "none") or "none"),
+        "snap_zone": str(store.get(KEY_COMPANION_SNAP_ZONE, "none") or "none"),
     }
+
+
+def get_companion_snap_zone() -> str:
+    return str(_store().get(KEY_COMPANION_SNAP_ZONE, "none") or "none")
+
+
+def set_companion_snap_zone(zone: str) -> None:
+    from core.companion_placement import normalize_companion_snap_zone
+
+    _store().set(KEY_COMPANION_SNAP_ZONE, normalize_companion_snap_zone(zone).value)
 
 
 def set_companion_position(
@@ -1535,6 +1798,22 @@ def set_companion_position(
         if edge not in ("none", "left", "right", "bottom"):
             edge = "none"
         store.set(KEY_COMPANION_DOCK_EDGE, edge)
+
+
+def clear_companion_position() -> None:
+    """Remove saved companion coordinates (next restore uses default placement)."""
+    store = _store()
+    for key in (
+        KEY_COMPANION_POS_X,
+        KEY_COMPANION_POS_Y,
+        KEY_COMPANION_POS_SCREEN,
+        KEY_COMPANION_POS_NORM_X,
+        KEY_COMPANION_POS_NORM_Y,
+        KEY_COMPANION_DOCK_EDGE,
+        KEY_COMPANION_SNAP_ZONE,
+    ):
+        if store.contains(key):
+            store.remove(key)
 
 
 def get_companion_verbal_enabled() -> bool:

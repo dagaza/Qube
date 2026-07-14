@@ -39,6 +39,10 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
     get_skills_enabled,
+    get_deep_research_enabled,
+    get_external_knowledge_v2_enabled,
+    get_internal_corpus_knowledge_enabled,
+    get_research_map_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -122,6 +126,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -141,6 +146,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -251,6 +257,7 @@ class PersistenceHandlersMixin:
         if not changed:
             return
         self._sync_ui_from_persisted_settings()
+        self._apply_external_ui_language_change(changed)
         self._show_settings_file_status(
             f"Applied {len(changed)} setting(s) from settings.json."
         )
@@ -281,10 +288,25 @@ class PersistenceHandlersMixin:
         if not result.changed_keys:
             return
         self._sync_ui_from_persisted_settings()
+        changed = set(result.changed_keys)
+        self._apply_external_ui_language_change(changed)
         self._show_settings_file_status(
-            f"Reloaded {len(result.changed_keys)} setting(s) from settings.json."
+            f"Reloaded {len(changed)} setting(s) from settings.json."
         )
-        self.external_settings_reloaded.emit(set(result.changed_keys))
+        self.external_settings_reloaded.emit(changed)
+
+    def _apply_external_ui_language_change(self, changed: set) -> None:
+        from core.app_settings import KEY_UI_LANGUAGE
+
+        if KEY_UI_LANGUAGE not in changed:
+            return
+        if hasattr(self, "_rebuild_settings_sections_for_ui_language"):
+            self._rebuild_settings_sections_for_ui_language()
+        if hasattr(self, "ui_language_changed"):
+            self.ui_language_changed.emit()
+        win = self.window()
+        if win is not None and hasattr(win, "_apply_ui_language"):
+            win._apply_ui_language()
 
     def _sync_ui_from_persisted_settings(self) -> None:
         engine_modes = [
@@ -308,6 +330,42 @@ class PersistenceHandlersMixin:
             self.skills_enabled_toggle.blockSignals(True)
             self.skills_enabled_toggle.setChecked(get_skills_enabled())
             self.skills_enabled_toggle.blockSignals(False)
+        if hasattr(self, "external_knowledge_v2_toggle"):
+            self.external_knowledge_v2_toggle.blockSignals(True)
+            self.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
+            self.external_knowledge_v2_toggle.blockSignals(False)
+        if hasattr(self, "internal_corpus_toggle"):
+            self.internal_corpus_toggle.blockSignals(True)
+            self.internal_corpus_toggle.setChecked(get_internal_corpus_knowledge_enabled())
+            self.internal_corpus_toggle.blockSignals(False)
+        if hasattr(self, "research_map_toggle"):
+            self.research_map_toggle.blockSignals(True)
+            self.research_map_toggle.setChecked(get_research_map_enabled())
+            self.research_map_toggle.blockSignals(False)
+        if hasattr(self, "deep_research_toggle"):
+            self.deep_research_toggle.blockSignals(True)
+            self.deep_research_toggle.setChecked(get_deep_research_enabled())
+            self.deep_research_toggle.blockSignals(False)
+        if hasattr(self, "knowledge_live_source_rows"):
+            from ui.views.settings.sections.knowledge_sources import sync_live_source_rows
+
+            sync_live_source_rows(self)
+        elif hasattr(self, "knowledge_source_checkboxes"):
+            from ui.views.settings.sections.knowledge_sources import sync_knowledge_source_checkboxes
+
+            sync_knowledge_source_checkboxes(self)
+        if hasattr(self, "knowledge_provider_key_fields"):
+            from ui.views.settings.sections.knowledge_provider_credentials import (
+                sync_provider_credential_rows,
+            )
+
+            sync_provider_credential_rows(self)
+        if hasattr(self, "knowledge_provider_status_table"):
+            from ui.views.settings.sections.knowledge_provider_status import (
+                sync_provider_status_panel,
+            )
+
+            sync_provider_status_panel(self)
         if hasattr(self, "memory_promotion_toggle"):
             self.memory_promotion_toggle.blockSignals(True)
             self.memory_promotion_toggle.setChecked(get_enable_memory_promotion())
@@ -317,13 +375,7 @@ class PersistenceHandlersMixin:
             self.memory_consolidation_toggle.setChecked(get_enable_memory_consolidation())
             self.memory_consolidation_toggle.blockSignals(False)
         if hasattr(self, "memory_promotion_preset_selector"):
-            labels = {
-                "conservative": "Conservative",
-                "standard": "Standard",
-                "aggressive": "Aggressive",
-            }
-            preset = get_memory_promotion_preset()
-            self.memory_promotion_preset_selector.setText(labels.get(preset, "Standard"))
+            self._sync_memory_promotion_preset_selector()
         if hasattr(self, "memory_promotion_toggle"):
             self._sync_memory_promotion_controls_for_enrichment()
         if hasattr(self, "profile_units_selector"):
@@ -364,6 +416,15 @@ class PersistenceHandlersMixin:
             if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
                 win.tray_controller.sync_companion_toggle()
 
+        if hasattr(self, "ui_language_cbs"):
+            from core import app_settings as _lang_settings
+
+            current_language = _lang_settings.get_ui_language()
+            for language_id, cb in self.ui_language_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(language_id == current_language)
+                cb.blockSignals(False)
+
         if hasattr(self, "companion_persona_cbs"):
             from core import app_settings as _cs
 
@@ -375,6 +436,19 @@ class PersistenceHandlersMixin:
             if hasattr(self, "companion_preview"):
                 self.companion_preview.set_persona(current)
 
+        if hasattr(self, "companion_cube_style_cbs"):
+            from core import app_settings as _cs
+
+            current_style = _cs.get_companion_cube_style()
+            for style_id, cb in self.companion_cube_style_cbs.items():
+                cb.blockSignals(True)
+                cb.setChecked(style_id == current_style)
+                cb.blockSignals(False)
+            if hasattr(self, "companion_preview"):
+                self.companion_preview.set_persona(_cs.get_companion_persona())
+            if hasattr(self, "_sync_companion_cube_style_enabled"):
+                self._sync_companion_cube_style_enabled()
+
         if hasattr(self, "companion_idle_color_cbs"):
             from core import app_settings as _cs
 
@@ -385,6 +459,9 @@ class PersistenceHandlersMixin:
                 cb.blockSignals(False)
             if hasattr(self, "companion_preview"):
                 self.companion_preview.update()
+
+        if hasattr(self, "_sync_companion_snap_compass"):
+            self._sync_companion_snap_compass()
 
         if hasattr(self, "advanced_engine_toggle"):
             self.advanced_engine_toggle.blockSignals(True)
@@ -403,6 +480,10 @@ class PersistenceHandlersMixin:
         self._sync_embedding_models_dir_label()
         self._refresh_embedding_gguf_list()
         self._sync_active_embedding_label()
+        if hasattr(self, "_sync_embedding_mode_selector"):
+            self._sync_embedding_mode_selector()
+        if hasattr(self, "_sync_retrieval_profile_selector"):
+            self._sync_retrieval_profile_selector()
 
         if hasattr(self, "advanced_stt_toggle"):
             self.advanced_stt_toggle.blockSignals(True)
@@ -529,6 +610,13 @@ class PersistenceHandlersMixin:
                 self._refresh_llm_rag_triggers()
 
         self._apply_section_defaults_to_ui(section_id)
+        if section_id == "companion.desktop":
+            win = self.window()
+            ctrl = getattr(win, "_companion_controller", None) if win is not None else None
+            if ctrl is not None:
+                ctrl.reset_position_to_default()
+            if hasattr(self, "_sync_companion_snap_compass"):
+                self._sync_companion_snap_compass()
         self._show_settings_file_status(f"{title} settings restored to defaults.")
         if changed:
             self.external_settings_reloaded.emit(changed)
@@ -655,6 +743,11 @@ class PersistenceHandlersMixin:
             self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
         if hasattr(self, "_reload_sidecar_from_settings"):
             self._reload_sidecar_from_settings()
+        from core.logging_bootstrap import sync_diagnostic_file_sinks_from_settings
+
+        sync_diagnostic_file_sinks_from_settings()
+        if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
+            self._sync_all_diagnostic_log_recording_toggles()
         if hasattr(self, "cognition_model_changed"):
             self.cognition_model_changed.emit()
         llm = getattr(self, "llm_worker", None)

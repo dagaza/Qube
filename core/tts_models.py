@@ -22,6 +22,12 @@ BUNDLED_DEFAULT_FILENAME = "kokoro-v1.0.onnx"
 BUNDLED_VOICES_FILENAME = "voices-v1.0.bin"
 BUNDLED_TTS_LABEL = "Kokoro v1.0 (bundled default)"
 TTS_SUBDIR = "tts"
+SUPPORTED_TTS_ENGINES = ("Kokoro ONNX", "Piper ONNX")
+UNSUPPORTED_TTS_ARCHITECTURE_MSG = (
+    "Qube supports Kokoro and Piper ONNX only. "
+    "Piper models need a sibling .onnx.json config file "
+    '(or "piper" in the filename). Other .onnx engines are not supported.'
+)
 
 
 @dataclass(frozen=True)
@@ -83,6 +89,18 @@ def migrate_legacy_tts_layout() -> bool:
     return migrated
 
 
+def classify_tts_architecture(path: str) -> str | None:
+    """Return ``kokoro``, ``piper``, or ``None`` when the ONNX file is not supported."""
+    if not path:
+        return None
+    name = os.path.basename(path).lower()
+    if "kokoro" in name:
+        return "kokoro"
+    if "piper" in name or os.path.isfile(path + ".json"):
+        return "piper"
+    return None
+
+
 def is_protected_tts_model(path: str) -> bool:
     if not path:
         return False
@@ -115,15 +133,39 @@ def resolve_active_tts_path() -> str:
 
 
 def tts_model_available() -> bool:
+    """True when the active TTS selection resolves to a supported, on-disk model."""
     path = resolve_active_tts_path()
     if not path or not os.path.isfile(path):
         return False
-    name = os.path.basename(path).lower()
-    if "kokoro" in name:
-        return os.path.isfile(bundled_voices_path()) or os.path.isfile(
-            os.path.join(os.path.dirname(path), BUNDLED_VOICES_FILENAME)
-        )
-    return True
+    ok, _msg = validate_tts_model_path(path)
+    return ok
+
+
+def any_supported_tts_model_on_disk() -> bool:
+    """True when any Kokoro or Piper ONNX in ``models/tts/`` passes validation."""
+    for entry in list_selectable_tts_models():
+        if not os.path.isfile(entry.path):
+            continue
+        ok, _msg = validate_tts_model_path(entry.path)
+        if ok:
+            return True
+    return False
+
+
+def resolve_boot_tts_path() -> str:
+    """Path to load at startup — active selection, else first valid model in ``models/tts/``."""
+    path = resolve_active_tts_path()
+    if path and os.path.isfile(path):
+        ok, _msg = validate_tts_model_path(path)
+        if ok:
+            return path
+    for entry in list_selectable_tts_models():
+        if not os.path.isfile(entry.path):
+            continue
+        ok, _msg = validate_tts_model_path(entry.path)
+        if ok:
+            return entry.path
+    return path or bundled_default_path()
 
 
 def validate_tts_model_path(path: str) -> tuple[bool, str]:
@@ -142,6 +184,8 @@ def validate_tts_model_path(path: str) -> tuple[bool, str]:
                     False,
                     f"Kokoro models require {BUNDLED_VOICES_FILENAME} in the same folder.",
                 )
+        if classify_tts_architecture(path) is None:
+            return False, UNSUPPORTED_TTS_ARCHITECTURE_MSG
         return True, ""
     return (
         False,

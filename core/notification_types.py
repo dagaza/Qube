@@ -268,3 +268,54 @@ def enrichment_complete_event(*, session_id: str, facts_stored: int) -> Notifica
         dedupe_key=f"enrichment:{session_id}:{facts_stored}",
         coalesce_group="enrichment_complete",
     )
+
+
+def deep_research_complete_event(
+    *,
+    session_id: str,
+    query: str,
+    source_count: int,
+    synthesis_applied: bool = False,
+) -> NotificationEvent:
+    preview = (query or "").strip()
+    if len(preview) > 72:
+        preview = preview[:69] + "…"
+    detail = f"{source_count} source(s)"
+    if synthesis_applied:
+        detail = f"synthesized report · {detail}"
+    body = f"{preview} — {detail}" if preview else detail
+    return NotificationEvent(
+        title="Deep research complete",
+        body=body,
+        severity=NotificationSeverity.SUCCESS,
+        category="system",
+        auto_dismiss_ms=8000,
+        dedupe_key=f"deep_research:{session_id}:{preview}",
+        coalesce_group="deep_research_complete",
+    )
+
+
+def provider_limit_notification_event(event: object) -> NotificationEvent:
+    """Informational notice when an anonymous provider quota is exhausted."""
+    from core.knowledge.provider_credentials import get_provider_credential_spec
+
+    provider_id = getattr(event, "provider_id", "")
+    spec = get_provider_credential_spec(str(provider_id))
+    label = spec.label if spec is not None else str(provider_id or "Provider")
+    body = (
+        f"You've reached the anonymous limit for {label} today. "
+        "Add a free API key in Settings → Live sources for a higher daily budget, "
+        "or try again after midnight UTC."
+    )
+    return NotificationEvent(
+        title=f"{label} quota reached",
+        body=body,
+        severity=NotificationSeverity.INFO,
+        category="system",
+        action_label="Open Settings",
+        action_id=f"open_settings_knowledge_credentials:{provider_id}",
+        auto_dismiss_ms=12000,
+        dedupe_key=f"provider_limit:{provider_id}",
+        rate_limit_key=f"provider_limit:{provider_id}",
+        rate_limit_sec=86400.0,
+    )

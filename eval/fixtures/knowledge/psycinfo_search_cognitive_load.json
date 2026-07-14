@@ -1,0 +1,15 @@
+{
+  "query": "working memory cognitive load dual task psychology",
+  "results": [
+    {
+      "title": "Cognitive Load Theory and Working Memory Capacity in Dual-Task Performance",
+      "abstract": "This review synthesizes evidence that dual-task paradigms increase extraneous cognitive load and reduce working memory resources available for learning.",
+      "authors": ["Elena Hart", "James Okonkwo"],
+      "url": "https://example.org/psycinfo/record/12345",
+      "doi": "10.1037/example12345",
+      "venue": "PsycINFO",
+      "year": "2021",
+      "peer_reviewed": true
+    }
+  ]
+}

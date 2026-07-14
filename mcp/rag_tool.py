@@ -4,6 +4,7 @@ import numpy as np
 
 from core.retrieval_fusion import fuse_ranked_results
 from core.memory_retrieval_policy import fts_query_token_overlap
+from core.reindex_state import is_reindex_in_progress
 
 logger = logging.getLogger("Qube.RAGTool")
 
@@ -12,10 +13,8 @@ MAX_CONTEXT_CHARS = 12000
 # ============================================================
 # T4.1: HARD semantic-relevance floor for RAG vector hits.
 # ------------------------------------------------------------
-# Nomic v1.5 embeddings are L2-normalised, so
-#   semantic_score = max(0, 1 - _distance)
-# is a proxy for cosine similarity. Anything below this floor is
-# topically unrelated — and yet top-k vector search will still return
+# L2-normalized fastembed vectors — semantic_score (1 - distance) is a cosine proxy.
+# Anything below this floor is topically unrelated — and yet top-k vector search will still return
 # the nearest chunks in the library (by construction there is ALWAYS
 # a "nearest" row, no matter how semantically distant it is).
 #
@@ -70,6 +69,10 @@ def rag_search(
 
     scope = f" source={source_filter!r}" if source_filter else ""
     logger.info(f"[RAG v2.3] Query: {query}{scope}")
+
+    if is_reindex_in_progress():
+        logger.info("[RAG] Retrieval suppressed while library reprocessing is active.")
+        return {"llm_context": "", "sources": []}
 
     try:
         # ============================================================

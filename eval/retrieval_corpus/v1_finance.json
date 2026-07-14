@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "service": "finance_knowledge",
+  "description": "Phase 6 Slice 5a — finance knowledge eval corpus (@finance / SEC EDGAR)",
+  "queries": [
+    {
+      "id": "aapl_10k",
+      "query": "Apple Inc 10-K annual report risk factors",
+      "expect_adapters": ["sec_edgar"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_financial_advice",
+      "min_fetch_rank": "abstract"
+    },
+    {
+      "id": "tsla_filings",
+      "query": "Tesla SEC 10-K filings",
+      "expect_adapters": ["sec_edgar"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_financial_advice"
+    },
+    {
+      "id": "msft_10q",
+      "query": "Microsoft quarterly 10-Q revenue",
+      "expect_adapters": ["sec_edgar"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_financial_advice"
+    },
+    {
+      "id": "amzn_ticker",
+      "query": "AMZN SEC filings recent",
+      "expect_adapters": ["sec_edgar"],
+      "min_sources": 1,
+      "min_authority": 0.9,
+      "require_warning": "not_financial_advice"
+    }
+  ]
+}

@@ -66,6 +66,10 @@ from core.model_chat_contract import (
     map_chat_contract_to_llama_chat_format,
     resolve_chat_contract,
 )
+from core.template_output_profile import (
+    TemplateOutputProfile,
+    resolve_template_output_profile,
+)
 from core.prompt_template_router import RenderPromptBundle, build_prompt_bundle
 from core.chat_format_mode import ChatFormatMode
 from core.llm_truth_diff import emit_l1_engine_request, emit_l2_prompt
@@ -93,6 +97,11 @@ from core.engine_input_trace import (
 )
 from core.response_quality import evaluate_response_quality
 from core.model_performance_store import ModelPerformanceStore
+from core.inference_transparency import (
+    log_inference_transparency,
+    merge_native_telemetry_snapshot,
+    snapshot_from_loaded_llama,
+)
 from core.model_router import (
     RoutingDecision,
     extract_last_user_query,
@@ -244,9 +253,13 @@ class NativeLlamaEngine(QThread):
         # Set by _prepare_validation_and_logs when using build_prompt_bundle (messages path).
         self._last_render_bundle: Optional[RenderPromptBundle] = None
         self._bundle_contract_id: Optional[int] = None
+        self._last_reasoning_mode: Optional[str] = None
+        self._last_chat_template_kwargs: dict[str, Any] = {}
         self._publisher_guidance: Any = None
         self._publisher_guidance_service = PublisherGuidanceService()
+        self._template_output_profile: Optional[TemplateOutputProfile] = None
         self._last_retrieval_context: str = ""
+        self._inference_transparency_native: Optional[Dict[str, Any]] = None
 
     def stop_engine(self) -> None:
         """Request shutdown and wait for the thread to finish."""
@@ -465,7 +478,21 @@ class NativeLlamaEngine(QThread):
             out["chat_contract"] = chat_blob or None
         else:
             out["chat_contract"] = None
+        out["inference_transparency"] = merge_native_telemetry_snapshot(
+            self._inference_transparency_native
+        )
+        out["inference_transparency_native"] = (
+            dict(self._inference_transparency_native)
+            if self._inference_transparency_native
+            else {"loaded": False, "role": "native"}
+        )
+        top = self._template_output_profile
+        if top is not None:
+            out.update(top.to_telemetry_dict())
         return out
+
+    def get_template_output_profile(self) -> Optional[TemplateOutputProfile]:
+        return self._template_output_profile
 
     def _log_chat_contract_violation_if_any(self, text: str) -> None:
         bad, markers = detect_chat_contract_violation(text or "")
@@ -762,6 +789,36 @@ class NativeLlamaEngine(QThread):
                 logger.warning("[ChatContract] bind failed: %s", e)
                 self._chat_contract = None
 
+            try:
+                locked_cf = str(getattr(self._llama, "chat_format", "") or "").strip()
+                self._template_output_profile = resolve_template_output_profile(
+                    self._llama,
+                    model_path=path,
+                    harmony_model_active=bool(self._harmony_model_active),
+                    effective_chat_format=locked_cf or None,
+                    supports_thinking_tokens=bool(
+                        self._model_reasoning_profile.supports_thinking_tokens
+                        if self._model_reasoning_profile
+                        else False
+                    ),
+                )
+                top = self._template_output_profile
+                logger.info(
+                    "[TemplateOutputProfile] family=%s tier=%s runtime=%s jinja=%s scaffolds=%d",
+                    top.family,
+                    top.grammar_tier,
+                    top.runtime_chat_format,
+                    top.jinja_runtime,
+                    len(top.scaffold_tokens()),
+                )
+                _debug_logger.info(
+                    "[LLM-DEBUG] template_output_profile=%s",
+                    top.to_telemetry_dict(),
+                )
+            except Exception as e:
+                logger.warning("[TemplateOutputProfile] resolve failed: %s", e)
+                self._template_output_profile = None
+
             reg_name = (
                 (self._model_reasoning_profile.model_name if self._model_reasoning_profile else "")
                 or ""
@@ -801,6 +858,25 @@ class NativeLlamaEngine(QThread):
                 n_threads,
                 getattr(self._llama, "chat_format", "?"),
             )
+            try:
+                self._inference_transparency_native = snapshot_from_loaded_llama(
+                    self._llama,
+                    model_path=path,
+                    requested_n_gpu_layers=n_gpu,
+                    n_ctx=n_ctx,
+                    n_threads=n_threads,
+                    role="native",
+                )
+                log_inference_transparency(
+                    logger,
+                    role="Native",
+                    snapshot=merge_native_telemetry_snapshot(
+                        self._inference_transparency_native
+                    ),
+                )
+            except Exception as e:
+                logger.debug("[Native] inference transparency capture failed: %s", e)
+                self._inference_transparency_native = None
             self._router_profile_key = reg_name
             try:
                 upsert_profile_from_loaded_model(
@@ -823,6 +899,7 @@ class NativeLlamaEngine(QThread):
             logger.exception("[Native] Load failed: %s", e)
             self._llama = None
             self._model_path = None
+            self._inference_transparency_native = None
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
@@ -916,6 +993,7 @@ class NativeLlamaEngine(QThread):
         finally:
             self._llama = None
             self._model_path = None
+            self._inference_transparency_native = None
             self._last_trace_preflight = None
             self._last_formatted_prompt = None
             self._gt_token_ids = []
@@ -931,6 +1009,7 @@ class NativeLlamaEngine(QThread):
         self._bundle_contract_id = None
         self._model_reasoning_profile = None
         self._publisher_guidance = None
+        self._template_output_profile = None
         self._execution_mode = "unknown"
         self.execution_policy = None
         self._model_behavior_profile = None
@@ -1213,6 +1292,8 @@ class NativeLlamaEngine(QThread):
             merged_stops = list(contract.stop or [])
             self._last_render_bundle = None
             self._bundle_contract_id = None
+            self._last_reasoning_mode = None
+            self._last_chat_template_kwargs = {}
         else:
             bundle, recon_note, _fmt_stop = build_prompt_bundle(
                 self._llama,
@@ -1223,11 +1304,24 @@ class NativeLlamaEngine(QThread):
                 suppress_gguf_metadata=_unsafe_template,
                 prompt_contract_stops=list(contract.stop or []),
                 publisher_guidance=self._publisher_guidance,
+                template_output_profile=self._template_output_profile,
             )
             prompt_txt = bundle.prompt
             merged_stops = list(bundle.stop_tokens)
             self._last_render_bundle = bundle
             self._bundle_contract_id = id(contract)
+            from core.qwen3_thinking_policy import template_kwargs_for_thinking_policy
+
+            self._last_reasoning_mode = str(bundle.reasoning_mode)
+            self._last_chat_template_kwargs = template_kwargs_for_thinking_policy(
+                pol,
+                model_path=str(self._model_path or ""),
+                model_name=(
+                    self._model_reasoning_profile.model_name
+                    if self._model_reasoning_profile
+                    else os.path.basename(self._model_path or "")
+                ),
+            )
         eos_s, _ = llama_eos_bos_strings(self._llama)
         merged_stops = apply_debug_stop_mode(list(merged_stops or []), eos_s)
         _val_cf = (

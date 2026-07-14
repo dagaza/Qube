@@ -360,10 +360,13 @@ class TraceEdgeCaseTests(unittest.TestCase):
         self.assertEqual(by_lane["rag"]["reason"], "hybrid_fused")
 
     def test_recall_active_produces_valid_trace(self) -> None:
-        """No recall/chat centroid installed → substring fallback sets
+        """Substring recall fallback (explicit remember phrasing) sets
         recall_score=1.0 ≥ 0.62; recall_active=True forces hybrid."""
         router = _new_router()
-        d = router.route("tell me about Plato", intent_vector=_intent_vec(m=0.2))
+        d = router.route(
+            "do you remember anything about Plato",
+            intent_vector=_intent_vec(m=0.2),
+        )
         self.assertTrue(d["recall_active"])
         self.assertEqual(d["route"], "hybrid")
         trace = d["trace"]

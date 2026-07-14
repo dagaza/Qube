@@ -6,6 +6,8 @@ import os
 import sys
 from pathlib import Path
 
+SEARCH_MODELS_SUBDIR = "search"
+
 
 def install_root() -> Path:
     """Directory containing the app entry point (repo root in dev, exe dir when frozen)."""
@@ -34,6 +36,18 @@ def models_root() -> Path:
     path = user_data_root() / "models"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def search_models_cache_dir() -> Path:
+    """Fastembed ONNX preset cache (Fast / Balanced / Power search models)."""
+    path = models_root() / SEARCH_MODELS_SUBDIR
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def configure_user_model_paths() -> None:
+    """Pin third-party model download caches under ``~/.qube/models/``."""
+    os.environ.setdefault("FASTEMBED_CACHE_PATH", str(search_models_cache_dir()))
 
 
 def default_db_path() -> Path:

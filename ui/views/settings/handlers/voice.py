@@ -96,6 +96,7 @@ from core.stt_models import (
     validate_stt_model_path,
 )
 from core.tts_models import (
+    bundled_default_path,
     get_tts_models_dir,
     is_protected_tts_model,
     list_selectable_tts_models,
@@ -133,6 +134,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     desktop_companion,
+    general,
     help,
     knowledge,
     memory,
@@ -153,6 +155,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -468,8 +471,10 @@ class VoiceHandlersMixin:
                 self.window(),
                 "Advanced TTS settings",
                 "Swapping the text-to-speech model affects spoken replies.\n\n"
-                "Place .onnx files under models/tts/ (Kokoro also needs voices-v1.0.bin "
-                "in the same folder). The bundled Kokoro v1.0 default cannot be deleted.\n\n"
+                "Supported engines: Kokoro ONNX (default) and Piper ONNX. Place .onnx files "
+                "under models/tts/ — Kokoro also needs voices-v1.0.bin in the same folder; "
+                "Piper needs a sibling .onnx.json config (or \"piper\" in the filename).\n\n"
+                "The bundled Kokoro v1.0 default cannot be deleted.\n\n"
                 "Continue?",
                 is_dark=is_dark,
                 tone="danger",
@@ -669,6 +674,32 @@ class VoiceHandlersMixin:
         self._sync_active_stt_label()
         self._refresh_stt_model_list()
 
+    def _load_tts_model_or_dialog(self, load_path: str, *, failure_title: str = "TTS model failed to load") -> bool:
+        """Try loading ``load_path`` on the TTS worker; show a dialog when load fails."""
+        if not self.tts_worker:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "TTS unavailable",
+                "The text-to-speech worker is not available.",
+                is_dark=is_dark,
+            ).exec()
+            return False
+        if self.tts_worker.load_voice(load_path):
+            return True
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            failure_title,
+            "The model could not be loaded. Spoken replies are unchanged.\n\n"
+            "Qube supports Kokoro and Piper ONNX only. Piper models need a sibling "
+            ".onnx.json file. Use Reset to default to return to Kokoro.",
+            is_dark=is_dark,
+            tone="danger",
+            dialog_width=450,
+        ).exec()
+        return False
+
     def _apply_selected_tts_model(self) -> None:
         item = self.tts_model_list.currentItem()
         if not item:
@@ -681,9 +712,10 @@ class VoiceHandlersMixin:
             ).exec()
             return
         path = str(item.data(Qt.ItemDataRole.UserRole) or "")
-        if is_protected_tts_model(path):
-            set_tts_model_path("")
-        else:
+        is_default = is_protected_tts_model(path)
+        load_path = bundled_default_path() if is_default else path
+
+        if not is_default:
             ok, msg = validate_tts_model_path(path)
             if not ok:
                 is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -694,15 +726,45 @@ class VoiceHandlersMixin:
                     is_dark=is_dark,
                 ).exec()
                 return
-            set_tts_model_path(path)
+            name = os.path.basename(path)
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Switch TTS model",
+                f'Switch spoken replies to "{name}"?\n\n'
+                "Only Kokoro and Piper ONNX models are supported. If speech stops working, "
+                "open Settings → Voice & Audio and choose Reset to default.",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                return
+
+        if not self._load_tts_model_or_dialog(load_path):
+            return
+
+        set_tts_model_path("" if is_default else path)
         self._sync_active_tts_label()
-        self._reload_tts_from_settings()
+        self._refresh_tts_model_list()
 
     def _reset_tts_to_default(self) -> None:
+        load_path = bundled_default_path()
+        if not os.path.isfile(load_path):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Kokoro not installed",
+                "The bundled Kokoro model is missing. Download it from "
+                "Settings → Voice & Audio → Text-to-speech (TTS) before resetting.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        if not self._load_tts_model_or_dialog(load_path, failure_title="Reset failed"):
+            return
         set_tts_model_path("")
         self._refresh_tts_model_list()
         self._sync_active_tts_label()
-        self._reload_tts_from_settings()
 
     def _delete_selected_tts_model(self) -> None:
         item = self.tts_model_list.currentItem()
@@ -770,6 +832,11 @@ class VoiceHandlersMixin:
             was_active = active == path
         if was_active:
             set_tts_model_path("")
-            self._reload_tts_from_settings()
+            from core.tts_models import resolve_boot_tts_path
+
+            self._load_tts_model_or_dialog(
+                resolve_boot_tts_path(),
+                failure_title="TTS reload failed",
+            )
         self._sync_active_tts_label()
         self._refresh_tts_model_list()

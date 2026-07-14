@@ -55,6 +55,21 @@ class TestDiscourseQueryRewrite(unittest.TestCase):
         resolved = resolve_ambiguous_user_query(prompt, state, follow_up)
         self.assertIn("Kathmandu", resolved.resolved)
 
+    def test_surface_area_follow_up_rewrites_to_entity(self) -> None:
+        state = promote_referent_after_assistant(
+            user_prompt="What is the capital of Romania?",
+            assistant_text="Bucharest is the capital of Romania.",
+            prior=update_discourse_state(
+                [{"role": "user", "content": "What is the capital of Romania?"}],
+                None,
+                "What is the capital of Romania?",
+            ),
+        )
+        prompt = "Great, and how about its surface area?"
+        follow_up = classify_follow_up(prompt, [], state)
+        resolved = resolve_ambiguous_user_query(prompt, state, follow_up)
+        self.assertEqual(resolved.resolved, "What is the surface area of Bucharest?")
+
     def test_he_born_rewrite_with_person_referent(self) -> None:
         state = DiscourseState(
             active_referent="Steve Jobs",

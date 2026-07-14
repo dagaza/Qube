@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "description": "Phase 6c scientific retrieval eval corpus — 12 discipline-tagged queries",
+  "phase6c": {
+    "min_queries": 12,
+    "min_discipline_group_primary_rate": 0.7,
+    "disciplines": [
+      "biomedical",
+      "biology",
+      "chemistry",
+      "computer_science",
+      "economics",
+      "general_science",
+      "physics",
+      "political_science",
+      "psychology",
+      "sociology"
+    ]
+  },
+  "queries": [
+    {
+      "id": "bio_001",
+      "query": "Ozempic semaglutide cardiovascular outcomes randomized trial",
+      "discipline": "biomedical",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["pubmed"],
+      "expect_abstract": true,
+      "medical": true
+    },
+    {
+      "id": "bio_002",
+      "query": "mRNA vaccine myocarditis incidence adolescents",
+      "discipline": "biomedical",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["pubmed", "openalex"],
+      "expect_abstract": true,
+      "medical": true
+    },
+    {
+      "id": "cs_001",
+      "query": "transformer attention mechanism neural machine translation",
+      "discipline": "computer_science",
+      "primary_adapter": "arxiv",
+      "expect_adapters": ["arxiv", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "phys_001",
+      "query": "gravitational wave detection LIGO binary black hole",
+      "discipline": "physics",
+      "primary_adapter": "arxiv",
+      "expect_adapters": ["arxiv", "openalex", "inspire_hep"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "cross_001",
+      "query": "climate change Arctic sea ice extent satellite observations",
+      "discipline": "general_science",
+      "primary_adapter": "openalex",
+      "expect_adapters": ["openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "econ_001",
+      "query": "monetary policy inflation econometric VAR model central bank",
+      "discipline": "economics",
+      "primary_adapter": "repec",
+      "expect_adapters": ["repec", "openalex"],
+      "expect_abstract": false,
+      "medical": false
+    },
+    {
+      "id": "bio_003",
+      "query": "CRISPR Cas9 gene editing off-target effects human cells",
+      "discipline": "biology",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["pubmed", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "bio_004",
+      "query": "microbiome diversity soil ecology metagenomics",
+      "discipline": "biology",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["pubmed", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "chem_001",
+      "query": "aspirin acetylsalicylic acid binding COX-2 cyclooxygenase",
+      "discipline": "chemistry",
+      "primary_adapter": "pubchem",
+      "expect_adapters": ["pubchem", "openalex"],
+      "expect_abstract": false,
+      "medical": false
+    },
+    {
+      "id": "psych_001",
+      "query": "working memory cognitive load dual-task experiment psychology",
+      "discipline": "psychology",
+      "primary_adapter": "pubmed",
+      "expect_adapters": ["pubmed", "openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "soc_001",
+      "query": "social stratification income inequality sociology survey methods",
+      "discipline": "sociology",
+      "primary_adapter": "openalex",
+      "expect_adapters": ["openalex"],
+      "expect_abstract": true,
+      "medical": false
+    },
+    {
+      "id": "polisci_001",
+      "query": "voter turnout electoral reform democracy comparative political science",
+      "discipline": "political_science",
+      "primary_adapter": "openalex",
+      "expect_adapters": ["openalex"],
+      "expect_abstract": true,
+      "medical": false
+    }
+  ]
+}

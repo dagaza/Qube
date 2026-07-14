@@ -104,6 +104,7 @@ def reconstruct_formatted_prompt(
     *,
     effective_chat_format: Optional[str] = None,
     suppress_gguf_metadata: bool = False,
+    chat_template_kwargs: Optional[dict[str, Any]] = None,
 ) -> tuple[Optional[str], Any, str]:
     """
     Best-effort same string the chat handler builds before tokenization.
@@ -120,6 +121,7 @@ def reconstruct_formatted_prompt(
         return None, None, f"llama_cpp.llama_chat_format import failed: {e}"
 
     msgs = _dict_messages(messages)
+    tmpl_kwargs = dict(chat_template_kwargs or {})
     if effective_chat_format is None:
         cf = (getattr(llama, "chat_format", None) or "llama-2").strip()
     else:
@@ -143,8 +145,10 @@ def reconstruct_formatted_prompt(
                 add_generation_prompt=True,
                 stop_token_ids=[eid] if eid is not None and eid >= 0 else None,
             )
-            res = jf(messages=msgs)
+            res = jf(messages=msgs, **tmpl_kwargs)
             notes.append("reconstructed_via=Jinja2ChatFormatter(GGUF_or_jinja_template)")
+            if tmpl_kwargs:
+                notes.append(f"chat_template_kwargs={tmpl_kwargs}")
             return res.prompt, res.stop, "; ".join(notes)
         except Exception as e:
             notes.append(f"jinja_render_failed: {e}")
@@ -178,8 +182,10 @@ def reconstruct_formatted_prompt(
                     add_generation_prompt=True,
                     stop_token_ids=None,
                 )
-                res = jf(messages=msgs)
+                res = jf(messages=msgs, **tmpl_kwargs)
                 notes.append("reconstructed_via=Jinja2ChatTemplate(chatml)")
+                if tmpl_kwargs:
+                    notes.append(f"chat_template_kwargs={tmpl_kwargs}")
                 return res.prompt, res.stop, "; ".join(notes)
             except Exception as e:
                 notes.append(f"chatml_failed: {e}")

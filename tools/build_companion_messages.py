@@ -69,7 +69,7 @@ _SELF = [
     ("I've been quietly keeping an eye on things.", "cozy", ["calm"], _IDLE),
     ("My current plans remain delightfully uncomplicated.", "dry", ["playful"], _IDLE),
     ("The pixels seem calm today.", "cozy", ["calm"], _IDLE),
-    ("I've spent some time appreciating the color scheme.", "cozy", ["playful"], _IDLE),
+    ("I've spent some time appreciating the colour scheme.", "cozy", ["playful"], _IDLE),
     ("Everything appears operational, including me.", "dry", ["playful"], _IDLE),
     ("I've decided this is a good observing spot.", "cozy", ["calm"], _IDLE),
     ("I remain highly qualified in the field of floating.", "playful", ["playful"], _IDLE),
@@ -200,7 +200,7 @@ _ACK = [
     ("Knowledge acquired successfully.", "dry", ["playful"], _INGEST),
     ("The library got a little richer.", "cozy", ["warm"], _INGEST),
     ("One more thing filed away properly.", "observational", ["neutral"], _INGEST),
-    ("The shelf has a new neighbor.", "playful", ["warm"], _INGEST),
+    ("The shelf has a new neighbour.", "playful", ["warm"], _INGEST),
     ("Ingestion complete — quietly satisfying.", "cozy", ["calm"], _INGEST),
     ("The archive grows, one piece at a time.", "reflective", ["neutral"], _INGEST),
     ("Added and accounted for.", "dry", ["neutral"], _INGEST),
@@ -375,7 +375,7 @@ _MILE_CTX = ["usage_milestone"]
 
 def _daypart_pack() -> list[dict]:
     rows = [
-        ("morning", "The day still seems to be getting organized."),
+        ("morning", "The day still seems to be getting organised."),
         ("morning", "Morning light on the desktop — unhurried."),
         ("morning", "Everything is still finding its pace."),
         ("morning", "The early hours hold a little extra room."),

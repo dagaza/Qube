@@ -34,6 +34,7 @@ from core.companion_policy import companion_attention_mode
 from core.companion_personas import CompanionPersonaId, normalize_companion_persona
 from core.companion_verbal_prompts import truncate_companion_caption
 from core.local_gguf_library import list_local_gguf_menu_entries
+from core.platform.frameless_window import apply_translucent_window_chrome
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import CompanionPersonaRenderer, get_persona_renderer
@@ -65,6 +66,7 @@ class CompanionWindow(QWidget):
     hide_for_one_hour_requested = pyqtSignal()
     hide_companion_requested = pyqtSignal()
     snooze_requested = pyqtSignal()
+    snap_zone_changed = pyqtSignal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(
@@ -75,6 +77,9 @@ class CompanionWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+        self.setObjectName("CompanionWindow")
+        apply_translucent_window_chrome(self)
         self.setWindowTitle("Qube Companion")
 
         self._is_dark = True
@@ -84,6 +89,10 @@ class CompanionWindow(QWidget):
         self._idle_faded = False
         self._dock_mode = False
         self._drag_offset: QPoint | None = None
+        self._drag_active = False
+        from ui.companion.companion_snap_overlay import CompanionSnapOverlay
+
+        self._snap_overlay = CompanionSnapOverlay()
         self._voice_input_enabled_fn: Callable[[], bool] | None = None
         self._voice_output_enabled_fn: Callable[[], bool] | None = None
         self._banter_active = False
@@ -108,6 +117,7 @@ class CompanionWindow(QWidget):
 
         self._caption_frame = QFrame(self)
         self._caption_frame.setObjectName("CompanionCaptionFrame")
+        self._caption_frame.setFrameShape(QFrame.Shape.NoFrame)
         self._caption_frame.hide()
         caption_layout = QVBoxLayout(self._caption_frame)
         caption_layout.setContentsMargins(10, 7, 10, 7)
@@ -143,9 +153,6 @@ class CompanionWindow(QWidget):
 
     def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
         persona_id = normalize_companion_persona(persona_id)
-        if persona_id == self._persona_id:
-            self._resize_for_mode()
-            return
         self._persona_id = persona_id
         self._renderer = get_persona_renderer(persona_id)
         self._resize_for_mode()
@@ -407,6 +414,7 @@ class CompanionWindow(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        apply_translucent_window_chrome(self)
         self._resize_for_mode()
         if not self._anim_timer.isActive():
             self._anim_timer.start()
@@ -458,6 +466,9 @@ class CompanionWindow(QWidget):
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+        painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
         if self._dock_mode:
             self._paint_dock_strip(painter)
@@ -494,6 +505,7 @@ class CompanionWindow(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_active = False
             event.accept()
         elif event.button() == Qt.MouseButton.RightButton:
             self._show_context_menu(event.globalPosition().toPoint())
@@ -501,32 +513,103 @@ class CompanionWindow(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            if not self._drag_active:
+                self._begin_companion_drag()
             self.move(event.globalPosition().toPoint() - self._drag_offset)
+            self._update_companion_drag_overlay()
             event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             if self._drag_offset is not None:
-                moved = (event.globalPosition().toPoint() - self._drag_offset) != self.pos()
+                moved = self._drag_active
                 self._drag_offset = None
+                self._drag_active = False
                 if moved:
-                    self._snap_to_edge()
+                    self._finish_companion_drag()
             event.accept()
 
-    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.open_requested.emit()
-            event.accept()
+    def _begin_companion_drag(self) -> None:
+        self._drag_active = True
+        screen = QApplication.screenAt(self.orb_center_global())
+        if screen is not None:
+            self._snap_overlay.show_for_screen(screen)
+        if app_settings.get_companion_snap_zone() != "none":
+            app_settings.set_companion_snap_zone("none")
+            self.snap_zone_changed.emit("none")
 
-    def _snap_to_edge(self) -> None:
+    def _update_companion_drag_overlay(self) -> None:
+        from core.companion_placement import nearest_snap_zone, workspace_for_screen
+        from core.platform.work_area import workspace_bounds_for_screen
+
         screen = QApplication.screenAt(self.orb_center_global())
         if screen is None:
             return
-        geo = screen.availableGeometry()
-        pos = self.pos()
-        x, y = pos.x(), pos.y()
-        dock_edge = "none"
+        geo = workspace_for_screen(screen) or workspace_bounds_for_screen(screen)
+        zone = nearest_snap_zone(
+            self.x(),
+            self.y(),
+            width=self.width(),
+            height=self.height(),
+            geo=geo,
+        )
+        self._snap_overlay.set_highlight(zone)
 
+    def _finish_companion_drag(self) -> None:
+        from core.companion_placement import (
+            CompanionSnapZone,
+            compute_snap_position,
+            nearest_snap_zone,
+            normalized_position,
+            workspace_for_screen,
+        )
+        from core.platform.work_area import workspace_bounds_for_screen
+
+        self._snap_overlay.hide_overlay()
+        screen = QApplication.screenAt(self.orb_center_global())
+        if screen is None:
+            return
+        geo = workspace_for_screen(screen) or workspace_bounds_for_screen(screen)
+
+        zone = nearest_snap_zone(
+            self.x(),
+            self.y(),
+            width=self.width(),
+            height=self.height(),
+            geo=geo,
+        )
+        if zone != CompanionSnapZone.NONE:
+            x, y = compute_snap_position(
+                zone,
+                geo,
+                width=self.width(),
+                height=self.height(),
+            )
+            dock_edge = "none"
+        else:
+            x, y, dock_edge = self._apply_magnetic_edge_snap(self.x(), self.y(), geo)
+            zone = CompanionSnapZone.NONE
+
+        self.move(int(x), int(y))
+        norm_x, norm_y = normalized_position(int(x), int(y), geo)
+        app_settings.set_companion_position(
+            x=int(x),
+            y=int(y),
+            screen=screen.name(),
+            norm_x=norm_x,
+            norm_y=norm_y,
+            dock_edge=dock_edge,
+        )
+        app_settings.set_companion_snap_zone(zone.value)
+        self.snap_zone_changed.emit(zone.value)
+
+    def _apply_magnetic_edge_snap(
+        self,
+        x: int,
+        y: int,
+        geo: QRect,
+    ) -> tuple[int, int, str]:
+        dock_edge = "none"
         if abs(x - geo.left()) < _MAGNETIC_EDGE_PX:
             x = geo.left() + 4
             dock_edge = "left"
@@ -538,16 +621,12 @@ class CompanionWindow(QWidget):
             dock_edge = "bottom"
         elif abs(y - geo.top()) < _MAGNETIC_EDGE_PX:
             y = geo.top() + 4
+        return x, y, dock_edge
 
-        self.move(x, y)
-        app_settings.set_companion_position(
-            x=x,
-            y=y,
-            screen=screen.name(),
-            norm_x=(x - geo.left()) / max(1, geo.width()),
-            norm_y=(y - geo.top()) / max(1, geo.height()),
-            dock_edge=dock_edge,
-        )
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.open_requested.emit()
+            event.accept()
 
     def _show_context_menu(self, global_pos: QPoint) -> None:
         menu = QMenu(self)

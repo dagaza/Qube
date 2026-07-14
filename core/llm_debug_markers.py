@@ -48,6 +48,7 @@ def log_chat_exchange_begin(
     session_id: str,
     user_prompt: str,
     engine_mode: str = "",
+    execution_policy: dict[str, Any] | None = None,
 ) -> None:
     if not llm_debug_enabled():
         return
@@ -58,6 +59,8 @@ def log_chat_exchange_begin(
         "engine_mode": engine_mode or "",
         "user_prompt_preview": _preview(user_prompt),
     }
+    if execution_policy:
+        payload.update(execution_policy)
     logger.info(json.dumps(payload, ensure_ascii=False))
     logger.info(_banner_line(f"[QUBE CHAT EXCHANGE BEGIN] id={exchange_id}"))
     logger.info(
@@ -79,6 +82,7 @@ def log_chat_exchange_end(
     engine_queue_wait_ms: int | None = None,
     engine_inference_ms: int | None = None,
     exchange_total_ms: int | None = None,
+    execution_policy: dict[str, Any] | None = None,
 ) -> None:
     if not llm_debug_enabled():
         return
@@ -100,6 +104,8 @@ def log_chat_exchange_end(
         payload["engine_inference_ms"] = int(engine_inference_ms)
     if exchange_total_ms is not None:
         payload["exchange_total_ms"] = int(exchange_total_ms)
+    if execution_policy:
+        payload.update(execution_policy)
     logger.info(json.dumps(payload, ensure_ascii=False))
     logger.info(
         "[QUBE EXCHANGE] session=%s route=%s success=%s presented_len=%d preview=%r",

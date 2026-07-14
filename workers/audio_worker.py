@@ -66,6 +66,7 @@ class AudioListenerWorker(QThread):
         self._mic_open_backoff_sec = 2.0
         self._capture_cancel_requested = False
         self._voice_capture_active = False
+        self._manual_capture_pending = False
         self.refresh_wakewords(include_remote=True)
 
     @property
@@ -76,13 +77,26 @@ class AudioListenerWorker(QThread):
         """Request an early exit from the post-wakeword listening window."""
         self._capture_cancel_requested = True
 
+    def request_manual_capture(self) -> None:
+        """Queue push-to-talk capture on the audio thread (bypasses pause / wakeword)."""
+        self.mutex.lock()
+        try:
+            self._manual_capture_pending = True
+        finally:
+            self.mutex.unlock()
+
+    def _consume_manual_capture_pending(self) -> bool:
+        self.mutex.lock()
+        try:
+            pending = self._manual_capture_pending
+            self._manual_capture_pending = False
+            return pending
+        finally:
+            self.mutex.unlock()
+
     def set_paused(self, paused: bool):
         """Thread-safe request to pause the audio stream."""
         self.is_paused = paused
-        if paused:
-            self.status_update.emit("Voice Input Deactivated")
-        else:
-            self.status_update.emit("Boot: Reconnecting Mic...")
 
     def refresh_wakewords(self, include_remote: bool = True) -> dict:
         catalog = self.wakeword_manager.refresh_catalog(include_remote=include_remote)
@@ -173,7 +187,7 @@ class AudioListenerWorker(QThread):
         self._capture_cancel_requested = False
         self._voice_capture_active = True
         self.status_update.emit("Listening")
-        logger.info("Wake word detected. Opening recording buffer (deaf window active).")
+        logger.info("Voice capture started. Opening recording buffer (deaf window active).")
 
         # Temporal gate: discard early mic audio so speaker echo does not fill the buffer.
         gate_start_time = time.time()
@@ -248,12 +262,14 @@ class AudioListenerWorker(QThread):
                     return
 
                 if has_spoken and elapsed_silence > self.silence_timeout:
-                    self.status_update.emit("Transcribing...")
                     emitted_transcribing = True
                     logger.info(
                         "Silence timeout reached (%.1fs). Closing buffer.",
                         self.silence_timeout,
                     )
+                    # Hand off to STT immediately so the UI leaves Listening without
+                    # waiting for the STT thread to start (replaces removed Transcribing).
+                    self.status_update.emit("Working...")
                     audio_bytes = b"".join(recording)
                     self.audio_captured.emit(audio_bytes)
                     return
@@ -382,6 +398,18 @@ class AudioListenerWorker(QThread):
                         pass
                     self.stream = None
                     logger.info("Hardware audio stream safely released by background thread.")
+
+            # --- Manual push-to-talk (works even when wakeword listening is paused) ---
+                if self._consume_manual_capture_pending():
+                    if self.stream is None:
+                        if not self._open_mic_with_warmup():
+                            time.sleep(self._mic_open_backoff_sec)
+                            self._mic_open_backoff_sec = min(
+                                self._mic_open_backoff_sec * 1.5, 30.0
+                            )
+                            continue
+                    self._record_until_silence()
+                    continue
 
             # --- 1. Check for Pause State ---
                 if getattr(self, 'is_paused', False):
