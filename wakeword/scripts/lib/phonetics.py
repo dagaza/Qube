@@ -1,6 +1,6 @@
 """Hard-negative / confusable phrase generation for wake-word training.
 
-Dan's #1 quality risk for a short word like "Qube" is the *false-accept* rate on
+The #1 quality risk for a short word like "Qube" is the *false-accept* rate on
 phonetically similar words ("cube", "cute", "tube", "queue", ...). Relying on generic
 speech corpora alone under-samples these near-misses, so we explicitly synthesize a
 large, curated set of confusables and train the model to reject them.

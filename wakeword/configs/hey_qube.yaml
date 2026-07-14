@@ -16,8 +16,8 @@ wakeword:
     - "okay cube"
 
 training:
-  examples: 50000                 # Dan's target; pilot at 5000 first
-  steps: 50000                    # Dan's target; pilot at 10000 first
+  examples: 50000                 # production target; pilot at 5000 first
+  steps: 50000                    # production target; pilot at 10000 first
   false_penalty: 2500
   layer_dim: 32
   augmentation_rounds: 2

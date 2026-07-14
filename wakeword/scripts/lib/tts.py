@@ -1,6 +1,6 @@
 """Multi-speaker Piper TTS synthesis for positive + hard-negative clips.
 
-Dan's #2 quality risk is training-data diversity: a wake word trained on a handful of
+The #2 quality risk is training-data diversity: a wake word trained on a handful of
 voices overfits and fails in real rooms. We counter this by synthesizing every phrase
 across many Piper speakers with per-clip variation in speaking rate and vocal noise, so
 even the synthetic bootstrap set spans a wide acoustic range.

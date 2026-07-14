@@ -7,7 +7,7 @@ range instead of one robotic voice. Clips land in ``datasets/speech/positive/<id
 as 16 kHz-consumable WAVs and carry a commercial-license provenance manifest so the
 downstream gate stays green.
 
-TTS positives are a *bootstrap*: they get real models off the ground cheaply. Dan's
+TTS positives are a *bootstrap*: they get real models off the ground cheaply. The
 guidance (docs/roadmap.md, "Medium term") is to fold in real human recordings before
 shipping — the config/CLI contract here is unchanged when that data arrives.
 

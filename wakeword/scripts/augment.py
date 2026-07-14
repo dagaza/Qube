@@ -5,8 +5,8 @@ Mixes synthetic positive clips with RIRs (MIT IR Survey 16kHz) and background
 noise/music (MUSAN/FSD50K/FMA) across a signal-to-noise sweep, for robustness in
 real rooms. All augmentation sources must be commercially licensed.
 
-Consumes the M3 synthetic positives (scripts/generate_positives.py) and is Dan's #2
-quality lever (far-field / noisy augmentation).
+Consumes the M3 synthetic positives (scripts/generate_positives.py) and is the #2
+data-quality lever (far-field / noisy augmentation).
 
 Status: structured stub (milestone M4).
 """

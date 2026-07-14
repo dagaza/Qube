@@ -1,5 +1,5 @@
 # Reproducible training environment for the Qube wake word pipeline.
-# Frozen so a clone runs identically on Dan's local GPU box or a cloud GPU later.
+# Frozen so a clone runs identically on a local GPU box or a cloud GPU later.
 #
 # Build:  docker build -t qube-wakeword -f environment/Dockerfile .
 # Train:  docker run --gpus all --shm-size=32g -v "$PWD:/work" qube-wakeword \

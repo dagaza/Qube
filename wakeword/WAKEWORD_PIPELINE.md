@@ -294,7 +294,7 @@ Key fields: phonetic `phrase`, `adversarial_phrases` (near-miss negatives),
 **Two-word phrases are recommended first** — a stronger acoustic signature gives better
 recall and lower false-accepts than a single word. So **train `hey_keube` first**.
 
-**M3 synthetic training data (implemented).** Two of Dan's top quality levers ship here:
+**M3 synthetic training data (implemented).** Two of the top quality levers ship here:
 
 - **Multi-speaker positives** (`generate_positives.py` + `lib/tts.py`): the wake phrase is
   synthesized across many Piper speakers (even speaker spread over the 900+ LibriTTS-R

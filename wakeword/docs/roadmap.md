@@ -19,7 +19,7 @@
 > lazy Piper imports).
 
 M2 was the riskiest task and M1 now feeds it real LibriSpeech / MUSAN audio. M3 lands
-Dan's two biggest quality levers — **hard-negative mining** for a short word like "Qube"
+the two biggest quality levers — **hard-negative mining** for a short word like "Qube"
 and **multi-speaker positive diversity**. What remains is largely GPU time: the M4
 `train.py` loop (which the pilot sweep already calls) plus `augment.py`/`export.py`, then
 the M5 `evaluate.py` metrics that the sweep's ranking stage already consumes.
@@ -39,7 +39,7 @@ the M5 `evaluate.py` metrics that the sweep's ranking stage already consumes.
 - Provenance: every synthetic set writes a `datasets/licenses/<key>.license.json`
   (Piper MIT + LibriTTS-R CC-BY-4.0) so the fail-closed gate stays green.
 
-### Deferred to M4/M5 (per Dan's feedback)
+### Deferred to M4/M5 (per review feedback)
 
 - **Real human positives** — TTS is a bootstrap; collect multi-speaker recordings before
   shipping (see `evaluation/RECORDING_PROTOCOL.md`).
