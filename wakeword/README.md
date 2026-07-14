@@ -35,7 +35,7 @@ configs/<phrase>.yaml
 [6] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)  (done, M4)
 [7] scripts/train.py                 → classifier train → checkpoint + model_card  (done, M4)
 [8] scripts/export.py                → .onnx (+ optional .tflite) @ 16 kHz        (done, M4)
-[9] scripts/evaluate.py              → metrics JSON + report on held-out corpus  (stub, M5)
+[9] scripts/evaluate.py              → FAR/FRR/DET + report on held-out corpus  (done, M5)
 
     scripts/run_pilot_sweep.py       → orchestrates [3]+[4] across phonetic variants,
                                        ranks by FP/hr + recall to pick a winner   (done, M3)
@@ -139,8 +139,16 @@ Same inputs + same params → equivalent model.
   openWakeWord `.onnx` layout exactly, so an export drops straight into Qube's runtime.
   torch/tf are lazily imported and run only in the pinned env; the data/plan/provenance
   logic is unit-tested without them.
-- **M5 (pending):** `evaluate.py` remains a **structured stub** — FAR/FRR/DET + on-device
-  CPU metrics against a held-out real-voice corpus. The pilot sweep's ranking already
-  consumes those metrics once they exist.
+- **M5 (done):** `evaluate.py` scores the model over the held-out real-voice corpus and
+  computes operating-point metrics across a threshold sweep — recall/FRR, false-accepts
+  per hour, precision, adversarial false-accept rate, DET/ROC points, latency percentiles,
+  and quiet-vs-noisy robustness (`lib/metrics.py`, pure) — then picks the recommended
+  threshold (max recall s.t. FP/hr ≤ target) and writes `results/<id>/<version>/eval.json`
+  + `eval.md`, returning a pass/fail verdict. It can emit a sweep-compatible metrics row so
+  `run_pilot_sweep.py --stage rank` closes the loop on real numbers. Model inference is
+  lazy; the metrics + corpus parsing are unit-tested without audio.
+  **Remaining for ship:** the corpus itself (real multi-speaker recordings per
+  `evaluation/RECORDING_PROTOCOL.md`) and final Test Lab sign-off — data + human steps,
+  not code.
 
 See [`docs/roadmap.md`](docs/roadmap.md) for milestones.

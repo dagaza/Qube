@@ -39,6 +39,11 @@ data:
   rir_paths:
     - datasets/room-impulse
 
+evaluation:
+  # Ship rule used by evaluate.py: max recall subject to FP/hr <= cap.
+  max_false_positives_per_hour: 1.0
+  min_recall: 0.90               # two-word phrase target; loosen if noisy-room recall lags
+
 export:
   formats: [onnx, tflite]
   install_hint: "~/.qube/models/wakeword/en/hey_keube/"

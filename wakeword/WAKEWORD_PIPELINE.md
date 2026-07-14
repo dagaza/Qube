@@ -6,12 +6,16 @@
 > Where a topic has an authoritative source file, it is linked, but the substance is
 > inlined here so this document stands alone.
 >
-> **Status at time of writing:** M0–**M4** implemented and tested (100 passing tests,
+> **Status at time of writing:** M0–**M5** implemented and tested (118 passing tests,
 > lint clean). M3 added multi-speaker TTS positives, phonetic hard-negative mining, and
 > the pilot-sweep orchestrator + winner selection; M4 adds far-field augmentation, the
 > classifier training loop (weighted BCE + early-stop), and ONNX/TFLite export matching
-> openWakeWord's runtime contract. Only M5 (`evaluate.py` — held-out real-voice metrics)
-> remains a structured stub. Branch: `keith/wakeword-training-pipeline`.
+> openWakeWord's runtime contract; M5 adds the held-out real-voice evaluation
+> (`evaluate.py` + `lib/metrics.py`): FAR/FRR, FP/hour, precision, adversarial FAR,
+> DET/ROC, latency + robustness across a threshold sweep, recommended-threshold selection,
+> and a pass/fail verdict that feeds the pilot-sweep rank stage. **All pipeline code is
+> implemented and unit-tested.** The only remaining ship gates are *data* (record the
+> real-voice corpus) and *human* (Test Lab sign-off). Branch: `keith/wakeword-training-pipeline`.
 
 ---
 
@@ -135,7 +139,7 @@ wakeword/
 ├── scripts/                  ← pipeline stages + shared lib/
 │   ├── lib/                  ← datasets registry, license gate, audio, features, config,
 │   │                           phonetics, tts, experiments, augment, model, training,
-│   │                           model_card, export
+│   │                           model_card, export, metrics, corpus
 │   ├── download_datasets.py     ← [1] M1  data acquisition            (done)
 │   ├── verify_licenses.py       ← [2]     fail-closed license gate    (done)
 │   ├── generate_positives.py    ← [3] M3  multi-speaker TTS positives (done)
@@ -145,7 +149,7 @@ wakeword/
 │   ├── augment.py               ← [6] M4  RIR/noise augmentation      (done)
 │   ├── train.py                 ← [7] M4  classifier train + card      (done)
 │   ├── export.py                ← [8] M4  .onnx (+ .tflite) export     (done)
-│   └── evaluate.py              ← [9] M5  held-out eval + report       (stub)
+│   └── evaluate.py              ← [9] M5  held-out eval + report       (done)
 ├── datasets/                 ← downloaded/generated assets (gitignored)
 │   └── licenses/             ← *.license.json manifests + manifest.lock.json (TRACKED)
 ├── environment/              ← pinned requirements, Dockerfile, setup notes
@@ -172,7 +176,7 @@ configs/<phrase>.yaml
 [6] augment.py              → RIR reverb + noise/music mixing (SNR sweep)   (done, M4)
 [7] train.py                → classifier train → checkpoint + model_card    (done, M4)
 [8] export.py               → .onnx (+ optional .tflite) @ 16 kHz           (done, M4)
-[9] evaluate.py             → metrics JSON + report on held-out corpus      (stub, M5)
+[9] evaluate.py             → FAR/FRR/DET + verdict on held-out corpus      (done, M5)
 
     run_pilot_sweep.py      → orchestrates [3]+[4] across phonetic variants,
                               ranks by FP/hr + recall → winner per class     (done, M3)
@@ -181,9 +185,14 @@ configs/<phrase>.yaml
 models/<phrase>/<version>/<phrase>.onnx  (+ model_card.json)
 ```
 
-The remaining stub (`evaluate.py`, M5) is **structured**: it parses args, loads+validates
-the config, then raises a clear `NotImplementedError` describing exactly what it will do.
-This keeps the CLI/config contract stable while the held-out real-voice eval lands.
+All nine stages are implemented. `evaluate.py` (M5) streams the exported `<id>.onnx` over
+the held-out corpus, sweeps thresholds 0.3–0.7, and computes the operating-point metrics
+in `lib/metrics.py` (recall/FRR, FP/hour, precision, adversarial FAR, DET/ROC, latency +
+quiet-vs-noisy robustness), selects the recommended threshold (max recall s.t. FP/hr ≤
+target), and writes `results/<id>/<version>/eval.json` + `eval.md` with a pass/fail verdict.
+`--emit-sweep-metrics` writes a rank-stage row so `run_pilot_sweep.py --stage rank` ranks
+variants on real numbers. Running it end-to-end needs the recorded corpus + a trained model;
+the metrics and corpus parsing are unit-tested with an injected scorer (no audio in CI).
 
 **M4 note on openWakeWord 0.4.0.** The pinned runtime package ships *no* training module
 (its auto-train lived in the repo/notebook at a pinned commit — the "dependency rot" the
@@ -325,11 +334,17 @@ pick the best per word-class before spending full 50k GPU runs.
 - **Selection rule** (`lib/experiments.py`): highest recall subject to **FP/hr ≤ 1.0**
   and **recall ≥ 0.85**, tie-broken on noisy-room robustness. The sweep's `data` stage
   (generate positives + hard negatives per variant) runs today; its `rank` stage consumes
-  the M5 eval metrics.
+  the M5 eval metrics via `evaluate.py --emit-sweep-metrics`.
 
-**Evaluation** is against a **held-out, real-voice** corpus (never synthetic), captured
-per `evaluation/RECORDING_PROTOCOL.md`. Metrics: false-positives/hour, recall,
-precision, latency, robustness in noise. This is the ship gate (M5).
+**M5 evaluation (implemented).** `evaluate.py` scores the model over a **held-out,
+real-voice** corpus (never synthetic; captured per `evaluation/RECORDING_PROTOCOL.md`) and
+computes operating-point metrics in `lib/metrics.py` across a 0.3–0.7 threshold sweep:
+recall/FRR, **false-positives per hour**, precision, **adversarial false-accept rate**,
+**DET/ROC** points, **latency percentiles**, and **quiet-vs-noisy robustness**. It selects
+the recommended threshold (max recall s.t. FP/hr ≤ the config's `evaluation` cap) and
+writes `results/<id>/<version>/eval.json` + `eval.md` with a pass/fail verdict. The math is
+unit-tested with an injected scorer; running it needs the recorded corpus + a trained model.
+Final human confirmation stays in the Wakeword Test Lab (Settings → Wakeword).
 
 ---
 
@@ -369,20 +384,24 @@ even on CPU.
 | **M2** | `precompute_features.py` — `(N,16,96)` negatives + FP validation from FOSS audio | ✅ done |
 | **M3** | Multi-speaker TTS positives + phonetic hard-negative mining + pilot sweep/selection | ✅ done |
 | **M4** | `augment.py` (far-field) + `train.py` (classifier + model card) + `export.py` (verified ONNX/TFLite) | ✅ done |
-| **M5** | Eval report (FAR/FRR/DET + on-device CPU) + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | ⏳ pending |
+| **M5** | `evaluate.py` — FAR/FRR/DET + latency/robustness sweep → recommended threshold + verdict, feeding the sweep rank stage | ✅ done |
 
 M2 was the riskiest task (the FOSS feature regeneration). M3 lands the two biggest
 data-quality levers (hard negatives + multi-speaker positives). M4 makes the pipeline
-produce a Qube-loadable model end-to-end. What remains (M5) is the held-out real-voice
-eval + Test Lab sign-off, which needs the real recordings, not code.
+produce a Qube-loadable model end-to-end. M5 scores it against the held-out corpus and
+returns a ship verdict. **All pipeline code is implemented and tested;** the only remaining
+gates are recording the real-voice corpus and Test Lab sign-off — data + human, not code.
 
-**Test status:** full `wakeword/` suite **100 passing** (license gate, feature
+**Test status:** full `wakeword/` suite **118 passing** (license gate, feature
 shaping/shard-merge, dataset registry integrity, selection resolution, archive
 extraction + traversal rejection, manifest gating, lock behavior, phonetic confusable
 generation, TTS synthesis planning, pilot-variant expansion + winner selection, the
-positives / hard-negative / sweep orchestrators, **augmentation math (SNR mix + RIR),
-model-card provenance, training-spec + batch sampling + false-penalty weighting, and the
-augment/train/export orchestration** — all heavy deps injected/lazy). Lint clean.
+positives / hard-negative / sweep orchestrators, augmentation math (SNR mix + RIR),
+model-card provenance, training-spec + batch sampling + false-penalty weighting, the
+augment/train/export orchestration, **plus the M5 operating-point metrics (recall/FRR,
+FP/hr, precision, adversarial FAR, DET/ROC, threshold selection, latency percentiles),
+corpus-index parsing, and evaluate orchestration with an injected scorer** — all heavy
+deps injected/lazy). Lint clean.
 
 Authoritative source: [`docs/roadmap.md`](docs/roadmap.md).
 
@@ -418,8 +437,10 @@ python scripts/augment.py --config configs/hey_qube.yaml           # far-field r
 python scripts/train.py   --config configs/hey_qube.yaml           # -> checkpoint.pt + model_card.json
 python scripts/export.py  --config configs/hey_qube.yaml           # -> <id>.onnx (+ optional .tflite)
 
-# 8. Evaluate against the held-out, real-voice corpus               [M5 — stub]
-python scripts/evaluate.py --config configs/hey_qube.yaml
+# 8. Evaluate against the held-out, real-voice corpus (M5)
+#    -> results/<id>/<version>/eval.json + eval.md + pass/fail verdict
+python scripts/evaluate.py --config configs/hey_qube.yaml --version v0.1 \
+    --corpus evaluation/corpus.json --emit-sweep-metrics results/pilot_metrics.json
 python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml \
     --stage rank --results results/pilot_metrics.json
 ```

@@ -41,6 +41,12 @@ data:
   rir_paths:
     - datasets/room-impulse
 
+evaluation:
+  # Ship rule used by evaluate.py: max recall subject to FP/hr <= cap.
+  # Single short words false-trigger more, so hold the FP cap tighter here.
+  max_false_positives_per_hour: 0.5
+  min_recall: 0.85
+
 export:
   formats: [onnx, tflite]
   # Suggested install path inside Qube once validated in the Test Lab:

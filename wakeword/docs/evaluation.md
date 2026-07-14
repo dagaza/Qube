@@ -3,6 +3,14 @@
 Training is half the task. A model is only "good" if it proves so on a **held-out,
 real-voice** corpus that was never used in training.
 
+> **Status (M5): implemented.** `scripts/evaluate.py` + `lib/metrics.py` + `lib/corpus.py`
+> compute every metric below across the 0.3–0.7 threshold sweep — recall/FRR, FP/hour,
+> precision, adversarial FAR, **DET/ROC points**, and latency percentiles — and pick the
+> recommended threshold via the selection rule, emitting `eval.json` + `eval.md` and a
+> pass/fail verdict. The pure math is unit-tested; running it end-to-end needs the recorded
+> corpus (below) + a trained `<id>.onnx`. On-device CPU / real-time-factor is reported from
+> wall-time when run on the target hardware; final human sign-off stays in the Test Lab.
+
 ## Held-out corpus design
 
 Recorded by real people (not TTS), spanning:

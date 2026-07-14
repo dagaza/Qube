@@ -9,7 +9,7 @@
 | **M2** ✅ | `precompute_features.py` (LibriSpeech negatives + FP validation `.npy`) | Trains without ACAV100M |
 | **M3** ✅ | Synthetic-data + pilot-sweep layer: `generate_positives.py` (multi-speaker TTS), `hard_negative_mining.py` (phonetic confusables), `run_pilot_sweep.py` (variant sweep + winner selection) | Diverse positives + hard negatives; sweep picks winner per word class |
 | **M4** ✅ | Training half: `augment.py` (RIR + noise/music SNR mix), `train.py` (weighted-BCE classifier + early-stop → `checkpoint.pt` + `model_card.json`), `export.py` (`<id>.onnx` verified against the runtime contract + optional `.tflite`) | Runnable train→export producing a Qube-loadable model |
-| **M5** | `evaluate.py` (FAR/FRR/latency + DET/ROC + on-device CPU) + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | Ship criteria met |
+| **M5** ✅ | `evaluate.py` — threshold sweep of recall/FRR, FP/hr, precision, adversarial FAR, DET/ROC, latency + robustness → recommended threshold + pass/fail verdict, feeding the sweep rank stage | Operating-point metrics + ship verdict (needs a real corpus to run) |
 
 > **Delivered:** M0 + **M1 dataset acquisition** (declarative registry + manifest +
 > reproducibility lock) + **M2 feature precompute** (validated end-to-end against
@@ -23,8 +23,9 @@
 M2 was the riskiest task and M1 now feeds it real LibriSpeech / MUSAN audio. M3 lands
 the two biggest quality levers — **hard-negative mining** for a short word like "Qube"
 and **multi-speaker positive diversity**. M4 makes the pipeline produce an actual
-Qube-loadable model end-to-end. What remains is **M5**: the held-out real-voice eval
-(`evaluate.py`) that the pilot sweep's ranking already consumes, plus Test Lab sign-off.
+Qube-loadable model end-to-end. M5 adds the held-out real-voice eval (`evaluate.py`) that
+the pilot sweep's ranking consumes; the only remaining ship gates are **data** (record the
+corpus) and **human** (Test Lab sign-off), not code.
 
 ### M3 detail (this milestone)
 
@@ -37,7 +38,7 @@ Qube-loadable model end-to-end. What remains is **M5**: the held-out real-voice 
 - `lib/experiments.py` — variant expansion + the operating-point selection rule (recall
   subject to FP/hr, tie-break on noisy-room robustness).
 - `run_pilot_sweep.py` — `plan` / `data` / `rank` stages; the `data` stage is runnable
-  today, `rank` consumes M5 eval metrics.
+  today, `rank` consumes M5 eval metrics (`evaluate.py --emit-sweep-metrics`).
 - Provenance: every synthetic set writes a `datasets/licenses/<key>.license.json`
   (Piper MIT + LibriTTS-R CC-BY-4.0) so the fail-closed gate stays green.
 
@@ -56,12 +57,26 @@ Qube-loadable model end-to-end. What remains is **M5**: the held-out real-voice 
 - `train.py` / `export.py` — orchestrate gate → feature assembly → train → checkpoint +
   model card → verified export. torch/tf run only in the pinned env.
 
-### Deferred to M5 (per review feedback)
+### M5 detail (this milestone)
 
-- **Real human positives** — TTS is a bootstrap; collect multi-speaker recordings before
-  shipping (see `evaluation/RECORDING_PROTOCOL.md`).
-- **FAR/FRR + DET/ROC + on-device CPU** metrics and **continuous regression** on a frozen
-  golden set (M5, `evaluate.py` + CI).
+- `lib/metrics.py` — pure operating-point math: recall/FRR, false-accepts per hour,
+  precision, adversarial false-accept rate, DET/ROC points, latency percentiles, and the
+  ship rule (max recall subject to FP/hr ≤ target, tie-break to the higher threshold).
+- `lib/corpus.py` — parses `evaluation/corpus.json` into typed positives / adversarial /
+  long-form negatives with paths resolved relative to the index (raw audio stays gitignored).
+- `evaluate.py` — streams the exported `<id>.onnx` over the corpus (lazy openWakeWord),
+  sweeps thresholds 0.3–0.7, selects the recommended threshold, writes
+  `results/<id>/<version>/eval.json` + `eval.md`, returns a pass/fail verdict, and can
+  `--emit-sweep-metrics` a rank-stage row. Metrics + corpus parsing are unit-tested with an
+  injected scorer; no audio/model needed in CI.
+
+### Remaining ship gates (data + human, not code)
+
+- **Real human positives / corpus** — TTS is a bootstrap; record multi-speaker positives,
+  adversarial sound-alikes, and long-form negatives per `evaluation/RECORDING_PROTOCOL.md`.
+- **Test Lab sign-off** — final human confirmation via Settings → Wakeword → Test Lab.
+- **Continuous regression** — freeze the corpus as a golden set and wire `evaluate.py` into
+  CI to reject regressions.
 
 ## Medium term
 
