@@ -32,9 +32,9 @@ configs/<phrase>.yaml
 [3] scripts/generate_positives.py    → multi-speaker Piper TTS positives        (done, M3)
 [4] scripts/hard_negative_mining.py  → phonetically-similar hard negatives      (done, M3)
 [5] scripts/precompute_features.py   → embedding .npy for negatives + FP validation  (done, M2)
-[6] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)  (stub, M4)
-[7] scripts/train.py                 → openWakeWord auto-train → checkpoint      (stub, M4)
-[8] scripts/export.py                → .onnx + .tflite @ 16 kHz                  (stub, M4)
+[6] scripts/augment.py               → RIR reverb + noise/music mixing (SNR sweep)  (done, M4)
+[7] scripts/train.py                 → classifier train → checkpoint + model_card  (done, M4)
+[8] scripts/export.py                → .onnx (+ optional .tflite) @ 16 kHz        (done, M4)
 [9] scripts/evaluate.py              → metrics JSON + report on held-out corpus  (stub, M5)
 
     scripts/run_pilot_sweep.py       → orchestrates [3]+[4] across phonetic variants,
@@ -68,8 +68,10 @@ python scripts/verify_licenses.py --datasets datasets --require-commercial
 python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml            # print the plan
 python scripts/run_pilot_sweep.py --experiments configs/experiments.yaml --stage data --pilot
 
-# 6. Train (the trainer re-runs the license gate first and refuses to start if it fails)
-python scripts/train.py --config configs/hey_qube.yaml
+# 6. Augment positives (far-field reverb + noise/music), then train + export
+python scripts/augment.py --config configs/hey_qube.yaml
+python scripts/train.py  --config configs/hey_qube.yaml            # -> checkpoint.pt + model_card.json
+python scripts/export.py --config configs/hey_qube.yaml            # -> <id>.onnx (+ optional .tflite)
 
 # 7. Evaluate, then rank the sweep by real operating-point metrics
 python scripts/evaluate.py --config configs/hey_qube.yaml
@@ -126,10 +128,19 @@ Same inputs + same params → equivalent model.
   ranks them by the operating-point rule (recall subject to FP/hr, tie-break on noisy-room
   robustness — `lib/experiments.py`). All Piper/synthesis calls are behind lazy imports so
   the planning logic is fully unit-tested without a voice model.
-- **M4–M5 (pending):** `augment.py`, `train.py`, `export.py`, and `evaluate.py` remain
-  **structured stubs** that define the CLI/config contract and raise a clear
-  `NotImplementedError` with next steps. The pilot sweep's *training* step calls `train.py`
-  (M4); its *ranking* step is live and already consumes eval metrics once `evaluate.py`
-  (M5) produces them.
+- **M4 (done):** the training half.
+  `augment.py` convolves positives with room impulse responses and mixes noise/music at a
+  sampled SNR (`lib/augment.py`, pure NumPy) for far-field robustness; `train.py` assembles
+  positive/negative/validation features, runs a weighted-BCE classifier training loop with
+  early-stop (`lib/training.py` + `lib/model.py`), and writes `checkpoint.pt` +
+  `model_card.json` (full provenance via `lib/model_card.py`); `export.py` emits `<id>.onnx`
+  (verified against the `(batch,16,96)→(batch,1)` runtime contract with a real onnxruntime
+  inference) plus an optional `.tflite`. The classifier architecture matches the shipped
+  openWakeWord `.onnx` layout exactly, so an export drops straight into Qube's runtime.
+  torch/tf are lazily imported and run only in the pinned env; the data/plan/provenance
+  logic is unit-tested without them.
+- **M5 (pending):** `evaluate.py` remains a **structured stub** — FAR/FRR/DET + on-device
+  CPU metrics against a held-out real-voice corpus. The pilot sweep's ranking already
+  consumes those metrics once they exist.
 
 See [`docs/roadmap.md`](docs/roadmap.md) for milestones.

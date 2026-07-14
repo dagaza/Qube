@@ -8,21 +8,23 @@
 | **M1** ✅ | `download_datasets.py` (registry + downloader) + `verify_licenses.py` + `LICENSES.md` + pinned env | All sources CC-BY/CC0/Apache; gate green |
 | **M2** ✅ | `precompute_features.py` (LibriSpeech negatives + FP validation `.npy`) | Trains without ACAV100M |
 | **M3** ✅ | Synthetic-data + pilot-sweep layer: `generate_positives.py` (multi-speaker TTS), `hard_negative_mining.py` (phonetic confusables), `run_pilot_sweep.py` (variant sweep + winner selection) | Diverse positives + hard negatives; sweep picks winner per word class |
-| **M4** | `augment.py` + `train.py` + `export.py`: full train (50k / 50k / penalty 2500) for `hey_keube` + best single-word | Two production `.onnx`/`.tflite` models |
-| **M5** | `evaluate.py` (FAR/FRR/latency + DET/ROC) + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | Ship criteria met |
+| **M4** ✅ | Training half: `augment.py` (RIR + noise/music SNR mix), `train.py` (weighted-BCE classifier + early-stop → `checkpoint.pt` + `model_card.json`), `export.py` (`<id>.onnx` verified against the runtime contract + optional `.tflite`) | Runnable train→export producing a Qube-loadable model |
+| **M5** | `evaluate.py` (FAR/FRR/latency + DET/ROC + on-device CPU) + Test Lab sign-off; install to `~/.qube/models/wakeword/en/` | Ship criteria met |
 
 > **Delivered:** M0 + **M1 dataset acquisition** (declarative registry + manifest +
 > reproducibility lock) + **M2 feature precompute** (validated end-to-end against
 > openWakeWord's embedding model, output shape `(N, 16, 96)`) + **M3 synthetic-data +
 > pilot-planning layer** (multi-speaker TTS positives, phonetic hard-negative mining,
-> and a variant sweep with FP/recall winner selection — all fully unit-tested behind
-> lazy Piper imports).
+> and a variant sweep with FP/recall winner selection) + **M4 training half** (far-field
+> augmentation, weighted-BCE classifier training with early-stop, and ONNX/TFLite export
+> matching openWakeWord's runtime contract) — all pure/orchestration logic unit-tested
+> behind lazy Piper/torch/tf imports.
 
 M2 was the riskiest task and M1 now feeds it real LibriSpeech / MUSAN audio. M3 lands
 the two biggest quality levers — **hard-negative mining** for a short word like "Qube"
-and **multi-speaker positive diversity**. What remains is largely GPU time: the M4
-`train.py` loop (which the pilot sweep already calls) plus `augment.py`/`export.py`, then
-the M5 `evaluate.py` metrics that the sweep's ranking stage already consumes.
+and **multi-speaker positive diversity**. M4 makes the pipeline produce an actual
+Qube-loadable model end-to-end. What remains is **M5**: the held-out real-voice eval
+(`evaluate.py`) that the pilot sweep's ranking already consumes, plus Test Lab sign-off.
 
 ### M3 detail (this milestone)
 
@@ -39,11 +41,25 @@ the M5 `evaluate.py` metrics that the sweep's ranking stage already consumes.
 - Provenance: every synthetic set writes a `datasets/licenses/<key>.license.json`
   (Piper MIT + LibriTTS-R CC-BY-4.0) so the fail-closed gate stays green.
 
-### Deferred to M4/M5 (per review feedback)
+### M4 detail (this milestone)
+
+- `lib/augment.py` — pure-NumPy RIR convolution (peak-aligned, loudness-preserving) +
+  SNR-targeted noise/music mixing + a deterministic per-clip augmentation plan.
+- `lib/model.py` — the classifier architecture (`Flatten → FC stack → Linear(1) → Sigmoid`)
+  matching the shipped openWakeWord `.onnx` layout, so exports load in Qube's runtime.
+- `lib/training.py` — training-spec resolution, class-balanced batch sampling, and
+  false-penalty loss weighting (pure); plus the lazy weighted-BCE/Adam/early-stop loop.
+- `lib/model_card.py` — the auditable provenance record (config hash, dataset versions +
+  checksums, params, seed, oww commit, hardware, duration, metrics, license tier/audit).
+- `lib/export.py` — torch→ONNX export with a dynamic-batch `(?,16,96)→(?,1)` contract and
+  a real onnxruntime verification pass; optional, non-fatal TFLite via `onnx2tf`.
+- `train.py` / `export.py` — orchestrate gate → feature assembly → train → checkpoint +
+  model card → verified export. torch/tf run only in the pinned env.
+
+### Deferred to M5 (per review feedback)
 
 - **Real human positives** — TTS is a bootstrap; collect multi-speaker recordings before
   shipping (see `evaluation/RECORDING_PROTOCOL.md`).
-- **Far-field / noisy augmentation** — `augment.py` (RIR reverb + noise/music SNR sweep).
 - **FAR/FRR + DET/ROC + on-device CPU** metrics and **continuous regression** on a frozen
   golden set (M5, `evaluate.py` + CI).
 
