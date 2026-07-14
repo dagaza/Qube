@@ -144,11 +144,27 @@ unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs will be
 blocked by Gatekeeper on end-user machines and are not suitable for a Homebrew
 Cask — enable signing before publishing a cask.
 
-### Homebrew Cask (planned)
+### Homebrew Cask
 
-Homebrew Cask distribution (`brew install --cask qube`) is a follow-up once
-signed, notarized DMGs are published. See the macOS distribution strategy for
-the tap and cask renderer design.
+Homebrew Cask distributes the signed, notarized DMGs. See
+[`homebrew/README.md`](../homebrew/README.md) for full setup.
+
+**Prerequisite:** signing must be enabled (`ENABLE_MACOS_SIGNING=true`) so the
+DMGs are notarized — Gatekeeper and `brew audit` reject unsigned apps. Create a
+tap repo `dagaza/homebrew-qube` with a `Casks/` directory.
+
+**Automated updates:** set repository variable `HOMEBREW_AUTO_SUBMIT=true` and
+secret `HOMEBREW_TAP_TOKEN` (fine-grained PAT with contents:write on
+`dagaza/homebrew-qube`). After each signed release, the `homebrew` job renders
+the cask via `scripts/render_homebrew_cask.py`, runs `brew audit`/`brew style`,
+and commits the bump to the tap.
+
+Users install or upgrade with:
+
+```bash
+brew install --cask dagaza/qube/qube
+brew upgrade --cask qube
+```
 
 ## Code signing (Windows, optional)
 
