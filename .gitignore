@@ -55,6 +55,7 @@ build/
 installer/output/
 winget/out/
 chocolatey/out/
+homebrew/out/
 
 # --- IDE, OS & Tools ---
 .vscode/

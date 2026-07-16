@@ -1,0 +1,41 @@
+cask "qube" do
+  version "{{VERSION}}"
+
+  # Native wheels (llama.cpp Metal, onnxruntime, ctranslate2) are architecture
+  # specific, so one DMG is shipped per architecture and Homebrew selects the
+  # matching download.
+  on_arm do
+    sha256 "{{SHA256_ARM64}}"
+
+    url "https://github.com/dagaza/Qube/releases/download/v#{version}/Qube-#{version}-arm64.dmg",
+        verified: "github.com/dagaza/Qube/"
+  end
+  on_intel do
+    sha256 "{{SHA256_X86_64}}"
+
+    url "https://github.com/dagaza/Qube/releases/download/v#{version}/Qube-#{version}-x86_64.dmg",
+        verified: "github.com/dagaza/Qube/"
+  end
+
+  name "Qube"
+  desc "Local hardware-accelerated AI desktop assistant"
+  homepage "https://github.com/dagaza/Qube"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  auto_updates false
+  depends_on macos: ">= :monterey"
+
+  app "Qube.app"
+
+  zap trash: [
+    "~/Library/Application Support/Qube",
+    "~/Library/Caches/com.dagaza.Qube",
+    "~/Library/Preferences/com.dagaza.Qube.plist",
+    "~/Library/Saved Application State/com.dagaza.Qube.savedState",
+    "~/Library/Logs/Qube",
+  ]
+end
