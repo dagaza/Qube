@@ -42,6 +42,7 @@ _PROVIDER_METRICS_HOSTS: dict[str, tuple[str, ...]] = {
     "govinfo": ("api.govinfo.gov",),
     "patentsview": ("search.patentsview.org",),
     "epo_ops": ("ops.epo.org",),
+    "brave_search": ("api.search.brave.com",),
 }
 
 _METRICS_HOST_TO_PROVIDER: dict[str, str] = {}

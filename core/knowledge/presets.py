@@ -12,6 +12,7 @@ from typing import Any
 from core.knowledge.adapters.catalog import implemented_adapter_ids
 from core.knowledge.types import (
     SERVICE_FINANCE_KNOWLEDGE,
+    SERVICE_GENERAL_WEB,
     SERVICE_LEGAL_KNOWLEDGE,
     SERVICE_SCIENTIFIC_EVIDENCE,
 )
@@ -41,6 +42,8 @@ RESERVED_PRESET_IDS = frozenset(
         "wikipedia",
         "pubmed",
         "arxiv",
+        "fetch",
+        "recipe",
     }
 )
 
@@ -49,11 +52,38 @@ ALLOWED_BASE_SERVICES = frozenset(
         SERVICE_SCIENTIFIC_EVIDENCE,
         SERVICE_FINANCE_KNOWLEDGE,
         SERVICE_LEGAL_KNOWLEDGE,
+        SERVICE_GENERAL_WEB,
     }
 )
 
 RANKING_PROFILES = frozenset({"generic", "literature", "regulatory", "market_data"})
 QUERY_PLANNERS = frozenset({"passthrough", "keyword_extract", "entity_centric"})
+
+
+def normalize_site_bias_domain(raw: str) -> str:
+    """Normalize a user-entered domain for ``site_bias`` lists."""
+    value = (raw or "").strip().lower()
+    if not value:
+        return ""
+    for prefix in ("https://", "http://"):
+        if value.startswith(prefix):
+            value = value[len(prefix) :]
+    value = value.split("/")[0].split("?")[0].strip()
+    if value.startswith("www."):
+        value = value[4:]
+    return value
+
+
+def normalize_site_bias(domains: list[str] | tuple[str, ...] | None) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for raw in domains or ():
+        domain = normalize_site_bias_domain(str(raw))
+        if not domain or domain in seen:
+            continue
+        seen.add(domain)
+        out.append(domain)
+    return out
 
 
 @dataclass
@@ -63,6 +93,8 @@ class KnowledgePreset:
     description: str = ""
     base_service: str = SERVICE_SCIENTIFIC_EVIDENCE
     adapters: list[str] = field(default_factory=list)
+    site_bias: list[str] = field(default_factory=list)
+    fetch_url_count: int | None = None
     adapter_policy: str = "fixed_order"
     ranking_profile: str = "generic"
     query_planner: str = "passthrough"
@@ -78,6 +110,9 @@ class KnowledgePreset:
         self.ranking_profile = (self.ranking_profile or "generic").strip().lower()
         self.query_planner = (self.query_planner or "passthrough").strip().lower()
         self.adapters = [str(a).strip().lower() for a in (self.adapters or []) if str(a).strip()]
+        self.site_bias = normalize_site_bias(self.site_bias)
+        if self.fetch_url_count is not None:
+            self.fetch_url_count = max(0, int(self.fetch_url_count))
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
 
@@ -89,6 +124,12 @@ class KnowledgePreset:
             description=str(raw.get("description") or ""),
             base_service=str(raw.get("base_service") or SERVICE_SCIENTIFIC_EVIDENCE),
             adapters=list(raw.get("adapters") or []),
+            site_bias=list(raw.get("site_bias") or []),
+            fetch_url_count=(
+                int(raw["fetch_url_count"])
+                if raw.get("fetch_url_count") is not None
+                else None
+            ),
             adapter_policy=str(raw.get("adapter_policy") or "fixed_order"),
             ranking_profile=str(raw.get("ranking_profile") or "generic"),
             query_planner=str(raw.get("query_planner") or "passthrough"),
@@ -104,6 +145,8 @@ class KnowledgePreset:
             "description": self.description,
             "base_service": self.base_service,
             "adapters": list(self.adapters),
+            "site_bias": list(self.site_bias),
+            "fetch_url_count": self.fetch_url_count,
             "adapter_policy": self.adapter_policy,
             "ranking_profile": self.ranking_profile,
             "query_planner": self.query_planner,
@@ -121,27 +164,49 @@ class KnowledgePreset:
             raise ValueError("Preset label is required")
         if self.base_service not in ALLOWED_BASE_SERVICES:
             raise ValueError(f"Unsupported base service: {self.base_service}")
-        if not self.adapters:
-            raise ValueError("Preset must include at least one adapter")
-        if len(self.adapters) > MAX_PRESET_ADAPTERS:
-            raise ValueError(f"Preset may include at most {MAX_PRESET_ADAPTERS} adapters")
-        allowed = set(implemented_adapter_ids(self.base_service))
-        from core.knowledge.configured_sources import load_configured_source
+        if self.base_service == SERVICE_GENERAL_WEB:
+            if self.adapters:
+                raise ValueError(
+                    "Web fetch presets use site_bias domains, not API adapter ids."
+                )
+            if not self.site_bias:
+                raise ValueError(
+                    "Web fetch preset must include at least one site_bias domain."
+                )
+            if self.fetch_url_count is not None and self.fetch_url_count < 0:
+                raise ValueError("fetch_url_count must be zero or positive")
+        else:
+            if self.site_bias:
+                raise ValueError(
+                    "site_bias is only supported on general_web source profiles."
+                )
+            if self.fetch_url_count is not None:
+                raise ValueError(
+                    "fetch_url_count is only supported on general_web source profiles."
+                )
+            if not self.adapters:
+                raise ValueError("Preset must include at least one adapter")
+            if len(self.adapters) > MAX_PRESET_ADAPTERS:
+                raise ValueError(
+                    f"Preset may include at most {MAX_PRESET_ADAPTERS} adapters"
+                )
+            allowed = set(implemented_adapter_ids(self.base_service))
+            from core.knowledge.configured_sources import load_configured_source
 
-        invalid = []
-        for a in self.adapters:
-            if a in allowed:
-                continue
-            source = load_configured_source(a)
-            if source is None or source.knowledge_service != self.base_service:
-                invalid.append(a)
-        if invalid:
-            hint = (
-                f"Unknown source(s): {', '.join(invalid)}. "
-                "Use built-in adapter IDs (e.g. pubmed, arxiv, openalex) or a custom "
-                "source id saved under Settings → Knowledge → Custom sources."
-            )
-            raise ValueError(hint)
+            invalid = []
+            for a in self.adapters:
+                if a in allowed:
+                    continue
+                source = load_configured_source(a)
+                if source is None or source.knowledge_service != self.base_service:
+                    invalid.append(a)
+            if invalid:
+                hint = (
+                    f"Unknown source(s): {', '.join(invalid)}. "
+                    "Use built-in adapter IDs (e.g. pubmed, arxiv, openalex) or a custom "
+                    "source id saved under Settings → Knowledge → Custom sources."
+                )
+                raise ValueError(hint)
         if self.ranking_profile not in RANKING_PROFILES:
             raise ValueError(f"Unknown ranking profile: {self.ranking_profile}")
         if self.query_planner not in QUERY_PLANNERS:
@@ -214,6 +279,17 @@ def parse_user_preset_tool(tool_id: str) -> str | None:
     if tool.startswith("user:"):
         return tool.split(":", 1)[1].strip() or None
     return None
+
+
+def preset_retrieval_overrides(preset_id: str) -> dict[str, Any]:
+    """Return ``site_bias`` / ``fetch_url_count`` for a general_web source profile."""
+    preset = load_preset(preset_id)
+    if preset is None or preset.base_service != SERVICE_GENERAL_WEB:
+        return {}
+    overrides: dict[str, Any] = {"site_bias": tuple(preset.site_bias)}
+    if preset.fetch_url_count is not None:
+        overrides["fetch_url_count"] = preset.fetch_url_count
+    return overrides
 
 
 def parse_source_pin_tool(tool_id: str) -> str | None:

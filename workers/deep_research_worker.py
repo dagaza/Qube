@@ -1,4 +1,8 @@
-"""Async deep-research worker (Phase 4)."""
+"""Async deep-research worker (Phase 4).
+
+Always enabled at startup; Settings no longer expose a toggle. An Enterprise
+kill switch could reintroduce ``qube.knowledge.deep_research_enabled`` later.
+"""
 
 from __future__ import annotations
 

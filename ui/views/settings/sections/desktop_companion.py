@@ -18,6 +18,7 @@ from PyQt6.QtCore import Qt
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from core.ui_language import tr
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_subsection_to_layout,
     add_section_reset_footer,
@@ -31,7 +32,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     companion_widget.setObjectName("SettingsFormContainer")
     companion_layout = QVBoxLayout(companion_widget)
     companion_layout.setContentsMargins(15, 0, 15, 10)
-    companion_layout.setSpacing(8)
+    companion_layout.setSpacing(15)
 
     from core import app_settings as _companion_settings
     from core.platform.companion_capabilities import (
@@ -39,8 +40,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         tier_display_name,
     )
 
-    # --- General ---
-    add_subsection_to_layout(companion_layout, "General", anchor="general")
+    # --- General card ---
+    general_card, general_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(general_card_layout, "General", anchor="general")
 
     tier = detect_companion_platform_tier()
     tier_lbl = QLabel(f"Platform: {tier_display_name(tier)}")
@@ -51,7 +53,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "(dock strip or tray fallback recommended)."
     )
     tier_lbl.setToolTip(_companion_tier_tip)
-    companion_layout.addWidget(tier_lbl)
+    general_card_layout.addWidget(tier_lbl)
 
     _companion_enabled_tip = (
         "Master switch for the desktop companion orb or dock strip. "
@@ -61,10 +63,12 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_enabled_cb.setToolTip(_companion_enabled_tip)
     host.companion_enabled_cb.setChecked(_companion_settings.get_companion_enabled())
     host.companion_enabled_cb.toggled.connect(host._on_companion_enabled_toggled)
-    companion_layout.addWidget(host.companion_enabled_cb)
+    general_card_layout.addWidget(host.companion_enabled_cb)
+    companion_layout.addWidget(general_card)
 
-    # --- When to show ---
-    add_subsection_to_layout(companion_layout, "When to show", anchor="visibility")
+    # --- When to show card ---
+    visibility_card, visibility_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(visibility_card_layout, "When to show", anchor="visibility")
 
     _companion_tray_tip = tr(
         "Show the companion when the main window is minimised or closed to the tray. "
@@ -76,7 +80,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_show_when_tray_hidden()
     )
     host.companion_tray_hidden_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_tray_hidden_cb)
+    visibility_card_layout.addWidget(host.companion_tray_hidden_cb)
 
     _companion_while_open_tip = tr(
         "Keep the companion visible even when the main Qube window is open and not minimised. "
@@ -88,7 +92,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_show_while_window_open()
     )
     host.companion_while_open_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_while_open_cb)
+    visibility_card_layout.addWidget(host.companion_while_open_cb)
 
     _companion_auto_hide_tip = (
         "Fade the companion when Qube has been idle for a while (listening with no speech). "
@@ -98,7 +102,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_auto_hide_cb.setToolTip(_companion_auto_hide_tip)
     host.companion_auto_hide_cb.setChecked(_companion_settings.get_companion_auto_hide_idle())
     host.companion_auto_hide_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_auto_hide_cb)
+    visibility_card_layout.addWidget(host.companion_auto_hide_cb)
 
     host.companion_caption_cb = QCheckBox("Show activity label under companion")
     host.companion_caption_cb.setToolTip(
@@ -107,7 +111,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     host.companion_caption_cb.setChecked(_companion_settings.get_companion_show_caption())
     host.companion_caption_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_caption_cb)
+    visibility_card_layout.addWidget(host.companion_caption_cb)
 
     host.companion_fullscreen_cb = QCheckBox("Hide during fullscreen apps")
     host.companion_fullscreen_cb.setToolTip(
@@ -118,7 +122,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_suppress_on_fullscreen()
     )
     host.companion_fullscreen_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_fullscreen_cb)
+    visibility_card_layout.addWidget(host.companion_fullscreen_cb)
 
     host.companion_wayland_cb = QCheckBox("Try floating overlay on Wayland (experimental)")
     host.companion_wayland_cb.setToolTip(
@@ -127,7 +131,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     host.companion_wayland_cb.setChecked(_companion_settings.get_companion_try_on_wayland())
     host.companion_wayland_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_wayland_cb)
+    visibility_card_layout.addWidget(host.companion_wayland_cb)
 
     host.companion_dock_cb = QCheckBox("Use edge dock strip mode (better on Wayland)")
     host.companion_dock_cb.setToolTip(
@@ -136,10 +140,12 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     host.companion_dock_cb.setChecked(_companion_settings.get_companion_dock_mode())
     host.companion_dock_cb.toggled.connect(host._on_companion_setting_changed)
-    companion_layout.addWidget(host.companion_dock_cb)
+    visibility_card_layout.addWidget(host.companion_dock_cb)
+    companion_layout.addWidget(visibility_card)
 
-    # --- Position ---
-    add_subsection_to_layout(companion_layout, "Position", anchor="position")
+    # --- Position card ---
+    position_card, position_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(position_card_layout, "Position", anchor="position")
 
     from ui.components.companion_snap_compass import CompanionSnapCompass
 
@@ -162,15 +168,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_snap_compass.zone_selected.connect(host._on_companion_snap_zone_selected)
     host.companion_snap_compass.set_active_zone(_companion_settings.get_companion_snap_zone())
     position_row.addWidget(host.companion_snap_compass, 0, Qt.AlignmentFlag.AlignTop)
-    companion_layout.addLayout(position_row)
+    position_card_layout.addLayout(position_row)
+    companion_layout.addWidget(position_card)
 
-    # --- Commentary ---
+    # --- Commentary card ---
+    commentary_card, commentary_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     _companion_verbal_section_tip = (
         "Optional short lines under the companion, generated by the auxiliary cognition model. "
         "Does not change chat replies or TTS."
     )
     commentary_lbl = add_subsection_to_layout(
-        companion_layout, "Commentary", anchor="commentary"
+        commentary_card_layout, "Commentary", anchor="commentary"
     )
     commentary_lbl.setToolTip(_companion_verbal_section_tip)
 
@@ -184,7 +192,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_verbal_enabled()
     )
     host.companion_verbal_enabled_cb.toggled.connect(host._on_companion_verbal_setting_changed)
-    companion_layout.addWidget(host.companion_verbal_enabled_cb)
+    commentary_card_layout.addWidget(host.companion_verbal_enabled_cb)
 
     host.companion_cognition_v2_cb = QCheckBox(
         "Companion Cognition v2 (curated + intentional captions)"
@@ -197,7 +205,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_cognition_v2_enabled()
     )
     host.companion_cognition_v2_cb.toggled.connect(host._on_companion_verbal_setting_changed)
-    companion_layout.addWidget(host.companion_cognition_v2_cb)
+    commentary_card_layout.addWidget(host.companion_cognition_v2_cb)
 
     _companion_freedom_tip = (
         "How creative companion commentary may be (Cognition v2).\n\n"
@@ -223,7 +231,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     freedom_row.addWidget(host.companion_expression_freedom_selector)
     freedom_row.addStretch()
-    companion_layout.addLayout(freedom_row)
+    commentary_card_layout.addLayout(freedom_row)
 
     host.companion_verbal_prompt = QPlainTextEdit()
     host.companion_verbal_prompt.setPlaceholderText(
@@ -237,7 +245,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         _companion_settings.get_companion_verbal_system_prompt()
     )
     host.companion_verbal_prompt.textChanged.connect(host._on_companion_verbal_prompt_changed)
-    companion_layout.addWidget(host.companion_verbal_prompt)
+    commentary_card_layout.addWidget(host.companion_verbal_prompt)
 
     _companion_trait_tip = (
         "Tone preset for companion commentary prompts.\n\n"
@@ -261,7 +269,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_verbal_trait_selector.setMenu(QMenu(host.companion_verbal_trait_selector))
     trait_row.addWidget(host.companion_verbal_trait_selector)
     trait_row.addStretch()
-    companion_layout.addLayout(trait_row)
+    commentary_card_layout.addLayout(trait_row)
 
     _companion_freq_tip = (
         "Spacing for proactive idle commentary while the assistant is listening and idle.\n\n"
@@ -291,7 +299,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     freq_row.addWidget(host.companion_verbal_frequency_selector)
     freq_row.addStretch()
-    companion_layout.addLayout(freq_row)
+    commentary_card_layout.addLayout(freq_row)
 
     host.companion_verbal_react_ingest_cb = QCheckBox("Comment when library ingest completes")
     host.companion_verbal_react_ingest_cb.setToolTip(
@@ -304,7 +312,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_verbal_react_ingest_cb.toggled.connect(
         host._on_companion_verbal_setting_changed
     )
-    companion_layout.addWidget(host.companion_verbal_react_ingest_cb)
+    commentary_card_layout.addWidget(host.companion_verbal_react_ingest_cb)
 
     host.companion_verbal_react_download_cb = QCheckBox(
         "Comment when a model download completes"
@@ -319,7 +327,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_verbal_react_download_cb.toggled.connect(
         host._on_companion_verbal_setting_changed
     )
-    companion_layout.addWidget(host.companion_verbal_react_download_cb)
+    commentary_card_layout.addWidget(host.companion_verbal_react_download_cb)
 
     test_row = QHBoxLayout()
     test_row.setSpacing(8)
@@ -332,7 +340,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_verbal_test_btn.clicked.connect(host._on_companion_verbal_test_clicked)
     test_row.addWidget(host.companion_verbal_test_btn)
     test_row.addStretch()
-    companion_layout.addLayout(test_row)
+    commentary_card_layout.addLayout(test_row)
 
     host.companion_verbal_test_result = QLabel(
         "Run Test to preview a sample companion caption here."
@@ -342,7 +350,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.companion_verbal_test_result.setToolTip(
         "Shows the last Test commentary preview from this settings page."
     )
-    companion_layout.addWidget(host.companion_verbal_test_result)
+    commentary_card_layout.addWidget(host.companion_verbal_test_result)
 
     host.companion_cognition_hint_lbl = QLabel(
         "Uses auxiliary cognition model — configure under AI & Models → Auxiliary cognition."
@@ -352,14 +360,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Companion commentary runs on the auxiliary cognition sidecar (CPU GGUF), not your "
         "main chat model. Swap a smaller GGUF under Advanced engine settings to reduce load."
     )
-    companion_layout.addWidget(host.companion_cognition_hint_lbl)
+    commentary_card_layout.addWidget(host.companion_cognition_hint_lbl)
+    companion_layout.addWidget(commentary_card)
 
-    # --- Look & feel ---
+    # --- Look & feel card ---
+    appearance_card, appearance_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     _companion_appearance_tip = (
         "Visual style for the companion widget and live preview below."
     )
     appearance_subsection_lbl = add_subsection_to_layout(
-        companion_layout, "Look & feel", anchor="appearance"
+        appearance_card_layout, "Look & feel", anchor="appearance"
     )
     appearance_subsection_lbl.setToolTip(_companion_appearance_tip)
 
@@ -378,7 +388,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     appearance_lbl = QLabel("Companion shape")
     appearance_lbl.setObjectName("SettingsSubsectionLabel")
     appearance_lbl.setToolTip(_companion_appearance_tip)
-    companion_layout.addWidget(appearance_lbl)
+    appearance_card_layout.addWidget(appearance_lbl)
 
     persona_row = QHBoxLayout()
     persona_row.setSpacing(16)
@@ -396,7 +406,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         persona_row.addWidget(cb)
     host.companion_persona_group.buttonToggled.connect(host._on_companion_persona_toggled)
     persona_row.addStretch()
-    companion_layout.addLayout(persona_row)
+    appearance_card_layout.addLayout(persona_row)
 
     from core.companion_cube_style import (
         CompanionCubeStyle,
@@ -411,7 +421,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "look or the experimental splash wireframe cube."
     )
     host._companion_cube_style_lbl = cube_style_lbl
-    companion_layout.addWidget(cube_style_lbl)
+    appearance_card_layout.addWidget(cube_style_lbl)
 
     cube_style_row = QHBoxLayout()
     cube_style_row.setSpacing(16)
@@ -429,7 +439,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         cube_style_row.addWidget(cb)
     host.companion_cube_style_group.buttonToggled.connect(host._on_companion_cube_style_toggled)
     cube_style_row.addStretch()
-    companion_layout.addLayout(cube_style_row)
+    appearance_card_layout.addLayout(cube_style_row)
     host._sync_companion_cube_style_enabled()
 
     _companion_idle_color_tip = tr(
@@ -439,7 +449,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     idle_color_lbl = QLabel(tr("Companion idle glow colour"))
     idle_color_lbl.setObjectName("SettingsSubsectionLabel")
     idle_color_lbl.setToolTip(_companion_idle_color_tip)
-    companion_layout.addWidget(idle_color_lbl)
+    appearance_card_layout.addWidget(idle_color_lbl)
 
     host.companion_idle_color_group = QButtonGroup(host)
     host.companion_idle_color_group.setExclusive(True)
@@ -452,7 +462,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         cb.setChecked(color_id == current_idle_color)
         host.companion_idle_color_group.addButton(cb)
         host.companion_idle_color_cbs[color_id] = cb
-        companion_layout.addWidget(cb)
+        appearance_card_layout.addWidget(cb)
     host.companion_idle_color_group.buttonToggled.connect(host._on_companion_idle_color_toggled)
 
     _companion_demo_tip = (
@@ -482,16 +492,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     ]
     demo_row.addWidget(host.companion_demo_selector)
     demo_row.addStretch()
-    companion_layout.addLayout(demo_row)
+    appearance_card_layout.addLayout(demo_row)
 
     host.companion_preview = CompanionPreviewWidget()
     host.companion_preview.apply_theme(is_dark)
     host.companion_preview.setToolTip(
         "Live preview of the selected persona, idle glow colour, and preview activity state."
     )
-    companion_layout.addWidget(host.companion_preview)
+    appearance_card_layout.addWidget(host.companion_preview)
 
     host.companion_preview.set_persona(current_persona)
+    companion_layout.addWidget(appearance_card)
 
     host._build_companion_expression_freedom_menu()
     host._build_companion_verbal_trait_menu()

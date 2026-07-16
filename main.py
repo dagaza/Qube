@@ -33,7 +33,6 @@ from core.app_settings import (
     get_enable_memory_promotion,
     get_enable_memory_consolidation,
     get_enable_memory_v7_salvage,
-    get_deep_research_enabled,
     get_engine_mode,
     get_auto_load_last_model_on_startup,
     get_internal_model_path,
@@ -43,7 +42,6 @@ from core.app_settings import (
     KEY_AUDIO_INPUT_DEVICE,
     KEY_AUDIO_OUTPUT_DEVICE,
     KEY_ENGINE_MODE,
-    KEY_DEEP_RESEARCH_ENABLED,
     KEY_MEMORY_ENRICHMENT,
     KEY_NATIVE_CHAT_FORMAT,
     KEY_NATIVE_CPU_THREADS,
@@ -219,7 +217,7 @@ class Qube:
         self.memory_consolidation_worker.start()
 
         self.deep_research_worker = DeepResearchWorker(synthesis_llm=self.llm_worker)
-        self.deep_research_worker.set_enabled(get_deep_research_enabled())
+        self.deep_research_worker.set_enabled(True)
         self.deep_research_worker.start()
 
     def _workers_for_main_window(self) -> dict:
@@ -527,6 +525,9 @@ class Qube:
         self.tts_worker.status_update.connect(w.update_status)
         self.llm_worker.context_retrieved.connect(w.update_rag_indicator)
         self.llm_worker.web_search_active.connect(w.set_web_indicator_active)
+        self.llm_worker.web_search_outcome_hint.connect(w.set_web_search_outcome_hint)
+        self.llm_worker.ddg_backoff_started.connect(w.on_ddg_backoff_started)
+        self.llm_worker.discovery_tier_b_suggested.connect(w.on_discovery_tier_b_suggested)
         self.llm_worker.response_finished.connect(
             lambda _sid, _text: w.update_rag_indicator(False)
         )
@@ -1281,8 +1282,6 @@ class Qube:
                 self.enrichment_worker.set_enabled(enabled)
             if hasattr(self, "memory_reflection_worker"):
                 self.memory_reflection_worker.set_enabled(enabled)
-        if KEY_DEEP_RESEARCH_ENABLED in changed and hasattr(self, "deep_research_worker"):
-            self.deep_research_worker.set_enabled(get_deep_research_enabled())
         if KEY_ENGINE_MODE in changed:
             self._on_engine_mode_changed(get_engine_mode())
             return

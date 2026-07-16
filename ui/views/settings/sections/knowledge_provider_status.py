@@ -14,20 +14,18 @@ from PyQt6.QtWidgets import (
 )
 
 from core.knowledge.provider_status import list_provider_status_rows
+from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 from ui.views.settings.knowledge_provider_status_style import (
     apply_provider_status_row_style,
     apply_provider_status_table_theme,
 )
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
 
 _TABLE_OBJECT_NAME = "KnowledgeProviderStatusTable"
 _VISIBLE_ROW_CAP = 10
 _ROW_HEIGHT_PX = 34
 _HEADER_HEIGHT_PX = 32
-
-
-def _resolve_is_dark(host) -> bool:
-    return getattr(host.window(), "_is_dark_theme", True)
 
 
 def _configure_provider_status_table(table: QTableWidget, *, is_dark: bool) -> None:
@@ -78,14 +76,8 @@ def _sync_provider_status_table_height(table: QTableWidget) -> None:
 
 
 def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QWidget:
-    container = QWidget()
-    container.setMinimumWidth(0)
-    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-    layout = QVBoxLayout(container)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(0)
-
-    add_subsection_to_layout(layout, "Source status", anchor="knowledge_provider_status")
+    card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(card_layout, "Source status", anchor="knowledge_provider_status")
 
     inner = QWidget()
     inner_layout = QVBoxLayout(inner)
@@ -100,18 +92,11 @@ def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QW
 
     table = QTableWidget(0, 4)
     _configure_provider_status_table(table, is_dark=is_dark)
-
-    shell = QWidget()
-    shell.setObjectName("SettingsLogCard")
-    shell_layout = QVBoxLayout(shell)
-    shell_layout.setContentsMargins(0, 0, 0, 0)
-    shell_layout.setSpacing(0)
-    shell_layout.addWidget(table)
-    inner_layout.addWidget(shell)
+    inner_layout.addWidget(table)
 
     host.knowledge_provider_status_table = table
 
-    layout.addWidget(wrap_subsection(inner, anchor="knowledge_provider_status"))
+    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_provider_status"))
 
     timer = QTimer(host)
     timer.setInterval(60_000)
@@ -119,7 +104,7 @@ def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QW
     host._provider_status_refresh_timer = timer
 
     sync_provider_status_panel(host, is_dark=is_dark)
-    return container
+    return card
 
 
 def sync_provider_status_panel(host, *, is_dark: bool | None = None) -> None:
@@ -128,7 +113,7 @@ def sync_provider_status_panel(host, *, is_dark: bool | None = None) -> None:
         return
 
     if is_dark is None:
-        is_dark = _resolve_is_dark(host)
+        is_dark = coalesce_settings_is_dark(host)
 
     apply_provider_status_table_theme(table, is_dark=is_dark)
 

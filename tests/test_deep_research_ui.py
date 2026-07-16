@@ -25,15 +25,8 @@ class TestDeepResearchUi(unittest.TestCase):
         self.assertEqual(deep_research_progress_percent({"phase": "synthesizing"}), 92)
 
     def test_availability_gate(self) -> None:
-        self.assertFalse(
-            deep_research_available(enabled=False, external_v2=True),
-        )
-        self.assertFalse(
-            deep_research_available(enabled=True, external_v2=False),
-        )
-        self.assertTrue(
-            deep_research_available(enabled=True, external_v2=True),
-        )
+        self.assertFalse(deep_research_available(enabled=False))
+        self.assertTrue(deep_research_available(enabled=True))
 
 
 if __name__ == "__main__":

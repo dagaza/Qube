@@ -19,26 +19,34 @@ from core.app_settings import (
 )
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_subsection_to_form,
+    add_subsection_to_layout,
     add_section_reset_footer,
     register_settings_selector_width,
     schedule_settings_selector_refit,
 )
 
 
+def _make_settings_form() -> tuple[QWidget, QFormLayout]:
+    form_host = QWidget()
+    form = QFormLayout(form_host)
+    form.setSpacing(15)
+    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    return form_host, form
+
+
 def build_section(host, *, is_dark: bool) -> QWidget:
     container = QWidget()
     container.setObjectName("SettingsFormContainer")
     layout = QVBoxLayout(container)
+    layout.setContentsMargins(15, 0, 15, 10)
     layout.setSpacing(15)
 
-    # --- Memory pipeline ---
-    memory_widget = QWidget()
-    memory_form = QFormLayout(memory_widget)
-    memory_form.setSpacing(15)
-    memory_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-    add_subsection_to_form(memory_form, "Memory pipeline", anchor="memory")
+    # --- Memory pipeline card ---
+    pipeline_card, pipeline_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(pipeline_card_layout, "Memory pipeline", anchor="memory")
+    pipeline_form_host, pipeline_form = _make_settings_form()
 
     host.memory_enrichment_toggle = PrestigeToggle()
     host.mem_enrichment_label = QLabel(
@@ -146,18 +154,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     promo_preset_layout.addWidget(host.memory_promotion_preset_selector)
     promo_preset_layout.addStretch(1)
 
-    memory_form.addRow("", mem_row)
-    memory_form.addRow("", promo_row)
-    memory_form.addRow("", promo_preset_row)
-    memory_form.addRow("", consolidate_row)
-    layout.addWidget(memory_widget)
+    pipeline_form.addRow("", mem_row)
+    pipeline_form.addRow("", promo_row)
+    pipeline_form.addRow("", promo_preset_row)
+    pipeline_form.addRow("", consolidate_row)
+    pipeline_card_layout.addWidget(pipeline_form_host)
+    layout.addWidget(pipeline_card)
 
-    # --- Personalization ---
-    personal_widget = QWidget()
-    personal_form = QFormLayout(personal_widget)
-    personal_form.setSpacing(15)
-    personal_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-    add_subsection_to_form(personal_form, "Personalization", anchor="personalization")
+    # --- Personalization card ---
+    personal_card, personal_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(personal_card_layout, "Personalization", anchor="personalization")
+    personal_form_host, personal_form = _make_settings_form()
 
     host.profile_units_selector = SelectorButton("Use inferred units", is_dark=is_dark)
     register_settings_selector_width(
@@ -180,7 +187,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     profile_units_layout.addWidget(host.profile_units_selector)
     profile_units_layout.addStretch(1)
     personal_form.addRow("", profile_units_row)
-    layout.addWidget(personal_widget)
+    personal_card_layout.addWidget(personal_form_host)
+    layout.addWidget(personal_card)
 
     host._build_memory_promotion_preset_menu()
     host._build_profile_units_menu()

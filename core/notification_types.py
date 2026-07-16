@@ -319,3 +319,59 @@ def provider_limit_notification_event(event: object) -> NotificationEvent:
         rate_limit_key=f"provider_limit:{provider_id}",
         rate_limit_sec=86400.0,
     )
+
+
+def ddg_backoff_event(*, remaining_seconds: int = 0) -> NotificationEvent:
+    """Warn when DuckDuckGo is paused after a bot challenge."""
+    from core.knowledge.discovery.backoff import ddg_bot_backoff_seconds
+
+    total_seconds = ddg_bot_backoff_seconds()
+    minutes = max(1, (total_seconds + 59) // 60)
+    body = (
+        "DuckDuckGo returned a bot challenge, so DDG searches are paused for "
+        f"{minutes} minutes to avoid further blocks. "
+        "Web searches will continue using Brave or Wikipedia fallbacks when available."
+    )
+    if remaining_seconds > 0:
+        remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+        body = (
+            f"DuckDuckGo returned a bot challenge. DDG searches are paused for "
+            f"about {remaining_minutes} more minutes "
+            f"(~{minutes} min total) to avoid further blocks. "
+            "Web searches will continue using Brave or Wikipedia fallbacks when available."
+        )
+    return NotificationEvent(
+        title="DuckDuckGo search paused",
+        body=body,
+        severity=NotificationSeverity.WARNING,
+        category="tool",
+        action_label="Discovery settings",
+        action_id="open_settings_knowledge_web_discovery",
+        auto_dismiss_ms=15000,
+        dedupe_key="ddg_backoff",
+        rate_limit_key="ddg_backoff",
+        rate_limit_sec=300.0,
+        tray_bump=True,
+    )
+
+
+def discovery_tier_b_suggestion_event() -> NotificationEvent:
+    """Suggest optional API fallback after repeated DDG challenges (private tier)."""
+    return NotificationEvent(
+        title="Repeated search blocks detected",
+        body=(
+            "DuckDuckGo has challenged several searches in the last 24 hours. "
+            "Consider enabling “Private + API fallback” in Settings → Knowledge → "
+            "Web search discovery and adding a free Brave Search API key for "
+            "better reliability — DDG stays primary when it works."
+        ),
+        severity=NotificationSeverity.INFO,
+        category="tool",
+        action_label="Discovery settings",
+        action_id="open_settings_knowledge_web_discovery",
+        auto_dismiss_ms=20000,
+        dedupe_key="discovery_tier_b_suggestion",
+        rate_limit_key="discovery_tier_b_suggestion",
+        rate_limit_sec=86400.0,
+        tray_bump=True,
+    )

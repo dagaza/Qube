@@ -27,7 +27,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QLineEdit,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -48,6 +47,7 @@ from core.bootstrap_download import (
 )
 from core.bootstrap_selection import effective_bootstrap_selection, save_bootstrap_selection
 from ui.bootstrap_consent_dialog import BootstrapConsentPanel
+from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import (
     QubeFirstRunSplitSplash,
     QubeSplashCard,
@@ -701,7 +701,15 @@ class StartupSplashController(QObject):
         self._stop_spinner()
         self._view.set_download_detail(f"Startup failed:\n{exc}")
         logger.error("Splash bootstrap failed: %s", exc)
-        QMessageBox.critical(self._shell, "Qube could not start", str(exc))
+        PrestigeDialog(
+            self._shell,
+            "Qube could not start",
+            str(exc),
+            is_dark=True,
+            tone="danger",
+            show_cancel=False,
+            confirm_text="OK",
+        ).exec()
         app = QApplication.instance()
         if app is not None:
             app.quit()

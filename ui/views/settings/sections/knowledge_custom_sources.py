@@ -33,6 +33,7 @@ from ui.views.settings.knowledge_list_table import (
     populate_table_rows,
     selected_data_row,
 )
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_subsection_to_layout,
     register_settings_selector_width,
@@ -47,13 +48,8 @@ _DEFAULT_CONNECTOR_ID = "rest_json"
 
 
 def build_knowledge_custom_sources_section(host, *, is_dark: bool) -> QWidget:
-    container = QWidget()
-    container.setMinimumWidth(0)
-    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-    layout = QVBoxLayout(container)
-    layout.setContentsMargins(0, 0, 0, 0)
-
-    add_subsection_to_layout(layout, "Custom sources", anchor="knowledge_custom_sources")
+    card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(card_layout, "Custom sources", anchor="knowledge_custom_sources")
 
     inner = QWidget()
     outer = QVBoxLayout(inner)
@@ -125,9 +121,9 @@ def build_knowledge_custom_sources_section(host, *, is_dark: bool) -> QWidget:
     host._build_custom_source_connector_menu()
     schedule_settings_selector_refit(host.custom_source_connector_selector)
 
-    layout.addWidget(wrap_subsection(inner, anchor="knowledge_custom_sources"))
+    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_custom_sources"))
     _refresh_custom_sources_list(host, is_dark=is_dark)
-    return container
+    return card
 
 
 def _refresh_custom_sources_list(host, *, is_dark: bool = True) -> None:

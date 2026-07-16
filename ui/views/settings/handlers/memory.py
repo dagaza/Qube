@@ -151,7 +151,7 @@ class MemoryHandlersMixin:
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(15, 0, 15, 10)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(15)
 
         self.rag_kb_cb = QCheckBox("Enable Local Knowledge Base")

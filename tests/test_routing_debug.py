@@ -707,6 +707,21 @@ class RetrievalOutcomeTests(unittest.TestCase):
         self.assertFalse(snap["rag_library_leg_skipped"])
         self.assertTrue(snap["rag_capability_blocked"])
 
+    def test_build_snapshot_search_outcome_kind(self) -> None:
+        decision = {
+            "route": "web",
+            "search_outcome": {"kind": "bot_challenge", "provider": "duckduckgo"},
+        }
+        snap = build_retrieval_outcome_snapshot(
+            decision=decision,
+            execution_route_pre_downgrade="web",
+            execution_route_final="web",
+            memory_hits=0,
+            rag_hits=0,
+            web_hits=0,
+        )
+        self.assertEqual(snap["search_outcome_kind"], "bot_challenge")
+
     def test_merge_updates_route_to_final(self) -> None:
         buf = RoutingDebugBuffer()
         d = {"route": "rag", "strategy": "adaptive_v4", "trace": _base_trace()}

@@ -47,6 +47,17 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
         "description": "Multi-step evidence report (async, non-blocking)",
     },
     {"id": "internet", "label": "Internet", "description": "Live web search"},
+    {
+        "id": "fetch",
+        "label": "Fetch",
+        "description": "Discover a page and extract readable content",
+    },
+    {
+        "id": "recipe",
+        "label": "Recipe",
+        "description": "Recipe sites with structured ingredients and steps",
+        "advanced": True,
+    },
     {"id": "library", "label": "Library", "description": "Search your documents"},
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
     {
@@ -76,7 +87,19 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
 ]
 
 _WEB_COMPOSER_TOOLS = frozenset(
-    {"internet", "trusted", "evidence", "science", "wikipedia", "pubmed", "arxiv", "finance", "legal"}
+    {
+        "internet",
+        "fetch",
+        "recipe",
+        "trusted",
+        "evidence",
+        "science",
+        "wikipedia",
+        "pubmed",
+        "arxiv",
+        "finance",
+        "legal",
+    }
 )
 
 
@@ -96,15 +119,20 @@ def composer_preset_tools() -> list[dict[str, str | bool]]:
     for preset in list_presets(composer_visible_only=True):
         from core.knowledge.explain_preset import build_explain_preset
         from core.app_settings import get_retrieval_profile
+        from core.knowledge.types import SERVICE_GENERAL_WEB
 
         explain = build_explain_preset(preset.id, retrieval_profile=get_retrieval_profile())
-        uses = ", ".join(
-            str(item.get("label") or item.get("id"))
-            for item in (explain.get("uses") or [])
-        )
-        desc = preset.description or f"My knowledge preset ({preset.base_service})"
-        if uses:
-            desc = f"{desc} Uses: {uses}."
+        if preset.base_service == SERVICE_GENERAL_WEB:
+            uses = ", ".join(preset.site_bias)
+            desc = preset.description or f"Web fetch from {uses or 'curated domains'}."
+        else:
+            uses = ", ".join(
+                str(item.get("label") or item.get("id"))
+                for item in (explain.get("uses") or [])
+            )
+            desc = preset.description or f"My knowledge preset ({preset.base_service})"
+            if uses:
+                desc = f"{desc} Uses: {uses}."
         tools.append(
             {
                 "id": f"user:{preset.id}",
@@ -123,6 +151,8 @@ _TOOL_USAGE_HINTS: dict[str, str] = {
     "legal": "Use for U.S. court opinions and case law.",
     "research": "Use for a multi-step async literature review report.",
     "internet": "Use for timely web information beyond your library.",
+    "fetch": "Use when you need full page content, not just search snippets.",
+    "recipe": "Use for structured recipe ingredients and steps from recipe sites.",
     "library": "Use to search only your uploaded documents.",
     "memory": "Use to recall facts saved from past chats.",
     "science": "Same routing as @evidence; prefer @evidence in the palette.",
@@ -318,20 +348,8 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     if tool_id == "library":
-        from core.app_settings import (
-            external_knowledge_v2_enabled,
-            internal_corpus_knowledge_enabled,
-        )
-
-        if external_knowledge_v2_enabled() and internal_corpus_knowledge_enabled():
-            return {
-                "route": "web",
-                "strategy": "attachment_tool_library",
-                "attachment_tool": tool_id,
-                "composer_attachments": _attachments_telemetry(attachments),
-            }
         return {
-            "route": "rag",
+            "route": "web",
             "strategy": "attachment_tool_library",
             "attachment_tool": tool_id,
             "composer_attachments": _attachments_telemetry(attachments),

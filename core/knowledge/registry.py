@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from core.knowledge.presets import load_preset, parse_source_pin_tool, parse_user_preset_tool
+from core.knowledge.presets import (
+    load_preset,
+    parse_source_pin_tool,
+    parse_user_preset_tool,
+    preset_retrieval_overrides,
+)
 from core.knowledge.services.finance_knowledge import FinanceKnowledgeService
 from core.knowledge.services.legal_knowledge import LegalKnowledgeService
 from core.knowledge.services.general_web import GeneralWebKnowledgeService
@@ -27,6 +32,8 @@ from core.knowledge.types import (
 WEB_COMPOSER_TOOLS = frozenset(
     {
         "internet",
+        "fetch",
+        "recipe",
         "trusted",
         "evidence",
         "science",
@@ -82,8 +89,12 @@ def resolve_turn_knowledge_service(
         tool = "internet"
 
     preset_id = parse_user_preset_tool(tool)
-    if preset_id and load_preset(preset_id) is not None:
-        return SERVICE_PRESET_KNOWLEDGE
+    if preset_id:
+        preset = load_preset(preset_id)
+        if preset is not None:
+            if preset.base_service == SERVICE_GENERAL_WEB:
+                return SERVICE_GENERAL_WEB
+            return SERVICE_PRESET_KNOWLEDGE
 
     if tool in {"evidence", "science"}:
         return SERVICE_SCIENTIFIC_EVIDENCE
@@ -96,6 +107,8 @@ def resolve_turn_knowledge_service(
     if tool == "trusted":
         return SERVICE_TRUSTED_KNOWLEDGE
     if tool == "internet":
+        return SERVICE_GENERAL_WEB
+    if tool in {"fetch", "recipe"}:
         return SERVICE_GENERAL_WEB
     if tool == "wikipedia":
         return SERVICE_WIKIPEDIA
@@ -125,5 +138,15 @@ def adapter_filter_for_composer_tool(composer_tool: str | None) -> tuple[str, ..
     if preset_id:
         preset = load_preset(preset_id)
         if preset is not None:
+            if preset.base_service == SERVICE_GENERAL_WEB:
+                return None
             return tuple(preset.adapters)
     return None
+
+
+def resolve_preset_retrieval_overrides(composer_tool: str | None) -> dict[str, Any]:
+    """Merge source-profile fields from a user preset into retrieval context."""
+    preset_id = parse_user_preset_tool((composer_tool or "").strip().lower())
+    if not preset_id:
+        return {}
+    return preset_retrieval_overrides(preset_id)

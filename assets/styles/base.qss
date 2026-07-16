@@ -552,89 +552,15 @@ QLabel[class="SettingsHint"] {
     font-style: italic;
 }
 
+#SettingsFormContainer QLabel#KnowledgeAccessBadge,
+#SettingsFormContainer QLabel#KnowledgeAccessHint {
+    font-weight: 600;
+}
+
 #KnowledgeSourceGroupLabel {
     color: #cdd6f4;
     font-weight: 600;
     margin-top: 4px;
-}
-
-#KnowledgeAccessBadge {
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    min-width: 72px;
-}
-
-#KnowledgeAccessBadge[access="free"] {
-    color: #a6adc8;
-    background-color: rgba(166, 173, 200, 0.12);
-}
-
-#KnowledgeAccessBadge[access="optional_key"] {
-    color: #f9e2af;
-    background-color: rgba(249, 226, 175, 0.14);
-}
-
-#KnowledgeAccessBadge[access="key_required"] {
-    color: #f38ba8;
-    background-color: rgba(243, 139, 168, 0.14);
-}
-
-#KnowledgeAccessBadge[access="connected"] {
-    color: #a6e3a1;
-    background-color: rgba(166, 227, 161, 0.14);
-}
-
-#KnowledgeAccessBadge[access="env_override"] {
-    color: #89b4fa;
-    background-color: rgba(137, 180, 250, 0.14);
-}
-
-#KnowledgeAccessBadge[access="coming_soon"] {
-    color: #6c7086;
-    background-color: rgba(108, 112, 134, 0.18);
-}
-
-#KnowledgeAccessHint {
-    color: #6c7086;
-    font-size: 11px;
-    font-weight: normal;
-}
-
-#KnowledgeConfigureButton {
-    padding: 4px 10px;
-    min-height: 24px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #89b4fa;
-    border: 1px solid rgba(137, 180, 250, 0.35);
-    background: transparent;
-}
-
-#KnowledgeConfigureButton:hover {
-    background-color: rgba(137, 180, 250, 0.12);
-}
-
-#KnowledgeSetupCallout {
-    background-color: rgba(249, 226, 175, 0.1);
-    border: 1px solid rgba(249, 226, 175, 0.28);
-    border-radius: 8px;
-}
-
-#KnowledgeSetupCalloutBody {
-    color: #f9e2af;
-    font-size: 12px;
-}
-
-#KnowledgeSetupCalloutDismiss {
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 11px;
-    color: #a6adc8;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: transparent;
 }
 
 #KnowledgeProviderStatusTable {

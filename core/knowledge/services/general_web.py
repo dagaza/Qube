@@ -6,13 +6,13 @@ from core.knowledge.pipeline import EvidencePipeline
 from core.knowledge.types import RetrievalBudget, RetrievalContext
 
 SERVICE_ID = "general_web"
-SERVICE_VERSION = "0.1.0"
+SERVICE_VERSION = "0.2.0"
 
 
 class GeneralWebKnowledgeService:
     id = SERVICE_ID
     name = "General web"
-    description = "DuckDuckGo SERP snippets with relevance gating."
+    description = "DuckDuckGo discovery with optional page fetch and section-ranked evidence."
     version = SERVICE_VERSION
 
     def __init__(self) -> None:
@@ -30,5 +30,13 @@ class GeneralWebKnowledgeService:
             query_vector=ctx.query_vector,
             embed_fn=ctx.embed_fn,
             budget=budget,
+            adapter_filter=ctx.adapter_filter,
+            library_store=ctx.library_store,
+            source_filter=ctx.source_filter,
+            preset_id=ctx.preset_id,
+            retrieval_profile=ctx.retrieval_profile,
+            composer_tool=ctx.composer_tool,
+            fetch_url_count=ctx.fetch_url_count,
+            site_bias=ctx.site_bias,
         )
         return self._pipeline.run(merged)

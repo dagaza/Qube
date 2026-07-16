@@ -49,8 +49,10 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
     SettingsScrollListWidget,
 )
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_subsection_to_form,
+    add_subsection_to_layout,
     add_section_reset_footer,
     make_disclosure_row,
     make_external_engine_hint,
@@ -59,15 +61,25 @@ from ui.views.settings.widgets import (
 )
 
 
+def _make_settings_form() -> tuple[QWidget, QFormLayout]:
+    form_host = QWidget()
+    form = QFormLayout(form_host)
+    form.setSpacing(15)
+    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    return form_host, form
+
+
 def build_section(host, *, is_dark: bool) -> QWidget:
     ai_widget = QWidget()
     ai_widget.setObjectName("SettingsFormContainer")
-    ai_form = QFormLayout(ai_widget)
-    ai_form.setSpacing(15)
-    ai_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    section_layout = QVBoxLayout(ai_widget)
+    section_layout.setContentsMargins(15, 0, 15, 10)
+    section_layout.setSpacing(15)
 
-    # --- Engine ---
-    add_subsection_to_form(ai_form, "Engine & routing", anchor="engine")
+    # --- Engine & routing card ---
+    engine_card, engine_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(engine_card_layout, "Engine & routing", anchor="engine")
+    engine_form_host, engine_form = _make_settings_form()
 
     host.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
     host.provider_selector = SelectorButton("Select Provider...", is_dark=is_dark)
@@ -84,14 +96,23 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "OpenAI-compatible server to use when External inference is selected."
     )
 
-    ai_form.addRow("AI Engine", host.engine_selector)
-    ai_form.addRow("External Provider", host.provider_selector)
+    engine_form.addRow("AI Engine", host.engine_selector)
+    engine_form.addRow("External Provider", host.provider_selector)
+    engine_form.addRow("", make_external_engine_hint(host))
+    engine_card_layout.addWidget(engine_form_host)
+    section_layout.addWidget(engine_card)
 
-    ai_form.addRow("", make_external_engine_hint(host))
+    # --- Local models & Startup card ---
+    local_startup_card, local_startup_card_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    host._ai_local_startup_card = local_startup_card
 
-    # --- Local models ---
     track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Local models", anchor="local_models")
+        host,
+        add_subsection_to_layout(
+            local_startup_card_layout, "Local models", anchor="local_models"
+        ),
     )
 
     local_models_inner = QWidget()
@@ -139,11 +160,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._ai_local_models_subsection = wrap_subsection(
         local_models_inner, anchor="local_models"
     )
-    ai_form.addRow(host._ai_local_models_subsection)
+    local_startup_card_layout.addWidget(host._ai_local_models_subsection)
 
-    # --- Startup ---
     track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Startup", anchor="startup")
+        host, add_subsection_to_layout(local_startup_card_layout, "Startup", anchor="startup")
     )
 
     startup_inner = QWidget()
@@ -162,10 +182,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     startup_form.addRow("", host.auto_load_last_model_cb)
 
     host._ai_startup_subsection = wrap_subsection(startup_inner, anchor="startup")
-    ai_form.addRow(host._ai_startup_subsection)
+    local_startup_card_layout.addWidget(host._ai_startup_subsection)
+    section_layout.addWidget(local_startup_card)
 
-    # --- Generation ---
-    add_subsection_to_form(ai_form, "Generation", anchor="generation")
+    # --- Generation card ---
+    generation_card, generation_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(generation_card_layout, "Generation", anchor="generation")
+    generation_form_host, generation_form = _make_settings_form()
 
     host._generation_spinboxes: list = []
 
@@ -230,13 +253,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.llm_temp_spin.setRange(0.0, 2.0)
     host.llm_temp_spin.setSingleStep(0.1)
     host.llm_temp_spin.setValue(get_llm_temperature())
-    host._add_generation_form_row(ai_form, "Temperature", _gen_temp_tip, host.llm_temp_spin)
+    host._add_generation_form_row(generation_form, "Temperature", _gen_temp_tip, host.llm_temp_spin)
 
     host.llm_ctx_spin = NoScrollSpinBox()
     host.llm_ctx_spin.setRange(1024, 128000)
     host.llm_ctx_spin.setSingleStep(256)
     host.llm_ctx_spin.setValue(get_llm_context_limit())
-    host._add_generation_form_row(ai_form, "Context limit", _gen_ctx_tip, host.llm_ctx_spin)
+    host._add_generation_form_row(generation_form, "Context limit", _gen_ctx_tip, host.llm_ctx_spin)
 
     host.llm_output_limit_cb = QCheckBox("Limit maximum reply length")
     host.llm_output_limit_cb.setChecked(get_llm_output_token_limit_enabled())
@@ -248,14 +271,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     output_limit_layout.addWidget(host.llm_output_limit_cb)
     output_limit_layout.addWidget(host._make_settings_info_button(_gen_output_limit_tip))
     output_limit_layout.addStretch(1)
-    ai_form.addRow("", output_limit_row)
+    generation_form.addRow("", output_limit_row)
 
     host.llm_output_limit_spin = NoScrollSpinBox()
     host.llm_output_limit_spin.setRange(256, 32768)
     host.llm_output_limit_spin.setSingleStep(256)
     host.llm_output_limit_spin.setValue(get_llm_output_token_limit())
     host._add_generation_form_row(
-        ai_form,
+        generation_form,
         "Max reply tokens",
         _gen_output_tokens_tip,
         host.llm_output_limit_spin,
@@ -264,7 +287,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.llm_output_limit_hint = QLabel()
     host.llm_output_limit_hint.setWordWrap(True)
     host.llm_output_limit_hint.setProperty("class", "SettingsHint")
-    ai_form.addRow("", host.llm_output_limit_hint)
+    generation_form.addRow("", host.llm_output_limit_hint)
     host._refresh_output_token_limit_hint()
 
     host.llm_history_spin = NoScrollSpinBox()
@@ -272,7 +295,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.llm_history_spin.setSingleStep(2)
     host.llm_history_spin.setValue(get_llm_chat_history_messages())
     host._add_generation_form_row(
-        ai_form, "Chat history", _gen_history_tip, host.llm_history_spin
+        generation_form, "Chat history", _gen_history_tip, host.llm_history_spin
     )
     host.llm_history_spin.valueChanged.connect(
         lambda _v: host._refresh_output_token_limit_hint()
@@ -292,7 +315,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.generation_advanced_toggle.toggled.connect(
         host.generation_advanced_panel.setVisible
     )
-    ai_form.addRow("", gen_adv_row)
+    generation_form.addRow("", gen_adv_row)
 
     gen_adv_form_widget = QWidget()
     gen_adv_form = QFormLayout(gen_adv_form_widget)
@@ -342,10 +365,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
 
     host.generation_advanced_panel.layout().addWidget(gen_adv_form_widget)
-    ai_form.addRow("", host.generation_advanced_panel)
+    generation_form.addRow("", host.generation_advanced_panel)
+    generation_card_layout.addWidget(generation_form_host)
+    section_layout.addWidget(generation_card)
 
-    # --- Chat style ---
-    add_subsection_to_form(ai_form, "Chat style", anchor="chat_style")
+    # --- Chat style & Reasoning skills card ---
+    chat_card, chat_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    chat_form_host, chat_form = _make_settings_form()
+
+    add_subsection_to_form(chat_form, "Chat style", anchor="chat_style")
 
     host.chat_personality_toggle = PrestigeToggle()
     host.chat_personality_label = QLabel("Encourage brief follow-ups on general chat")
@@ -369,10 +397,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())
     host.chat_personality_toggle.blockSignals(False)
     host.chat_personality_toggle.toggled.connect(host._on_chat_personality_toggled)
-    ai_form.addRow("", chat_personality_row)
+    chat_form.addRow("", chat_personality_row)
 
-    # --- Reasoning skills ---
-    add_subsection_to_form(ai_form, "Reasoning skills", anchor="skills")
+    add_subsection_to_form(chat_form, "Reasoning skills", anchor="skills")
 
     host.skills_enabled_toggle = PrestigeToggle()
     host.skills_enabled_label = QLabel("Enable compositional reasoning skills")
@@ -397,11 +424,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.skills_enabled_toggle.setChecked(get_skills_enabled())
     host.skills_enabled_toggle.blockSignals(False)
     host.skills_enabled_toggle.toggled.connect(host._on_skills_enabled_toggled)
-    ai_form.addRow("", skills_row)
+    chat_form.addRow("", skills_row)
+    chat_card_layout.addWidget(chat_form_host)
+    section_layout.addWidget(chat_card)
 
-    # --- Hardware tuning ---
+    # --- Hardware, inference & chat template card ---
+    internal_tuning_card, internal_tuning_card_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+
     track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Hardware tuning", anchor="hardware")
+        host,
+        add_subsection_to_layout(
+            internal_tuning_card_layout, "Hardware tuning", anchor="hardware"
+        ),
     )
 
     _hardware_adv_tip = (
@@ -420,7 +456,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_hardware_toggle.setChecked(get_advanced_hardware_unlocked())
     host.advanced_hardware_toggle.blockSignals(False)
     host.advanced_hardware_toggle.toggled.connect(host._on_advanced_hardware_toggled)
-    ai_form.addRow("", host.advanced_hardware_row)
+    internal_tuning_card_layout.addWidget(host.advanced_hardware_row)
 
     hardware_inner = QWidget()
     hardware_form = QFormLayout(hardware_inner)
@@ -510,12 +546,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._ai_hardware_subsection = wrap_subsection(hardware_inner, anchor="hardware")
     host.advanced_hardware_panel.layout().addWidget(host._ai_hardware_subsection)
     host.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
-    ai_form.addRow("", host.advanced_hardware_panel)
+    internal_tuning_card_layout.addWidget(host.advanced_hardware_panel)
 
-    # --- Inference transparency (read-only) ---
     track_internal_ai_label(
         host,
-        add_subsection_to_form(ai_form, "Inference stack", anchor="inference_stack"),
+        add_subsection_to_layout(
+            internal_tuning_card_layout, "Inference stack", anchor="inference_stack"
+        ),
     )
     host.inference_transparency_lbl = QLabel("Loading inference stack details…")
     host.inference_transparency_lbl.setWordWrap(True)
@@ -524,11 +561,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Read-only summary of llama.cpp build backend, hardware detection (including AMD APU "
         "unified memory), requested GPU layer configuration, and embedder/sidecar compute paths."
     )
-    ai_form.addRow("", host.inference_transparency_lbl)
+    internal_tuning_card_layout.addWidget(host.inference_transparency_lbl)
 
-    # --- Chat template ---
     track_internal_ai_label(
-        host, add_subsection_to_form(ai_form, "Chat template", anchor="chat_template")
+        host,
+        add_subsection_to_layout(
+            internal_tuning_card_layout, "Chat template", anchor="chat_template"
+        ),
     )
 
     _chat_template_adv_tip = (
@@ -552,7 +591,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_chat_template_toggle.toggled.connect(
         host._on_advanced_chat_template_toggled
     )
-    ai_form.addRow("", host.advanced_chat_template_row)
+    internal_tuning_card_layout.addWidget(host.advanced_chat_template_row)
 
     chat_template_inner = QWidget()
     chat_template_form = QFormLayout(chat_template_inner)
@@ -603,10 +642,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     host.advanced_chat_template_panel.layout().addWidget(host._ai_chat_template_subsection)
     host.advanced_chat_template_panel.setVisible(get_advanced_chat_template_unlocked())
-    ai_form.addRow("", host.advanced_chat_template_panel)
+    internal_tuning_card_layout.addWidget(host.advanced_chat_template_panel)
+    section_layout.addWidget(internal_tuning_card)
 
-    # --- Auxiliary cognition ---
-    add_subsection_to_form(ai_form, "Auxiliary cognition", anchor="cognition")
+    # --- Auxiliary cognition card ---
+    cognition_card, cognition_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    cognition_form_host, cognition_form = _make_settings_form()
+
+    add_subsection_to_form(cognition_form, "Auxiliary cognition", anchor="cognition")
 
     cognition_download_row = make_bootstrap_download_row(
         host,
@@ -620,7 +663,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         ),
         button_text="Download base cognition model",
     )
-    ai_form.addRow("", cognition_download_row)
+    cognition_form.addRow("", cognition_download_row)
 
     _adv_tip = (
         "Advanced engine controls are not for everyday use. Only enable them if you "
@@ -653,7 +696,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_engine_toggle.setChecked(get_advanced_engine_unlocked())
     host.advanced_engine_toggle.blockSignals(False)
     host.advanced_engine_toggle.toggled.connect(host._on_advanced_engine_toggled)
-    ai_form.addRow("", advanced_row)
+    cognition_form.addRow("", advanced_row)
 
     host.advanced_engine_panel = QWidget()
     adv_panel_layout = QVBoxLayout(host.advanced_engine_panel)
@@ -737,13 +780,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._ai_cognition_subsection = wrap_subsection(
         host.advanced_engine_panel, anchor="cognition"
     )
-    ai_form.addRow("", host._ai_cognition_subsection)
+    cognition_card_layout.addWidget(cognition_form_host)
+    cognition_card_layout.addWidget(host._ai_cognition_subsection)
+    section_layout.addWidget(cognition_card)
 
     host._wire_llm_generation_settings()
     host._refresh_cognition_gguf_list()
     host._sync_active_cognition_label()
     host._sync_native_chat_template_label()
 
-    add_section_reset_footer(ai_form, host, "ai.models", is_dark=is_dark)
+    add_section_reset_footer(section_layout, host, "ai.models", is_dark=is_dark)
 
     return ai_widget

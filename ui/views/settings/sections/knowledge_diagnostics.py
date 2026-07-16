@@ -6,17 +6,13 @@ from PyQt6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QVBoxLayout, 
 
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.retrieval_trace_panel import RetrievalTracePanel
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import add_subsection_to_layout, wrap_subsection
 
 
 def build_knowledge_diagnostics_section(host, *, is_dark: bool) -> QWidget:
-    container = QWidget()
-    container.setMinimumWidth(0)
-    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-    layout = QVBoxLayout(container)
-    layout.setContentsMargins(0, 0, 0, 0)
-
-    add_subsection_to_layout(layout, "Diagnostics", anchor="knowledge_diagnostics")
+    card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(card_layout, "Diagnostics", anchor="knowledge_diagnostics")
 
     inner = QWidget()
     inner_layout = QVBoxLayout(inner)
@@ -39,5 +35,5 @@ def build_knowledge_diagnostics_section(host, *, is_dark: bool) -> QWidget:
 
     inner_layout.addWidget(host.retrieval_trace_panel)
     inner_layout.addLayout(btn_row)
-    layout.addWidget(wrap_subsection(inner, anchor="knowledge_diagnostics"))
-    return container
+    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_diagnostics"))
+    return card

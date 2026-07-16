@@ -97,6 +97,8 @@ def test_provider_credential(
             return _probe_patentsview(secret, timeout=timeout)
         if probe == "epo_ops_search":
             return _probe_epo_ops(secret, timeout=timeout)
+        if probe == "brave_search_web":
+            return _probe_brave_search(secret, timeout=timeout)
         return ProviderCredentialTestResult(
             False,
             "No test probe configured for this provider.",
@@ -807,4 +809,41 @@ def _probe_epo_ops(secret: str | None, *, timeout: float) -> ProviderCredentialT
         return ProviderCredentialTestResult(True, "EPO OPS connection succeeded.", search_resp.status_code)
     return ProviderCredentialTestResult(
         False, f"EPO OPS search returned HTTP {search_resp.status_code}.", search_resp.status_code
+    )
+
+
+def _probe_brave_search(secret: str | None, *, timeout: float) -> ProviderCredentialTestResult:
+    if not secret:
+        return ProviderCredentialTestResult(
+            False,
+            "Brave Search API key required before testing.",
+            None,
+        )
+    resp = knowledge_get(
+        "https://api.search.brave.com/res/v1/web/search",
+        params={"q": "qube connectivity test", "count": 1},
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": secret,
+        },
+        timeout=timeout,
+    )
+    if 200 <= resp.status_code < 300:
+        return ProviderCredentialTestResult(
+            True,
+            "Brave Search API connection succeeded.",
+            resp.status_code,
+        )
+    if resp.status_code in (401, 403):
+        return ProviderCredentialTestResult(
+            False,
+            "Brave Search API key was rejected (check subscription token).",
+            resp.status_code,
+        )
+    return ProviderCredentialTestResult(
+        False,
+        f"Brave Search API returned HTTP {resp.status_code}.",
+        resp.status_code,
     )

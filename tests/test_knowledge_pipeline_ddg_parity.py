@@ -32,9 +32,25 @@ _SAMPLE_ROWS = [
 
 
 class TestKnowledgePipelineDdgParity(unittest.TestCase):
-    @patch("core.knowledge.adapters.duckduckgo.search_internet")
-    def test_legacy_and_v2_keep_same_rows(self, mock_search) -> None:
-        mock_search.return_value = [dict(r) for r in _SAMPLE_ROWS]
+    def setUp(self) -> None:
+        from core.knowledge.discovery.pacing import reset_discovery_pacing
+        from core.knowledge.discovery.session_budget import reset_ddg_session_budget
+
+        reset_discovery_pacing()
+        reset_ddg_session_budget()
+
+    @patch("core.knowledge.discovery.duckduckgo.search_duckduckgo_detailed")
+    def test_legacy_and_v2_keep_same_rows(self, mock_detailed) -> None:
+        mock_detailed.return_value = (
+            [dict(r) for r in _SAMPLE_ROWS],
+            {
+                "response_kind": "serp",
+                "http_status": 200,
+                "parsed_rows": len(_SAMPLE_ROWS),
+                "bot_challenge_signals": [],
+                "pace_wait_ms": 0,
+            },
+        )
         query = "Why do birds take dust baths?"
 
         legacy = run_legacy_web_retrieval(
@@ -64,11 +80,18 @@ class TestKnowledgePipelineDdgParity(unittest.TestCase):
         assert v2.bundle is not None
         self.assertEqual(len(v2.bundle.sources), len(legacy.web_results))
 
-    @patch("core.knowledge.adapters.duckduckgo.search_internet")
-    def test_failure_sentinel_skips_enrichment(self, mock_search) -> None:
-        mock_search.return_value = [
-            {"title": "", "snippet": "No relevant internet results found."}
-        ]
+    @patch("core.knowledge.discovery.duckduckgo.search_duckduckgo_detailed")
+    def test_failure_sentinel_skips_enrichment(self, mock_detailed) -> None:
+        mock_detailed.return_value = (
+            [{"title": "", "snippet": "No relevant internet results found."}],
+            {
+                "response_kind": "empty_parse",
+                "http_status": 200,
+                "parsed_rows": 0,
+                "bot_challenge_signals": [],
+                "pace_wait_ms": 0,
+            },
+        )
         legacy = run_legacy_web_retrieval(query="q", semantic_query="q")
         v2 = run_v2_web_retrieval(query="q", semantic_query="q")
         self.assertTrue(legacy.skip_enrichment)

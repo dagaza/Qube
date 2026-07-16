@@ -131,6 +131,11 @@
     "default": false,
     "description": "When true, shows advanced Knowledge settings including optional embedding model swap."
   },
+  "qube.settings.advanced_discovery_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Web search discovery session limit override controls."
+  },
   "qube.embedding.modelPath": {
     "type": "string",
     "default": "",
@@ -182,25 +187,36 @@
     "default": false,
     "description": "When true, append one JSON line per web search attempt to web_search.log (queries, triggers, result URLs)."
   },
-  "qube.knowledge.external_v2_enabled": {
-    "type": "boolean",
-    "default": false,
-    "description": "When true, route live web retrieval through the external knowledge evidence pipeline (Phase 0; DDG parity behind a flag)."
-  },
-  "qube.knowledge.internal_corpus_enabled": {
-    "type": "boolean",
-    "default": false,
-    "description": "When true with external v2, route @library through the internal corpus evidence service (LanceDB library index) instead of implicit RAG injection."
-  },
-  "qube.knowledge.research_map_enabled": {
-    "type": "boolean",
-    "default": false,
-    "description": "When true, build a session-local knowledge graph from evidence bundles and show the Research map in the Sources dialog."
-  },
   "qube.knowledge.retrieval_profile": {
     "type": "string",
     "default": "balanced",
     "description": "Orchestration profile for knowledge turns: fast, balanced, thorough, evidence_first, or local_first."
+  },
+  "qube.knowledge.discovery_privacy_tier": {
+    "type": "string",
+    "default": "private",
+    "enum": ["private", "balanced", "enhanced", "searxng"],
+    "description": "Web discovery privacy tier: private (DDG+Wiki), balanced/enhanced (+API fallback), or self-hosted SearXNG."
+  },
+  "qube.knowledge.discovery_pacing_enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When true, pace live DuckDuckGo SERP HTTP requests to reduce bot challenges."
+  },
+  "qube.knowledge.discovery_api_fallback_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true (tier balanced+), allow Brave Search API as discovery fallback."
+  },
+  "qube.knowledge.ddg_session_budget_override": {
+    "type": "integer",
+    "default": 0,
+    "description": "Override rolling 60-minute live DDG query cap; 0 uses default (30). Requires advanced discovery limits unlocked."
+  },
+  "qube.knowledge.discovery_searxng_base_url": {
+    "type": "string",
+    "default": "",
+    "description": "Optional base URL for a self-hosted SearXNG instance."
   },
   "qube.knowledge.entity_resolution_enabled": {
     "type": "boolean",
@@ -216,12 +232,7 @@
     "type": "string",
     "default": "general_web",
     "enum": ["general_web", "trusted_knowledge", "scientific_evidence"],
-    "description": "Default external knowledge service for auto/hybrid web turns when v2 is enabled (composer tools override this)."
-  },
-  "qube.knowledge.deep_research_enabled": {
-    "type": "boolean",
-    "default": false,
-    "description": "When true, enable the async DeepResearchWorker for multi-step evidence jobs (Phase 4)."
+    "description": "Default external knowledge service for auto/hybrid web turns (composer tools override this)."
   },
   "qube.knowledge.source_preferences": {
     "type": "object",

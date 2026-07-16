@@ -497,10 +497,32 @@ WEB_CAPABILITY_DISABLED_SUFFIX: str = (
 
 EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     " IMPORTANT: the user explicitly asked for an online/web search, but "
-    "no usable web results were returned this turn. Say that briefly. "
-    "Do NOT claim you lack internet access or cannot browse. "
-    "Do NOT emit bracket citation tokens such as [W]. "
-    "You may answer from general knowledge when appropriate."
+    "no usable web results were returned this turn. Your first sentence MUST "
+    "briefly state that the live web search did not return usable results "
+    "right now. Do NOT claim you lack internet access, cannot browse, or are "
+    "an offline-only assistant. Do NOT emit bracket citation tokens such as "
+    "[W]. If you continue with general knowledge, label it clearly as general "
+    "knowledge in the opening sentence or the next sentence."
+)
+
+COMPOSER_WEB_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the user pinned a web, fetch, recipe, or source-profile tool "
+    "for this turn, but no usable web results were returned. Your first "
+    "sentence MUST state that the requested web search did not return usable "
+    "results right now. Do NOT claim you lack internet access or cannot browse. "
+    "Do NOT emit bracket citation tokens such as [W]. Do NOT invent page "
+    "content, recipe steps, or cited facts. You may offer brief general "
+    "knowledge only if clearly labeled as such."
+)
+
+CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX: str = (
+    " IMPORTANT: the prior turn attempted a web search but returned no usable "
+    "results. The user may be continuing that topic. Do NOT claim you lack "
+    "internet access, cannot browse, or that only the user's device has "
+    "internet. Do NOT contradict the fact that Qube attempted web search on "
+    "the prior turn. Do NOT emit bracket citation tokens such as [W]. Answer "
+    "the follow-up directly; if you use general knowledge, note that live web "
+    "results are still unavailable."
 )
 
 SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX: str = (
@@ -1144,6 +1166,8 @@ __all__ = [
     "RAG_CAPABILITY_DISABLED_SUFFIX",
     "STRICT_ISOLATION_SYSTEM_SUFFIX",
     "EXPLICIT_WEB_EMPTY_SUFFIX",
+    "COMPOSER_WEB_EMPTY_SUFFIX",
+    "CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX",
     "library_lane_allowed",
     "detect_hard_explicit_web_request",
     "detect_explicit_web_request",

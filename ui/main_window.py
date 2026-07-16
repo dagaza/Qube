@@ -438,7 +438,7 @@ class MainWindow(QMainWindow):
             native_engine=self._native_engine,
         )
         self.model_manager_view = ModelManagerView(self.workers, self.workers.get("db"))
-        self.settings_view = SettingsView(self.workers, self.workers.get("db"))
+        self.settings_view = SettingsView(self.workers, self.workers.get("db"), parent=self)
         
         # 🔑 THE FIX: Prevent UI Stretching (Policy Ignored)
         from PyQt6.QtWidgets import QSizePolicy
@@ -904,12 +904,27 @@ class MainWindow(QMainWindow):
         self.hybrid_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
         center_layout.addWidget(self.hybrid_status_dot)
 
+        self.ddg_backoff_label = QLabel("⏸ DDG")
+        self.ddg_backoff_label.setFixedWidth(88)
+        self.ddg_backoff_label.setObjectName("DdgBackoffLabel")
+        self.ddg_backoff_label.setToolTip("DuckDuckGo discovery pause")
+        self.ddg_backoff_label.setStyleSheet("color: #fab387; font-weight: bold; font-size: 11px;")
+        self.ddg_backoff_label.hide()
+        center_layout.addWidget(self.ddg_backoff_label)
+
+        self._ddg_backoff_timer = QTimer(self)
+        self._ddg_backoff_timer.setInterval(1000)
+        self._ddg_backoff_timer.timeout.connect(self._tick_ddg_backoff_indicator)
+        self._ddg_backoff_was_active = False
+
         self._web_indicator_force = False
         self._web_indicator_hybrid = get_mcp_internet_hybrid_enabled()
         self._web_indicator_active = False
         self._web_indicator_active_direct = False
         self._web_indicator_active_hybrid = False
+        self._web_indicator_outcome_hint: str | None = None
         self._apply_web_indicator()
+        self.refresh_ddg_backoff_indicator()
 
         layout.addWidget(center_container)
 
@@ -1138,9 +1153,17 @@ class MainWindow(QMainWindow):
         via_hybrid: bool = False,
     ) -> None:
         """Highlight WEB/HYBRID while an in-flight web search contributes to the turn."""
+        if active:
+            self._web_indicator_outcome_hint = None
         self._web_indicator_active = bool(active)
         self._web_indicator_active_direct = bool(active and via_direct)
         self._web_indicator_active_hybrid = bool(active and via_hybrid)
+        self._apply_web_indicator()
+
+    def set_web_search_outcome_hint(self, hint: str) -> None:
+        """Brief tooltip after a failed web search (cleared on next active search)."""
+        text = (hint or "").strip()
+        self._web_indicator_outcome_hint = text or None
         self._apply_web_indicator()
 
     def _resolve_web_force_enabled(self) -> bool:
@@ -1173,6 +1196,9 @@ class MainWindow(QMainWindow):
         elif active_hybrid:
             web_color = self._RETRIEVAL_COLOR_ACTIVE
             web_tooltip = "Web search is active via Hybrid mode for this turn"
+        elif getattr(self, "_web_indicator_outcome_hint", None):
+            web_color = self._WEB_COLOR_STANDBY
+            web_tooltip = self._web_indicator_outcome_hint
         elif force_on:
             web_color = self._WEB_COLOR_STANDBY
             web_tooltip = "Web search enabled for every message in this chat"
@@ -1197,6 +1223,76 @@ class MainWindow(QMainWindow):
                 hybrid_tooltip = "Hybrid Internet Mode is off"
             self.hybrid_status_dot.setStyleSheet(style(hybrid_color))
             self.hybrid_status_dot.setToolTip(hybrid_tooltip)
+
+    def refresh_ddg_backoff_indicator(self) -> None:
+        """Show or hide the DDG backoff countdown in the top bar."""
+        if not hasattr(self, "ddg_backoff_label"):
+            return
+        from core.knowledge.discovery.backoff import (
+            ddg_bot_backoff_seconds,
+            get_provider_backoff,
+        )
+        from core.knowledge.discovery.policy import PRIMARY_DISCOVERY_PROVIDER_ID
+
+        entry = get_provider_backoff(PRIMARY_DISCOVERY_PROVIDER_ID)
+        if entry is None:
+            self.ddg_backoff_label.hide()
+            if hasattr(self, "_ddg_backoff_timer") and self._ddg_backoff_timer.isActive():
+                self._ddg_backoff_timer.stop()
+            return
+
+        remaining = entry.remaining_seconds
+        minutes, seconds = divmod(remaining, 60)
+        self.ddg_backoff_label.setText(f"⏸ DDG {minutes}:{seconds:02d}")
+        total_minutes = max(1, (ddg_bot_backoff_seconds() + 59) // 60)
+        self.ddg_backoff_label.setToolTip(
+            "DuckDuckGo is paused after a bot challenge. "
+            f"DDG searches resume in {minutes}:{seconds:02d} "
+            f"(~{total_minutes} min pause). "
+            "Web searches use Brave or Wikipedia fallbacks meanwhile."
+        )
+        self.ddg_backoff_label.show()
+        if hasattr(self, "_ddg_backoff_timer") and not self._ddg_backoff_timer.isActive():
+            self._ddg_backoff_timer.start()
+
+    def _tick_ddg_backoff_indicator(self) -> None:
+        was_active = getattr(self, "_ddg_backoff_was_active", False)
+        self.refresh_ddg_backoff_indicator()
+        is_active = (
+            hasattr(self, "ddg_backoff_label") and self.ddg_backoff_label.isVisible()
+        )
+        if was_active and not is_active:
+            self._sync_web_discovery_policy_section()
+        self._ddg_backoff_was_active = is_active
+
+    def on_ddg_backoff_started(self, remaining_seconds: int) -> None:
+        """Toast + top-bar countdown when DDG enters a new backoff window."""
+        self.refresh_ddg_backoff_indicator()
+        self._ddg_backoff_was_active = True
+        from core.notification_types import ddg_backoff_event
+
+        self.emit_notification(
+            ddg_backoff_event(remaining_seconds=remaining_seconds)
+        )
+
+    def on_discovery_tier_b_suggested(self) -> None:
+        """Suggest optional API fallback tier after repeated DDG challenges."""
+        from core.notification_types import discovery_tier_b_suggestion_event
+
+        self.emit_notification(discovery_tier_b_suggestion_event())
+
+    def _sync_web_discovery_policy_section(self) -> None:
+        settings_view = getattr(self, "settings_view", None)
+        if settings_view is None:
+            return
+        try:
+            from ui.views.settings.sections.knowledge_web_discovery import (
+                sync_web_discovery_policy_section,
+            )
+
+            sync_web_discovery_policy_section(settings_view)
+        except Exception:
+            pass
     
     def _screen_for_window(self) -> QScreen | None:
         """Return the monitor that contains most of the window (not always primary)."""
@@ -3306,6 +3402,8 @@ class MainWindow(QMainWindow):
             self._open_settings_section("voice.audio", anchor="tts_models")
         elif action_id == "open_settings_knowledge_embedding":
             self._open_settings_section("knowledge", anchor="embedding_mode")
+        elif action_id == "open_settings_knowledge_web_discovery":
+            self._open_settings_section("knowledge", anchor="web_discovery")
         elif action_id == "open_settings_knowledge_credentials" or action_id.startswith(
             "open_settings_knowledge_credentials:"
         ):

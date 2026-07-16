@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.knowledge.presets import KnowledgePreset, load_preset
+from core.knowledge.types import SERVICE_GENERAL_WEB
 from core.knowledge.retrieval_profiles import get_profile_spec
 from core.knowledge.retrieval_trace_reader import read_retrieval_traces
 
@@ -62,15 +63,31 @@ def build_explain_preset(
 
     profile = get_profile_spec(retrieval_profile)
     stats = _latency_stats(preset.id)
-    adapters = [
-        {"id": aid, "label": _adapter_label(aid)} for aid in preset.adapters
-    ]
+    if preset.base_service == SERVICE_GENERAL_WEB:
+        uses = [
+            {"id": domain, "label": domain}
+            for domain in preset.site_bias
+        ]
+        fetch_hint = (
+            str(preset.fetch_url_count)
+            if preset.fetch_url_count is not None
+            else "profile default"
+        )
+        extra_fields = {
+            "fetch_url_count": fetch_hint,
+            "mode": "Web fetch (source profile)",
+        }
+    else:
+        uses = [
+            {"id": aid, "label": _adapter_label(aid)} for aid in preset.adapters
+        ]
+        extra_fields = {"mode": "API adapters"}
 
     return {
         "preset_id": preset.id,
         "label": preset.label,
         "description": preset.description or "",
-        "uses": adapters,
+        "uses": uses,
         "base_service": _SERVICE_LABELS.get(
             preset.base_service, preset.base_service
         ),
@@ -86,6 +103,7 @@ def build_explain_preset(
             "Open Retrieval Inspector on an answer that used this tool, "
             "or check Settings → Knowledge → Diagnostics."
         ),
+        **extra_fields,
     }
 
 
@@ -97,12 +115,16 @@ def format_explain_preset_text(explain: dict[str, Any]) -> str:
         f"{explain.get('label', explain.get('preset_id'))}",
         "",
         f"Composer token: {explain.get('composer_token', '—')}",
+        f"Mode: {explain.get('mode', '—')}",
         f"Base service: {explain.get('base_service', '—')}",
         f"Retrieval profile (active): {explain.get('retrieval_profile', '—')}",
         f"Ranking strategy: {explain.get('ranking_strategy', '—')}",
         "",
-        "Uses:",
     ]
+    if explain.get("fetch_url_count") is not None:
+        lines.append(f"Fetch URL count: {explain.get('fetch_url_count')}")
+        lines.append("")
+    lines.append("Uses:")
     for item in explain.get("uses") or []:
         lines.append(f"  • {item.get('label', item.get('id', '—'))}")
 

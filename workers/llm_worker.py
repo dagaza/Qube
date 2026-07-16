@@ -207,19 +207,22 @@ from core.discourse_query import (
     web_query_rewrite_failed,
 )
 from core.app_settings import (
-    external_knowledge_v2_enabled,
     get_default_knowledge_service,
-    internal_corpus_knowledge_enabled,
+    get_retrieval_profile,
     research_map_enabled,
 )
 from core.knowledge.registry import (
     WEB_COMPOSER_TOOLS,
     adapter_filter_for_composer_tool,
+    resolve_preset_retrieval_overrides,
     resolve_turn_knowledge_service,
     resolve_turn_preset_id,
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
 from core.knowledge.web_retrieval import run_web_retrieval
+from core.knowledge.fetch_provenance import summarize_web_pipeline_outcome
+from core.knowledge.search_outcome import search_outcome_from_relevance_diag
+from core.knowledge.adapters.duckduckgo import failure_sentinel_reason
 from core.web_search_audit import (
     STATUS_VETOED_TOOL_DISABLED,
     STATUS_VETOED_UNGROUNDED,
@@ -309,6 +312,9 @@ class LLMWorker(QThread):
     context_retrieved = pyqtSignal(bool)
     # active, via_direct (force/manual/@internet), via_hybrid (cognitive router)
     web_search_active = pyqtSignal(bool, bool, bool)
+    web_search_outcome_hint = pyqtSignal(str)
+    ddg_backoff_started = pyqtSignal(int)  # remaining_seconds
+    discovery_tier_b_suggested = pyqtSignal()
     response_finished = pyqtSignal(str, str)
     sources_found = pyqtSignal(str, list)  # session_id, sources
     evidence_transparency_found = pyqtSignal(str, dict)  # session_id, transparency
@@ -401,6 +407,7 @@ class LLMWorker(QThread):
         self._discourse_by_session: dict[str, DiscourseState] = {}
         self._conversation_health_by_session: dict[str, ConversationHealthState] = {}
         self._prior_execution_route_by_session: dict[str, str] = {}
+        self._prior_web_empty_by_session: dict[str, bool] = {}
         self._push_sampling_to_native()
 
     def _sampling_payload(self) -> dict:
@@ -2258,11 +2265,7 @@ class LLMWorker(QThread):
                         )
                     self._mark_skip_enrichment("composer_conversation_ref")
             composer_tool = attachment_patch.get("attachment_tool")
-            library_knowledge_active = (
-                composer_tool == "library"
-                and external_knowledge_v2_enabled()
-                and internal_corpus_knowledge_enabled()
-            )
+            library_knowledge_active = composer_tool == "library"
             if library_knowledge_active:
                 self._composer_knowledge_tool = "library"
                 force_web = True
@@ -3017,16 +3020,15 @@ class LLMWorker(QThread):
                 composer_internet=bool(
                     getattr(self, "_composer_internet_requested", False)
                 ),
-                default_service=(
-                    get_default_knowledge_service()
-                    if external_knowledge_v2_enabled()
-                    else None
-                ),
+                default_service=get_default_knowledge_service(),
             )
             turn_adapter_filter = adapter_filter_for_composer_tool(
                 getattr(self, "_composer_knowledge_tool", None)
             )
             turn_preset_id = resolve_turn_preset_id(
+                getattr(self, "_composer_knowledge_tool", None)
+            )
+            preset_overrides = resolve_preset_retrieval_overrides(
                 getattr(self, "_composer_knowledge_tool", None)
             )
             library_store = (
@@ -3045,7 +3047,6 @@ class LLMWorker(QThread):
                 semantic_query=web_semantic or web_query,
                 query_vector=web_query_vector,
                 embed_fn=self.embedding_cache.get_embedding,
-                use_v2=external_knowledge_v2_enabled(),
                 knowledge_service=turn_knowledge_service,
                 adapter_filter=turn_adapter_filter,
                 session_id=self.session_id,
@@ -3053,7 +3054,11 @@ class LLMWorker(QThread):
                 library_store=library_store,
                 source_filter=corpus_source_filter,
                 preset_id=turn_preset_id,
-                db=self.store,
+                retrieval_profile=get_retrieval_profile(),
+                db=self.db,
+                composer_tool=getattr(self, "_composer_knowledge_tool", None),
+                site_bias=preset_overrides.get("site_bias"),
+                fetch_url_count=preset_overrides.get("fetch_url_count"),
             )
             web_results = _web_outcome.web_results
             web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit
@@ -3061,25 +3066,88 @@ class LLMWorker(QThread):
             web_audit_rel_diag = _web_outcome.relevance_diag
             self._turn_evidence_bundle = _web_outcome.bundle
 
+            _pipeline_summary = summarize_web_pipeline_outcome(
+                _web_outcome.bundle,
+                _web_outcome.relevance_diag,
+            )
+            _search_outcome = search_outcome_from_relevance_diag(
+                _web_outcome.relevance_diag
+            )
+            _search_outcome_kind = (
+                _search_outcome.kind.value if _search_outcome is not None else "—"
+            )
+            logger.info(
+                "[WebPipeline] outcome strategy=%s search_outcome=%s "
+                "fetch_url_count=%d warnings=%s stages=%s sources=%d",
+                _pipeline_summary["strategy"],
+                _search_outcome_kind,
+                _pipeline_summary["fetch_url_count"],
+                ",".join(_pipeline_summary["warnings"]) or "none",
+                _pipeline_summary["stages_summary"],
+                _pipeline_summary["source_count"],
+            )
+            if _search_outcome is not None and _search_outcome.is_failure:
+                if _search_outcome.kind.value == "bot_challenge":
+                    self.status_update.emit("🌐 Web search blocked (provider challenge)")
+                    self.web_search_outcome_hint.emit(
+                        "Web search blocked — search engine bot challenge"
+                    )
+                else:
+                    self.status_update.emit("🌐 Web search returned no usable results")
+                    self.web_search_outcome_hint.emit(
+                        f"Web search failed — {_search_outcome.label.lower()}"
+                    )
+            elif (
+                _search_outcome is not None
+                and _search_outcome.fallback_from
+                and not _web_outcome.skip_enrichment
+            ):
+                self.web_search_outcome_hint.emit(
+                    "Web search via "
+                    f"{_search_outcome.provider} "
+                    f"(fallback from {_search_outcome.fallback_from})"
+                )
+
+            from core.knowledge.discovery.backoff import consume_ddg_backoff_notification
+
+            _should_notify_ddg_backoff, _ddg_backoff_remaining = (
+                consume_ddg_backoff_notification()
+            )
+            if _should_notify_ddg_backoff:
+                self.ddg_backoff_started.emit(_ddg_backoff_remaining)
+
+            from core.knowledge.discovery.health import consume_tier_b_suggestion
+
+            if consume_tier_b_suggestion():
+                self.discovery_tier_b_suggested.emit()
+
             if _web_outcome.skip_enrichment:
                 if _web_outcome.relevance_diag is None:
+                    _sentinel_reason = failure_sentinel_reason(
+                        _web_outcome.web_results_raw_for_audit
+                    )
                     logger.info(
-                        "[LLM Worker] Web results dropped (empty / failure sentinel); "
-                        "not injecting [W] context."
+                        "[LLM Worker] Web results dropped (empty / failure sentinel"
+                        + (f", reason={_sentinel_reason}" if _sentinel_reason else "")
+                        + "); not injecting [W] context."
                     )
                 else:
                     kept = _web_outcome.relevance_diag.get("web_results_kept_count", 0)
                     dropped = len(
                         _web_outcome.relevance_diag.get("web_relevance_dropped") or []
                     )
+                    gate_mode = _web_outcome.relevance_diag.get(
+                        "web_relevance_gate_mode", "strict"
+                    )
                     logger.info(
                         "[WebPipeline] relevance_gate kept=%d dropped=%d "
-                        "min_overlap=%.2f",
+                        "min_overlap=%.2f mode=%s",
                         kept,
                         dropped,
                         _web_outcome.relevance_diag.get(
                             "web_relevance_min_overlap", 0.15
                         ),
+                        gate_mode,
                     )
                     logger.info(
                         "[LLM Worker] Web results dropped (relevance gate); "
@@ -3087,16 +3155,39 @@ class LLMWorker(QThread):
                     )
                 if execution_route in ("WEB", "INTERNET", "HYBRID"):
                     self._mark_skip_enrichment("web_tool_failure")
+                if _web_outcome.relevance_diag and isinstance(decision, dict):
+                    decision.update(_web_outcome.relevance_diag)
+                if _web_outcome.relevance_diag and hasattr(self, "routing_debug_buffer"):
+                    try:
+                        self.routing_debug_buffer.merge_web_pipeline_into_latest(
+                            {
+                                "web_query_resolved": web_query,
+                                "web_query_rewrite_reason": search_target.rewrite_reason,
+                                "web_query_rewrite_failed": rewrite_failed,
+                                **_web_outcome.relevance_diag,
+                            }
+                        )
+                    except Exception:
+                        pass
             elif web_audit_rel_diag:
                 kept = web_audit_rel_diag.get("web_results_kept_count", 0)
                 dropped = len(web_audit_rel_diag.get("web_relevance_dropped") or [])
-                logger.info(
-                    "[WebPipeline] relevance_gate kept=%d dropped=%d "
-                    "min_overlap=%.2f",
-                    kept,
-                    dropped,
-                    web_audit_rel_diag.get("web_relevance_min_overlap", 0.15),
-                )
+                gate_mode = web_audit_rel_diag.get("web_relevance_gate_mode", "strict")
+                if web_audit_rel_diag.get("web_relevance_gate_skipped"):
+                    logger.info(
+                        "[WebPipeline] relevance_gate skipped mode=%s kept=%d",
+                        gate_mode,
+                        kept,
+                    )
+                else:
+                    logger.info(
+                        "[WebPipeline] relevance_gate kept=%d dropped=%d "
+                        "min_overlap=%.2f mode=%s",
+                        kept,
+                        dropped,
+                        web_audit_rel_diag.get("web_relevance_min_overlap", 0.15),
+                        gate_mode,
+                    )
                 if isinstance(decision, dict):
                     decision.update(web_audit_rel_diag)
                 if hasattr(self, "routing_debug_buffer"):
@@ -3111,12 +3202,7 @@ class LLMWorker(QThread):
                         )
                     except Exception:
                         pass
-            if (
-                external_knowledge_v2_enabled()
-                and _web_outcome.bundle is not None
-                and isinstance(decision, dict)
-            ):
-                decision["external_knowledge_v2"] = True
+            if _web_outcome.bundle is not None and isinstance(decision, dict):
                 decision["knowledge_service"] = (
                     _web_outcome.bundle.knowledge_service
                     if _web_outcome.bundle is not None
@@ -3443,16 +3529,37 @@ class LLMWorker(QThread):
             else:
                 tool_context += (
                     "\n[WEB SEARCH: No live results were returned for this query. "
-                    "Tell the user you could not retrieve web results right now. "
+                    "Your first sentence must state that the web search did not return "
+                    "usable results right now. Do NOT claim you lack internet access. "
                     "Do NOT invent facts or emit [W] citations without sources.]\n"
                 )
 
         explicit_web_empty_results = bool(
-            explicit_web_request
-            and web_search_attempted
+            web_search_attempted
             and not all_ui_sources
             and self.mcp_internet_enabled
+            and execution_route in ("NONE", "WEB", "INTERNET")
+        )
+        prior_web_empty = False
+        if self.session_id:
+            prior_web_empty = bool(
+                self._prior_web_empty_by_session.get(str(self.session_id), False)
+            )
+        composer_tool_name = str(
+            getattr(self, "_composer_knowledge_tool", "") or ""
+        ).lower()
+        composer_web_empty = bool(
+            explicit_web_empty_results
+            and composer_tool_name
+            and is_web_composer_tool(composer_tool_name)
+        )
+        prior_web_empty_follow_up = bool(
+            follow_up.active
+            and prior_web_empty
+            and not all_ui_sources
+            and not web_capability_blocked
             and execution_route == "NONE"
+            and not explicit_web_empty_results
         )
         scientific_medical_disclaimer = False
         financial_disclaimer = False
@@ -3473,6 +3580,9 @@ class LLMWorker(QThread):
         self._turn_execution_route = execution_route
         if self.session_id:
             self._prior_execution_route_by_session[str(self.session_id)] = execution_route
+            self._prior_web_empty_by_session[str(self.session_id)] = (
+                explicit_web_empty_results
+            )
 
         # ============================================================
         # 2.76 TIER 3: emit RouteFeedbackEvent for the cognitive
@@ -3837,6 +3947,8 @@ class LLMWorker(QThread):
             composer_conversation_ref=attachment_conversation_active,
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
+            composer_web_empty=composer_web_empty,
+            prior_web_empty_follow_up=prior_web_empty_follow_up,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,
             legal_disclaimer=legal_disclaimer,

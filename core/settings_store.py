@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -95,6 +96,7 @@ class SettingsStore:
         self.schema: dict[str, dict[str, Any]] = self._load_schema()
         self._overrides: dict[str, Any] = {}
         self._disk_mtime: float | None = None
+        self._suppress_reload_until: float = 0.0
         self._ensure_loaded()
         self._refresh_disk_mtime()
 
@@ -362,6 +364,11 @@ class SettingsStore:
         text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
         self.user_path.write_text(text, encoding="utf-8")
         self._refresh_disk_mtime()
+        # UI writes trigger QFileSystemWatcher; ignore the echo reload briefly.
+        self._suppress_reload_until = time.monotonic() + 1.0
+
+    def should_ignore_disk_reload(self) -> bool:
+        return time.monotonic() < self._suppress_reload_until
 
     def _coerce(self, key: str, value: Any) -> Any:
         entry = self.schema.get(key)

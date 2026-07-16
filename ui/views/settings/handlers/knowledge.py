@@ -6,28 +6,34 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QLineEdit, QListWidgetItem
 
 from core.app_settings import (
-    KEY_DEEP_RESEARCH_ENABLED,
-    KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED,
-    KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED,
+    KEY_ADVANCED_DISCOVERY_UNLOCKED,
+    KEY_DISCOVERY_API_FALLBACK_ENABLED,
+    KEY_DISCOVERY_PACING_ENABLED,
+    KEY_DISCOVERY_PRIVACY_TIER,
+    KEY_DISCOVERY_SEARXNG_BASE_URL,
+    KEY_DDG_SESSION_BUDGET_OVERRIDE,
     KEY_KNOWLEDGE_SOURCE_PREFERENCES,
     KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
-    KEY_RESEARCH_MAP_ENABLED,
     get_advanced_embedding_unlocked,
+    get_advanced_discovery_unlocked,
+    get_discovery_pacing_enabled,
     get_embedding_mode,
     get_knowledge_source_preferences,
     set_advanced_embedding_unlocked,
-    set_deep_research_enabled,
+    set_advanced_discovery_unlocked,
+    set_discovery_api_fallback_enabled,
+    set_discovery_pacing_enabled,
+    set_discovery_privacy_tier,
+    set_discovery_searxng_base_url,
+    set_ddg_session_budget_override,
     set_embedding_model_path,
     set_embedding_mode,
-    set_external_knowledge_v2_enabled,
-    set_internal_corpus_knowledge_enabled,
     set_knowledge_source_preferences,
-    set_research_map_enabled,
 )
 from core.knowledge.connectors.base import list_connector_types
 from core.knowledge.credentials import (
@@ -44,6 +50,7 @@ from core.knowledge.provider_credentials import (
 from core.knowledge.source_preferences import set_adapter_enabled
 from ui.components.provider_credential_dialog import open_provider_credential_dialog
 from ui.views.settings.sections.knowledge_provider_credentials import sync_provider_credential_rows
+from ui.views.settings.sections.knowledge_web_discovery import sync_web_discovery_policy_section
 from ui.views.settings.sections.knowledge_provider_status import sync_provider_status_panel
 from ui.views.settings.sections.knowledge_sources import (
     sync_knowledge_source_checkboxes,
@@ -101,22 +108,6 @@ class KnowledgeHandlersMixin:
         if hasattr(self, "external_settings_reloaded"):
             self.external_settings_reloaded.emit(set(keys))
 
-    def _on_external_knowledge_v2_toggled(self, checked: bool) -> None:
-        set_external_knowledge_v2_enabled(checked)
-        self._emit_external_settings_changed(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED)
-
-    def _on_internal_corpus_knowledge_toggled(self, checked: bool) -> None:
-        set_internal_corpus_knowledge_enabled(checked)
-        self._emit_external_settings_changed(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED)
-
-    def _on_research_map_toggled(self, checked: bool) -> None:
-        set_research_map_enabled(checked)
-        self._emit_external_settings_changed(KEY_RESEARCH_MAP_ENABLED)
-
-    def _on_deep_research_enabled_toggled(self, checked: bool) -> None:
-        set_deep_research_enabled(checked)
-        self._emit_external_settings_changed(KEY_DEEP_RESEARCH_ENABLED)
-
     def _on_knowledge_source_toggled(
         self,
         service_id: str,
@@ -146,6 +137,178 @@ class KnowledgeHandlersMixin:
             is_dark=is_dark,
             parent=self.window(),
         )
+
+    def _on_brave_search_configure_clicked(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        open_provider_credential_dialog(
+            self,
+            "brave_search",
+            is_dark=is_dark,
+            parent=self.window(),
+        )
+        sync_web_discovery_policy_section(self)
+
+    def _on_searxng_configure_clicked(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        open_provider_credential_dialog(
+            self,
+            "searxng",
+            is_dark=is_dark,
+            parent=self.window(),
+        )
+        sync_web_discovery_policy_section(self)
+
+    def _build_discovery_privacy_tier_menu(self) -> None:
+        if not hasattr(self, "discovery_privacy_tier_selector"):
+            return
+        from core.knowledge.discovery.privacy_policy import (
+            TIER_BALANCED,
+            TIER_ENHANCED,
+            TIER_PRIVATE,
+            TIER_SEARXNG,
+            privacy_tier_description,
+            privacy_tier_label,
+        )
+
+        items = [
+            (
+                f"{privacy_tier_label(tier)} — {privacy_tier_description(tier)}",
+                tier,
+            )
+            for tier in (TIER_PRIVATE, TIER_BALANCED, TIER_ENHANCED, TIER_SEARXNG)
+        ]
+        self._build_prestige_menu(
+            self.discovery_privacy_tier_selector,
+            items,
+            self._on_discovery_privacy_tier_selected,
+        )
+        self._sync_discovery_privacy_tier_selector()
+
+    def _on_discovery_privacy_tier_selected(self, tier: str) -> None:
+        if not tier:
+            return
+        set_discovery_privacy_tier(str(tier))
+        sync_web_discovery_policy_section(self)
+        self._emit_external_settings_changed(
+            KEY_DISCOVERY_PRIVACY_TIER,
+            KEY_DISCOVERY_API_FALLBACK_ENABLED,
+        )
+
+    def _sync_discovery_privacy_tier_selector(self) -> None:
+        if not hasattr(self, "discovery_privacy_tier_selector"):
+            return
+        from core.app_settings import get_discovery_privacy_tier
+        from core.knowledge.discovery.privacy_policy import privacy_tier_label
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        tier = get_discovery_privacy_tier()
+        self.discovery_privacy_tier_selector.setText(privacy_tier_label(tier))
+        refit_settings_selector_width(self.discovery_privacy_tier_selector)
+
+    def _on_discovery_pacing_toggled(self, checked: bool) -> None:
+        # Defer persistence until after the toggle animation/layout pass completes.
+        QTimer.singleShot(0, lambda: self._apply_discovery_pacing_enabled(checked))
+
+    def _apply_discovery_pacing_enabled(self, checked: bool) -> None:
+        if get_discovery_pacing_enabled() == bool(checked):
+            return
+        set_discovery_pacing_enabled(checked)
+        self._emit_external_settings_changed(KEY_DISCOVERY_PACING_ENABLED)
+
+    def _on_discovery_budget_override_changed(self, value: int) -> None:
+        from core.knowledge.discovery.session_budget import DEFAULT_DDG_SESSION_BUDGET
+
+        def _effective_limit(spin_value: int) -> int:
+            return spin_value if spin_value > 0 else DEFAULT_DDG_SESSION_BUDGET
+
+        last_applied = int(getattr(self, "_discovery_budget_last_applied", 0))
+        effective_new = _effective_limit(int(value))
+        effective_last = _effective_limit(last_applied)
+
+        if effective_new > effective_last and effective_new > DEFAULT_DDG_SESSION_BUDGET:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            if effective_new > 100:
+                title = "Very high discovery limit"
+                body = (
+                    f"You are raising the session limit to {effective_new} live DuckDuckGo "
+                    f"queries per hour.\n\n"
+                    "Limits above 100 are strongly discouraged — they greatly increase "
+                    "bot-challenge risk and may pause DuckDuckGo for 30 minutes.\n\n"
+                    "Continue anyway?"
+                )
+                tone = "danger"
+            else:
+                title = "Raise discovery limit"
+                body = (
+                    f"You are raising the session limit above the default "
+                    f"({DEFAULT_DDG_SESSION_BUDGET}/hour).\n\n"
+                    "Higher limits increase bot-challenge risk. Wikipedia and other "
+                    "fallbacks will still work when limits are reached.\n\nContinue?"
+                )
+                tone = "danger"
+            dlg = PrestigeDialog(
+                self.window(),
+                title,
+                body,
+                is_dark=is_dark,
+                tone=tone,
+                confirm_text="RAISE LIMIT",
+                cancel_text="KEEP DEFAULT",
+                dialog_width=460,
+            )
+            if not dlg.exec():
+                spin = getattr(self, "discovery_budget_spin", None)
+                if spin is not None:
+                    spin.blockSignals(True)
+                    spin.setValue(last_applied)
+                    spin.blockSignals(False)
+                return
+
+        set_ddg_session_budget_override(int(value))
+        self._discovery_budget_last_applied = int(value)
+        sync_web_discovery_policy_section(self)
+        self._emit_external_settings_changed(KEY_DDG_SESSION_BUDGET_OVERRIDE)
+
+    def _on_advanced_discovery_toggled(self, checked: bool) -> None:
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Advanced discovery limits",
+                "Session limit overrides are heuristic safeguards, not official "
+                "DuckDuckGo quotas.\n\n"
+                "Raising limits increases bot-challenge risk. Burst pacing "
+                "(6 queries / 10 min) cannot be disabled in the UI.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=450,
+            )
+            if not dlg.exec():
+                toggle = getattr(self, "advanced_discovery_toggle", None)
+                if toggle is not None:
+                    toggle.blockSignals(True)
+                    toggle.setChecked(False)
+                    toggle.blockSignals(False)
+                return
+        set_advanced_discovery_unlocked(bool(checked))
+        if hasattr(self, "advanced_discovery_panel"):
+            self.advanced_discovery_panel.setVisible(bool(checked))
+        self._emit_external_settings_changed(KEY_ADVANCED_DISCOVERY_UNLOCKED)
+
+    def _on_discovery_searxng_url_changed(self) -> None:
+        field = getattr(self, "discovery_searxng_url_field", None)
+        if field is None:
+            return
+        set_discovery_searxng_base_url(field.text().strip())
+        sync_web_discovery_policy_section(self)
+        self._emit_external_settings_changed(KEY_DISCOVERY_SEARXNG_BASE_URL)
+        self._emit_external_settings_changed(KEY_DISCOVERY_PRIVACY_TIER)
+
+    def _on_discovery_reset_health_clicked(self) -> None:
+        from core.knowledge.discovery.health import reset_discovery_health
+
+        reset_discovery_health()
+        sync_web_discovery_policy_section(self)
 
     def _maybe_nudge_key_required_source(self, adapter_id: str) -> None:
         """One-time nudge when enabling a key-required source without a key."""
@@ -202,6 +365,7 @@ class KnowledgeHandlersMixin:
     def _on_provider_credential_editing_finished(self, provider_id: str) -> None:
         if env_override_active(provider_id):
             sync_provider_credential_rows(self)
+            sync_web_discovery_policy_section(self)
             sync_live_source_rows(self)
             return
         field = self._provider_credential_field(provider_id)
@@ -213,6 +377,7 @@ class KnowledgeHandlersMixin:
         set_provider_api_key(provider_id, text)
         field.clear()
         sync_provider_credential_rows(self)
+        sync_web_discovery_policy_section(self)
         sync_live_source_rows(self)
         sync_provider_status_panel(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
@@ -223,6 +388,7 @@ class KnowledgeHandlersMixin:
         if field is not None:
             field.clear()
         sync_provider_credential_rows(self)
+        sync_web_discovery_policy_section(self)
         sync_live_source_rows(self)
         sync_provider_status_panel(self)
         self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
@@ -243,6 +409,7 @@ class KnowledgeHandlersMixin:
             if field is not None:
                 field.clear()
             sync_provider_credential_rows(self)
+            sync_web_discovery_policy_section(self)
             sync_live_source_rows(self)
             self._emit_external_settings_changed(KEY_KNOWLEDGE_PROVIDER_CREDENTIALS)
 
@@ -257,6 +424,7 @@ class KnowledgeHandlersMixin:
             self._provider_credential_test_worker = None
             record_provider_credential_test(pid, ok=ok, message=message)
             sync_provider_credential_rows(self)
+            sync_web_discovery_policy_section(self)
             sync_live_source_rows(self)
             sync_provider_status_panel(self)
             PrestigeDialog(

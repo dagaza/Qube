@@ -12,6 +12,7 @@ class ProviderCredentialSpec:
     provider_id: str
     label: str
     adapter_ids: tuple[str, ...]
+    discovery_provider_ids: tuple[str, ...] = ()
     env_var: str | None = None
     supports_anonymous: bool = True
     supports_free_api_key: bool = False
@@ -25,6 +26,37 @@ class ProviderCredentialSpec:
 
 
 PROVIDER_CREDENTIAL_SPECS: tuple[ProviderCredentialSpec, ...] = (
+    ProviderCredentialSpec(
+        provider_id="brave_search",
+        label="Brave Search API",
+        adapter_ids=(),
+        discovery_provider_ids=("brave_search",),
+        env_var="QUBE_BRAVE_SEARCH_API_KEY",
+        supports_anonymous=False,
+        supports_free_api_key=True,
+        key_required=False,
+        signup_url="https://brave.com/search/api/",
+        docs_url="https://api.search.brave.com/app/documentation/web-search/get-started",
+        anonymous_summary="API key not configured",
+        key_benefits=(
+            "Optional web-search fallback when DuckDuckGo is blocked. "
+            "DuckDuckGo remains the primary provider for every turn."
+        ),
+        test_probe="brave_search_web",
+    ),
+    ProviderCredentialSpec(
+        provider_id="searxng",
+        label="SearXNG API key",
+        adapter_ids=(),
+        discovery_provider_ids=("searxng",),
+        env_var="QUBE_SEARXNG_API_KEY",
+        supports_anonymous=True,
+        supports_free_api_key=True,
+        key_required=False,
+        anonymous_summary="Optional — only if your instance requires auth",
+        key_benefits="Bearer token for private SearXNG instances.",
+        test_probe="",
+    ),
     ProviderCredentialSpec(
         provider_id="openalex",
         label="OpenAlex",
@@ -418,7 +450,13 @@ def adapter_credentials_hint(adapter_id: str) -> str | None:
 
 
 def provider_has_implemented_adapter(spec: ProviderCredentialSpec) -> bool:
-    """True when at least one catalog adapter for this provider is live."""
+    """True when at least one catalog adapter or discovery provider is live."""
+    if spec.discovery_provider_ids:
+        from core.knowledge.discovery.registry import get_discovery_provider
+
+        for provider_id in spec.discovery_provider_ids:
+            if get_discovery_provider(provider_id) is not None:
+                return True
     from core.knowledge.adapters.catalog import get_adapter_entry
 
     for adapter_id in spec.adapter_ids:
