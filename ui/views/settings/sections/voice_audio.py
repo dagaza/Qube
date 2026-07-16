@@ -25,10 +25,11 @@ from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.controls import NoScrollDoubleSpinBox, NoScrollSpinBox
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_section_divider_to_form,
     add_section_reset_footer,
     add_subsection_to_form,
+    add_subsection_to_layout,
     wrap_subsection,
 )
 
@@ -322,16 +323,28 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
     form.addRow("", host.advanced_tts_panel)
 
 
-def build_section(host, *, is_dark: bool) -> QWidget:
-    """Build the Voice & Audio settings form; widgets are attached to ``host``."""
-    section_widget = QWidget()
-    section_widget.setObjectName("SettingsFormContainer")
-
-    form = QFormLayout(section_widget)
+def _make_settings_form() -> tuple[QWidget, QFormLayout]:
+    form_host = QWidget()
+    form = QFormLayout(form_host)
     form.setSpacing(15)
     form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    return form_host, form
 
-    add_subsection_to_form(form, "Devices")
+
+def build_section(host, *, is_dark: bool) -> QWidget:
+    """Build the Voice & Audio settings form; widgets are attached to ``host``."""
+    host._settings_section_cards = []
+
+    section_widget = QWidget()
+    section_widget.setObjectName("SettingsFormContainer")
+    section_layout = QVBoxLayout(section_widget)
+    section_layout.setContentsMargins(15, 0, 15, 10)
+    section_layout.setSpacing(15)
+
+    # --- Devices card ---
+    devices_card, devices_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(devices_card_layout, "Devices")
+    devices_form_host, devices_form = _make_settings_form()
 
     host.mic_selector = SelectorButton("Select Input Device...", is_dark=is_dark)
     host.device_selector = SelectorButton("Select Output Device...", is_dark=is_dark)
@@ -374,20 +387,26 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         handler=host._on_audio_input_hint_clicked,
     )
 
-    form.addRow(
+    devices_form.addRow(
         "Audio Input",
         _selector_action_row(host.mic_selector, host.audio_input_hint_btn),
     )
-    form.addRow(
+    devices_form.addRow(
         "Audio Output",
         _device_selector_row(host.device_selector, host.audio_output_preview_btn),
     )
-    form.addRow(
+    devices_form.addRow(
         "TTS Voice",
         _device_selector_row(host.voice_selector, host.tts_voice_preview_btn),
     )
+    devices_card_layout.addWidget(devices_form_host)
+    section_layout.addWidget(devices_card)
 
-    add_subsection_to_form(form, "Wakeword", anchor="wakeword")
+    # --- Wakeword + Speech Detection card ---
+    detection_card, detection_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    detection_form_host, detection_form = _make_settings_form()
+
+    add_subsection_to_form(detection_form, "Wakeword", anchor="wakeword")
 
     host.wakeword_selector = SelectorButton("Select Wakeword...", is_dark=is_dark)
     host.wakeword_selector.setMenu(QMenu(host.wakeword_selector))
@@ -414,7 +433,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     wakeword_row_layout.addWidget(host.wakeword_info_btn)
     wakeword_row_layout.addStretch()
 
-    form.addRow("Active Wakeword", wakeword_row)
+    detection_form.addRow("Active Wakeword", wakeword_row)
 
     host.wakeword_download_open_btn = QPushButton("Download OpenWakeWord models")
     apply_brand_primary(host.wakeword_download_open_btn)
@@ -443,7 +462,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         alignment=Qt.AlignmentFlag.AlignLeft,
     )
     wakeword_download_layout.addStretch(1)
-    form.addRow("", wakeword_download_col)
+    detection_form.addRow("", wakeword_download_col)
 
     host.wakeword_download_open_btn.clicked.connect(host._download_openwakeword_models)
     host.wakeword_download_community_btn.clicked.connect(host._download_community_wakeword_models)
@@ -461,9 +480,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     wakeword_lab_layout.setContentsMargins(0, 0, 0, 0)
     wakeword_lab_layout.addWidget(host.wakeword_test_lab_btn, 0)
     wakeword_lab_layout.addStretch(1)
-    form.addRow("", wakeword_lab_row)
+    detection_form.addRow("", wakeword_lab_row)
 
-    add_subsection_to_form(form, "Speech Detection")
+    add_subsection_to_form(detection_form, "Speech Detection")
 
     host.timeout_spinner = NoScrollDoubleSpinBox()
     host.timeout_spinner.setFixedWidth(90)
@@ -495,10 +514,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     if host.audio_worker:
         host.threshold_spinner.valueChanged.connect(host.audio_worker.set_speech_threshold)
 
-    form.addRow("Silence Cutoff", host.timeout_spinner)
-    form.addRow("VAD Threshold", host.threshold_spinner)
+    detection_form.addRow("Silence Cutoff", host.timeout_spinner)
+    detection_form.addRow("VAD Threshold", host.threshold_spinner)
+    detection_card_layout.addWidget(detection_form_host)
+    section_layout.addWidget(detection_card)
 
-    add_subsection_to_form(form, "Toolbar")
+    # --- Toolbar card ---
+    toolbar_card, toolbar_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(toolbar_card_layout, "Toolbar")
+    toolbar_form_host, toolbar_form = _make_settings_form()
 
     host.pin_audio_cb = QCheckBox("Pin Audio Controls to Toolbar")
     host.pin_audio_cb.setToolTip(
@@ -509,7 +533,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.pin_audio_cb.setChecked(True)
     host.pin_audio_cb.blockSignals(False)
     host.pin_audio_cb.toggled.connect(host.audio_pin_toggle.emit)
-    form.addRow("", host.pin_audio_cb)
+    toolbar_form.addRow("", host.pin_audio_cb)
 
     host.pin_tts_voice_cb = QCheckBox("Pin TTS Voice selector to Toolbar")
     host.pin_tts_voice_cb.setToolTip(
@@ -520,13 +544,19 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.pin_tts_voice_cb.setChecked(True)
     host.pin_tts_voice_cb.blockSignals(False)
     host.pin_tts_voice_cb.toggled.connect(host.tts_voice_pin_toggle.emit)
-    form.addRow("", host.pin_tts_voice_cb)
+    toolbar_form.addRow("", host.pin_tts_voice_cb)
+    toolbar_card_layout.addWidget(toolbar_form_host)
+    section_layout.addWidget(toolbar_card)
 
-    host.voice_audio_section_divider = add_section_divider_to_form(form, is_dark=is_dark)
-    add_subsection_to_form(form, "Advanced Voice & Audio Options")
-    _add_stt_advanced_options(host, form)
-    _add_tts_advanced_options(host, form)
+    # --- Advanced Voice & Audio Options card ---
+    advanced_card, advanced_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(advanced_card_layout, "Advanced Voice & Audio Options")
+    advanced_form_host, advanced_form = _make_settings_form()
+    _add_stt_advanced_options(host, advanced_form)
+    _add_tts_advanced_options(host, advanced_form)
+    advanced_card_layout.addWidget(advanced_form_host)
+    section_layout.addWidget(advanced_card)
 
-    add_section_reset_footer(form, host, "voice.audio", is_dark=is_dark)
+    add_section_reset_footer(section_layout, host, "voice.audio", is_dark=is_dark)
 
     return section_widget

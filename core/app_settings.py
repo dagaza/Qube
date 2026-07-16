@@ -40,6 +40,7 @@ KEY_SIDECAR_TITLE_CONTEXT_MODE = "qube.sidecar.title_context_mode"
 KEY_ADVANCED_ENGINE_UNLOCKED = "qube.settings.advanced_engine_unlocked"
 KEY_ADVANCED_ENGINE_ACKNOWLEDGED = "qube.settings.advanced_engine_acknowledged"
 KEY_ADVANCED_EMBEDDING_UNLOCKED = "qube.settings.advanced_embedding_unlocked"
+KEY_ADVANCED_DISCOVERY_UNLOCKED = "qube.settings.advanced_discovery_unlocked"
 KEY_ADVANCED_SPEECH_MODELS_UNLOCKED = "qube.settings.advanced_speech_models_unlocked"
 KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
 KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
@@ -49,13 +50,17 @@ KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
-KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED = "qube.knowledge.external_v2_enabled"
-KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"
-KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"
+KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"  # legacy; ignored
+KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"  # legacy; ignored
 KEY_RETRIEVAL_PROFILE = "qube.knowledge.retrieval_profile"
+KEY_DISCOVERY_PRIVACY_TIER = "qube.knowledge.discovery_privacy_tier"
+KEY_DISCOVERY_PACING_ENABLED = "qube.knowledge.discovery_pacing_enabled"
+KEY_DISCOVERY_API_FALLBACK_ENABLED = "qube.knowledge.discovery_api_fallback_enabled"
+KEY_DDG_SESSION_BUDGET_OVERRIDE = "qube.knowledge.ddg_session_budget_override"
+KEY_DISCOVERY_SEARXNG_BASE_URL = "qube.knowledge.discovery_searxng_base_url"
 KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
 KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
-KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"
+KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"  # legacy; ignored
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
@@ -319,65 +324,36 @@ def set_web_search_audit_log_enabled(enabled: bool) -> None:
     _store().set(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, enabled)
 
 
-def get_external_knowledge_v2_enabled() -> bool:
-    """When True, web retrieval runs through the evidence pipeline (Phase 0)."""
-    return bool(_store().get(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, False))
-
-
-def set_external_knowledge_v2_enabled(enabled: bool) -> None:
-    _store().set(KEY_EXTERNAL_KNOWLEDGE_V2_ENABLED, enabled)
-
-
-def external_knowledge_v2_env_override() -> bool | None:
-    raw = os.getenv("QUBE_EXTERNAL_KNOWLEDGE_V2")
-    if raw is None:
-        return None
-    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
-
-
-def external_knowledge_v2_enabled() -> bool:
-    """Effective external knowledge v2 flag (env override wins)."""
-    override = external_knowledge_v2_env_override()
-    if override is not None:
-        return override
-    return get_external_knowledge_v2_enabled()
+# Internal corpus, research map, and deep research are always enabled (Settings
+# toggles removed). Legacy qube.knowledge.*_enabled keys may remain in
+# settings.json but are ignored. Deep research could be reintroduced later as
+# an Enterprise kill switch (qube.knowledge.deep_research_enabled or env).
 
 
 def get_internal_corpus_knowledge_enabled() -> bool:
-    """When True, @library routes through the internal corpus evidence service."""
-    return bool(_store().get(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, False))
+    """@library always routes through the internal corpus evidence service."""
+    return True
 
 
 def set_internal_corpus_knowledge_enabled(enabled: bool) -> None:
-    _store().set(KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED, enabled)
-
-
-def internal_corpus_knowledge_env_override() -> bool | None:
-    raw = os.getenv("QUBE_INTERNAL_CORPUS_KNOWLEDGE")
-    if raw is None:
-        return None
-    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+    _ = enabled  # no-op; retained for compatibility
 
 
 def internal_corpus_knowledge_enabled() -> bool:
-    """Effective internal corpus knowledge flag (env override wins)."""
-    override = internal_corpus_knowledge_env_override()
-    if override is not None:
-        return override
-    return get_internal_corpus_knowledge_enabled()
+    return True
 
 
 def get_research_map_enabled() -> bool:
-    """When True, build session knowledge graphs and show Research map UI."""
-    return bool(_store().get(KEY_RESEARCH_MAP_ENABLED, False))
+    """Session knowledge graphs and Research map UI are always built."""
+    return True
 
 
 def set_research_map_enabled(enabled: bool) -> None:
-    _store().set(KEY_RESEARCH_MAP_ENABLED, enabled)
+    _ = enabled  # no-op; retained for compatibility
 
 
 def research_map_enabled() -> bool:
-    return get_research_map_enabled()
+    return True
 
 
 def get_retrieval_profile() -> str:
@@ -392,6 +368,65 @@ def set_retrieval_profile(profile: str) -> None:
     from core.knowledge.retrieval_profiles import normalize_profile_id
 
     _store().set(KEY_RETRIEVAL_PROFILE, normalize_profile_id(profile))
+
+
+def get_discovery_privacy_tier() -> str:
+    from core.knowledge.discovery.privacy_policy import (
+        DEFAULT_PRIVACY_TIER,
+        normalize_privacy_tier,
+    )
+
+    return normalize_privacy_tier(
+        str(_store().get(KEY_DISCOVERY_PRIVACY_TIER, DEFAULT_PRIVACY_TIER) or "")
+    )
+
+
+def set_discovery_privacy_tier(tier: str) -> None:
+    from core.knowledge.discovery.privacy_policy import normalize_privacy_tier
+
+    normalized = normalize_privacy_tier(tier)
+    _store().set(KEY_DISCOVERY_PRIVACY_TIER, normalized)
+    if normalized == "private":
+        set_discovery_api_fallback_enabled(False)
+    elif normalized in {"balanced", "enhanced", "searxng"}:
+        set_discovery_api_fallback_enabled(True)
+
+
+def get_discovery_pacing_enabled() -> bool:
+    return bool(_store().get(KEY_DISCOVERY_PACING_ENABLED, True))
+
+
+def set_discovery_pacing_enabled(enabled: bool) -> None:
+    _store().set(KEY_DISCOVERY_PACING_ENABLED, bool(enabled))
+
+
+def get_discovery_api_fallback_enabled() -> bool:
+    return bool(_store().get(KEY_DISCOVERY_API_FALLBACK_ENABLED, False))
+
+
+def set_discovery_api_fallback_enabled(enabled: bool) -> None:
+    _store().set(KEY_DISCOVERY_API_FALLBACK_ENABLED, bool(enabled))
+
+
+def get_ddg_session_budget_override() -> int:
+    """User override for hourly DDG live-query cap; 0 = use default (30)."""
+    raw = _store().get(KEY_DDG_SESSION_BUDGET_OVERRIDE, 0)
+    try:
+        return max(0, min(500, int(raw)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def set_ddg_session_budget_override(value: int) -> None:
+    _store().set(KEY_DDG_SESSION_BUDGET_OVERRIDE, max(0, min(500, int(value))))
+
+
+def get_discovery_searxng_base_url() -> str:
+    return str(_store().get(KEY_DISCOVERY_SEARXNG_BASE_URL, "") or "").strip()
+
+
+def set_discovery_searxng_base_url(url: str) -> None:
+    _store().set(KEY_DISCOVERY_SEARXNG_BASE_URL, (url or "").strip())
 
 
 def get_entity_resolution_enabled() -> bool:
@@ -421,12 +456,12 @@ def rxnorm_entity_lookup_enabled() -> bool:
 
 
 def get_deep_research_enabled() -> bool:
-    """When True, background deep-research jobs may run (Phase 4 scaffold)."""
-    return bool(_store().get(KEY_DEEP_RESEARCH_ENABLED, False))
+    """Background @research jobs are always enabled when the worker is running."""
+    return True
 
 
 def set_deep_research_enabled(enabled: bool) -> None:
-    _store().set(KEY_DEEP_RESEARCH_ENABLED, enabled)
+    _ = enabled  # no-op; retained for a possible Enterprise kill switch later
 
 
 def get_knowledge_source_preferences() -> dict[str, list[str]]:
@@ -636,6 +671,14 @@ def get_advanced_embedding_unlocked() -> bool:
 
 def set_advanced_embedding_unlocked(unlocked: bool) -> None:
     _store().set(KEY_ADVANCED_EMBEDDING_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_discovery_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_DISCOVERY_UNLOCKED, False))
+
+
+def set_advanced_discovery_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_DISCOVERY_UNLOCKED, bool(unlocked))
 
 
 def get_embedding_model_path() -> str:

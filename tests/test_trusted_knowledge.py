@@ -21,6 +21,7 @@ from core.knowledge.types import (  # noqa: E402
     SERVICE_TRUSTED_KNOWLEDGE,
 )
 from core.knowledge.web_retrieval import run_v2_web_retrieval  # noqa: E402
+from core.knowledge.discovery.types import DiscoveryResult  # noqa: E402
 
 
 _WIKI_ROW = {
@@ -66,11 +67,16 @@ class TestTrustedKnowledge(unittest.TestCase):
             SERVICE_GENERAL_WEB,
         )
 
-    @patch("core.knowledge.pipeline_trusted.search_duckduckgo")
+    @patch("core.knowledge.pipeline_trusted.discover_full_with_fallback")
     @patch("core.knowledge.pipeline_trusted.search_wikipedia")
     def test_v2_trusted_service_bundle(self, mock_wiki, mock_ddg) -> None:
         mock_wiki.return_value = [_WIKI_ROW]
-        mock_ddg.return_value = []
+        mock_ddg.return_value = DiscoveryResult(
+            candidates=(),
+            raw_rows=(),
+            search_outcome=None,
+            provider_id="duckduckgo",
+        )
 
         outcome = run_v2_web_retrieval(
             query="What is the capital of Romania?",

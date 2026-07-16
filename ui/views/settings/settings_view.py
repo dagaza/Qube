@@ -110,6 +110,7 @@ from ui.views.settings.controls import (
 )
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
 from ui.views.settings.widgets import collect_theme_buttons
+from ui.views.settings.settings_card_style import refresh_settings_section_cards
 from ui.views.settings.sections import (
     advanced,
     ai_models,
@@ -195,8 +196,8 @@ class SettingsView(
     stt_model_changed = pyqtSignal()
     tts_model_changed = pyqtSignal()
     mic_vu_hint_requested = pyqtSignal()
-    def __init__(self, workers: dict, db_manager):
-        super().__init__()
+    def __init__(self, workers: dict, db_manager, parent=None):
+        super().__init__(parent)
         self.workers = workers
         self.db = db_manager
         
@@ -300,6 +301,30 @@ class SettingsView(
 
         start_provider_status_refresh_timer(self)
 
+    def _refresh_knowledge_access_ui(self, *, is_dark: bool | None = None) -> None:
+        """Re-style Knowledge live-source badges/buttons from the active window theme."""
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        resolved = coalesce_settings_is_dark(self, is_dark=is_dark)
+        if hasattr(self, "knowledge_live_source_rows"):
+            from ui.views.settings.sections.knowledge_sources import (
+                refresh_live_source_access_badges,
+            )
+
+            refresh_live_source_access_badges(self, is_dark=resolved)
+        if hasattr(self, "web_discovery_policy_section"):
+            from ui.views.settings.sections.knowledge_web_discovery import (
+                sync_web_discovery_policy_section,
+            )
+
+            sync_web_discovery_policy_section(self, is_dark=resolved)
+        if hasattr(self, "knowledge_provider_status_table"):
+            from ui.views.settings.sections.knowledge_provider_status import (
+                sync_provider_status_panel,
+            )
+
+            sync_provider_status_panel(self, is_dark=resolved)
+
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._sync_active_native_model_label()
@@ -307,12 +332,15 @@ class SettingsView(
         if hasattr(self, "_refresh_inference_transparency_panel"):
             self._refresh_inference_transparency_panel()
         self._ensure_settings_file_watched()
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        is_dark = coalesce_settings_is_dark(self)
         self._apply_settings_sidebar_surface(is_dark)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
         self._maybe_start_provider_status_refresh()
+        self._refresh_knowledge_access_ui(is_dark=is_dark)
 
     def hideEvent(self, event: QHideEvent) -> None:
         super().hideEvent(event)
@@ -328,7 +356,9 @@ class SettingsView(
         self._apply_settings_sidebar_surface(is_dark)
         self._relayout_trigger_list_rows()
     def _setup_ui(self):
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        is_dark = coalesce_settings_is_dark(self)
         self._section_index_by_id: dict[str, int] = {}
         self._section_row_by_id: dict[str, int] = {}
         self._section_stack_index_by_id: dict[str, int] = {}
@@ -350,7 +380,7 @@ class SettingsView(
             self._index_section_for_search(sec_def, content_widget)
 
         self._wire_companion_cognition_hint()
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        is_dark = coalesce_settings_is_dark(self)
         collect_theme_buttons(self)
         self._finalize_settings_layout(is_dark)
         self._sync_internal_engine_subsections(get_engine_mode())
@@ -453,6 +483,9 @@ class SettingsView(
         )
     def _sync_internal_engine_subsections(self, mode: str) -> None:
         internal = str(mode).lower().strip() == "internal"
+        local_startup_card = getattr(self, "_ai_local_startup_card", None)
+        if local_startup_card is not None:
+            local_startup_card.setVisible(internal)
         for attr in (
             "_ai_local_models_subsection",
             "_ai_startup_subsection",
@@ -552,6 +585,9 @@ class SettingsView(
             self._refresh_cognition_gguf_list()
     def refresh_menu_themes(self, is_dark: bool):
         """Standardizes icons and borders when the theme is toggled."""
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        is_dark = coalesce_settings_is_dark(self, is_dark=is_dark)
         if not getattr(self, "_theme_buttons", None):
             collect_theme_buttons(self)
         for btn in self._theme_buttons:
@@ -580,9 +616,7 @@ class SettingsView(
                 preview_color = "#94a3b8" if is_dark else "#64748b"
                 preview_btn.setIcon(qta.icon("fa5s.play", color=preview_color))
 
-        divider = getattr(self, "voice_audio_section_divider", None)
-        if divider is not None and hasattr(divider, "apply_theme"):
-            divider.apply_theme(is_dark)
+        refresh_settings_section_cards(self, is_dark=is_dark)
 
         # Update section header + sidebar nav icons
         icon_color = "#8b5cf6" if is_dark else "#4c4f69"
@@ -626,12 +660,7 @@ class SettingsView(
 
             sync_provider_status_panel(self, is_dark=is_dark)
 
-        if hasattr(self, "knowledge_live_source_rows"):
-            from ui.views.settings.sections.knowledge_sources import (
-                refresh_live_source_access_badges,
-            )
-
-            refresh_live_source_access_badges(self)
+        self._refresh_knowledge_access_ui(is_dark=is_dark)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
         # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.
@@ -716,9 +745,13 @@ class SettingsView(
             self._update_settings_section_nav_colors
         )
     def _finalize_settings_layout(self, is_dark: bool) -> None:
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        is_dark = coalesce_settings_is_dark(self, is_dark=is_dark)
         self._apply_spinbox_style(is_dark)
         self._apply_settings_sidebar_surface(is_dark)
         self._update_settings_section_nav_colors()
+        self._refresh_knowledge_access_ui(is_dark=is_dark)
     def _make_tinted_svg_pixmap(self, svg_path, color_hex: str, size: int) -> QPixmap:
         pixmap = QPixmap(str(svg_path))
         if pixmap.isNull():
@@ -825,6 +858,7 @@ class SettingsView(
             )
 
             start_provider_status_refresh_timer(self)
+            QTimer.singleShot(0, self._refresh_knowledge_access_ui)
         else:
             from ui.views.settings.sections.knowledge_provider_status import (
                 stop_provider_status_refresh_timer,

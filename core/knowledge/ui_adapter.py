@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from core.knowledge.types import EvidenceBundle, EvidenceObject
 
 
@@ -46,6 +48,51 @@ def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
     ]
 
 
+def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
+    return [
+        evidence_to_ui_source(obj, ui_id=i)
+        for i, obj in enumerate(bundle.sources, start=1)
+    ]
+
+
+def _truncate_at_boundary(text: str, char_budget: int) -> str:
+    """Trim text to char_budget without mid-word chops when possible."""
+    text = (text or "").strip()
+    if char_budget <= 0:
+        return ""
+    if len(text) <= char_budget:
+        return text
+
+    truncated = text[:char_budget]
+    for separator in ("\n\n", "\n", ". ", "? ", "! ", "; ", ", ", " "):
+        head = truncated.rsplit(separator, 1)[0].strip()
+        if head and len(head) <= char_budget:
+            return head
+
+    return re.sub(r"\w+$", "", truncated).rstrip() or truncated.rstrip()
+
+
+def _fit_source_blocks_to_budget(blocks: list[str], char_budget: int) -> str:
+    if char_budget <= 0:
+        return "\n\n".join(blocks)
+
+    kept: list[str] = []
+    for block in blocks:
+        candidate = "\n\n".join(kept + [block]) if kept else block
+        if len(candidate) <= char_budget:
+            kept.append(block)
+            continue
+
+        remaining = char_budget - (len("\n\n".join(kept)) + (2 if kept else 0))
+        if remaining > 40:
+            trimmed = _truncate_at_boundary(block, remaining)
+            if trimmed:
+                kept.append(trimmed)
+        break
+
+    return "\n\n".join(kept)
+
+
 def bundle_to_prompt_context(
     bundle: EvidenceBundle,
     *,
@@ -63,7 +110,8 @@ def bundle_to_prompt_context(
     if bundle.warnings:
         meta_lines.append(f"Warnings: {', '.join(bundle.warnings)}")
 
-    parts: list[str] = ["\n".join(meta_lines), ""]
+    meta_block = "\n".join(meta_lines)
+    source_blocks: list[str] = []
     for obj in bundle.sources:
         block = obj.title
         meta_bits: list[str] = []
@@ -78,9 +126,24 @@ def bundle_to_prompt_context(
         if obj.excerpt:
             block = f"{block}\n{obj.excerpt}".strip()
         if block:
-            parts.append(block)
+            source_blocks.append(block)
 
-    body = "\n\n".join(p for p in parts if p)
+    header_prefix = f"{header}:\n"
     if char_budget > 0:
-        body = body[:char_budget]
-    return f"{header}:\n{body}" if body else ""
+        body_budget = max(0, char_budget - len(header_prefix))
+        meta_allowance = min(len(meta_block) + 2, max(0, body_budget // 4))
+        content_budget = max(0, body_budget - meta_allowance)
+        body = _fit_source_blocks_to_budget(source_blocks, content_budget)
+        parts = [meta_block, body] if body else [meta_block]
+        body = "\n\n".join(part for part in parts if part)
+        if len(body) > body_budget:
+            body = _truncate_at_boundary(body, body_budget)
+    else:
+        body = "\n\n".join([meta_block, *source_blocks])
+
+    if not body:
+        return ""
+    result = f"{header_prefix}{body}"
+    if char_budget > 0 and len(result) > char_budget:
+        result = _truncate_at_boundary(result, char_budget)
+    return result

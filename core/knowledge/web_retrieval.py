@@ -8,10 +8,11 @@ from typing import Any, Callable, TYPE_CHECKING
 import numpy as np
 
 from core.app_settings import entity_resolution_enabled, get_retrieval_profile
-from core.knowledge.adapters.duckduckgo import is_failure_sentinel, search_duckduckgo
+from core.knowledge.adapters.duckduckgo import is_failure_sentinel
+from core.knowledge.discovery import discover_full_with_fallback
 from core.knowledge.observability import build_retrieval_trace, record_retrieval_trace
 from core.knowledge.registry import get_knowledge_service
-from core.knowledge.retrieval_profiles import normalize_profile_id
+from core.knowledge.retrieval_profiles import normalize_profile_id, get_profile_spec
 from core.knowledge.retrieval_records import (
     build_context_fingerprint,
     save_retrieval_record,
@@ -35,10 +36,25 @@ def run_legacy_web_retrieval(
     query_vector: np.ndarray | None = None,
     embed_fn: Callable[[str], np.ndarray] | None = None,
     max_results: int = 3,
+    retrieval_profile: str | None = None,
 ) -> WebRetrievalOutcome:
     """Original LLMWorker web path (search → sentinel → relevance gate)."""
     t0 = time.time()
-    web_results = search_duckduckgo(query, max_results=max_results)
+    discovery = discover_full_with_fallback(
+        query,
+        max_results=max_results,
+        retrieval_profile=retrieval_profile,
+    )
+    web_results = [
+        {
+            "title": candidate.title or "",
+            "snippet": candidate.snippet or "",
+            "url": candidate.url,
+        }
+        for candidate in discovery.candidates
+    ]
+    if not web_results and discovery.raw_rows:
+        web_results = [dict(r) for r in discovery.raw_rows if isinstance(r, dict)]
     web_results_raw_for_audit = [dict(r) for r in web_results]
 
     if is_failure_sentinel(web_results):
@@ -98,22 +114,31 @@ def run_v2_web_retrieval(
     preset_id: str | None = None,
     retrieval_profile: str | None = None,
     db: DatabaseManager | None = None,
+    composer_tool: str | None = None,
+    site_bias: tuple[str, ...] | None = None,
+    fetch_url_count: int | None = None,
 ) -> WebRetrievalOutcome:
     """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle."""
     profile_id = normalize_profile_id(retrieval_profile or get_retrieval_profile())
     service = get_knowledge_service(knowledge_service)
+    profile = get_profile_spec(profile_id)
+    base_budget = budget or service.default_budget()
+    merged_budget = profile.materialize_budget(base_budget)
     ctx = RetrievalContext(
         query=query,
         semantic_query=semantic_query,
         knowledge_service=service.id,
         query_vector=query_vector,
         embed_fn=embed_fn,
-        budget=budget or service.default_budget(),
+        budget=merged_budget,
         adapter_filter=adapter_filter,
         library_store=library_store,
         source_filter=source_filter,
         preset_id=preset_id,
         retrieval_profile=profile_id,
+        composer_tool=(composer_tool or "").strip().lower() or None,
+        site_bias=site_bias,
+        fetch_url_count=fetch_url_count,
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
 
@@ -180,7 +205,6 @@ def run_web_retrieval(
     semantic_query: str,
     query_vector: np.ndarray | None = None,
     embed_fn: Callable[[str], np.ndarray] | None = None,
-    use_v2: bool = False,
     knowledge_service: str = SERVICE_GENERAL_WEB,
     adapter_filter: tuple[str, ...] | None = None,
     session_id: str | None = None,
@@ -190,28 +214,27 @@ def run_web_retrieval(
     preset_id: str | None = None,
     retrieval_profile: str | None = None,
     db: Any | None = None,
+    composer_tool: str | None = None,
+    site_bias: tuple[str, ...] | None = None,
+    fetch_url_count: int | None = None,
 ) -> WebRetrievalOutcome:
-    if use_v2:
-        return run_v2_web_retrieval(
-            query=query,
-            semantic_query=semantic_query,
-            query_vector=query_vector,
-            embed_fn=embed_fn,
-            knowledge_service=knowledge_service,
-            adapter_filter=adapter_filter,
-            session_id=session_id,
-            turn_id=turn_id,
-            library_store=library_store,
-            source_filter=source_filter,
-            preset_id=preset_id,
-            retrieval_profile=retrieval_profile,
-            db=db,
-        )
-    return run_legacy_web_retrieval(
+    return run_v2_web_retrieval(
         query=query,
         semantic_query=semantic_query,
         query_vector=query_vector,
         embed_fn=embed_fn,
+        knowledge_service=knowledge_service,
+        adapter_filter=adapter_filter,
+        session_id=session_id,
+        turn_id=turn_id,
+        library_store=library_store,
+        source_filter=source_filter,
+        preset_id=preset_id,
+        retrieval_profile=retrieval_profile,
+        db=db,
+        composer_tool=composer_tool,
+        site_bias=site_bias,
+        fetch_url_count=fetch_url_count,
     )
 
 

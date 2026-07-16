@@ -150,6 +150,9 @@ class RetrievalContext:
     source_filter: str | None = None
     preset_id: str | None = None
     retrieval_profile: str = "balanced"
+    composer_tool: str | None = None
+    fetch_url_count: int | None = None
+    site_bias: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)

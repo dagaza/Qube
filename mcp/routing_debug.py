@@ -9,7 +9,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from core.engine_input_trace import (
     EngineInputTracer,
@@ -456,6 +456,17 @@ def build_retrieval_outcome_snapshot(
     web_dropped = decision.get("web_relevance_dropped")
     web_dropped_count = len(web_dropped) if isinstance(web_dropped, list) else 0
 
+    search_outcome_kind: str | None = None
+    raw_outcome = decision.get("search_outcome")
+    if isinstance(raw_outcome, Mapping):
+        kind_raw = str(raw_outcome.get("kind") or "").strip().lower()
+        if kind_raw:
+            search_outcome_kind = kind_raw
+    if search_outcome_kind is None:
+        kind_direct = str(decision.get("search_outcome_kind") or "").strip().lower()
+        if kind_direct:
+            search_outcome_kind = kind_direct
+
     snapshot: dict[str, Any] = {
         "router_route": str(decision.get("route") or "none").lower(),
         "execution_route_pre_downgrade": pre,
@@ -487,6 +498,7 @@ def build_retrieval_outcome_snapshot(
         "rag_library_leg_skipped": _b("rag_library_leg_skipped"),
         "rag_capability_blocked": _b("rag_capability_blocked"),
         "web_relevance_dropped_count": web_dropped_count,
+        "search_outcome_kind": search_outcome_kind,
         "tier3_success": tier3_success,
     }
     return snapshot

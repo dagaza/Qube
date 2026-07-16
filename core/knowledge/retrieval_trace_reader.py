@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from core.knowledge.observability import RETRIEVAL_TRACE_EVENT
+from core.knowledge.search_outcome import (
+    format_search_outcome_summary_line,
+    search_outcome_from_relevance_diag,
+)
 from core.web_search_audit_sink import default_web_search_audit_log_path
 
 
@@ -98,6 +102,11 @@ def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
         lines.append(f"Preset id: {trace.get('preset_id')}")
     if trace.get("retrieval_profile"):
         lines.append(f"Retrieval profile: {trace.get('retrieval_profile')}")
+    search_line = format_search_outcome_summary_line(
+        search_outcome_from_relevance_diag(trace.get("relevance_diag") or {})
+    )
+    if search_line:
+        lines.append(search_line)
     warnings = trace.get("warnings") or []
     if warnings:
         lines.append(f"Warnings: {'; '.join(str(w) for w in warnings)}")

@@ -37,6 +37,9 @@ class RetrievalProfileSpec:
     cache_policy: str  # aggressive | default | bypass
     source_ordering: str  # default | local_before_remote
     ranking_profile_hint: str | None = None
+    fetch_url_count: int = 0
+    playwright_allowed: bool = False
+    pagination_allowed: bool = False
 
     def materialize_budget(self, base: RetrievalBudget | None = None) -> RetrievalBudget:
         """Merge profile budget caps with service defaults."""
@@ -60,29 +63,42 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_FAST: RetrievalProfileSpec(
         id=PROFILE_FAST,
         label="Fast",
-        short_description="Fewer adapters, shorter timeout, aggressive cache.",
+        short_description="SERP snippets only — no page fetch (lowest latency).",
         budget=RetrievalBudget(max_results=2, max_adapter_calls=2, max_latency_ms=3500),
         max_parallel_adapters=2,
         cache_policy="aggressive",
         source_ordering="default",
+        fetch_url_count=0,
     ),
     PROFILE_BALANCED: RetrievalProfileSpec(
         id=PROFILE_BALANCED,
         label="Balanced",
-        short_description="Default orchestration — recommended for most turns.",
-        budget=RetrievalBudget(max_results=3, max_adapter_calls=3, max_latency_ms=8000),
+        short_description="Default orchestration — SERP plus fetch top page when relevant.",
+        budget=RetrievalBudget(
+            max_results=3,
+            max_adapter_calls=3,
+            max_latency_ms=8000,
+            max_fetch_bytes=524_288,
+        ),
         max_parallel_adapters=3,
         cache_policy="default",
         source_ordering="default",
+        fetch_url_count=1,
     ),
     PROFILE_THOROUGH: RetrievalProfileSpec(
         id=PROFILE_THOROUGH,
         label="Thorough",
-        short_description="Wider fan-out and larger budget for higher recall.",
-        budget=RetrievalBudget(max_results=5, max_adapter_calls=6, max_latency_ms=15000),
+        short_description="Wider fan-out and fetch up to three pages for higher recall.",
+        budget=RetrievalBudget(
+            max_results=5,
+            max_adapter_calls=6,
+            max_latency_ms=15000,
+            max_fetch_bytes=524_288,
+        ),
         max_parallel_adapters=4,
         cache_policy="default",
         source_ordering="default",
+        fetch_url_count=3,
     ),
     PROFILE_EVIDENCE_FIRST: RetrievalProfileSpec(
         id=PROFILE_EVIDENCE_FIRST,

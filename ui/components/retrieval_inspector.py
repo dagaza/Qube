@@ -11,6 +11,14 @@ from PyQt6.QtWidgets import (
 )
 
 from core.knowledge.explain_preset import build_explain_preset, format_explain_preset_text
+from core.knowledge.fetch_provenance import (
+    fetch_provenance_from_relevance_diag,
+    format_fetch_provenance_text,
+)
+from core.knowledge.search_outcome import (
+    format_search_outcome_summary_line,
+    search_outcome_from_relevance_diag,
+)
 from core.knowledge.pipeline_graph import format_pipeline_graph_text
 from core.knowledge.retrieval_replay import compare_traces, replay_from_record
 from core.knowledge.retrieval_trace_reader import format_retrieval_trace_summary
@@ -74,19 +82,7 @@ class RetrievalInspector(QWidget):
         self._summary.setPlainText(self._format_summary(effective_trace, record))
         self._graph.setPlainText(format_pipeline_graph_text(effective_trace))
         self._compare.setPlainText(self._format_compare(record))
-        if preset_id:
-            from core.app_settings import get_retrieval_profile
-
-            explain = build_explain_preset(
-                preset_id,
-                retrieval_profile=get_retrieval_profile(),
-            )
-            self._explain.setPlainText(format_explain_preset_text(explain))
-        else:
-            self._explain.setPlainText(
-                "Select a My knowledge preset in Settings to see Explain details, "
-                "or attach @[tool:user:…] on a turn that used a preset."
-            )
+        self._explain.setPlainText(self._format_explain(effective_trace, preset_id))
 
     def _trace_from_record(self, record: dict | None) -> dict | None:
         if not record:
@@ -130,6 +126,20 @@ class RetrievalInspector(QWidget):
         if warnings:
             lines.append(f"Warnings: {'; '.join(str(w) for w in warnings)}")
         diag = trace.get("relevance_diag") or {}
+        search_line = format_search_outcome_summary_line(
+            search_outcome_from_relevance_diag(diag)
+        )
+        if search_line:
+            lines.append(search_line)
+        provenance = fetch_provenance_from_relevance_diag(diag)
+        if provenance:
+            if provenance.fetch_url_count > 0 and provenance.extractor_name:
+                lines.append(
+                    f"Fetch: {provenance.extractor_name} "
+                    f"({provenance.sections_emitted} section(s))"
+                )
+            elif provenance.fetch_url_count <= 0:
+                lines.append("Fetch: SERP snippets only")
         if diag:
             diag_bits = []
             for key in ("retrieval_profile", "ranking_profile", "preset_id", "scientific_cache_hit"):
@@ -138,6 +148,45 @@ class RetrievalInspector(QWidget):
             if diag_bits:
                 lines.append("Diagnostics: " + ", ".join(diag_bits))
         return "\n".join(lines)
+
+    def _format_explain(
+        self,
+        trace: dict | None,
+        preset_id: str | None,
+    ) -> str:
+        diag = (trace or {}).get("relevance_diag") or {}
+        search_outcome = search_outcome_from_relevance_diag(diag)
+        provenance = fetch_provenance_from_relevance_diag(diag)
+        sections: list[str] = []
+        if search_outcome is not None:
+            from core.knowledge.search_outcome import format_search_outcome_explain_text
+            from core.knowledge.discovery.policy import discovery_policy_summary_lines
+
+            sections.append(format_search_outcome_explain_text(search_outcome))
+            policy_lines = discovery_policy_summary_lines()
+            if policy_lines:
+                sections.append("")
+                sections.append("Discovery policy:")
+                sections.extend(f"  {line}" for line in policy_lines)
+        if provenance is not None:
+            if sections:
+                sections.append("")
+            sections.append(format_fetch_provenance_text(provenance))
+        if sections:
+            return "\n".join(sections)
+        if preset_id:
+            from core.app_settings import get_retrieval_profile
+
+            explain = build_explain_preset(
+                preset_id,
+                retrieval_profile=get_retrieval_profile(),
+            )
+            return format_explain_preset_text(explain)
+        return (
+            "No fetch provenance recorded for this turn. "
+            "Use External knowledge v2 with a Balanced or Thorough profile, "
+            "or attach @[tool:fetch] / @[tool:recipe], then inspect a fetch turn."
+        )
 
     def _format_compare(self, record: dict | None) -> str:
         if not record or self._db is None:

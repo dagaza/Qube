@@ -21,5 +21,5 @@ def deep_research_progress_percent(payload: dict) -> int:
     return 0
 
 
-def deep_research_available(*, enabled: bool, external_v2: bool) -> bool:
-    return bool(enabled and external_v2)
+def deep_research_available(*, enabled: bool) -> bool:
+    return bool(enabled)

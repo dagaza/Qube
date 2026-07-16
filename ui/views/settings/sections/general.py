@@ -11,6 +11,7 @@ from core.ui_language import (
     UiLanguage,
     tr,
 )
+from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import add_section_reset_footer, add_subsection_to_layout
 
 
@@ -19,9 +20,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     general_widget.setObjectName("SettingsFormContainer")
     general_layout = QVBoxLayout(general_widget)
     general_layout.setContentsMargins(15, 0, 15, 10)
-    general_layout.setSpacing(8)
+    general_layout.setSpacing(15)
 
-    add_subsection_to_layout(general_layout, tr("Language"))
+    language_card, language_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(language_card_layout, tr("Language"))
 
     language_lbl = QLabel(tr("Application language"))
     language_lbl.setObjectName("SettingsSubsectionLabel")
@@ -32,7 +34,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         )
     )
     host._ui_language_lbl = language_lbl
-    general_layout.addWidget(language_lbl)
+    language_card_layout.addWidget(language_lbl)
 
     language_row = QHBoxLayout()
     language_row.setSpacing(16)
@@ -50,7 +52,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         language_row.addWidget(cb)
     host.ui_language_group.buttonToggled.connect(host._on_ui_language_toggled)
     language_row.addStretch()
-    general_layout.addLayout(language_row)
+    language_card_layout.addLayout(language_row)
+    general_layout.addWidget(language_card)
 
     add_section_reset_footer(general_layout, host, "general", is_dark=is_dark)
 

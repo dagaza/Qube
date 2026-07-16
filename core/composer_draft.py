@@ -235,25 +235,11 @@ def composer_prompt_required_request():
     )
 
 
-def deep_research_unavailable_request(*, missing: str = "both"):
-    """In-app toast when @research is used but deep research is disabled."""
+def deep_research_unavailable_request():
+    """In-app toast when @research is used but the background worker is missing."""
     from core.app_notification_types import AppNotificationRequest
 
-    if missing == "deep_research":
-        body = (
-            "Turn on Deep research (@research) under Settings → Knowledge → "
-            "External knowledge."
-        )
-    elif missing == "external_v2":
-        body = (
-            "Turn on External knowledge pipeline (v2) under Settings → Knowledge → "
-            "External knowledge."
-        )
-    else:
-        body = (
-            "Enable external knowledge v2 and deep research under Settings → Knowledge → "
-            "External knowledge."
-        )
+    body = "Deep research is unavailable (background worker not running)."
 
     return AppNotificationRequest(
         title="Deep research unavailable",

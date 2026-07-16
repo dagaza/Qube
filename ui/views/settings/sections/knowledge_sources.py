@@ -5,6 +5,7 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -28,13 +29,14 @@ from ui.views.settings.knowledge_access_badge import (
     ACTION_COLUMN_WIDTH_PX,
     STATUS_COLUMN_WIDTH_PX,
     apply_setup_callout_theme,
-    resolve_settings_is_dark,
+    coalesce_settings_is_dark,
     style_access_badge,
     style_access_hint,
     style_configure_button,
     style_free_action_button,
 )
-from ui.views.settings.widgets import make_settings_hint, wrap_subsection
+from ui.views.settings.settings_card_style import begin_settings_section_card
+from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
 
 
 def _preferred_source_checkbox_copy(
@@ -78,15 +80,26 @@ def _preferred_source_checkbox_copy(
     return label, " ".join(tooltip_lines)
 
 
+def _iter_live_source_rows(host) -> list[KnowledgeSourceRow]:
+    """Return every visible live-source row widget (including duplicate adapter ids)."""
+    rows = getattr(host, "knowledge_live_source_rows", None)
+    if not rows:
+        return []
+    if isinstance(rows, dict):
+        # Backward compatibility if an older settings session is still open.
+        return list(rows.values())
+    return list(rows)
+
+
 def list_recommended_setup_sources(host) -> list[tuple[str, str, str]]:
     """Enabled optional-key sources still on anonymous access: (adapter_id, label, provider_id)."""
-    if not hasattr(host, "knowledge_live_source_rows"):
-        return []
     prefs = get_knowledge_source_preferences()
     seen_providers: set[str] = set()
     out: list[tuple[str, str, str]] = []
-    for (service_id, adapter_id), row in host.knowledge_live_source_rows.items():
-        if not is_adapter_enabled(service_id, adapter_id, stored_preferences=prefs):
+    for row in _iter_live_source_rows(host):
+        if not is_adapter_enabled(
+            row._service_id, row._adapter_id, stored_preferences=prefs
+        ):
             continue
         summary = summarize_source_access(row._entry)
         if summary.badge != "optional_key" or not summary.provider_id:
@@ -94,7 +107,7 @@ def list_recommended_setup_sources(host) -> list[tuple[str, str, str]]:
         if summary.provider_id in seen_providers:
             continue
         seen_providers.add(summary.provider_id)
-        out.append((adapter_id, row._entry.label, summary.provider_id))
+        out.append((row._adapter_id, row._entry.label, summary.provider_id))
     return out
 
 
@@ -120,51 +133,48 @@ class KnowledgeSourceRow(QWidget):
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 2, 0, 2)
-        layout.setSpacing(12)
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 2, 0, 2)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(2)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(2, STATUS_COLUMN_WIDTH_PX)
+        grid.setColumnMinimumWidth(3, ACTION_COLUMN_WIDTH_PX)
 
         checkbox_label, tooltip = _preferred_source_checkbox_copy(
             entry,
             service_label=service_label,
         )
-        name_col = QWidget()
-        name_col.setMinimumWidth(0)
-        name_col.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        name_layout = QHBoxLayout(name_col)
-        name_layout.setContentsMargins(0, 0, 0, 0)
-        name_layout.setSpacing(8)
 
         self.checkbox = QCheckBox()
         self.checkbox.setEnabled(entry.implemented)
         self.checkbox.setToolTip(tooltip)
         self.checkbox.toggled.connect(self._on_toggled)
-        name_layout.addWidget(
+        grid.addWidget(
             self.checkbox,
-            alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+            0,
+            0,
+            alignment=Qt.AlignmentFlag.AlignVCenter,
         )
 
         self.label = QLabel(checkbox_label)
         self.label.setWordWrap(True)
         self.label.setToolTip(tooltip)
         self.label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        name_layout.addWidget(self.label, stretch=1)
-        layout.addWidget(name_col, stretch=1)
-
-        status_col = QWidget()
-        status_col.setObjectName("KnowledgeSourceStatusColumn")
-        status_col.setFixedWidth(STATUS_COLUMN_WIDTH_PX)
-        status_col.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-        status_layout = QVBoxLayout(status_col)
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(2)
+        grid.addWidget(
+            self.label,
+            0,
+            1,
+            alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+        )
 
         self.badge = QLabel()
-        badge_row = QHBoxLayout()
-        badge_row.setContentsMargins(0, 0, 0, 0)
-        badge_row.addWidget(self.badge, alignment=Qt.AlignmentFlag.AlignLeft)
-        badge_row.addStretch(1)
-        status_layout.addLayout(badge_row)
+        grid.addWidget(
+            self.badge,
+            0,
+            2,
+            alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+        )
 
         self.hint_label = QLabel()
         self.hint_label.setWordWrap(True)
@@ -173,24 +183,21 @@ class KnowledgeSourceRow(QWidget):
             QSizePolicy.Policy.Ignored,
             QSizePolicy.Policy.Minimum,
         )
-        status_layout.addWidget(self.hint_label)
-        layout.addWidget(status_col, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
-
-        action_col = QWidget()
-        action_col.setObjectName("KnowledgeSourceActionColumn")
-        action_col.setFixedWidth(ACTION_COLUMN_WIDTH_PX)
-        action_col.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-        action_layout = QHBoxLayout(action_col)
-        action_layout.setContentsMargins(0, 0, 0, 0)
-        action_layout.setSpacing(0)
+        grid.addWidget(
+            self.hint_label,
+            1,
+            2,
+            alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+        )
 
         self.action_btn = QPushButton("Configure")
         self.action_btn.clicked.connect(self._on_action_clicked)
-        action_layout.addWidget(
+        grid.addWidget(
             self.action_btn,
-            alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
+            0,
+            3,
+            alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
         )
-        layout.addWidget(action_col, stretch=0, alignment=Qt.AlignmentFlag.AlignTop)
 
     def _on_toggled(self, checked: bool) -> None:
         self._host._on_knowledge_source_toggled(self._service_id, self._adapter_id, checked)
@@ -198,8 +205,11 @@ class KnowledgeSourceRow(QWidget):
     def _on_action_clicked(self) -> None:
         self._host._on_live_source_configure_clicked(self._adapter_id)
 
-    def apply_access_summary(self, summary: SourceAccessSummary) -> None:
-        is_dark = resolve_settings_is_dark(self._host)
+    def apply_access_summary(
+        self, summary: SourceAccessSummary, *, is_dark: bool | None = None
+    ) -> None:
+        if is_dark is None:
+            is_dark = coalesce_settings_is_dark(self._host)
         show_status_badge = summary.badge != "free"
 
         if show_status_badge:
@@ -238,12 +248,15 @@ class KnowledgeSourceRow(QWidget):
         else:
             self.action_btn.setVisible(False)
 
-    def sync_from_preferences(self, *, enabled: bool) -> None:
+    def sync_from_preferences(self, *, enabled: bool, is_dark: bool | None = None) -> None:
         self.checkbox.blockSignals(True)
         if self.checkbox.isEnabled():
             self.checkbox.setChecked(enabled)
         self.checkbox.blockSignals(False)
-        self.apply_access_summary(summarize_source_access(self._entry))
+        self.apply_access_summary(
+            summarize_source_access(self._entry),
+            is_dark=is_dark,
+        )
 
 
 def _refresh_setup_callout(host) -> None:
@@ -269,20 +282,29 @@ def _refresh_setup_callout(host) -> None:
     shell.setVisible(True)
 
 
-def refresh_live_source_access_badges(host) -> None:
+def refresh_live_source_access_badges(host, *, is_dark: bool | None = None) -> None:
     """Re-style access badges and action controls after a theme toggle."""
-    if not hasattr(host, "knowledge_live_source_rows"):
+    rows = _iter_live_source_rows(host)
+    if not rows:
         return
-    is_dark = resolve_settings_is_dark(host)
-    for row in host.knowledge_live_source_rows.values():
-        row.apply_access_summary(summarize_source_access(row._entry))
+    is_dark = coalesce_settings_is_dark(host, is_dark=is_dark)
+    for row in rows:
+        row.apply_access_summary(
+            summarize_source_access(row._entry),
+            is_dark=is_dark,
+        )
     callout = getattr(host, "knowledge_setup_callout", None)
     if callout is not None:
         apply_setup_callout_theme(callout, is_dark=is_dark)
+    _refresh_setup_callout(host)
 
 
-def build_knowledge_live_sources_section(host) -> QWidget:
+def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
     """Build unified live source rows grouped by knowledge domain."""
+    coalesce_settings_is_dark(host, is_dark=is_dark)
+    card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(card_layout, "Live sources", anchor="knowledge_live_sources")
+
     container = QWidget()
     container.setMinimumWidth(0)
     container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -290,11 +312,10 @@ def build_knowledge_live_sources_section(host) -> QWidget:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(12)
 
-    host.knowledge_live_source_rows: dict[tuple[str, str], KnowledgeSourceRow] = {}
+    host.knowledge_live_source_rows: list[KnowledgeSourceRow] = []
     host.knowledge_source_checkboxes: dict[tuple[str, str], list] = {}
     host.knowledge_setup_callout_dismissed = False
     prefs = get_knowledge_source_preferences()
-    is_dark = resolve_settings_is_dark(host)
 
     intro = make_settings_hint(
         "Choose which live retrieval sources each knowledge domain may use. "
@@ -368,34 +389,40 @@ def build_knowledge_live_sources_section(host) -> QWidget:
                     entry.id,
                     stored_preferences=prefs,
                 )
-                row.sync_from_preferences(enabled=enabled and entry.implemented)
-                host.knowledge_live_source_rows[key] = row
+                row.sync_from_preferences(
+                    enabled=enabled and entry.implemented,
+                    is_dark=is_dark,
+                )
+                host.knowledge_live_source_rows.append(row)
                 host.knowledge_source_checkboxes.setdefault(key, []).append(row.checkbox)
                 inner_layout.addWidget(row)
 
         layout.addWidget(wrap_subsection(inner, anchor=f"sources_{service_id}"))
 
-    sync_live_source_rows(host)
-    return container
+    sync_live_source_rows(host, is_dark=is_dark)
+    card_layout.addWidget(wrap_subsection(container, anchor="knowledge_live_sources"))
+    return card
 
 
-def build_knowledge_sources_section(host) -> QWidget:
+def build_knowledge_sources_section(host, *, is_dark: bool) -> QWidget:
     """Backward-compatible alias for the unified live sources section."""
-    return build_knowledge_live_sources_section(host)
+    return build_knowledge_live_sources_section(host, is_dark=is_dark)
 
 
-def sync_live_source_rows(host) -> None:
+def sync_live_source_rows(host, *, is_dark: bool | None = None) -> None:
     """Refresh checkbox state and access badges from persisted settings."""
-    if not hasattr(host, "knowledge_live_source_rows"):
+    rows = _iter_live_source_rows(host)
+    if not rows:
         return
+    is_dark = coalesce_settings_is_dark(host, is_dark=is_dark)
     prefs = get_knowledge_source_preferences()
-    for (service_id, adapter_id), row in host.knowledge_live_source_rows.items():
+    for row in rows:
         enabled = is_adapter_enabled(
-            service_id,
-            adapter_id,
+            row._service_id,
+            row._adapter_id,
             stored_preferences=prefs,
         )
-        row.sync_from_preferences(enabled=enabled)
+        row.sync_from_preferences(enabled=enabled, is_dark=is_dark)
     _refresh_setup_callout(host)
 
 

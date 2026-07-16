@@ -5,6 +5,9 @@ import unittest
 
 from core.memory_filters import (
     CITATION_DISCIPLINE_SUFFIX,
+    COMPOSER_WEB_EMPTY_SUFFIX,
+    CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX,
+    EXPLICIT_WEB_EMPTY_SUFFIX,
     FILE_SEARCH_SYSTEM_SUFFIX,
     FINANCE_SOURCES_EMPTY_SUFFIX,
     GROUNDED_ANSWER_SYSTEM_SUFFIX,
@@ -166,6 +169,9 @@ class TestPromptBlocks(unittest.TestCase):
         blocks = build_prompt_blocks(
             execution_route="WEB",
             explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_source_count=1,
+            web_hit_count=1,
             engine_mode="external",
         )
         self.assertIn(CITATION_DISCIPLINE_SUFFIX, compose_system_prompt(blocks))
@@ -174,6 +180,7 @@ class TestPromptBlocks(unittest.TestCase):
             _legacy_compose(
                 execution_route="WEB",
                 explicit_remember_active=False,
+                has_retrieval_sources=True,
                 engine_mode="external",
             ),
         )
@@ -227,10 +234,35 @@ class TestPromptBlocks(unittest.TestCase):
         blocks = build_prompt_blocks(
             execution_route="WEB",
             explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_source_count=1,
+            web_hit_count=1,
         )
         sys_p = compose_system_prompt(blocks)
         self.assertNotIn("You are Qube", sys_p)
         self.assertIn("Real-time live web search results", sys_p)
+
+    def test_web_route_empty_results_uses_explicit_empty_suffix(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            explicit_web_empty_results=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertNotIn("Real-time live web search results", sys_p)
+        self.assertIn(EXPLICIT_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
+
+    def test_web_route_without_sources_defaults_to_empty_suffix(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertNotIn("Real-time live web search results", sys_p)
+        self.assertIn(EXPLICIT_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
+        self.assertTrue(blocks.no_sources_mode)
 
     def test_multi_web_suffix_forbids_w(self) -> None:
         blocks = build_prompt_blocks(
@@ -359,6 +391,31 @@ class TestPromptBlocks(unittest.TestCase):
         )
         sys_p = compose_system_prompt(blocks)
         self.assertIn(FINANCE_SOURCES_EMPTY_SUFFIX, sys_p)
+        self.assertTrue(blocks.no_sources_mode)
+
+    def test_composer_web_empty_uses_composer_suffix(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            explicit_web_empty_results=True,
+            composer_web_empty=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn(COMPOSER_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
+        self.assertIn("pinned a web, fetch, recipe", sys_p)
+        self.assertNotIn("explicitly asked for an online/web search", sys_p)
+
+    def test_prior_web_empty_follow_up_suffix(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="NONE",
+            explicit_remember_active=False,
+            has_retrieval_sources=False,
+            follow_up_active=True,
+            prior_web_empty_follow_up=True,
+        )
+        sys_p = compose_system_prompt(blocks)
+        self.assertIn(CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
         self.assertTrue(blocks.no_sources_mode)
 
 

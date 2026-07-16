@@ -39,10 +39,6 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
     get_skills_enabled,
-    get_deep_research_enabled,
-    get_external_knowledge_v2_enabled,
-    get_internal_corpus_knowledge_enabled,
-    get_research_map_enabled,
     get_memory_promotion_preset,
     set_memory_promotion_preset,
     get_profile_units,
@@ -72,6 +68,7 @@ from core.app_settings import (
     set_audio_output_device_index,
     get_advanced_engine_unlocked,
     get_advanced_embedding_unlocked,
+    get_advanced_discovery_unlocked,
     get_advanced_stt_unlocked,
     get_advanced_hardware_unlocked,
     get_advanced_chat_template_unlocked,
@@ -178,6 +175,12 @@ class PersistenceHandlersMixin:
 
     def _on_settings_file_changed(self, _path: str) -> None:
         if self._settings_json_dialog is not None and self._settings_json_dialog.isVisible():
+            return
+        from core.settings_store import get_settings_store
+
+        store = get_settings_store()
+        if store.should_ignore_disk_reload():
+            store._refresh_disk_mtime()
             return
         self._settings_reload_timer.start()
 
@@ -330,22 +333,7 @@ class PersistenceHandlersMixin:
             self.skills_enabled_toggle.blockSignals(True)
             self.skills_enabled_toggle.setChecked(get_skills_enabled())
             self.skills_enabled_toggle.blockSignals(False)
-        if hasattr(self, "external_knowledge_v2_toggle"):
-            self.external_knowledge_v2_toggle.blockSignals(True)
-            self.external_knowledge_v2_toggle.setChecked(get_external_knowledge_v2_enabled())
-            self.external_knowledge_v2_toggle.blockSignals(False)
-        if hasattr(self, "internal_corpus_toggle"):
-            self.internal_corpus_toggle.blockSignals(True)
-            self.internal_corpus_toggle.setChecked(get_internal_corpus_knowledge_enabled())
-            self.internal_corpus_toggle.blockSignals(False)
-        if hasattr(self, "research_map_toggle"):
-            self.research_map_toggle.blockSignals(True)
-            self.research_map_toggle.setChecked(get_research_map_enabled())
-            self.research_map_toggle.blockSignals(False)
-        if hasattr(self, "deep_research_toggle"):
-            self.deep_research_toggle.blockSignals(True)
-            self.deep_research_toggle.setChecked(get_deep_research_enabled())
-            self.deep_research_toggle.blockSignals(False)
+
         if hasattr(self, "knowledge_live_source_rows"):
             from ui.views.settings.sections.knowledge_sources import sync_live_source_rows
 
@@ -360,6 +348,12 @@ class PersistenceHandlersMixin:
             )
 
             sync_provider_credential_rows(self)
+        if hasattr(self, "web_discovery_policy_section"):
+            from ui.views.settings.sections.knowledge_web_discovery import (
+                sync_web_discovery_policy_section,
+            )
+
+            sync_web_discovery_policy_section(self)
         if hasattr(self, "knowledge_provider_status_table"):
             from ui.views.settings.sections.knowledge_provider_status import (
                 sync_provider_status_panel,
@@ -476,6 +470,13 @@ class PersistenceHandlersMixin:
             self.advanced_embedding_toggle.blockSignals(False)
             if hasattr(self, "advanced_embedding_panel"):
                 self.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
+
+        if hasattr(self, "advanced_discovery_toggle"):
+            self.advanced_discovery_toggle.blockSignals(True)
+            self.advanced_discovery_toggle.setChecked(get_advanced_discovery_unlocked())
+            self.advanced_discovery_toggle.blockSignals(False)
+            if hasattr(self, "advanced_discovery_panel"):
+                self.advanced_discovery_panel.setVisible(get_advanced_discovery_unlocked())
 
         self._sync_embedding_models_dir_label()
         self._refresh_embedding_gguf_list()

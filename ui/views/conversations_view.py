@@ -104,16 +104,11 @@ from core.composer_mention_trigger import (
 )
 from core.app_settings import (
     get_composer_at_mention_discovered,
-    get_deep_research_enabled,
     get_engine_mode,
-    get_external_knowledge_v2_enabled,
     set_composer_at_mention_discovered,
     set_native_reasoning_display_enabled,
 )
-from core.knowledge.deep_research_ui import (
-    deep_research_available,
-    deep_research_progress_percent,
-)
+from core.knowledge.deep_research_ui import deep_research_progress_percent
 from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
@@ -1985,9 +1980,8 @@ class ConversationsView(QWidget):
         transparency = getattr(agent, "_evidence_transparency", None)
         research_map_graph = None
         on_open_research_map = None
-        from core.app_settings import get_research_map_enabled
 
-        if get_research_map_enabled() and getattr(self, "active_session_id", None):
+        if getattr(self, "active_session_id", None):
             from core.knowledge.graph.build import subgraph_for_bundle
 
             session_graph = self.db.get_session_knowledge_graph(
@@ -3389,17 +3383,6 @@ class ConversationsView(QWidget):
         enforced_skills: tuple[str, ...],
     ) -> None:
         _ = enforced_skills
-        v2_on = get_external_knowledge_v2_enabled()
-        deep_on = get_deep_research_enabled()
-        if not deep_research_available(enabled=deep_on, external_v2=v2_on):
-            missing = "both"
-            if deep_on and not v2_on:
-                missing = "external_v2"
-            elif v2_on and not deep_on:
-                missing = "deep_research"
-            self._notify_composer_toast(deep_research_unavailable_request(missing=missing))
-            return
-
         session_id = self._ensure_active_session_for_send()
         self.db.add_message(session_id, "user", raw)
         self.log_user_message(raw, pending_assistant=False)
@@ -3511,20 +3494,17 @@ class ConversationsView(QWidget):
                 sources_json=src_payload,
                 evidence_bundle_id=bundle_id_str,
             )
-            from core.app_settings import get_research_map_enabled
+            bundle_dict = payload.get("bundle_dict")
+            if isinstance(bundle_dict, dict) and bundle_dict:
+                from core.knowledge.graph.bundle_codec import bundle_from_dict
+                from core.knowledge.graph.service import record_bundle_in_session_graph
 
-            if get_research_map_enabled():
-                bundle_dict = payload.get("bundle_dict")
-                if isinstance(bundle_dict, dict) and bundle_dict:
-                    from core.knowledge.graph.bundle_codec import bundle_from_dict
-                    from core.knowledge.graph.service import record_bundle_in_session_graph
-
-                    bundle = bundle_from_dict(bundle_dict)
-                    record_bundle_in_session_graph(
-                        self.db,
-                        session_id=session_id,
-                        bundle=bundle,
-                    )
+                bundle = bundle_from_dict(bundle_dict)
+                record_bundle_in_session_graph(
+                    self.db,
+                    session_id=session_id,
+                    bundle=bundle,
+                )
 
         active = str(getattr(self, "active_session_id", "") or "")
         if active and session_id == active and report:

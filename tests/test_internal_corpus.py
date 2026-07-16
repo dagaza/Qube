@@ -47,17 +47,7 @@ class TestInternalCorpusKnowledge(unittest.TestCase):
             SERVICE_INTERNAL_CORPUS,
         )
 
-    @patch(
-        "core.app_settings.internal_corpus_knowledge_enabled",
-        return_value=True,
-    )
-    @patch(
-        "core.app_settings.external_knowledge_v2_enabled",
-        return_value=True,
-    )
-    def test_composer_library_routes_web_when_enabled(
-        self, _mock_v2, _mock_corpus
-    ) -> None:
+    def test_composer_library_routes_web(self) -> None:
         patch = resolve_attachment_routing(
             [ComposerAttachment(kind="tool", id="library", label="Library")]
         )
@@ -66,24 +56,6 @@ class TestInternalCorpusKnowledge(unittest.TestCase):
         self.assertEqual(patch["route"], "web")
         self.assertEqual(patch["strategy"], "attachment_tool_library")
         self.assertEqual(patch["attachment_tool"], "library")
-
-    @patch(
-        "core.app_settings.internal_corpus_knowledge_enabled",
-        return_value=False,
-    )
-    @patch(
-        "core.app_settings.external_knowledge_v2_enabled",
-        return_value=True,
-    )
-    def test_composer_library_routes_rag_when_disabled(
-        self, _mock_v2, _mock_corpus
-    ) -> None:
-        patch = resolve_attachment_routing(
-            [ComposerAttachment(kind="tool", id="library", label="Library")]
-        )
-        self.assertIsNotNone(patch)
-        assert patch is not None
-        self.assertEqual(patch["route"], "rag")
 
     @patch("core.knowledge.pipeline_internal_corpus.search_library_chunks")
     def test_v2_internal_corpus_bundle(self, mock_search) -> None:

@@ -80,7 +80,8 @@ class TestComposerAttachments(unittest.TestCase):
         att = ComposerAttachment(kind="tool", id="library", label="Library")
         patch = resolve_attachment_routing([att])
         assert patch is not None
-        self.assertEqual(patch["route"], "rag")
+        self.assertEqual(patch["route"], "web")
+        self.assertEqual(patch["strategy"], "attachment_tool_library")
 
     def test_resolve_tool_research(self):
         att = ComposerAttachment(kind="tool", id="research", label="Deep research")
@@ -88,6 +89,22 @@ class TestComposerAttachments(unittest.TestCase):
         assert patch is not None
         self.assertEqual(patch["route"], "deep_research")
         self.assertEqual(patch["strategy"], "attachment_tool_research")
+
+    def test_resolve_tool_fetch_routes_web(self):
+        att = ComposerAttachment(kind="tool", id="fetch", label="Fetch")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "web")
+        self.assertEqual(patch["attachment_tool"], "fetch")
+
+    def test_palette_includes_fetch_and_hides_recipe_by_default(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("")]
+        self.assertIn("fetch", ids)
+        self.assertNotIn("recipe", ids)
+
+    def test_palette_shows_recipe_when_id_matches(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("recipe")]
+        self.assertEqual(ids, ["recipe"])
 
     def test_palette_hides_science_alias_by_default(self):
         ids = [str(t["id"]) for t in composer_tools_for_palette("")]

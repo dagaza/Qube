@@ -26,6 +26,7 @@ from core.knowledge.types import (
 
 PROFILE_VERSION = "0.4.0"
 STRATEGY_DDG_RELEVANCE_GATE = "ddg_serp_relevance_gate"
+STRATEGY_DDG_SELECTIVE_FETCH = "ddg_serp_selective_fetch"
 STRATEGY_WIKI_API_ALLOWLIST = "wiki_api_allowlist_ddg"
 STRATEGY_SCIENTIFIC_PARALLEL = "pubmed_openalex_arxiv_ranked"
 STRATEGY_INTERNAL_CORPUS = "lancedb_hybrid_library"
@@ -155,6 +156,91 @@ def build_general_web_bundle(
         warnings=tuple(warnings),
         conflicts=(),
         stop_reason=stop_reason if sources else "no_evidence",
+        adapter_calls=adapter_calls,
+    )
+
+
+def _compute_fetched_coverage(
+    sources: tuple[EvidenceObject, ...],
+    *,
+    fetch_attempts: int,
+    fetch_successes: int,
+) -> tuple[str, str]:
+    if not sources:
+        return COVERAGE_NONE, "No readable content extracted from fetched pages."
+    count = len(sources)
+    avg_rel = sum(s.relevance_score for s in sources) / count
+    if fetch_successes >= fetch_attempts and count >= 2 and avg_rel >= 0.25:
+        return (
+            COVERAGE_EXCELLENT,
+            f"{fetch_successes} page(s) fetched; {count} ranked sections retained.",
+        )
+    if fetch_successes > 0:
+        return (
+            COVERAGE_ADEQUATE,
+            f"{fetch_successes}/{fetch_attempts} page(s) fetched; {count} section(s) retained.",
+        )
+    return COVERAGE_POOR, "Fetched pages did not yield usable sections."
+
+
+def build_fetched_general_web_bundle(
+    *,
+    query_raw: str,
+    query_resolved: str,
+    sources: list[EvidenceObject],
+    rejected_count: int,
+    latency_ms: float,
+    fetch_attempts: int,
+    fetch_successes: int,
+    adapter_calls: tuple[str, ...] = ("duckduckgo", "fetch_engine"),
+    stop_reason: str = "budget_exhausted",
+    warnings: tuple[str, ...] | None = None,
+) -> EvidenceBundle:
+    """Build a general-web bundle from fetched page sections."""
+    retrieved_at = time.time()
+    source_tuple = tuple(sources)
+    coverage, coverage_rationale = _compute_fetched_coverage(
+        source_tuple,
+        fetch_attempts=fetch_attempts,
+        fetch_successes=fetch_successes,
+    )
+    confidence = _compute_confidence(source_tuple)
+    if source_tuple:
+        confidence = max(confidence, min(0.85, confidence + 0.1))
+
+    bundle_warnings = list(warnings or ())
+    authority_summary = (
+        sum(s.authority_score for s in source_tuple) / len(source_tuple)
+        if source_tuple
+        else 0.0
+    )
+    reliability_summary = (
+        sum(s.reliability_score for s in source_tuple) / len(source_tuple)
+        if source_tuple
+        else 0.0
+    )
+    diversity_summary = min(1.0, len({s.url for s in source_tuple if s.url}) / 3.0)
+
+    return EvidenceBundle(
+        bundle_id=str(uuid.uuid4()),
+        query_raw=query_raw,
+        query_resolved=query_resolved,
+        knowledge_service=SERVICE_GENERAL_WEB,
+        retrieval_strategy=STRATEGY_DDG_SELECTIVE_FETCH,
+        profile_version=PROFILE_VERSION,
+        retrieved_at=retrieved_at,
+        latency_ms=latency_ms,
+        confidence=confidence,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        authority_summary=authority_summary,
+        reliability_summary=reliability_summary,
+        diversity_summary=diversity_summary,
+        sources=source_tuple,
+        rejected_count=rejected_count,
+        warnings=tuple(bundle_warnings),
+        conflicts=(),
+        stop_reason=stop_reason if source_tuple else "no_evidence",
         adapter_calls=adapter_calls,
     )
 

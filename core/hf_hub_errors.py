@@ -199,7 +199,7 @@ def classify_hf_error(
             title="Hugging Face timed out",
             message=(
                 "The request to Hugging Face took too long and was cancelled. "
-                "Try again when your connection is stable."
+                "Try again when your connection is stable or HF is back online."
             ),
             technical_detail=detail,
             retryable=True,
@@ -225,7 +225,7 @@ def classify_hf_error(
             title="Hugging Face timed out",
             message=(
                 "The request to Hugging Face took too long and was cancelled. "
-                "Try again when your connection is stable."
+                "Try again when your connection is stable or HF is back online."
             ),
             technical_detail=detail,
             retryable=True,

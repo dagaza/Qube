@@ -26,6 +26,8 @@ from core.memory_filters import (
     RAG_CAPABILITY_DISABLED_SUFFIX,
     STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
+    COMPOSER_WEB_EMPTY_SUFFIX,
+    CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX,
     SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
     FINANCIAL_DISCLAIMER_SUFFIX,
     FINANCE_SOURCES_EMPTY_SUFFIX,
@@ -140,6 +142,8 @@ def build_prompt_blocks(
     web_capability_blocked: bool = False,
     rag_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
+    composer_web_empty: bool = False,
+    prior_web_empty_follow_up: bool = False,
     scientific_medical_disclaimer: bool = False,
     financial_disclaimer: bool = False,
     legal_disclaimer: bool = False,
@@ -188,8 +192,13 @@ def build_prompt_blocks(
         persona = _BASE_PERSONA
         suffixes.append(RAG_CAPABILITY_DISABLED_SUFFIX)
     elif explicit_web_empty_results:
+        no_sources = True
         persona = _BASE_PERSONA
-        suffixes.append(EXPLICIT_WEB_EMPTY_SUFFIX)
+        suffixes.append(
+            COMPOSER_WEB_EMPTY_SUFFIX
+            if composer_web_empty
+            else EXPLICIT_WEB_EMPTY_SUFFIX
+        )
     elif legal_sources_empty:
         no_sources = True
         persona = _BASE_PERSONA
@@ -224,10 +233,19 @@ def build_prompt_blocks(
             if strict_isolation_enabled:
                 suffixes.append(STRICT_ISOLATION_SYSTEM_SUFFIX)
     elif route in ("WEB", "INTERNET"):
-        persona = _WEB_PERSONA
-        suffixes.append(CITATION_DISCIPLINE_SUFFIX)
-        if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
-            suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)
+        if not has_retrieval_sources:
+            no_sources = True
+            persona = _BASE_PERSONA
+            suffixes.append(
+                COMPOSER_WEB_EMPTY_SUFFIX
+                if composer_web_empty
+                else EXPLICIT_WEB_EMPTY_SUFFIX
+            )
+        else:
+            persona = _WEB_PERSONA
+            suffixes.append(CITATION_DISCIPLINE_SUFFIX)
+            if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
+                suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
 
@@ -273,6 +291,18 @@ def build_prompt_blocks(
         suffixes.append(CHAT_PERSONALITY_SUFFIX)
 
     if (
+        route == "NONE"
+        and follow_up_active
+        and prior_web_empty_follow_up
+        and not has_retrieval_sources
+        and not explicit_remember_active
+        and not web_capability_blocked
+        and not rag_capability_blocked
+        and not explicit_web_empty_results
+    ):
+        no_sources = True
+        suffixes.append(CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX)
+    elif (
         route == "NONE"
         and follow_up_active
         and not has_retrieval_sources

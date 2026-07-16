@@ -191,6 +191,31 @@ class StylingMixin:
                 if isinstance(cb_list, list):
                     yield from cb_list
 
+    def _iter_settings_line_edits(self):
+        """Settings form text fields that need explicit light/dark input styling."""
+        skip = {getattr(self, "settings_search_input", None)}
+        for name in (
+            "trigger_input",
+            "discovery_searxng_url_field",
+            "custom_source_id_input",
+            "custom_source_label_input",
+            "custom_source_base_url_input",
+            "custom_source_search_path_input",
+            "knowledge_preset_id_input",
+            "knowledge_preset_label_input",
+            "knowledge_preset_adapters_input",
+            "knowledge_preset_site_bias_input",
+            "knowledge_preset_fetch_count_input",
+        ):
+            field = getattr(self, name, None)
+            if field is not None and field not in skip:
+                yield field
+        key_fields = getattr(self, "knowledge_provider_key_fields", None)
+        if isinstance(key_fields, dict):
+            for field in key_fields.values():
+                if field is not None and field not in skip:
+                    yield field
+
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
         border_color = "rgba(255, 255, 255, 0.15)" if is_dark else "#cbd5e1"
@@ -287,24 +312,28 @@ class StylingMixin:
             self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
         if hasattr(self, 'mem_promotion_label'):
             self.mem_promotion_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+        if hasattr(self, 'discovery_pacing_label'):
+            self.discovery_pacing_label.setStyleSheet(
+                f"color: {text_color}; font-size: 13px;"
+            )
         
-        # 🔑 Style the NLP Trigger input & list
-        if hasattr(self, 'trigger_input'):
-            self.trigger_input.setStyleSheet(f"""
-                QLineEdit {{
-                    background-color: {bg_color};
-                    color: {text_color};
-                    border: 1px solid {border_color};
-                    border-radius: 8px;
-                    padding: 8px 15px;
-                    font-size: 13px;
-                }}
-                QLineEdit:disabled {{
-                    background-color: {disabled_bg};
-                    color: {disabled_text};
-                    border: 1px solid {disabled_border};
-                }}
-            """)
+        line_edit_style = f"""
+            QLineEdit {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }}
+            QLineEdit:disabled {{
+                background-color: {disabled_bg};
+                color: {disabled_text};
+                border: 1px solid {disabled_border};
+            }}
+        """
+        for field in self._iter_settings_line_edits():
+            field.setStyleSheet(line_edit_style)
             
         if hasattr(self, 'trigger_list'):
             self.trigger_list.setStyleSheet(f"""

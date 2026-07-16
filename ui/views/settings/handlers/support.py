@@ -47,7 +47,9 @@ class SupportHandlersMixin:
         builders = getattr(self, "_section_builders_for_rebuild", None)
         if builders is None:
             return
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        is_dark = coalesce_settings_is_dark(self)
         for sec_def in SETTINGS_SECTIONS:
             builder = builders.get(sec_def.id)
             stack_idx = self._section_stack_index_by_id.get(sec_def.id)
@@ -70,5 +72,7 @@ class SupportHandlersMixin:
             layout.insertWidget(1, new_content)
         if hasattr(self, "_apply_spinbox_style"):
             self._apply_spinbox_style(is_dark)
+        if hasattr(self, "_refresh_knowledge_access_ui"):
+            self._refresh_knowledge_access_ui(is_dark=is_dark)
         if hasattr(self, "_wire_companion_cognition_hint"):
             self._wire_companion_cognition_hint()

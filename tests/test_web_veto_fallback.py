@@ -100,6 +100,18 @@ class WebVetoFallbackTests(unittest.TestCase):
     def test_plain_chat_not_explicit_web(self):
         self.assertFalse(detect_explicit_web_request("Tell me a story."))
 
+    def test_web_route_empty_suffix_when_search_failed(self):
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            explicit_web_empty_results=True,
+            has_retrieval_sources=False,
+        )
+        system = compose_system_prompt(blocks)
+        self.assertIn(EXPLICIT_WEB_EMPTY_SUFFIX.strip()[:40], system)
+        self.assertNotIn("Real-time live web search results", system)
+        self.assertIn("[W]", system)
+
     def test_explicit_web_empty_suffix(self):
         blocks = build_prompt_blocks(
             execution_route="NONE",
