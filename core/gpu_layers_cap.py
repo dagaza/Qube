@@ -44,6 +44,8 @@ GpuMemoryKind = Literal[
 ]
 
 _last_gpu_memory_kind: GpuMemoryKind = "none"
+_vram_probe_done = False
+_cached_vram_bytes = 0
 
 
 def gpu_memory_kind() -> GpuMemoryKind:
@@ -67,8 +69,7 @@ def _nvidia_vram_bytes() -> int:
                 raise
         h = pynvml.nvmlDeviceGetHandleByIndex(0)
         return int(pynvml.nvmlDeviceGetMemoryInfo(h).total)
-    except Exception as e:
-        logger.debug("NVIDIA VRAM probe failed: %s", e)
+    except Exception:
         return 0
 
 
@@ -126,13 +127,7 @@ def _apple_unified_memory_proxy_bytes() -> int:
     return _unified_memory_proxy_bytes()
 
 
-def detect_gpu_vram_bytes() -> int:
-    """
-    Best-effort total GPU-accessible memory in bytes for layer-cap heuristics.
-
-    Returns 0 if unknown (no driver, VM without GPU passthrough, etc.).
-    Also updates :func:`gpu_memory_kind` for hardware profile / telemetry.
-    """
+def _probe_gpu_vram_bytes() -> int:
     n = _nvidia_vram_bytes()
     if n > 0:
         _set_gpu_memory_kind("nvidia")
@@ -146,9 +141,8 @@ def detect_gpu_vram_bytes() -> int:
                 proxy = _unified_memory_proxy_bytes()
                 if proxy > 0:
                     _set_gpu_memory_kind("amd_unified")
-                    logger.info(
-                        "[GPULayersCap] AMD APU unified memory: carveout=%.1f GB "
-                        "gtt=%.1f GB proxy=%.1f GB",
+                    logger.debug(
+                        "AMD APU unified memory: carveout=%.1f GB gtt=%.1f GB proxy=%.1f GB",
                         carveout / (1024.0**3),
                         gtt / (1024.0**3),
                         proxy / (1024.0**3),
@@ -164,6 +158,31 @@ def detect_gpu_vram_bytes() -> int:
 
     _set_gpu_memory_kind("none")
     return 0
+
+
+def detect_gpu_vram_bytes() -> int:
+    """
+    Best-effort total GPU-accessible memory in bytes for layer-cap heuristics.
+
+    Returns 0 if unknown (no driver, VM without GPU passthrough, etc.).
+    Also updates :func:`gpu_memory_kind` for hardware profile / telemetry.
+
+    Result is cached for the process lifetime (hardware does not change at runtime).
+    """
+    global _vram_probe_done, _cached_vram_bytes
+    if _vram_probe_done:
+        return _cached_vram_bytes
+    _cached_vram_bytes = _probe_gpu_vram_bytes()
+    _vram_probe_done = True
+    return _cached_vram_bytes
+
+
+def reset_gpu_vram_cache_for_tests() -> None:
+    """Clear cached VRAM probe (unit tests only)."""
+    global _vram_probe_done, _cached_vram_bytes
+    _vram_probe_done = False
+    _cached_vram_bytes = 0
+    _set_gpu_memory_kind("none")
 
 
 def is_unified_gpu_memory() -> bool:
