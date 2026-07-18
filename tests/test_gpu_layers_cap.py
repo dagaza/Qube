@@ -11,10 +11,13 @@ from core.gpu_layers_cap import (
     detect_gpu_vram_bytes,
     gpu_memory_kind,
     max_safe_n_gpu_layers,
+    reset_gpu_vram_cache_for_tests,
 )
 
 
 class TestAmdApuUnifiedDetection(unittest.TestCase):
+    def setUp(self) -> None:
+        reset_gpu_vram_cache_for_tests()
     def test_apu_requires_small_carveout_and_gtt(self) -> None:
         four_gb = 4 * 1024 * 1024 * 1024
         fourteen_gb = 14 * 1024 * 1024 * 1024

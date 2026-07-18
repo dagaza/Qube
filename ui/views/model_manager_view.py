@@ -1772,6 +1772,8 @@ class ModelManagerView(QWidget):
         """Match Conversations sidebar/list background palette on both themes."""
         bg = QColor("#232337" if is_dark else "#E9EFF5")
         bg_hex = "#232337" if is_dark else "#E9EFF5"
+        stage_bg = QColor("#1e1e2e" if is_dark else "#ffffff")
+        stage_bg_hex = "#1e1e2e" if is_dark else "#ffffff"
         border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
         if hasattr(self, "hub_sidebar"):
             p = self.hub_sidebar
@@ -1798,24 +1800,33 @@ class ModelManagerView(QWidget):
             vp.setPalette(vpal)
 
         if hasattr(self, "meta_panel"):
+            self.meta_panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
             self.meta_panel.setStyleSheet(
                 f"#ModelManagerMetaCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
             )
         if hasattr(self, "download_options_card"):
+            self.download_options_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
             self.download_options_card.setStyleSheet(
                 f"#ModelManagerDownloadCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
             )
         if hasattr(self, "detail_scroll"):
             self.detail_scroll.setStyleSheet(
                 "#ModelManagerDetailScrollArea { background: transparent; border: none; }"
+                f"#ModelManagerDetailScrollContent {{ background-color: {stage_bg_hex}; }}"
             )
             vp = self.detail_scroll.viewport()
             if vp is not None:
+                vp.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
                 vp.setAutoFillBackground(True)
                 vpal = vp.palette()
-                vpal.setColor(QPalette.ColorRole.Window, bg)
-                vpal.setColor(QPalette.ColorRole.Base, bg)
+                vpal.setColor(QPalette.ColorRole.Window, stage_bg)
+                vpal.setColor(QPalette.ColorRole.Base, stage_bg)
                 vp.setPalette(vpal)
+            if hasattr(self, "detail_cards_content"):
+                self.detail_cards_content.setAttribute(
+                    Qt.WidgetAttribute.WA_StyledBackground, True
+                )
+                self.detail_cards_content.setAutoFillBackground(False)
         if hasattr(self, "readme_browser"):
             self.readme_browser.setStyleSheet(
                 f"#ModelManagerReadmeCard {{ background-color: {bg_hex}; border: 1px solid {border}; border-radius: 10px; }}"
