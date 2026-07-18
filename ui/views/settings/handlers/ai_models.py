@@ -741,7 +741,7 @@ class AiModelsHandlersMixin:
     def _on_model_manager_hardware_suggestions_toggled(self, enabled: bool) -> None:
         set_model_manager_hardware_suggestions(enabled)
         win = self.window()
-        mm = getattr(win, "model_manager_view", None) if win is not None else None
+        mm = getattr(win, "_model_manager_view", None) if win is not None else None
         if mm is not None and hasattr(mm, "refresh_hardware_suggestions"):
             mm.refresh_hardware_suggestions()
 

@@ -314,6 +314,40 @@ jobs:
             --token "$WINGET_TOKEN" \
             --submit
 
+  homebrew:
+    needs: [macos-build, release]
+    runs-on: macos-14
+    if: github.repository == 'dagaza/Qube' && vars.HOMEBREW_AUTO_SUBMIT == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-dmg-*
+          merge-multiple: true
+
+      - name: Render cask
+        run: |
+          VERSION="${{ needs.macos-build.outputs.version }}"
+          python scripts/render_homebrew_cask.py \
+            --version "$VERSION" \
+            --sha256-arm64  "$(shasum -a 256 "Qube-$VERSION-arm64.dmg"  | awk '{print $1}')" \
+            --sha256-x86_64 "$(shasum -a 256 "Qube-$VERSION-x86_64.dmg" | awk '{print $1}')"
+
+      - name: Audit cask
+        run: |
+          VERSION="${{ needs.macos-build.outputs.version }}"
+          TAP_DIR="$(brew --repository)/Library/Taps/dagaza/homebrew-qube"
+          mkdir -p "$TAP_DIR/Casks"
+          cp "homebrew/out/$VERSION/qube.rb" "$TAP_DIR/Casks/qube.rb"
+          brew style "$TAP_DIR/Casks/qube.rb"
+          brew audit --cask --online "dagaza/qube/qube"
+
+      - name: Commit bump to tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: bash scripts/macos/bump_tap.sh "${{ needs.macos-build.outputs.version }}"
+
   chocolatey-test:
     needs: [build, release]
     runs-on: windows-latest
