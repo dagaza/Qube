@@ -76,6 +76,45 @@ import logging
 
 logger = logging.getLogger("Qube.UI")
 
+# ---------------------------------------------------------------------------
+# Main stage router (QStackedWidget indices == nav button indices)
+#
+#   0 Conversations  — built at startup (always present)
+#   1 Library        — lazy (placeholder until first nav click)
+#   2 Memory         — lazy
+#   3 Telemetry      — lazy
+#   4 Model Manager  — lazy
+#   5 Settings       — lazy
+#
+# Lifecycle:
+#   • Startup: only Conversations + empty placeholders exist in the stack.
+#   • Navigation: ``_route_view`` → ``_ensure_main_stage_view`` replaces a
+#     placeholder, wires page-local + app-level routes, applies theme.
+#   • Theme toggle: refreshes built stages only; unbuilt pages cost ~0.
+#   • App wiring: ``main.py`` registers ``register_main_stage_app_wirer``;
+#     do not connect signals via ``window.settings_view`` (eager-builds).
+#
+# Access conventions (avoid accidental eager construction):
+#   • Peek:  ``self._settings_view`` or ``peek_settings_view()`` → None if unbuilt
+#   • Build: ``ensure_settings_view()`` or navigate via ``_route_view``
+#   • Never: ``getattr(w, "settings_view")`` / ``hasattr(w, "settings_view")``
+# ---------------------------------------------------------------------------
+MAIN_STAGE_CONVERSATIONS = 0
+MAIN_STAGE_LIBRARY = 1
+MAIN_STAGE_MEMORY = 2
+MAIN_STAGE_TELEMETRY = 3
+MAIN_STAGE_MODEL_MANAGER = 4
+MAIN_STAGE_SETTINGS = 5
+_LAZY_MAIN_STAGE_INDICES = frozenset(
+    {
+        MAIN_STAGE_LIBRARY,
+        MAIN_STAGE_MEMORY,
+        MAIN_STAGE_TELEMETRY,
+        MAIN_STAGE_MODEL_MANAGER,
+        MAIN_STAGE_SETTINGS,
+    }
+)
+
 # Restore/maximize tuning for portrait and narrow monitors (width <= default layout minimum).
 _RESTORE_MARGIN_PX = 24
 _RESTORE_WIDTH_RATIO = 0.90
@@ -299,6 +338,7 @@ class MainWindow(QMainWindow):
 
         # Global State
         self._is_dark_theme = True
+        self._theme_stage_dirty: set[int] = set()
 
         self._setup_ui()
         if self._native_engine is not None:
@@ -313,18 +353,37 @@ class MainWindow(QMainWindow):
         self._setup_titling_connections()
 
         self._local_llm_tour = build_local_llm_setup_tour(self)
-        self.settings_view.engine_mode_changed.connect(
-            lambda _mode: self._local_llm_tour.refresh_layout()
-        )
+        self._theme_profile_startup_logged = False
 
     def showEvent(self, event):
         super().showEvent(event)
+        if not getattr(self, "_theme_profile_startup_logged", False):
+            self._theme_profile_startup_logged = True
+            self._log_theme_profile_startup_snapshot()
         if not getattr(self, "_startup_geometry_finalized", False):
             self._schedule_startup_geometry()
         if not getattr(self, "_onboarding_start_scheduled", False):
             self._onboarding_start_scheduled = True
             QTimer.singleShot(900, self._maybe_start_local_llm_onboarding)
         QTimer.singleShot(1500, self.schedule_scenario_replay)
+
+    def _log_theme_profile_startup_snapshot(self) -> None:
+        from PyQt6.QtWidgets import QApplication
+
+        from core.theme_toggle_profile import log_startup_widget_snapshot
+
+        conversation_rows: int | None = None
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None:
+            history = getattr(cv, "history_list", None)
+            if history is not None:
+                conversation_rows = int(history.count())
+
+        log_startup_widget_snapshot(
+            QApplication.instance(),
+            built_main_stages=len(getattr(self, "_main_stage_built", ())),
+            conversation_rows=conversation_rows,
+        )
 
     def _maybe_start_local_llm_onboarding(self) -> None:
         if get_onboarding_local_llm_tour_completed():
@@ -428,29 +487,33 @@ class MainWindow(QMainWindow):
         self.main_stage = QStackedWidget()
         self.main_stage.setStyleSheet("background-color: transparent;")
         
-        # 🔑 THE FIX: Renaming to match our Titling and Hardware logic
+        # Conversations is eager; other main stages are built on first navigation (Phase 2).
         self.conversations_view = ConversationsView(self.workers, self.workers.get("db"))
-        self.library_view = LibraryView(self.workers, self.workers.get("db"))
-        self.memory_manager_view = MemoryManagerView(self.workers, self.workers.get("db"))
-        self.telemetry_view = TelemetryView(
-            self.workers,
-            self._gpu_monitor,
-            native_engine=self._native_engine,
-        )
-        self.model_manager_view = ModelManagerView(self.workers, self.workers.get("db"))
-        self.settings_view = SettingsView(self.workers, self.workers.get("db"), parent=self)
-        
+        self._library_view = None
+        self._memory_manager_view = None
+        self._telemetry_view = None
+        self._model_manager_view = None
+        self._settings_view = None
+        self._settings_view_wired = False
+        self._model_manager_view_wired = False
+        self._model_manager_settings_crosslink_wired = False
+        self._model_manager_companion_crosslink_wired = False
+        self._main_stage_built: set[int] = {MAIN_STAGE_CONVERSATIONS}
+        self._main_stage_app_wirers: dict[int, list] = {
+            idx: [] for idx in _LAZY_MAIN_STAGE_INDICES
+        }
+        self._main_stage_app_wired: set[int] = set()
+
         # 🔑 THE FIX: Prevent UI Stretching (Policy Ignored)
         from PyQt6.QtWidgets import QSizePolicy
         self.main_stage.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
-        # Add them to the Stack in the correct order
-        self.main_stage.addWidget(self.conversations_view)   # Index 0
-        self.main_stage.addWidget(self.library_view)         # Index 1
-        self.main_stage.addWidget(self.memory_manager_view)  # Index 2
-        self.main_stage.addWidget(self.telemetry_view)       # Index 3
-        self.main_stage.addWidget(self.model_manager_view)   # Index 4
-        self.main_stage.addWidget(self.settings_view)        # Index 5
+        self.main_stage.addWidget(self.conversations_view)
+        for stage_index in sorted(_LAZY_MAIN_STAGE_INDICES):
+            placeholder = QWidget()
+            placeholder.setObjectName(f"MainStagePlaceholder_{stage_index}")
+            self.main_stage.addWidget(placeholder)
+            assert self.main_stage.indexOf(placeholder) == stage_index
 
         workspace_layout.addWidget(self.main_stage, stretch=1)
         
@@ -473,41 +536,9 @@ class MainWindow(QMainWindow):
         self.grip.setFixedSize(16, 16)
 
         # --- THE SYNC WIRING (Updated for new names) ---
-        
-        # 1. Toolbar audio extra controls visibility ↔ Settings "Pin Audio Controls"
-        self.settings_view.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
-        self.audio_extra_controls.setVisible(
-            self.settings_view.pin_audio_cb.isChecked()
-        )
-
-        # 1b. Toolbar TTS voice selector visibility ↔ Settings pin option
-        self.settings_view.tts_voice_pin_toggle.connect(
-            self.global_voice_selector.setVisible
-        )
-        self.global_voice_selector.setVisible(
-            self.settings_view.pin_tts_voice_cb.isChecked()
-        )
-
-        # 1c. Settings Audio Input hint → top-bar mic level meter highlight
-        self.settings_view.mic_vu_hint_requested.connect(
-            self.pulse_mic_vu_meter_attention
-        )
-
-        # 2. Sync Settings -> Toolbar
-        self.settings_view.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
-        self.settings_view.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
-        if hasattr(self.settings_view, "wakeword_sensitivity"):
-            self.settings_view.wakeword_sensitivity.valueChanged.connect(
-                self.toolbar_wakeword_sensitivity_spin.setValue
-            )
-
-        # 3. Sync Toolbar -> Settings
-        self.toolbar_timeout_spin.valueChanged.connect(self.settings_view.timeout_spinner.setValue)
-        self.toolbar_threshold_spin.valueChanged.connect(self.settings_view.threshold_spinner.setValue)
-        if hasattr(self.settings_view, "wakeword_sensitivity"):
-            self.toolbar_wakeword_sensitivity_spin.valueChanged.connect(
-                self.settings_view.wakeword_sensitivity.setValue
-            )
+        # Settings ↔ toolbar sync is wired when Settings is first opened (_wire_settings_view).
+        self.audio_extra_controls.setVisible(True)
+        self.global_voice_selector.setVisible(True)
 
         # 4. Initialize Toolbar values from the worker
         if self._audio_worker:
@@ -527,30 +558,12 @@ class MainWindow(QMainWindow):
                 )
             )
 
-        # 4b. Generation parameters: Settings ↔ Toolbar (both write through LLMWorker)
-        self._wire_generation_settings_toolbar_sync()
+        # 4b. Generation parameters: Settings ↔ Toolbar (wired when Settings opens)
 
-        # 5. 🔑 Sync RAG + Auto-Activator Toggles (Settings ↔ Toolbar)
-        self.settings_view.rag_kb_toggle.connect(self.tool_rag_toggle.setChecked)
-        self.tool_rag_toggle.toggled.connect(self.settings_view.rag_kb_cb.setChecked)
-        self.settings_view.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
-        self.rag_auto_toggle.toggled.connect(self.settings_view.auto_activator_cb.setChecked)
-
-        # 5b. Auto-load last model on startup (toolbar PrestigeToggle ↔ Settings checkbox)
-        self.settings_view.auto_load_last_model_changed.connect(
-            self._sync_toolbar_auto_load_model_toggle
-        )
+        # 5–6. Settings / Model Manager wiring deferred until those stages are first opened.
         self.toolbar_auto_load_model_toggle.toggled.connect(
             self._on_toolbar_auto_load_model_toggle_changed
         )
-
-        # 6. Internal engine model list (toolbar) — refresh when engine mode or downloads change
-        # Pass the emitted mode so UI updates before/without relying on QSettings (slot order vs llm_worker).
-        self.settings_view.engine_mode_changed.connect(self._refresh_toolbar_native_model_from_settings_signal)
-        if hasattr(self.model_manager_view, "native_library_changed"):
-            self.model_manager_view.native_library_changed.connect(
-                self.refresh_toolbar_native_model_dropdown
-            )
         QTimer.singleShot(0, self.refresh_toolbar_native_model_dropdown)
         if self._enable_routing_debug_tool:
             self._setup_routing_debug_tool_window()
@@ -755,7 +768,10 @@ class MainWindow(QMainWindow):
 
     def _on_toolbar_auto_load_model_toggle_changed(self, checked: bool) -> None:
         set_auto_load_last_model_on_startup(checked)
-        cb = self.settings_view.auto_load_last_model_cb
+        sv = self._settings_view
+        if sv is None:
+            return
+        cb = sv.auto_load_last_model_cb
         cb.blockSignals(True)
         cb.setChecked(checked)
         cb.blockSignals(False)
@@ -1013,7 +1029,7 @@ class MainWindow(QMainWindow):
             return None
 
     def _sync_settings_mic_selector_from_index(self, device_index: int) -> None:
-        settings = getattr(self, "settings_view", None)
+        settings = self._settings_view
         if settings is None or not hasattr(settings, "mic_selector"):
             return
         for idx, name in get_input_devices():
@@ -1282,7 +1298,7 @@ class MainWindow(QMainWindow):
         self.emit_notification(discovery_tier_b_suggestion_event())
 
     def _sync_web_discovery_policy_section(self) -> None:
-        settings_view = getattr(self, "settings_view", None)
+        settings_view = self._settings_view
         if settings_view is None:
             return
         try:
@@ -1499,8 +1515,10 @@ class MainWindow(QMainWindow):
             return
         is_dark = self._is_dark_theme
         idx = self.main_stage.currentIndex()
-        if idx == 5 and hasattr(self.settings_view, "_apply_settings_sidebar_surface"):
-            self.settings_view._apply_settings_sidebar_surface(is_dark)
+        if idx == MAIN_STAGE_SETTINGS:
+            sv = self._settings_view
+            if sv is not None and hasattr(sv, "_apply_settings_sidebar_surface"):
+                sv._apply_settings_sidebar_surface(is_dark)
 
     def _restore_workspace_geometry(self) -> None:
         screen = self._screen_for_window()
@@ -2176,7 +2194,7 @@ class MainWindow(QMainWindow):
         """Keep Settings and toolbar generation spinboxes aligned (audio-style sync)."""
         if not self._llm_worker:
             return
-        sv = getattr(self, "settings_view", None)
+        sv = self._settings_view
         if sv is None:
             return
         pairs = (
@@ -2455,10 +2473,10 @@ class MainWindow(QMainWindow):
         finally:
             self._apply_settings_menu_button_chevron_state(btn)
             self._sync_native_model_eject_button()
-            if hasattr(self, "settings_view") and hasattr(
-                self.settings_view, "sync_active_native_model_label"
+            if self._settings_view is not None and hasattr(
+                self._settings_view, "sync_active_native_model_label"
             ):
-                self.settings_view.sync_active_native_model_label()
+                self._settings_view.sync_active_native_model_label()
 
     def _apply_native_model_eject_button_style(self) -> None:
         if not hasattr(self, "toolbar_native_model_eject_btn"):
@@ -2840,12 +2858,234 @@ class MainWindow(QMainWindow):
         btn.setIcon(qta.icon(icon_name, color=color))
         btn.setIconSize(QSize(size, size))
 
+    def _is_main_stage_built(self, index: int) -> bool:
+        return index in getattr(self, "_main_stage_built", ())
+
+    def peek_library_view(self) -> LibraryView | None:
+        return self._library_view
+
+    def peek_memory_manager_view(self) -> MemoryManagerView | None:
+        return self._memory_manager_view
+
+    def peek_telemetry_view(self) -> TelemetryView | None:
+        return self._telemetry_view
+
+    def peek_model_manager_view(self) -> ModelManagerView | None:
+        return self._model_manager_view
+
+    def peek_settings_view(self) -> SettingsView | None:
+        return self._settings_view
+
+    def ensure_library_view(self) -> LibraryView:
+        return self._ensure_main_stage_view(MAIN_STAGE_LIBRARY)
+
+    def ensure_memory_manager_view(self) -> MemoryManagerView:
+        return self._ensure_main_stage_view(MAIN_STAGE_MEMORY)
+
+    def ensure_telemetry_view(self) -> TelemetryView:
+        return self._ensure_main_stage_view(MAIN_STAGE_TELEMETRY)
+
+    def ensure_model_manager_view(self) -> ModelManagerView:
+        return self._ensure_main_stage_view(MAIN_STAGE_MODEL_MANAGER)
+
+    def ensure_settings_view(self) -> SettingsView:
+        return self._ensure_main_stage_view(MAIN_STAGE_SETTINGS)
+
+    def register_main_stage_app_wirer(self, stage_index: int, wirer) -> None:
+        """Register app-level signal wiring to run when a lazy stage is first built."""
+        if stage_index not in _LAZY_MAIN_STAGE_INDICES:
+            raise ValueError(f"Stage {stage_index} is not lazy-loaded")
+        self._main_stage_app_wirers.setdefault(stage_index, []).append(wirer)
+        if self._is_main_stage_built(stage_index):
+            self._flush_main_stage_app_wirers(stage_index)
+
+    def _flush_main_stage_app_wirers(self, stage_index: int) -> None:
+        if stage_index in self._main_stage_app_wired:
+            return
+        self._main_stage_app_wired.add(stage_index)
+        for wirer in self._main_stage_app_wirers.get(stage_index, ()):
+            wirer()
+        self._maybe_wire_lazy_stage_crosslinks()
+
+    def _maybe_wire_lazy_stage_crosslinks(self) -> None:
+        mm = self._model_manager_view
+        sv = self._settings_view
+        if (
+            mm is not None
+            and sv is not None
+            and not self._model_manager_settings_crosslink_wired
+            and hasattr(mm, "native_library_changed")
+            and hasattr(sv, "refresh_native_local_library")
+        ):
+            mm.native_library_changed.connect(sv.refresh_native_local_library)
+            self._model_manager_settings_crosslink_wired = True
+
+        if (
+            mm is not None
+            and self._companion_controller is not None
+            and not self._model_manager_companion_crosslink_wired
+            and hasattr(mm, "download_succeeded")
+        ):
+            mm.download_succeeded.connect(
+                self._companion_controller.on_model_download_complete
+            )
+            self._model_manager_companion_crosslink_wired = True
+
+    def _create_main_stage_view(self, index: int) -> QWidget:
+        if index == MAIN_STAGE_LIBRARY:
+            self._library_view = LibraryView(self.workers, self.workers.get("db"))
+            return self._library_view
+        if index == MAIN_STAGE_MEMORY:
+            self._memory_manager_view = MemoryManagerView(
+                self.workers,
+                self.workers.get("db"),
+            )
+            return self._memory_manager_view
+        if index == MAIN_STAGE_TELEMETRY:
+            self._telemetry_view = TelemetryView(
+                self.workers,
+                self._gpu_monitor,
+                native_engine=self._native_engine,
+            )
+            return self._telemetry_view
+        if index == MAIN_STAGE_MODEL_MANAGER:
+            self._model_manager_view = ModelManagerView(
+                self.workers,
+                self.workers.get("db"),
+            )
+            self._wire_model_manager_view()
+            return self._model_manager_view
+        if index == MAIN_STAGE_SETTINGS:
+            self._settings_view = SettingsView(
+                self.workers,
+                self.workers.get("db"),
+                parent=self,
+            )
+            self._wire_settings_view()
+            return self._settings_view
+        raise ValueError(f"Unknown main stage index: {index}")
+
+    def _wire_settings_view(self) -> None:
+        if self._settings_view_wired:
+            return
+        sv = self._settings_view
+        if sv is None:
+            return
+        self._settings_view_wired = True
+
+        sv.audio_pin_toggle.connect(self.audio_extra_controls.setVisible)
+        self.audio_extra_controls.setVisible(sv.pin_audio_cb.isChecked())
+
+        sv.tts_voice_pin_toggle.connect(self.global_voice_selector.setVisible)
+        self.global_voice_selector.setVisible(sv.pin_tts_voice_cb.isChecked())
+
+        sv.mic_vu_hint_requested.connect(self.pulse_mic_vu_meter_attention)
+
+        sv.timeout_spinner.valueChanged.connect(self.toolbar_timeout_spin.setValue)
+        sv.threshold_spinner.valueChanged.connect(self.toolbar_threshold_spin.setValue)
+        if hasattr(sv, "wakeword_sensitivity"):
+            sv.wakeword_sensitivity.valueChanged.connect(
+                self.toolbar_wakeword_sensitivity_spin.setValue
+            )
+
+        self.toolbar_timeout_spin.valueChanged.connect(sv.timeout_spinner.setValue)
+        self.toolbar_threshold_spin.valueChanged.connect(sv.threshold_spinner.setValue)
+        if hasattr(sv, "wakeword_sensitivity"):
+            self.toolbar_wakeword_sensitivity_spin.valueChanged.connect(
+                sv.wakeword_sensitivity.setValue
+            )
+
+        sv.rag_kb_toggle.connect(self.tool_rag_toggle.setChecked)
+        self.tool_rag_toggle.toggled.connect(sv.rag_kb_cb.setChecked)
+        sv.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
+        self.rag_auto_toggle.toggled.connect(sv.auto_activator_cb.setChecked)
+
+        sv.auto_load_last_model_changed.connect(self._sync_toolbar_auto_load_model_toggle)
+
+        sv.engine_mode_changed.connect(self._refresh_toolbar_native_model_from_settings_signal)
+        if hasattr(self, "_local_llm_tour"):
+            sv.engine_mode_changed.connect(
+                lambda _mode: self._local_llm_tour.refresh_layout()
+            )
+
+        self._wire_generation_settings_toolbar_sync()
+
+    def _wire_model_manager_view(self) -> None:
+        if self._model_manager_view_wired:
+            return
+        mm = self._model_manager_view
+        if mm is None:
+            return
+        self._model_manager_view_wired = True
+        if hasattr(mm, "native_library_changed"):
+            mm.native_library_changed.connect(self.refresh_toolbar_native_model_dropdown)
+
+    def _ensure_main_stage_view(self, index: int) -> QWidget:
+        if self._is_main_stage_built(index):
+            widget = self.main_stage.widget(index)
+            if widget is not None:
+                return widget
+
+        view = self._create_main_stage_view(index)
+        placeholder = self.main_stage.widget(index)
+        if placeholder is not None:
+            self.main_stage.removeWidget(placeholder)
+            placeholder.deleteLater()
+        self.main_stage.insertWidget(index, view)
+        self._main_stage_built.add(index)
+        self._refresh_stage_theme(index, self._is_dark_theme)
+        self._flush_main_stage_app_wirers(index)
+        return view
+
+    @property
+    def library_view(self) -> LibraryView:
+        return self.ensure_library_view()
+
+    @library_view.setter
+    def library_view(self, value: LibraryView | None) -> None:
+        self._library_view = value
+
+    @property
+    def memory_manager_view(self) -> MemoryManagerView:
+        return self.ensure_memory_manager_view()
+
+    @memory_manager_view.setter
+    def memory_manager_view(self, value: MemoryManagerView | None) -> None:
+        self._memory_manager_view = value
+
+    @property
+    def telemetry_view(self) -> TelemetryView:
+        return self.ensure_telemetry_view()
+
+    @telemetry_view.setter
+    def telemetry_view(self, value: TelemetryView | None) -> None:
+        self._telemetry_view = value
+
+    @property
+    def model_manager_view(self) -> ModelManagerView:
+        return self.ensure_model_manager_view()
+
+    @model_manager_view.setter
+    def model_manager_view(self, value: ModelManagerView | None) -> None:
+        self._model_manager_view = value
+
+    @property
+    def settings_view(self) -> SettingsView:
+        return self.ensure_settings_view()
+
+    @settings_view.setter
+    def settings_view(self, value: SettingsView | None) -> None:
+        self._settings_view = value
+
     def _route_view(self, index: int, active_button: QPushButton):
         """Switches the QStackedWidget and manages button highlights.
 
         Updates icons only for the previous and newly active buttons to avoid
         rebuilding all nav pixmaps each click (noticeable flicker on Windows).
         """
+        if index in _LAZY_MAIN_STAGE_INDICES:
+            self._ensure_main_stage_view(index)
+
         prev_active = getattr(self, "_nav_active_btn", None)
         stage = self.main_stage
         stage.setUpdatesEnabled(False)
@@ -2864,121 +3104,290 @@ class MainWindow(QMainWindow):
         finally:
             stage.setUpdatesEnabled(True)
             stage.update()
-        if index == 5:
+        if index in getattr(self, "_theme_stage_dirty", ()):
+            self._sync_stage_theme_if_dirty(index)
+        if index == MAIN_STAGE_SETTINGS:
             self._set_tools_pane_expanded(False, animate=False)
-        if index == 0 and hasattr(self, "conversations_view"):
+        if index == MAIN_STAGE_CONVERSATIONS and hasattr(self, "conversations_view"):
             QTimer.singleShot(0, self.conversations_view.focus_composer_if_ready)
 
-    def _toggle_theme(self):
-        """Toggles the global theme and resets the system palette to prevent 'Ghosting'."""
+    @staticmethod
+    def _load_theme_qss(style_path) -> str:
+        """Read and cache theme QSS so profiling can separate disk read from apply."""
+        cache = getattr(MainWindow, "_theme_qss_cache", None)
+        if cache is None:
+            cache = {}
+            MainWindow._theme_qss_cache = cache
+        key = str(style_path)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        with open(style_path, "r") as f:
+            cached = f.read()
+        cache[key] = cached
+        return cached
+
+    def _theme_toggle_profile_context(self) -> dict[str, int | str]:
+        """Snapshot widget counts to correlate timings with session heaviness."""
         from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtGui import QPalette
-        import os
+
+        from core.theme_toggle_profile import (
+            collect_application_widget_metrics,
+            is_theme_stylesheet_clear_skipped,
+        )
+
+        ctx: dict[str, int | str] = {
+            "target_theme": "dark" if self._is_dark_theme else "light",
+            "skip_stylesheet_clear": int(is_theme_stylesheet_clear_skipped()),
+        }
+        ctx.update(collect_application_widget_metrics(QApplication.instance()))
+        if hasattr(self, "main_stage"):
+            ctx["main_stage_index"] = int(self.main_stage.currentIndex())
+        ctx["built_main_stages"] = len(getattr(self, "_main_stage_built", ()))
+
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None:
+            history = getattr(cv, "history_list", None)
+            if history is not None:
+                ctx["conversation_rows"] = int(history.count())
+            transcript = getattr(cv, "transcript_layout", None)
+            if transcript is not None:
+                ctx["transcript_widgets"] = int(transcript.count())
+
+        lv = self._library_view
+        if lv is not None:
+            doc_list = getattr(lv, "doc_list", None)
+            if doc_list is not None:
+                ctx["library_rows"] = int(doc_list.count())
+
+        sv = self._settings_view
+        if sv is not None:
+            trigger_list = getattr(sv, "trigger_list", None)
+            if trigger_list is not None:
+                ctx["trigger_rows"] = int(trigger_list.count())
+
+        mm = self._model_manager_view
+        if mm is not None:
+            hub_list = getattr(mm, "hub_model_list", None)
+            if hub_list is not None:
+                ctx["hub_rows"] = int(hub_list.count())
+            readme = getattr(mm, "_last_readme_markdown", None)
+            if readme:
+                ctx["readme_chars"] = len(str(readme))
+
+        return ctx
+
+    def _active_main_stage_index(self) -> int:
+        if hasattr(self, "main_stage"):
+            return int(self.main_stage.currentIndex())
+        return 0
+
+    def _refresh_conversations_theme(self, is_dark: bool) -> None:
+        cv = getattr(self, "conversations_view", None)
+        if cv is None:
+            return
+        if hasattr(cv, "refresh_menu_themes"):
+            cv.refresh_menu_themes(is_dark)
+        if hasattr(cv, "refresh_button_themes"):
+            cv.refresh_button_themes(is_dark)
+        if hasattr(cv, "_update_row_colors"):
+            cv._update_row_colors()
+
+    def _refresh_library_theme(self, is_dark: bool) -> None:
+        lv = self._library_view
+        if lv is None:
+            return
+        if hasattr(lv, "refresh_menu_themes"):
+            lv.refresh_menu_themes(is_dark)
+        if hasattr(lv, "refresh_button_themes"):
+            lv.refresh_button_themes(is_dark)
+        if hasattr(lv, "_update_row_colors"):
+            lv._update_row_colors()
+
+    def _refresh_stage_theme(self, stage_index: int, is_dark: bool) -> None:
+        if stage_index == 0:
+            self._refresh_conversations_theme(is_dark)
+        elif stage_index == 1:
+            self._refresh_library_theme(is_dark)
+        elif stage_index == 2:
+            mmv = self._memory_manager_view
+            if mmv is not None and hasattr(mmv, "refresh_theme"):
+                mmv.refresh_theme(is_dark)
+        elif stage_index == 3:
+            tv = self._telemetry_view
+            if tv is not None and hasattr(tv, "refresh_after_theme_toggle"):
+                tv.refresh_after_theme_toggle()
+        elif stage_index == 4:
+            mm = self._model_manager_view
+            if mm is not None and hasattr(mm, "refresh_after_theme_toggle"):
+                mm.refresh_after_theme_toggle()
+        elif stage_index == 5:
+            sv = self._settings_view
+            if sv is not None and hasattr(sv, "refresh_menu_themes"):
+                sv.refresh_menu_themes(is_dark)
+
+    def _refresh_global_theme_chrome(self, is_dark: bool, profiler) -> None:
+        with profiler.step("topbar_menus"):
+            if hasattr(self, "_topbar_mic_menu"):
+                self._apply_menu_theme(self._topbar_mic_menu, is_dark)
+            self._apply_topbar_mic_chevron_style()
+
+            if hasattr(self, "global_voice_selector"):
+                toolbar_menu = self.global_voice_selector.menu()
+                if toolbar_menu:
+                    self._apply_menu_theme(toolbar_menu, is_dark)
+
+            if hasattr(self, "toolbar_native_model_selector"):
+                native_menu = self.toolbar_native_model_selector.menu()
+                if native_menu:
+                    self._apply_menu_theme(native_menu, is_dark)
+                self._apply_settings_menu_button_chevron_state(
+                    self.toolbar_native_model_selector
+                )
+                self._apply_native_model_eject_button_style()
+
+        if hasattr(self, "background_progress_row"):
+            with profiler.step("background_progress_row.apply_theme"):
+                self.background_progress_row.apply_theme(is_dark)
+
+        if hasattr(self, "notification_center"):
+            with profiler.step("notification_center.apply_theme"):
+                self.notification_center.apply_theme(is_dark)
+
+        if hasattr(self, "_modal_backdrop"):
+            with profiler.step("modal_backdrop.apply_theme"):
+                self._modal_backdrop.apply_theme(is_dark)
+
+        if self.tray_controller is not None:
+            with profiler.step("tray_controller.apply_theme"):
+                self.tray_controller.apply_theme(is_dark)
+
+        if self._companion_controller is not None:
+            with profiler.step("companion_controller.apply_theme"):
+                self._companion_controller.apply_theme(is_dark)
+
+        with profiler.step("nav_buttons.refresh_icons"):
+            for btn in getattr(self, "nav_buttons", ()):
+                self._refresh_nav_btn_icon(btn)
+
+    def _sync_stage_theme_if_dirty(self, stage_index: int) -> None:
+        dirty = getattr(self, "_theme_stage_dirty", None)
+        if not dirty or stage_index not in dirty:
+            return
+        self._refresh_stage_theme(stage_index, self._is_dark_theme)
+        dirty.discard(stage_index)
+
+    def _schedule_deferred_theme_refreshes(self, hidden_stage_indices: list[int]) -> None:
+        if not hidden_stage_indices:
+            return
+        self._theme_stage_dirty.update(hidden_stage_indices)
+        QTimer.singleShot(0, self._flush_deferred_theme_refreshes)
+
+    def _flush_deferred_theme_refreshes(self) -> None:
+        dirty = getattr(self, "_theme_stage_dirty", None)
+        if not dirty:
+            return
+
+        from core.theme_toggle_profile import ThemeToggleProfiler
+
+        profiler = ThemeToggleProfiler.maybe_enabled()
+        profiler.begin()
+        is_dark = self._is_dark_theme
+        for stage_index in sorted(dirty):
+            with profiler.step(f"stage_{stage_index}.refresh_deferred"):
+                self._refresh_stage_theme(stage_index, is_dark)
+            dirty.discard(stage_index)
+        profiler.finish(
+            context={
+                "deferred_batch": 1,
+                "target_theme": "dark" if is_dark else "light",
+            }
+        )
+
+    def _toggle_theme(self):
+        """Toggles the global theme; resets palette, then applies the target QSS directly."""
+        from PyQt6.QtWidgets import QApplication
         import qtawesome as qta
 
+        from core.theme_toggle_profile import (
+            ThemeToggleProfiler,
+            is_theme_stylesheet_clear_forced,
+        )
+
         app = QApplication.instance()
-        
-        # 1. THE FULL RESET
-        # This kills the 'Black' system background that is haunting your Light Mode
-        app.setPalette(app.style().standardPalette()) 
-        app.setStyleSheet("") 
+        profiler = ThemeToggleProfiler.maybe_enabled()
+        profiler.begin()
+
+        with profiler.step("palette_reset"):
+            app.setPalette(app.style().standardPalette())
+
+        if is_theme_stylesheet_clear_forced():
+            with profiler.step("stylesheet_clear"):
+                app.setStyleSheet("")
+        else:
+            with profiler.step("stylesheet_clear_skipped"):
+                pass
 
         if self._is_dark_theme:
-            # --- Load Light Theme ---
             style_path = resource_path("assets", "styles", "light.qss")
+            qss_text = ""
             if style_path.is_file():
-                with open(style_path, "r") as f:
-                    app.setStyleSheet(f.read())
-            
-            self.nav_theme.setIcon(qta.icon('fa5s.sun', color='#d7827e'))
-            self.nav_theme.setToolTip("Switch to dark theme")
-            self._is_dark_theme = False
-            qube_tooltip_set_theme(False)
+                with profiler.step("qss_load"):
+                    qss_text = self._load_theme_qss(style_path)
+                with profiler.step("qss_apply"):
+                    app.setStyleSheet(qss_text)
+
+            with profiler.step("nav_theme_chrome"):
+                self.nav_theme.setIcon(qta.icon("fa5s.sun", color="#d7827e"))
+                self.nav_theme.setToolTip("Switch to dark theme")
+                self._is_dark_theme = False
+                qube_tooltip_set_theme(False)
             logger.info("Theme switched to Light Mode.")
         else:
-            # --- Load Dark Theme ---
             style_path = resource_path("assets", "styles", "base.qss")
+            qss_text = ""
             if style_path.is_file():
-                with open(style_path, "r") as f:
-                    app.setStyleSheet(f.read())
-                    
-            self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
-            self.nav_theme.setToolTip("Switch to light theme")
-            self._is_dark_theme = True
-            qube_tooltip_set_theme(True)
+                with profiler.step("qss_load"):
+                    qss_text = self._load_theme_qss(style_path)
+                with profiler.step("qss_apply"):
+                    app.setStyleSheet(qss_text)
+
+            with profiler.step("nav_theme_chrome"):
+                self.nav_theme.setIcon(qta.icon("fa5s.moon", color="#f9e2af"))
+                self.nav_theme.setToolTip("Switch to light theme")
+                self._is_dark_theme = True
+                qube_tooltip_set_theme(True)
             logger.info("Theme switched to Dark Mode.")
 
         from core.richtext_styles import apply_app_link_palette
 
-        apply_app_link_palette(app)
+        active_stage = self._active_main_stage_index()
+        hidden_stages = [
+            idx
+            for idx in range(self.main_stage.count())
+            if idx != active_stage and self._is_main_stage_built(idx)
+        ]
 
-        # --- RE-THEME ATTACHED MENUS & LISTS ---
-        
-        # 1. Update the Settings Page menus
-        if hasattr(self, 'settings_view') and hasattr(self.settings_view, 'refresh_menu_themes'):
-            self.settings_view.refresh_menu_themes(self._is_dark_theme)
-        if hasattr(self, "_topbar_mic_menu"):
-            self._apply_menu_theme(self._topbar_mic_menu, self._is_dark_theme)
-        self._apply_topbar_mic_chevron_style()
-            
-        # 2. Update the Toolbar Voice Menu
-        if hasattr(self, 'global_voice_selector'):
-            toolbar_menu = self.global_voice_selector.menu()
-            if toolbar_menu:
-                self._apply_menu_theme(toolbar_menu, self._is_dark_theme)
+        self.setUpdatesEnabled(False)
+        try:
+            with profiler.step("apply_app_link_palette"):
+                apply_app_link_palette(app)
 
-        # 2b. Toolbar internal LLM model menu
-        if hasattr(self, "toolbar_native_model_selector"):
-            native_menu = self.toolbar_native_model_selector.menu()
-            if native_menu:
-                self._apply_menu_theme(native_menu, self._is_dark_theme)
-            self._apply_settings_menu_button_chevron_state(self.toolbar_native_model_selector)
-            self._apply_native_model_eject_button_style()
+            self._refresh_global_theme_chrome(self._is_dark_theme, profiler)
 
-        # 3. 🔑 THE FIX: Update Conversations View
-        if hasattr(self, 'conversations_view'):
-            if hasattr(self.conversations_view, 'refresh_menu_themes'):
-                self.conversations_view.refresh_menu_themes(self._is_dark_theme)
-            if hasattr(self.conversations_view, 'refresh_button_themes'):
-                self.conversations_view.refresh_button_themes(self._is_dark_theme)
-            if hasattr(self.conversations_view, '_update_row_colors'):
-                self.conversations_view._update_row_colors() # Force text repaint instantly!
+            with profiler.step(f"stage_{active_stage}.refresh"):
+                self._refresh_stage_theme(active_stage, self._is_dark_theme)
+        finally:
+            self.setUpdatesEnabled(True)
+            self.update()
 
-        # 4. 🔑 THE FIX: Update Library View
-        if hasattr(self, 'library_view'):
-            if hasattr(self.library_view, 'refresh_menu_themes'):
-                self.library_view.refresh_menu_themes(self._is_dark_theme)
-            if hasattr(self.library_view, 'refresh_button_themes'):
-                self.library_view.refresh_button_themes(self._is_dark_theme)
-            if hasattr(self.library_view, '_update_row_colors'):
-                self.library_view._update_row_colors() # Force text repaint instantly!
-
-        if hasattr(self, "background_progress_row"):
-            self.background_progress_row.apply_theme(self._is_dark_theme)
-
-        if hasattr(self, "memory_manager_view") and hasattr(
-            self.memory_manager_view, "refresh_theme"
-        ):
-            self.memory_manager_view.refresh_theme(self._is_dark_theme)
-        if hasattr(self, "model_manager_view") and hasattr(
-            self.model_manager_view, "refresh_after_theme_toggle"
-        ):
-            self.model_manager_view.refresh_after_theme_toggle()
-        if hasattr(self, "telemetry_view") and hasattr(
-            self.telemetry_view, "refresh_after_theme_toggle"
-        ):
-            self.telemetry_view.refresh_after_theme_toggle()
-        if hasattr(self, "notification_center"):
-            self.notification_center.apply_theme(self._is_dark_theme)
-        if hasattr(self, "_modal_backdrop"):
-            self._modal_backdrop.apply_theme(self._is_dark_theme)
-        if self.tray_controller is not None:
-            self.tray_controller.apply_theme(self._is_dark_theme)
-        if self._companion_controller is not None:
-            self._companion_controller.apply_theme(self._is_dark_theme)
-
-        for btn in getattr(self, "nav_buttons", ()):
-            self._refresh_nav_btn_icon(btn)
+        profiler.finish(
+            context={
+                **self._theme_toggle_profile_context(),
+                "deferred_stage_count": len(hidden_stages),
+            }
+        )
+        self._schedule_deferred_theme_refreshes(hidden_stages)
 
     def _setup_notification_service(self) -> None:
         self._notification_service.set_window_state_providers(
@@ -3184,15 +3593,16 @@ class MainWindow(QMainWindow):
             self._companion_controller.on_settings_changed()
 
     def _on_tray_companion_toggled(self, enabled: bool) -> None:
-        if hasattr(self, "settings_view") and hasattr(self.settings_view, "companion_enabled_cb"):
-            self.settings_view.companion_enabled_cb.blockSignals(True)
-            self.settings_view.companion_enabled_cb.setChecked(enabled)
-            self.settings_view.companion_enabled_cb.blockSignals(False)
+        sv = self._settings_view
+        if sv is not None and hasattr(sv, "companion_enabled_cb"):
+            sv.companion_enabled_cb.blockSignals(True)
+            sv.companion_enabled_cb.setChecked(enabled)
+            sv.companion_enabled_cb.blockSignals(False)
         if self._companion_controller is not None:
             self._companion_controller.set_user_enabled(enabled)
 
     def _on_companion_snap_zone_changed(self, _zone: str) -> None:
-        settings = getattr(self, "settings_view", None)
+        settings = self._settings_view
         if settings is not None and hasattr(settings, "_sync_companion_snap_compass"):
             settings._sync_companion_snap_compass()
 
@@ -3283,11 +3693,11 @@ class MainWindow(QMainWindow):
             
         # 3. Keep the Advanced Telemetry screen in sync
         # This prevents the sidebar and the main graph from ever showing different numbers
-        if hasattr(self, 'telemetry_view'):
-            # These match the object names in your telemetry_view.py
-            self.telemetry_view.live_cpu_lbl.setText(f"CPU: {cpu}%")
-            self.telemetry_view.live_ram_lbl.setText(f"RAM: {ram}%")
-            self.telemetry_view.live_gpu_lbl.setText(f"GPU: {gpu}%")
+        if self._telemetry_view is not None:
+            tv = self._telemetry_view
+            tv.live_cpu_lbl.setText(f"CPU: {cpu}%")
+            tv.live_ram_lbl.setText(f"RAM: {ram}%")
+            tv.live_gpu_lbl.setText(f"GPU: {gpu}%")
 
     # ------------------------------------------------------------------ #
     #  FRAMELESS DRAG & DROP EVENT ROUTING                               #
@@ -3375,7 +3785,7 @@ class MainWindow(QMainWindow):
             # Scroll to the wakeword models help anchor after the Settings
             # view is routed/constructed.
             def _jump() -> None:
-                sv = getattr(self, "settings_view", None)
+                sv = self._settings_view
                 if sv is not None and hasattr(sv, "select_settings_section"):
                     sv.select_settings_section(
                         "help", anchor="wakeword-models"
@@ -3429,12 +3839,11 @@ class MainWindow(QMainWindow):
         if hasattr(self, "nav_settings"):
             self.nav_settings.setChecked(True)
             self._route_view(5, self.nav_settings)
-        if hasattr(self, "settings_view") and hasattr(
-            self.settings_view, "select_settings_section"
-        ):
+        sv = self._settings_view
+        if sv is not None and hasattr(sv, "select_settings_section"):
             QTimer.singleShot(
                 0,
-                lambda: self.settings_view.select_settings_section(
+                lambda: sv.select_settings_section(
                     section,
                     anchor=anchor,
                     configure_provider_id=configure_provider_id,
@@ -3603,12 +4012,14 @@ class MainWindow(QMainWindow):
         pass # Will be forwarded to ConversationsView
 
     def update_stt_latency(self, ms: float) -> None:
-        if hasattr(self, 'telemetry_view'):
-            self.telemetry_view.update_stt_latency(ms)
+        tv = self._telemetry_view
+        if tv is not None:
+            tv.update_stt_latency(ms)
 
     def update_ttft_latency(self, ms: float) -> None:
-        if hasattr(self, 'telemetry_view'):
-            self.telemetry_view.update_ttft_latency(ms)
+        tv = self._telemetry_view
+        if tv is not None:
+            tv.update_ttft_latency(ms)
 
     def on_audio_volume_update(self, level: float) -> None:
         self._presence_service.set_audio_level(level)
@@ -3618,13 +4029,14 @@ class MainWindow(QMainWindow):
             self._companion_controller.set_speech_level(level)
 
     def update_tts_latency(self, ms: float) -> None:
-        if hasattr(self, 'telemetry_view'):
-            self.telemetry_view.update_tts_latency(ms)
+        tv = self._telemetry_view
+        if tv is not None:
+            tv.update_tts_latency(ms)
 
     def _sync_tts_voice_selector_labels(self, voice_name: str) -> None:
         if hasattr(self, "global_voice_selector"):
             self.global_voice_selector.setText(voice_name)
-        settings = getattr(self, "settings_view", None)
+        settings = self._settings_view
         if settings is not None and hasattr(settings, "voice_selector"):
             settings.voice_selector.setText(voice_name)
             settings.voice_selector.update()
@@ -3654,9 +4066,9 @@ class MainWindow(QMainWindow):
             menu_items,
             self._on_tts_voice_selected,
         )
-        if hasattr(self, "settings_view") and hasattr(self.settings_view, "voice_selector"):
-            self.settings_view._build_prestige_menu(
-                self.settings_view.voice_selector,
+        if self._settings_view is not None and hasattr(self._settings_view, "voice_selector"):
+            self._settings_view._build_prestige_menu(
+                self._settings_view.voice_selector,
                 menu_items,
                 self._on_tts_voice_selected,
             )

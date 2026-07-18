@@ -109,7 +109,7 @@ def ensure_bootstrap_model_downloaded(
 def _reload_runtime_for_model(parent: QWidget, model_id: BootstrapModelId) -> None:
     window = parent.window()
     workers = getattr(window, "workers", None) or {}
-    settings_view = getattr(window, "settings_view", None)
+    settings_view = getattr(window, "_settings_view", None)
 
     if model_id == BootstrapModelId.WHISPER_SMALL:
         stt = workers.get("stt")
@@ -231,7 +231,7 @@ def ensure_search_models_for_feature(
 
     window = parent.window()
     workers = getattr(window, "workers", None) or {}
-    settings_view = getattr(window, "settings_view", None)
+    settings_view = getattr(window, "_settings_view", None)
     if settings_view is not None and hasattr(settings_view, "_reload_embedder_from_settings"):
         settings_view._reload_embedder_from_settings()
         if hasattr(settings_view, "embedding_model_changed"):
