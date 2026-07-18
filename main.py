@@ -24,7 +24,12 @@ from core.stt_models import migrate_stale_stt_override
 from core.tts_models import migrate_legacy_tts_layout, migrate_stale_tts_override, resolve_boot_tts_path
 from rag.embedder import EmbeddingModel
 from rag.store import DocumentStore
-from ui.main_window import MainWindow
+from ui.main_window import (
+    MAIN_STAGE_LIBRARY,
+    MAIN_STAGE_SETTINGS,
+    MAIN_STAGE_TELEMETRY,
+    MainWindow,
+)
 from ui.splash_overlay import bootstrap_with_splash, start_phased_qube_build
 from core.database import DatabaseManager
 from core.app_settings import (
@@ -332,15 +337,15 @@ class Qube:
 
     def _begin_embedding_job_ui(self, detail: str) -> None:
         self.window.begin_background_progress(detail)
-        self.window.library_view.begin_ingest_progress_ui(detail=detail)
+        self.window.ensure_library_view().begin_ingest_progress_ui(detail=detail)
 
     def _update_embedding_job_progress(self, percent: int) -> None:
         self.window.update_background_progress(percent)
-        self.window.library_view.update_ingestion_progress(percent)
+        self.window.ensure_library_view().update_ingestion_progress(percent)
 
     def _set_embedding_job_detail(self, detail: str) -> None:
         self.window.set_background_progress_detail(detail)
-        self.window.library_view.set_ingest_progress_detail(detail)
+        self.window.ensure_library_view().set_ingest_progress_detail(detail)
         self.window.update_status(detail)
 
     def _finish_embedding_job_ui(self) -> None:
@@ -407,13 +412,13 @@ class Qube:
         w = self.window
         if isinstance(getattr(w, "workers", None), dict):
             w.workers["embedder"] = self.embedder
-        mmv = getattr(w, "memory_manager_view", None)
+        mmv = self.window._memory_manager_view
         if mmv is not None:
             mmv.embedder = self.embedder
             worker = getattr(mmv, "worker", None)
             if worker is not None:
                 worker.embedder = self.embedder
-        self.window.library_view.finish_reindex_ui()
+        self.window.ensure_library_view().finish_reindex_ui()
         self._finish_embedding_job_ui()
         self.window._activity_reducer.set_background_busy(False)
         self.window._sync_tray_presence()
@@ -434,8 +439,8 @@ class Qube:
                 tray_bump=True,
             )
         )
-        if hasattr(self.window, "settings_view"):
-            sv = self.window.settings_view
+        sv = self.window._settings_view
+        if sv is not None:
             if hasattr(sv, "_sync_embedding_mode_selector"):
                 sv._sync_embedding_mode_selector()
             if hasattr(sv, "_sync_active_embedding_label"):
@@ -457,8 +462,8 @@ class Qube:
         self._reindex_target_mode = None
         if revert is not None:
             set_embedding_mode(revert)
-            if hasattr(self.window, "settings_view"):
-                sv = self.window.settings_view
+            sv = self.window._settings_view
+            if sv is not None:
                 if hasattr(sv, "_sync_embedding_mode_selector"):
                     sv._sync_embedding_mode_selector()
                 if hasattr(sv, "_sync_active_embedding_label"):
@@ -477,7 +482,7 @@ class Qube:
             body += f"\n\n{format_search_preset_download_failure(mode_for_hint)}"
 
         self._finish_embedding_job_ui()
-        self.window.library_view.show_error(
+        self.window.ensure_library_view().show_error(
             body,
             title="Reprocessing Failed",
         )
@@ -493,8 +498,8 @@ class Qube:
         if hasattr(self.stt_worker, "reload_from_settings"):
             self.stt_worker.reload_from_settings()
         w = self.window
-        if hasattr(w, "settings_view"):
-            sv = w.settings_view
+        sv = w._settings_view
+        if sv is not None:
             if hasattr(sv, "_sync_active_stt_label"):
                 sv._sync_active_stt_label()
             if hasattr(sv, "_refresh_stt_model_list"):
@@ -507,12 +512,82 @@ class Qube:
         if not ok:
             logger.warning("[TTS] Failed to reload model from settings")
         w = self.window
-        if hasattr(w, "settings_view"):
-            sv = w.settings_view
+        sv = w._settings_view
+        if sv is not None:
             if hasattr(sv, "_sync_active_tts_label"):
                 sv._sync_active_tts_label()
             if hasattr(sv, "_refresh_tts_model_list"):
                 sv._refresh_tts_model_list()
+
+    def _wire_library_app_routes(self) -> None:
+        lv = self.window.peek_library_view()
+        if lv is None:
+            return
+        lv.ingest_requested.connect(self._start_ingestion)
+
+    def _wire_settings_app_routes(self) -> None:
+        sv = self.window._settings_view
+        if sv is None:
+            return
+        if hasattr(sv, "rag_kb_toggle"):
+            sv.rag_kb_toggle.connect(self.on_rag_toggle_changed)
+        if hasattr(sv, "memory_enrichment_changed"):
+            sv.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
+            sv.memory_enrichment_changed.connect(
+                self.memory_reflection_worker.set_enabled
+            )
+        if hasattr(sv, "memory_promotion_changed"):
+            sv.memory_promotion_changed.connect(
+                self.memory_promotion_worker.set_enabled
+            )
+        if hasattr(sv, "memory_consolidation_changed"):
+            sv.memory_consolidation_changed.connect(
+                self.memory_consolidation_worker.set_enabled
+            )
+        if hasattr(sv, "engine_mode_changed"):
+            sv.engine_mode_changed.connect(self._on_engine_mode_changed)
+        if hasattr(sv, "external_settings_reloaded"):
+            sv.external_settings_reloaded.connect(self._on_external_settings_reloaded)
+        if hasattr(sv, "embedding_model_changed"):
+            sv.embedding_model_changed.connect(self._reload_embedder_from_settings)
+        if hasattr(sv, "embedding_mode_change_requested"):
+            sv.embedding_mode_change_requested.connect(
+                self._on_embedding_mode_change_requested
+            )
+        if hasattr(sv, "stt_model_changed"):
+            sv.stt_model_changed.connect(self._reload_stt_from_settings)
+        if hasattr(sv, "tts_model_changed"):
+            sv.tts_model_changed.connect(self._reload_tts_from_settings)
+        if hasattr(self, "sidecar_worker") and hasattr(sv, "_sync_active_cognition_label"):
+            self.sidecar_worker.model_reload_finished.connect(
+                lambda _ok, _msg: sv._sync_active_cognition_label()
+            )
+
+    def _wire_telemetry_app_routes(self) -> None:
+        w = self.window
+        tv = w._telemetry_view
+        if tv is None:
+            return
+        if hasattr(self.llm_worker, "router_telemetry_updated") and hasattr(
+            tv, "update_router_telemetry"
+        ):
+            self.llm_worker.router_telemetry_updated.connect(tv.update_router_telemetry)
+        if hasattr(self, "sidecar_worker") and hasattr(
+            self.sidecar_worker, "sidecar_telemetry_updated"
+        ) and hasattr(tv, "update_sidecar_telemetry"):
+            self.sidecar_worker.sidecar_telemetry_updated.connect(
+                tv.update_sidecar_telemetry
+            )
+            if hasattr(tv, "_refresh_sidecar_from_worker_snapshot"):
+                self.sidecar_worker.model_reload_finished.connect(
+                    lambda _ok, _msg: tv._refresh_sidecar_from_worker_snapshot()
+                )
+        if hasattr(self.llm_worker, "sidecar_telemetry_updated") and hasattr(
+            tv, "update_sidecar_telemetry"
+        ):
+            self.llm_worker.sidecar_telemetry_updated.connect(
+                tv.update_sidecar_telemetry
+            )
 
     def _connect_signals(self):
         w = self.window
@@ -543,74 +618,12 @@ class Qube:
         self.deep_research_worker.progress.connect(self._on_deep_research_progress)
         self.deep_research_worker.finished.connect(self._on_deep_research_finished)
 
-        # Settings View Routing
+        # Lazy main stages: defer signal wiring until first visit (see MainWindow lifecycle comment).
         self.tts_worker.model_loaded.connect(self.window.update_tts_voice_dropdowns)
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'rag_kb_toggle'):
-            self.window.settings_view.rag_kb_toggle.connect(self.on_rag_toggle_changed)
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_enrichment_changed'):
-            self.window.settings_view.memory_enrichment_changed.connect(self.enrichment_worker.set_enabled)
-            self.window.settings_view.memory_enrichment_changed.connect(
-                self.memory_reflection_worker.set_enabled
-            )
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_promotion_changed'):
-            self.window.settings_view.memory_promotion_changed.connect(
-                self.memory_promotion_worker.set_enabled
-            )
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'memory_consolidation_changed'):
-            self.window.settings_view.memory_consolidation_changed.connect(
-                self.memory_consolidation_worker.set_enabled
-            )
-        if hasattr(self.window, 'settings_view') and hasattr(self.window.settings_view, 'engine_mode_changed'):
-            self.window.settings_view.engine_mode_changed.connect(self._on_engine_mode_changed)
-        if hasattr(self.window, 'settings_view') and hasattr(
-            self.window.settings_view, 'external_settings_reloaded'
-        ):
-            self.window.settings_view.external_settings_reloaded.connect(
-                self._on_external_settings_reloaded
-            )
-        if hasattr(self.window, "settings_view") and hasattr(
-            self.window.settings_view, "embedding_model_changed"
-        ):
-            self.window.settings_view.embedding_model_changed.connect(
-                self._reload_embedder_from_settings
-            )
-        if hasattr(self.window, "settings_view") and hasattr(
-            self.window.settings_view, "embedding_mode_change_requested"
-        ):
-            self.window.settings_view.embedding_mode_change_requested.connect(
-                self._on_embedding_mode_change_requested
-            )
-        if hasattr(self.window, "settings_view") and hasattr(
-            self.window.settings_view, "stt_model_changed"
-        ):
-            self.window.settings_view.stt_model_changed.connect(
-                self._reload_stt_from_settings
-            )
-        if hasattr(self.window, "settings_view") and hasattr(
-            self.window.settings_view, "tts_model_changed"
-        ):
-            self.window.settings_view.tts_model_changed.connect(
-                self._reload_tts_from_settings
-            )
+        w.register_main_stage_app_wirer(MAIN_STAGE_LIBRARY, self._wire_library_app_routes)
+        w.register_main_stage_app_wirer(MAIN_STAGE_SETTINGS, self._wire_settings_app_routes)
+        w.register_main_stage_app_wirer(MAIN_STAGE_TELEMETRY, self._wire_telemetry_app_routes)
         self.native_llama_engine.load_finished.connect(self._on_native_model_load_finished)
-        if (
-            hasattr(self.window, "model_manager_view")
-            and hasattr(self.window, "settings_view")
-            and hasattr(self.window.model_manager_view, "native_library_changed")
-            and hasattr(self.window.settings_view, "refresh_native_local_library")
-        ):
-            self.window.model_manager_view.native_library_changed.connect(
-                self.window.settings_view.refresh_native_local_library
-            )
-        if (
-            hasattr(self.window, "model_manager_view")
-            and hasattr(self.window, "_companion_controller")
-            and self.window._companion_controller is not None
-            and hasattr(self.window.model_manager_view, "download_succeeded")
-        ):
-            self.window.model_manager_view.download_succeeded.connect(
-                self.window._companion_controller.on_model_download_complete
-            )
 
         # Conversations View Routing
         self.llm_worker.token_streamed.connect(w.conversations_view.on_llm_token_streamed)
@@ -646,10 +659,9 @@ class Qube:
             lambda _sid: self.tts_worker.stop_playback()
         )
 
-        # Library View Routing
-        w.library_view.ingest_requested.connect(self._start_ingestion)
+        # Library ingest wiring is deferred until the Library page is opened.
 
-        # Telemetry View Routing
+        # Telemetry View Routing (latency hooks use MainWindow shims; page wiring is lazy)
         if hasattr(self.stt_worker, 'stt_latency'):
             self.stt_worker.stt_latency.connect(w.update_stt_latency)
             if hasattr(w, "conversations_view") and hasattr(
@@ -682,32 +694,6 @@ class Qube:
             self.tts_worker.playback_level.connect(w.on_tts_playback_level)
         if hasattr(self.audio_worker, 'volume_update'):
             self.audio_worker.volume_update.connect(w.on_audio_volume_update)
-        if hasattr(self.llm_worker, 'router_telemetry_updated') and hasattr(w, 'telemetry_view'):
-            if hasattr(w.telemetry_view, 'update_router_telemetry'):
-                self.llm_worker.router_telemetry_updated.connect(w.telemetry_view.update_router_telemetry)
-        if hasattr(self, 'sidecar_worker') and hasattr(w, 'telemetry_view'):
-            if hasattr(self.sidecar_worker, 'sidecar_telemetry_updated'):
-                if hasattr(w.telemetry_view, 'update_sidecar_telemetry'):
-                    self.sidecar_worker.sidecar_telemetry_updated.connect(
-                        w.telemetry_view.update_sidecar_telemetry
-                    )
-            if hasattr(self.sidecar_worker, 'model_reload_finished'):
-                tv = w.telemetry_view
-                if hasattr(tv, '_refresh_sidecar_from_worker_snapshot'):
-                    self.sidecar_worker.model_reload_finished.connect(
-                        lambda _ok, _msg: tv._refresh_sidecar_from_worker_snapshot()
-                    )
-                if hasattr(w, 'settings_view') and hasattr(
-                    w.settings_view, '_sync_active_cognition_label'
-                ):
-                    self.sidecar_worker.model_reload_finished.connect(
-                        lambda _ok, _msg: w.settings_view._sync_active_cognition_label()
-                    )
-        if hasattr(self.llm_worker, 'sidecar_telemetry_updated') and hasattr(w, 'telemetry_view'):
-            if hasattr(w.telemetry_view, 'update_sidecar_telemetry'):
-                self.llm_worker.sidecar_telemetry_updated.connect(
-                    w.telemetry_view.update_sidecar_telemetry
-                )
         if hasattr(self.llm_worker, 'routing_debug_record_added') and hasattr(w, 'routing_debug_tool_view'):
             if w.routing_debug_tool_view is not None:
                 self.llm_worker.routing_debug_record_added.connect(w.routing_debug_tool_view.add_record)
@@ -1202,7 +1188,7 @@ class Qube:
     def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         if is_reindex_in_progress():
-            self.window.library_view.show_error(
+            self.window.ensure_library_view().show_error(
                 "Reprocessing is still running. Please wait until it finishes."
             )
             return
@@ -1223,11 +1209,15 @@ class Qube:
         # Wire the worker's progress signals back to the Library UI
         self.ingestion_worker.progress_update.connect(self._update_embedding_job_progress)
         self.ingestion_worker.file_done.connect(self._set_embedding_job_detail)
-        self.ingestion_worker.ingestion_complete.connect(self.window.library_view.complete_ingestion)
+        self.ingestion_worker.ingestion_complete.connect(
+            self.window.ensure_library_view().complete_ingestion
+        )
         self.ingestion_worker.ingestion_complete.connect(self._on_ingestion_complete)
 
         # Route backend errors directly to the UI popup
-        self.ingestion_worker.error_occurred.connect(self.window.library_view.show_error)
+        self.ingestion_worker.error_occurred.connect(
+            self.window.ensure_library_view().show_error
+        )
         self.ingestion_worker.error_occurred.connect(lambda _err: self._finish_embedding_job_ui())
 
         # Keep the terminal log as a backup
@@ -1238,8 +1228,8 @@ class Qube:
 
     def _on_ingest_blurb_ready(self, filename: str, blurb: str) -> None:
         if self.db_manager.update_document_blurb(filename, blurb):
-            if hasattr(self.window, "library_view"):
-                self.window.library_view.refresh_library_list()
+            if self.window._library_view is not None:
+                self.window._library_view.refresh_library_list()
 
     def _on_ingestion_complete(self, chunk_count: int) -> None:
         file_count = len(getattr(self.ingestion_worker, "file_paths", []) or [])
@@ -1304,7 +1294,7 @@ class Qube:
         if (KEY_WAKEWORD_ACTIVE_ID in changed or KEY_WAKEWORD_THRESHOLDS in changed) and hasattr(
             self, "audio_worker"
         ):
-            sv = getattr(self.window, "settings_view", None)
+            sv = self.window._settings_view
             if sv is not None and hasattr(sv, "_sync_wakeword_catalog"):
                 sv._sync_wakeword_catalog(trigger="external settings")
 
@@ -1376,13 +1366,14 @@ class Qube:
         logger.info("Initiating graceful shutdown...")
 
         # 0. Model Manager — Hub search/README/list/download QThreads can block exit if still running
-        if hasattr(self.window, "model_manager_view"):
-            self.window.model_manager_view.shutdown_hf_workers()
+        mm = self.window._model_manager_view
+        if mm is not None:
+            mm.shutdown_hf_workers()
 
         # 0b. Memory Manager — QThread is not stopped via closeEvent when the page is embedded in the stack
-        mm = getattr(self.window, "memory_manager_view", None)
-        if mm is not None:
-            mmw = getattr(mm, "worker", None)
+        mmv = self.window._memory_manager_view
+        if mmv is not None:
+            mmw = getattr(mmv, "worker", None)
             if mmw is not None and hasattr(mmw, "isRunning") and mmw.isRunning():
                 if hasattr(mmw, "shutdown"):
                     mmw.shutdown()

@@ -72,12 +72,12 @@ def execute_composer_command(command_id: str, *, window: Any | None = None) -> C
 def _sync_help_guidance_ui(window: Any | None) -> None:
     if window is None:
         return
-    settings = getattr(window, "settings_view", None)
+    settings = getattr(window, "_settings_view", None)
     cb = getattr(settings, "model_manager_hardware_suggestions_cb", None)
     if cb is not None:
         cb.blockSignals(True)
         cb.setChecked(False)
         cb.blockSignals(False)
-    mm = getattr(window, "model_manager_view", None)
+    mm = getattr(window, "_model_manager_view", None)
     if mm is not None and hasattr(mm, "refresh_hardware_suggestions"):
         mm.refresh_hardware_suggestions()
