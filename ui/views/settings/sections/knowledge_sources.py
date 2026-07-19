@@ -267,6 +267,13 @@ def _refresh_setup_callout(host) -> None:
     if getattr(host, "knowledge_setup_callout_dismissed", False):
         shell.setVisible(False)
         return
+    if getattr(host, "_tour_setup_callout_preview_active", False):
+        callout.body_label.setText(
+            "When enabled optional-key sources lack API keys, Qube may suggest "
+            "setting them up here. Use Dismiss to hide this banner."
+        )
+        shell.setVisible(True)
+        return
     recommended = list_recommended_setup_sources(host)
     if not recommended:
         shell.setVisible(False)
@@ -400,6 +407,7 @@ def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
         layout.addWidget(wrap_subsection(inner, anchor=f"sources_{service_id}"))
 
     sync_live_source_rows(host, is_dark=is_dark)
+    host.knowledge_live_sources_section = container
     card_layout.addWidget(wrap_subsection(container, anchor="knowledge_live_sources"))
     return card
 

@@ -776,57 +776,57 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
         )
     )
 
-    providers_layout.addWidget(
-        _DiscoveryPolicyRow(
-            host,
-            provider_id=PRIMARY_DISCOVERY_PROVIDER_ID,
-            role_label="Primary",
-            description="Default for @internet / general web when tier uses DuckDuckGo.",
-            is_dark=is_dark,
-        )
+    primary_row = _DiscoveryPolicyRow(
+        host,
+        provider_id=PRIMARY_DISCOVERY_PROVIDER_ID,
+        role_label="Primary",
+        description="Default for @internet / general web when tier uses DuckDuckGo.",
+        is_dark=is_dark,
     )
-    providers_layout.addWidget(
-        _DiscoveryPolicyRow(
-            host,
-            provider_id=BRAVE_DISCOVERY_PROVIDER_ID,
-            role_label="Fallback",
-            description=(
-                "Full web SERP via Brave Search API when tier allows API fallback. "
-                "Also used as primary for site-biased @recipe queries when configured."
-            ),
-            is_dark=is_dark,
-            show_configure=True,
-            configure_handler=host._on_brave_search_configure_clicked,
-            configure_tooltip="Add or update your Brave Search API key.",
-        )
+    host.discovery_primary_provider_card = primary_row._card
+    providers_layout.addWidget(primary_row)
+    brave_row = _DiscoveryPolicyRow(
+        host,
+        provider_id=BRAVE_DISCOVERY_PROVIDER_ID,
+        role_label="Fallback",
+        description=(
+            "Full web SERP via Brave Search API when tier allows API fallback. "
+            "Also used as primary for site-biased @recipe queries when configured."
+        ),
+        is_dark=is_dark,
+        show_configure=True,
+        configure_handler=host._on_brave_search_configure_clicked,
+        configure_tooltip="Add or update your Brave Search API key.",
     )
-    providers_layout.addWidget(
-        _DiscoveryPolicyRow(
-            host,
-            provider_id=SEARXNG_DISCOVERY_PROVIDER_ID,
-            role_label="Optional",
-            description=(
-                "Your self-hosted SearXNG instance (privacy tier: Self-hosted). "
-                "Upstream engines depend on your server configuration."
-            ),
-            is_dark=is_dark,
-            show_configure=True,
-            configure_handler=host._on_searxng_configure_clicked,
-            configure_tooltip="Optional API key for authenticated SearXNG instances.",
-        )
+    host.discovery_brave_configure_btn = brave_row.configure_btn
+    providers_layout.addWidget(brave_row)
+    searxng_row = _DiscoveryPolicyRow(
+        host,
+        provider_id=SEARXNG_DISCOVERY_PROVIDER_ID,
+        role_label="Optional",
+        description=(
+            "Your self-hosted SearXNG instance (privacy tier: Self-hosted). "
+            "Upstream engines depend on your server configuration."
+        ),
+        is_dark=is_dark,
+        show_configure=True,
+        configure_handler=host._on_searxng_configure_clicked,
+        configure_tooltip="Optional API key for authenticated SearXNG instances.",
     )
-    providers_layout.addWidget(
-        _DiscoveryPolicyRow(
-            host,
-            provider_id=WIKIPEDIA_DISCOVERY_PROVIDER_ID,
-            role_label="Fallback",
-            description=(
-                "Wikipedia article search when earlier providers fail. "
-                "Best for encyclopedic queries; site bias is stripped."
-            ),
-            is_dark=is_dark,
-        )
+    host.discovery_searxng_configure_btn = searxng_row.configure_btn
+    providers_layout.addWidget(searxng_row)
+    wiki_row = _DiscoveryPolicyRow(
+        host,
+        provider_id=WIKIPEDIA_DISCOVERY_PROVIDER_ID,
+        role_label="Fallback",
+        description=(
+            "Wikipedia article search when earlier providers fail. "
+            "Best for encyclopedic queries; site bias is stripped."
+        ),
+        is_dark=is_dark,
     )
+    host.discovery_wikipedia_provider_card = wiki_row._card
+    providers_layout.addWidget(wiki_row)
 
     host.discovery_policy_summary_card = _DiscoveryInfoCard(
         title="Active discovery route",

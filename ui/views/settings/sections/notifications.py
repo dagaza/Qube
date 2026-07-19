@@ -86,6 +86,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     clear_history_btn = make_settings_page_action_button("Clear notification history")
     clear_history_btn.clicked.connect(host._clear_notification_history)
+    host.notifications_clear_history_btn = clear_history_btn
     actions_card_layout.addWidget(clear_history_btn)
     notif_layout.addWidget(actions_card)
 

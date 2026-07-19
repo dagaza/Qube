@@ -557,18 +557,90 @@ class AiModelsHandlersMixin:
         set_advanced_chat_template_unlocked(bool(checked))
         self._sync_hardware_chat_template_panels()
 
+    def _show_ai_models_subsection_labels(self, *anchors: str) -> None:
+        anchor_set = set(anchors)
+        for lbl in getattr(self, "_ai_internal_subsection_labels", []):
+            anchor = lbl.property("settings_anchor")
+            if anchor in anchor_set:
+                lbl.setVisible(True)
+
     def _sync_hardware_chat_template_panels(self) -> None:
         internal = str(get_engine_mode()).lower().strip() == "internal"
-        for row_attr in ("advanced_hardware_row", "advanced_chat_template_row"):
-            row = getattr(self, row_attr, None)
-            if row is not None:
-                row.setVisible(internal)
+        tour_hw = getattr(self, "_tour_hardware_preview_active", False)
+        tour_hw_row = getattr(self, "_tour_hardware_row_preview_active", False)
+        tour_ct = getattr(self, "_tour_chat_template_preview_active", False)
+        tour_ct_row = getattr(self, "_tour_chat_template_row_preview_active", False)
+        hw_unlocked = get_advanced_hardware_unlocked()
+        ct_unlocked = get_advanced_chat_template_unlocked()
+
+        hw_row = getattr(self, "advanced_hardware_row", None)
+        if hw_row is not None:
+            hw_row.setVisible(internal or tour_hw_row or tour_hw)
+        ct_row = getattr(self, "advanced_chat_template_row", None)
+        if ct_row is not None:
+            ct_row.setVisible(internal or tour_ct_row or tour_ct)
+
         hw_panel = getattr(self, "advanced_hardware_panel", None)
         if hw_panel is not None:
-            hw_panel.setVisible(internal and get_advanced_hardware_unlocked())
+            hw_panel.setVisible((internal and hw_unlocked) or tour_hw)
         ct_panel = getattr(self, "advanced_chat_template_panel", None)
         if ct_panel is not None:
-            ct_panel.setVisible(internal and get_advanced_chat_template_unlocked())
+            ct_panel.setVisible((internal and ct_unlocked) or tour_ct)
+
+        if hasattr(self, "advanced_hardware_toggle"):
+            self.advanced_hardware_toggle.blockSignals(True)
+            self.advanced_hardware_toggle.setChecked(
+                True if (tour_hw or tour_hw_row) else hw_unlocked
+            )
+            self.advanced_hardware_toggle.blockSignals(False)
+        if hasattr(self, "advanced_chat_template_toggle"):
+            self.advanced_chat_template_toggle.blockSignals(True)
+            self.advanced_chat_template_toggle.setChecked(
+                True if (tour_ct or tour_ct_row) else ct_unlocked
+            )
+            self.advanced_chat_template_toggle.blockSignals(False)
+
+    def begin_ai_models_hardware_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced hardware controls during the AI & Models guided tour."""
+        self._tour_hardware_row_preview_active = True
+        if reveal_panel:
+            self._tour_hardware_preview_active = True
+        self._show_ai_models_subsection_labels("hardware", "inference_stack")
+        self._sync_hardware_chat_template_panels()
+
+    def end_ai_models_hardware_tutorial_preview(self) -> None:
+        """Restore advanced hardware panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_hardware_preview_active", False)
+            or getattr(self, "_tour_hardware_row_preview_active", False)
+        ):
+            return
+        self._tour_hardware_preview_active = False
+        self._tour_hardware_row_preview_active = False
+        self._sync_internal_engine_subsections(get_engine_mode())
+
+    def begin_ai_models_chat_template_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced chat template controls during the AI & Models guided tour."""
+        self._tour_chat_template_row_preview_active = True
+        if reveal_panel:
+            self._tour_chat_template_preview_active = True
+        self._show_ai_models_subsection_labels("chat_template")
+        self._sync_hardware_chat_template_panels()
+
+    def end_ai_models_chat_template_tutorial_preview(self) -> None:
+        """Restore advanced chat template panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_chat_template_preview_active", False)
+            or getattr(self, "_tour_chat_template_row_preview_active", False)
+        ):
+            return
+        self._tour_chat_template_preview_active = False
+        self._tour_chat_template_row_preview_active = False
+        self._sync_internal_engine_subsections(get_engine_mode())
 
     def _refresh_cognition_gguf_list(self) -> None:
         if not hasattr(self, "cognition_gguf_list"):

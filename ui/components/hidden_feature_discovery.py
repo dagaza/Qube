@@ -188,6 +188,9 @@ class _ComposerAtMentionDiscoveryPresentation(QObject):
 
     def _dismiss_active_onboarding_tour(self) -> None:
         """Hide the setup-tour dim overlay before the celebration coach + fireworks."""
+        if hasattr(self._host, "finish_active_tour"):
+            self._host.finish_active_tour()
+            return
         tour = getattr(self._host, "_local_llm_tour", None)
         if tour is not None and getattr(tour, "is_active", False):
             tour.finish()

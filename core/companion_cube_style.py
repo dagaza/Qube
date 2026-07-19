@@ -17,7 +17,7 @@ CUBE_STYLE_LABELS: dict[CompanionCubeStyle, str] = {
 
 CUBE_STYLE_DESCRIPTIONS: dict[CompanionCubeStyle, str] = {
     CompanionCubeStyle.CLASSIC: (
-        "Dan's holographic layered cube — soft faces, particles, and premium glow."
+        "Holographic layered cube — soft faces, particles, and premium glow."
     ),
     CompanionCubeStyle.EXPERIMENTAL: (
         "Splash-style wireframe cube with the fixed Q tail (matches download/processing)."

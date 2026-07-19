@@ -15,11 +15,13 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.components.brand_buttons import apply_brand_caution
+from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
 SETTINGS_SELECTOR_LABELS_PROP = "settings_selector_labels"
+SETTINGS_SELECTOR_MIN_WIDTH_PROP = "settings_selector_min_width"
 
 
 def fit_settings_selector_width(selector: SelectorButton, *labels: str) -> None:
@@ -50,7 +52,11 @@ def fit_settings_selector_width(selector: SelectorButton, *labels: str) -> None:
             width += 1
         return limit
 
-    selector.setFixedWidth(max(width_for(label) for label in label_list))
+    width = max(width_for(label) for label in label_list)
+    min_width = selector.property(SETTINGS_SELECTOR_MIN_WIDTH_PROP)
+    if isinstance(min_width, int) and min_width > 0:
+        width = max(width, min_width)
+    selector.setFixedWidth(width)
     policy = selector.sizePolicy()
     policy.setHorizontalPolicy(QSizePolicy.Policy.Fixed)
     selector.setSizePolicy(policy)
@@ -88,6 +94,41 @@ def make_settings_page_action_button(
     if caution:
         apply_brand_caution(btn)
     return btn
+
+
+def make_settings_section_header_row(
+    parent: QWidget,
+    *,
+    initial_tour_id: str,
+    initial_area_display_name: str | None = None,
+    icon_size: int = 20,
+) -> tuple[QLabel, PageTourHelpButton, QLabel, QWidget]:
+    """Right-pane section icon + title + guided tour ? button."""
+    row_host = QWidget(parent)
+    layout = QHBoxLayout(row_host)
+    layout.setContentsMargins(0, 0, 12, 0)
+    layout.setSpacing(8)
+
+    icon_lbl = QLabel()
+    icon_lbl.setProperty("class", "SectionHeaderIcon")
+    icon_lbl.setProperty("icon_size", icon_size)
+    icon_lbl.setFixedSize(icon_size + 2, icon_size + 2)
+    layout.addWidget(icon_lbl, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+    title_lbl = QLabel("")
+    title_lbl.setObjectName("ViewTitle")
+    title_lbl.setProperty("class", "PageTitle")
+    layout.addWidget(title_lbl)
+
+    tour_btn = PageTourHelpButton(
+        initial_tour_id,
+        area_display_name=initial_area_display_name,
+        parent=parent,
+    )
+    layout.addWidget(tour_btn, alignment=Qt.AlignmentFlag.AlignTop)
+    layout.addStretch(1)
+
+    return title_lbl, tour_btn, icon_lbl, row_host
 
 
 def add_section_reset_footer(

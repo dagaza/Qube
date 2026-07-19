@@ -30,6 +30,7 @@ from ui.views.settings.widgets import (
     add_section_reset_footer,
     add_subsection_to_form,
     add_subsection_to_layout,
+    SETTINGS_SELECTOR_MIN_WIDTH_PROP,
     wrap_subsection,
 )
 
@@ -38,7 +39,11 @@ _WAKEWORD_ACTION_BTN_WIDTH = 300
 
 
 def _apply_device_selector_width(selector: SelectorButton) -> None:
+    selector.setProperty(SETTINGS_SELECTOR_MIN_WIDTH_PROP, _DEVICE_SELECTOR_WIDTH)
     selector.setFixedWidth(_DEVICE_SELECTOR_WIDTH)
+    policy = selector.sizePolicy()
+    policy.setHorizontalPolicy(QSizePolicy.Policy.Fixed)
+    selector.setSizePolicy(policy)
 
 
 def _apply_wakeword_action_button_width(btn: QPushButton) -> None:
@@ -94,6 +99,41 @@ def _device_selector_row(selector: SelectorButton, preview_btn: QPushButton | No
         _apply_device_selector_width(selector)
         return selector
     return _selector_action_row(selector, preview_btn)
+
+
+def _tts_voice_enable_row(host) -> QWidget:
+    """Match the toolbar Audio & TTS Voice enable row (toggle + label)."""
+    toggle = PrestigeToggle()
+    label = QLabel("Enable TTS Voice")
+    label.setProperty("class", "ToolsPaneControl")
+    tooltip = (
+        "Speak assistant responses aloud. Turn off to mute text-to-speech output."
+    )
+    toggle.setToolTip(tooltip)
+    label.setToolTip(tooltip)
+    row = QWidget()
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(8)
+    row_layout.addWidget(toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addWidget(label)
+    row_layout.addStretch(1)
+    host.tts_voice_enabled_toggle = toggle
+    host.tts_voice_enabled_label = label
+    return row
+
+
+def _tts_voice_settings_column(host) -> QWidget:
+    """Enable toggle stacked above the voice selector row."""
+    column = QWidget()
+    column_layout = QVBoxLayout(column)
+    column_layout.setContentsMargins(0, 0, 0, 0)
+    column_layout.setSpacing(8)
+    column_layout.addWidget(_tts_voice_enable_row(host))
+    column_layout.addWidget(
+        _device_selector_row(host.voice_selector, host.tts_voice_preview_btn)
+    )
+    return column
 
 
 def _advanced_toggle_row(
@@ -397,7 +437,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     devices_form.addRow(
         "TTS Voice",
-        _device_selector_row(host.voice_selector, host.tts_voice_preview_btn),
+        _tts_voice_settings_column(host),
     )
     devices_card_layout.addWidget(devices_form_host)
     section_layout.addWidget(devices_card)

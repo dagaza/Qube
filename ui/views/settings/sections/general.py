@@ -23,6 +23,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     general_layout.setSpacing(15)
 
     language_card, language_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    host.general_language_card = language_card
     add_subsection_to_layout(language_card_layout, tr("Language"))
 
     language_lbl = QLabel(tr("Application language"))

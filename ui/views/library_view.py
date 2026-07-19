@@ -29,6 +29,7 @@ from PyQt6.QtGui import (
 import qtawesome as qta
 from pathlib import Path
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from core.composer_attachments import validate_file_token
@@ -41,6 +42,7 @@ from ui.components.sidebar_folder_list import (
     SIDEBAR_ROW_PAYLOAD_ROLE,
     SidebarFolderListController,
     add_new_folder_header_button,
+    create_sidebar_header_actions_row,
 )
 from ui.components.ingest_progress_row import IngestProgressRow
 import logging
@@ -196,22 +198,34 @@ class LibraryView(QWidget):
         self.list_title.setObjectName("ViewTitle")
         self.list_title.setProperty("class", "PageTitle")
         
+        header_layout.addWidget(self.list_title)
+        self.page_tour_help_btn = PageTourHelpButton(
+            "library",
+            area_display_name="Library",
+            parent=frame,
+        )
+        header_layout.addWidget(self.page_tour_help_btn)
+        header_layout.addStretch()
+        (
+            _actions_host,
+            actions_outer,
+            actions_cluster,
+        ) = create_sidebar_header_actions_row()
+        header_layout.addWidget(_actions_host)
+
         self.add_btn = QPushButton()
         self.add_btn.setIcon(qta.icon('fa5s.plus')) 
         self.add_btn.setProperty("class", "IconButton") 
         self.add_btn.setToolTip("Ingest New Document")
-        self.add_btn.clicked.connect(self._browse_for_document) 
-        
-        header_layout.addWidget(self.list_title)
-        header_layout.addStretch()
+        self.add_btn.clicked.connect(self._browse_for_document)
+        actions_outer.addWidget(self.add_btn)
+
         self.new_folder_btn = add_new_folder_header_button(
-            header_layout,
-            before_widget=self.add_btn,
+            actions_cluster,
             on_new_folder=lambda: self._folder_controller.prompt_create_folder()
             if self._folder_controller
             else None,
         )
-        header_layout.addWidget(self.add_btn)
         
         layout.addLayout(header_layout)
 
@@ -251,7 +265,7 @@ class LibraryView(QWidget):
             on_after_folder_delete=self._purge_deleted_library_files,
         )
         self.sort_btn = self._folder_controller.setup_sort_header_button(
-            header_layout, before_widget=self.add_btn
+            actions_cluster
         )
 
         self.doc_list.itemDoubleClicked.connect(self._on_library_item_double_clicked)
@@ -303,7 +317,10 @@ class LibraryView(QWidget):
         btn = getattr(self, "_chat_with_doc_btn", None)
         if btn is None:
             return
-        show = bool(self.active_filename and validate_file_token(self.active_filename))
+        if getattr(self, "_tour_chat_fab_preview_active", False):
+            show = True
+        else:
+            show = bool(self.active_filename and validate_file_token(self.active_filename))
         btn.setVisible(show)
         if show:
             btn.raise_()

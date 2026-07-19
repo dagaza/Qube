@@ -461,8 +461,7 @@ class VoiceHandlersMixin:
                 self.advanced_stt_toggle.blockSignals(False)
                 return
         set_advanced_stt_unlocked(bool(checked))
-        if hasattr(self, "advanced_stt_panel"):
-            self.advanced_stt_panel.setVisible(bool(checked))
+        self._apply_advanced_stt_panel_visibility()
 
     def _on_advanced_tts_toggled(self, checked: bool) -> None:
         if checked:
@@ -486,8 +485,55 @@ class VoiceHandlersMixin:
                 self.advanced_tts_toggle.blockSignals(False)
                 return
         set_advanced_tts_unlocked(bool(checked))
+        self._apply_advanced_tts_panel_visibility()
+
+    def _apply_advanced_stt_panel_visibility(self) -> None:
+        unlocked = get_advanced_stt_unlocked()
+        visible = unlocked or getattr(self, "_tour_stt_preview_active", False)
+        if hasattr(self, "advanced_stt_panel"):
+            self.advanced_stt_panel.setVisible(visible)
+        if hasattr(self, "advanced_stt_toggle"):
+            self.advanced_stt_toggle.blockSignals(True)
+            self.advanced_stt_toggle.setChecked(
+                True if getattr(self, "_tour_stt_preview_active", False) else unlocked
+            )
+            self.advanced_stt_toggle.blockSignals(False)
+
+    def _apply_advanced_tts_panel_visibility(self) -> None:
+        unlocked = get_advanced_tts_unlocked()
+        visible = unlocked or getattr(self, "_tour_tts_preview_active", False)
         if hasattr(self, "advanced_tts_panel"):
-            self.advanced_tts_panel.setVisible(bool(checked))
+            self.advanced_tts_panel.setVisible(visible)
+        if hasattr(self, "advanced_tts_toggle"):
+            self.advanced_tts_toggle.blockSignals(True)
+            self.advanced_tts_toggle.setChecked(
+                True if getattr(self, "_tour_tts_preview_active", False) else unlocked
+            )
+            self.advanced_tts_toggle.blockSignals(False)
+
+    def begin_voice_audio_stt_tutorial_preview(self) -> None:
+        """Reveal advanced STT controls during the Voice & Audio guided tour."""
+        self._tour_stt_preview_active = True
+        self._apply_advanced_stt_panel_visibility()
+
+    def end_voice_audio_stt_tutorial_preview(self) -> None:
+        """Restore advanced STT panel visibility after the guided tour."""
+        if not getattr(self, "_tour_stt_preview_active", False):
+            return
+        self._tour_stt_preview_active = False
+        self._apply_advanced_stt_panel_visibility()
+
+    def begin_voice_audio_tts_tutorial_preview(self) -> None:
+        """Reveal advanced TTS controls during the Voice & Audio guided tour."""
+        self._tour_tts_preview_active = True
+        self._apply_advanced_tts_panel_visibility()
+
+    def end_voice_audio_tts_tutorial_preview(self) -> None:
+        """Restore advanced TTS panel visibility after the guided tour."""
+        if not getattr(self, "_tour_tts_preview_active", False):
+            return
+        self._tour_tts_preview_active = False
+        self._apply_advanced_tts_panel_visibility()
 
     def _sync_stt_models_dir_label(self) -> None:
         if hasattr(self, "stt_dir_label"):

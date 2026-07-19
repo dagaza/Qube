@@ -426,7 +426,29 @@ class BootstrapDownloadsHandlersMixin:
             ("embedding_all_presets_download_row", all_search_presets_satisfied),
             ("cognition_bootstrap_download_row", cognition_model_present),
         )
+        tour = getattr(self, "_tour_knowledge_bootstrap_preview_active", False)
+        tour_rows = frozenset(
+            {
+                "embedding_bootstrap_download_row",
+                "embedding_all_presets_download_row",
+            }
+        )
         for attr, available_fn in rows:
             row = getattr(self, attr, None)
             if row is not None:
-                row.setVisible(not available_fn())
+                if tour and attr in tour_rows:
+                    row.setVisible(True)
+                else:
+                    row.setVisible(not available_fn())
+
+    def begin_knowledge_bootstrap_tutorial_preview(self) -> None:
+        """Reveal search-model download rows during the Knowledge guided tour."""
+        self._tour_knowledge_bootstrap_preview_active = True
+        self._sync_bootstrap_download_visibility()
+
+    def end_knowledge_bootstrap_tutorial_preview(self) -> None:
+        """Restore search-model download row visibility after the guided tour."""
+        if not getattr(self, "_tour_knowledge_bootstrap_preview_active", False):
+            return
+        self._tour_knowledge_bootstrap_preview_active = False
+        self._sync_bootstrap_download_visibility()

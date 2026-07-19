@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, QTimer, QSize
 import pyqtgraph as pg
 import qtawesome as qta
 
+from ui.components.page_tour_help_button import PageTourHelpButton
 from core.app_settings import get_engine_mode
 from core.inference_transparency import aggregate_app_transparency
 
@@ -72,11 +73,21 @@ class TelemetryView(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
 
-        # Header
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.setSpacing(8)
         title = QLabel("Advanced Telemetry")
         title.setObjectName("ViewTitle")
         title.setProperty("class", "PageTitle")
-        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
+        header_row.addWidget(title)
+        self.page_tour_help_btn = PageTourHelpButton(
+            "telemetry",
+            area_display_name="Advanced Telemetry",
+            parent=content,
+        )
+        header_row.addWidget(self.page_tour_help_btn)
+        header_row.addStretch(1)
+        layout.addLayout(header_row)
 
         # Main Dashboard Layout:
         # Row 1 -> Graph (left) + Latency/Capability (right)

@@ -417,7 +417,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     cube_style_lbl = QLabel("Qube cube style")
     cube_style_lbl.setObjectName("SettingsSubsectionLabel")
     cube_style_lbl.setToolTip(
-        "When the Qube cube persona is selected, choose Dan's holographic classic "
+        "When the Qube cube persona is selected, choose the holographic classic "
         "look or the experimental splash wireframe cube."
     )
     host._companion_cube_style_lbl = cube_style_lbl

@@ -291,8 +291,7 @@ class KnowledgeHandlersMixin:
                     toggle.blockSignals(False)
                 return
         set_advanced_discovery_unlocked(bool(checked))
-        if hasattr(self, "advanced_discovery_panel"):
-            self.advanced_discovery_panel.setVisible(bool(checked))
+        self._apply_advanced_discovery_panel_visibility()
         self._emit_external_settings_changed(KEY_ADVANCED_DISCOVERY_UNLOCKED)
 
     def _on_discovery_searxng_url_changed(self) -> None:
@@ -457,8 +456,153 @@ class KnowledgeHandlersMixin:
                 self.advanced_embedding_toggle.blockSignals(False)
                 return
         set_advanced_embedding_unlocked(bool(checked))
+        self._apply_advanced_embedding_panel_visibility()
+
+    def _apply_advanced_embedding_panel_visibility(self) -> None:
+        unlocked = get_advanced_embedding_unlocked()
+        tour_row = getattr(self, "_tour_embedding_row_preview_active", False)
+        tour_panel = getattr(self, "_tour_embedding_preview_active", False)
+        visible = unlocked or tour_panel
         if hasattr(self, "advanced_embedding_panel"):
-            self.advanced_embedding_panel.setVisible(bool(checked))
+            self.advanced_embedding_panel.setVisible(visible)
+        if hasattr(self, "advanced_embedding_toggle"):
+            self.advanced_embedding_toggle.blockSignals(True)
+            self.advanced_embedding_toggle.setChecked(tour_row or tour_panel or unlocked)
+            self.advanced_embedding_toggle.blockSignals(False)
+
+    def begin_knowledge_embedding_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced embedding controls during the Knowledge guided tour."""
+        self._tour_embedding_row_preview_active = True
+        if reveal_panel:
+            self._tour_embedding_preview_active = True
+        self._apply_advanced_embedding_panel_visibility()
+
+    def end_knowledge_embedding_tutorial_preview(self) -> None:
+        """Restore advanced embedding panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_embedding_preview_active", False)
+            or getattr(self, "_tour_embedding_row_preview_active", False)
+        ):
+            return
+        self._tour_embedding_preview_active = False
+        self._tour_embedding_row_preview_active = False
+        self._apply_advanced_embedding_panel_visibility()
+
+    def _apply_advanced_discovery_panel_visibility(self) -> None:
+        unlocked = get_advanced_discovery_unlocked()
+        tour_row = getattr(self, "_tour_discovery_row_preview_active", False)
+        tour_panel = getattr(self, "_tour_discovery_preview_active", False)
+        visible = unlocked or tour_panel
+        if hasattr(self, "advanced_discovery_panel"):
+            self.advanced_discovery_panel.setVisible(visible)
+        if hasattr(self, "advanced_discovery_toggle"):
+            self.advanced_discovery_toggle.blockSignals(True)
+            self.advanced_discovery_toggle.setChecked(
+                tour_row or tour_panel or unlocked
+            )
+            self.advanced_discovery_toggle.blockSignals(False)
+
+    def begin_knowledge_discovery_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced discovery limits during the Knowledge guided tour."""
+        self._tour_discovery_row_preview_active = True
+        if reveal_panel:
+            self._tour_discovery_preview_active = True
+        self._apply_advanced_discovery_panel_visibility()
+
+    def end_knowledge_discovery_tutorial_preview(self) -> None:
+        """Restore advanced discovery panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_discovery_preview_active", False)
+            or getattr(self, "_tour_discovery_row_preview_active", False)
+        ):
+            return
+        self._tour_discovery_preview_active = False
+        self._tour_discovery_row_preview_active = False
+        self._apply_advanced_discovery_panel_visibility()
+
+    def begin_knowledge_setup_callout_tutorial_preview(self) -> None:
+        """Reveal the recommended-setup callout during the Knowledge guided tour."""
+        self._tour_setup_callout_preview_active = True
+        from ui.views.settings.sections.knowledge_sources import _refresh_setup_callout
+
+        _refresh_setup_callout(self)
+
+    def end_knowledge_setup_callout_tutorial_preview(self) -> None:
+        """Restore recommended-setup callout visibility after the guided tour."""
+        if not getattr(self, "_tour_setup_callout_preview_active", False):
+            return
+        self._tour_setup_callout_preview_active = False
+        from ui.views.settings.sections.knowledge_sources import _refresh_setup_callout
+
+        _refresh_setup_callout(self)
+
+    def _apply_knowledge_preset_fields_tutorial_visibility(self) -> None:
+        from ui.views.settings.sections.knowledge_presets import (
+            _refresh_preset_sources_hint,
+            _sync_preset_mode_fields,
+        )
+
+        tour_api = getattr(self, "_tour_preset_api_fields_preview_active", False)
+        tour_web = getattr(self, "_tour_preset_web_fields_preview_active", False)
+        if not tour_api and not tour_web:
+            _sync_preset_mode_fields(self)
+            return
+
+        adapters = getattr(self, "knowledge_preset_adapters_input", None)
+        site_bias = getattr(self, "knowledge_preset_site_bias_input", None)
+        fetch_count = getattr(self, "knowledge_preset_fetch_count_input", None)
+        hint = getattr(self, "knowledge_preset_sources_hint", None)
+
+        if tour_api:
+            if adapters is not None:
+                adapters.setVisible(True)
+            if site_bias is not None:
+                site_bias.setVisible(False)
+            if fetch_count is not None:
+                fetch_count.setVisible(False)
+            if hint is not None:
+                hint.setVisible(True)
+                _refresh_preset_sources_hint(self)
+        elif tour_web:
+            if adapters is not None:
+                adapters.setVisible(False)
+            if site_bias is not None:
+                site_bias.setVisible(True)
+            if fetch_count is not None:
+                fetch_count.setVisible(True)
+            if hint is not None:
+                hint.setVisible(True)
+                hint.setText(
+                    "Web fetch presets discover and extract HTML from your site_bias "
+                    "domains. No connector is required."
+                )
+
+    def begin_knowledge_preset_api_fields_tutorial_preview(self) -> None:
+        """Show API-adapter preset fields during the Knowledge guided tour."""
+        self._tour_preset_web_fields_preview_active = False
+        self._tour_preset_api_fields_preview_active = True
+        self._apply_knowledge_preset_fields_tutorial_visibility()
+
+    def begin_knowledge_preset_web_fields_tutorial_preview(self) -> None:
+        """Show Web fetch preset fields during the Knowledge guided tour."""
+        self._tour_preset_api_fields_preview_active = False
+        self._tour_preset_web_fields_preview_active = True
+        self._apply_knowledge_preset_fields_tutorial_visibility()
+
+    def end_knowledge_preset_fields_tutorial_preview(self) -> None:
+        """Restore preset field visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_preset_api_fields_preview_active", False)
+            or getattr(self, "_tour_preset_web_fields_preview_active", False)
+        ):
+            return
+        self._tour_preset_api_fields_preview_active = False
+        self._tour_preset_web_fields_preview_active = False
+        self._apply_knowledge_preset_fields_tutorial_visibility()
 
     def _build_embedding_mode_menu(self) -> None:
         if not hasattr(self, "embedding_mode_selector"):

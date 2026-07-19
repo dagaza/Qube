@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QWidget,
     QLayout,
 )
@@ -36,6 +37,23 @@ ROW_KIND_FOLDER = "folder"
 ROW_KIND_SESSION = "session"
 ROW_KIND_DOCUMENT = "document"
 
+SIDEBAR_HEADER_CLUSTER_SPACING = 2
+SIDEBAR_HEADER_PRIMARY_GAP = 6
+
+
+def create_sidebar_header_actions_row() -> tuple[QWidget, QHBoxLayout, QHBoxLayout]:
+    """Compact host for folder/sort icons plus the primary + action."""
+    host = QWidget()
+    host.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    outer = QHBoxLayout(host)
+    outer.setContentsMargins(0, 0, 0, 0)
+    outer.setSpacing(SIDEBAR_HEADER_PRIMARY_GAP)
+    cluster = QHBoxLayout()
+    cluster.setContentsMargins(0, 0, 0, 0)
+    cluster.setSpacing(SIDEBAR_HEADER_CLUSTER_SPACING)
+    outer.addLayout(cluster)
+    return host, outer, cluster
+
 
 def row_kind(item: QListWidgetItem | None) -> str | None:
     if item is None:
@@ -50,20 +68,21 @@ def is_folder_item(item: QListWidgetItem | None) -> bool:
 def add_new_folder_header_button(
     header_layout: QLayout,
     *,
-    before_widget: QWidget,
     on_new_folder: Callable[[], None],
+    before_widget: QWidget | None = None,
 ) -> QPushButton:
-    """Insert a folder-plus icon button immediately left of the primary + action."""
+    """Add a folder-plus icon button to a sidebar header action row."""
     btn = QPushButton()
     btn.setIcon(qta.icon("fa5s.folder-plus"))
     btn.setProperty("class", "IconButton")
     btn.setToolTip("New folder")
     btn.clicked.connect(on_new_folder)
-    idx = header_layout.indexOf(before_widget)
-    if idx >= 0:
-        header_layout.insertWidget(idx, btn)
-    else:
-        header_layout.addWidget(btn)
+    if before_widget is not None:
+        idx = header_layout.indexOf(before_widget)
+        if idx >= 0:
+            header_layout.insertWidget(idx, btn)
+            return btn
+    header_layout.addWidget(btn)
     return btn
 
 
@@ -124,9 +143,12 @@ class SidebarFolderListController:
         self.on_reload()
 
     def setup_sort_header_button(
-        self, header_layout: QLayout, *, before_widget: QWidget
+        self,
+        header_layout: QLayout,
+        *,
+        before_widget: QWidget | None = None,
     ) -> QPushButton:
-        """Insert sort menu button immediately left of the primary + action."""
+        """Add sort menu button to a sidebar header action row."""
         btn = QPushButton()
         btn.setIcon(qta.icon("fa5s.sort"))
         btn.setProperty("class", "IconButton")
@@ -147,11 +169,12 @@ class SidebarFolderListController:
         by_date.triggered.connect(lambda: self.set_sort_mode("date"))
 
         btn.setMenu(menu)
-        idx = header_layout.indexOf(before_widget)
-        if idx >= 0:
-            header_layout.insertWidget(idx, btn)
-        else:
-            header_layout.addWidget(btn)
+        if before_widget is not None:
+            idx = header_layout.indexOf(before_widget)
+            if idx >= 0:
+                header_layout.insertWidget(idx, btn)
+                return btn
+        header_layout.addWidget(btn)
         return btn
 
     def _item_name_key(self, item: dict) -> str:

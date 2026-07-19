@@ -35,12 +35,14 @@ from queue import Empty, Queue
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QFontMetrics
+from PyQt6.QtGui import QColor, QFontMetrics, QPalette
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMenu,
     QPushButton,
     QScrollArea,
@@ -48,6 +50,7 @@ from PyQt6.QtWidgets import (
     QSpacerItem,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 
 import qtawesome as qta
@@ -66,6 +69,7 @@ from core.preference_policy import resolve_preference_policy
 from core.user_profile import get_user_profile_store
 from core.app_settings import get_memory_promotion_preset
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
+from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.selector_button import SelectorButton
 
@@ -790,6 +794,13 @@ class MemoryManagerView(QWidget):
         self.title_lbl.setProperty("class", "PageTitle")
         title_row.addWidget(self.title_lbl)
 
+        self.page_tour_help_btn = PageTourHelpButton(
+            "memory_manager",
+            area_display_name="Memory Manager",
+            parent=self,
+        )
+        title_row.addWidget(self.page_tour_help_btn)
+
         self.subtitle_lbl = QLabel("Review what Qube remembers about you.")
         self.subtitle_lbl.setObjectName("MemoryManagerSubtitle")
         title_row.addWidget(self.subtitle_lbl, 1)
@@ -934,45 +945,167 @@ class MemoryManagerView(QWidget):
 
         self.refresh_theme(is_dark)
 
-    def _build_category_menu(self) -> None:
-        menu = QMenu(self.category_selector)
+    def _category_menu_items(self) -> list[tuple[str, str]]:
+        items: list[tuple[str, str]] = []
         for cat in MEMORY_CATEGORIES:
             label = "All categories" if cat == "all" else cat.capitalize()
-            act = menu.addAction(label)
-            act.triggered.connect(lambda _checked=False, c=cat, l=label: self._on_category_picked(c, l))
-        self.category_selector.setMenu(menu)
+            items.append((label, cat))
+        return items
+
+    def _tier_menu_items(self) -> list[tuple[str, str]]:
+        labels = {
+            "all": "All tiers",
+            "preference": "Preferences",
+            "knowledge": "Knowledge",
+            "episode": "Episodes",
+        }
+        return [
+            (labels.get(tier, tier.capitalize()), tier)
+            for tier in MEMORY_TIER_FILTERS
+        ]
+
+    def _build_category_menu(self) -> None:
+        self._build_prestige_menu(
+            self.category_selector,
+            self._category_menu_items(),
+            self._on_category_picked,
+        )
 
     def _build_tier_menu(self) -> None:
-        menu = QMenu(self.tier_selector)
-        for tier in MEMORY_TIER_FILTERS:
-            if tier == "all":
-                label = "All tiers"
-            elif tier == "preference":
-                label = "Preferences"
-            elif tier == "knowledge":
-                label = "Knowledge"
-            elif tier == "episode":
-                label = "Episodes"
-            else:
-                label = tier.capitalize()
-            act = menu.addAction(label)
-            act.triggered.connect(
-                lambda _checked=False, t=tier, l=label: self._on_tier_picked(t, l)
-            )
-        self.tier_selector.setMenu(menu)
+        self._build_prestige_menu(
+            self.tier_selector,
+            self._tier_menu_items(),
+            self._on_tier_picked,
+        )
+
+    def _build_prestige_menu(self, button, items, callback) -> None:
+        menu = QMenu(button)
+        menu.setObjectName("PrestigeMenu")
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_menu_theme(menu, is_dark)
+
+        list_widget = QListWidget()
+        list_widget.setObjectName("PrestigeMenuList")
+        list_widget.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        for label, data in items:
+            row = QListWidgetItem(label)
+            row.setData(Qt.ItemDataRole.UserRole, data)
+            list_widget.addItem(row)
+
+        required_height = len(items) * 32 + 10
+        main_win = self.window()
+        max_height = int(main_win.height() * 0.5) if main_win else 400
+        list_widget.setFixedHeight(min(required_height, max_height))
+
+        def sync_dropdown_width() -> None:
+            content_w = list_widget.sizeHintForColumn(0) + 40
+            list_widget.setFixedWidth(max(button.width() - 8, content_w, 220))
+
+        menu.aboutToShow.connect(sync_dropdown_width)
+
+        def on_item_clicked(item) -> None:
+            selected_label = item.text()
+            matched_data = item.data(Qt.ItemDataRole.UserRole)
+            if matched_data is None:
+                matched_data = next(
+                    (d for label, d in items if label == selected_label),
+                    selected_label,
+                )
+            self._handle_selector_selection(button, selected_label, matched_data, callback)
+            menu.hide()
+
+        list_widget.itemClicked.connect(on_item_clicked)
+
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(list_widget)
+        menu.addAction(action)
+        button.setMenu(menu)
+
+    def _apply_menu_theme(self, menu: QMenu, is_dark: bool) -> None:
+        palette = QPalette()
+        if is_dark:
+            bg = QColor("#1e1e2e")
+            fg = QColor("#cdd6f4")
+            sel_bg = QColor("#313244")
+            sel_fg = QColor("#cdd6f4")
+            border = "rgba(255, 255, 255, 0.1)"
+            hover = "#313244"
+        else:
+            bg = QColor("#ffffff")
+            fg = QColor("#1e293b")
+            sel_bg = QColor("#f1f5f9")
+            sel_fg = QColor("#0f172a")
+            border = "#cbd5e1"
+            hover = "#f1f5f9"
+
+        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
+            palette.setColor(role, bg)
+        palette.setColor(QPalette.ColorRole.WindowText, fg)
+        palette.setColor(QPalette.ColorRole.Text, fg)
+        palette.setColor(QPalette.ColorRole.Highlight, sel_bg)
+        palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
+
+        menu.setPalette(palette)
+        menu.setStyleSheet(
+            f"""
+            QMenu {{
+                background-color: {bg.name()};
+                border: 1px solid {border};
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QListWidget#PrestigeMenuList {{
+                background-color: transparent;
+                border: none;
+                outline: none;
+            }}
+            QListWidget#PrestigeMenuList::item {{
+                background-color: transparent;
+                color: {fg.name()};
+                padding: 8px 25px;
+                border-radius: 4px;
+                min-height: 24px;
+            }}
+            QListWidget#PrestigeMenuList::item:selected,
+            QListWidget#PrestigeMenuList::item:hover {{
+                background-color: {hover};
+                color: {sel_fg.name()};
+            }}
+            QScrollBar:vertical {{
+                border: none;
+                background: transparent;
+                width: 6px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {border};
+                border-radius: 3px;
+                min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            """
+        )
+
+    def _handle_selector_selection(self, button, label, data, callback) -> None:
+        button.setText(label)
+        button.update()
+        callback(data)
 
     # ------------------------------------------------------------------
     # Filter handlers
     # ------------------------------------------------------------------
 
-    def _on_category_picked(self, category: str, label: str) -> None:
+    def _on_category_picked(self, category: str) -> None:
         self._filter_category = category
-        self.category_selector.setText(label)
         self._render_rows()
 
-    def _on_tier_picked(self, tier: str, label: str) -> None:
+    def _on_tier_picked(self, tier: str) -> None:
         self._filter_tier = tier
-        self.tier_selector.setText(label)
         self._render_rows()
 
     def _on_flagged_toggled(self, on: bool) -> None:
@@ -1088,7 +1221,9 @@ class MemoryManagerView(QWidget):
         preset = get_memory_promotion_preset()
 
         themes = aggregate_recurring_themes(rows, limit=5)
-        if themes:
+        if getattr(self, "_tour_themes_preview_active", False):
+            self.themes_card.setVisible(True)
+        elif themes:
             parts = [f"{t['theme']} ({t['count']})" for t in themes]
             self.themes_body.setText(" · ".join(parts))
             self.themes_card.setVisible(True)
@@ -1447,15 +1582,14 @@ class MemoryManagerView(QWidget):
         for w in self.scroll_content.findChildren(_SectionHeader):
             w.apply_theme(is_dark)
 
-        try:
-            self.category_selector.apply_theme(is_dark)
-        except Exception:
-            pass
-
-        try:
-            self.tier_selector.apply_theme(is_dark)
-        except Exception:
-            pass
+        for selector in (self.category_selector, self.tier_selector):
+            try:
+                selector.apply_theme(is_dark)
+            except Exception:
+                pass
+            menu = selector.menu()
+            if menu is not None:
+                self._apply_menu_theme(menu, is_dark)
 
 
 __all__ = ["MemoryManagerView", "MemoryManagerWorker"]

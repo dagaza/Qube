@@ -111,6 +111,7 @@ from core.app_settings import (
 from core.knowledge.deep_research_ui import deep_research_progress_percent
 from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
 from ui.components.research_map_dialog import ResearchMapDialog
@@ -123,6 +124,7 @@ from ui.components.sidebar_folder_list import (
     SIDEBAR_ROW_PAYLOAD_ROLE,
     SidebarFolderListController,
     add_new_folder_header_button,
+    create_sidebar_header_actions_row,
 )
 from ui.components.source_viewer import SourcePreviewer
 from ui.components.text_document_height import (
@@ -1644,7 +1646,7 @@ class ConversationsView(QWidget):
             return
         win = self.window()
         if win is not None:
-            tour = getattr(win, "_local_llm_tour", None)
+            tour = getattr(win, "_active_tour", None)
             if tour is not None and getattr(tour, "is_active", False):
                 return
             if getattr(win, "_composer_at_mention_discovery", None) is not None:
@@ -2510,23 +2512,35 @@ class ConversationsView(QWidget):
         self.list_title.setObjectName("ViewTitle")
         self.list_title.setProperty("class", "PageTitle")
         
+        # --- THE FIX: Make sure you add 'self.list_title' to the layout here ---
+        header_layout.addWidget(self.list_title)
+        self.page_tour_help_btn = PageTourHelpButton(
+            "conversations",
+            area_display_name="Conversations",
+            parent=frame,
+        )
+        header_layout.addWidget(self.page_tour_help_btn)
+        
+        header_layout.addStretch()
+        (
+            _actions_host,
+            actions_outer,
+            actions_cluster,
+        ) = create_sidebar_header_actions_row()
+        header_layout.addWidget(_actions_host)
+
         self.new_chat_btn = QPushButton()
         self.new_chat_btn.setIcon(qta.icon('fa5s.plus'))
         self.new_chat_btn.setProperty("class", "IconButton")
         self.new_chat_btn.setToolTip("New conversation")
-        
-        # --- THE FIX: Make sure you add 'self.list_title' to the layout here ---
-        header_layout.addWidget(self.list_title)
-        
-        header_layout.addStretch()
+        actions_outer.addWidget(self.new_chat_btn)
+
         self.new_folder_btn = add_new_folder_header_button(
-            header_layout,
-            before_widget=self.new_chat_btn,
+            actions_cluster,
             on_new_folder=lambda: self._folder_controller.prompt_create_folder()
             if self._folder_controller
             else None,
         )
-        header_layout.addWidget(self.new_chat_btn)
         layout.addLayout(header_layout)
 
         self.search_bar = QLineEdit()
@@ -2561,7 +2575,7 @@ class ConversationsView(QWidget):
             on_export_folder=self._trigger_export_folder,
         )
         self.sort_btn = self._folder_controller.setup_sort_header_button(
-            header_layout, before_widget=self.new_chat_btn
+            actions_cluster
         )
 
         self.history_list.itemDoubleClicked.connect(self._on_history_item_double_clicked)

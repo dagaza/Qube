@@ -67,6 +67,7 @@ from core.model_capability_service import ModelCapabilityService
 from core.publisher_guidance_service import PublisherGuidanceService
 from core.richtext_styles import markdown_document_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.hub_error_dialog import HubErrorDialog
 from ui.components.brand_buttons import (
@@ -517,6 +518,7 @@ class ModelManagerView(QWidget):
         self._hub_reachable: bool | None = None
         self._hub_status_detail: str = ""
         self._pending_download_retry: bool = False
+        self._tour_load_more_preview_active: bool = False
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
@@ -770,10 +772,21 @@ class ModelManagerView(QWidget):
         left_l.setSpacing(15)
         self.hub_sidebar = left
 
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(8)
         title = QLabel("Model Manager")
         title.setObjectName("ViewTitle")
         title.setProperty("class", "PageTitle")
-        left_l.addWidget(title)
+        title_row.addWidget(title)
+        self.page_tour_help_btn = PageTourHelpButton(
+            "model_manager",
+            area_display_name="Model Manager",
+            parent=left,
+        )
+        title_row.addWidget(self.page_tour_help_btn)
+        title_row.addStretch(1)
+        left_l.addLayout(title_row)
         left_l.addWidget(self._section_header("fa5s.th-large", "HUGGING FACE REPOSITORIES"))
 
         self.hub_search_edit = QLineEdit()
@@ -835,7 +848,7 @@ class ModelManagerView(QWidget):
         self.hub_load_more_btn = QPushButton("Load More")
         apply_brand_primary(self.hub_load_more_btn)
         self.hub_load_more_btn.setToolTip("Load more models from Hugging Face")
-        self.hub_load_more_btn.setVisible(False)
+        self._set_hub_load_more_visible(False)
         self.hub_load_more_btn.clicked.connect(self._load_more_hub_search_results)
         left_l.addWidget(self.hub_load_more_btn)
 
@@ -1205,6 +1218,24 @@ class ModelManagerView(QWidget):
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self._run_hub_search)
+
+    def _set_hub_load_more_visible(self, visible: bool) -> None:
+        if getattr(self, "_tour_load_more_preview_active", False):
+            self.hub_load_more_btn.setVisible(True)
+            return
+        self.hub_load_more_btn.setVisible(bool(visible))
+
+    def begin_load_more_tutorial_preview(self) -> None:
+        """Show Load More during the Model Manager guided tour."""
+        self._tour_load_more_preview_active = True
+        self._set_hub_load_more_visible(True)
+
+    def end_load_more_tutorial_preview(self) -> None:
+        """Hide tour-only Load More preview and restore normal visibility."""
+        if not getattr(self, "_tour_load_more_preview_active", False):
+            return
+        self._tour_load_more_preview_active = False
+        self._set_hub_load_more_visible(False)
 
     def _meta_style(self, label: QLabel, *, is_dark: bool, strong: bool = False) -> None:
         fg = "#cdd6f4" if is_dark else "#1e293b"
@@ -2358,7 +2389,7 @@ class ModelManagerView(QWidget):
         self._search_models_cache = []
         self._search_visible_count = 0
         if hasattr(self, "hub_load_more_btn"):
-            self.hub_load_more_btn.setVisible(False)
+            self._set_hub_load_more_visible(False)
         verified_models = load_qube_verified_models()
         self._verified_models = verified_models
         suggestions_enabled = get_model_manager_hardware_suggestions()
@@ -2500,7 +2531,7 @@ class ModelManagerView(QWidget):
         self._set_hub_search_retry_visible(False)
         self.hub_list_hint.setText("Searching Hugging Face (GGUF-tagged models)…")
         if hasattr(self, "hub_load_more_btn"):
-            self.hub_load_more_btn.setVisible(False)
+            self._set_hub_load_more_visible(False)
 
         self._retire_hf_thread(self._search_worker)
         self._search_worker = HfModelSearchWorker(q, seq, limit=200)
@@ -2555,7 +2586,7 @@ class ModelManagerView(QWidget):
         else:
             self.hub_list_hint.setText(f"Showing all {total} GGUF-related model(s).")
         if hasattr(self, "hub_load_more_btn"):
-            self.hub_load_more_btn.setVisible(visible < total)
+            self._set_hub_load_more_visible(visible < total)
         if self.hub_model_list.count() > 0:
             restored = False
             if prev_repo:
@@ -2573,7 +2604,7 @@ class ModelManagerView(QWidget):
         total = len(self._search_models_cache)
         if total <= 0:
             if hasattr(self, "hub_load_more_btn"):
-                self.hub_load_more_btn.setVisible(False)
+                self._set_hub_load_more_visible(False)
             return
         self._search_visible_count = min(total, self._search_visible_count + HUB_SEARCH_PAGE_SIZE)
         self._render_hub_search_page()
@@ -2595,7 +2626,7 @@ class ModelManagerView(QWidget):
         self._search_models_cache = []
         self._search_visible_count = 0
         if hasattr(self, "hub_load_more_btn"):
-            self.hub_load_more_btn.setVisible(False)
+            self._set_hub_load_more_visible(False)
         if info.inline_only:
             self.hub_list_hint.setText(
                 "Can't reach Hugging Face — check your connection, then tap Retry search. "

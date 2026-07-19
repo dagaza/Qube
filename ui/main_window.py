@@ -339,6 +339,8 @@ class MainWindow(QMainWindow):
         # Global State
         self._is_dark_theme = True
         self._theme_stage_dirty: set[int] = set()
+        self._cached_tts_model_name: str = ""
+        self._cached_tts_voices: list[str] = []
 
         self._setup_ui()
         if self._native_engine is not None:
@@ -353,6 +355,7 @@ class MainWindow(QMainWindow):
         self._setup_titling_connections()
 
         self._local_llm_tour = build_local_llm_setup_tour(self)
+        self._active_tour = None
         self._theme_profile_startup_logged = False
 
     def showEvent(self, event):
@@ -385,17 +388,55 @@ class MainWindow(QMainWindow):
             conversation_rows=conversation_rows,
         )
 
+    def finish_active_tour(self) -> None:
+        from ui.onboarding.tour_helpers import dismiss_page_tour_transients
+
+        tour = getattr(self, "_active_tour", None)
+        if tour is not None and getattr(tour, "is_active", False):
+            tour.finish()
+        dismiss_page_tour_transients(self)
+        self._active_tour = None
+
+    def refresh_active_tour_layout(self) -> None:
+        tour = getattr(self, "_active_tour", None)
+        if tour is not None and getattr(tour, "is_active", False):
+            tour.refresh_layout()
+
+    def _start_tour(self, tour) -> None:
+        if tour is None:
+            return
+        self.finish_active_tour()
+        self._active_tour = tour
+        tour.start()
+
+    def request_page_tour(
+        self,
+        tour_id: str,
+        *,
+        area_display_name: str | None = None,
+    ) -> None:
+        """Build and start a registered page tour."""
+        from ui.onboarding.tour_registry import build_tour
+
+        tour = build_tour(tour_id, self)
+        if tour is None:
+            return
+        self._start_tour(tour)
+
     def _maybe_start_local_llm_onboarding(self) -> None:
         if get_onboarding_local_llm_tour_completed():
             return
-        if not hasattr(self, "_local_llm_tour") or self._local_llm_tour.is_active:
+        if not hasattr(self, "_local_llm_tour"):
             return
-        self._local_llm_tour.start()
+        active = getattr(self, "_active_tour", None)
+        if active is not None and getattr(active, "is_active", False):
+            return
+        self._start_tour(self._local_llm_tour)
 
     def start_local_llm_onboarding_tour(self) -> None:
         """Public entry to replay the local LLM setup tour."""
         if hasattr(self, "_local_llm_tour"):
-            self._local_llm_tour.start()
+            self._start_tour(self._local_llm_tour)
 
     def show_composer_mention_guide(self) -> None:
         """Open the scrollable @ composer guide (Settings → Help uses the same dialog)."""
@@ -814,8 +855,7 @@ class MainWindow(QMainWindow):
             self.grip.raise_()
         if hasattr(self, "notification_center"):
             self.notification_center.relayout()
-        if hasattr(self, "_local_llm_tour"):
-            self._local_llm_tour.refresh_layout()
+        self.refresh_active_tour_layout()
 
     def _build_top_bar(self) -> QFrame:
         bar = QFrame()
@@ -868,10 +908,17 @@ class MainWindow(QMainWindow):
         self._setup_topbar_mic_picker_menu()
         self._apply_topbar_mic_chevron_style()
 
+        self.topbar_mic_cluster = QWidget()
+        self.topbar_mic_cluster.setObjectName("TopBarMicCluster")
+        topbar_mic_cluster_layout = QHBoxLayout(self.topbar_mic_cluster)
+        topbar_mic_cluster_layout.setContentsMargins(0, 0, 0, 0)
+        topbar_mic_cluster_layout.setSpacing(12)
+        topbar_mic_cluster_layout.addWidget(self.topbar_mic_icon)
+        topbar_mic_cluster_layout.addWidget(self.vu_meter)
+        topbar_mic_cluster_layout.addWidget(self.mic_selector_btn)
+
         left_layout.addWidget(self.app_logo)
-        left_layout.addWidget(self.topbar_mic_icon)
-        left_layout.addWidget(self.vu_meter)
-        left_layout.addWidget(self.mic_selector_btn)
+        left_layout.addWidget(self.topbar_mic_cluster)
         left_layout.addStretch()
         
         layout.addWidget(left_container)
@@ -1240,9 +1287,79 @@ class MainWindow(QMainWindow):
             self.hybrid_status_dot.setStyleSheet(style(hybrid_color))
             self.hybrid_status_dot.setToolTip(hybrid_tooltip)
 
+    def begin_ddg_backoff_tutorial_preview(self) -> None:
+        """Show the DDG cooldown label with a demo countdown during the Conversations tour."""
+        if not hasattr(self, "ddg_backoff_label"):
+            return
+        from core.knowledge.discovery.backoff import ddg_bot_backoff_seconds
+
+        self._tour_ddg_preview_active = True
+        remaining = ddg_bot_backoff_seconds()
+        minutes, seconds = divmod(remaining, 60)
+        total_minutes = max(1, (remaining + 59) // 60)
+        self.ddg_backoff_label.setText(f"⏸ DDG {minutes}:{seconds:02d}")
+        self.ddg_backoff_label.setToolTip(
+            "DuckDuckGo is paused after a bot challenge. "
+            f"DDG searches resume in {minutes}:{seconds:02d} "
+            f"(~{total_minutes} min pause). "
+            "Web searches use Brave or Wikipedia fallbacks meanwhile."
+        )
+        self.ddg_backoff_label.show()
+        if hasattr(self, "_ddg_backoff_timer") and self._ddg_backoff_timer.isActive():
+            self._ddg_backoff_timer.stop()
+
+    def end_ddg_backoff_tutorial_preview(self) -> None:
+        """Hide tour-only DDG preview and restore the real backoff indicator state."""
+        if not getattr(self, "_tour_ddg_preview_active", False):
+            return
+        self._tour_ddg_preview_active = False
+        self.refresh_ddg_backoff_indicator()
+
+    def begin_library_chat_fab_tutorial_preview(self) -> None:
+        """Show the chat-with-document FAB during the Library guided tour."""
+        lv = self.ensure_library_view()
+        lv._tour_chat_fab_preview_active = True
+        btn = getattr(lv, "_chat_with_doc_btn", None)
+        if btn is not None:
+            btn.show()
+            lv._reposition_chat_with_doc_fab()
+
+    def end_library_chat_fab_tutorial_preview(self) -> None:
+        """Hide tour-only chat FAB preview and restore normal visibility rules."""
+        lv = getattr(self, "_library_view", None)
+        if lv is None:
+            return
+        if not getattr(lv, "_tour_chat_fab_preview_active", False):
+            return
+        lv._tour_chat_fab_preview_active = False
+        lv._sync_chat_with_doc_fab_visibility()
+
+    def begin_memory_themes_tutorial_preview(self) -> None:
+        """Show the recurring-themes card during the Memory Manager guided tour."""
+        mv = self.ensure_memory_manager_view()
+        mv._tour_themes_preview_active = True
+        mv.themes_body.setText(
+            "Recurring subjects across your memories appear here when enough "
+            "patterns are detected."
+        )
+        mv.themes_card.setVisible(True)
+
+    def end_memory_themes_tutorial_preview(self) -> None:
+        """Hide tour-only themes preview and restore normal visibility rules."""
+        mv = getattr(self, "_memory_manager_view", None)
+        if mv is None:
+            return
+        if not getattr(mv, "_tour_themes_preview_active", False):
+            return
+        mv._tour_themes_preview_active = False
+        if hasattr(mv, "_render_rows"):
+            mv._render_rows()
+
     def refresh_ddg_backoff_indicator(self) -> None:
         """Show or hide the DDG backoff countdown in the top bar."""
         if not hasattr(self, "ddg_backoff_label"):
+            return
+        if getattr(self, "_tour_ddg_preview_active", False):
             return
         from core.knowledge.discovery.backoff import (
             ddg_bot_backoff_seconds,
@@ -3003,12 +3120,19 @@ class MainWindow(QMainWindow):
         sv.auto_load_last_model_changed.connect(self._sync_toolbar_auto_load_model_toggle)
 
         sv.engine_mode_changed.connect(self._refresh_toolbar_native_model_from_settings_signal)
-        if hasattr(self, "_local_llm_tour"):
-            sv.engine_mode_changed.connect(
-                lambda _mode: self._local_llm_tour.refresh_layout()
-            )
+        sv.engine_mode_changed.connect(lambda _mode: self.refresh_active_tour_layout())
 
         self._wire_generation_settings_toolbar_sync()
+        self._sync_settings_tts_voice_selector()
+        self._sync_settings_tts_voice_enabled_toggle(
+            self.voice_bypass_toggle.isChecked()
+            if hasattr(self, "voice_bypass_toggle")
+            else True
+        )
+        if hasattr(sv, "tts_voice_enabled_toggle"):
+            sv.tts_voice_enabled_toggle.toggled.connect(
+                self._on_settings_tts_voice_enabled_toggled
+            )
 
     def _wire_model_manager_view(self) -> None:
         if self._model_manager_view_wired:
@@ -3106,7 +3230,12 @@ class MainWindow(QMainWindow):
             stage.update()
         if index in getattr(self, "_theme_stage_dirty", ()):
             self._sync_stage_theme_if_dirty(index)
-        if index == MAIN_STAGE_SETTINGS:
+        if index in (
+            MAIN_STAGE_MEMORY,
+            MAIN_STAGE_TELEMETRY,
+            MAIN_STAGE_MODEL_MANAGER,
+            MAIN_STAGE_SETTINGS,
+        ):
             self._set_tools_pane_expanded(False, animate=False)
         if index == MAIN_STAGE_CONVERSATIONS and hasattr(self, "conversations_view"):
             QTimer.singleShot(0, self.conversations_view.focus_composer_if_ready)
@@ -3624,6 +3753,7 @@ class MainWindow(QMainWindow):
         if self._tts_worker is not None:
             self._tts_worker.set_mute(not enabled)
         self._presence_service.set_voice_output_muted(not enabled)
+        self._sync_settings_tts_voice_enabled_toggle(enabled)
         self._sync_tray_voice_toggles()
 
     def _sync_tray_voice_toggles(self, *_args) -> None:
@@ -3903,6 +4033,11 @@ class MainWindow(QMainWindow):
                 return
         if self._tts_worker:
             self._tts_worker.set_mute(not checked)
+        self._sync_settings_tts_voice_enabled_toggle(
+            self.voice_bypass_toggle.isChecked()
+            if hasattr(self, "voice_bypass_toggle")
+            else checked
+        )
 
     def request_application_restart(self) -> None:
         self._force_app_exit = True
@@ -4046,11 +4181,59 @@ class MainWindow(QMainWindow):
             self._tts_worker.set_voice(voice_name)
         self._sync_tts_voice_selector_labels(voice_name)
 
-    def update_tts_voice_dropdowns(self, model_name: str, voices: list) -> None:
-        """Populate Settings and toolbar TTS voice selectors when voices load."""
-        _ = model_name
+    def _sync_settings_tts_voice_enabled_toggle(self, enabled: bool) -> None:
+        settings = self._settings_view
+        if settings is None or not hasattr(settings, "tts_voice_enabled_toggle"):
+            return
+        toggle = settings.tts_voice_enabled_toggle
+        toggle.blockSignals(True)
+        toggle.setChecked(enabled)
+        toggle.blockSignals(False)
+
+    def _on_settings_tts_voice_enabled_toggled(self, checked: bool) -> None:
+        if hasattr(self, "voice_bypass_toggle"):
+            self.voice_bypass_toggle.blockSignals(True)
+            self.voice_bypass_toggle.setChecked(checked)
+            self.voice_bypass_toggle.blockSignals(False)
+        self._on_voice_bypass_toggle(checked)
+
+    def _sync_settings_tts_voice_selector(self) -> None:
+        """Populate Settings TTS voice menu when built after the model already loaded."""
+        voices = self._cached_tts_voices
         if not voices:
             return
+        settings = self._settings_view
+        if settings is None or not hasattr(settings, "voice_selector"):
+            return
+
+        menu_items = [(voice, voice) for voice in voices]
+        settings._build_prestige_menu(
+            settings.voice_selector,
+            menu_items,
+            self._on_tts_voice_selected,
+        )
+        from ui.views.settings.widgets import register_settings_selector_width
+
+        register_settings_selector_width(settings.voice_selector, *voices)
+        active = (
+            self._tts_worker.active_voice_name
+            if self._tts_worker and hasattr(self._tts_worker, "active_voice_name")
+            else voices[0]
+        )
+        if active not in voices:
+            active = voices[0]
+        settings.voice_selector.setText(active)
+        settings.voice_selector.update()
+
+    def update_tts_voice_dropdowns(self, model_name: str, voices: list) -> None:
+        """Populate Settings and toolbar TTS voice selectors when voices load."""
+        if not voices:
+            self._cached_tts_model_name = ""
+            self._cached_tts_voices = []
+            return
+
+        self._cached_tts_model_name = model_name
+        self._cached_tts_voices = list(voices)
 
         active = (
             self._tts_worker.active_voice_name
@@ -4066,12 +4249,7 @@ class MainWindow(QMainWindow):
             menu_items,
             self._on_tts_voice_selected,
         )
-        if self._settings_view is not None and hasattr(self._settings_view, "voice_selector"):
-            self._settings_view._build_prestige_menu(
-                self._settings_view.voice_selector,
-                menu_items,
-                self._on_tts_voice_selected,
-            )
+        self._sync_settings_tts_voice_selector()
 
         self._on_tts_voice_selected(active)
 

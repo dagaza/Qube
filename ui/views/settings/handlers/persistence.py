@@ -490,15 +490,13 @@ class PersistenceHandlersMixin:
             self.advanced_stt_toggle.blockSignals(True)
             self.advanced_stt_toggle.setChecked(get_advanced_stt_unlocked())
             self.advanced_stt_toggle.blockSignals(False)
-            if hasattr(self, "advanced_stt_panel"):
-                self.advanced_stt_panel.setVisible(get_advanced_stt_unlocked())
+            self._apply_advanced_stt_panel_visibility()
 
         if hasattr(self, "advanced_tts_toggle"):
             self.advanced_tts_toggle.blockSignals(True)
             self.advanced_tts_toggle.setChecked(get_advanced_tts_unlocked())
             self.advanced_tts_toggle.blockSignals(False)
-            if hasattr(self, "advanced_tts_panel"):
-                self.advanced_tts_panel.setVisible(get_advanced_tts_unlocked())
+            self._apply_advanced_tts_panel_visibility()
 
         if hasattr(self, "advanced_hardware_toggle"):
             self.advanced_hardware_toggle.blockSignals(True)
@@ -681,9 +679,9 @@ class PersistenceHandlersMixin:
         if self.audio_worker:
             self._sync_wakeword_catalog(trigger="section reset")
         if hasattr(self, "advanced_stt_panel"):
-            self.advanced_stt_panel.setVisible(get_advanced_stt_unlocked())
+            self._apply_advanced_stt_panel_visibility()
         if hasattr(self, "advanced_tts_panel"):
-            self.advanced_tts_panel.setVisible(get_advanced_tts_unlocked())
+            self._apply_advanced_tts_panel_visibility()
         if hasattr(self, "stt_model_changed"):
             self.stt_model_changed.emit()
         if hasattr(self, "tts_model_changed"):
@@ -726,8 +724,6 @@ class PersistenceHandlersMixin:
             self.advanced_hardware_toggle.blockSignals(True)
             self.advanced_hardware_toggle.setChecked(get_advanced_hardware_unlocked())
             self.advanced_hardware_toggle.blockSignals(False)
-        if hasattr(self, "advanced_hardware_panel"):
-            self.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
         if hasattr(self, "advanced_chat_template_toggle"):
             self.advanced_chat_template_toggle.blockSignals(True)
             self.advanced_chat_template_toggle.setChecked(

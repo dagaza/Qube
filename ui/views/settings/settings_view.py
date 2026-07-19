@@ -108,8 +108,9 @@ from ui.views.settings.controls import (
     NoScrollSlider,
     NoScrollSpinBox,
 )
-from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id
-from ui.views.settings.widgets import collect_theme_buttons
+from ui.onboarding.settings_tour_header import sync_settings_section_tour_header
+from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id, get_section
+from ui.views.settings.widgets import collect_theme_buttons, make_settings_section_header_row
 from ui.views.settings.settings_card_style import refresh_settings_section_cards
 from ui.views.settings.sections import (
     advanced,
@@ -397,10 +398,6 @@ class SettingsView(
         self.settings_section_list.addItem(item)
         self.settings_section_list.setItemWidget(item, header)
     def _add_settings_section(self, sec_def, content_widget: QWidget) -> None:
-        header = self._build_section_header(
-            sec_def.icon, sec_def.title, svg_icon=sec_def.svg_icon
-        )
-
         content_widget.setMinimumWidth(0)
         content_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
@@ -415,7 +412,6 @@ class SettingsView(
         page_layout = QVBoxLayout(page_content)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(30)
-        page_layout.addWidget(header)
         page_layout.addWidget(content_widget)
         page_layout.addStretch()
 
@@ -723,6 +719,25 @@ class SettingsView(
         right_l.setContentsMargins(8, 75, 0, 40)
         right_l.setSpacing(10)
 
+        section_header_row = QHBoxLayout()
+        section_header_row.setContentsMargins(0, 0, 0, 0)
+        section_header_row.setSpacing(0)
+        self._settings_nav_icon_labels: list[QLabel] = []
+        self._settings_section_icon_labels: list[QLabel] = []
+        (
+            self.settings_section_title_lbl,
+            self.settings_section_tour_btn,
+            self.settings_section_icon_lbl,
+            section_header,
+        ) = make_settings_section_header_row(
+            right,
+            initial_tour_id="settings.voice_audio",
+            initial_area_display_name="Voice & Audio settings",
+        )
+        self._settings_section_icon_labels.append(self.settings_section_icon_lbl)
+        section_header_row.addWidget(section_header)
+        right_l.addLayout(section_header_row)
+
         self.settings_section_stack = QStackedWidget()
         self.settings_section_stack.setObjectName("SettingsSectionStack")
         right_l.addWidget(self.settings_section_stack, stretch=1)
@@ -738,8 +753,6 @@ class SettingsView(
 
         main_layout.addWidget(hub_container, stretch=1)
 
-        self._settings_nav_icon_labels: list[QLabel] = []
-        self._settings_section_icon_labels: list[QLabel] = []
         self.settings_section_list.currentRowChanged.connect(self._on_settings_section_changed)
         self.settings_section_list.itemSelectionChanged.connect(
             self._update_settings_section_nav_colors
@@ -847,6 +860,7 @@ class SettingsView(
             return
         self.settings_section_stack.setCurrentIndex(int(stack_idx))
         section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        self._sync_settings_section_tour_header(section_id)
         if section_id == "advanced" and hasattr(
             self, "_sync_all_diagnostic_log_recording_toggles"
         ):
@@ -866,48 +880,26 @@ class SettingsView(
 
             stop_provider_status_refresh_timer(self)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
+
+    def _sync_settings_section_tour_header(self, section_id: str | None) -> None:
+        if not hasattr(self, "settings_section_tour_btn"):
+            return
+        sync_settings_section_tour_header(
+            self.settings_section_title_lbl,
+            self.settings_section_tour_btn,
+            section_id,
+            icon_lbl=getattr(self, "settings_section_icon_lbl", None),
+        )
+        icon_lbl = getattr(self, "settings_section_icon_lbl", None)
+        if icon_lbl is not None and section_id:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+            self._refresh_settings_icon_label(icon_lbl, icon_color)
+
     def _update_settings_section_nav_colors(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         apply_sidebar_row_title_colors(self.settings_section_list, is_dark=is_dark)
-    def _build_section_header(
-        self,
-        icon_name,
-        title_text,
-        *,
-        svg_icon: tuple[str, ...] | None = None,
-    ):
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
-        icon_label = QLabel()
-        icon_label.setProperty("icon_name", icon_name)
-        icon_label.setProperty(
-            "svg_path",
-            str(resource_path(*svg_icon)) if svg_icon is not None else "",
-        )
-        icon_label.setProperty("icon_size", 18)
-        
-        is_dark = getattr(self.window(), '_is_dark_theme', True)
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
-        icon_label.setPixmap(
-            self._settings_section_icon_pixmap(
-                icon_name=icon_name,
-                svg_icon=svg_icon,
-                size=18,
-                color=icon_color,
-            )
-        )
-        icon_label.setProperty("class", "SectionHeaderIcon")
-        self._settings_section_icon_labels.append(icon_label)
-        
-        text_label = QLabel(title_text)
-        text_label.setProperty("class", "SectionHeaderLabel")
-        
-        layout.addWidget(icon_label)
-        layout.addWidget(text_label)
-        layout.addStretch()
-        return container
+
     def _build_divider(self):
         line = QFrame()
         line.setObjectName("SettingsDivider")
