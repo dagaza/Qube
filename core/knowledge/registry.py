@@ -100,6 +100,8 @@ def resolve_turn_knowledge_service(
         return SERVICE_SCIENTIFIC_EVIDENCE
     if tool == "library":
         return SERVICE_INTERNAL_CORPUS
+    if tool == "help":
+        return SERVICE_INTERNAL_CORPUS
     if tool == "finance":
         return SERVICE_FINANCE_KNOWLEDGE
     if tool == "legal":

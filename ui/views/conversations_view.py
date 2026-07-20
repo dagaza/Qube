@@ -88,6 +88,7 @@ from core.composer_draft import (
     serialize_draft,
 )
 from core.composer_skills import parse_composer_input, strip_all_composer_tokens_for_display
+from core.help_action_blocks import HelpActionChip, parse_help_action_blocks
 from core.conversation_export import (
     export_conversation_markdown,
     export_folder_zip,
@@ -2173,6 +2174,74 @@ class ConversationsView(QWidget):
         container.attach_actions_bar(actions_bar)
         self._apply_pending_stt_to_agent(agent)
         self._apply_pending_ttft_to_agent(agent)
+        agent._help_action_chips = []
+        agent._help_action_buttons = []
+
+    def _style_help_action_chip(self, btn: QPushButton, is_dark: bool) -> None:
+        fg = "#89b4fa" if is_dark else "#2563eb"
+        hover_bg = "rgba(137, 180, 250, 0.12)" if is_dark else "rgba(37, 99, 235, 0.08)"
+        btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                color: {fg};
+                background: transparent;
+                border: 1px solid {fg};
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 9pt;
+            }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+            """
+        )
+
+    def _on_help_action_chip_clicked(self, settings_section: str) -> None:
+        win = self.window()
+        if win is not None and hasattr(win, "_open_settings_section"):
+            win._open_settings_section(settings_section)
+            return
+        from ui.onboarding.tour_helpers import open_settings_section
+
+        if win is not None:
+            open_settings_section(win, settings_section)
+
+    def _sync_help_action_chips(self, agent: AgentMessageLabel) -> None:
+        container = agent.parentWidget()
+        if not isinstance(container, AgentMessageContainer):
+            return
+        actions_bar = getattr(container, "_actions_bar", None)
+        if actions_bar is None:
+            return
+        row = actions_bar.layout()
+        if row is None:
+            return
+
+        for btn in list(getattr(agent, "_help_action_buttons", []) or []):
+            row.removeWidget(btn)
+            btn.deleteLater()
+        agent._help_action_buttons = []
+
+        chips: list[HelpActionChip] = list(getattr(agent, "_help_action_chips", []) or [])
+        if not chips:
+            return
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        insert_at = 2  # after copy + sources buttons
+        for chip in chips:
+            btn = QPushButton(chip.label)
+            btn.setObjectName("HelpActionChipBtn")
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(chip.label)
+            self._style_help_action_chip(btn, is_dark)
+            btn.clicked.connect(
+                lambda _checked=False, section=chip.settings_section: self._on_help_action_chip_clicked(
+                    section
+                )
+            )
+            row.insertWidget(insert_at, btn, 0, Qt.AlignmentFlag.AlignLeft)
+            insert_at += 1
+            agent._help_action_buttons.append(btn)
+        container._sync_actions_bar_width()
 
     def _refresh_agent_copy_buttons(self, is_dark: bool) -> None:
         for w in self._iter_transcript_widgets():
@@ -2996,7 +3065,13 @@ class ConversationsView(QWidget):
             return
         raw = getattr(self, "_agent_text_buffer", "") or ""
         buf = self._sanitize_agent_stream_text(raw)
-        if buf != raw:
+        if finalize:
+            buf, help_actions = parse_help_action_blocks(buf)
+            if cur is not None:
+                cur._help_action_chips = help_actions
+                self._sync_help_action_chips(cur)
+            self._agent_text_buffer = buf
+        elif buf != raw:
             self._agent_text_buffer = buf
         is_dark = True
         if self.window() and hasattr(self.window(), "_is_dark_theme"):

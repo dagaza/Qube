@@ -8,16 +8,7 @@ from typing import Any
 from core.app_settings import reset_help_guidance_settings
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import restart_action_label, restart_prompt_body
-
-
-@dataclass(frozen=True)
-class ComposerCommand:
-    id: str
-    label: str
-    description: str
-    requires_confirmation: bool = False
-    confirmation_title: str = ""
-    confirmation_message: str = ""
+from core.composer_command_defs import COMPOSER_COMMANDS, ComposerCommand
 
 
 @dataclass(frozen=True)
@@ -26,23 +17,6 @@ class ComposerCommandResult:
     dialog_title: str = ""
     dialog_message: str = ""
     notification: AppNotificationRequest | None = None
-
-
-COMPOSER_COMMANDS: tuple[ComposerCommand, ...] = (
-    ComposerCommand(
-        id="reset_help_guidance",
-        label="Reset Help & Guidance",
-        description="Run setup tour on next launch; turn off Model Manager hints",
-        requires_confirmation=True,
-        confirmation_title="Reset Help & Guidance",
-        confirmation_message=(
-            "This will restore Help & Guidance to defaults:\n\n"
-            "• The Local LLM setup tour will run on next launch\n"
-            "• Model Manager hardware suggestions will be turned off\n\n"
-            "Click Confirm to apply. You'll then be offered Restart now to run the tour immediately."
-        ),
-    ),
-)
 
 
 def execute_composer_command(command_id: str, *, window: Any | None = None) -> ComposerCommandResult:
@@ -81,3 +55,6 @@ def _sync_help_guidance_ui(window: Any | None) -> None:
     mm = getattr(window, "_model_manager_view", None)
     if mm is not None and hasattr(mm, "refresh_hardware_suggestions"):
         mm.refresh_hardware_suggestions()
+
+
+__all__ = ["COMPOSER_COMMANDS", "ComposerCommand", "ComposerCommandResult", "execute_composer_command"]

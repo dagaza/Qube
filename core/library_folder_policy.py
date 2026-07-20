@@ -13,7 +13,7 @@ RESERVED_LIBRARY_FOLDER_NAMES = frozenset(
 )
 
 # Filenames LanceDB / app processes register for memory-tier knowledge sets.
-_QUBE_DOC_PREFIXES = ("qube/", "Qube/", "__qube_", "qube_")
+_QUBE_DOC_PREFIXES = ("qube/", "Qube/", "__qube_", "qube_", "qube/documentation/")
 _QUBE_DOC_EXACT = frozenset(
     {
         "preferences.md",

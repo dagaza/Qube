@@ -1,0 +1,1793 @@
+{
+  "schema": "qube.help_corpus_manifest.v1",
+  "locale": "en",
+  "corpus_version": "1.0.13",
+  "min_app_version": "1.0.0",
+  "max_app_version": null,
+  "collection_id": "qube.documentation",
+  "documents": [
+    {
+      "id": "index",
+      "path": "00-index.md",
+      "title": "Qube Help",
+      "type": "index",
+      "tags": [
+        "help",
+        "documentation",
+        "index"
+      ],
+      "synonyms": [
+        "help",
+        "documentation",
+        "manual",
+        "guide"
+      ],
+      "related": [
+        "reference.composer_tools",
+        "reference.composer_attachments",
+        "reference.settings_sections",
+        "features.conversations",
+        "features.library",
+        "features.settings.knowledge",
+        "release.whats_new"
+      ]
+    },
+    {
+      "id": "reference.composer_tools",
+      "path": "reference/composer-tools.md",
+      "title": "Composer tools (@tool)",
+      "type": "reference",
+      "tags": [
+        "composer",
+        "tools"
+      ],
+      "synonyms": [
+        "@ tools"
+      ],
+      "related": [
+        "index",
+        "reference.composer_attachments",
+        "reference.settings_sections"
+      ],
+      "generated": true
+    },
+    {
+      "id": "reference.composer_attachments",
+      "path": "reference/composer-attachments.md",
+      "title": "Composer attachments (@file, @chat, routing)",
+      "type": "reference",
+      "tags": [
+        "composer",
+        "attachments",
+        "routing"
+      ],
+      "synonyms": [
+        "@ file",
+        "@ chat",
+        "routing attachments",
+        "composer routing"
+      ],
+      "related": [
+        "index",
+        "reference.composer_tools",
+        "faq.at_mentions"
+      ],
+      "generated": true
+    },
+    {
+      "id": "reference.composer_commands",
+      "path": "reference/composer-commands.md",
+      "title": "Composer commands",
+      "type": "reference",
+      "tags": [
+        "composer",
+        "commands"
+      ],
+      "synonyms": [
+        "palette commands"
+      ],
+      "related": [
+        "index",
+        "reference.settings_sections"
+      ],
+      "generated": true
+    },
+    {
+      "id": "reference.composer_skills",
+      "path": "reference/composer-skills.md",
+      "title": "Composer skills (@skill)",
+      "type": "reference",
+      "tags": [
+        "composer",
+        "skills"
+      ],
+      "synonyms": [
+        "@ skills"
+      ],
+      "related": [
+        "index",
+        "reference.composer_attachments",
+        "reference.settings_sections"
+      ],
+      "generated": true
+    },
+    {
+      "id": "reference.settings_sections",
+      "path": "reference/settings-sections.md",
+      "title": "Settings sections",
+      "type": "reference",
+      "tags": [
+        "settings",
+        "navigation"
+      ],
+      "synonyms": [
+        "settings index"
+      ],
+      "related": [
+        "index",
+        "reference.settings_sections"
+      ],
+      "generated": true
+    },
+    {
+      "id": "reference.live_sources_overview",
+      "path": "reference/live-sources-overview.md",
+      "title": "Live sources overview",
+      "type": "reference",
+      "tags": [
+        "live-sources",
+        "adapters"
+      ],
+      "synonyms": [
+        "online sources"
+      ],
+      "related": [
+        "index",
+        "reference.settings_sections"
+      ],
+      "generated": true
+    },
+    {
+      "id": "features.conversations",
+      "path": "features/conversations.md",
+      "title": "Conversations",
+      "type": "feature",
+      "tour_id": "conversations",
+      "tags": [
+        "chat",
+        "composer",
+        "conversations",
+        "threads"
+      ],
+      "synonyms": [
+        "chat screen",
+        "main chat",
+        "new conversation",
+        "composer",
+        "search conversations",
+        "export conversation",
+        "RAG WEB HYBRID indicators",
+        "reading toolbar",
+        "tools panel"
+      ],
+      "related": [
+        "workflows.chat_with_document",
+        "faq.conversations_vs_memory",
+        "faq.chat_history_export",
+        "faq.at_mentions",
+        "faq.cognitive_router",
+        "reference.composer_tools",
+        "features.library",
+        "features.settings.knowledge",
+        "features.settings.voice_audio",
+        "features.settings.ai_models"
+      ]
+    },
+    {
+      "id": "features.library",
+      "path": "features/library.md",
+      "title": "Library",
+      "type": "feature",
+      "tour_id": "library",
+      "tags": [
+        "library",
+        "documents",
+        "ingest",
+        "rag"
+      ],
+      "synonyms": [
+        "document library",
+        "upload files",
+        "knowledge base",
+        "ingest documents",
+        "search library",
+        "ingest new document",
+        "qube folder",
+        "chat with document"
+      ],
+      "related": [
+        "workflows.import_documents",
+        "workflows.chat_with_document",
+        "workflows.prepare_search_models",
+        "troubleshooting.library_search_empty",
+        "troubleshooting.library_import_disabled",
+        "faq.memory_vs_library",
+        "faq.live_sources_vs_library",
+        "features.conversations",
+        "features.settings.knowledge"
+      ]
+    },
+    {
+      "id": "features.memory_manager",
+      "path": "features/memory-manager.md",
+      "title": "Memory Manager",
+      "type": "feature",
+      "tour_id": "memory_manager",
+      "tags": [
+        "memory",
+        "recall",
+        "long-term-memory"
+      ],
+      "synonyms": [
+        "memory browser",
+        "saved memories",
+        "memory cards",
+        "long-term memory",
+        "flagged memories",
+        "export memories",
+        "edit memory"
+      ],
+      "related": [
+        "features.settings.memory",
+        "workflows.manage_memory",
+        "faq.memory_vs_library",
+        "faq.conversations_vs_memory",
+        "troubleshooting.memory_not_working",
+        "features.conversations"
+      ]
+    },
+    {
+      "id": "features.model_manager",
+      "path": "features/model-manager.md",
+      "title": "Model Manager",
+      "type": "feature",
+      "tour_id": "model_manager",
+      "tags": [
+        "models",
+        "gguf",
+        "download",
+        "internal-engine"
+      ],
+      "synonyms": [
+        "model hub",
+        "download models",
+        "hugging face",
+        "verified models",
+        "load model",
+        "qube verified",
+        "gguf quantization",
+        "system fit"
+      ],
+      "related": [
+        "workflows.set_up_local_models",
+        "features.settings.ai_models",
+        "features.settings.help",
+        "features.conversations",
+        "troubleshooting.model_wont_load",
+        "faq.internal_vs_external"
+      ]
+    },
+    {
+      "id": "features.telemetry",
+      "path": "features/telemetry.md",
+      "title": "Advanced Telemetry",
+      "type": "feature",
+      "tour_id": "telemetry",
+      "tags": [
+        "telemetry",
+        "diagnostics",
+        "performance",
+        "routing"
+      ],
+      "synonyms": [
+        "telemetry dashboard",
+        "performance monitor",
+        "hardware graphs",
+        "routing diagnostics",
+        "pipeline latency",
+        "time to first token",
+        "ttft",
+        "router intelligence",
+        "sidecar cognition",
+        "inference stack",
+        "system load timeline",
+        "cpu gpu graphs",
+        "advanced telemetry"
+      ],
+      "related": [
+        "features.settings.ai_models",
+        "features.settings.knowledge",
+        "features.conversations",
+        "faq.advanced_telemetry_interpreting",
+        "faq.cognitive_router",
+        "troubleshooting.search_models"
+      ]
+    },
+    {
+      "id": "features.settings.voice_audio",
+      "path": "features/settings/voice-audio.md",
+      "title": "Voice & Audio settings",
+      "type": "feature",
+      "settings_section": "voice.audio",
+      "tour_id": "settings.voice_audio",
+      "tags": [
+        "voice",
+        "audio",
+        "microphone",
+        "tts",
+        "stt"
+      ],
+      "synonyms": [
+        "voice settings",
+        "audio settings",
+        "microphone settings",
+        "wakeword settings",
+        "tts voice settings",
+        "enable tts voice"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_voice_audio",
+          "label": "Open Voice & Audio",
+          "kind": "open_settings_section",
+          "settings_section": "voice.audio"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.ai_models",
+      "path": "features/settings/ai-models.md",
+      "title": "AI & Models settings",
+      "type": "feature",
+      "settings_section": "ai.models",
+      "tour_id": "settings.ai_models",
+      "tags": [
+        "ai",
+        "models",
+        "gpu",
+        "internal-engine",
+        "external-server"
+      ],
+      "synonyms": [
+        "gpu layers",
+        "local model settings",
+        "LM Studio settings",
+        "internal engine settings",
+        "external server settings",
+        "chat template settings"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "features.model_manager",
+        "workflows.set_up_local_models",
+        "faq.generation_parameters",
+        "faq.hardware_tuning_internal",
+        "faq.internal_vs_external",
+        "troubleshooting.model_wont_load",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_ai_models",
+          "label": "Open AI & Models",
+          "kind": "open_settings_section",
+          "settings_section": "ai.models"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.memory",
+      "path": "features/settings/memory.md",
+      "title": "Memory settings",
+      "type": "feature",
+      "settings_section": "memory",
+      "tour_id": "settings.memory",
+      "tags": [
+        "memory",
+        "enrichment",
+        "promotion"
+      ],
+      "synonyms": [
+        "long-term memory settings",
+        "memory enrichment",
+        "memory settings",
+        "memory promotion",
+        "highlight memories",
+        "default units"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "features.memory_manager",
+        "workflows.manage_memory",
+        "faq.conversations_vs_memory",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_memory",
+          "label": "Open Memory",
+          "kind": "open_settings_section",
+          "settings_section": "memory"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.knowledge",
+      "path": "features/settings/knowledge.md",
+      "title": "Knowledge settings",
+      "type": "feature",
+      "settings_section": "knowledge",
+      "tour_id": "settings.knowledge",
+      "tags": [
+        "knowledge",
+        "rag",
+        "embeddings",
+        "live-sources"
+      ],
+      "synonyms": [
+        "library search settings",
+        "RAG settings",
+        "automatic library search",
+        "library search triggers",
+        "nlp auto-activator",
+        "web search discovery",
+        "live sources settings",
+        "knowledge presets"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "features.library",
+        "features.conversations",
+        "workflows.prepare_search_models",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_knowledge",
+          "label": "Open Knowledge",
+          "kind": "open_settings_section",
+          "settings_section": "knowledge"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.general",
+      "path": "features/settings/general.md",
+      "title": "General settings",
+      "type": "feature",
+      "settings_section": "general",
+      "tour_id": "settings.general",
+      "tags": [
+        "general",
+        "language",
+        "locale"
+      ],
+      "synonyms": [
+        "application language",
+        "british english"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_general",
+          "label": "Open General",
+          "kind": "open_settings_section",
+          "settings_section": "general"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.companion_desktop",
+      "path": "features/settings/desktop-companion.md",
+      "title": "Desktop Companion settings",
+      "type": "feature",
+      "settings_section": "companion.desktop",
+      "tour_id": "settings.companion_desktop",
+      "tags": [
+        "companion",
+        "desktop",
+        "overlay"
+      ],
+      "synonyms": [
+        "floating companion settings",
+        "companion commentary",
+        "hide during fullscreen",
+        "companion overlay settings"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_companion_desktop",
+          "label": "Open Desktop Companion",
+          "kind": "open_settings_section",
+          "settings_section": "companion.desktop"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.notifications",
+      "path": "features/settings/notifications.md",
+      "title": "Notifications settings",
+      "type": "feature",
+      "settings_section": "notifications",
+      "tour_id": "settings.notifications",
+      "tags": [
+        "notifications",
+        "dnd",
+        "alerts"
+      ],
+      "synonyms": [
+        "do not disturb settings"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_notifications",
+          "label": "Open Notifications",
+          "kind": "open_settings_section",
+          "settings_section": "notifications"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.help",
+      "path": "features/settings/help.md",
+      "title": "Help settings",
+      "type": "feature",
+      "settings_section": "help",
+      "tour_id": "settings.help",
+      "tags": [
+        "help",
+        "tours",
+        "guidance"
+      ],
+      "synonyms": [
+        "help and guidance",
+        "composer @ guide",
+        "open @ composer guide",
+        "replay local llm setup tour",
+        "open qube documentation"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_help",
+          "label": "Open Help",
+          "kind": "open_settings_section",
+          "settings_section": "help"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.contact_feedback",
+      "path": "features/settings/contact-feedback.md",
+      "title": "Contact & Feedback settings",
+      "type": "feature",
+      "settings_section": "contact.feedback",
+      "tour_id": "settings.contact_feedback",
+      "tags": [
+        "contact",
+        "feedback",
+        "bug-report"
+      ],
+      "synonyms": [
+        "report a bug"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_contact_feedback",
+          "label": "Open Contact & Feedback",
+          "kind": "open_settings_section",
+          "settings_section": "contact.feedback"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.advanced",
+      "path": "features/settings/advanced.md",
+      "title": "Advanced settings",
+      "type": "feature",
+      "settings_section": "advanced",
+      "tour_id": "settings.advanced",
+      "tags": [
+        "advanced",
+        "json",
+        "logs"
+      ],
+      "synonyms": [
+        "settings json",
+        "diagnostic logs"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "faq.diagnostic_logs_advanced",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_advanced",
+          "label": "Open Advanced",
+          "kind": "open_settings_section",
+          "settings_section": "advanced"
+        }
+      ]
+    },
+    {
+      "id": "workflows.set_up_local_models",
+      "path": "workflows/set-up-local-models.md",
+      "title": "Set up local models",
+      "type": "workflow",
+      "tags": [
+        "local-models",
+        "gguf",
+        "model-manager"
+      ],
+      "synonyms": [
+        "download a model",
+        "load gguf"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.import_documents",
+      "path": "workflows/import-documents-to-library.md",
+      "title": "Import documents to Library",
+      "type": "workflow",
+      "tags": [
+        "library",
+        "import",
+        "ingest"
+      ],
+      "synonyms": [
+        "add documents to library"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.chat_with_document",
+      "path": "workflows/chat-with-a-library-document.md",
+      "title": "Chat with a library document",
+      "type": "workflow",
+      "tags": [
+        "library",
+        "chat",
+        "file-attachment"
+      ],
+      "synonyms": [
+        "ask about my document"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.create_knowledge_preset",
+      "path": "workflows/create-knowledge-preset.md",
+      "title": "Create a knowledge preset",
+      "type": "workflow",
+      "tags": [
+        "knowledge",
+        "preset",
+        "composer"
+      ],
+      "synonyms": [
+        "custom @ preset"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.companion_visibility",
+      "path": "workflows/configure-desktop-companion-visibility.md",
+      "title": "Configure desktop companion visibility",
+      "type": "workflow",
+      "tags": [
+        "companion",
+        "visibility",
+        "fullscreen"
+      ],
+      "synonyms": [
+        "hide companion during games"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.manage_memory",
+      "path": "workflows/manage-long-term-memory.md",
+      "title": "Manage long-term memory",
+      "type": "workflow",
+      "tags": [
+        "memory",
+        "memory-manager"
+      ],
+      "synonyms": [
+        "save memories"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.prepare_search_models",
+      "path": "workflows/prepare-search-models-for-library.md",
+      "title": "Prepare search models for Library",
+      "type": "workflow",
+      "tags": [
+        "embeddings",
+        "search-quality",
+        "library"
+      ],
+      "synonyms": [
+        "prepare search models"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.knowledge_pack",
+      "path": "workflows/export-or-import-knowledge-pack.md",
+      "title": "Export or import a knowledge pack",
+      "type": "workflow",
+      "tags": [
+        "knowledge-pack",
+        "backup"
+      ],
+      "synonyms": [
+        "export knowledge pack"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.library_search_empty",
+      "path": "troubleshooting/library-search-returns-nothing.md",
+      "title": "Library search returns nothing",
+      "type": "troubleshooting",
+      "tags": [
+        "library",
+        "search",
+        "embeddings"
+      ],
+      "synonyms": [
+        "library search empty"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.library_import_disabled",
+      "path": "troubleshooting/library-import-button-disabled.md",
+      "title": "Library Import button is grayed out",
+      "type": "troubleshooting",
+      "tags": [
+        "library",
+        "import",
+        "ingest",
+        "qube-folder"
+      ],
+      "synonyms": [
+        "import button disabled",
+        "ingest grayed out",
+        "plus button library"
+      ],
+      "related": [
+        "index",
+        "features.library",
+        "workflows.import_documents"
+      ]
+    },
+    {
+      "id": "troubleshooting.model_wont_load",
+      "path": "troubleshooting/model-wont-load.md",
+      "title": "Model won't load",
+      "type": "troubleshooting",
+      "tags": [
+        "model",
+        "gguf",
+        "vram"
+      ],
+      "synonyms": [
+        "model failed to load"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.memory_not_working",
+      "path": "troubleshooting/memory-not-remembering.md",
+      "title": "Memory not remembering",
+      "type": "troubleshooting",
+      "tags": [
+        "memory",
+        "enrichment"
+      ],
+      "synonyms": [
+        "memory not working"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.companion_not_visible",
+      "path": "troubleshooting/companion-not-visible.md",
+      "title": "Companion not visible",
+      "type": "troubleshooting",
+      "tags": [
+        "companion",
+        "wayland"
+      ],
+      "synonyms": [
+        "companion missing"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.voice_mic",
+      "path": "troubleshooting/voice-or-microphone-not-working.md",
+      "title": "Voice or microphone not working",
+      "type": "troubleshooting",
+      "tags": [
+        "voice",
+        "microphone",
+        "stt"
+      ],
+      "synonyms": [
+        "microphone not working"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "troubleshooting.search_models",
+      "path": "troubleshooting/search-models-not-ready.md",
+      "title": "Search models not ready",
+      "type": "troubleshooting",
+      "tags": [
+        "embeddings",
+        "search-quality"
+      ],
+      "synonyms": [
+        "search models not ready"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "faq.memory_vs_library",
+      "path": "faq/memory-vs-library.md",
+      "title": "Memory vs Library",
+      "type": "faq",
+      "tags": [
+        "memory",
+        "library",
+        "rag"
+      ],
+      "synonyms": [
+        "difference memory and library"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "faq.internal_vs_external",
+      "path": "faq/internal-engine-vs-external-server.md",
+      "title": "Internal engine vs external server",
+      "type": "faq",
+      "tags": [
+        "internal-engine",
+        "external-server"
+      ],
+      "synonyms": [
+        "local vs lm studio"
+      ],
+      "related": [
+        "index",
+        "features.settings.ai_models",
+        "faq.hardware_tuning_internal",
+        "faq.generation_parameters"
+      ]
+    },
+    {
+      "id": "faq.hardware_tuning_internal",
+      "path": "faq/hardware-tuning-internal-engine.md",
+      "title": "Hardware tuning (Internal Engine)",
+      "type": "faq",
+      "tags": [
+        "gpu",
+        "hardware",
+        "vram",
+        "internal-engine"
+      ],
+      "synonyms": [
+        "gpu offload layers",
+        "gpu layers",
+        "n_gpu_layers",
+        "cpu thread pool",
+        "vram tuning"
+      ],
+      "related": [
+        "index",
+        "features.settings.ai_models",
+        "faq.internal_vs_external",
+        "troubleshooting.model_wont_load"
+      ]
+    },
+    {
+      "id": "faq.advanced_telemetry_interpreting",
+      "path": "faq/advanced-telemetry-interpreting.md",
+      "title": "Advanced Telemetry — interpreting the dashboard",
+      "type": "faq",
+      "tags": [
+        "telemetry",
+        "diagnostics",
+        "ttft",
+        "performance"
+      ],
+      "synonyms": [
+        "interpret telemetry",
+        "ttft meaning",
+        "router intelligence explained",
+        "slow chat diagnosis",
+        "gpu telemetry vram"
+      ],
+      "related": [
+        "index",
+        "features.telemetry",
+        "features.conversations",
+        "faq.generation_parameters",
+        "faq.hardware_tuning_internal",
+        "faq.cognitive_router"
+      ]
+    },
+    {
+      "id": "faq.cognitive_router",
+      "path": "faq/cognitive-router-how-routing-works.md",
+      "title": "Cognitive Router — how Qube routes a chat turn",
+      "type": "faq",
+      "tags": [
+        "routing",
+        "cognitive-router",
+        "memory",
+        "rag",
+        "web",
+        "hybrid"
+      ],
+      "synonyms": [
+        "how does routing work",
+        "cognitive router",
+        "knowledge pathway",
+        "route NONE MEMORY RAG WEB HYBRID",
+        "hybrid internet mode vs hybrid route",
+        "web toggle vs hybrid mode",
+        "why no citations",
+        "empty source downgrade"
+      ],
+      "related": [
+        "index",
+        "features.conversations",
+        "features.settings.knowledge",
+        "features.telemetry",
+        "faq.advanced_telemetry_interpreting",
+        "faq.diagnostic_logs_advanced",
+        "faq.memory_vs_library",
+        "faq.at_mentions",
+        "reference.composer_attachments"
+      ]
+    },
+    {
+      "id": "faq.diagnostic_logs_advanced",
+      "path": "faq/diagnostic-logs-advanced-settings.md",
+      "title": "Diagnostic logs — Settings → Advanced",
+      "type": "faq",
+      "tags": [
+        "logs",
+        "diagnostics",
+        "advanced",
+        "debug",
+        "troubleshooting"
+      ],
+      "synonyms": [
+        "diagnostic logs",
+        "debug logs",
+        "qube.log",
+        "llm debug log",
+        "routing debug log",
+        "web search log",
+        "skills debug log",
+        "open logs folder"
+      ],
+      "related": [
+        "index",
+        "features.settings.advanced",
+        "features.telemetry",
+        "faq.advanced_telemetry_interpreting",
+        "features.settings.knowledge",
+        "features.settings.contact_feedback"
+      ]
+    },
+    {
+      "id": "faq.generation_parameters",
+      "path": "faq/generation-parameters.md",
+      "title": "Generation parameters (temperature, context, replies)",
+      "type": "faq",
+      "tags": [
+        "generation",
+        "temperature",
+        "context",
+        "inference"
+      ],
+      "synonyms": [
+        "temperature setting",
+        "context window",
+        "max reply tokens",
+        "chat history messages",
+        "generation settings"
+      ],
+      "related": [
+        "index",
+        "features.settings.ai_models",
+        "features.conversations",
+        "faq.conversations_vs_memory"
+      ]
+    },
+    {
+      "id": "faq.at_mentions",
+      "path": "faq/what-do-at-mentions-do.md",
+      "title": "What do @ mentions do?",
+      "type": "faq",
+      "tags": [
+        "composer",
+        "mentions",
+        "tools"
+      ],
+      "synonyms": [
+        "what does @ do"
+      ],
+      "related": [
+        "index",
+        "reference.composer_attachments",
+        "reference.composer_tools",
+        "reference.composer_skills"
+      ]
+    },
+    {
+      "id": "faq.live_sources_vs_library",
+      "path": "faq/live-sources-vs-library-search.md",
+      "title": "Live Sources vs library search",
+      "type": "faq",
+      "tags": [
+        "live-sources",
+        "library-search"
+      ],
+      "synonyms": [
+        "internet vs library search"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "faq.companion_vs_main",
+      "path": "faq/companion-vs-main-window.md",
+      "title": "Companion vs main window",
+      "type": "faq",
+      "tags": [
+        "companion",
+        "main-window"
+      ],
+      "synonyms": [
+        "companion vs chat window"
+      ],
+      "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "faq.conversations_vs_memory",
+      "path": "faq/conversations-vs-memory-context.md",
+      "title": "Conversations vs memory context",
+      "type": "faq",
+      "tags": [
+        "conversations",
+        "memory",
+        "chat-history"
+      ],
+      "synonyms": [
+        "chat history vs memory",
+        "does qube remember this chat"
+      ],
+      "related": [
+        "features.conversations",
+        "features.memory_manager",
+        "faq.memory_vs_library",
+        "index"
+      ]
+    },
+    {
+      "id": "faq.chat_history_export",
+      "path": "faq/chat-history-vs-export.md",
+      "title": "Chat history vs export",
+      "type": "faq",
+      "tags": [
+        "conversations",
+        "export",
+        "download"
+      ],
+      "synonyms": [
+        "save conversation",
+        "export chat",
+        "copy conversation"
+      ],
+      "related": [
+        "features.conversations",
+        "faq.conversations_vs_memory",
+        "index"
+      ]
+    },
+    {
+      "id": "release.whats_new",
+      "path": "release/whats-new.md",
+      "title": "What's new in Qube Help (v1)",
+      "type": "release",
+      "tags": [
+        "release",
+        "whats-new",
+        "help-v1"
+      ],
+      "synonyms": [
+        "help release notes",
+        "documentation changelog"
+      ],
+      "related": [
+        "release.migration_guide",
+        "index",
+        "features.settings.help"
+      ]
+    },
+    {
+      "id": "release.migration_guide",
+      "path": "release/migration-guide.md",
+      "title": "Help documentation migration guide",
+      "type": "release",
+      "tags": [
+        "release",
+        "migration",
+        "corpus-version"
+      ],
+      "synonyms": [
+        "help corpus upgrade",
+        "settings path changes"
+      ],
+      "related": [
+        "release.whats_new",
+        "reference.settings_sections",
+        "index"
+      ]
+    }
+  ],
+  "canonical_answers": [
+    {
+      "id": "features.settings.ai_models.gpu_layers",
+      "question_patterns": [
+        "where are gpu layers",
+        "change gpu layers",
+        "gpu offload settings",
+        "gpu layers in settings"
+      ],
+      "doc_id": "features.settings.ai_models",
+      "heading": "GPU layers (AI & Models)",
+      "answer": "Open Settings \u2192 AI & Models. Unlock **Show advanced hardware settings**, then adjust **GPU offload layers** (llama.cpp `n_gpu_layers`). More layers = faster but more VRAM; too high can crash. See **Hardware tuning (Internal Engine)** in Library \u2192 Qube.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.hardware_tuning_internal.layers",
+      "question_patterns": [
+        "what do gpu layers do",
+        "gpu offload layers meaning",
+        "why crash when increasing gpu layers",
+        "vram and gpu layers"
+      ],
+      "doc_id": "faq.hardware_tuning_internal",
+      "heading": "GPU offload layers",
+      "answer": "**GPU offload layers** move transformer blocks onto your GPU for faster Internal Engine inference. Qube caps the slider from detected VRAM/unified memory and reloads the `.gguf` when you change it. Lower layers if loads crash.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.internal_vs_external.context",
+      "question_patterns": [
+        "external server context limit",
+        "lm studio context window qube",
+        "qube context limit external",
+        "ollama context qube settings"
+      ],
+      "doc_id": "faq.internal_vs_external",
+      "heading": "External Server context",
+      "answer": "On **External Server**, Qube does **not** set the host context window \u2014 configure it in LM Studio or Ollama. Qube\u2019s **Context limit** only affects client-side **max reply** budgeting. Match the host window to your prompts.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.generation_parameters.temperature",
+      "question_patterns": [
+        "what does temperature do",
+        "temperature setting qube",
+        "how to change temperature",
+        "creativity slider temperature"
+      ],
+      "doc_id": "faq.generation_parameters",
+      "heading": "Temperature",
+      "answer": "**Temperature** (default 0.8) controls reply randomness in **Settings \u2192 AI & Models \u2192 Generation** or the Conversations tools panel. Lower = stricter; higher = more varied. Qube may scale it down slightly on risky turns. See **Generation parameters** in Library \u2192 Qube.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.generation_parameters.context_limit",
+      "question_patterns": [
+        "what is context limit",
+        "context window setting",
+        "what does context limit do",
+        "n_ctx settings"
+      ],
+      "doc_id": "faq.generation_parameters",
+      "heading": "Context limit",
+      "answer": "**Context limit** is the shared token pool for prompt + reply (default 32,000). On the Internal Engine it sets n_ctx and reloads the model when changed. Tune it in **Settings \u2192 AI & Models \u2192 Generation**.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.generation_parameters.max_reply",
+      "question_patterns": [
+        "max reply tokens",
+        "reply cut off",
+        "answer truncated",
+        "limit maximum reply length"
+      ],
+      "doc_id": "faq.generation_parameters",
+      "heading": "Max reply tokens",
+      "answer": "**Limit maximum reply length** and **Max reply tokens** (Settings \u2192 AI & Models \u2192 Generation) cap how long each reply can grow. Large prompts or chat history leave less room \u2014 see **Generation parameters** in Library \u2192 Qube.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.generation_parameters.chat_history",
+      "question_patterns": [
+        "chat history setting",
+        "how many messages in context",
+        "chat history messages setting",
+        "conversation history limit"
+      ],
+      "doc_id": "faq.generation_parameters",
+      "heading": "Chat history",
+      "answer": "**Chat history** (default 10 messages) controls how many recent session messages Qube sends each turn \u2014 in **Settings \u2192 AI & Models \u2192 Generation** or the Conversations tools panel. This is not Memory Manager long-term recall.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "features.settings.knowledge.search_quality",
+      "question_patterns": [
+        "search quality mode",
+        "prepare search models",
+        "embedding mode settings"
+      ],
+      "doc_id": "features.settings.knowledge",
+      "heading": "Search quality (Knowledge)",
+      "answer": "Open Settings \u2192 Knowledge \u2192 **Search quality**. Choose Fast, Balanced, or Power, then tap **Prepare search models** if indexing is not ready.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.knowledge.nav",
+      "question_patterns": [
+        "where is knowledge settings",
+        "knowledge settings page",
+        "open knowledge settings",
+        "find knowledge settings"
+      ],
+      "doc_id": "features.settings.knowledge",
+      "heading": "Knowledge settings",
+      "answer": "Open Settings \u2192 Knowledge for library search, embeddings, Live Sources, and presets.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.companion_desktop.fullscreen",
+      "question_patterns": [
+        "hide companion fullscreen",
+        "companion during games",
+        "fullscreen apps companion"
+      ],
+      "doc_id": "features.settings.companion_desktop",
+      "heading": "Hide during fullscreen apps",
+      "answer": "Open Settings \u2192 Desktop Companion and enable **Hide during fullscreen apps**.",
+      "action_id": "open_settings_companion_desktop"
+    },
+    {
+      "id": "features.settings.notifications.dnd",
+      "question_patterns": [
+        "do not disturb",
+        "turn off notifications",
+        "silence notifications"
+      ],
+      "doc_id": "features.settings.notifications",
+      "heading": "Do Not Disturb",
+      "answer": "Open Settings \u2192 Notifications and enable **Do Not Disturb (critical only)**.",
+      "action_id": "open_settings_notifications"
+    },
+    {
+      "id": "features.settings.voice_audio.microphone",
+      "question_patterns": [
+        "microphone settings",
+        "voice input device",
+        "change microphone"
+      ],
+      "doc_id": "features.settings.voice_audio",
+      "heading": "Audio input device",
+      "answer": "Open Settings \u2192 Voice & Audio and choose your **Audio input device**.",
+      "action_id": "open_settings_voice_audio"
+    },
+    {
+      "id": "features.settings.general.ui_language",
+      "question_patterns": [
+        "ui language",
+        "british english settings",
+        "american english interface",
+        "change spelling colour color"
+      ],
+      "doc_id": "features.settings.general",
+      "heading": "UI language variant",
+      "answer": "Open **Settings \u2192 General** and choose **British English** or **American English** under **Application language**.",
+      "action_id": "open_settings_general"
+    },
+    {
+      "id": "features.settings.memory.enrichment",
+      "question_patterns": [
+        "memory enrichment",
+        "memory promotion settings",
+        "turn off memory consolidation",
+        "long-term memory settings"
+      ],
+      "doc_id": "features.settings.memory",
+      "heading": "Memory automation",
+      "answer": "Open **Settings \u2192 Memory** for **Enable Memory Enrichment & Reflection**, **Promote well-used memories to preferences**, and **Highlight memories that keep coming back**. Review stored rows in **Memory Manager**.",
+      "action_id": "open_settings_memory"
+    },
+    {
+      "id": "features.settings.help.guidance",
+      "question_patterns": [
+        "reset help guidance",
+        "composer mention guide",
+        "composer @ guide",
+        "open @ composer guide",
+        "replay guided tour",
+        "open qube documentation"
+      ],
+      "doc_id": "features.settings.help",
+      "heading": "Help & guidance",
+      "answer": "Open **Settings \u2192 Help** for **Open @ Composer Guide**, guided tours, and **Open Qube documentation** (Library \u2192 Qube). Reset tours via the **Reset Help & Guidance** composer command.",
+      "action_id": "open_settings_help"
+    },
+    {
+      "id": "features.settings.advanced.json",
+      "question_patterns": [
+        "json settings editor",
+        "diagnostic logs",
+        "advanced settings json",
+        "view debug logs"
+      ],
+      "doc_id": "features.settings.advanced",
+      "heading": "Advanced JSON & logs",
+      "answer": "Open **Settings \u2192 Advanced** for the **JSON settings** editor and five subsystem **diagnostic logs** (`qube.log`, `llm_debug.log`, routing, web search, skills). See **Diagnostic logs \u2014 Settings \u2192 Advanced** for what each records.",
+      "action_id": "open_settings_advanced"
+    },
+    {
+      "id": "features.settings.contact_feedback.report",
+      "question_patterns": [
+        "report a bug",
+        "send feedback",
+        "contact support",
+        "bug report settings"
+      ],
+      "doc_id": "features.settings.contact_feedback",
+      "heading": "Contact & Feedback",
+      "answer": "Open **Settings \u2192 Contact & Feedback** and click **Report a bug** or **Request a feature** to open the Qube website in your browser.",
+      "action_id": "open_settings_contact_feedback"
+    },
+    {
+      "id": "features.settings.ai_models.engine",
+      "question_patterns": [
+        "switch to internal engine",
+        "load local gguf",
+        "select ai model path",
+        "external provider settings"
+      ],
+      "doc_id": "features.settings.ai_models",
+      "heading": "AI Engine & model path",
+      "answer": "Open Settings \u2192 AI & Models. Choose **Internal Engine** or **External Provider**, then set **Active model** (local `.gguf` path or server preset).",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "features.settings.knowledge.library_rag",
+      "question_patterns": [
+        "enable library search",
+        "local knowledge base",
+        "rag auto activator",
+        "automatic document search"
+      ],
+      "doc_id": "features.settings.knowledge",
+      "heading": "Library search (Knowledge)",
+      "answer": "Open Settings \u2192 Knowledge. Enable **Local Knowledge Base** / library search toggles and set **Search quality** before expecting `@[tool:library]` hits.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.conversations.nav",
+      "question_patterns": [
+        "where is chat",
+        "chat screen",
+        "conversations page",
+        "main chat view"
+      ],
+      "doc_id": "features.conversations",
+      "heading": "Conversations (Chat)",
+      "answer": "Click **Conversations** in the left navigation (chat icon) to open the main chat view."
+    },
+    {
+      "id": "features.conversations.route_indicators",
+      "question_patterns": [
+        "what do route indicators mean",
+        "rag web hybrid indicators",
+        "what does rag dot mean",
+        "status dots in chat"
+      ],
+      "doc_id": "features.conversations",
+      "heading": "Top bar route indicators",
+      "answer": "On Conversations, **● RAG** (Library), **● WEB** (web search), and **● HYBRID** (**Hybrid Internet Mode** / auto web — not Memory+Library HYBRID route). Memory uses `@[tool:memory]` — no MEMORY dot. See **Cognitive Router — how routing works**."
+    },
+    {
+      "id": "features.library.ingest",
+      "question_patterns": [
+        "upload documents",
+        "ingest files",
+        "add pdf to library",
+        "where to upload files"
+      ],
+      "doc_id": "features.library",
+      "heading": "Ingest documents",
+      "answer": "Open **Library**, select **Main** (or a user folder), then click **+** (**Ingest New Document**). Supported types include `.txt`, `.md`, `.pdf`, and `.epub`. If **+** is grayed out, select **Main**—you may have the read-only **Qube** folder selected."
+    },
+    {
+      "id": "features.library.chat_with_doc",
+      "question_patterns": [
+        "chat with a document",
+        "ask questions about my pdf",
+        "grounded chat from library",
+        "open chat from library preview"
+      ],
+      "doc_id": "features.library",
+      "heading": "Chat with document",
+      "answer": "In **Library**, single-click a document to preview it, then click the floating **Chat with document** button and confirm. Qube opens **Conversations** with a new thread and an `@[file:…]` attachment prefilled."
+    },
+    {
+      "id": "features.memory_manager.nav",
+      "question_patterns": [
+        "memory manager",
+        "see saved memories",
+        "where are my memories",
+        "browse long-term memory"
+      ],
+      "doc_id": "features.memory_manager",
+      "heading": "Memory Manager",
+      "answer": "Click **Memory Manager** in the left navigation (memory icon) to browse, edit, flag, and delete stored long-term memories."
+    },
+    {
+      "id": "features.memory_manager.tiers",
+      "question_patterns": [
+        "memory tiers",
+        "preference knowledge episode context",
+        "what are memory categories",
+        "filter memories by tier"
+      ],
+      "doc_id": "features.memory_manager",
+      "heading": "Memory tiers and categories",
+      "answer": "In **Memory Manager**, use **All tiers** for structural tiers (**Preferences**, **Knowledge**, **Episodes**, **Context**) and **All categories** for labels such as preference, identity, project, knowledge, context, and episode. Combine with **Search memory text…** or **Flagged only**."
+    },
+    {
+      "id": "features.model_manager.download",
+      "question_patterns": [
+        "download a model",
+        "model manager",
+        "qube verified models",
+        "get gguf model"
+      ],
+      "doc_id": "features.model_manager",
+      "heading": "Download models",
+      "answer": "Open **Model Manager**, select a repository, choose a GGUF quantization, and click **Download**. When the file is saved locally, click **Load Model** to run it on the Internal Engine, or set the path under **Settings \u2192 AI & Models**."
+    },
+    {
+      "id": "features.model_manager.load",
+      "question_patterns": [
+        "load model from model manager",
+        "load gguf",
+        "where do i open model manager",
+        "open model manager"
+      ],
+      "doc_id": "features.model_manager",
+      "heading": "Load a downloaded model",
+      "answer": "In **Model Manager**, pick a repo, select a downloaded `.gguf` in **Download Options**, then click **Load Model**. You can also load from **Conversations** tools panel or **Settings \u2192 AI & Models**."
+    },
+    {
+      "id": "features.telemetry.nav",
+      "question_patterns": [
+        "telemetry dashboard",
+        "cpu gpu graphs",
+        "routing diagnostics",
+        "performance monitor"
+      ],
+      "doc_id": "features.telemetry",
+      "heading": "Advanced Telemetry",
+      "answer": "Click **Telemetry** in the left navigation for **Advanced Telemetry**: hardware load, **Pipeline Latency**, **Router Intelligence**, **Sidecar Cognition**, and **Inference stack** cards."
+    },
+    {
+      "id": "features.telemetry.ttft",
+      "question_patterns": [
+        "time to first token",
+        "ttft latency",
+        "llm ttft",
+        "how fast is the model"
+      ],
+      "doc_id": "features.telemetry",
+      "heading": "Pipeline Latency",
+      "answer": "Open **Telemetry** and read **Pipeline Latency** \u2192 **LLM TTFT** (Time To First Token). The same **TTFT** value also appears on assistant replies in **Conversations** after a turn completes. See **Advanced Telemetry \u2014 interpreting the dashboard** for causes and diagnosis."
+    },
+    {
+      "id": "faq.advanced_telemetry_interpreting.router",
+      "question_patterns": [
+        "what is router intelligence",
+        "router intelligence telemetry",
+        "routing diagnostics dashboard",
+        "memory route share telemetry"
+      ],
+      "doc_id": "faq.advanced_telemetry_interpreting",
+      "heading": "Router Intelligence",
+      "answer": "**Router Intelligence** summarizes recent turns: route mix (MEMORY/RAG/**HYBRID** Memory+Library/WEB/NONE), **Avg retrieval phase**, tuner weights (read-only), and health flags. **● HYBRID** dot is **Hybrid Internet Mode**, not the same as HYBRID route counts. See **Cognitive Router — how routing works**."
+    },
+    {
+      "id": "faq.advanced_telemetry_interpreting.gpu",
+      "question_patterns": [
+        "telemetry gpu 0 percent",
+        "gpu graph telemetry vram",
+        "system load timeline gpu",
+        "why gpu shows zero telemetry"
+      ],
+      "doc_id": "faq.advanced_telemetry_interpreting",
+      "heading": "System Load Timeline GPU",
+      "answer": "The **GPU** line is **compute utilization %**, not VRAM free/total. CPU-only inference or an idle GPU can show 0% while a model is loaded. See **Advanced Telemetry \u2014 interpreting the dashboard**."
+    },
+    {
+      "id": "faq.advanced_telemetry_interpreting.slow",
+      "question_patterns": [
+        "slow chat reply diagnose",
+        "why is qube slow",
+        "telemetry slow response",
+        "retrieval vs generation slow"
+      ],
+      "doc_id": "faq.advanced_telemetry_interpreting",
+      "heading": "Diagnose slow replies",
+      "answer": "Compare **TTFT** on the message with **Pipeline Latency** and **Avg retrieval phase** in **Telemetry**. High retrieval latency \u2192 indexing/RAG; high TTFT with low retrieval \u2192 generation/hardware. Use **INSPECT RETRIEVAL** on **Sources** for one turn."
+    },
+    {
+      "id": "faq.diagnostic_logs_advanced.where",
+      "question_patterns": [
+        "where are qube log files",
+        "open logs folder",
+        "diagnostic logs location",
+        "view debug logs advanced settings"
+      ],
+      "doc_id": "faq.diagnostic_logs_advanced",
+      "heading": "Log file location",
+      "answer": "Open **Settings \u2192 Advanced** \u2192 **Open logs folder** (or `~/.qube/logs/`). Use **View {log name}** for a 500-line in-app tail with optional live refresh."
+    },
+    {
+      "id": "faq.diagnostic_logs_advanced.routing",
+      "question_patterns": [
+        "routing debug log",
+        "which log shows routing decisions",
+        "routing jsonl log",
+        "cognitive router debug log"
+      ],
+      "doc_id": "faq.diagnostic_logs_advanced",
+      "heading": "Routing debug log",
+      "answer": "Enable **Routing debug log** under **Settings \u2192 Advanced**, send a chat message, then **View Routing debug log** (`routing_debug.log`). One JSONL line per turn with route, strategy, and retrieval outcome."
+    },
+    {
+      "id": "faq.diagnostic_logs_advanced.llm",
+      "question_patterns": [
+        "llm debug log",
+        "what is in llm_debug.log",
+        "qube llm debug file",
+        "prompt debug log qube"
+      ],
+      "doc_id": "faq.diagnostic_logs_advanced",
+      "heading": "LLM debug log",
+      "answer": "**LLM debug log** (`llm_debug.log`) captures `Qube.NativeLLM.Debug` JSON (completion traces, discourse, validation). The Settings toggle controls **file recording**; heavy native prompt dumps also need `QUBE_LLM_DEBUG=1` at launch."
+    },
+    {
+      "id": "faq.cognitive_router.pathways",
+      "question_patterns": [
+        "how does cognitive router work",
+        "how does qube route chat",
+        "knowledge pathway routing",
+        "NONE MEMORY RAG WEB routes"
+      ],
+      "doc_id": "faq.cognitive_router",
+      "heading": "Route vocabulary",
+      "answer": "Qube picks a pathway each turn: **NONE** (self-knowledge), **MEMORY**, **RAG** (Library), **WEB**, or **HYBRID** (Memory+Library). Pre-router attachments and post-router overrides can change the pick. See **Cognitive Router — how Qube routes a chat turn**."
+    },
+    {
+      "id": "faq.cognitive_router.hybrid_naming",
+      "question_patterns": [
+        "hybrid dot vs hybrid route",
+        "what does hybrid mean telemetry",
+        "hybrid internet mode vs hybrid route",
+        "HYBRID route share meaning"
+      ],
+      "doc_id": "faq.cognitive_router",
+      "heading": "Two HYBRID meanings",
+      "answer": "**● HYBRID** + **Hybrid Internet Mode** = auto **web** search per turn. **HYBRID** in **Telemetry → Routes** = **Memory + Library RAG** combined. Same word, different mechanisms — see **Cognitive Router — how routing works**."
+    },
+    {
+      "id": "faq.cognitive_router.web_controls",
+      "question_patterns": [
+        "web toggle vs hybrid internet mode",
+        "difference web and hybrid mode",
+        "composer web toggle sticky",
+        "when to use hybrid internet mode"
+      ],
+      "doc_id": "faq.cognitive_router",
+      "heading": "Web vs Hybrid Internet Mode",
+      "answer": "**Web** toggle (composer) forces web on **every message in this chat** until off. **Hybrid Internet Mode** (tools panel) lets the router **auto-pick WEB** per turn. **`@[tool:internet]`** is single-message explicit web."
+    },
+    {
+      "id": "faq.cognitive_router.no_citations",
+      "question_patterns": [
+        "why no citations after search",
+        "answered without sources routing",
+        "empty retrieval downgrade",
+        "why no sources on rag turn"
+      ],
+      "doc_id": "faq.cognitive_router",
+      "heading": "No citations after routing",
+      "answer": "If relevance gates drop all hits or a retrieval route finds **zero** surviving sources, Qube **downgrades to plain chat** before the prompt — no forced citation mode. Check **Sources** on the reply; use **Routing debug log** or **INSPECT RETRIEVAL** for that turn."
+    },
+    {
+      "id": "workflows.set_up_local_models.summary",
+      "question_patterns": [
+        "set up local llm",
+        "how to run offline model",
+        "first local model",
+        "internal engine setup"
+      ],
+      "doc_id": "workflows.set_up_local_models",
+      "heading": "Set up local models",
+      "answer": "Use **Model Manager** to download a `.gguf`, set **AI Engine** to **Internal Engine (native)** in **Settings \u2192 AI & Models**, then select the model from **LOCAL LLM** in the Conversations tools panel."
+    },
+    {
+      "id": "workflows.import_documents.summary",
+      "question_patterns": [
+        "import documents to library",
+        "add files to knowledge base",
+        "index my documents"
+      ],
+      "doc_id": "workflows.import_documents",
+      "heading": "Import documents",
+      "answer": "Open **Library \u2192 Main**, click **+** (**Ingest New Document**), then prepare search models under **Settings \u2192 Knowledge** if search is not ready."
+    },
+    {
+      "id": "faq.at_mentions.summary",
+      "question_patterns": [
+        "what does @help do",
+        "what does @library do",
+        "at mentions explained",
+        "composer tools help"
+      ],
+      "doc_id": "faq.at_mentions",
+      "heading": "@ mentions",
+      "answer": "Attach `@[tool:help]` for built-in docs, `@[tool:library]` for your uploads, or pick tools from **Attach (@)**. Only the **first routing attachment** in a message controls routing. See **Settings \u2192 Help \u2192 Open @ Composer Guide**."
+    },
+    {
+      "id": "troubleshooting.library_import_disabled.summary",
+      "question_patterns": [
+        "import button grayed out",
+        "library import disabled",
+        "ingest button greyed out",
+        "plus button library disabled",
+        "can't upload to library"
+      ],
+      "doc_id": "troubleshooting.library_import_disabled",
+      "heading": "Import button grayed out",
+      "answer": "The **+** button uploads to the selected folder. It is disabled on the read-only **Qube** folder and during an active ingest. Click **Main** (or a folder you created), then **+**. Previewing help docs in **Qube** does not block Import unless the **Qube** folder row is selected."
+    },
+    {
+      "id": "troubleshooting.library_search_empty.summary",
+      "question_patterns": [
+        "library search returns nothing",
+        "rag no results",
+        "empty library search",
+        "no documents found"
+      ],
+      "doc_id": "troubleshooting.library_search_empty",
+      "heading": "Empty Library search",
+      "answer": "Confirm files finished ingesting (**Chunks Indexed**), search models are ready under **Settings \u2192 Knowledge** (**Prepare search models**), and attach `@[tool:library]` or enable **Local Knowledge Base**."
+    }
+  ],
+  "actions": []
+}

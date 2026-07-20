@@ -452,6 +452,12 @@ class SidebarFolderListController:
         self._toggle_folder(folder["id"], not bool(folder.get("is_collapsed")))
         return True
 
+    def _document_click_updates_active_folder(self, folder_id: str) -> bool:
+        """Library docs in read-only folders (e.g. Qube) are preview-only for ingest target."""
+        if self.scope != "library":
+            return True
+        return self.db.library_folder_allows_user_ingest(folder_id)
+
     def handle_item_clicked(self, item: QListWidgetItem) -> bool:
         """Returns True if click was handled (folder row); False for item rows."""
         kind = row_kind(item)
@@ -465,7 +471,7 @@ class SidebarFolderListController:
             payload = item.data(SIDEBAR_ROW_PAYLOAD_ROLE)
             if isinstance(payload, dict):
                 folder_id = payload.get("folder_id")
-            if folder_id:
+            if folder_id and self._document_click_updates_active_folder(str(folder_id)):
                 self.on_active_folder_changed(str(folder_id))
             return False
         return False

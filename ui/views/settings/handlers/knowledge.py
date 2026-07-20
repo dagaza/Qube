@@ -993,6 +993,16 @@ class KnowledgeHandlersMixin:
     def _on_open_my_knowledge_settings_clicked(self) -> None:
         self.select_settings_section("knowledge", anchor="knowledge_presets")
 
+    def _on_open_qube_documentation_clicked(self) -> None:
+        from ui.onboarding.tour_helpers import open_library
+
+        window = self.window()
+        if window is None:
+            return
+        open_library(window)
+        library_view = window.ensure_library_view()
+        library_view.show_qube_documentation_folder()
+
     def _refresh_retrieval_trace(self) -> None:
         panel = getattr(self, "retrieval_trace_panel", None)
         if panel is not None:

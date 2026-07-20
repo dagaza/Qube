@@ -262,6 +262,15 @@ from core.composer_attachments import (
     is_web_composer_tool,
     resolve_attachment_routing,
 )
+from core.help_corpus_manifest import HELP_DOC_SOURCE_PREFIX
+from core.help_corpus_retrieval import (
+    append_canonical_action_block,
+    build_canonical_context_block,
+    canonical_answer_system_hint,
+    help_doc_ids_from_sources,
+    log_help_query,
+    match_canonical_answer,
+)
 
 from mcp.rag_tool import rag_search
 from mcp.memory_tool import memory_search
@@ -771,6 +780,14 @@ class LLMWorker(QThread):
         self.stream_replaced.emit(self.session_id or "", outcome.text)
         self.tts_turn_superseded.emit(self.session_id or "")
         return outcome.text, True
+
+    def _append_help_canonical_action_if_needed(self, final_text: str) -> str:
+        if getattr(self, "_composer_knowledge_tool", None) != "help":
+            return final_text or ""
+        entry = getattr(self, "_turn_canonical_help_entry", None)
+        if not isinstance(entry, dict):
+            return final_text or ""
+        return append_canonical_action_block(final_text or "", entry)
 
     def _record_memory_citations(self, final_text: str, sources: list) -> None:
         """Phase C: scan ``final_text`` for ``[N]`` cites and credit the
@@ -2234,8 +2251,11 @@ class LLMWorker(QThread):
         attachment_file_active = False
         attachment_conversation_active = False
         self._turn_source_filter = None
+        self._turn_source_prefix_filter = None
         self._turn_attachment_context = ""
         self._composer_knowledge_tool = None
+        self._turn_canonical_help_entry = None
+        self._help_canonical_system_hint = ""
         self._composer_internet_requested = False
         self._composer_trusted_requested = False
 
@@ -2266,6 +2286,7 @@ class LLMWorker(QThread):
                     self._mark_skip_enrichment("composer_conversation_ref")
             composer_tool = attachment_patch.get("attachment_tool")
             library_knowledge_active = composer_tool == "library"
+            help_knowledge_active = composer_tool == "help"
             if library_knowledge_active:
                 self._composer_knowledge_tool = "library"
                 force_web = True
@@ -2275,6 +2296,19 @@ class LLMWorker(QThread):
                     attachment_patch["strategy"] = "attachment_tool_library"
                 logger.info(
                     "[LLM Worker] Composer @library: forcing internal corpus WEB path"
+                )
+            elif help_knowledge_active:
+                self._composer_knowledge_tool = "help"
+                self._turn_source_prefix_filter = HELP_DOC_SOURCE_PREFIX
+                force_web = True
+                if attachment_patch.get("route") != "web":
+                    attachment_patch = dict(attachment_patch)
+                    attachment_patch["route"] = "web"
+                    attachment_patch["strategy"] = "attachment_tool_help"
+                logger.info(
+                    "[LLM Worker] Composer @help: forcing help corpus WEB path "
+                    "(prefix=%s)",
+                    HELP_DOC_SOURCE_PREFIX,
                 )
             elif composer_tool and is_web_composer_tool(composer_tool):
                 self._composer_knowledge_tool = composer_tool
@@ -2289,6 +2323,13 @@ class LLMWorker(QThread):
                     "[LLM Worker] Composer @%s: forcing WEB search for this turn",
                     composer_tool,
                 )
+
+        if getattr(self, "_composer_knowledge_tool", None) == "help":
+            help_entry = match_canonical_answer(self.prompt)
+            self._turn_canonical_help_entry = help_entry
+            self._help_canonical_system_hint = (
+                canonical_answer_system_hint(help_entry) if help_entry else ""
+            )
 
         scoped_library_active = file_search_active or attachment_file_active
 
@@ -3041,6 +3082,11 @@ class LLMWorker(QThread):
                 if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
                 else None
             )
+            corpus_source_prefix_filter = (
+                getattr(self, "_turn_source_prefix_filter", None)
+                if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                else None
+            )
 
             _web_outcome = run_web_retrieval(
                 query=web_query,
@@ -3053,6 +3099,7 @@ class LLMWorker(QThread):
                 turn_id=getattr(self, "_routing_debug_turn_seq", None),
                 library_store=library_store,
                 source_filter=corpus_source_filter,
+                source_prefix_filter=corpus_source_prefix_filter,
                 preset_id=turn_preset_id,
                 retrieval_profile=get_retrieval_profile(),
                 db=self.db,
@@ -3251,7 +3298,9 @@ class LLMWorker(QThread):
                     all_ui_sources.append(src)
 
                 web_hdr = (
-                    "LIBRARY SEARCH RESULTS"
+                    "QUBE HELP DOCUMENTATION"
+                    if getattr(self, "_composer_knowledge_tool", None) == "help"
+                    else "LIBRARY SEARCH RESULTS"
                     if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
                     else "WEB SEARCH RESULTS"
                 )
@@ -3264,6 +3313,22 @@ class LLMWorker(QThread):
                     "[LLM Worker] Web search integrated (%d sources, %d chars)",
                     len(web_items),
                     len(web_context),
+                )
+
+            if getattr(self, "_composer_knowledge_tool", None) == "help":
+                help_entry = getattr(self, "_turn_canonical_help_entry", None)
+                if help_entry and tool_context.strip():
+                    canonical_block = build_canonical_context_block(help_entry)
+                    tool_context = f"{canonical_block}\n\n{tool_context}"
+                elif help_entry:
+                    tool_context = build_canonical_context_block(help_entry)
+                log_help_query(
+                    query=self.prompt,
+                    retrieved_doc_ids=help_doc_ids_from_sources(all_ui_sources),
+                    canonical_id=(
+                        str(help_entry.get("id")) if isinstance(help_entry, dict) else None
+                    ),
+                    session_id=self.session_id,
                 )
 
             if web_results_kept_for_audit is None and web_results:
@@ -3526,6 +3591,26 @@ class LLMWorker(QThread):
                     "answer from general model knowledge about filings or tickers. "
                     "Do NOT emit [1], [2], or [W].]\n"
                 )
+            elif composer_tool == "help":
+                tool_context += (
+                    "\n[@help: No matching Qube help documentation was retrieved. "
+                    "Tell the user briefly that help docs did not match their question. "
+                    "Suggest Settings → Help → Open Qube documentation or rephrasing. "
+                    "Do NOT search or cite the user's Main library uploads. "
+                    "Do NOT invent settings paths. Do NOT emit [1], [2], or [W].]\n"
+                )
+                help_entry = getattr(self, "_turn_canonical_help_entry", None)
+                canonical_id = (
+                    str(help_entry.get("id"))
+                    if isinstance(help_entry, dict) and help_entry.get("id")
+                    else None
+                )
+                log_help_query(
+                    query=self.prompt,
+                    retrieved_doc_ids=[],
+                    canonical_id=canonical_id,
+                    session_id=self.session_id,
+                )
             else:
                 tool_context += (
                     "\n[WEB SEARCH: No live results were returned for this query. "
@@ -3567,6 +3652,8 @@ class LLMWorker(QThread):
         composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
         legal_sources_empty = composer_tool == "legal" and not all_ui_sources
         finance_sources_empty = composer_tool == "finance" and not all_ui_sources
+        help_sources_empty = composer_tool == "help" and not all_ui_sources
+        composer_help_attached = composer_tool == "help"
         _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
         if _evidence_bundle is not None:
             warnings = _evidence_bundle.warnings or ()
@@ -3954,6 +4041,9 @@ class LLMWorker(QThread):
             legal_disclaimer=legal_disclaimer,
             legal_sources_empty=legal_sources_empty,
             finance_sources_empty=finance_sources_empty,
+            composer_help_attached=composer_help_attached,
+            help_sources_empty=help_sources_empty,
+            help_canonical_hint=getattr(self, "_help_canonical_system_hint", ""),
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(
@@ -4173,6 +4263,7 @@ class LLMWorker(QThread):
             )
 
             if self.session_id and final_text.strip():
+                final_text = self._append_help_canonical_action_if_needed(final_text)
                 final_text, all_ui_sources, _ = self._finalize_turn_citations(
                     final_text,
                     all_ui_sources,
@@ -4673,6 +4764,7 @@ class LLMWorker(QThread):
 
         citation_retry_replaced = False
         if final_text.strip():
+            final_text = self._append_help_canonical_action_if_needed(final_text)
             final_text, all_ui_sources, citation_retry_replaced = (
                 self._finalize_turn_citations(
                     final_text,

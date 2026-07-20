@@ -263,6 +263,7 @@ class LibraryView(QWidget):
             on_reload=self._reload_library_sidebar,
             on_active_folder_changed=self._set_active_folder_id,
             on_after_folder_delete=self._purge_deleted_library_files,
+            sort_mode="name",
         )
         self.sort_btn = self._folder_controller.setup_sort_header_button(
             actions_cluster
@@ -852,6 +853,16 @@ class LibraryView(QWidget):
     #  LOGIC WIRING                                             #
     # --------------------------------------------------------- #
 
+    def show_qube_documentation_folder(self) -> None:
+        """Select the reserved Qube folder and show built-in help docs."""
+        folder_id = self.db.get_qube_library_folder_id()
+        folders = self.db.list_library_folders()
+        qube = next((row for row in folders if row.get("id") == folder_id), None)
+        if qube and qube.get("is_collapsed"):
+            self.db.set_library_folder_collapsed(folder_id, False)
+        self._set_active_folder_id(folder_id)
+        self.refresh_library_list()
+
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance with Prestige rounding and colors."""
         apply_prestige_kebab_menu_theme(menu, is_dark)
@@ -859,6 +870,7 @@ class LibraryView(QWidget):
     def _set_active_folder_id(self, folder_id: str) -> None:
         self._active_folder_id = folder_id
         self._sync_ingest_button_for_active_folder()
+        self._update_row_colors()
 
     def _sync_ingest_button_for_active_folder(self) -> None:
         folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
@@ -1027,7 +1039,14 @@ class LibraryView(QWidget):
         """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         target_list = getattr(self, "doc_list", getattr(self, "history_list", None))
-        apply_sidebar_row_title_colors(target_list, is_dark=is_dark)
+        active_folder_id = None
+        if target_list is getattr(self, "doc_list", None):
+            active_folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
+        apply_sidebar_row_title_colors(
+            target_list,
+            is_dark=is_dark,
+            active_folder_id=active_folder_id,
+        )
 
     def _trigger_rename_document(self, old_filename):
         is_dark = getattr(self.window(), '_is_dark_theme', True)
@@ -1137,8 +1156,8 @@ class LibraryView(QWidget):
         
         # 1. Check if any selected files already exist in our SQLite registry
         existing_files = []
-        current_docs = [doc['filename'] for doc in self.db.get_library_documents()]
-        
+        current_docs = self.db.get_all_library_document_filenames()
+
         for p in paths:
             if p.name in current_docs:
                 existing_files.append(p.name)
@@ -1203,7 +1222,7 @@ class LibraryView(QWidget):
         self._had_ingestion_error = True 
 
         self._hide_ingest_progress_ui()
-        self.add_btn.setEnabled(True)
+        self._sync_ingest_button_for_active_folder()
 
         is_dark = getattr(self.window(), '_is_dark_theme', True)
         dialog = PrestigeDialog(self.window(), title, str(error_msg), is_dark)
@@ -1212,12 +1231,12 @@ class LibraryView(QWidget):
     def finish_reindex_ui(self) -> None:
         """Hide re-embed progress after a mode switch without ingestion dialogs."""
         self._hide_ingest_progress_ui()
-        self.add_btn.setEnabled(True)
+        self._sync_ingest_button_for_active_folder()
         self.refresh_library_list()
 
     def complete_ingestion(self, total_chunks: int, *, warn_if_empty: bool = True):
         self._hide_ingest_progress_ui()
-        self.add_btn.setEnabled(True)
+        self._sync_ingest_button_for_active_folder()
         
         if self._had_ingestion_error:
             return 

@@ -12,6 +12,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QLabel, QListWidget, QWidget
 
+from ui.components.sidebar_folder_list import ROW_KIND_FOLDER, row_kind
+
 _ROW_TITLE_STYLE = (
     "background: transparent; border: none; "
     "font-size: 13px; font-weight: 500; color: {color};"
@@ -66,8 +68,13 @@ def apply_sidebar_row_title_colors(
     *,
     is_dark: bool,
     label_object_name: str = "HistoryRowTitle",
+    active_folder_id: str | None = None,
 ) -> None:
-    """Set row label colors from selection + theme (reliable with setItemWidget)."""
+    """Set row label colors from selection + theme (reliable with setItemWidget).
+
+    When ``active_folder_id`` is set (Library upload target), that folder row uses
+    the selected title color even if a document row carries QListWidget selection.
+    """
     if list_widget is None:
         return
     if is_dark:
@@ -77,16 +84,31 @@ def apply_sidebar_row_title_colors(
         normal = "#1e293b"
         selected = "#1e293b"
 
+    active_folder_key = str(active_folder_id) if active_folder_id else None
+
     for i in range(list_widget.count()):
         item = list_widget.item(i)
         row = list_widget.itemWidget(item)
         if row is None:
             continue
-        color = selected if item.isSelected() else normal
+        is_active_upload_folder = (
+            active_folder_key is not None
+            and row_kind(item) == ROW_KIND_FOLDER
+            and str(item.data(Qt.ItemDataRole.UserRole) or "") == active_folder_key
+        )
         for obj_name, template in (
             (label_object_name, _ROW_TITLE_STYLE),
             ("HistoryFolderTitle", _FOLDER_TITLE_STYLE),
         ):
             lbl = row.findChild(QLabel, obj_name)
-            if lbl is not None:
-                lbl.setStyleSheet(template.format(color=color))
+            if lbl is None:
+                continue
+            if obj_name == "HistoryFolderTitle":
+                lbl_color = (
+                    selected
+                    if (is_active_upload_folder or item.isSelected())
+                    else normal
+                )
+            else:
+                lbl_color = selected if item.isSelected() else normal
+            lbl.setStyleSheet(template.format(color=lbl_color))

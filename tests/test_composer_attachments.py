@@ -83,6 +83,14 @@ class TestComposerAttachments(unittest.TestCase):
         self.assertEqual(patch["route"], "web")
         self.assertEqual(patch["strategy"], "attachment_tool_library")
 
+    def test_resolve_tool_help(self):
+        att = ComposerAttachment(kind="tool", id="help", label="Help")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "web")
+        self.assertEqual(patch["strategy"], "attachment_tool_help")
+        self.assertEqual(patch["attachment_tool"], "help")
+
     def test_resolve_tool_research(self):
         att = ComposerAttachment(kind="tool", id="research", label="Deep research")
         patch = resolve_attachment_routing([att])

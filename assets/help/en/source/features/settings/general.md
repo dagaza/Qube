@@ -1,0 +1,36 @@
+# General
+
+## Common questions
+
+- How do I switch between British and American English in the UI?
+- Where are application-wide interface preferences?
+- Can I change how dates and spelling variants appear?
+
+## What it is
+
+**General** settings cover application-wide interface preferences. Under **Application language**, choose **British English** or **American English** to switch visible copy (spelling and phrasing such as *colour* vs *color*).
+
+These choices affect labels and system messages across Settings, Conversations, and Library—they do not change the language model’s reply language unless you ask it separately in chat.
+
+## Where to find it
+
+Open **Settings → General** (settings section `general`). Press **?** for the guided tour (`settings.general`).
+
+## Also called
+
+general preferences, UI language, application language, British English, American English, interface settings, GENERAL
+
+## How to…
+
+1. **Open General settings** — Navigate from the main **Settings** sidebar under **Interface**.
+2. **Choose application language** — Under **Language**, select **British English** or **American English**.
+3. **Confirm across the app** — Browse a few pages; labels update immediately without restarting in most cases.
+
+## Controls
+
+<!-- include:generated/controls/general.md -->
+
+## Related
+
+- [Help settings](help.md) — tours and composer guidance
+- [Settings sections reference](../../reference/settings-sections.md) — full settings index

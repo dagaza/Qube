@@ -56,8 +56,8 @@ class TestLibraryTour(unittest.TestCase):
         tour = build_tour("library", self._make_host())
         self.assertIsNotNone(tour)
         assert tour is not None
-        # welcome + 5 sidebar + 7 toolbar + 2 preview + 1 fab + 1 finish = 17
-        self.assertEqual(len(tour._steps), 17)
+        # welcome + 5 sidebar + 7 toolbar + 2 preview + 1 fab + 1 finish = 18
+        self.assertEqual(len(tour._steps), 18)
 
     def test_step_order_section_anchors(self) -> None:
         tour = build_tour("library", self._make_host())
@@ -75,7 +75,7 @@ class TestLibraryTour(unittest.TestCase):
             ],
         )
         self.assertEqual(ids[6], "preview_font_minus")
-        self.assertEqual(ids[13], "preview_header")
+        self.assertEqual(ids[14], "preview_header")
         self.assertEqual(ids[-2], "chat_with_doc")
         self.assertEqual(ids[-1], "tour_complete")
 

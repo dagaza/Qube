@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from core.composer_attachments import COMPOSER_TOOLS
-from core.composer_commands import COMPOSER_COMMANDS
+from core.composer_attachments import COMPOSER_TOOLS, composer_preset_tools
+from core.composer_command_defs import COMPOSER_COMMANDS
 from core.skills.registry import iter_skills
 
 
@@ -21,6 +21,14 @@ def build_composer_mention_guide_text() -> str:
         f"  • {tool['label']} — @[tool:{tool['id']}]\n    {tool['description']}"
         for tool in COMPOSER_TOOLS
     ]
+
+    preset_tools = composer_preset_tools()
+    if preset_tools:
+        tool_lines.append("  • (My knowledge presets — see Settings → Knowledge → My knowledge)")
+        for tool in preset_tools:
+            tool_lines.append(
+                f"  • {tool['label']} — @[tool:{tool['id']}]\n    {tool['description']}"
+            )
 
     command_lines = [
         f"  • {cmd.label}\n    {cmd.description}"
@@ -54,8 +62,14 @@ Files — @[file:filename.pdf]
 Conversations — @[chat:session-id::Title]
   Pull another chat's transcript into this turn (not mixed with unrelated turns here).
 
-Tools
+Tools (built-in)
 {tools_block}
+
+Advanced tools (recipe, science, wikipedia, pubmed, arxiv) are hidden until you type @
+and search for the tool id.
+
+Manual adapter pin — @[tool:source:adapter_id] (example: @[tool:source:pubmed])
+  Pin one Live Source adapter; not shown in the palette. Prefer My knowledge presets for repeats.
 
 Skills (reasoning frameworks — prompt guidance only, not routing)
 {skills_block}
@@ -71,12 +85,13 @@ Skills + one routing attachment work well together. Example:
 
 Routing attachments (file, conversation, tool):
   • You can insert several tokens, but only the first one in your message controls
-    routing and context. Put the attachment you care about first.
+    routing and context — the first among @[file:…], @[chat:…], or @[tool:…].
+    Put the attachment you care about first.
   • Order matters: @[tool:internet] @[file:doc.pdf] uses web, not the file.
 
 Skills:
   • Multiple @[skill:…] tokens are allowed; duplicates dedupe to one entry.
-  • Up to qube.skills.max_active_skills apply per turn (default 3, max 10 in settings).
+  • Up to three skills apply per turn by default (auto-detected plus forced combined).
   • Combined skill guidance also respects the character budget (default 1200 chars).
   • Some skills exclude each other (e.g. software engineering vs creative writing).
 

@@ -17,6 +17,7 @@ def search_library_chunks(
     *,
     top_k: int = 5,
     source_filter: str | None = None,
+    source_prefix_filter: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run library hybrid search; return normalized chunk rows and audit copy."""
     from mcp.rag_tool import rag_search
@@ -27,6 +28,7 @@ def search_library_chunks(
         store,
         top_k=top_k,
         source_filter=source_filter,
+        source_prefix_filter=source_prefix_filter,
     )
     sources = result.get("sources") or []
     rows: list[dict[str, Any]] = []

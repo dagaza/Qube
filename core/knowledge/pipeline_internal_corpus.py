@@ -77,6 +77,7 @@ class InternalCorpusEvidencePipeline:
             store,
             top_k=top_k,
             source_filter=ctx.source_filter,
+            source_prefix_filter=ctx.source_prefix_filter,
         )
 
         latency_ms = (time.time() - t0) * 1000

@@ -18,6 +18,9 @@ class LibraryFolderPolicyTests(unittest.TestCase):
         self.assertTrue(is_qube_managed_document_filename("qube/preferences.md"))
         self.assertTrue(is_qube_managed_document_filename("preferences.md"))
         self.assertTrue(is_qube_managed_document_filename("Qube knowledge.md"))
+        self.assertTrue(
+            is_qube_managed_document_filename("qube/documentation/00-index.md")
+        )
         self.assertFalse(is_qube_managed_document_filename("my-notes.pdf"))
         self.assertFalse(is_qube_managed_document_filename(""))
 

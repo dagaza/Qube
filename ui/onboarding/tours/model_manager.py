@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from core.catalog_hardware_recommendation import build_tour_model_download_body
 from ui.components.onboarding_tour import OnboardingStep, OnboardingTour
 from ui.onboarding.tour_helpers import (
     dismiss_model_manager_tour_transients,
@@ -23,10 +22,6 @@ def _open(host) -> None:
 def _enter_load_more_preview(host) -> None:
     _open(host)
     _mm(host).begin_load_more_tutorial_preview()
-
-
-def _download_body(_host) -> str:
-    return build_tour_model_download_body()
 
 
 def build_model_manager_tour(host) -> OnboardingTour:
@@ -99,8 +94,8 @@ def build_model_manager_tour(host) -> OnboardingTour:
             step_id="detail_source",
             title="Open on Hugging Face",
             body=(
-                "Jump to the source repository in your browser for issues, updates, or "
-                "alternative quantizations."
+                "Icon button beside the title — opens the source repository in your "
+                "browser for issues, updates, or alternative quantizations."
             ),
             target_getter=lambda h: _mm(h).detail_source_btn,
             on_enter=_open,
@@ -137,9 +132,12 @@ def build_model_manager_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="detail_download",
-            title="Download a model",
-            body="",
-            body_getter=_download_body,
+            title="Download or load",
+            body=(
+                "Pick a quantization, then click **Download** to fetch the `.gguf` from "
+                "Hugging Face. When the file is already on disk, the button switches to "
+                "**Load Model**. During an active download it becomes **Cancel**."
+            ),
             target_getter=lambda h: _mm(h).download_btn,
             on_enter=_open,
         ),

@@ -40,6 +40,24 @@ class SidebarFolderTests(unittest.TestCase):
         self.assertFalse(qube["allows_user_ingest"])
         self.assertEqual(main["folder_key"], "main")
         self.assertEqual(qube["folder_key"], "qube")
+        self.assertFalse(main["is_collapsed"])
+        self.assertTrue(qube["is_collapsed"])
+
+    def test_qube_folder_stays_expanded_after_user_toggle(self) -> None:
+        qube_id = self.db.get_qube_library_folder_id()
+        self.assertTrue(self.db.set_library_folder_collapsed(qube_id, False))
+        qube = next(
+            f for f in self.db.list_library_folders() if f["id"] == qube_id
+        )
+        self.assertFalse(qube["is_collapsed"])
+
+        # Re-init should not re-collapse once user expanded the folder.
+        path = str(Path(self._tmpdir.name) / "test_qube.db")
+        self.db = DatabaseManager(path)
+        qube = next(
+            f for f in self.db.list_library_folders() if f["id"] == qube_id
+        )
+        self.assertFalse(qube["is_collapsed"])
 
     def test_backfill_existing_sessions_and_documents(self) -> None:
         main_conv = self.db.get_main_conversation_folder_id()
@@ -191,6 +209,81 @@ class SidebarFolderTests(unittest.TestCase):
         self.db.add_document_metadata("needle.pdf", 1.0, 1, folder_id=lib_folder)
         docs = self.db.get_library_documents_for_sidebar_search("needle")
         self.assertTrue(any(d["filename"] == "needle.pdf" for d in docs))
+
+    def test_get_all_library_document_filenames_returns_full_set(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        for idx in range(25):
+            self.db.add_document_metadata(
+                f"bulk-{idx:02d}.txt",
+                1.0,
+                1,
+                folder_id=main_id,
+            )
+
+        names = self.db.get_all_library_document_filenames()
+        self.assertEqual(len(names), 25)
+        self.assertIn("bulk-00.txt", names)
+        self.assertIn("bulk-24.txt", names)
+
+    def test_add_document_metadata_skips_duplicate_filename(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        first_id = self.db.add_document_metadata(
+            "once.txt",
+            1.0,
+            1,
+            folder_id=main_id,
+        )
+        second_id = self.db.add_document_metadata(
+            "once.txt",
+            9.0,
+            9,
+            folder_id=main_id,
+        )
+
+        self.assertIsNotNone(first_id)
+        self.assertEqual(second_id, first_id)
+        self.assertEqual(
+            len([name for name in self.db.get_all_library_document_filenames() if name == "once.txt"]),
+            1,
+        )
+
+    def test_dedupe_library_document_metadata_keeps_richest_row(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        self.db.add_document_metadata(
+            "eval_kubernetes_notes.md",
+            0.0,
+            0,
+            folder_id=main_id,
+            allow_duplicate=True,
+        )
+        self.db.add_document_metadata(
+            "eval_kubernetes_notes.md",
+            0.0,
+            0,
+            folder_id=main_id,
+            allow_duplicate=True,
+        )
+        real_id = self.db.add_document_metadata(
+            "eval_kubernetes_notes.md",
+            0.35,
+            1,
+            folder_id=main_id,
+            allow_duplicate=True,
+        )
+
+        removed = self.db.dedupe_library_document_metadata()
+        self.assertEqual(removed, 2)
+
+        with self.db._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT id, file_size_kb, chunk_count FROM documents WHERE filename = ?",
+                ("eval_kubernetes_notes.md",),
+            ).fetchall()
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(str(rows[0]["id"]), real_id)
+        self.assertEqual(rows[0]["chunk_count"], 1)
+        self.assertEqual(rows[0]["file_size_kb"], 0.35)
 
 
 if __name__ == "__main__":

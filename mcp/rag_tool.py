@@ -48,6 +48,46 @@ def _filter_results_by_source(results: list, source_filter: str) -> list:
     ]
 
 
+def _filter_results_by_source_prefix(results: list, source_prefix_filter: str) -> list:
+    if not source_prefix_filter:
+        return results
+    prefix = source_prefix_filter
+    return [
+        doc
+        for doc in results
+        if (doc.get("source") or doc.get("filename") or "").startswith(prefix)
+    ]
+
+
+def _escape_like_prefix(prefix: str) -> str:
+    escaped = (prefix or "").replace("'", "''")
+    return escaped.replace("%", "\\%").replace("_", "\\_")
+
+
+def _source_scope_clause(
+    *,
+    source_filter: str | None,
+    source_prefix_filter: str | None,
+) -> str | None:
+    if source_filter:
+        esc = _escape_source_literal(source_filter)
+        return f"source = '{esc}'"
+    if source_prefix_filter:
+        esc = _escape_like_prefix(source_prefix_filter)
+        return f"source LIKE '{esc}%'"
+    return None
+
+
+def _exclude_help_corpus_results(results: list) -> list:
+    from core.help_corpus_seed import is_help_corpus_source
+
+    return [
+        doc
+        for doc in results
+        if not is_help_corpus_source(doc.get("source") or doc.get("filename") or "")
+    ]
+
+
 def rag_search(
     query: str,
     query_vector: np.ndarray,
@@ -55,6 +95,7 @@ def rag_search(
     top_k: int = 5,
     *,
     source_filter: str | None = None,
+    source_prefix_filter: str | None = None,
 ) -> dict:
     """
     RAG v2.3 — Contract-safe retrieval system.
@@ -67,7 +108,13 @@ def rag_search(
     - Strict RAM + context enforcement
     """
 
-    scope = f" source={source_filter!r}" if source_filter else ""
+    if source_filter and source_prefix_filter:
+        raise ValueError("source_filter and source_prefix_filter are mutually exclusive")
+    scope = ""
+    if source_filter:
+        scope = f" source={source_filter!r}"
+    elif source_prefix_filter:
+        scope = f" source_prefix={source_prefix_filter!r}"
     logger.info(f"[RAG v2.3] Query: {query}{scope}")
 
     if is_reindex_in_progress():
@@ -82,22 +129,17 @@ def rag_search(
         vector_results = []
         text_results = []
 
+        scope_clause = _source_scope_clause(
+            source_filter=source_filter,
+            source_prefix_filter=source_prefix_filter,
+        )
+
         # --- VECTOR SEARCH (semantic channel) ---
         try:
-            if source_filter:
-                esc = _escape_source_literal(source_filter)
-                vector_results = (
-                    store.table.search(query_vector)
-                    .where(f"source = '{esc}'")
-                    .limit(top_k * 2)
-                    .to_list()
-                )
-            else:
-                vector_results = (
-                    store.table.search(query_vector)
-                    .limit(top_k * 2)
-                    .to_list()
-                )
+            vector_query = store.table.search(query_vector)
+            if scope_clause:
+                vector_query = vector_query.where(scope_clause)
+            vector_results = vector_query.limit(top_k * 2).to_list()
         except Exception as e:
             logger.error(f"[RAG] Vector search failed: {e}")
 
@@ -106,25 +148,26 @@ def rag_search(
             # NOTE:
             # Some setups require query_type="fts" to enable BM25.
             # If unsupported, this will safely fail and be ignored.
-            if source_filter:
-                esc = _escape_source_literal(source_filter)
-                text_results = (
-                    store.table.search(query, query_type="fts")
-                    .where(f"source = '{esc}'")
-                    .limit(top_k * 2)
-                    .to_list()
-                )
-            else:
-                text_results = (
-                    store.table.search(query, query_type="fts")
-                    .limit(top_k * 2)
-                    .to_list()
-                )
+            text_query = store.table.search(query, query_type="fts")
+            if scope_clause:
+                text_query = text_query.where(scope_clause)
+            text_results = text_query.limit(top_k * 2).to_list()
         except Exception as e:
             logger.debug(f"[RAG] FTS search unavailable: {e}")
 
-        vector_results = _filter_results_by_source(vector_results, source_filter or "")
-        text_results = _filter_results_by_source(text_results, source_filter or "")
+        if source_filter:
+            vector_results = _filter_results_by_source(vector_results, source_filter)
+            text_results = _filter_results_by_source(text_results, source_filter)
+        elif source_prefix_filter:
+            vector_results = _filter_results_by_source_prefix(
+                vector_results, source_prefix_filter
+            )
+            text_results = _filter_results_by_source_prefix(
+                text_results, source_prefix_filter
+            )
+        else:
+            vector_results = _exclude_help_corpus_results(vector_results)
+            text_results = _exclude_help_corpus_results(text_results)
 
         had_vector_candidates = bool(vector_results)
         if not had_vector_candidates and text_results:

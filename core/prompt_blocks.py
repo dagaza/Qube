@@ -33,6 +33,8 @@ from core.memory_filters import (
     FINANCE_SOURCES_EMPTY_SUFFIX,
     LEGAL_DISCLAIMER_SUFFIX,
     LEGAL_SOURCES_EMPTY_SUFFIX,
+    HELP_ATTACHED_SYSTEM_SUFFIX,
+    HELP_SOURCES_EMPTY_SUFFIX,
 )
 
 _BASE_PERSONA = (
@@ -149,6 +151,9 @@ def build_prompt_blocks(
     legal_disclaimer: bool = False,
     legal_sources_empty: bool = False,
     finance_sources_empty: bool = False,
+    composer_help_attached: bool = False,
+    help_sources_empty: bool = False,
+    help_canonical_hint: str = "",
     strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
@@ -207,6 +212,10 @@ def build_prompt_blocks(
         no_sources = True
         persona = _BASE_PERSONA
         suffixes.append(FINANCE_SOURCES_EMPTY_SUFFIX)
+    elif help_sources_empty:
+        no_sources = True
+        persona = _BASE_PERSONA
+        suffixes.append(HELP_SOURCES_EMPTY_SUFFIX)
     elif scientific_medical_disclaimer:
         persona = _BASE_PERSONA
         suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
@@ -233,7 +242,21 @@ def build_prompt_blocks(
             if strict_isolation_enabled:
                 suffixes.append(STRICT_ISOLATION_SYSTEM_SUFFIX)
     elif route in ("WEB", "INTERNET"):
-        if not has_retrieval_sources:
+        if composer_help_attached:
+            if not has_retrieval_sources:
+                no_sources = True
+                persona = _BASE_PERSONA
+                suffixes.append(HELP_SOURCES_EMPTY_SUFFIX)
+            else:
+                persona = _BASE_PERSONA
+                suffixes.append(HELP_ATTACHED_SYSTEM_SUFFIX)
+                hint = (help_canonical_hint or "").strip()
+                if hint:
+                    suffixes.append(hint)
+                suffixes.append(_RETRIEVAL_CITE_MUST)
+                suffixes.append(CITATION_DISCIPLINE_SUFFIX)
+                suffixes.append(GROUNDED_ANSWER_SYSTEM_SUFFIX)
+        elif not has_retrieval_sources:
             no_sources = True
             persona = _BASE_PERSONA
             suffixes.append(

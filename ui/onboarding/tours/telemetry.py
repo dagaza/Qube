@@ -35,10 +35,10 @@ def build_telemetry_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="hardware",
-            title="Hardware graphs",
+            title="System Load Timeline (%)",
             body=(
-                "Live CPU, RAM, and GPU utilisation over the last minute — helpful when "
-                "loads feel sluggish or VRAM is tight."
+                "Live CPU, RAM, and GPU utilisation over the last 60 seconds — helpful "
+                "when loads feel sluggish or VRAM is tight."
             ),
             target_getter=lambda h: _tv(h).hardware_card,
             on_enter=_open,
@@ -55,7 +55,7 @@ def build_telemetry_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="capability",
-            title="Native model capability",
+            title="Native LLM — Model capability",
             body=(
                 "Reasoning support, execution mode, and detection confidence for the "
                 "loaded Internal Engine model, plus publisher guidance when available."
