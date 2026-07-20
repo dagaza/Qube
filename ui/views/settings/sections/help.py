@@ -36,6 +36,31 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     layout.setContentsMargins(15, 0, 15, 10)
     layout.setSpacing(15)
 
+    # --- Qube documentation card ---
+    docs_card, docs_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(docs_card_layout, "Qube documentation", anchor="qube-documentation")
+
+    host.qube_documentation_hint_lbl = make_settings_hint(
+        "Browse Qube's built-in help articles in Library. These docs also power "
+        "@[tool:help] in chat."
+    )
+
+    host.open_qube_documentation_btn = QPushButton("Open Qube documentation")
+    apply_brand_primary(host.open_qube_documentation_btn, icon_name="fa5s.book-open")
+    host.open_qube_documentation_btn.setToolTip(
+        "Open Library filtered to the Qube folder with built-in help articles."
+    )
+    host.open_qube_documentation_btn.clicked.connect(
+        host._on_open_qube_documentation_clicked
+    )
+
+    _add_help_action_to_layout(
+        docs_card_layout,
+        host.qube_documentation_hint_lbl,
+        host.open_qube_documentation_btn,
+    )
+    layout.addWidget(docs_card)
+
     # --- Guided tours card ---
     tours_card, tours_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     add_subsection_to_layout(tours_card_layout, "Guided tours", anchor="tours")

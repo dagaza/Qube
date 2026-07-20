@@ -201,3 +201,33 @@ The release workflow signs `dist\Qube\Qube.exe` and the Inno Setup installer whe
 - **Locally:** run `python scripts/prepare_release.py X.Y.Z` so `__version__.py`, `pyproject.toml`, and CHANGELOG align before you tag.
 
 Dry-run packaging may use any version (e.g. `prepare_release.py 9.9.9`); revert with `git checkout -- core/__version__.py pyproject.toml` afterward.
+
+## In-app help documentation (`@help`)
+
+Help corpus changes ship with the app bundle under `assets/help/en/`. When a PR touches settings registries, composer tools, or help prose, use this checklist (see also [`docs/in_app_help_knowledge_base.md`](in_app_help_knowledge_base.md) §18):
+
+### PR checklist (help-related changes)
+
+- [ ] Ran `python scripts/generate_help_reference.py`
+- [ ] Ran `python scripts/compose_help_corpus.py`
+- [ ] Ran `python scripts/validate_help_manifest.py`
+- [ ] Ran `python scripts/eval_help_golden.py` (Phase 6 golden retrieval eval)
+- [ ] Ran `python scripts/eval_help_production.py` (rag_search retrieval path)
+- [ ] Optional: `python scripts/export_help_queries.py` on local logs for quarterly doc review
+- [ ] Updated human prose / canonical answers if UX intent changed
+- [ ] Golden questions still pass (or updated expectations in `tests/fixtures/help_golden_questions.json`)
+- [ ] Bumped `corpus_version` in `assets/help/en/manifest.json` when retrieval content changed
+
+CI runs the first four commands automatically on every PR.
+
+### Quarterly documentation priority (post-`@help` launch)
+
+Production `@help` analytics outrank speculative new pages. Each quarter:
+
+1. Export or review top unanswered / low-confidence `@help` queries (local telemetry + `Qube.Help` logs).
+2. Rank candidates by `(query frequency) × (1 − retrieval success) × (frustration proxy)` — frustration = rephrase within two turns or user opens Settings without following the cited path.
+3. Promote fixes in cost order: **canonical answer** → **FAQ** → **troubleshooting** → **workflow** → **feature section** update.
+4. Add or adjust golden questions for recurring themes; re-run `python scripts/eval_help_golden.py`.
+5. Bump `corpus_version` and note the change in `assets/help/en/release/whats-new.md`.
+
+During beta, review the top 10 `@help` queries weekly and patch canonical answers first.

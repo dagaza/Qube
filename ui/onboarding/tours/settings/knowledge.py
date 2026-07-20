@@ -151,7 +151,7 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
             title="Add a search phrase",
             body=(
                 "Type a phrase that should trigger library search, then press Enter "
-                "or click Add."
+                "or click **+** (Add trigger phrase)."
             ),
             target_getter=lambda h: _sv(h).trigger_input,
             on_enter=lambda h: _open_anchor(h, "triggers"),
@@ -159,7 +159,10 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
         OnboardingStep(
             step_id="trigger_add",
             title="Add phrase button",
-            body="Adds the phrase in the field above to your library search list.",
+            body=(
+                "Adds the phrase in the field above to your library search list "
+                "(tooltip: **Add trigger phrase**)."
+            ),
             target_getter=lambda h: _sv(h).trigger_add_btn,
             on_enter=lambda h: _open_anchor(h, "triggers"),
         ),

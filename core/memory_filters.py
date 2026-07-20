@@ -565,6 +565,25 @@ FINANCE_SOURCES_EMPTY_SUFFIX: str = (
     "bracket citation tokens such as [1], [2], or [W]."
 )
 
+HELP_ATTACHED_SYSTEM_SUFFIX: str = (
+    " IMPORTANT: the user attached @[tool:help]. Answer using ONLY the "
+    "retrieved Qube built-in documentation below — not the user's Main "
+    "library uploads. Prefer exact Settings navigation paths and canonical "
+    "wording when provided. When pointing to a Settings section, append a "
+    "single action line on its own line, e.g. "
+    '[action:open_settings_section settings_section=ai.models label="Open AI & Models settings"]. '
+    "Cite numbered sources with [1], [2], etc."
+)
+
+HELP_SOURCES_EMPTY_SUFFIX: str = (
+    " IMPORTANT: @[tool:help] was attached but no matching help documentation "
+    "was retrieved. In one or two sentences, say the help docs did not match "
+    "this question. Suggest opening Settings → Help → Open Qube documentation "
+    "or rephrasing the question. Do NOT answer from user library content or "
+    "invent settings paths. Do NOT emit bracket citation tokens such as [1] "
+    "or [2]."
+)
+
 RAG_CAPABILITY_DISABLED_SUFFIX: str = (
     " IMPORTANT: the user asked about their local files or Knowledge Base, "
     "but library search is turned off in Qube settings. In one or two "

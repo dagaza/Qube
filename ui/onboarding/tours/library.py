@@ -67,10 +67,10 @@ def build_library_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="sidebar_ingest",
-            title="Ingest documents",
+            title="Ingest New Document",
             body=(
-                "Add PDFs, text, and other supported files to the active folder. "
-                "Indexing may take a moment for large documents."
+                "Add `.txt`, `.md`, `.pdf`, or `.epub` files to your library for "
+                "indexing and RAG search."
             ),
             target_getter=lambda h: _lv(h).add_btn,
             on_enter=_open,
@@ -88,8 +88,9 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="sidebar_doc_list",
             title="Document list",
             body=(
-                "Click a row to preview the file on the right. Double-click a document "
-                "to jump straight into a grounded chat."
+                "Click a row to preview the file on the right. Use the floating "
+                "**Chat with document** button to start a grounded conversation. "
+                "Double-click a folder row to expand or collapse it."
             ),
             target_getter=lambda h: _lv(h).doc_list,
             on_enter=_open,
@@ -122,7 +123,7 @@ def build_library_tour(host) -> OnboardingTour:
         OnboardingStep(
             step_id="preview_text_align",
             title="Text alignment",
-            body="Switch preview alignment (left, center, or justified).",
+            body="Switch preview alignment between left and justified.",
             target_getter=lambda h: _lv(h).text_align_btn,
             on_enter=_open,
         ),
@@ -146,7 +147,8 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="preview_layout_mode",
             title="Layout width",
             body=(
-                "Toggle between a centered reading column and full-width preview layout."
+                "Toggle between **Narrow column** (~800px) and **Wide column** (~1200px) "
+                "preview width."
             ),
             target_getter=lambda h: _lv(h).layout_mode_btn,
             on_enter=_open,

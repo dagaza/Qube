@@ -30,8 +30,8 @@ def build_settings_contact_feedback_tour(host) -> OnboardingTour:
             step_id="bug",
             title="Report a bug",
             body=(
-                "Opens a form to describe what went wrong. Include steps to reproduce "
-                "when possible."
+                "Opens the Qube website in your browser to report what went wrong. "
+                "Include steps to reproduce when possible."
             ),
             target_getter=lambda h: _sv(h).report_bug_btn,
             on_enter=_open,
@@ -40,8 +40,8 @@ def build_settings_contact_feedback_tour(host) -> OnboardingTour:
             step_id="feature",
             title="Request a feature",
             body=(
-                "Share ideas for improvements. Feature requests help prioritise the "
-                "roadmap."
+                "Opens the Qube website in your browser to share improvement ideas. "
+                "Feature requests help prioritise the roadmap."
             ),
             target_getter=lambda h: _sv(h).request_feature_btn,
             on_enter=_open,

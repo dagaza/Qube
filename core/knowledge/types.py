@@ -148,6 +148,7 @@ class RetrievalContext:
     adapter_filter: tuple[str, ...] | None = None
     library_store: Any | None = None
     source_filter: str | None = None
+    source_prefix_filter: str | None = None
     preset_id: str | None = None
     retrieval_profile: str = "balanced"
     composer_tool: str | None = None

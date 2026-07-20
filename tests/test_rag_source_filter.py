@@ -25,6 +25,17 @@ class TestRagSourceFilter(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["source"], "a.pdf")
 
+    def test_filter_results_by_source_prefix(self):
+        from mcp.rag_tool import _filter_results_by_source_prefix
+
+        rows = [
+            {"source": "qube/documentation/help.md", "text": "help"},
+            {"source": "notes.pdf", "text": "user"},
+        ]
+        out = _filter_results_by_source_prefix(rows, "qube/documentation/")
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["source"], "qube/documentation/help.md")
+
     @patch("mcp.rag_tool.logger")
     def test_scoped_empty_falls_back_to_reconstruct(self, _log):
         store = MagicMock()

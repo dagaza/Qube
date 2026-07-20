@@ -1,0 +1,478 @@
+[
+  {
+    "category": "reference",
+    "question": "What does @[tool:library] do?",
+    "expected_doc_ids": ["reference.composer_tools"],
+    "must_mention": ["Library", "documents"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where are GPU layers in settings?",
+    "expected_doc_ids": ["features.settings.ai_models"],
+    "must_mention": ["Settings", "AI & Models", "GPU"],
+    "expect_canonical_match": true,
+    "expect_settings_path": true
+  },
+  {
+    "category": "reference",
+    "question": "What Live Sources adapters exist?",
+    "expected_doc_ids": ["reference.live_sources_overview"],
+    "must_mention": ["Live Sources", "Scientific literature"]
+  },
+  {
+    "category": "reference",
+    "question": "How do I reset help guidance?",
+    "expected_doc_ids": ["reference.composer_commands"],
+    "must_mention": ["Reset Help", "Guidance"]
+  },
+  {
+    "category": "reference",
+    "question": "What is the research synthesis skill?",
+    "expected_doc_ids": ["reference.composer_skills"],
+    "must_mention": ["research_synthesis", "@[skill:"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is Knowledge settings?",
+    "expected_doc_ids": ["features.settings.knowledge"],
+    "must_mention": ["Settings", "Knowledge"],
+    "expect_canonical_match": true,
+    "expect_settings_path": true
+  },
+  {
+    "category": "configure",
+    "question": "How do I enable Do Not Disturb?",
+    "expected_doc_ids": ["features.settings.notifications"],
+    "must_mention": ["Do Not Disturb", "Notifications"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "configure",
+    "question": "Hide desktop companion during fullscreen games",
+    "expected_doc_ids": ["features.settings.companion_desktop"],
+    "must_mention": ["fullscreen", "Desktop Companion"],
+    "expect_canonical_match": true,
+    "expect_settings_path": true
+  },
+  {
+    "category": "workflow",
+    "question": "Prepare search models for library",
+    "expected_doc_ids": ["workflows.prepare_search_models", "features.settings.knowledge"],
+    "must_mention": ["Prepare search models", "Knowledge"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Library search returns nothing",
+    "expected_doc_ids": ["troubleshooting.library_search_empty"],
+    "must_mention": ["Library", "search"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "faq",
+    "question": "What is the difference between memory and library?",
+    "expected_doc_ids": ["faq.memory_vs_library"],
+    "must_mention": ["Memory", "Library"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where are settings for voice and microphone?",
+    "expected_doc_ids": ["features.settings.voice_audio"],
+    "must_mention": ["Voice", "Audio"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "navigation",
+    "question": "Where is the chat screen?",
+    "expected_doc_ids": ["features.conversations"],
+    "must_mention": ["Conversations", "chat"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "workflow",
+    "question": "How do I upload documents to the library?",
+    "expected_doc_ids": ["features.library", "workflows.import_documents"],
+    "must_mention": ["Library"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where do I see saved memories?",
+    "expected_doc_ids": ["features.memory_manager"],
+    "must_mention": ["Memory Manager"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "workflow",
+    "question": "How do I download a GGUF model?",
+    "expected_doc_ids": ["features.model_manager", "workflows.set_up_local_models"],
+    "must_mention": ["Model Manager", "download"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is the telemetry dashboard?",
+    "expected_doc_ids": ["features.telemetry"],
+    "must_mention": ["Telemetry"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "faq",
+    "question": "Difference between chat history and memory",
+    "expected_doc_ids": ["faq.conversations_vs_memory"],
+    "must_mention": ["Conversations", "Memory Manager"]
+  },
+  {
+    "category": "faq",
+    "question": "How do I export a conversation?",
+    "expected_doc_ids": ["faq.chat_history_export"],
+    "must_mention": ["Download conversation", "Copy conversation"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is General settings for UI language?",
+    "expected_doc_ids": ["features.settings.general"],
+    "must_mention": ["Settings", "General", "English"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "configure",
+    "question": "Memory enrichment and promotion settings",
+    "expected_doc_ids": ["features.settings.memory"],
+    "must_mention": ["Settings", "Memory", "enrichment"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "navigation",
+    "question": "Where is the composer @ guide in settings?",
+    "expected_doc_ids": ["features.settings.help"],
+    "must_mention": ["Settings", "Help", "Composer"]
+  },
+  {
+    "category": "navigation",
+    "question": "JSON settings editor and diagnostic logs",
+    "expected_doc_ids": ["features.settings.advanced"],
+    "must_mention": ["Settings", "Advanced", "JSON"]
+  },
+  {
+    "category": "navigation",
+    "question": "How do I report a bug or send feedback?",
+    "expected_doc_ids": ["features.settings.contact_feedback"],
+    "must_mention": ["Settings", "Contact", "Feedback"]
+  },
+  {
+    "category": "faq",
+    "question": "Internal engine vs external server",
+    "expected_doc_ids": ["faq.internal_vs_external"],
+    "must_mention": ["Internal", "External"]
+  },
+  {
+    "category": "faq",
+    "question": "Live Sources vs library search",
+    "expected_doc_ids": ["faq.live_sources_vs_library"],
+    "must_mention": ["Live Sources", "Library"]
+  },
+  {
+    "category": "workflow",
+    "question": "How do I set up a local LLM?",
+    "expected_doc_ids": ["workflows.set_up_local_models"],
+    "must_mention": ["Model Manager", "Internal"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "workflow",
+    "question": "Import documents to library workflow",
+    "expected_doc_ids": ["workflows.import_documents"],
+    "must_mention": ["Library", "Import"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Model won't load troubleshooting",
+    "expected_doc_ids": ["troubleshooting.model_wont_load"],
+    "must_mention": ["model", "load"]
+  },
+  {
+    "category": "release",
+    "question": "What's new in Qube help documentation?",
+    "expected_doc_ids": ["release.whats_new"],
+    "must_mention": ["@[tool:help]", "v1"]
+  },
+  {
+    "category": "release",
+    "question": "Help documentation migration after upgrade",
+    "expected_doc_ids": ["release.migration_guide"],
+    "must_mention": ["corpus_version", "migration"]
+  },
+  {
+    "category": "reference",
+    "question": "What does @[tool:help] do?",
+    "expected_doc_ids": ["reference.composer_tools", "faq.at_mentions"],
+    "must_mention": ["Help", "tool"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "faq",
+    "question": "Companion vs main window difference",
+    "expected_doc_ids": ["faq.companion_vs_main"],
+    "must_mention": ["Companion", "main window"]
+  },
+  {
+    "category": "workflow",
+    "question": "How do I create a knowledge preset?",
+    "expected_doc_ids": ["workflows.create_knowledge_preset"],
+    "must_mention": ["Knowledge", "preset"]
+  },
+  {
+    "category": "workflow",
+    "question": "Chat with a library document workflow",
+    "expected_doc_ids": ["workflows.chat_with_document"],
+    "must_mention": ["Library", "@[tool:library]"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Memory not working troubleshooting",
+    "expected_doc_ids": ["troubleshooting.memory_not_working"],
+    "must_mention": ["Memory", "enrichment"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Desktop companion not visible",
+    "expected_doc_ids": ["troubleshooting.companion_not_visible"],
+    "must_mention": ["Companion", "visible"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is Memory settings?",
+    "expected_doc_ids": ["features.settings.memory"],
+    "must_mention": ["Settings", "Memory"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "navigation",
+    "question": "Where is Desktop Companion settings?",
+    "expected_doc_ids": ["features.settings.companion_desktop"],
+    "must_mention": ["Desktop Companion", "Settings"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is Notifications settings?",
+    "expected_doc_ids": ["features.settings.notifications"],
+    "must_mention": ["Notifications", "Settings"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where is the Help section in Settings?",
+    "expected_doc_ids": ["features.settings.help"],
+    "must_mention": ["Settings", "Help"]
+  },
+  {
+    "category": "navigation",
+    "question": "Where do I open Model Manager?",
+    "expected_doc_ids": ["features.model_manager"],
+    "must_mention": ["Model Manager"]
+  },
+  {
+    "category": "configure",
+    "question": "Change search quality to Power mode",
+    "expected_doc_ids": ["features.settings.knowledge"],
+    "must_mention": ["Search quality", "Power"]
+  },
+  {
+    "category": "configure",
+    "question": "Switch to internal engine for inference",
+    "expected_doc_ids": ["features.settings.ai_models", "faq.internal_vs_external"],
+    "must_mention": ["Internal", "Engine"]
+  },
+  {
+    "category": "configure",
+    "question": "Enable automatic library search triggers",
+    "expected_doc_ids": ["features.settings.knowledge"],
+    "must_mention": ["Library", "search"]
+  },
+  {
+    "category": "configure",
+    "question": "Change microphone input device",
+    "expected_doc_ids": ["features.settings.voice_audio"],
+    "must_mention": ["microphone", "Audio"],
+    "expect_settings_path": true
+  },
+  {
+    "category": "configure",
+    "question": "Configure desktop companion visibility",
+    "expected_doc_ids": ["workflows.companion_visibility", "features.settings.companion_desktop"],
+    "must_mention": ["Companion", "visible"]
+  },
+  {
+    "category": "configure",
+    "question": "Manage long-term memory settings",
+    "expected_doc_ids": ["workflows.manage_memory", "features.settings.memory"],
+    "must_mention": ["Memory", "enrichment"]
+  },
+  {
+    "category": "configure",
+    "question": "Export or import a knowledge pack",
+    "expected_doc_ids": ["workflows.knowledge_pack"],
+    "must_mention": ["Knowledge", "pack"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Voice or microphone not working",
+    "expected_doc_ids": ["troubleshooting.voice_mic"],
+    "must_mention": ["microphone", "Voice"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Search models not ready",
+    "expected_doc_ids": ["troubleshooting.search_models"],
+    "must_mention": ["search models", "Knowledge"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Library Import button is grayed out",
+    "expected_doc_ids": ["troubleshooting.library_import_disabled"],
+    "must_mention": ["Main", "Qube"]
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Empty library search troubleshooting",
+    "expected_doc_ids": ["troubleshooting.library_search_empty"],
+    "must_mention": ["Library", "search"]
+  },
+  {
+    "category": "faq",
+    "question": "What does temperature do in Qube chat",
+    "expected_doc_ids": ["faq.generation_parameters"],
+    "must_mention": ["Temperature", "0.8"]
+  },
+  {
+    "category": "faq",
+    "question": "What is context limit and max reply tokens",
+    "expected_doc_ids": ["faq.generation_parameters"],
+    "must_mention": ["Context", "reply"]
+  },
+  {
+    "category": "faq",
+    "question": "How does chat history setting work",
+    "expected_doc_ids": ["faq.generation_parameters", "faq.conversations_vs_memory"],
+    "must_mention": ["Chat history", "Memory"]
+  },
+  {
+    "category": "faq",
+    "question": "What do GPU offload layers do in Qube",
+    "expected_doc_ids": ["faq.hardware_tuning_internal", "features.settings.ai_models"],
+    "must_mention": ["GPU", "layers"]
+  },
+  {
+    "category": "faq",
+    "question": "External server context limit LM Studio",
+    "expected_doc_ids": ["faq.internal_vs_external"],
+    "must_mention": ["External", "context"]
+  },
+  {
+    "category": "faq",
+    "question": "What does LLM TTFT mean in Telemetry",
+    "expected_doc_ids": ["faq.advanced_telemetry_interpreting"],
+    "must_mention": ["TTFT", "first token"]
+  },
+  {
+    "category": "faq",
+    "question": "What is Router Intelligence on the telemetry dashboard",
+    "expected_doc_ids": ["faq.advanced_telemetry_interpreting"],
+    "must_mention": ["Router", "retrieval"]
+  },
+  {
+    "category": "faq",
+    "question": "Why does GPU show zero on telemetry",
+    "expected_doc_ids": ["faq.advanced_telemetry_interpreting"],
+    "must_mention": ["GPU", "VRAM"]
+  },
+  {
+    "category": "faq",
+    "question": "Where are Qube diagnostic log files stored",
+    "expected_doc_ids": ["faq.diagnostic_logs_advanced"],
+    "must_mention": ["logs", "Advanced"]
+  },
+  {
+    "category": "faq",
+    "question": "Which log shows routing decisions in Qube",
+    "expected_doc_ids": ["faq.diagnostic_logs_advanced"],
+    "must_mention": ["routing", "debug"]
+  },
+  {
+    "category": "faq",
+    "question": "What is in the LLM debug log file",
+    "expected_doc_ids": ["faq.diagnostic_logs_advanced"],
+    "must_mention": ["LLM", "debug"]
+  },
+  {
+    "category": "faq",
+    "question": "How does the cognitive router work in Qube",
+    "expected_doc_ids": ["faq.cognitive_router"],
+    "must_mention": ["route", "MEMORY"]
+  },
+  {
+    "category": "faq",
+    "question": "Hybrid Internet Mode vs HYBRID route telemetry",
+    "expected_doc_ids": ["faq.cognitive_router"],
+    "must_mention": ["HYBRID", "web"]
+  },
+  {
+    "category": "faq",
+    "question": "Web toggle vs Hybrid Internet Mode difference",
+    "expected_doc_ids": ["faq.cognitive_router"],
+    "must_mention": ["Web", "Hybrid"]
+  },
+  {
+    "category": "faq",
+    "question": "Why did Qube answer without citations after search",
+    "expected_doc_ids": ["faq.cognitive_router"],
+    "must_mention": ["sources", "downgrade"]
+  },
+  {
+    "category": "reference",
+    "question": "How do @[file:…] and @[chat:…] composer attachments work?",
+    "expected_doc_ids": ["reference.composer_attachments"],
+    "must_mention": ["file", "routing"]
+  },
+  {
+    "category": "reference",
+    "question": "Which advanced @ tools are hidden in the palette?",
+    "expected_doc_ids": ["reference.composer_tools"],
+    "must_mention": ["advanced", "palette"]
+  },
+  {
+    "category": "faq",
+    "question": "Explain @ mentions in the composer",
+    "expected_doc_ids": ["faq.at_mentions"],
+    "must_mention": ["@", "tools"]
+  },
+  {
+    "category": "faq",
+    "question": "Export chat history vs saved memory",
+    "expected_doc_ids": ["faq.chat_history_export", "faq.conversations_vs_memory"],
+    "must_mention": ["conversation", "Memory"]
+  },
+  {
+    "category": "negative",
+    "question": "Write a haiku about spring rain",
+    "negative": true
+  },
+  {
+    "category": "negative",
+    "question": "What is the capital of France?",
+    "negative": true
+  },
+  {
+    "category": "negative",
+    "question": "Translate hello to Japanese",
+    "negative": true
+  },
+  {
+    "category": "negative",
+    "question": "Explain quantum entanglement for a five year old",
+    "negative": true
+  },
+  {
+    "category": "negative",
+    "question": "Who won the Stanley Cup in 2024?",
+    "negative": true
+  }
+]

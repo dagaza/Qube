@@ -57,6 +57,16 @@ class TestInternalCorpusKnowledge(unittest.TestCase):
         self.assertEqual(patch["strategy"], "attachment_tool_library")
         self.assertEqual(patch["attachment_tool"], "library")
 
+    def test_composer_help_routes_web(self) -> None:
+        patch = resolve_attachment_routing(
+            [ComposerAttachment(kind="tool", id="help", label="Help")]
+        )
+        self.assertIsNotNone(patch)
+        assert patch is not None
+        self.assertEqual(patch["route"], "web")
+        self.assertEqual(patch["strategy"], "attachment_tool_help")
+        self.assertEqual(patch["attachment_tool"], "help")
+
     @patch("core.knowledge.pipeline_internal_corpus.search_library_chunks")
     def test_v2_internal_corpus_bundle(self, mock_search) -> None:
         mock_search.return_value = (

@@ -21,6 +21,8 @@ logger = logging.getLogger("Qube.Database")
 
 _MAIN_FOLDER_NAME = MAIN_FOLDER_DISPLAY_NAME
 _QUBE_FOLDER_NAME = QUBE_FOLDER_DISPLAY_NAME
+# v1: reserved Library Qube folder collapsed by default (one-time PRAGMA migration).
+_DB_USER_VERSION = 1
 
 
 class DatabaseManager:
@@ -248,7 +250,22 @@ class DatabaseManager:
             (lib_main,),
         )
         self._migrate_qube_managed_documents_to_qube_folder(conn, lib_main, lib_qube)
+        self._apply_schema_migrations(conn)
         conn.commit()
+
+    def _apply_schema_migrations(self, conn: sqlite3.Connection) -> None:
+        row = conn.execute("PRAGMA user_version").fetchone()
+        version = int(row[0]) if row else 0
+        if version < 1:
+            conn.execute(
+                """
+                UPDATE library_folders
+                SET is_collapsed = 1
+                WHERE folder_key = ?
+                """,
+                (FOLDER_KEY_QUBE,),
+            )
+            conn.execute(f"PRAGMA user_version = {_DB_USER_VERSION}")
 
     def _ensure_default_rag_triggers(self, conn: sqlite3.Connection) -> None:
         """Backfill any newly shipped default trigger phrases for existing installs."""
@@ -315,6 +332,7 @@ class DatabaseManager:
             name=_QUBE_FOLDER_NAME,
             sort_order=1,
             allows_user_ingest=False,
+            default_collapsed=True,
         )
         return main_id, qube_id
 
@@ -326,6 +344,7 @@ class DatabaseManager:
         name: str,
         sort_order: int,
         allows_user_ingest: bool,
+        default_collapsed: bool = False,
     ) -> str:
         cursor = conn.cursor()
         cursor.execute(
@@ -365,12 +384,13 @@ class DatabaseManager:
             """
             INSERT INTO library_folders
                 (id, name, sort_order, is_collapsed, is_system, folder_key, allows_user_ingest)
-            VALUES (?, ?, ?, 0, 1, ?, ?)
+            VALUES (?, ?, ?, ?, 1, ?, ?)
             """,
             (
                 folder_id,
                 name,
                 sort_order,
+                1 if default_collapsed else 0,
                 folder_key,
                 1 if allows_user_ingest else 0,
             ),
@@ -943,6 +963,64 @@ class DatabaseManager:
             )
             return [dict(row) for row in cursor.fetchall()]
         
+    def get_all_library_document_filenames(self) -> set[str]:
+        """All distinct library document filenames registered in SQLite."""
+        with self._get_connection() as conn:
+            cursor = conn.execute("SELECT DISTINCT filename FROM documents")
+            return {str(row[0]) for row in cursor.fetchall() if row[0]}
+
+    def library_document_filename_exists(self, filename: str) -> bool:
+        name = (filename or "").strip()
+        if not name:
+            return False
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM documents WHERE filename = ? LIMIT 1",
+                (name,),
+            ).fetchone()
+            return row is not None
+
+    def dedupe_library_document_metadata(self) -> int:
+        """Remove duplicate SQLite rows sharing a filename, keeping the richest row."""
+        with self._get_connection() as conn:
+            rows = [
+                dict(row)
+                for row in conn.execute(
+                    """
+                    SELECT id, filename, file_size_kb, chunk_count, ingested_at
+                    FROM documents
+                    """
+                ).fetchall()
+            ]
+
+        grouped: dict[str, list[dict]] = {}
+        for row in rows:
+            grouped.setdefault(str(row["filename"]), []).append(row)
+
+        to_delete: list[str] = []
+        for group in grouped.values():
+            if len(group) <= 1:
+                continue
+
+            def _rank(row: dict) -> tuple[int, float, str]:
+                return (
+                    int(row.get("chunk_count") or 0),
+                    float(row.get("file_size_kb") or 0),
+                    str(row.get("ingested_at") or ""),
+                )
+
+            group.sort(key=_rank, reverse=True)
+            to_delete.extend(str(row["id"]) for row in group[1:])
+
+        if not to_delete:
+            return 0
+
+        with self._get_connection() as conn:
+            for doc_id in to_delete:
+                conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+            conn.commit()
+        return len(to_delete)
+
     def add_document_metadata(
         self,
         filename: str,
@@ -950,11 +1028,24 @@ class DatabaseManager:
         chunk_count: int,
         folder_id: str | None = None,
         summary_blurb: str | None = None,
-    ):
+        *,
+        allow_duplicate: bool = False,
+    ) -> str | None:
+        name = (filename or "").strip()
+        if not name:
+            return None
+        if not allow_duplicate and self.library_document_filename_exists(name):
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT id FROM documents WHERE filename = ? LIMIT 1",
+                    (name,),
+                ).fetchone()
+            return str(row["id"]) if row else None
+
         doc_id = str(uuid.uuid4())
         if folder_id:
             fid = folder_id
-        elif is_qube_managed_document_filename(filename):
+        elif is_qube_managed_document_filename(name):
             fid = self.get_qube_library_folder_id()
         else:
             fid = self.get_main_library_folder_id()
@@ -964,9 +1055,10 @@ class DatabaseManager:
                 INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id, summary_blurb)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (doc_id, filename, file_size_kb, chunk_count, fid, summary_blurb),
+                (doc_id, name, file_size_kb, chunk_count, fid, summary_blurb),
             )
             conn.commit()
+        return doc_id
 
     def update_document_blurb(self, filename: str, summary_blurb: str) -> bool:
         blurb = (summary_blurb or "").strip()

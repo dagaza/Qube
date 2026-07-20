@@ -261,6 +261,7 @@ class Qube:
         self._wire_notification_adapters()
         self.sidecar_worker.ingest_blurb_ready.connect(self._on_ingest_blurb_ready)
         self._sync_databases()
+        self._maybe_seed_help_corpus()
         if getattr(self.store, "dim_mismatch", False):
             logger.warning(
                 "LanceDB dimension mismatch detected; starting reindex for active mode."
@@ -1156,34 +1157,67 @@ class Qube:
         they are registered in the SQLite UI library.
         """
         logger.info("Running pre-flight database synchronization...")
-        
+
+        removed = self.db_manager.dedupe_library_document_metadata()
+        if removed:
+            logger.info(
+                "Removed %d duplicate library metadata row(s) during sync.",
+                removed,
+            )
+
         # Get what actually exists in the vector store
         lancedb_sources = self.store.get_all_indexed_sources()
-        
-        # Get what the UI thinks exists
-        sqlite_docs = [doc['filename'] for doc in self.db_manager.get_library_documents()]
-        
-        # Calculate what is missing from the UI
-        missing_from_ui = set(lancedb_sources) - set(sqlite_docs)
-        
-        if missing_from_ui:
-            logger.warning(f"Found {len(missing_from_ui)} ghost files in LanceDB. Healing UI registry...")
-            for source in missing_from_ui:
-                from core.library_folder_policy import is_qube_managed_document_filename
 
+        # Compare against every registered filename, not a recent-page subset.
+        sqlite_docs = self.db_manager.get_all_library_document_filenames()
+
+        # Calculate what is missing from the UI
+        missing_from_ui = set(lancedb_sources) - sqlite_docs
+
+        if missing_from_ui:
+            logger.warning(
+                "Found %d LanceDB source(s) missing from SQLite library registry; healing UI.",
+                len(missing_from_ui),
+            )
+            from core.library_folder_policy import is_qube_managed_document_filename
+
+            for source in sorted(missing_from_ui):
                 if is_qube_managed_document_filename(source):
                     folder_id = self.db_manager.get_qube_library_folder_id()
                 else:
                     folder_id = self.db_manager.get_main_library_folder_id()
-                # Add a dummy record to SQLite so the UI can see it and delete it if needed
+                # Add a placeholder row so the UI can see orphaned LanceDB sources.
                 self.db_manager.add_document_metadata(
                     source,
                     file_size_kb=0,
                     chunk_count=0,
                     folder_id=folder_id,
                 )
-                
+
             logger.info("Database synchronization complete.")
+
+    def _maybe_seed_help_corpus(self) -> None:
+        if self.embedder is None or is_reindex_in_progress():
+            return
+        try:
+            from core.help_corpus_seed import seed_help_corpus_if_needed
+
+            summary = seed_help_corpus_if_needed(
+                self.store,
+                self.embedder,
+                self.db_manager,
+            )
+            if summary.get("skipped"):
+                logger.debug("Help corpus seed: %s", summary.get("reason", "skipped"))
+            else:
+                logger.info(
+                    "Help corpus seeded (indexed=%s, chunks=%s, corpus_version=%s)",
+                    summary.get("indexed"),
+                    summary.get("chunks"),
+                    summary.get("corpus_version"),
+                )
+        except Exception as exc:
+            logger.warning("Help corpus seed failed: %s", exc, exc_info=True)
 
     def _start_ingestion(self, file_paths: list, folder_id: str):
         """Spawns a background thread to safely embed documents without freezing the UI."""

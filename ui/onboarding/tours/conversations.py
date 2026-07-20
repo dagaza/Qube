@@ -110,7 +110,7 @@ def build_conversations_tour(host) -> OnboardingTour:
         OnboardingStep(
             step_id="main_text_align",
             title="Text alignment",
-            body="Switch message alignment (left, center, or justified) for the chat view.",
+            body="Toggle message alignment between left and justified for the chat view.",
             target_getter=lambda h: _cv(h).text_align_btn,
             on_enter=_open,
         ),
@@ -135,8 +135,8 @@ def build_conversations_tour(host) -> OnboardingTour:
             step_id="main_layout_mode",
             title="Layout width",
             body=(
-                "Toggle between a centered reading column and full-width layout for "
-                "wide monitors."
+                "Toggle between **Narrow column** (~800px) and **Wide column** (~1200px) "
+                "reading width."
             ),
             target_getter=lambda h: _cv(h).layout_mode_btn,
             on_enter=_open,
@@ -346,8 +346,9 @@ def build_conversations_tour(host) -> OnboardingTour:
             step_id="tools_rag_auto",
             title="NLP auto-activator",
             body=(
-                "Let Qube decide when library search is needed based on your prompt "
-                "wording."
+                "Lets custom trigger phrases search your Knowledge Base for a single "
+                "turn, even when the master RAG switch is off. Add phrases in "
+                "Settings → Knowledge."
             ),
             target_getter=lambda h: h.rag_auto_toggle,
             on_enter=_open_tools,

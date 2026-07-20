@@ -32,5 +32,6 @@ class InternalCorpusKnowledgeService:
             budget=budget,
             library_store=ctx.library_store,
             source_filter=ctx.source_filter,
+            source_prefix_filter=ctx.source_prefix_filter,
         )
         return self._pipeline.run(merged)

@@ -27,6 +27,12 @@ class ComposerMentionGuideTests(unittest.TestCase):
         text = build_composer_mention_guide_text()
         self.assertIn("Settings → Help", text)
 
+    def test_guide_documents_advanced_and_source_pins(self) -> None:
+        text = build_composer_mention_guide_text()
+        self.assertIn("Advanced tools", text)
+        self.assertIn("@[tool:source:", text)
+        self.assertIn("My knowledge presets", text)
+        self.assertIn("first among @[file:…]", text)
 
 if __name__ == "__main__":
     unittest.main()

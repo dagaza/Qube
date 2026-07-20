@@ -20,6 +20,14 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
+      - name: Validate help corpus
+        run: |
+          python scripts/generate_help_reference.py --check
+          python scripts/compose_help_corpus.py --check
+          python scripts/validate_help_manifest.py
+          python scripts/eval_help_golden.py
+          python scripts/eval_help_production.py
+
       - name: Run tests
         run: pytest tests/ -v --tb=short -m "not packaging"
 

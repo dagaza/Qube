@@ -139,7 +139,7 @@ def build_memory_manager_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="refresh",
-            title="Reload from disk",
+            title="Reload memories from disk",
             body=(
                 "Refresh pulls the latest state from the memory store — use after external "
                 "changes or if the list looks stale."

@@ -59,6 +59,11 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
         "advanced": True,
     },
     {"id": "library", "label": "Library", "description": "Search your documents"},
+    {
+        "id": "help",
+        "label": "Help",
+        "description": "Search Qube's built-in documentation",
+    },
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
     {
         "id": "science",
@@ -154,6 +159,7 @@ _TOOL_USAGE_HINTS: dict[str, str] = {
     "fetch": "Use when you need full page content, not just search snippets.",
     "recipe": "Use for structured recipe ingredients and steps from recipe sites.",
     "library": "Use to search only your uploaded documents.",
+    "help": "Use for how-to questions, settings locations, and troubleshooting.",
     "memory": "Use to recall facts saved from past chats.",
     "science": "Same routing as @evidence; prefer @evidence in the palette.",
     "wikipedia": "Use for quick encyclopedia summaries only.",
@@ -303,7 +309,7 @@ def resolve_attachment_routing(
 ) -> dict | None:
     """
     Return a routing decision patch from composer attachments, or None.
-    First attachment by kind precedence: file > conversation > tool.
+    First attachment in message order (left-to-right parse order) drives routing.
     """
     if not attachments:
         return None
@@ -351,6 +357,13 @@ def resolve_attachment_routing(
         return {
             "route": "web",
             "strategy": "attachment_tool_library",
+            "attachment_tool": tool_id,
+            "composer_attachments": _attachments_telemetry(attachments),
+        }
+    if tool_id == "help":
+        return {
+            "route": "web",
+            "strategy": "attachment_tool_help",
             "attachment_tool": tool_id,
             "composer_attachments": _attachments_telemetry(attachments),
         }
