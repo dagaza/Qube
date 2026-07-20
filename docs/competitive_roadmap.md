@@ -60,7 +60,7 @@ Work that stops “why doesn’t Qube have X?” objections **without** changing
 
 | Gap | Qube today | Target parity | Suggested work | Priority |
 |-----|------------|---------------|----------------|----------|
-| **MCP as extension model** | ◐ Custom source MCP connector; not a first-class client UX | Users can attach **standard MCP servers** for tools alongside Live Sources | MCP server registry in Settings; doc parity with [LM Studio MCP](https://lmstudio.ai/docs/developer/core/mcp); sandbox/permission UX | P1 |
+| **MCP interoperability** | ◐ Custom source MCP connector; not a first-class client UX | Users can attach **standard MCP servers** as grouped, permissioned **capabilities** alongside Live Sources | [MCP & Capability Integrations plan](mcp_capability_integrations_plan.md) — Integrations UI, capability registry, composer `@` search, INSPECT steps | P1 |
 | **MLX / Apple Silicon fast path** | Metal GGUF via internal engine | Acknowledge MLX gap; optimize **External Server** story for LM Studio on Mac | Model Manager copy + help: “use LM Studio MLX host”; detect localhost MLX endpoint | P2 |
 | **Headless / API-only serving** | Qube is desktop-first | Partner, don’t duplicate **llmster** | Document “Qube UI + LM Studio `llmster` on server” pattern for advanced users | P2 |
 | **Plugin/memory ecosystem** | Built-in memory beats plugins for assistants | Optional **import** from LM Studio persistent-memory SQLite/markdown (one-way migration tool) | P2 |
@@ -145,9 +145,11 @@ Use as **epic buckets** for issues/PRs. Adjust per maintainer capacity.
 - [ ] Default log redaction guidance in Settings → Advanced
 - [ ] `@help` articles for privacy tiers and memory delete behavior
 
-### Theme C — Extensibility parity (P1)
+### Theme C — Extensibility compatibility (P1)
 
-- [ ] MCP server registry (settings + permission model)
+See [MCP & Capability Integrations plan](mcp_capability_integrations_plan.md).
+
+- [ ] Capability registry + MCP server integrations (settings + permission model)
 - [ ] SearXNG setup wizard (detect/test/configure)
 - [ ] Knowledge pack templates documented + example pack in repo
 - [ ] Scoped research agent with plan + INSPECT steps
@@ -180,6 +182,7 @@ Use as **epic buckets** for issues/PRs. Adjust per maintainer capacity.
 | Date | Change |
 |------|--------|
 | 2026-07 | Initial roadmap from competitive landscape deep-dive (composer, help, onboarding, runtime, observability, Live Sources, Companion, memory) |
+| 2026-07-20 | MCP row → interoperability framing; link [mcp_capability_integrations_plan.md](mcp_capability_integrations_plan.md) |
 
 ---
 
@@ -194,3 +197,4 @@ Use as **epic buckets** for issues/PRs. Adjust per maintainer capacity.
 | [web_discovery_privacy_resilience_plan.md](web_discovery_privacy_resilience_plan.md) | Discovery privacy slices |
 | [memory-system.md](architecture/memory-system.md) | Memory architecture |
 | [in_app_help_knowledge_base.md](in_app_help_knowledge_base.md) | Help corpus strategy |
+| [mcp_capability_integrations_plan.md](mcp_capability_integrations_plan.md) | MCP interoperability — capability registry, permissions, composer, INSPECT |
