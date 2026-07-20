@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Launch-ready README rewrite (user-first storefront; technical depth moved to `docs/`).
+- User documentation: [docs/user/](docs/user/README.md) (install, requirements, workflows).
+- Architecture docs: [docs/architecture/](docs/architecture/README.md) (extracted from pre-rewrite README).
+- Archived legacy README: [docs/archive/readme-pre-launch-rewrite.md](docs/archive/readme-pre-launch-rewrite.md).
+- [CONTRIBUTING.md](CONTRIBUTING.md) — developer setup, tests, PR expectations.
+- [docs/launch_documentation_guidelines.md](docs/launch_documentation_guidelines.md) — phased doc playbook and pre-launch checklist.
+- Release checklist in [docs/releasing.md](docs/releasing.md) now includes documentation pass before public launch.
+- Phase 4 (partial): social preview image, GitHub Pages landing, README positioning vs LM Studio / SillyTavern / Odysseus.
+- [Competitive landscape](docs/user/competitive-landscape.md) — feature matrix, `@`/help, onboarding, runtime/UI RAM, observability, Live Sources, Desktop Companion, **memory**.
+- [Competitive roadmap](docs/competitive_roadmap.md) — developer priorities: parity, moats, non-goals.
+
 ## [1.0.1] - 2026-06-28
 
 ### Added

@@ -24,14 +24,21 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
 ## Pre-release checklist
 
 1. Ensure [`main`](https://github.com/dagaza/Qube) is green (PR CI workflow).
-2. Run focused smoke tests locally:
+2. **Documentation pass** — see [Launch documentation guidelines](launch_documentation_guidelines.md) (**Final launch pass**). At minimum before a public launch:
+   - [ ] README accurate (features, install paths, screenshots)
+   - [ ] [`CHANGELOG.md`](../CHANGELOG.md) — `[Unreleased]` moved into the versioned section
+   - [ ] [`docs/user/`](user/README.md) install and requirements match shipping platforms
+   - [ ] In-app help corpus regenerated if settings/tools changed (checklist below)
+   - [ ] GitHub **Social preview** uploaded ([`assets/social/`](../assets/social/README.md)) if image changed
+   - [ ] GitHub **Pages** landing live at `https://dagaza.github.io/Qube/` ([setup](pages.md)) if `docs/index.html` changed
+3. Run focused smoke tests locally:
 
    ```powershell
    pytest tests/test_memory_qa_smoke.py -q
    pytest tests/ -m "not packaging" -q
    ```
 
-3. Optional local packaging parity with CI (uses `core/__version__.py` if `-Version` omitted):
+4. Optional local packaging parity with CI (uses `core/__version__.py` if `-Version` omitted):
 
    ```powershell
    python scripts/prepare_release.py 1.0.1

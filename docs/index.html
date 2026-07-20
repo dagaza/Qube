@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qube — Private, voice-first AI on your machine</title>
+  <meta name="description" content="Qube is a local, privacy-first desktop AI assistant. Voice, chat, Library, memory, and optional live research — on your hardware.">
+  <meta property="og:title" content="Qube">
+  <meta property="og:description" content="Private, voice-first AI on your machine.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://dagaza.github.io/Qube/assets/social/qube-social-preview.png">
+  <link rel="icon" href="assets/logos/qube_logo_256.png" type="image/png">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --brand: #b4a0fa;
+      --brand-dim: #7c6bdf;
+      --border: rgba(148, 163, 184, 0.15);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(180, 160, 250, 0.18), transparent), var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    header { text-align: center; padding: 2.5rem 0 1.5rem; }
+    .logo { width: 72px; height: 72px; margin-bottom: 1rem; }
+    h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+    .tagline { font-size: 1.125rem; color: var(--muted); max-width: 36rem; margin: 0 auto 1.5rem; }
+    nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; justify-content: center; font-size: 0.95rem; margin-bottom: 2rem; }
+    nav a { color: var(--muted); }
+    nav a:hover { color: var(--brand); }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-bottom: 2.5rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-dim)); color: #0f1117; }
+    .btn-secondary { border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+    section { margin: 2.5rem 0; }
+    h2 { font-size: 1.35rem; margin: 0 0 1rem; }
+    .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .pillar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+    }
+    .pillar strong { display: block; margin-bottom: 0.35rem; color: #f8fafc; }
+    .pillar span { font-size: 0.9rem; color: var(--muted); }
+    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .shots figure { margin: 0; }
+    .shots img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+    .shots figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; text-align: center; }
+    .positioning {
+      background: var(--surface);
+      border-left: 3px solid var(--brand);
+      padding: 1rem 1.25rem;
+      border-radius: 0 10px 10px 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+    footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img class="logo" src="assets/logos/qube_logo_256.png" width="72" height="72" alt="Qube logo">
+      <h1>Qube</h1>
+      <p class="tagline">Your private, voice-first AI assistant — runs on your machine, remembers what matters, and grounds answers in your files and trusted sources.</p>
+      <nav>
+        <a href="https://github.com/dagaza/Qube#quick-start">Quick Start</a>
+        <a href="https://github.com/dagaza/Qube/tree/main/docs/user">User docs</a>
+        <a href="https://github.com/dagaza/Qube/blob/main/Readme.md">README</a>
+        <a href="https://github.com/dagaza/Qube/releases">Releases</a>
+        <a href="https://www.qubeapp.eu">Website</a>
+        <a href="https://github.com/dagaza/Qube/blob/main/CONTRIBUTING.md">Contributing</a>
+      </nav>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/dagaza/Qube/releases">Download</a>
+        <a class="btn btn-secondary" href="https://github.com/dagaza/Qube">View on GitHub</a>
+      </div>
+    </header>
+
+    <section>
+      <div class="positioning">
+        <strong>LM Studio</strong> runs models brilliantly. <strong>SillyTavern</strong> masters prompts and lorebooks.
+        <strong>Odysseus</strong> bundles a whole self-hosted workspace. <strong>Qube</strong> is built for something else:
+        a voice-first desktop assistant that routes each turn to your Library, curated memory, or live institutional sources —
+        with <code>@</code> composer tools, numbered citations, and a Memory Manager you can edit. Inference stays on your machine.
+      </div>
+    </section>
+
+    <section>
+      <h2>Why Qube</h2>
+      <div class="pillars">
+        <div class="pillar"><strong>Private by default</strong><span>Chat, Library, and memory on your device.</span></div>
+        <div class="pillar"><strong>Voice-first</strong><span>Wake word, push-to-talk, and barge-in.</span></div>
+        <div class="pillar"><strong>Composer @ routing</strong><span>Per-message tools, files, skills, and presets.</span></div>
+        <div class="pillar"><strong>Smart routing</strong><span>Memory, Library, web, or chat — automatic or explicit.</span></div>
+        <div class="pillar"><strong>Your hardware</strong><span>Built-in engine or LM Studio / Ollama.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Screenshots</h2>
+      <div class="shots">
+        <figure>
+          <img src="assets/screenshots/qube_conversations_dark_mode.png" alt="Qube Conversations — dark theme" loading="lazy">
+          <figcaption>Conversations</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshots/qube_library_dark_mode.png" alt="Qube Library — dark theme" loading="lazy">
+          <figcaption>Library</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshots/qube_model_manager_dark_mode.png" alt="Qube Model Manager" loading="lazy">
+          <figcaption>Model Manager</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Get started</h2>
+      <p>
+        Windows: <code>winget install -e --id dagaza.Qube</code> or
+        <a href="https://github.com/dagaza/Qube/releases">GitHub Releases</a>.
+        macOS: download the <code>.dmg</code> from Releases.
+        Developers: see <a href="https://github.com/dagaza/Qube/blob/main/docs/user/install-from-source.md">install from source</a>.
+      </p>
+      <p>
+        Help ships inside the app — open <strong>Library → Qube</strong> or type
+        <strong><code>@[tool:help]</code></strong> in chat.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        <a href="https://github.com/dagaza/Qube">GitHub</a> ·
+        <a href="https://www.qubeapp.eu">qubeapp.eu</a> ·
+        <a href="https://patreon.com/Dagaza">Patreon</a> ·
+        MIT License
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

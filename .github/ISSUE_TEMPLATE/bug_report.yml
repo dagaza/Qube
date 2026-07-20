@@ -1,0 +1,86 @@
+name: Bug report
+description: Report something broken in Qube
+title: "[Bug]: "
+labels:
+  - triage:needs-repro
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Include enough detail that someone can reproduce it locally.
+        See [CONTRIBUTING.md](https://github.com/dagaza/Qube/blob/dev/CONTRIBUTING.md) before opening a PR.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: e.g. App crashes when toggling theme on Linux Wayland
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a clean launch when possible.
+      placeholder: |
+        1. Launch Qube from source
+        2. Open Settings → …
+        3. Click …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other / unknown
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Qube version
+      description: From Settings → About, or the git branch/commit if running from source.
+      placeholder: e.g. 1.0.1 or dev @ abc1234
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste relevant log lines or attach screenshots.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: pr
+    attributes:
+      label: Are you willing to open a PR if you get guidance?
+      options:
+        - "No"
+        - "Yes"
+        - "Already working on a fix"
+    validations:
+      required: true

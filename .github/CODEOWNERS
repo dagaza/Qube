@@ -1,0 +1,14 @@
+# Default owner — all paths fall back to the maintainer.
+* @dagaza
+
+# Trusted contributor — advisory review (non-blocking until code-owner reviews are enabled).
+/core/memory_* @dagaza @keithtmccartney
+/mcp/cognitive_router* @dagaza @keithtmccartney
+/workers/llm_worker.py @dagaza @keithtmccartney
+/workers/enrichment_worker.py @dagaza @keithtmccartney
+/workers/ingestion_worker.py @dagaza @keithtmccartney
+/rag/ @dagaza @keithtmccartney
+/.github/workflows/ @dagaza @keithtmccartney
+/docs/releasing.md @dagaza @keithtmccartney
+/scripts/build_windows.ps1 @dagaza @keithtmccartney
+/scripts/render_winget_manifests.py @dagaza @keithtmccartney

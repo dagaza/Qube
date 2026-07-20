@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest a new capability or improvement
+title: "[Feature]: "
+labels:
+  - triage:needs-info
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution. Large features may need an RFC discussion before a PR.
+        See [CONTRIBUTING.md](https://github.com/dagaza/Qube/blob/dev/CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What user problem does this solve? Who benefits?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Optional — rough idea is fine. Link mockups or prior art if helpful.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve the same problem, or why existing features are insufficient.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope signals
+      options:
+        - label: This likely touches routing, memory, or knowledge architecture (ADR review may be needed)
+        - label: This likely needs in-app help / user docs updates
+        - label: This is a large change (> ~400 lines or multiple subsystems) — I expect an RFC first
+
+  - type: dropdown
+    id: pr
+    attributes:
+      label: Are you willing to open a PR?
+      options:
+        - "No — suggestion only"
+        - "Yes — after discussion"
+        - "Yes — I already have a branch"
+    validations:
+      required: true
