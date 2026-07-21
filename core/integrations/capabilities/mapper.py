@@ -19,7 +19,7 @@ heuristic (the design's "server manifest beats heuristics" rule).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from core.integrations.capabilities.model import (
     CapabilityDescriptor,
@@ -28,7 +28,14 @@ from core.integrations.capabilities.model import (
 )
 from core.integrations.capabilities.urn import CapabilityURN
 
-__all__ = ["RawTool", "CapabilityMapper"]
+__all__ = ["RawTool", "CapabilityMapper", "CapabilityMappingError"]
+
+
+class CapabilityMappingError(ValueError):
+    """Raised when a provider's raw surface cannot be mapped (e.g. an
+    un-sluggable namespace). Surfaced at the provider boundary rather than as a
+    cryptic URN-validation error from deep inside ``discover``.
+    """
 
 
 # Verb -> tier heuristics. Kept deliberately conservative: only verbs we are
@@ -83,12 +90,16 @@ def _tokens(name: str) -> list[str]:
 def _slug(text: str) -> str:
     """Normalise arbitrary text into a valid URN segment.
 
-    Lowercases, converts separators to ``-``, drops illegal characters, and
-    trims to satisfy the URN grammar (must start/end alphanumeric). Returns
-    ``""`` if nothing valid remains, so callers can fall back.
+    Tokenises the same way tier classification does (snake/kebab/dotted/spaced
+    **and camelCase**), joins with ``-``, lowercases, drops illegal characters,
+    and trims to satisfy the URN grammar (must start/end alphanumeric). Because
+    camelCase is split here too, ``searchIssues`` / ``search_issues`` /
+    ``search.issues`` all slug to the same ``search-issues`` (consistent ids;
+    any resulting URN collision is handled in :meth:`CapabilityMapper.map_tools`).
+    Returns ``""`` if nothing valid remains, so callers can fall back or error.
     """
-    lowered = text.strip().lower().replace("_", "-").replace(" ", "-").replace(".", "-")
-    cleaned = _URN_INVALID.sub("-", lowered)
+    joined = "-".join(_tokens(text)).lower()
+    cleaned = _URN_INVALID.sub("-", joined)
     cleaned = re.sub(r"-+", "-", cleaned).strip("-.")
     return cleaned
 
@@ -122,6 +133,21 @@ class CapabilityMapper:
             return CapabilityTier.DESTRUCTIVE, True
         return tier, False
 
+    @staticmethod
+    def _namespace_segment(namespace: str) -> str:
+        """Slugify a namespace, raising a clear error if nothing valid remains.
+
+        Validated once at the mapping boundary so a misconfigured/empty namespace
+        fails fast with an actionable message instead of a cryptic
+        ``InvalidCapabilityURN`` from inside URN construction (L2).
+        """
+        segment = _slug(namespace)
+        if not segment:
+            raise CapabilityMappingError(
+                f"namespace {namespace!r} does not yield a valid URN segment"
+            )
+        return segment
+
     def map_tool(
         self,
         provider_id: str,
@@ -138,7 +164,7 @@ class CapabilityMapper:
             tier, needs_review = self.classify_tier(tool.name)
 
         action = _slug(tool.name) or "action"
-        urn = CapabilityURN.build(provider_id, _slug(namespace) or namespace, action)
+        urn = CapabilityURN.build(provider_id, self._namespace_segment(namespace), action)
         return CapabilityDescriptor(
             urn=urn,
             group=namespace,
@@ -159,13 +185,34 @@ class CapabilityMapper:
         group_label: str | None = None,
         tier_overrides: dict[str, CapabilityTier] | None = None,
     ) -> CapabilityGroup:
-        """Map a provider's raw tools into one grouped capability set."""
-        descriptors = tuple(
-            self.map_tool(provider_id, namespace, tool, tier_overrides=tier_overrides)
-            for tool in tools
-        )
+        """Map a provider's raw tools into one grouped capability set.
+
+        Two raw tools whose names normalise to the same action (e.g.
+        ``search_issues`` and ``searchIssues``) would otherwise produce colliding
+        URNs. Collisions are disambiguated deterministically by suffixing the
+        action (``-2``, ``-3``, ...) and flagging ``needs_review`` so the
+        ambiguity is surfaced to the user rather than silently shadowing a
+        capability (M1). Each descriptor keeps its distinct ``raw_ref`` so
+        invocation still routes to the correct underlying tool.
+        """
+        self._namespace_segment(namespace)  # validate once, fail fast
+        descriptors: list[CapabilityDescriptor] = []
+        used: set[str] = set()
+        for tool in tools:
+            d = self.map_tool(provider_id, namespace, tool, tier_overrides=tier_overrides)
+            if d.action in used:
+                i = 2
+                while f"{d.action}-{i}" in used:
+                    i += 1
+                new_action = f"{d.action}-{i}"
+                new_urn = CapabilityURN.build(
+                    d.urn.provider, d.urn.namespace, new_action, d.urn.version
+                )
+                d = replace(d, action=new_action, urn=new_urn, needs_review=True)
+            used.add(d.action)
+            descriptors.append(d)
         return CapabilityGroup(
             provider_id=provider_id,
             name=group_label or namespace,
-            capabilities=descriptors,
+            capabilities=tuple(descriptors),
         )

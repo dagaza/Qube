@@ -79,6 +79,15 @@ class TestFingerprint(unittest.TestCase):
             fingerprint_descriptors([a, b]),
         )
 
+    def test_handles_non_json_schema_value(self):
+        # A provider may place a non-JSON value in input_schema; fingerprinting
+        # must stay deterministic rather than raising (L3).
+        weird = _descriptor("search-issues", CapabilityTier.READ, schema={"default": {1, 2, 3}})
+        fp1 = fingerprint_descriptors([weird])
+        fp2 = fingerprint_descriptors([weird])
+        self.assertEqual(fp1, fp2)
+        self.assertEqual(len(fp1), 64)
+
 
 class TestNormalizedHitProvenance(unittest.TestCase):
     """T3 — NormalizedHit.to_evidence_dict preserves cap: provenance (P8)."""

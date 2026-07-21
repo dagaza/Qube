@@ -2,7 +2,11 @@
 
 import unittest
 
-from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
+from core.integrations.capabilities.mapper import (
+    CapabilityMapper,
+    CapabilityMappingError,
+    RawTool,
+)
 from core.integrations.capabilities.model import CapabilityTier
 from core.integrations.capabilities.urn import CapabilityURN
 
@@ -91,6 +95,72 @@ class TestMapTools(unittest.TestCase):
         cap = group.capabilities[0]
         self.assertEqual(CapabilityURN.parse(str(cap.urn)), cap.urn)
         self.assertEqual(cap.tier, CapabilityTier.READ)
+
+
+class TestSlugConsistency(unittest.TestCase):
+    """L1 — snake/kebab/dotted/camelCase names normalise to the same action id."""
+
+    def test_camelcase_matches_snake_and_dotted(self):
+        mapper = CapabilityMapper()
+        for name in ("search_issues", "searchIssues", "search.issues", "search-issues"):
+            group = mapper.map_tools("mcp", "github", [RawTool(name)])
+            with self.subTest(name=name):
+                self.assertEqual(str(group.capabilities[0].urn), "cap:mcp:github/search-issues")
+
+
+class TestUrnCollision(unittest.TestCase):
+    """M1 — tools that normalise to the same action must not shadow each other."""
+
+    def test_collision_disambiguated_and_flagged(self):
+        mapper = CapabilityMapper()
+        group = mapper.map_tools(
+            "mcp",
+            "github",
+            [RawTool("search_issues"), RawTool("searchIssues"), RawTool("search.issues")],
+        )
+        urns = [str(d.urn) for d in group.capabilities]
+        # All three survive with distinct URNs (no silent shadowing).
+        self.assertEqual(len(set(urns)), 3)
+        self.assertEqual(urns[0], "cap:mcp:github/search-issues")
+        self.assertEqual(urns[1], "cap:mcp:github/search-issues-2")
+        self.assertEqual(urns[2], "cap:mcp:github/search-issues-3")
+        # Each keeps its own raw tool id so invocation still routes correctly.
+        self.assertEqual([d.raw_ref for d in group.capabilities],
+                         ["search_issues", "searchIssues", "search.issues"])
+        # The disambiguated ones are flagged for human review.
+        self.assertFalse(group.capabilities[0].needs_review)
+        self.assertTrue(group.capabilities[1].needs_review)
+        self.assertTrue(group.capabilities[2].needs_review)
+
+    def test_disambiguation_skips_existing_suffix(self):
+        mapper = CapabilityMapper()
+        group = mapper.map_tools(
+            "mcp", "github",
+            [RawTool("get_x"), RawTool("get.x"), RawTool("get-x-2")],
+        )
+        urns = [str(d.urn) for d in group.capabilities]
+        # All three get unique ids; the literal "get-x-2" (whose natural slug was
+        # already claimed by disambiguating "get.x") is pushed to "get-x-2-2"
+        # rather than clobbering it.
+        self.assertEqual(len(set(urns)), 3)
+        self.assertEqual([u.split("/")[-1] for u in urns],
+                         ["get-x", "get-x-2", "get-x-2-2"])
+
+
+class TestNamespaceValidation(unittest.TestCase):
+    """L2 — an un-sluggable namespace fails fast with a clear error."""
+
+    def test_empty_namespace_raises_mapping_error(self):
+        mapper = CapabilityMapper()
+        with self.assertRaises(CapabilityMappingError):
+            mapper.map_tools("mcp", "???", [RawTool("read_x")])
+        with self.assertRaises(CapabilityMappingError):
+            mapper.map_tool("mcp", "   ", RawTool("read_x"))
+
+    def test_valid_namespace_slugified(self):
+        mapper = CapabilityMapper()
+        group = mapper.map_tools("mcp", "File System", [RawTool("read_file")])
+        self.assertEqual(str(group.capabilities[0].urn), "cap:mcp:file-system/read-file")
 
 
 if __name__ == "__main__":

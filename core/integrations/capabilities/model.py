@@ -182,5 +182,8 @@ def fingerprint_descriptors(descriptors: list[CapabilityDescriptor]) -> str:
         (d.signature() for d in descriptors),
         key=lambda s: s["urn"],
     )
-    canonical = json.dumps(signatures, sort_keys=True, separators=(",", ":"))
+    # ``default=str`` keeps the fingerprint from crashing on a non-JSON value that
+    # a provider might place in ``input_schema``; such values still contribute
+    # deterministically to the hash.
+    canonical = json.dumps(signatures, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
