@@ -12,30 +12,17 @@ if _WS_ROOT not in sys.path:
     sys.path.insert(0, _WS_ROOT)
 
 from core.knowledge.discovery.brave_search import BraveSearchDiscovery  # noqa: E402
-from core.knowledge.discovery.duckduckgo import DuckDuckGoDiscovery  # noqa: E402
 from core.knowledge.discovery.policy import (  # noqa: E402
     PRIMARY_DISCOVERY_PROVIDER_ID,
     bot_challenge_fallback_chain,
 )
+from core.knowledge.discovery.privacy_policy import TIER_BALANCED  # noqa: E402
 from core.knowledge.discovery.registry import (  # noqa: E402
     default_discovery_provider,
     discover_full_with_fallback,
 )
 from core.knowledge.discovery.types import CandidateUrl, DiscoveryResult  # noqa: E402
 from core.knowledge.search_outcome import SearchOutcome, SearchOutcomeKind  # noqa: E402
-
-
-def _ddg_bot_challenge_result() -> DiscoveryResult:
-    return DiscoveryResult(
-        candidates=(),
-        raw_rows=({"title": "", "snippet": "Internet search blocked: DuckDuckGo bot challenge (try again later)."},),
-        search_outcome=SearchOutcome(
-            kind=SearchOutcomeKind.BOT_CHALLENGE,
-            provider="duckduckgo",
-            http_status=202,
-        ),
-        provider_id="duckduckgo",
-    )
 
 
 class TestBraveSearchDiscovery(unittest.TestCase):
@@ -79,22 +66,30 @@ class TestBraveSearchDiscovery(unittest.TestCase):
         assert result.search_outcome is not None
         self.assertEqual(result.search_outcome.kind, SearchOutcomeKind.SERP_SUCCESS)
 
-    @patch("core.knowledge.discovery.policy.brave_search_configured", return_value=True)
-    def test_fallback_chain_includes_brave_when_configured(self, _mock_cfg) -> None:
+    @patch("core.app_settings.get_discovery_privacy_tier", return_value=TIER_BALANCED)
+    @patch("core.app_settings.get_discovery_api_fallback_enabled", return_value=True)
+    @patch("core.knowledge.discovery.privacy_policy.brave_search_configured", return_value=True)
+    def test_fallback_chain_includes_brave_when_configured(
+        self,
+        _mock_brave,
+        _mock_api,
+        _mock_tier,
+    ) -> None:
         chain = bot_challenge_fallback_chain()
         self.assertEqual(chain[0], "brave_search")
         self.assertIn("wikipedia", chain)
 
-    @patch.object(DuckDuckGoDiscovery, "discover_full")
-    @patch("core.knowledge.discovery.policy.brave_search_configured", return_value=True)
+    @patch("core.app_settings.get_discovery_privacy_tier", return_value=TIER_BALANCED)
+    @patch("core.app_settings.get_discovery_api_fallback_enabled", return_value=True)
+    @patch("core.knowledge.discovery.privacy_policy.brave_search_configured", return_value=True)
     @patch.object(BraveSearchDiscovery, "discover_full")
-    def test_brave_tried_before_wikipedia_on_bot_challenge(
+    def test_site_bias_uses_brave_primary_when_configured(
         self,
         mock_brave,
-        _mock_cfg,
-        mock_ddg,
+        _mock_brave_cfg,
+        _mock_api,
+        _mock_tier,
     ) -> None:
-        mock_ddg.return_value = _ddg_bot_challenge_result()
         mock_brave.return_value = DiscoveryResult(
             candidates=(
                 CandidateUrl(

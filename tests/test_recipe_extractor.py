@@ -52,9 +52,9 @@ class TestRecipeExtractor(unittest.TestCase):
         self.assertTrue(any("spaghetti" in str(item).lower() for item in ingredients))
         self.assertTrue(document.sections)
 
-    @patch("core.knowledge.discovery.duckduckgo.search_duckduckgo")
+    @patch("core.knowledge.discovery.duckduckgo.search_duckduckgo_detailed")
     def test_recipe_site_bias_scopes_discovery_query(self, mock_search) -> None:
-        mock_search.return_value = []
+        mock_search.return_value = ([], None)
         from core.knowledge.discovery.duckduckgo import DuckDuckGoDiscovery
 
         DuckDuckGoDiscovery().discover(

@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-20
+
 ### Added
+- In-app help corpus v1 with `@help` routing and educative documentation.
+- Coach guide overlays for all major pages and areas.
+- Web page fetching (`web_content_fetch`) and Settings refactor for clearer UX.
+- macOS packaging foundation: `.app` bundle, DMG output, and optional signing/notarization pipeline.
+- Homebrew Cask distribution scaffolding and automated tap bump workflow.
 - Launch-ready README rewrite (user-first storefront; technical depth moved to `docs/`).
 - User documentation: [docs/user/](docs/user/README.md) (install, requirements, workflows).
 - Architecture docs: [docs/architecture/](docs/architecture/README.md) (extracted from pre-rewrite README).
@@ -18,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 4 (partial): social preview image, GitHub Pages landing, README positioning vs LM Studio / SillyTavern / Odysseus.
 - [Competitive landscape](docs/user/competitive-landscape.md) — feature matrix, `@`/help, onboarding, runtime/UI RAM, observability, Live Sources, Desktop Companion, **memory**.
 - [Competitive roadmap](docs/competitive_roadmap.md) — developer priorities: parity, moats, non-goals.
+- [MCP capability integrations plan](docs/mcp_capability_integrations_plan.md) — roadmap for future MCP-based integrations.
+
+### Changed
+- Faster theme toggle via lazy-loading main stages and profiling regressions.
+
+### Fixed
+- Model Manager page UI bug and silenced GPU layer debug instrumentation.
+- Dependency bumps (click, setuptools) to clear `pip-audit` CI findings.
 
 ## [1.0.1] - 2026-06-28
 
@@ -40,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/dagaza/Qube/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/dagaza/Qube/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dagaza/Qube/releases/tag/v1.0.0
