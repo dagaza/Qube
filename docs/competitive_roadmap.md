@@ -29,7 +29,7 @@
 
 Qube is **not** trying to become LM Studio (model runner), SillyTavern (roleplay frontend), or Odysseus (homelab workspace). The bet:
 
-> **One native, voice-first desktop assistant** — grounded answers, curated memory, institutional research, and privacy transparency — **without assembling a stack**.
+> **One native, privacy-first desktop assistant** — grounded answers, curated memory, institutional research, and transparency you can audit — **without assembling a stack**. Optional voice when your hardware allows.
 
 Roadmap work should **strengthen that job**, not chase every competitor checkbox.
 

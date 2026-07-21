@@ -10,7 +10,7 @@
 
 | Product | What it optimizes for |
 |---------|----------------------|
-| **Qube** | Voice-first **desktop assistant** — one app for chat, Library, curated memory, and cited research |
+| **Qube** | **Private desktop assistant** — grounded chat, Library, curated memory, and cited research on your hardware |
 | **LM Studio** | **Model runner** — discover, load, and serve GGUF/MLX models (GUI + API + MCP) |
 | **SillyTavern** | **LLM frontend for power users** — prompts, lorebooks, characters, extensions |
 | **Odysseus** | **Self-hosted AI workspace** — chat, agents, email, calendar, research in Docker |
@@ -494,7 +494,7 @@ Qube’s bet: **one native assistant** for people who want voice, grounded answe
 
 **Short comparison (README-scale):**
 
-> LM Studio excels at running models; SillyTavern at prompt craft and roleplay; Odysseus at a broad self-hosted workspace. **Qube is something else:** a voice-first desktop assistant that routes each turn to the right knowledge — your Library, live institutional sources, or memory — with `@` composer tools and citations you can inspect, while inference stays on your machine.
+> LM Studio excels at running models; SillyTavern at prompt craft and roleplay; Odysseus at a broad self-hosted workspace. **Qube is something else:** a **private desktop assistant** that routes each turn to the right knowledge — your Library, live institutional sources, or memory — with `@` composer tools and citations you can inspect, while inference stays on your machine.
 
 **Composer hook:**
 
