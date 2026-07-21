@@ -8,3 +8,9 @@ license = "MIT"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyqt6"
+# Fail a hung test fast (with a full thread traceback) instead of letting it
+# run to GitHub Actions' 6-hour job cap. "thread" is the only method available
+# on Windows and works even when the main thread is blocked in Qt C++ code
+# (e.g. a modal dialog's exec()).
+timeout = 300
+timeout_method = "thread"
