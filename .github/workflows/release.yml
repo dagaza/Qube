@@ -258,8 +258,56 @@ jobs:
           name: macos-dmg-${{ matrix.arch }}-${{ steps.version.outputs.version }}
           path: Qube-*-${{ matrix.arch }}.dmg
 
+  linux-build:
+    needs: test
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync version into source
+        run: python scripts/set_version.py ${{ steps.version.outputs.version }}
+
+      - name: Install Linux build dependencies
+        run: bash scripts/linux/install_build_deps.sh
+
+      - name: Fetch AppImage tools
+        run: bash scripts/linux/fetch_appimage_tools.sh
+
+      - name: Build PyInstaller bundle
+        run: bash scripts/linux/build_linux.sh
+
+      - name: Smoke test dist binary
+        run: bash scripts/release/smoke_linux_dist.sh
+
+      - name: Build AppImage
+        run: bash scripts/linux/build_appimage.sh ${{ steps.version.outputs.version }}
+
+      - name: Smoke test AppImage
+        run: bash scripts/release/smoke_appimage.sh Qube-${{ steps.version.outputs.version }}-x86_64.AppImage
+
+      - name: Build .deb
+        run: bash scripts/linux/build_deb.sh ${{ steps.version.outputs.version }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ steps.version.outputs.version }}
+          path: |
+            Qube-*-x86_64.AppImage
+            qube_*_amd64.deb
+
   release:
-    needs: [build, macos-build]
+    needs: [build, macos-build, linux-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -271,6 +319,11 @@ jobs:
           pattern: macos-dmg-*
           merge-multiple: true
 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linux-*
+          merge-multiple: true
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -278,6 +331,8 @@ jobs:
           files: |
             Qube-*-Setup.exe
             Qube-*.dmg
+            Qube-*-x86_64.AppImage
+            qube_*_amd64.deb
           body: |
             ## Install
 
@@ -293,6 +348,18 @@ jobs:
             ```bash
             # Apple Silicon: Qube-${{ needs.build.outputs.version }}-arm64.dmg
             # Intel:         Qube-${{ needs.build.outputs.version }}-x86_64.dmg
+            ```
+
+            **Linux** (x86_64)
+
+            ```bash
+            # AppImage (portable):
+            chmod +x Qube-${{ needs.build.outputs.version }}-x86_64.AppImage
+            ./Qube-${{ needs.build.outputs.version }}-x86_64.AppImage
+
+            # Debian/Ubuntu (.deb):
+            sudo apt install ./qube_${{ needs.build.outputs.version }}_amd64.deb
+            qube
             ```
 
             **SHA256 (Windows installer):** `${{ needs.build.outputs.installer_hash }}`

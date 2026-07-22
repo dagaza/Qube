@@ -134,6 +134,24 @@ Each DMG includes **`Uninstall Qube.app`**, a signed helper that removes
 `llama-cpp-python` is rebuilt with `-DGGML_METAL=on` so Apple GPUs are used for
 inference (the Windows CUDA path via `pynvml` is excluded from the macOS bundle).
 
+## Linux
+
+The `linux-build` job runs on the same `v*` tag trigger on `ubuntu-22.04` and
+produces:
+
+| Artifact | Pattern |
+|----------|---------|
+| AppImage | `Qube-<version>-x86_64.AppImage` |
+| Debian package | `qube_<version>_amd64.deb` |
+
+Both are attached to the GitHub Release alongside the Windows and macOS assets.
+The build uses PyInstaller (`dist/Qube/`), wraps it with
+`scripts/linux/build_appimage.sh` (linuxdeploy) and
+`scripts/linux/build_deb.sh` (fpm), and smoke-tests the dist binary and
+AppImage under Xvfb.
+
+User install docs: [`docs/user/install-linux.md`](user/install-linux.md).
+
 ### Signing and notarization
 
 Signing, notarization, and the DMG smoke test only run when the repository
@@ -201,6 +219,9 @@ The release workflow signs `dist\Qube\Qube.exe` and the Inno Setup installer whe
 |----------|---------|
 | Git tag | `v1.0.1` |
 | Installer | `Qube-1.0.1-Setup.exe` |
+| macOS DMG | `Qube-1.0.1-arm64.dmg`, `Qube-1.0.1-x86_64.dmg` |
+| Linux AppImage | `Qube-1.0.1-x86_64.AppImage` |
+| Linux `.deb` | `qube_1.0.1_amd64.deb` |
 | WinGet folder | `manifests/d/dagaza/Qube/1.0.1/` |
 | Chocolatey nupkg | `qube.1.0.1.nupkg` |
 

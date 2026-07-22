@@ -69,6 +69,21 @@ if (-not (Test-Path $iscc)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISC
 
 Use a throwaway version for dry runs; revert `core/__version__.py` and `pyproject.toml` afterward if needed.
 
+## Linux release build (optional)
+
+Closest to the GitHub **Build & Release** `linux-build` job on Ubuntu 22.04+:
+
+```bash
+bash scripts/linux/install_build_deps.sh
+bash scripts/linux/build_linux.sh 9.9.9
+bash scripts/release/smoke_linux_dist.sh
+bash scripts/linux/fetch_appimage_tools.sh
+bash scripts/linux/build_appimage.sh 9.9.9
+bash scripts/linux/build_deb.sh 9.9.9
+```
+
+Revert version files after dry runs if needed.
+
 ## First-run bootstrap: mock vs real downloads
 
 First-run consent and splash downloads can be **simulated** (timer-based progress, **no files
