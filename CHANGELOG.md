@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-07-22
+
+### Fixed
+- Linux Vulkan builds: install `glslc` from LunarG's apt repo on Ubuntu 22.04 (not in default jammy packages).
+- Linux AppImage smoke test: resolve AppImage path to an absolute path so `xvfb-run` can execute it.
+- Linux CUDA builds: bundle `nvidia-cuda-runtime-cu12` (and cublas) into the PyInstaller output so smoke tests can import llama-cpp without a host CUDA toolkit.
+
 ## [1.1.4] - 2026-07-22
 
 ### Fixed
@@ -86,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.4...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.5...HEAD
+[1.1.5]: https://github.com/dagaza/Qube/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/dagaza/Qube/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/dagaza/Qube/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/dagaza/Qube/compare/v1.1.1...v1.1.2

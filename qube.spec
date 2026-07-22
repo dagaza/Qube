@@ -16,6 +16,7 @@ sys.path.insert(0, os.getcwd())
 from core.__version__ import __version__
 
 _IS_MACOS = sys.platform == "darwin"
+_LINUX_VARIANT = os.environ.get("QUBE_LINUX_VARIANT", "")
 
 datas = [
     ("assets", "assets"),
@@ -34,6 +35,13 @@ for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
         binaries += collect_dynamic_libs(package)
     except Exception:
         pass
+
+if _LINUX_VARIANT == "cuda":
+    for package in ("nvidia.cuda_runtime", "nvidia.cublas"):
+        try:
+            binaries += collect_dynamic_libs(package)
+        except Exception:
+            pass
 
 # pynvml drives NVIDIA/CUDA telemetry, which does not exist on macOS (Metal).
 _hidden_imports = [

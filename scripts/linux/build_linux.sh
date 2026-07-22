@@ -29,6 +29,11 @@ python3 -m pip install -r requirements.txt pyinstaller pillow
 
 bash "$SCRIPT_DIR/install_llama_cpp_variant.sh" "$VARIANT"
 
+if [[ "$VARIANT" == "cuda" ]]; then
+  python3 -m pip install nvidia-cuda-runtime-cu12
+fi
+
+export QUBE_LINUX_VARIANT="$VARIANT"
 python3 -m PyInstaller qube.spec --noconfirm
 
 if [[ ! -x "$REPO_ROOT/dist/Qube/Qube" ]]; then

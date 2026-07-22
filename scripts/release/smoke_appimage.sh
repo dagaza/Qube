@@ -10,6 +10,7 @@ if [[ ! -f "$APPIMAGE" ]]; then
   echo "AppImage not found: $APPIMAGE" >&2
   exit 1
 fi
+APPIMAGE="$(cd "$(dirname "$APPIMAGE")" && pwd)/$(basename "$APPIMAGE")"
 chmod +x "$APPIMAGE"
 
 FAKE_HOME="$(mktemp -d)"
@@ -28,8 +29,11 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
 run_smoke() {
-  local launcher=("$@")
-  "${launcher[@]}" "$APPIMAGE" --mock-bootstrap-download &
+  if [[ $# -gt 0 ]]; then
+    "$@" "$APPIMAGE" --mock-bootstrap-download &
+  else
+    "$APPIMAGE" --mock-bootstrap-download &
+  fi
   local pid=$!
   for _ in $(seq 1 20); do
     if ! kill -0 "$pid" >/dev/null 2>&1; then

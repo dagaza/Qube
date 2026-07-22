@@ -36,7 +36,6 @@ if [[ "$VARIANT" == "vulkan" || "$VARIANT" == "all" ]]; then
     spirv-headers
     glslang-dev
     glslang-tools
-    glslc
     libvulkan-dev
     libvulkan1
   )
@@ -44,6 +43,10 @@ fi
 
 sudo apt-get update
 sudo apt-get install -y "${PACKAGES[@]}"
+
+if [[ "$VARIANT" == "vulkan" || "$VARIANT" == "all" ]]; then
+  bash "$(dirname "${BASH_SOURCE[0]}")/install_lunarg_shaderc.sh"
+fi
 
 if ! command -v fpm >/dev/null 2>&1; then
   sudo gem install fpm --no-document
