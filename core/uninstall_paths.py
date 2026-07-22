@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.paths import user_data_root
-
 _APP_NAME = "Qube.app"
 _BUNDLE_ID = "com.dagaza.Qube"
+_USER_DATA_DIR = ".qube"
 
 
 def default_app_bundle_paths() -> list[Path]:
@@ -20,8 +19,8 @@ def default_app_bundle_paths() -> list[Path]:
 
 
 def user_data_paths() -> list[Path]:
-    """Writable Qube data (models, DB, logs, settings)."""
-    return [user_data_root()]
+    """Writable Qube data (models, DB, logs, settings) on macOS."""
+    return [Path.home() / _USER_DATA_DIR]
 
 
 def support_file_paths() -> list[Path]:

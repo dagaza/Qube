@@ -26,7 +26,8 @@ def _repo_root() -> Path:
 
 
 def _shell_path(path: Path) -> str:
-    return str(path.expanduser())
+    # Render macOS bash paths; must stay POSIX even when CI builds on Windows.
+    return path.expanduser().as_posix()
 
 
 def _render_remove_lines(paths: list[Path]) -> str:

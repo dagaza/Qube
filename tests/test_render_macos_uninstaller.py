@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import stat
 from pathlib import Path
 
@@ -16,13 +17,19 @@ def _load_render():
     return module
 
 
+def _assert_executable(path: Path) -> None:
+    assert path.is_file()
+    if os.name != "nt":
+        assert path.stat().st_mode & stat.S_IXUSR
+
+
 def test_render_uninstall_script_includes_manifest_paths(monkeypatch, tmp_path):
     mod = _load_render()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     script = mod.render_uninstall_script(version="9.9.9")
     assert 'remove_path "/Applications/Qube.app"' in script
-    assert f'remove_path "{tmp_path / ".qube"}"' in script
+    assert f'remove_path "{(tmp_path / ".qube").as_posix()}"' in script
     assert "com.dagaza.Qube.plist" in script
 
 
@@ -52,7 +59,7 @@ def test_build_uninstaller_app_writes_bundle(tmp_path, monkeypatch):
     assert "DATA" in script
     launcher = app_path / "Contents" / "MacOS" / "uninstall"
     assert launcher.exists()
-    assert launcher.stat().st_mode & stat.S_IXUSR
+    _assert_executable(launcher)
 
 
 def test_embed_uninstall_script_in_app(tmp_path, monkeypatch):
@@ -74,4 +81,4 @@ def test_embed_uninstall_script_in_app(tmp_path, monkeypatch):
     target = mod.embed_uninstall_script_in_app(tmp_path / "Qube.app", version="3.0.0")
     assert target.is_file()
     assert "APP" in target.read_text(encoding="utf-8")
-    assert target.stat().st_mode & stat.S_IXUSR
+    _assert_executable(target)
