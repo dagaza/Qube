@@ -333,6 +333,18 @@ def build_conversations_tour(host) -> OnboardingTour:
             on_enter=_open_tools,
         ),
         OnboardingStep(
+            step_id="tools_max_reply_tokens",
+            title="Max reply tokens",
+            body=(
+                "Cap how many new tokens each assistant reply may use when "
+                "**Limit maximum reply length** is on in Settings → AI & Models. "
+                "Stays in sync with that page — prompt space (history, RAG, system "
+                "text) still counts against the context window first."
+            ),
+            target_getter=lambda h: h.max_reply_spin,
+            on_enter=_open_tools,
+        ),
+        OnboardingStep(
             step_id="tools_rag",
             title="Local knowledge base",
             body=(
@@ -372,6 +384,18 @@ def build_conversations_tour(host) -> OnboardingTour:
                 "each time."
             ),
             target_getter=lambda h: h.tool_internet_hybrid_toggle,
+            on_enter=_open_tools,
+        ),
+        OnboardingStep(
+            step_id="tools_privacy_tier",
+            title="Discovery privacy",
+            body=(
+                "Choose the web discovery privacy tier for @internet and Hybrid Internet "
+                "Mode. **Private** keeps searches on DuckDuckGo and Wikipedia; higher "
+                "tiers may use optional API fallbacks or a self-hosted SearXNG instance. "
+                "Mirrors Settings → Knowledge → Web search discovery."
+            ),
+            target_getter=lambda h: h.toolbar_privacy_tier_selector,
             on_enter=_open_tools,
         ),
         # --- 5. Top app bar ---

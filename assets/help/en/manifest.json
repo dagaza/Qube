@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.13",
+  "corpus_version": "1.0.14",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -461,6 +461,7 @@
         "reference.settings_sections",
         "features.library",
         "features.conversations",
+        "faq.retrieval_profile_vs_search_quality",
         "workflows.prepare_search_models",
         "index"
       ],
@@ -1144,6 +1145,28 @@
       ]
     },
     {
+      "id": "faq.retrieval_profile_vs_search_quality",
+      "path": "faq/retrieval-profile-vs-search-quality.md",
+      "title": "Retrieval profile vs search quality",
+      "type": "faq",
+      "tags": [
+        "knowledge",
+        "retrieval-profile",
+        "search-quality",
+        "orchestration"
+      ],
+      "synonyms": [
+        "fast balanced retrieval vs embedding",
+        "fetch depth settings",
+        "orchestration profile"
+      ],
+      "related": [
+        "features.settings.knowledge",
+        "faq.live_sources_vs_library",
+        "index"
+      ]
+    },
+    {
       "id": "faq.companion_vs_main",
       "path": "faq/companion-vs-main-window.md",
       "title": "Companion vs main window",
@@ -1344,6 +1367,35 @@
       "doc_id": "features.settings.knowledge",
       "heading": "Search quality (Knowledge)",
       "answer": "Open Settings \u2192 Knowledge \u2192 **Search quality**. Choose Fast, Balanced, or Power, then tap **Prepare search models** if indexing is not ready.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.knowledge.retrieval_profile",
+      "question_patterns": [
+        "retrieval profile",
+        "where is retrieval profile",
+        "fetch depth settings",
+        "fast balanced thorough retrieval",
+        "orchestration profile knowledge",
+        "web page fetch depth"
+      ],
+      "doc_id": "features.settings.knowledge",
+      "heading": "Retrieval profile (Knowledge)",
+      "answer": "**Retrieval profile** is in **Settings \u2192 Knowledge \u2192 Retrieval profile**. It is a global orchestration setting for knowledge turns\u2014not Library-only ranking. It controls adapter fan-out, timeouts, cache behavior, and web page fetch depth (Fast = SERP snippets only; Balanced/Thorough fetch pages). Applies to Library, Live Sources, presets, and @internet. Not the same as **Search quality** (embedding presets).",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "faq.retrieval_profile_vs_search_quality",
+      "question_patterns": [
+        "retrieval profile vs search quality",
+        "search quality vs retrieval profile",
+        "fast balanced retrieval embedding",
+        "difference between fast balanced and power",
+        "embedding mode vs retrieval profile"
+      ],
+      "doc_id": "faq.retrieval_profile_vs_search_quality",
+      "heading": "Retrieval profile vs search quality",
+      "answer": "**Search quality** (Fast/Balanced/Power) picks embedding/rerank models for **Library indexing**. **Retrieval profile** (Fast/Balanced/Thorough/\u2026) orchestrates **every knowledge turn**\u2014Library, Live Sources, presets, and web\u2014including fetch depth after SERP. Same Fast/Balanced names, different settings under **Settings \u2192 Knowledge**.",
       "action_id": "open_settings_knowledge"
     },
     {

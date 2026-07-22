@@ -32,6 +32,7 @@ from ui.views.memory_manager_view import MemoryManagerView
 from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
+from ui.components.selector_button import SelectorButton
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
 from ui.components.ingest_progress_row import IngestProgressRow
@@ -53,6 +54,8 @@ from core.app_settings import (
     get_llm_chat_history_messages,
     get_llm_context_limit,
     get_llm_models_dir,
+    get_llm_output_token_limit,
+    get_llm_output_token_limit_enabled,
     get_llm_temperature,
     get_mcp_internet_hybrid_enabled,
     get_mcp_rag_auto_activator_enabled,
@@ -2127,6 +2130,12 @@ class MainWindow(QMainWindow):
             "RAM/VRAM during inference. Long-term memory still covers facts dropped "
             "from this window."
         )
+        desc_max_reply = (
+            "Upper bound on new tokens per assistant reply when "
+            "Limit maximum reply length is on in Settings. Prompt tokens "
+            "(chat history, RAG, system text) are counted first inside the "
+            "context window."
+        )
 
         self.temp_spin = NoScrollDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
@@ -2145,6 +2154,14 @@ class MainWindow(QMainWindow):
         self.history_spin.setSingleStep(2)
         self.history_spin.setProperty("class", "ToolsPaneInput")
         param_layout.addLayout(create_spinbox_row("Chat History:", desc_history, self.history_spin))
+
+        self.max_reply_spin = NoScrollSpinBox()
+        self.max_reply_spin.setRange(256, 32768)
+        self.max_reply_spin.setSingleStep(256)
+        self.max_reply_spin.setProperty("class", "ToolsPaneInput")
+        param_layout.addLayout(
+            create_spinbox_row("Max Reply Tokens:", desc_max_reply, self.max_reply_spin)
+        )
         self._apply_toolbar_generation_spin_values()
 
         main_layout.addLayout(param_layout)
@@ -2204,10 +2221,10 @@ class MainWindow(QMainWindow):
         rag_layout.addLayout(strict_row)
         main_layout.addLayout(rag_layout)
 
-        # --- 5. MCP TOOLS ---
+        # --- 5. INTERNET TOOLS ---
         tools_layout = QVBoxLayout()
         tools_layout.setSpacing(_TOOLS_INNER_V_SPACING)
-        t_title = QLabel("MCP TOOLS")
+        t_title = QLabel("INTERNET TOOLS")
         t_title.setProperty("class", "ToolsPaneHeader")
         tools_layout.addWidget(t_title)
 
@@ -2218,6 +2235,30 @@ class MainWindow(QMainWindow):
         )
         tools_layout.addLayout(hybrid_row)
         main_layout.addLayout(tools_layout)
+
+        privacy_layout = QVBoxLayout()
+        privacy_layout.setSpacing(_TOOLS_INNER_V_SPACING)
+        privacy_title = QLabel("Privacy")
+        privacy_title.setProperty("class", "ToolsPaneHeader")
+        privacy_layout.addWidget(privacy_title)
+
+        _privacy_tier_tip = (
+            "Web discovery privacy tier for @internet and Hybrid Internet Mode. "
+            "Private keeps searches on DuckDuckGo and Wikipedia; higher tiers may "
+            "use optional API fallbacks or a self-hosted SearXNG instance."
+        )
+        self.toolbar_privacy_tier_selector = SelectorButton(
+            "Private",
+            is_dark=getattr(self, "_is_dark_theme", True),
+        )
+        self.toolbar_privacy_tier_selector.setMenu(
+            QMenu(self.toolbar_privacy_tier_selector)
+        )
+        self.toolbar_privacy_tier_selector.setToolTip(_privacy_tier_tip)
+        privacy_layout.addWidget(self.toolbar_privacy_tier_selector)
+
+        main_layout.addLayout(privacy_layout)
+        self._build_toolbar_privacy_tier_menu()
         outer_layout.addWidget(self.tools_content)
         # --------------------------------------------------------- #
         #  WIRING TO WORKERS                                        #
@@ -2233,6 +2274,7 @@ class MainWindow(QMainWindow):
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
             self.history_spin.valueChanged.connect(self._llm_worker.set_max_history_messages)
+            self.max_reply_spin.valueChanged.connect(self._llm_worker.set_output_token_limit)
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):
@@ -2306,6 +2348,29 @@ class MainWindow(QMainWindow):
             spin.blockSignals(True)
             spin.setValue(value)
             spin.blockSignals(False)
+        if hasattr(self, "max_reply_spin"):
+            if self._llm_worker is not None:
+                max_reply = int(self._llm_worker.output_token_limit)
+            else:
+                max_reply = get_llm_output_token_limit()
+            self.max_reply_spin.blockSignals(True)
+            self.max_reply_spin.setValue(max_reply)
+            self.max_reply_spin.blockSignals(False)
+            self._sync_toolbar_output_limit_enabled()
+
+    def _sync_toolbar_output_limit_enabled(self, enabled: bool | None = None) -> None:
+        if not hasattr(self, "max_reply_spin"):
+            return
+        if enabled is None:
+            sv = self._settings_view
+            limit_cb = getattr(sv, "llm_output_limit_cb", None) if sv is not None else None
+            if limit_cb is not None:
+                enabled = limit_cb.isChecked()
+            elif self._llm_worker is not None:
+                enabled = bool(getattr(self._llm_worker, "output_token_limit_enabled", True))
+            else:
+                enabled = get_llm_output_token_limit_enabled()
+        self.max_reply_spin.setEnabled(bool(enabled))
 
     def _wire_generation_settings_toolbar_sync(self) -> None:
         """Keep Settings and toolbar generation spinboxes aligned (audio-style sync)."""
@@ -2318,13 +2383,80 @@ class MainWindow(QMainWindow):
             (self.temp_spin, getattr(sv, "llm_temp_spin", None)),
             (self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
             (self.history_spin, getattr(sv, "llm_history_spin", None)),
+            (self.max_reply_spin, getattr(sv, "llm_output_limit_spin", None)),
         )
         for toolbar_spin, settings_spin in pairs:
             if toolbar_spin is None or settings_spin is None:
                 continue
             settings_spin.valueChanged.connect(toolbar_spin.setValue)
             toolbar_spin.valueChanged.connect(settings_spin.setValue)
+        if hasattr(sv, "llm_output_limit_cb"):
+            sv.llm_output_limit_cb.toggled.connect(self._sync_toolbar_output_limit_enabled)
         self._apply_toolbar_generation_spin_values()
+
+    def _build_toolbar_privacy_tier_menu(self) -> None:
+        if not hasattr(self, "toolbar_privacy_tier_selector"):
+            return
+        from core.knowledge.discovery.privacy_policy import (
+            TIER_BALANCED,
+            TIER_ENHANCED,
+            TIER_PRIVATE,
+            TIER_SEARXNG,
+            privacy_tier_description,
+            privacy_tier_label,
+        )
+
+        items = [
+            (
+                f"{privacy_tier_label(tier)} — {privacy_tier_description(tier)}",
+                tier,
+            )
+            for tier in (TIER_PRIVATE, TIER_BALANCED, TIER_ENHANCED, TIER_SEARXNG)
+        ]
+        self._build_prestige_menu(
+            self.toolbar_privacy_tier_selector,
+            items,
+            self._on_toolbar_privacy_tier_selected,
+        )
+        self._sync_toolbar_privacy_tier_selector()
+
+    def _on_toolbar_privacy_tier_selected(self, tier: str) -> None:
+        from core.app_settings import set_discovery_privacy_tier
+
+        if not tier:
+            return
+        set_discovery_privacy_tier(str(tier))
+        self._sync_toolbar_privacy_tier_selector()
+        sv = self._settings_view
+        if sv is not None:
+            from ui.views.settings.sections.knowledge_web_discovery import (
+                sync_web_discovery_policy_section,
+            )
+
+            sync_web_discovery_policy_section(sv)
+
+    def _sync_toolbar_privacy_tier_selector(self) -> None:
+        if not hasattr(self, "toolbar_privacy_tier_selector"):
+            return
+        from core.app_settings import get_discovery_privacy_tier
+        from core.knowledge.discovery.privacy_policy import privacy_tier_label
+
+        self.toolbar_privacy_tier_selector.setText(
+            privacy_tier_label(get_discovery_privacy_tier())
+        )
+        self.toolbar_privacy_tier_selector.update()
+
+    def _wire_toolbar_internet_settings_sync(self, sv) -> None:
+        if hasattr(sv, "_on_discovery_privacy_tier_selected"):
+            original_privacy = sv._on_discovery_privacy_tier_selected
+
+            def wrapped_privacy(tier: str) -> None:
+                original_privacy(tier)
+                self._sync_toolbar_privacy_tier_selector()
+
+            sv._on_discovery_privacy_tier_selected = wrapped_privacy
+            if hasattr(sv, "_build_discovery_privacy_tier_menu"):
+                sv._build_discovery_privacy_tier_menu()
 
     def acquire_modal_backdrop(self) -> None:
         """Dim the main window while a modal dialog is open (reference-counted)."""
@@ -2443,6 +2575,9 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
         """QtAwesome icons ignore QSS; match chevron to #SettingsMenuButton enabled/disabled look."""
+        if isinstance(button, SelectorButton):
+            button.apply_theme(getattr(self, "_is_dark_theme", True))
+            return
         is_dark = getattr(self, "_is_dark_theme", True)
         muted = "#3f3f46" if is_dark else "#a1a1aa"
         active = "#64748b"
@@ -3123,6 +3258,7 @@ class MainWindow(QMainWindow):
         sv.engine_mode_changed.connect(lambda _mode: self.refresh_active_tour_layout())
 
         self._wire_generation_settings_toolbar_sync()
+        self._wire_toolbar_internet_settings_sync(sv)
         self._sync_settings_tts_voice_selector()
         self._sync_settings_tts_voice_enabled_toggle(
             self.voice_bypass_toggle.isChecked()
@@ -3374,6 +3510,14 @@ class MainWindow(QMainWindow):
                     self.toolbar_native_model_selector
                 )
                 self._apply_native_model_eject_button_style()
+
+            selector = getattr(self, "toolbar_privacy_tier_selector", None)
+            if selector is not None:
+                if isinstance(selector, SelectorButton):
+                    selector.apply_theme(is_dark)
+                menu = selector.menu()
+                if menu:
+                    self._apply_menu_theme(menu, is_dark)
 
         if hasattr(self, "background_progress_row"):
             with profiler.step("background_progress_row.apply_theme"):

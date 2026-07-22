@@ -23,6 +23,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Search my uploaded documents | [Chat with a library document](workflows/chat-with-a-library-document.md) |
 | Fix empty Library search | [Library search returns nothing](troubleshooting/library-search-returns-nothing.md) |
 | Compare Memory and Library | [Memory vs Library FAQ](faq/memory-vs-library.md) |
+| Tune retrieval orchestration or fetch depth | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
 
 ## App pages
 
@@ -89,6 +90,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Cognitive Router / chat routing | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
 | What do `@` mentions do? | [What do @ mentions do](faq/what-do-at-mentions-do.md) |
 | Live Sources vs Library search | [Live sources vs Library search](faq/live-sources-vs-library-search.md) |
+| Retrieval profile vs search quality | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
 | Companion vs main window | [Companion vs main window](faq/companion-vs-main-window.md) |
 
 ## Release
