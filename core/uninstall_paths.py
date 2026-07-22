@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+from core.paths import user_data_root
 
 _APP_NAME = "Qube.app"
 _BUNDLE_ID = "com.dagaza.Qube"
-_USER_DATA_DIR = ".qube"
+_LINUX_OPT_DIR = Path("/opt/qube")
+_LINUX_DESKTOP_NAME = "qube.desktop"
 
 
 def default_app_bundle_paths() -> list[Path]:
     """Typical install locations for the application bundle."""
+    if sys.platform.startswith("linux"):
+        return linux_app_paths()
     home = Path.home()
     return [
         Path("/Applications") / _APP_NAME,
@@ -18,13 +24,30 @@ def default_app_bundle_paths() -> list[Path]:
     ]
 
 
+def linux_app_paths() -> list[Path]:
+    """Installed application directories on Linux (.deb layout)."""
+    return [_LINUX_OPT_DIR]
+
+
+def linux_desktop_integration_paths() -> list[Path]:
+    """Desktop entries and icons installed by the .deb package."""
+    home = Path.home()
+    return [
+        Path("/usr/share/applications") / _LINUX_DESKTOP_NAME,
+        Path("/usr/share/icons/hicolor/256x256/apps/qube.png"),
+        home / ".local/share/applications" / _LINUX_DESKTOP_NAME,
+    ]
+
+
 def user_data_paths() -> list[Path]:
-    """Writable Qube data (models, DB, logs, settings) on macOS."""
-    return [Path.home() / _USER_DATA_DIR]
+    """Writable Qube data (models, DB, logs, settings)."""
+    return [user_data_root()]
 
 
 def support_file_paths() -> list[Path]:
-    """macOS Library files outside ``~/.qube``."""
+    """Platform-specific support files outside ``~/.qube``."""
+    if sys.platform.startswith("linux"):
+        return linux_desktop_integration_paths()
     home = Path.home()
     return [
         home / "Library" / "Preferences" / f"{_BUNDLE_ID}.plist",
@@ -36,11 +59,32 @@ def support_file_paths() -> list[Path]:
 
 
 def uninstall_targets(*, include_user_data: bool = True) -> list[Path]:
-    """All paths targeted by the macOS uninstaller."""
+    """All paths targeted by platform uninstall helpers."""
     paths = default_app_bundle_paths() + support_file_paths()
     if include_user_data:
         paths = paths + user_data_paths()
     return paths
+
+
+def deb_runtime_dependencies(*, variant: str = "cpu") -> list[str]:
+    """Debian package dependencies for the PyInstaller bundle (not bundled libs)."""
+    from core.linux_release_variants import normalize_linux_variant
+
+    normalized = normalize_linux_variant(variant)
+    deps = [
+        "libportaudio2",
+        "libgl1",
+        "libglib2.0-0",
+        "libdbus-1-3",
+        "libxcb1",
+        "libxkbcommon0",
+        "libx11-6",
+        "libfontconfig1",
+        "libgomp1",
+    ]
+    if normalized == "vulkan":
+        deps.append("libvulkan1")
+    return deps
 
 
 def _homebrew_zap_entry(path: Path) -> str:
@@ -54,5 +98,16 @@ def _homebrew_zap_entry(path: Path) -> str:
 
 
 def homebrew_zap_paths() -> list[str]:
-    """Tilde or absolute paths for Homebrew Cask ``zap trash`` (must stay in sync)."""
-    return [_homebrew_zap_entry(path) for path in uninstall_targets()]
+    """Paths for Homebrew Cask ``zap trash`` (macOS; independent of build host OS)."""
+    home = Path.home()
+    paths = [
+        Path("/Applications") / _APP_NAME,
+        home / "Applications" / _APP_NAME,
+        home / "Library" / "Preferences" / f"{_BUNDLE_ID}.plist",
+        home / "Library" / "Saved Application State" / f"{_BUNDLE_ID}.savedState",
+        home / "Library" / "Caches" / _BUNDLE_ID,
+        home / "Library" / "Logs" / "Qube",
+        home / "Library" / "Application Support" / "Qube",
+        home / ".qube",
+    ]
+    return [_homebrew_zap_entry(path) for path in paths]

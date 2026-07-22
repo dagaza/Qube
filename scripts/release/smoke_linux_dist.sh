@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# Smoke-test the PyInstaller dist binary under a throwaway HOME + Xvfb.
+#
+# Usage:   scripts/release/smoke_linux_dist.sh [path-to-Qube-binary]
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BINARY="${1:-$REPO_ROOT/dist/Qube/Qube}"
+
+if [[ ! -x "$BINARY" ]]; then
+  echo "Binary not found or not executable: $BINARY" >&2
+  exit 1
+fi
+
+FAKE_HOME="$(mktemp -d)"
+cleanup() { rm -rf "$FAKE_HOME"; }
+trap cleanup EXIT
+
+mkdir -p "$FAKE_HOME/.qube"
+cat >"$FAKE_HOME/.qube/settings.json" <<'JSON'
+{
+  "qube.bootstrap.completed": true
+}
+JSON
+
+export HOME="$FAKE_HOME"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+
+run_smoke() {
+  local launcher=("$@")
+  "${launcher[@]}" "$BINARY" --mock-bootstrap-download &
+  local pid=$!
+  for _ in $(seq 1 20); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      wait "$pid" || true
+      return 1
+    fi
+    sleep 1
+  done
+  kill "$pid" >/dev/null 2>&1 || true
+  wait "$pid" >/dev/null 2>&1 || true
+  return 0
+}
+
+if command -v xvfb-run >/dev/null 2>&1; then
+  echo "Running dist smoke test via xvfb-run ..."
+  if run_smoke xvfb-run -a; then
+    echo "Dist smoke test passed"
+    exit 0
+  fi
+fi
+
+echo "Retrying dist smoke test without xvfb-run ..."
+if run_smoke; then
+  echo "Dist smoke test passed"
+  exit 0
+fi
+
+echo "Dist binary exited before the 20 s liveness window" >&2
+exit 1

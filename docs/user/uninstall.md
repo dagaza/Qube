@@ -97,9 +97,34 @@ rm -rf ~/Library/Saved\ Application\ State/com.dagaza.Qube.savedState
 
 ---
 
-## Linux (source install)
+## Linux (AppImage / .deb / source)
 
-There is no official Linux package yet. To remove a source install:
+### AppImage
+
+Delete the AppImage file. To remove user data as well:
+
+```bash
+rm -rf ~/.qube
+```
+
+### Debian / Ubuntu package
+
+```bash
+sudo apt remove qube            # CPU package
+sudo apt remove qube-vulkan     # Vulkan package
+sudo apt remove qube-cuda       # CUDA package
+```
+
+To remove user data as well:
+
+```bash
+sudo apt remove qube
+rm -rf ~/.qube
+```
+
+### Source install
+
+If you installed from a git checkout:
 
 1. Deactivate and delete your virtual environment (`venv/`).
 2. Delete your clone of the repository if you no longer need it.

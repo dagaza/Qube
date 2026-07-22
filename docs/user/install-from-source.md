@@ -1,6 +1,6 @@
 # Install Qube from source
 
-For most users, prefer a packaged install from [GitHub Releases](https://github.com/dagaza/Qube/releases) (Windows installer, macOS `.dmg`) or `winget install -e --id dagaza.Qube` / `choco install qube`.
+For most users, prefer a packaged install from [GitHub Releases](https://github.com/dagaza/Qube/releases) (Windows installer, macOS `.dmg`, Linux AppImage/`.deb`) or `winget install -e --id dagaza.Qube` / `choco install qube`. Linux packages: [install-linux.md](install-linux.md).
 
 Use this guide when you are developing Qube, running on Linux, or need a bleeding-edge checkout.
 

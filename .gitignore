@@ -50,10 +50,13 @@ data/**/*
 # Keep project-level JSON configs, ignore deep model/metadata JSONs
 models/**/*.json
 
-# --- Build & Packaging ---
+# Build & Packaging ---
 dist/
 build/
 *.egg-info/
+*.AppImage
+qube_*_amd64.deb
+qube-*_*_amd64.deb
 installer/output/
 winget/out/
 chocolatey/out/
