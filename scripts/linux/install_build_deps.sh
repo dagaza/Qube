@@ -18,6 +18,7 @@ PACKAGES=(
   zsync
   xvfb
   libportaudio2
+  portaudio19-dev
   libgl1
   libglib2.0-0
   libdbus-1-3

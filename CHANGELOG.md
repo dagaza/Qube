@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-22
+
+### Fixed
+- Linux release CI: install `portaudio19-dev` so PyAudio builds during PyInstaller packaging.
+- macOS release CI: install PortAudio via Homebrew before `pip install` (fixes missing `portaudio.h` on arm64 and x86_64 runners).
+
 ## [1.1.0] - 2026-07-22
 
 ### Added
@@ -60,7 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/dagaza/Qube/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dagaza/Qube/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/dagaza/Qube/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dagaza/Qube/releases/tag/v1.0.0

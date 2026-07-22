@@ -192,6 +192,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
+          brew install portaudio
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller pillow
