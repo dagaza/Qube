@@ -170,6 +170,23 @@
     "must_mention": ["Live Sources", "Library"]
   },
   {
+    "category": "faq",
+    "question": "What is retrieval profile?",
+    "expected_doc_ids": [
+      "features.settings.knowledge",
+      "faq.retrieval_profile_vs_search_quality"
+    ],
+    "must_mention": ["Retrieval profile", "orchestration"],
+    "expect_canonical_match": true
+  },
+  {
+    "category": "faq",
+    "question": "Retrieval profile vs search quality",
+    "expected_doc_ids": ["faq.retrieval_profile_vs_search_quality"],
+    "must_mention": ["Search quality", "Retrieval profile"],
+    "expect_canonical_match": true
+  },
+  {
     "category": "workflow",
     "question": "How do I set up a local LLM?",
     "expected_doc_ids": ["workflows.set_up_local_models"],

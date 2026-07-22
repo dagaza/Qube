@@ -62,10 +62,12 @@ class TestConversationsTour(unittest.TestCase):
         host.temp_spin = QPushButton(host)
         host.ctx_spin = QPushButton(host)
         host.history_spin = QPushButton(host)
+        host.max_reply_spin = QPushButton(host)
         host.tool_rag_toggle = QPushButton(host)
         host.rag_auto_toggle = QPushButton(host)
         host.rag_strict_toggle = QPushButton(host)
         host.tool_internet_hybrid_toggle = QPushButton(host)
+        host.toolbar_privacy_tier_selector = QPushButton(host)
 
         host.topbar_mic_cluster = QWidget(host)
         host.vu_meter = QProgressBar(host.topbar_mic_cluster)
@@ -81,8 +83,8 @@ class TestConversationsTour(unittest.TestCase):
         tour = build_tour("conversations", self._make_host())
         self.assertIsNotNone(tour)
         assert tour is not None
-        # welcome + 3 sidebar + 9 main + 6 composer + 17 tools + 5 top bar + 1 ddg + 1 finish = 43
-        self.assertEqual(len(tour._steps), 43)
+        # welcome + 3 sidebar + 9 main + 6 composer + 19 tools + 5 top bar + 1 ddg + 1 finish = 45
+        self.assertEqual(len(tour._steps), 45)
 
     def test_step_order_section_anchors(self) -> None:
         tour = build_tour("conversations", self._make_host())
@@ -93,7 +95,9 @@ class TestConversationsTour(unittest.TestCase):
         self.assertEqual(ids[4], "main_font_minus")
         self.assertEqual(ids[13], "composer_web")
         self.assertEqual(ids[19], "tools_collapse")
-        self.assertEqual(ids[36], "topbar_vu")
+        self.assertEqual(ids[32], "tools_max_reply_tokens")
+        self.assertEqual(ids[37], "tools_privacy_tier")
+        self.assertEqual(ids[38], "topbar_vu")
         self.assertEqual(ids[-2], "topbar_ddg_cooldown")
         self.assertEqual(ids[-1], "tour_complete")
 

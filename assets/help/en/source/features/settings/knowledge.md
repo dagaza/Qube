@@ -5,6 +5,8 @@
 - How do I search my Library from chat?
 - What are Live Sources?
 - Where is search quality mode (Fast / Balanced / Power)?
+- What is retrieval profile?
+- What's the difference between retrieval profile and search quality?
 - How do I create a knowledge preset?
 - How does web search discovery work?
 
@@ -13,8 +15,8 @@
 **Knowledge** settings connect chat to your information across several subsections:
 
 - **Library search phrases** — master **Local Knowledge Base** switch, **NLP Auto-Activator**, and custom trigger phrases
-- **Search quality** — **Fast**, **Balanced**, or **Power** embedding/rerank presets (download models first)
-- **Retrieval profile** — how aggressively Qube retrieves and ranks library chunks
+- **Search quality** — **Fast**, **Balanced**, or **Power** embedding/rerank presets for **Library indexing** (download models first)
+- **Retrieval profile** — **global orchestration** for knowledge turns (adapter fan-out, timeouts, cache, web fetch depth)—not Library-only and not ranking
 - **Web search discovery** — privacy tier, DuckDuckGo pacing/limits, optional SearXNG
 - **Live sources** — adapter toggles for structured online catalogs
 - **Custom sources** and **My knowledge** — REST connectors and bundled presets (`@[tool:…]` workflows)
@@ -23,23 +25,43 @@
 
 **My knowledge** presets bundle **API adapter ids** or **web-fetch domains**, not Library folders. Attach `@[tool:library]` or enable the master RAG switch for document search.
 
+## Retrieval profile
+
+**Retrieval profile** is a **global orchestration knob** for knowledge turns—not a Library-only switch and not how Qube **ranks** passages (ranking uses separate profiles and adapters).
+
+It controls **how hard and how fast** Qube searches when any knowledge path runs: **Library** (`@[tool:library]`), **Live Sources**, **My knowledge** presets, **`@[tool:internet]`** / Hybrid Internet Mode, and related pipelines.
+
+| Knob | Examples |
+|------|----------|
+| Fan-out & budgets | Parallel adapter calls, max results, latency caps |
+| Cache | More aggressive SERP caching on **Fast** |
+| Web fetch depth | **Fast** = SERP snippets only; **Balanced** / **Thorough** = fetch top result pages |
+| Ordering hints | **Local-first** prefers local connectors; **Evidence-first** favors citation quality |
+
+**Profiles:** **Fast**, **Balanced**, **Thorough**, **Evidence-first**, **Local-first**.
+
+**Not the same as Search quality** — **Fast / Balanced / Power** there picks embedding models for Library indexing only. See [Retrieval profile vs search quality](../../faq/retrieval-profile-vs-search-quality.md).
+
+Open **Settings → Knowledge → Retrieval profile**. The Conversations tools panel does not include this control.
+
 ## Where to find it
 
 Open **Settings → Knowledge** (settings section `knowledge`). Press **?** for the guided tour (`settings.knowledge`). See also the generated [Live sources overview](../../reference/live-sources-overview.md).
 
 ## Also called
 
-knowledge base settings, RAG settings, library search, document search, NLP RAG TRIGGERS, embeddings, internet search adapters, live sources
+knowledge base settings, RAG settings, library search, document search, NLP RAG TRIGGERS, embeddings, internet search adapters, live sources, retrieval orchestration, fetch depth settings
 
 ## How to…
 
 1. **Prepare search models** — On **Search quality**, use **Prepare search models** or **Download all search presets** before expecting Library hits (see workflow below).
 2. **Enable library search** — Turn on **Enable Local Knowledge Base** under **Library search phrases**. Add custom phrases and/or enable **Enable NLP Auto-Activator** for one-turn searches even when the master switch is off.
-3. **Set search quality** — Pick **Mode**: **Fast**, **Balanced**, or **Power** to match latency vs depth.
-4. **Configure web discovery** — Under **Web search discovery**, choose a **Privacy tier** and review **Live DDG usage** before relying on `@internet` or Hybrid Internet Mode.
-5. **Enable Live Sources** — Toggle the adapters you need; use **Configure** where API keys are required.
-6. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles.
-7. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
+3. **Set search quality** — Pick **Mode**: **Fast**, **Balanced**, or **Power** to match latency vs depth for **Library embeddings**.
+4. **Set retrieval profile** — Pick **Fast**, **Balanced**, **Thorough**, or a hint profile to tune orchestration and web fetch depth for **all knowledge turns** (Library, Live Sources, presets, `@internet`).
+5. **Configure web discovery** — Under **Web search discovery**, choose a **Privacy tier** and review **Live DDG usage** before relying on `@internet` or Hybrid Internet Mode.
+6. **Enable Live Sources** — Toggle the adapters you need; use **Configure** where API keys are required.
+7. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles.
+8. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
 
 ## Controls
 
@@ -47,6 +69,7 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 
 ## Related
 
+- [Retrieval profile vs search quality FAQ](../../faq/retrieval-profile-vs-search-quality.md) — Fast/Balanced naming disambiguation
 - [Library feature](../../features/library.md) — document storage and ingest
 - [Conversations feature](../../features/conversations.md) — chat and composer attachments
 - [Prepare search models workflow](../../workflows/prepare-search-models-for-library.md) — embeddings and rerankers
