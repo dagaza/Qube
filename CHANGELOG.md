@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-07-22
+
+### Fixed
+- Linux Vulkan builds: install `glslc` package (Ubuntu 22.04) instead of non-existent `shaderc` apt name.
+- Linux PyInstaller bundle: include `mf2py`, `extruct`, and `recipe_scrapers` data files so smoke tests no longer crash on missing `backcompat-rules`.
+
 ## [1.1.3] - 2026-07-22
 
 ### Fixed
@@ -80,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.4...HEAD
+[1.1.4]: https://github.com/dagaza/Qube/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/dagaza/Qube/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/dagaza/Qube/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/dagaza/Qube/compare/v1.1.0...v1.1.1

@@ -36,7 +36,7 @@ if [[ "$VARIANT" == "vulkan" || "$VARIANT" == "all" ]]; then
     spirv-headers
     glslang-dev
     glslang-tools
-    shaderc
+    glslc
     libvulkan-dev
     libvulkan1
   )
