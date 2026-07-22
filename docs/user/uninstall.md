@@ -110,7 +110,9 @@ rm -rf ~/.qube
 ### Debian / Ubuntu package
 
 ```bash
-sudo apt remove qube
+sudo apt remove qube            # CPU package
+sudo apt remove qube-vulkan     # Vulkan package
+sudo apt remove qube-cuda       # CUDA package
 ```
 
 To remove user data as well:

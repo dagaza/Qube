@@ -66,9 +66,12 @@ def uninstall_targets(*, include_user_data: bool = True) -> list[Path]:
     return paths
 
 
-def deb_runtime_dependencies() -> list[str]:
+def deb_runtime_dependencies(*, variant: str = "cpu") -> list[str]:
     """Debian package dependencies for the PyInstaller bundle (not bundled libs)."""
-    return [
+    from core.linux_release_variants import normalize_linux_variant
+
+    normalized = normalize_linux_variant(variant)
+    deps = [
         "libportaudio2",
         "libgl1",
         "libglib2.0-0",
@@ -79,6 +82,9 @@ def deb_runtime_dependencies() -> list[str]:
         "libfontconfig1",
         "libgomp1",
     ]
+    if normalized == "vulkan":
+        deps.append("libvulkan1")
+    return deps
 
 
 def _homebrew_zap_entry(path: Path) -> str:

@@ -47,9 +47,9 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 
 | Hardware | Notes |
 |----------|-------|
-| **NVIDIA (Windows/Linux)** | CUDA path via `llama-cpp-python`; see `./scripts/install_llama_cpp_gpu.sh` on Linux |
+| **NVIDIA (Windows/Linux)** | CUDA packaged Linux **`cuda`** build, or `./scripts/install_llama_cpp_gpu.sh` / source install |
 | **Apple Silicon (macOS)** | Metal build in release DMGs |
-| **AMD / Intel (Linux)** | Vulkan build via `install_llama_cpp_gpu.sh` |
+| **AMD / Intel (Linux)** | Vulkan packaged Linux **`vulkan`** build, or `install_llama_cpp_gpu.sh` |
 | **CPU only** | Supported — STT (faster-whisper) and TTS (Kokoro) run well on CPU; chat will be slower |
 
 **External Server** mode delegates inference to LM Studio / Ollama — tune GPU settings in that host app instead.

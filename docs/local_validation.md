@@ -74,12 +74,14 @@ Use a throwaway version for dry runs; revert `core/__version__.py` and `pyprojec
 Closest to the GitHub **Build & Release** `linux-build` job on Ubuntu 22.04+:
 
 ```bash
-bash scripts/linux/install_build_deps.sh
-bash scripts/linux/build_linux.sh 9.9.9
+bash scripts/linux/install_build_deps.sh vulkan   # or cpu / cuda / all
+bash scripts/linux/build_linux.sh 9.9.9 cpu
+bash scripts/linux/build_linux.sh 9.9.9 vulkan
+bash scripts/linux/build_linux.sh 9.9.9 cuda
 bash scripts/release/smoke_linux_dist.sh
 bash scripts/linux/fetch_appimage_tools.sh
-bash scripts/linux/build_appimage.sh 9.9.9
-bash scripts/linux/build_deb.sh 9.9.9
+bash scripts/linux/build_appimage.sh 9.9.9 vulkan
+bash scripts/linux/build_deb.sh 9.9.9 vulkan
 ```
 
 Revert version files after dry runs if needed.

@@ -2,17 +2,16 @@
 #
 # Build an AppImage from dist/Qube/ using linuxdeploy.
 #
-# Usage:   scripts/linux/build_appimage.sh <version>
+# Usage:   scripts/linux/build_appimage.sh <version> [cpu|vulkan|cuda]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VERSION="${1:?Usage: build_appimage.sh <version>}"
-APPDIR="$REPO_ROOT/build/Qube.AppDir"
-OUTPUT="$REPO_ROOT/Qube-${VERSION}-x86_64.AppImage"
+VERSION="${1:?Usage: build_appimage.sh <version> [cpu|vulkan|cuda]}"
+VARIANT="${2:-cpu}"
+APPDIR="$REPO_ROOT/build/Qube-${VARIANT}.AppDir"
 
 LINUXDEPLOY="${LINUXDEPLOY:-$REPO_ROOT/build/tools/linuxdeploy-x86_64.AppImage}"
-APPIMAGETOOL="${APPIMAGETOOL:-$REPO_ROOT/build/tools/appimagetool-x86_64.AppImage}"
 
 cd "$REPO_ROOT"
 
@@ -21,6 +20,14 @@ if [[ ! -x "$LINUXDEPLOY" ]]; then
   echo "Run scripts/linux/fetch_appimage_tools.sh or set LINUXDEPLOY." >&2
   exit 1
 fi
+
+OUTPUT="$(python3 - "$REPO_ROOT" "$VERSION" "$VARIANT" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+from core.linux_release_variants import appimage_filename
+print(appimage_filename(sys.argv[2], sys.argv[3]))
+PY
+)"
 
 python3 scripts/render_linux_packages.py stage-appdir "$APPDIR"
 
@@ -37,6 +44,7 @@ if [[ -z "$BUILT" ]]; then
   exit 1
 fi
 
+rm -f "$OUTPUT"
 mv -f "$BUILT" "$OUTPUT"
 chmod +x "$OUTPUT"
 echo "Wrote $OUTPUT"
