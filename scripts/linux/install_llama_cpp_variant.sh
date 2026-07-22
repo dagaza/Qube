@@ -38,6 +38,16 @@ export NINJAFLAGS="-j${JOBS}"
 verify_install() {
   local expect_gpu="$1"
   echo "==> Verifying llama-cpp-python ($VARIANT)..."
+  # GitHub-hosted runners have no GPU and no CUDA runtime; packaging only needs a successful install.
+  if [[ "${GITHUB_ACTIONS:-}" == "true" && "$expect_gpu" == "1" ]]; then
+    echo "==> CI: skipping GPU runtime import check (runner has no GPU/CUDA device)."
+    python3 - <<'PY'
+import importlib.metadata as md
+
+print("installed:", md.version("llama_cpp_python"))
+PY
+    return 0
+  fi
   python3 - "$expect_gpu" <<'PY'
 import sys
 

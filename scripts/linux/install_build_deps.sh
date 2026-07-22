@@ -19,6 +19,7 @@ PACKAGES=(
   xvfb
   libportaudio2
   portaudio19-dev
+  libegl1
   libgl1
   libglib2.0-0
   libdbus-1-3
@@ -35,6 +36,7 @@ if [[ "$VARIANT" == "vulkan" || "$VARIANT" == "all" ]]; then
     spirv-headers
     glslang-dev
     glslang-tools
+    shaderc
     libvulkan-dev
     libvulkan1
   )

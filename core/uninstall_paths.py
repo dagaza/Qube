@@ -73,6 +73,7 @@ def deb_runtime_dependencies(*, variant: str = "cpu") -> list[str]:
     normalized = normalize_linux_variant(variant)
     deps = [
         "libportaudio2",
+        "libegl1",
         "libgl1",
         "libglib2.0-0",
         "libdbus-1-3",

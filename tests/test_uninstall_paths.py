@@ -92,6 +92,7 @@ def test_homebrew_zap_paths_use_tilde_prefix(monkeypatch, tmp_path):
 
 def test_deb_runtime_dependencies_are_non_empty():
     assert "libportaudio2" in deb_runtime_dependencies()
+    assert "libegl1" in deb_runtime_dependencies()
 
 
 def test_deb_runtime_dependencies_add_vulkan_libs():

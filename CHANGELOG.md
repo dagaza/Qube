@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-22
+
+### Fixed
+- Linux release CI: install `libegl1` for PyInstaller/PyQt smoke tests (`libEGL.so.1` missing on runners).
+- Linux Vulkan builds: install `shaderc` (`glslc`) required by llama-cpp-python CMake.
+- Linux CUDA/Vulkan builds on CI: skip GPU runtime llama-cpp import verify on GitHub Actions (no GPU/CUDA on runners).
+- Linux `.deb` packages: declare `libegl1` as a runtime dependency.
+
 ## [1.1.2] - 2026-07-22
 
 ### Fixed
@@ -72,7 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/dagaza/Qube/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/dagaza/Qube/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/dagaza/Qube/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dagaza/Qube/compare/v1.0.1...v1.1.0
