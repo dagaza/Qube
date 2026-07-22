@@ -1,5 +1,6 @@
 pytest>=8.0
 pytest-qt>=4.4
+pytest-timeout>=2.3
 pytest-xvfb>=3.0
 pyinstaller>=6.0
 pip-audit>=2.7
