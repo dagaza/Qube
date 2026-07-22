@@ -16,6 +16,10 @@ from core.uninstall_paths import (
 )
 
 
+def _patch_user_data_root(monkeypatch, path: Path) -> None:
+    monkeypatch.setattr("core.uninstall_paths.user_data_root", lambda: path)
+
+
 def test_default_app_bundle_paths_include_applications(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -29,8 +33,9 @@ def test_linux_app_paths_use_opt_qube():
 
 
 def test_user_data_paths_use_qube_root(monkeypatch, tmp_path):
-    monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    assert user_data_paths() == [tmp_path / ".qube"]
+    data_root = tmp_path / "qube-data"
+    _patch_user_data_root(monkeypatch, data_root)
+    assert user_data_paths() == [data_root]
 
 
 def test_support_file_paths_include_preferences_on_macos(monkeypatch, tmp_path):
@@ -51,22 +56,27 @@ def test_support_file_paths_include_desktop_entries_on_linux(monkeypatch, tmp_pa
 def test_uninstall_targets_include_app_and_data_on_macos(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    data_root = tmp_path / ".qube"
+    _patch_user_data_root(monkeypatch, data_root)
     targets = uninstall_targets(include_user_data=True)
     assert Path("/Applications/Qube.app") in targets
-    assert tmp_path / ".qube" in targets
+    assert data_root in targets
 
 
 def test_uninstall_targets_include_opt_qube_on_linux(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    data_root = tmp_path / ".qube"
+    _patch_user_data_root(monkeypatch, data_root)
     targets = uninstall_targets(include_user_data=True)
     assert Path("/opt/qube") in targets
-    assert tmp_path / ".qube" in targets
+    assert data_root in targets
 
 
 def test_uninstall_targets_can_skip_user_data(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    _patch_user_data_root(monkeypatch, tmp_path / ".qube")
     targets = uninstall_targets(include_user_data=False)
     assert tmp_path / ".qube" not in targets
     assert Path("/Applications/Qube.app") in targets

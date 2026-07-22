@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import stat
+import sys
 from pathlib import Path
 
 
@@ -23,13 +24,20 @@ def _assert_executable(path: Path) -> None:
         assert path.stat().st_mode & stat.S_IXUSR
 
 
+def _patch_user_data_root(monkeypatch, path: Path) -> None:
+    monkeypatch.setattr("core.uninstall_paths.user_data_root", lambda: path)
+
+
 def test_render_uninstall_script_includes_manifest_paths(monkeypatch, tmp_path):
     mod = _load_render()
+    monkeypatch.setattr("sys.platform", "darwin")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    data_root = tmp_path / ".qube"
+    _patch_user_data_root(monkeypatch, data_root)
 
     script = mod.render_uninstall_script(version="9.9.9")
     assert 'remove_path "/Applications/Qube.app"' in script
-    assert f'remove_path "{(tmp_path / ".qube").as_posix()}"' in script
+    assert f'remove_path "{mod._shell_path(data_root)}"' in script
     assert "com.dagaza.Qube.plist" in script
 
 
