@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-22
+
+### Fixed
+- Linux release CI: `pip_install()` in `install_llama_cpp_variant.sh` now passes the `install` subcommand to pip.
+- macOS uninstaller: render user-specific paths with `$HOME` instead of the build runner's home directory.
+
 ## [1.1.1] - 2026-07-22
 
 ### Fixed
@@ -66,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/dagaza/Qube/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/dagaza/Qube/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dagaza/Qube/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/dagaza/Qube/compare/v1.0.0...v1.0.1

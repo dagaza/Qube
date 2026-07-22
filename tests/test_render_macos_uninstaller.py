@@ -37,8 +37,9 @@ def test_render_uninstall_script_includes_manifest_paths(monkeypatch, tmp_path):
 
     script = mod.render_uninstall_script(version="9.9.9")
     assert 'remove_path "/Applications/Qube.app"' in script
-    assert f'remove_path "{mod._shell_path(data_root)}"' in script
-    assert "com.dagaza.Qube.plist" in script
+    assert 'remove_path "$HOME/Applications/Qube.app"' in script
+    assert 'remove_path "$HOME/.qube"' in script
+    assert 'remove_path "$HOME/Library/Preferences/com.dagaza.Qube.plist"' in script
 
 
 def test_build_uninstaller_app_writes_bundle(tmp_path, monkeypatch):

@@ -20,9 +20,9 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 pip_install() {
   if [[ -n "${PIP:-}" ]]; then
-    "$PIP" "$@"
+    "$PIP" install "$@"
   else
-    python3 -m pip "$@"
+    python3 -m pip install "$@"
   fi
 }
 

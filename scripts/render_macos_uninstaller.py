@@ -26,8 +26,13 @@ def _repo_root() -> Path:
 
 
 def _shell_path(path: Path) -> str:
-    # Render macOS bash paths; must stay POSIX even when CI builds on Windows.
-    return path.expanduser().as_posix()
+    # User-home paths must use $HOME so uninstall works for any account (including CI smoke tests).
+    home = Path.home()
+    try:
+        rel = path.relative_to(home)
+        return f"$HOME/{rel.as_posix()}"
+    except ValueError:
+        return path.as_posix()
 
 
 def _render_remove_lines(paths: list[Path]) -> str:
