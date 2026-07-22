@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import sys
+
 from PyQt6.QtWidgets import QCheckBox, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from core.app_settings import get_model_manager_hardware_suggestions
-from ui.components.brand_buttons import apply_brand_primary
+from core.macos_uninstall import is_macos_uninstall_available
+from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_subsection_to_layout,
@@ -262,5 +265,42 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "will fail.",
     )
     layout.addWidget(wakeword_card)
+
+    if sys.platform == "darwin" and is_macos_uninstall_available():
+        uninstall_card, uninstall_card_layout = begin_settings_section_card(
+            host, is_dark=is_dark
+        )
+        add_subsection_to_layout(uninstall_card_layout, "Uninstall Qube", anchor="uninstall-qube")
+
+        host.uninstall_qube_hint_lbl = make_settings_hint(
+            "Remove Qube from this Mac. You can delete everything (app plus ~/.qube) "
+            "or remove only the application and keep your models and library data."
+        )
+
+        host.uninstall_qube_all_data_btn = QPushButton("Uninstall Qube and all data…")
+        apply_brand_danger(host.uninstall_qube_all_data_btn, icon_name="fa5s.trash-alt")
+        host.uninstall_qube_all_data_btn.setToolTip(
+            "Quit Qube and remove the app, ~/.qube, and related macOS support files."
+        )
+        host.uninstall_qube_all_data_btn.clicked.connect(
+            host._on_uninstall_qube_all_data_clicked
+        )
+
+        host.uninstall_qube_keep_data_btn = QPushButton("Remove Qube app only…")
+        apply_brand_primary(host.uninstall_qube_keep_data_btn, icon_name="fa5s.box-open")
+        host.uninstall_qube_keep_data_btn.setToolTip(
+            "Quit Qube and remove the application bundle but keep ~/.qube."
+        )
+        host.uninstall_qube_keep_data_btn.clicked.connect(
+            host._on_uninstall_qube_keep_data_clicked
+        )
+
+        _add_help_action_to_layout(
+            uninstall_card_layout,
+            host.uninstall_qube_hint_lbl,
+            host.uninstall_qube_all_data_btn,
+        )
+        uninstall_card_layout.addWidget(make_settings_action_row(host.uninstall_qube_keep_data_btn))
+        layout.addWidget(uninstall_card)
 
     return widget

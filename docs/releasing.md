@@ -127,6 +127,9 @@ per architecture:
 | `macos-13` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
 
 Both DMGs are attached to the same GitHub Release as the Windows installer.
+Each DMG includes **`Uninstall Qube.app`**, a signed helper that removes
+`Qube.app`, `~/.qube`, and related Library files (paths defined in
+`core/uninstall_paths.py` and shared with the Homebrew cask `zap` stanza).
 
 `llama-cpp-python` is rebuilt with `-DGGML_METAL=on` so Apple GPUs are used for
 inference (the Windows CUDA path via `pynvml` is excluded from the macOS bundle).

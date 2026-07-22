@@ -7,6 +7,7 @@ Web-readable guides that complement the in-app help corpus (**Library → Qube**
 | Topic | Document |
 |-------|----------|
 | Install from source | [install-from-source.md](install-from-source.md) |
+| Uninstall Qube | [uninstall.md](uninstall.md) |
 | Competitive landscape (positioning) | [competitive-landscape.md](competitive-landscape.md) |
 | **Competitive roadmap (dev priorities)** | [../competitive_roadmap.md](../competitive_roadmap.md) |
 | System requirements & hardware | [system-requirements.md](system-requirements.md) |

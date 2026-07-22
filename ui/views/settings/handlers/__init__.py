@@ -6,6 +6,7 @@ from ui.views.settings.handlers.companion import CompanionHandlersMixin
 from ui.views.settings.handlers.diagnostics import DiagnosticsHandlersMixin
 from ui.views.settings.handlers.generation import GenerationMixin
 from ui.views.settings.handlers.knowledge import KnowledgeHandlersMixin
+from ui.views.settings.handlers.macos_uninstall import MacOSUninstallHandlersMixin
 from ui.views.settings.handlers.memory import MemoryHandlersMixin
 from ui.views.settings.handlers.persistence import PersistenceHandlersMixin
 from ui.views.settings.handlers.prestige_menu import PrestigeMenuMixin
@@ -20,6 +21,7 @@ __all__ = [
     "DiagnosticsHandlersMixin",
     "GenerationMixin",
     "KnowledgeHandlersMixin",
+    "MacOSUninstallHandlersMixin",
     "MemoryHandlersMixin",
     "PersistenceHandlersMixin",
     "PrestigeMenuMixin",

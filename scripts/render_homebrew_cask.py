@@ -9,11 +9,22 @@ template and writes homebrew/out/<version>/qube.rb.
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
+
+_REPO = Path(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+from core.uninstall_paths import homebrew_zap_paths
 
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+
+def _zap_trash_lines() -> str:
+    return ",\n".join(f'    "{path}"' for path in homebrew_zap_paths())
 
 
 def _substitute(text: str, version: str, sha256_arm64: str, sha256_x86_64: str) -> str:
@@ -21,6 +32,7 @@ def _substitute(text: str, version: str, sha256_arm64: str, sha256_x86_64: str) 
         text.replace("{{VERSION}}", version)
         .replace("{{SHA256_ARM64}}", sha256_arm64)
         .replace("{{SHA256_X86_64}}", sha256_x86_64)
+        .replace("{{ZAP_TRASH_LINES}}", _zap_trash_lines())
     )
 
 
