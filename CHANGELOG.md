@@ -7,13 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-07-20
+## [1.1.0] - 2026-07-22
 
 ### Added
 - In-app help corpus v1 with `@help` routing and educative documentation.
 - Coach guide overlays for all major pages and areas.
+- Expanded global toolbar panel with updated coach guide, tooltips, and tutorial copy.
 - Web page fetching (`web_content_fetch`) and Settings refactor for clearer UX.
 - macOS packaging foundation: `.app` bundle, DMG output, and optional signing/notarization pipeline.
+- macOS uninstaller with DMG helper, in-app controls, and user documentation.
+- Linux release packaging: AppImage and `.deb` artifacts with CPU, Vulkan, and CUDA variants.
 - Homebrew Cask distribution scaffolding and automated tap bump workflow.
 - Launch-ready README rewrite (user-first storefront; technical depth moved to `docs/`).
 - User documentation: [docs/user/](docs/user/README.md) (install, requirements, workflows).
@@ -33,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Model Manager page UI bug and silenced GPU layer debug instrumentation.
 - Dependency bumps (click, setuptools) to clear `pip-audit` CI findings.
+- Six-hour CI hang on TTS voice toggle test; added `pytest-timeout` safety net.
+- Tests updated for `user_data_root()` path resolution after Linux packaging work.
 
 ## [1.0.1] - 2026-06-28
 
