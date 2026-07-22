@@ -204,6 +204,9 @@ jobs:
       - name: Build .app bundle
         run: pyinstaller qube.spec --noconfirm
 
+      - name: Build Uninstall Qube.app
+        run: bash scripts/macos/build_uninstaller_app.sh ${{ steps.version.outputs.version }}
+
       - name: Import Developer ID certificate
         if: vars.ENABLE_MACOS_SIGNING == 'true'
         env:
@@ -216,14 +219,17 @@ jobs:
         if: vars.ENABLE_MACOS_SIGNING == 'true'
         env:
           MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
-        run: bash scripts/macos/codesign_app.sh "dist/Qube.app"
+        run: |
+          bash scripts/macos/codesign_app.sh "dist/Qube.app"
+          bash scripts/macos/codesign_app.sh "dist/Uninstall Qube.app" packaging/macos/uninstaller-entitlements.plist
 
       - name: Build DMG
         run: |
           brew install create-dmg
           bash scripts/macos/make_dmg.sh \
             "dist/Qube.app" \
-            "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+            "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg" \
+            "dist/Uninstall Qube.app"
 
       - name: Notarize and staple DMG
         if: vars.ENABLE_MACOS_SIGNING == 'true'
@@ -236,6 +242,9 @@ jobs:
       - name: Smoke test DMG
         if: vars.ENABLE_MACOS_SIGNING == 'true'
         run: bash scripts/release/smoke_dmg.sh "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
+
+      - name: Smoke test uninstaller
+        run: bash scripts/release/smoke_uninstall.sh "Qube-${{ steps.version.outputs.version }}-${{ matrix.arch }}.dmg"
 
       - name: Compute SHA256
         id: hash

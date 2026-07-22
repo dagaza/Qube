@@ -32,10 +32,6 @@ cask "qube" do
   app "Qube.app"
 
   zap trash: [
-    "~/Library/Application Support/Qube",
-    "~/Library/Caches/com.dagaza.Qube",
-    "~/Library/Preferences/com.dagaza.Qube.plist",
-    "~/Library/Saved Application State/com.dagaza.Qube.savedState",
-    "~/Library/Logs/Qube",
+{{ZAP_TRASH_LINES}}
   ]
 end
