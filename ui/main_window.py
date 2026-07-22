@@ -2350,9 +2350,14 @@ class MainWindow(QMainWindow):
             spin.blockSignals(False)
         if hasattr(self, "max_reply_spin"):
             if self._llm_worker is not None:
-                max_reply = int(self._llm_worker.output_token_limit)
+                raw_limit = getattr(self._llm_worker, "output_token_limit", None)
+                if isinstance(raw_limit, (int, float)) and not isinstance(raw_limit, bool):
+                    max_reply = int(raw_limit)
+                else:
+                    max_reply = get_llm_output_token_limit()
             else:
                 max_reply = get_llm_output_token_limit()
+            max_reply = max(256, min(32768, max_reply))
             self.max_reply_spin.blockSignals(True)
             self.max_reply_spin.setValue(max_reply)
             self.max_reply_spin.blockSignals(False)
@@ -2390,9 +2395,12 @@ class MainWindow(QMainWindow):
                 continue
             settings_spin.valueChanged.connect(toolbar_spin.setValue)
             toolbar_spin.valueChanged.connect(settings_spin.setValue)
+            toolbar_spin.blockSignals(True)
+            toolbar_spin.setValue(settings_spin.value())
+            toolbar_spin.blockSignals(False)
         if hasattr(sv, "llm_output_limit_cb"):
             sv.llm_output_limit_cb.toggled.connect(self._sync_toolbar_output_limit_enabled)
-        self._apply_toolbar_generation_spin_values()
+        self._sync_toolbar_output_limit_enabled()
 
     def _build_toolbar_privacy_tier_menu(self) -> None:
         if not hasattr(self, "toolbar_privacy_tier_selector"):
