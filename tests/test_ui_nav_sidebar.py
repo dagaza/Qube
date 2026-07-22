@@ -35,8 +35,8 @@ class TestNavSidebarStructure:
         btn = main_window.findChild(QPushButton, name)
         assert btn is not None, f"Expected button '{name}' not found"
 
-    def test_chat_button_checked_by_default(self, main_window):
-        btn = main_window.findChild(QPushButton, "NavChat")
+    def test_chat_button_checked_by_default(self, fresh_main_window):
+        btn = fresh_main_window.findChild(QPushButton, "NavChat")
         assert btn.isChecked()
 
 

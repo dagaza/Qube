@@ -43,7 +43,8 @@ def _prestige_menu_item_labels(menu) -> list[str]:
 
 
 @pytest.mark.ui
-def test_settings_voice_selector_syncs_after_lazy_load(main_window, qtbot):
+def test_settings_voice_selector_syncs_after_lazy_load(fresh_main_window, qtbot):
+    main_window = fresh_main_window
     voices = ["af_heart", "af_bella", "am_adam"]
     main_window._tts_worker = MagicMock(active_voice_name="af_bella")
 

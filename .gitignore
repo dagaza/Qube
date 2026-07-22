@@ -1,5 +1,7 @@
 # --- Python & Environment ---
 venv/
+.venv/
+.venv-*/
 .deps/
 app_env/
 __pycache__/

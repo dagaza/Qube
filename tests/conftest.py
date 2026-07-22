@@ -116,3 +116,28 @@ def main_window(_qube_app, mock_workers):
         timer.stop()
     win.close()
     _qube_app.processEvents()
+
+
+@pytest.fixture
+def fresh_main_window(_qube_app, mock_workers):
+    """
+    Function-scoped MainWindow for tests that require pristine lazy-load /
+    navigation state.  The session-scoped ``main_window`` accumulates side
+    effects when ~2,700 tests share one instance.
+    """
+    from ui.main_window import MainWindow
+
+    gpu_monitor = MagicMock(name="GPUMonitor")
+    native_engine = MagicMock(name="NativeLlamaEngine")
+
+    win = MainWindow(
+        workers=mock_workers,
+        gpu_monitor=gpu_monitor,
+        native_engine=native_engine,
+    )
+    yield win
+    timer = getattr(win, "telemetry_timer", None)
+    if timer is not None:
+        timer.stop()
+    win.close()
+    _qube_app.processEvents()

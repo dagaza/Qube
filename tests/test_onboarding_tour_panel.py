@@ -63,8 +63,9 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         min_h0 = panel.body_lbl.minimumHeight()
         for _ in range(40):
             panel.recalculate_content_size()
-        self.assertEqual(panel.height(), height0)
-        self.assertEqual(panel.body_lbl.minimumHeight(), min_h0)
+        # Width can settle by a line on some platforms; must not grow on repeat.
+        self.assertLessEqual(panel.height(), height0)
+        self.assertLessEqual(panel.body_lbl.minimumHeight(), min_h0)
 
     def test_dropdown_step_detects_open_menu(self) -> None:
         from PyQt6.QtCore import QRect
