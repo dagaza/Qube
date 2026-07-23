@@ -84,19 +84,25 @@ Confidence: high
 Notes: Closes KI1 on the EvidenceBundle -> bundle_to_ui_sources path. LLMWorker main path
 now uses append_turn_evidence_bundle_sources (T13).
 
-## Phase 2 slice 0 — McpConnector provider delegation (on disk)
+## Phase 2 slice 0 — McpConnector consent alignment (on disk)
 Evidence: `core/knowledge/connectors/mcp_connector.py:_is_permitted`; `.cursor/starfall/decisions.md`
-(2026-07-23 McpConnector consent entry).
+(2026-07-23 McpConnector consent entry); `tests/test_composer_capability_tokens.py:TestMcpConnectorConsentAlignment`.
 Confidence: high
-Notes: Delegates to McpCapabilityProvider; evaluate_access on invoke. T14 cap spine (slice 1)
-reverted before commit (KI3) — rebuild in next run.
-INSPECT steps (T16), preset alias (T17), Sources UI (T18) still pending.
+Notes: All tiers through evaluate_access; ephemeral READ when grant is None (configured-source opt-in).
+
+## Phase 2 slice 1 / T14 — cap token spine + invoke gate (on disk)
+Evidence: `core/integrations/capability_invoke.py:evaluate_invoke_access`,
+`.../capability_invoke.py:invoke_gated_capability`; `core/composer_attachments.py` (cap kind/route);
+`workers/llm_worker.py` (CAPABILITY branch); `tests/test_composer_capability_tokens.py` (15 tests).
+Confidence: high
+Notes: Composer attach≠grant (strict); connector ephemeral READ only; WEB promotion guarded;
+KI3 closed Run 003.
 
 ## Phase 2 composer palette / INSPECT still pending
 Evidence: `core/composer_mention_search.py` (no integrations section);
 `ui/components/retrieval_inspector.py` (preset/adapter trace, no cap steps)
 Confidence: high
-Notes: T15–T18 remain on roadmap; T14 cap spine rebuild pending (KI3).
+Notes: T15–T18 remain on roadmap; T14 complete.
 
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered
@@ -113,13 +119,13 @@ Notes: Registry core imports no provider; the composition root is the sole impor
 McpCapabilityProvider. T11 asserts the built-in `mcp` id resolves to a CapabilityProvider (isinstance) and
 that the registry source is P6-regex clean. P6 grep clean under core/integrations/.
 
-## LLMWorker main-path drops cap: provenance (KI1 remaining, Phase 1 target)
-Evidence: `workers/llm_worker.py` (manual `all_ui_sources` web loop ~3287-3298 builds minimal dicts from
-`web_results`, not from `self._turn_evidence_bundle` set ~3114); reference pattern already migrated in
-`workers/deep_research_worker.py` (`bundle_to_ui_sources(bundle)`).
+## LLMWorker main-path cap: provenance (KI1 closed, T13)
+Evidence: `workers/llm_worker.py:append_turn_evidence_bundle_sources` path;
+`core/knowledge/ui_adapter.py:append_turn_evidence_bundle_sources`;
+`tests/test_llmworker_ui_sources.py` (T13).
 Confidence: high
-Notes: mem/rag rows appended earlier (~2836/2899/2918) carry their own ids -> migration must renumber to
-avoid duplicate citation indices. Consumed by `_sync_turn_citation_sources` / route downgrade `not all_ui_sources`.
+Notes: CAPABILITY branch (T14) reuses same bundle→UI path via build_generic_bundle +
+append_turn_evidence_bundle_sources.
 
 
 ## Test-plan verifier hazard (Run 001 turn 4)

@@ -8,8 +8,6 @@ Source of truth: `.cursor/starfall/handoff.md` (below) + known-issues. Read `act
 
 Approved slice order:
 ```
-Slice 1 / T14 — cap token spine + invoke gate (rebuild — not on disk)
-
 Slice 2 / T15 — integrations/search v1 + Integrations palette section (composer_mention_search)
 
 Slice 3 / T16 — INSPECT cap steps (pure builders + retrieval_inspector extension)

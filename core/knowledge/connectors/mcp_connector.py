@@ -129,10 +129,22 @@ class McpConnector:
 
     @staticmethod
     def _is_permitted(descriptor, provider_id, evaluate_access, consent_store_cls, tier_cls) -> bool:
-        """Read search tools are permitted by configuration; risk requires a grant."""
-        if descriptor.tier is tier_cls.READ and not descriptor.needs_review:
-            return True
+        """Configured-source opt-in routes all tiers through ``evaluate_access``."""
+        from core.integrations.capabilities import PermissionGrant
+        from core.integrations.capabilities.persistence import capability_fingerprint
+
         grant = consent_store_cls(provider_id).get(descriptor.urn)
+        if (
+            grant is None
+            and descriptor.tier is tier_cls.READ
+            and not descriptor.needs_review
+        ):
+            grant = PermissionGrant(
+                urn=descriptor.urn.base,
+                tier=descriptor.tier,
+                granted=True,
+                fingerprint=capability_fingerprint(descriptor),
+            )
         return evaluate_access(descriptor, grant).allowed
 
     def test_connection(

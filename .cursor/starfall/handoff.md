@@ -5,10 +5,7 @@
 STATUS: READY
 
 Phase 1 (#59) complete on this branch (see Delivered section below).
-Phase 2 (#60): McpConnector provider-delegation + evaluate_access landed in
-`mcp_connector.py`; cap-token spine (T14 / slice 1) was built in Run 002 but is
-**not on disk** (reverted before commit — see KI3). Next run starts at Phase 2
-slice 1 (T14) or palette (T15).
+Phase 2 (#60) slice 0+1 (T14) delivered on disk. Next run: T15 palette.
 
 
 
@@ -120,27 +117,61 @@ tests/test_capability_bundle_wiring.py
 
 
 
-Partial (Phase 2 / #60 — on disk in this commit):
+Delivered (Phase 2 / #60 — slice 0+1):
+
+```
+
+Slice 0 — consent alignment (G2):
+
+core/knowledge/connectors/mcp_connector.py
+
+  _is_permitted: remove READ bypass; ephemeral PermissionGrant when grant is None
+  (configured-source read opt-in) → evaluate_access for all tiers.
+
+Slice 1 / T14 — cap token spine + invoke gate:
+
+core/integrations/capability_invoke.py
+
+  evaluate_invoke_access (strict; attach ≠ grant) + invoke_gated_capability.
+
+core/composer_attachments.py
+
+  AttachmentKind capability; @[cap:…] parse (fail-closed); route:capability patch.
+
+workers/llm_worker.py
+
+  CAPABILITY route → invoke_gated_capability → build_generic_bundle +
+  append_turn_evidence_bundle_sources; WEB promotion guarded.
+
+tests/test_composer_capability_tokens.py (T14)
+
+```
+
+
+
+Partial (Phase 2 / #60 — prior on disk):
 
 ```
 
 core/knowledge/connectors/mcp_connector.py
 
-  Delegates to McpCapabilityProvider (persistent session); evaluate_access gate on invoke.
+  Delegates to McpCapabilityProvider (persistent session).
 
 ```
 
-Not on disk (Run 002 slice 1 — reverted; rebuild in next Starfall run):
+
+
+Not in this run (Phase 2 #60 slices 2–5):
 
 ```
 
-core/integrations/capability_invoke.py
+T15 — integrations/search v1 + Integrations palette section
 
-core/composer_attachments.py (cap token kind/route)
+T16 — INSPECT cap steps
 
-workers/llm_worker.py (CAPABILITY branch)
+T17 — KnowledgePreset.capabilities + @[tool:user:…] alias resolver
 
-tests/test_composer_capability_tokens.py (T14)
+T18 — Sources UI source_capability label
 
 ```
 
@@ -168,8 +199,6 @@ Next slices (Phase 2 #60):
 
 Approved slice order:
 ```
-Slice 1 / T14 — cap token spine + invoke gate (rebuild — not on disk)
-
 Slice 2 / T15 — integrations/search v1 + Integrations palette section (composer_mention_search)
 
 Slice 3 / T16 — INSPECT cap steps (pure builders + retrieval_inspector extension)
@@ -194,7 +223,7 @@ Constraints (must hold):
 Test requirements:
 
 See `.cursor/starfall/test-plan.md` (Phase 1 COMPLETE T1–T13) and
-`.cursor/starfall/test-plan-phase2.md` (T14 planned; T15–T18 planned).
+`.cursor/starfall/test-plan-phase2.md` (T14 complete; T15–T18 planned).
 
 
 

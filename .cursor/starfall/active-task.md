@@ -7,10 +7,10 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Idle — Phase 1 (#59) committed; Phase 2 (#60) slice 1 (T14) not on disk (KI3).
+Idle — Run 003 closed (Phase 2 / #60 slice 0+1 complete).
 
 Current work item:
-Next Starfall run: Phase 2 slice 1 (T14 cap spine) or T15 palette.
+Next Starfall run: T15 (Integrations palette + integrations/search v1).
 
 Mode:
 Idle
@@ -21,15 +21,16 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 1 / #59 — met on branch):
-- Registry + consent UI + LLMWorker main-path provenance (T11–T13).
-- handoff STATUS: READY (Phase 1 scope); starfall_verify PASS for Phase 1 files.
+Success criteria (Phase 2 slice 0+1 / T14 — met on branch):
+- McpConnector consent aligned (ephemeral READ → evaluate_access).
+- `@[cap:…]` parse/route + strict invoke gate + LLMWorker CAPABILITY branch.
+- T14 tests pass (15); starfall_verify PASS.
 
 Current blockers:
-KI3 — Run 002 slice 1 code reverted before commit; rebuild T14 in next run.
+None.
 
 Next decision:
-Fresh Agent chat + `next.md` baton for Phase 2 (#60).
+Commit slice 0+1 product files, or arm next run with `next.md` for T15.
 
-Gate status (Phase 1 scope):
+Gate status (Phase 2 slice 0+1):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

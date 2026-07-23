@@ -40,3 +40,12 @@ Mitigated 2026-07-22 (provider slice): on the configured-source path, `McpConnec
 Remaining: any future path that emits `NormalizedHit.to_evidence_dict()` _without_ overlaying a
 short `_adapter` would reintroduce the skew; keep the short-id overlay when wiring new callers.
 Fix owner / next step: enforce the short-id overlay in the provider registry wiring (Phase 1).
+
+## KI3 Run 002 slice 1 reverted before commit [closed]
+
+Discovered: 2026-07-23, Phase 2 Code (Run 002 turn 3)
+Impact: T14 cap spine (`capability_invoke`, `@[cap:…]` tokens, LLMWorker CAPABILITY route,
+`test_composer_capability_tokens.py`) was built and verified in Run 002 but reverted before
+commit; handoff/verifier drift blocked closure until repo matched claims.
+Closed 2026-07-23 (Run 003): slice 0+1 rebuilt on disk; T14 15 tests pass; starfall_verify PASS.
+Fix owner / next step: none — closed.

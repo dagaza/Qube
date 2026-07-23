@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from core.database import DatabaseManager
 
-AttachmentKind = Literal["file", "conversation", "tool"]
+AttachmentKind = Literal["file", "conversation", "tool", "capability"]
 
 _CHAT_TOKEN_SEP = "::"
 
 _TOKEN_RE = re.compile(
-    r"@\[(file|chat|tool):([^\]]+)\]",
+    r"@\[(file|chat|tool|cap):([^\]]+)\]",
     re.IGNORECASE,
 )
 
@@ -243,6 +243,11 @@ def format_token(att: ComposerAttachment) -> str:
     if att.kind == "conversation":
         title = _sanitize_conversation_label(att.label)
         return f"@[chat:{att.id}{_CHAT_TOKEN_SEP}{title}]"
+    if att.kind == "capability":
+        body = att.id
+        if body.startswith("cap:"):
+            body = body[4:]
+        return f"@[cap:{body}]"
     return f"@[tool:{att.id}]"
 
 
@@ -272,6 +277,15 @@ def parse_attachments(text: str) -> tuple[str, list[ComposerAttachment]]:
                 label = title.strip() or att_id[:8] + "…"
             else:
                 label = att_id[:8] + "…" if len(att_id) > 12 else att_id
+        elif kind_raw == "cap":
+            from core.integrations.capability_invoke import parse_composer_capability_urn
+
+            parsed = parse_composer_capability_urn(att_id)
+            if parsed is None:
+                return ""
+            kind = "capability"
+            att_id = str(parsed)
+            label = f"{parsed.namespace}/{parsed.action}"
         else:
             kind = "tool"
             tool = composer_tool_by_id(att_id)
@@ -321,6 +335,13 @@ def resolve_attachment_routing(
             attachment_summary(attachments),
         )
     primary = attachments[0]
+    if primary.kind == "capability":
+        return {
+            "route": "capability",
+            "strategy": "attachment_capability",
+            "capability_urn": primary.id,
+            "composer_attachments": _attachments_telemetry(attachments),
+        }
     if primary.kind == "file":
         return {
             "route": "rag",

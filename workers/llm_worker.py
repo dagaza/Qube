@@ -2548,7 +2548,15 @@ class LLMWorker(QThread):
             auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
 
             # Final execution decision for WEB
-            if force_web or manual_web or auto_web or (live_web and not hard_web):
+            if (
+                execution_route != "CAPABILITY"
+                and (
+                    force_web
+                    or manual_web
+                    or auto_web
+                    or (live_web and not hard_web)
+                )
+            ):
                 execution_route = "WEB"
 
             # ------------------------------------------------------------
@@ -2924,6 +2932,96 @@ class LLMWorker(QThread):
                 cid = s.get("chunk_id") if isinstance(s, dict) else None
                 if cid and cid not in self._turn_rag_chunk_ids:
                     self._turn_rag_chunk_ids.append(str(cid))
+
+        # ---- CAPABILITY (composer @[cap:…]) ----
+        if execution_route == "CAPABILITY":
+            import time as _cap_time
+
+            from core.integrations.capability_invoke import invoke_gated_capability
+            from core.knowledge.bundle_builder import build_generic_bundle
+            from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
+
+            cap_urn = ""
+            if isinstance(decision, dict):
+                cap_urn = str(decision.get("capability_urn") or "")
+            cap_t0 = _cap_time.time()
+            invoke_result = invoke_gated_capability(
+                cap_urn,
+                clean_prompt or self.prompt,
+                max_results=5,
+            )
+            cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+            if isinstance(decision, dict):
+                decision["capability_invoke_allowed"] = invoke_result.allowed
+                decision["capability_invoke_reason"] = invoke_result.reason
+            if invoke_result.allowed and invoke_result.rows:
+                kept_rows = list(invoke_result.rows)
+                self._turn_evidence_bundle = build_generic_bundle(
+                    query_raw=self.prompt,
+                    query_resolved=clean_prompt or self.prompt,
+                    kept_rows=kept_rows,
+                    rejected_count=0,
+                    latency_ms=cap_latency_ms,
+                    knowledge_service="capability",
+                    retrieval_strategy="attachment_capability",
+                    adapter_calls=tuple(
+                        sorted(
+                            {
+                                str(row.get("_adapter") or "")
+                                for row in kept_rows
+                                if row.get("_adapter")
+                            }
+                        )
+                    ),
+                )
+                append_turn_evidence_bundle_sources(
+                    all_ui_sources, self._turn_evidence_bundle
+                )
+                context_parts: list[str] = []
+                for row in kept_rows:
+                    title = str(row.get("title") or "").strip()
+                    snippet = str(row.get("snippet") or "").strip()
+                    if title or snippet:
+                        context_parts.append(
+                            f"{title}\n{snippet}".strip()
+                            if title and snippet
+                            else (title or snippet)
+                        )
+                cap_context = "\n\n".join(context_parts)[: self.RAG_BUDGET]
+                if cap_context:
+                    hdr = "CAPABILITY RESULTS"
+                    if tool_context:
+                        tool_context = f"{tool_context}\n\n{hdr}:\n{cap_context}"
+                    else:
+                        tool_context = f"{hdr}:\n{cap_context}"
+                logger.info(
+                    "[LLM Worker] Capability invoke integrated (%d sources, %d chars)",
+                    len(kept_rows),
+                    len(cap_context),
+                )
+            elif not invoke_result.allowed:
+                logger.warning(
+                    "[LLM Worker] Capability invoke denied: %s",
+                    invoke_result.reason,
+                )
+                tool_context += (
+                    "\n[CAPABILITY: The attached capability was not permitted "
+                    f"({invoke_result.reason}). Tell the user briefly that the "
+                    "capability could not run. Do NOT invent results or emit "
+                    "citation tokens without sources.]\n"
+                )
+                self._mark_skip_enrichment("capability_invoke_denied")
+            else:
+                logger.warning(
+                    "[LLM Worker] Capability invoke returned no sources for %s",
+                    cap_urn,
+                )
+                tool_context += (
+                    "\n[CAPABILITY: The attached capability returned no results. "
+                    "Tell the user briefly that nothing was retrieved. Do NOT "
+                    "invent facts or emit citation tokens without sources.]\n"
+                )
+                self._mark_skip_enrichment("capability_invoke_empty")
 
         # ---- WEB + HYBRID ----
         web_search_attempted = False

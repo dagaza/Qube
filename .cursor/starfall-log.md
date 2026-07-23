@@ -502,3 +502,99 @@ CLOSING TIME
 status: completed
 loop_count: 3
 
+
+# Run 002 - 2026-07-23T21:42:07.325673+00:00
+
+## Capability Architecture + Security + Quality - 2026-07-23T22:50:00Z
+Phase: Code + Self-Review + Testing (Phase 2 / #60 slice 0+1, Run 003)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Rebuilt T14 cap spine (KI3) on branch keith/mcp-capability-integration per approved
+  handoff. Slice 0: McpConnector._is_permitted ephemeral READ → evaluate_access. Slice 1:
+  capability_invoke.py; composer @[cap:…] kind/route; LLMWorker CAPABILITY branch with WEB
+  promotion guard; build_generic_bundle + append_turn_evidence_bundle_sources. T14: 16 tests pass;
+  composer_attachments + mcp_provider regressions pass. starfall_verify PASS (25 files, P6 clean).
+Actions: core/integrations/capability_invoke.py (new); mcp_connector.py; composer_attachments.py;
+  workers/llm_worker.py; tests/test_composer_capability_tokens.py (new); handoff/active-task/roadmap/
+  known-issues (KI3 closed)/test-plan-phase2 updated; starfall_export regenerated.
+Decisions: Composer invoke strict evaluate_invoke_access (attach ≠ grant); connector keeps ephemeral
+  READ opt-in per decisions.md 2026-07-23. Live MCP composer provider config resolver deferred.
+Next step: Next run — T15 Integrations palette + integrations/search v1.
+
+Architecture Review
+[x] P1 Cap route dedicated (not WEB); malformed cap tokens fail closed (no attachment).
+[x] P2 Nothing injected on connect; cap tokens user-attached only.
+[x] P3 Strict evaluate_access on composer invoke; ephemeral READ connector-only.
+[x] P4 Invoke → NormalizedHit → build_generic_bundle → bundle provenance path.
+[x] P5 Registry-only provider resolution in capability_invoke; no parallel catalog.
+[x] P6 verify guardrail PASS; T14 TestSlice1P6Guardrail.
+[x] P7 Default-deny invoke; connector/composer policy split in tests.
+[x] P8 _capability preserved through build_generic_bundle raw_metadata.
+
+## Capability Architecture + Security + Product Review + Quality - 2026-07-23T22:55:00Z
+Phase: Documentation (Phase 2 / #60 slice 0+1 scoped, Run 003 turn 2/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Four parallel read-only experts Self-Reviewed T14 delivery on disk — all gates PASS
+  scoped to slice 0+1. (Architecture) dedicated CAPABILITY route, registry-only invoke, P6 clean
+  on capability_invoke; drift-rules clean. (Security) attach≠grant split verified; ephemeral READ
+  connector-only; explicit deny blocks. (Product) @[cap:…] grammar + fail-closed parse; palette
+  absence is documented T15 deferral. (Quality) T14 15/15 pass; starfall_verify PASS (28 files);
+  LLMWorker CAPABILITY branch untested end-to-end — noted follow-up, not blocker. Re-ran verify PASS.
+Actions: Updated evidence-map.md (T14 on disk, KI1/T14 traceability); handoff test ref; known-issues
+  test count; active-task + starfall-context (Documentation phase). No product code (Documentation turn).
+Decisions: Run 003 closes slice 0+1 on turn 3 (CLOSING TIME); T15 Discovery/Handoff follows or same run
+  if user scopes wider.
+Next step: Turn 3 — scoped Closing (CLOSING TIME + starfall_export) when 3-turn contract met.
+
+Architecture Review
+[x] P1 Cap attach explicit; dedicated route; strict gate; malformed tokens fail closed.
+[x] P2 No connect-time injection; cap tokens user-attached only.
+[x] P3 Strict evaluate_access on composer invoke; ephemeral READ connector-only.
+[x] P4 Invoke → bundle → transparency/sources path; deny path honest.
+[x] P5 Registry-only invoke; no duplicate subsystem.
+[x] P6 guardrail PASS on slice-1 modules (verify + T14 TestSlice1P6Guardrail).
+[x] P7 Default-deny invoke; connector/composer policy split tested.
+[x] P8 _capability preserved through build_generic_bundle → UI sources path.
+
+## Capability Architecture + Security + Product Review + Quality - 2026-07-23T23:00:00Z
+Phase: Closing (Phase 2 / #60 slice 0+1 scoped, Run 003 turn 3/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Three parallel read-only experts confirmed closure contract for slice 0+1 — all gates
+  PASS; handoff STATUS: READY; starfall_verify PASS (19 Phase 1 targets, 28 delivered files, P6
+  clean). Run 003 coordinator turns: (1) Code+Testing, (2) Documentation, (3) Closing. T15–T18
+  explicitly deferred in handoff Not in this run block. Product delivery uncommitted on branch
+  (follow-up commit); evidence verified on disk. Regenerated baton pack (starfall_export.py).
+Actions: active-task.md (Idle); starfall-context.md (Run 003 closed); starfall_export regenerated.
+  No product code (Closing turn).
+Decisions: Run 003 closes scoped to Phase 2 slice 0+1 only; next run arms T15 palette per next.md.
+Next step: Idle — commit slice 0+1 product files when ready; next Starfall run for T15.
+
+Architecture Review
+[x] P1 Cap attach explicit; dedicated route; strict gate; malformed tokens fail closed.
+[x] P2 No connect-time injection; cap tokens user-attached only.
+[x] P3 Strict evaluate_access on composer invoke; ephemeral READ connector-only.
+[x] P4 Invoke → bundle → transparency/sources path; deny path honest.
+[x] P5 Registry-only invoke; no duplicate subsystem.
+[x] P6 guardrail PASS on slice-1 modules (verify + T14 TestSlice1P6Guardrail).
+[x] P7 Default-deny invoke; connector/composer policy split tested.
+[x] P8 _capability preserved through build_generic_bundle → UI sources path.
+
+PR summary (Run 003 / Phase 2 slice 0+1 #60): Rebuilt T14 cap spine after KI3 revert — consent
+  alignment (McpConnector ephemeral READ → evaluate_access) + composer cap invoke spine
+  (`capability_invoke`, `@[cap:…]` tokens, LLMWorker CAPABILITY route, T14). 15 T14 tests pass;
+  starfall_verify PASS; handoff READY. Deferred: T15–T18, live MCP composer provider config resolver,
+  LLMWorker CAPABILITY E2E test.
+
+CLOSING TIME
+
+## Hook Turn 1 - 2026-07-23T21:47:31.069081+00:00
+status: completed
+loop_count: 0
+
+## Hook Turn 2 - 2026-07-23T21:50:44.062850+00:00
+status: completed
+loop_count: 1
+
+## Hook Turn 3 - 2026-07-23T21:54:09.200387+00:00
+status: completed
+loop_count: 2
+
