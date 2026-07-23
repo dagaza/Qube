@@ -216,3 +216,12 @@ decision) and pass to `evaluate_access`; all tiers use the same function. Explic
 then block configured-source invoke too. Optional follow-up: persist grant on source configure.
 Consequences: Single consent authority for connector + composer paths; T14 adds regression test.
 Principles: P7; Security Architecture Review turn 3.
+
+## 2026-07-23 Run 004 scoped closure (slice 2 / T15 only)
+Context: Run 004 turn 2 Self-Review confirms T15 delivered; handoff READY lists T15
+in Delivered block; T16–T18 remain in "Not in this run".
+Decision: Close Run 004 scoped to slice 2 / T15 on turn 3 (CLOSING TIME). Next run
+arms T16 INSPECT per next.md / handoff.
+Consequences: Phase 2 #60 roadmap stays partially complete; honest verified closure
+for palette search slice only.
+Principles: (process) verified-over-declared; P1-P8 attested for T15 diff only.

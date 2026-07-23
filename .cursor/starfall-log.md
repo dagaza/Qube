@@ -598,3 +598,96 @@ loop_count: 1
 status: completed
 loop_count: 2
 
+
+# Run 003 - 2026-07-23T22:10:07.810774+00:00
+
+## Starfall coordinator - 2026-07-23T22:30:00Z
+Phase: Code -> Self-Review -> Testing -> Documentation
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: T15 scope = integrations/search v1 + Integrations palette section per handoff slice 2.
+  Provider-agnostic search reads cached descriptors + evaluate_access for tier/lock hints (P3/P7).
+Actions: Added `core/integrations/search/capability_search.py` (fuzzy search, CapabilityPaletteEntry).
+  Wired `integrations` section into `search_composer_mentions` (after tools). Updated
+  `composer_mention_popup.py` for capability tooltips + attachment select. T15: 12 tests PASS;
+  T14+mention search regression 42 tests PASS. P6 grep clean under search/. Updated handoff,
+  active-task, test-plan-phase2, roadmap, evidence-map.
+Decisions: Locked capabilities remain attachable; invoke gate (T14) denies at runtime. Scoped
+  Integrations root category deferred — global search section satisfies T15 acceptance.
+Next step: Closing — starfall_verify + CLOSING TIME when closure contract met.
+
+Architecture Review
+[x] P1 Capabilities not raw MCP tools in palette
+[x] P2 Provider-agnostic descriptors
+[x] P3/P7 Tier + lock from evaluate_access
+[x] P4/P8 cap: URN in attachment token
+[x] P5 Shared registry/cache path
+[x] P6 No MCP import outside providers/mcp/
+[x] P7 Default-deny reflected in locked state
+[x] P8 Provenance via @[cap:…] attach (invoke path unchanged)
+
+## Starfall coordinator - 2026-07-23T22:45:00Z
+Phase: Self-Review -> Documentation -> Closing (prep)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Turn 2/10 Run 004. Parallel specialists: Capability Architecture (G1/G3 PASS,
+  no drift-rule FAILs); Security (G2 PASS — default-deny lock hints, attach≠invoke,
+  intentional McpConnector ephemeral READ fork documented); Quality (G4 PASS — T15
+  acceptance covered; minor gaps: REREVIEW_REQUIRED test, multi-provider, non-blocking).
+Actions: Re-ran starfall_verify PASS (33 files, 19 targets 100%, guardrail clean).
+  Re-ran T14+T15+mention regression 42 tests PASS. Regenerated prompt pack via
+  starfall_export.py (next.md + phase prompts). Updated active-task, context.
+Decisions: Run 004 scoped closure to T15 only (T16–T18 next run). Performance note:
+  ConsentStore per capability row in search — acceptable for v1; batch preload if lag.
+Next step: Turn 3 — PR summary + CLOSING TIME (3-turn minimum).
+
+Architecture Review
+[x] P1 Capabilities not raw MCP tools in palette
+[x] P2 Provider-agnostic descriptors
+[x] P3/P7 Tier + lock from evaluate_access; attach≠grant at invoke
+[x] P4/P8 cap: URN preserved in attachment payload
+[x] P5 Shared descriptor cache + consent store (no duplicate registry)
+[x] P6 No MCP import outside providers/mcp/
+[x] P7 Default-deny; write/destructive flagged with !
+[x] P8 Provenance via @[cap:…] token grammar unchanged
+## Hook Turn 1 - 2026-07-23T22:16:31.586664+00:00
+status: completed
+loop_count: 0
+
+## Hook Turn 2 - 2026-07-23T22:19:03.040816+00:00
+status: completed
+loop_count: 1
+
+## Starfall coordinator - 2026-07-23T22:50:00Z
+Phase: Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Turn 3/10 Run 004 — closure contract met (3 coordinator turns, G1-G4 PASS,
+  handoff STATUS: READY, starfall_verify PASS). Parallel specialists: Product Review
+  (closure-ready YES); Repository Cartographer (drift-rules PASS, no duplicate subsystem,
+  KI2 overlay path unchanged).
+Actions: Final starfall_verify PASS (33 files, 19 targets 100%, guardrail clean).
+  T15+T14 tests 27/27 PASS. Regenerated prompt pack (next.md → T16 baton). Updated
+  active-task (Idle), context (CLOSED), decisions (Run 004 scoped closure recorded turn 2).
+Decisions: Run 004 closes scoped to slice 2 / T15 only; T16 INSPECT next run per handoff.
+Next step: Idle — commit T15 product files when ready; arm T16 via next.md.
+
+Architecture Review
+[x] P1 Capabilities not raw MCP tools in palette
+[x] P2 Provider-agnostic descriptors
+[x] P3/P7 Tier + lock from evaluate_access
+[x] P4/P8 cap: URN in @[cap:…] attachment
+[x] P5 Shared descriptor cache + consent (no duplicate registry)
+[x] P6 No MCP import outside providers/mcp/
+[x] P7 Default-deny; write/destructive flagged
+[x] P8 Provenance preserved end-to-end for attach path
+
+PR summary (Run 004 / Phase 2 slice 2 #60 / T15): Integrations search v1 —
+  provider-agnostic fuzzy search over cached capability descriptors with tier/lock
+  badges from evaluate_access; composer global @ search adds Integrations section
+  (after Tools) with [lock] hints and capability tooltips; palette select inserts
+  canonical @[cap:…] tokens. 12 T15 tests + T14 spine pass; starfall_verify PASS.
+  Deferred: T16 INSPECT, T17 preset alias, T18 Sources UI label.
+
+CLOSING TIME
+## Hook Turn 1 - 2026-07-23T22:23:26.883570+00:00
+status: completed
+loop_count: 0
+

@@ -99,10 +99,17 @@ Notes: Composer attach≠grant (strict); connector ephemeral READ only; WEB prom
 KI3 closed Run 003.
 
 ## Phase 2 composer palette / INSPECT still pending
-Evidence: `core/composer_mention_search.py` (no integrations section);
+Evidence: `core/composer_mention_search.py` (integrations section wired T15);
 `ui/components/retrieval_inspector.py` (preset/adapter trace, no cap steps)
 Confidence: high
-Notes: T15–T18 remain on roadmap; T14 complete.
+Notes: T16–T18 remain on roadmap; T15 complete.
+
+## Phase 2 slice 2 / T15 — integrations/search + palette (on disk)
+Evidence: `core/integrations/search/capability_search.py:search_integrations_capabilities`;
+`core/composer_mention_search.py` (integrations section); `ui/components/composer_mention_popup.py`;
+`tests/test_integrations_capability_search.py` (12 tests).
+Confidence: high
+Notes: Fuzzy search over cached descriptors; lock/tier from evaluate_access; P6 clean.
 
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered

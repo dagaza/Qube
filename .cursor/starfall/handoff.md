@@ -5,7 +5,7 @@
 STATUS: READY
 
 Phase 1 (#59) complete on this branch (see Delivered section below).
-Phase 2 (#60) slice 0+1 (T14) delivered on disk. Next run: T15 palette.
+Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) delivered on disk. Next run: T16 INSPECT.
 
 
 
@@ -161,11 +161,36 @@ core/knowledge/connectors/mcp_connector.py
 
 
 
-Not in this run (Phase 2 #60 slices 2–5):
+Delivered (Phase 2 / #60 — slice 2 / T15):
 
 ```
 
-T15 — integrations/search v1 + Integrations palette section
+Slice 2 / T15 — integrations/search v1 + Integrations palette section:
+
+core/integrations/search/__init__.py
+
+core/integrations/search/capability_search.py
+
+  list_cached_provider_ids, fuzzy search, tier/lock from evaluate_access;
+  CapabilityPaletteEntry for composer rows.
+
+core/composer_mention_search.py
+
+  "integrations" section in global search (after tools); @[cap:…] attach payload.
+
+ui/components/composer_mention_popup.py
+
+  CapabilityPaletteEntry tooltips + ComposerAttachment(kind=capability) on select.
+
+tests/test_integrations_capability_search.py (T15, 12 tests)
+
+```
+
+
+
+Not in this run (Phase 2 #60 — slices 3–5):
+
+```
 
 T16 — INSPECT cap steps
 
@@ -223,7 +248,7 @@ Constraints (must hold):
 Test requirements:
 
 See `.cursor/starfall/test-plan.md` (Phase 1 COMPLETE T1–T13) and
-`.cursor/starfall/test-plan-phase2.md` (T14 complete; T15–T18 planned).
+`.cursor/starfall/test-plan-phase2.md` (T14–T15 complete; T16–T18 planned).
 
 
 
