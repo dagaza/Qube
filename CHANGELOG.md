@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.11] - 2026-07-23
+
+### Fixed
+- macOS Intel release CI: install `lancedb==0.25.3` and `onnxruntime==1.23.2` on x86_64 runners (current pins have no macOS Intel wheels on PyPI).
+
 ## [1.1.10] - 2026-07-23
 
 ### Fixed

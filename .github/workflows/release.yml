@@ -191,13 +191,7 @@ jobs:
         run: python scripts/set_version.py ${{ steps.version.outputs.version }}
 
       - name: Install build dependencies
-        run: |
-          brew install portaudio
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller pillow
-          # Rebuild llama-cpp-python with Metal acceleration for Apple GPUs.
-          CMAKE_ARGS="-DGGML_METAL=on" pip install --force-reinstall --no-binary=llama-cpp-python llama-cpp-python
+        run: bash scripts/macos/install_build_deps.sh
 
       - name: Generate .icns icon
         run: python scripts/generate_icns.py
