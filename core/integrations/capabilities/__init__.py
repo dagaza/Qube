@@ -23,6 +23,15 @@ from core.integrations.capabilities.protocol import (
     InvokeContext,
 )
 from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
+from core.integrations.capabilities.persistence import (
+    AccessDecision,
+    ConsentStore,
+    capability_fingerprint,
+    evaluate_access,
+    integrations_dir,
+    load_descriptor_cache,
+    save_descriptor_cache,
+)
 from core.integrations.capabilities.urn import CapabilityURN, InvalidCapabilityURN
 
 __all__ = [
@@ -41,4 +50,11 @@ __all__ = [
     "CapabilityInvocationError",
     "CapabilityMapper",
     "RawTool",
+    "integrations_dir",
+    "capability_fingerprint",
+    "save_descriptor_cache",
+    "load_descriptor_cache",
+    "ConsentStore",
+    "AccessDecision",
+    "evaluate_access",
 ]

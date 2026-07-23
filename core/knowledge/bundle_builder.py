@@ -1280,6 +1280,10 @@ def _generic_row_to_evidence(
             "source_kind": row.get("_source_kind"),
             "connector_type": row.get("_connector_type"),
             "config_hash": row.get("_config_hash"),
+            # Preserve capability provenance (cap: URN) end-to-end so INSPECT /
+            # Sources can attribute the hit to its capability (P8). Only present
+            # for capability-backed rows (e.g. the MCP provider). KI1.
+            "capability": row.get("_capability"),
         },
     )
 

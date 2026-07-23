@@ -38,6 +38,12 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["preprint"] = True
     if obj.peer_reviewed is not None:
         row["peer_reviewed"] = bool(obj.peer_reviewed)
+    # Capability provenance (cap: URN) for INSPECT / Sources, when the hit came
+    # from a capability provider (e.g. MCP). Preserved end-to-end (P8, KI1).
+    capability = (obj.raw_metadata or {}).get("capability")
+    if capability:
+        row["source_capability"] = str(capability)
+        row["retrieval_method"] = obj.retrieval_method
     return row
 
 
@@ -48,11 +54,18 @@ def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
     ]
 
 
-def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
-    return [
-        evidence_to_ui_source(obj, ui_id=i)
-        for i, obj in enumerate(bundle.sources, start=1)
-    ]
+def append_turn_evidence_bundle_sources(
+    all_ui_sources: list[dict],
+    bundle: EvidenceBundle | None,
+) -> None:
+    """Append UI rows from a turn :class:`EvidenceBundle` (P8 / KI1 main path).
+
+    Citation ``id`` values are provisional; :meth:`LLMWorker._apply_sequential_source_ids`
+    renumbers the merged list so memory, RAG, and web/capability rows stay unique.
+    """
+    if bundle is None or not bundle.sources:
+        return
+    all_ui_sources.extend(bundle_to_ui_sources(bundle))
 
 
 def _truncate_at_boundary(text: str, char_budget: int) -> str:

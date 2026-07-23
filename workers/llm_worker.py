@@ -3284,18 +3284,26 @@ class LLMWorker(QThread):
                         )
                 web_context = "\n\n".join(web_context_parts)[: self.RAG_BUDGET]
 
-                for idx, item in enumerate(web_items, start=1):
-                    title = str(item.get("title") or "").strip() or f"Web result {idx}"
-                    snippet = str(item.get("snippet") or "").strip()
-                    src: dict = {
-                        "filename": title,
-                        "content": snippet,
-                        "type": "web",
-                    }
-                    url = str(item.get("url") or "").strip()
-                    if url.startswith(("http://", "https://")):
-                        src["url"] = url
-                    all_ui_sources.append(src)
+                _turn_bundle = getattr(self, "_turn_evidence_bundle", None)
+                if _turn_bundle is not None and _turn_bundle.sources:
+                    from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
+
+                    append_turn_evidence_bundle_sources(all_ui_sources, _turn_bundle)
+                else:
+                    for idx, item in enumerate(web_items, start=1):
+                        title = (
+                            str(item.get("title") or "").strip() or f"Web result {idx}"
+                        )
+                        snippet = str(item.get("snippet") or "").strip()
+                        src: dict = {
+                            "filename": title,
+                            "content": snippet,
+                            "type": "web",
+                        }
+                        url = str(item.get("url") or "").strip()
+                        if url.startswith(("http://", "https://")):
+                            src["url"] = url
+                        all_ui_sources.append(src)
 
                 web_hdr = (
                     "QUBE HELP DOCUMENTATION"

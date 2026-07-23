@@ -51,6 +51,13 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Intelligence",
     ),
     SettingsSectionDef(
+        id="integrations",
+        title="Integrations",
+        icon="fa5s.plug",
+        legacy_titles=("INTEGRATIONS",),
+        group="Intelligence",
+    ),
+    SettingsSectionDef(
         id="general",
         title="General",
         icon="fa5s.globe",

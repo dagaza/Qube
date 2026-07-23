@@ -1,16 +1,39 @@
-"""MCP connector — subprocess boundary for local MCP servers."""
+"""MCP connector — the bridge from a *configured source* to the MCP provider.
+
+This connector no longer speaks JSON-RPC itself. It is the single, sanctioned
+delegation point (per the capability architecture) from the legacy configured-
+source retrieval spine into the real :class:`McpCapabilityProvider`, which owns
+the persistent stdio session and the ``initialize`` -> ``tools/list`` ->
+``tools/call`` lifecycle. Keeping one path (delegate, not fork) means the
+handshake, timeouts, output caps, and provenance live in exactly one place.
+
+Least privilege (P7): configuring a source is the user's explicit opt-in for its
+*read* search tool, so read capabilities run. Anything write/destructive (or a
+low-confidence ``needs_review`` classification) is default-denied here unless an
+explicit consent grant is on record — it is never silently invoked.
+"""
 
 from __future__ import annotations
 
-import json
+import asyncio
 import logging
-import subprocess
-from typing import Any
+from typing import Any, Coroutine, TypeVar
 
 logger = logging.getLogger("Qube.Knowledge.Connectors.MCP")
 
-_MAX_OUTPUT_BYTES = 524_288
 _DEFAULT_TIMEOUT_SEC = 15.0
+
+_T = TypeVar("_T")
+
+
+def _run(coro: Coroutine[Any, Any, _T]) -> _T:
+    """Run an async provider coroutine from this synchronous connector.
+
+    The connector runs on a worker thread with no active event loop, so a fresh
+    loop per call is correct and simplest; the provider's transport is
+    thread/subprocess based and is not bound to any particular loop.
+    """
+    return asyncio.run(coro)
 
 
 class McpConnector:
@@ -31,66 +54,86 @@ class McpConnector:
         command = config.get("command")
         tool_name = str(config.get("tool_name") or "search")
         adapter_id = str(config.get("adapter_id") or "configured_mcp")
+        namespace = str(config.get("namespace") or adapter_id)
         if not isinstance(command, list) or not command:
             return []
 
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool_name, "arguments": {"query": query, "max_results": max_results}},
-        }
+        # Imported lazily and locally: this is the one place the configured-source
+        # spine reaches into the MCP provider package (P6 stays inside providers/mcp/).
+        from core.integrations.capabilities import (
+            CapabilityTier,
+            ConsentStore,
+            InvokeContext,
+            evaluate_access,
+            save_descriptor_cache,
+        )
+        from core.integrations.providers.mcp import McpCapabilityProvider
+
+        provider = McpCapabilityProvider(command=command, namespace=namespace)
         try:
-            proc = subprocess.run(
-                [str(x) for x in command],
-                input=json.dumps(payload),
-                capture_output=True,
-                text=True,
-                timeout=min(timeout, _DEFAULT_TIMEOUT_SEC),
+            descriptors = _run(provider.discover())
+            if not descriptors:
+                return []
+            try:
+                save_descriptor_cache(provider.provider_id, descriptors)
+            except Exception as exc:  # cache is best-effort, never fatal
+                logger.debug("[MCP] descriptor cache skipped: %s", exc)
+
+            descriptor = self._resolve(descriptors, tool_name)
+            if descriptor is None:
+                logger.info("[MCP] no capability matched tool_name=%r", tool_name)
+                return []
+
+            if not self._is_permitted(descriptor, provider.provider_id, evaluate_access, ConsentStore, CapabilityTier):
+                logger.warning(
+                    "[MCP] denied %s (tier=%s needs_review=%s) — no grant",
+                    descriptor.urn, descriptor.tier.value, descriptor.needs_review,
+                )
+                return []
+
+            ctx = InvokeContext(
+                query=query,
+                max_results=max_results,
+                timeout_s=min(timeout, _DEFAULT_TIMEOUT_SEC),
             )
+            hits = _run(provider.invoke(descriptor.urn, {"query": query, "max_results": max_results}, ctx=ctx))
         except Exception as exc:
-            logger.warning("[MCP] subprocess failed: %s", exc)
+            logger.warning("[MCP] execute failed: %s", exc)
             return []
-
-        if proc.returncode != 0:
-            logger.warning("[MCP] non-zero exit: %s", proc.stderr[:500])
-            return []
-        if len(proc.stdout.encode("utf-8")) > _MAX_OUTPUT_BYTES:
-            logger.warning("[MCP] output too large")
-            return []
-
-        try:
-            response = json.loads(proc.stdout)
-        except json.JSONDecodeError:
-            return []
-
-        content = response.get("result", {}).get("content")
-        if not isinstance(content, list):
-            return []
+        finally:
+            provider.close()
 
         rows: list[dict[str, Any]] = []
-        for item in content[: max(1, max_results)]:
-            if isinstance(item, dict):
-                text = str(item.get("text") or item.get("snippet") or "")
-                title = str(item.get("title") or text[:120])
-                url = item.get("url")
-            else:
-                text = str(item)
-                title = text[:120]
-                url = None
-            if not text:
-                continue
-            rows.append(
-                {
-                    "title": title,
-                    "snippet": text[:600],
-                    "full_text": None,
-                    "url": str(url) if url else None,
-                    "_adapter": adapter_id,
-                    "retrieval_method": "mcp",
-                }
-            )
+        for hit in hits:
+            row = hit.to_evidence_dict()
+            # Keep the short, stable configured id for authority/diversity keying
+            # while preserving the full cap: URN as provenance (KI2).
+            row["_adapter"] = adapter_id
+            rows.append(row)
         return rows
+
+    @staticmethod
+    def _resolve(descriptors: list[Any], tool_name: str) -> Any | None:
+        """Pick the capability for ``tool_name`` (exact raw tool, then action)."""
+        for d in descriptors:
+            if d.raw_ref == tool_name:
+                return d
+        for d in descriptors:
+            if d.action == tool_name:
+                return d
+        # Fall back to a single obvious read search capability if present.
+        reads = [d for d in descriptors if d.tier.value == "read" and not d.needs_review]
+        if len(reads) == 1:
+            return reads[0]
+        return None
+
+    @staticmethod
+    def _is_permitted(descriptor, provider_id, evaluate_access, consent_store_cls, tier_cls) -> bool:
+        """Read search tools are permitted by configuration; risk requires a grant."""
+        if descriptor.tier is tier_cls.READ and not descriptor.needs_review:
+            return True
+        grant = consent_store_cls(provider_id).get(descriptor.urn)
+        return evaluate_access(descriptor, grant).allowed
 
     def test_connection(
         self,
@@ -102,18 +145,17 @@ class McpConnector:
     ) -> tuple[bool, str]:
         _ = auth, egress_policy
         command = config.get("command")
+        namespace = str(config.get("namespace") or config.get("adapter_id") or "configured_mcp")
         if not isinstance(command, list) or not command:
             return False, "MCP command not configured"
+
+        from core.integrations.providers.mcp import McpCapabilityProvider
+
+        provider = McpCapabilityProvider(command=command, namespace=namespace)
         try:
-            proc = subprocess.run(
-                [str(x) for x in command],
-                input='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}',
-                capture_output=True,
-                text=True,
-                timeout=min(timeout, _DEFAULT_TIMEOUT_SEC),
-            )
+            descriptors = _run(provider.discover())
         except Exception as exc:
             return False, str(exc)
-        if proc.returncode != 0:
-            return False, proc.stderr[:300] or "MCP initialize failed"
-        return True, "OK — MCP server responded"
+        finally:
+            provider.close()
+        return True, f"OK — MCP server responded ({len(descriptors)} capabilities)"
