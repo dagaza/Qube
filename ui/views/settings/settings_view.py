@@ -132,7 +132,7 @@ from ui.views.settings.handlers import (
     DiagnosticsHandlersMixin,
     GenerationMixin,
     KnowledgeHandlersMixin,
-    MacOSUninstallHandlersMixin,
+    UninstallHandlersMixin,
     MemoryHandlersMixin,
     PersistenceHandlersMixin,
     PrestigeMenuMixin,
@@ -179,7 +179,7 @@ class SettingsView(
     DiagnosticsHandlersMixin,
     PersistenceHandlersMixin,
     SupportHandlersMixin,
-    MacOSUninstallHandlersMixin,
+    UninstallHandlersMixin,
 ):
 
     audio_pin_toggle = pyqtSignal(bool)

@@ -24,6 +24,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Fix empty Library search | [Library search returns nothing](troubleshooting/library-search-returns-nothing.md) |
 | Compare Memory and Library | [Memory vs Library FAQ](faq/memory-vs-library.md) |
 | Tune retrieval orchestration or fetch depth | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
+| Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 
 ## App pages
 
@@ -62,6 +63,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Manage long-term memory | [Manage long-term memory](workflows/manage-long-term-memory.md) |
 | Prepare search models | [Prepare search models for Library](workflows/prepare-search-models-for-library.md) |
 | Export or import a knowledge pack | [Export or import knowledge pack](workflows/export-or-import-knowledge-pack.md) |
+| Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 
 ## Troubleshooting
 

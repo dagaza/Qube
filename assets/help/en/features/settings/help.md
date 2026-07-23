@@ -6,6 +6,7 @@
 - Where is the composer `@` mention guide?
 - How do I reset help and onboarding guidance?
 - Where are custom sources and composer tools configured?
+- How do I uninstall Qube?
 
 ## What it is
 
@@ -29,6 +30,7 @@ help and guidance, guided tours, onboarding reset, composer guide, HELP & GUIDAN
 4. **Jump to customisation pages** — Use **Open Custom sources** or **Open My knowledge** to open the matching **Knowledge** subsections.
 5. **Enable hardware hints** — Toggle **Suggest models for my hardware in Model Manager** under **Discovery**.
 6. **Reset guidance** — In **Conversations**, run **Reset Help & Guidance** from the composer command palette (not on this settings page).
+7. **Uninstall Qube** — Scroll to **Uninstall Qube** for Windows, macOS, and Linux removal steps. On supported packaged installs (macOS `.app`, Linux `.deb`), use the quick-uninstall buttons. See [Uninstall Qube](../../workflows/uninstall-qube.md) in Library → Qube.
 
 ## Controls
 
@@ -60,10 +62,14 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Suggest models for my hardware in Model Manager**
 
-### Wakeword models
+### Uninstall Qube
+
+- **Uninstall Qube and all data…**
+- **Remove Qube package only…**
 
 ## Related
 
 - [Composer commands reference](../../reference/composer-commands.md) — reset and palette commands
 - [What do @ mentions do FAQ](../../faq/what-do-at-mentions-do.md) — tools vs skills vs commands
+- [Uninstall Qube](../../workflows/uninstall-qube.md) — remove the app and optional user data
 - [Help index](../../00-index.md) — router to all documentation

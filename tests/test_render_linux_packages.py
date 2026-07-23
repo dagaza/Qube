@@ -27,6 +27,7 @@ def test_stage_deb_tree_writes_expected_layout(tmp_path, monkeypatch):
     packaging = tmp_path / "packaging" / "linux"
     packaging.mkdir(parents=True)
     (packaging / "qube.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    (packaging / "qube-uninstall.sh").write_text("#!/bin/sh\n", encoding="utf-8")
     (packaging / "qube.desktop").write_text("[Desktop Entry]\n", encoding="utf-8")
     (tmp_path / "assets" / "logos").mkdir(parents=True)
     (tmp_path / "assets" / "logos" / "qube_logo_256.png").write_bytes(b"png")
@@ -38,7 +39,9 @@ def test_stage_deb_tree_writes_expected_layout(tmp_path, monkeypatch):
     mod.stage_deb_tree(staging)
 
     assert (staging / "opt" / "qube" / "Qube").is_file()
+    assert (staging / "opt" / "qube" / "uninstall" / "uninstall.sh").is_file()
     assert (staging / "usr" / "bin" / "qube").is_file()
+    assert (staging / "usr" / "bin" / "qube-uninstall").is_file()
     assert (staging / "usr" / "share" / "applications" / "qube.desktop").is_file()
     assert (staging / "usr" / "share" / "icons" / "hicolor" / "256x256" / "apps" / "qube.png").is_file()
 

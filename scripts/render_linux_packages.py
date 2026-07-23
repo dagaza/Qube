@@ -12,7 +12,9 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+from core.__version__ import __version__
 from core.uninstall_paths import deb_runtime_dependencies
+from scripts.render_linux_uninstaller import write_uninstall_script
 
 
 def repo_root() -> Path:
@@ -44,15 +46,23 @@ def copy_pyinstaller_tree(target: Path) -> None:
     shutil.copytree(source, target)
 
 
-def stage_deb_tree(staging: Path) -> None:
+def stage_deb_tree(staging: Path, *, version: str | None = None) -> None:
     """Populate ``staging/`` with the .deb filesystem layout."""
     copy_pyinstaller_tree(staging / "opt" / "qube")
+    write_uninstall_script(staging / "opt" / "qube" / "uninstall" / "uninstall.sh", version=version)
 
     wrapper_src = linux_packaging_dir() / "qube.sh"
     wrapper_dst = staging / "usr" / "bin" / "qube"
     wrapper_dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(wrapper_src, wrapper_dst)
     wrapper_dst.chmod(wrapper_dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    uninstall_cli_src = linux_packaging_dir() / "qube-uninstall.sh"
+    uninstall_cli_dst = staging / "usr" / "bin" / "qube-uninstall"
+    shutil.copy2(uninstall_cli_src, uninstall_cli_dst)
+    uninstall_cli_dst.chmod(
+        uninstall_cli_dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
 
     desktop_dst = staging / "usr" / "share" / "applications" / "qube.desktop"
     desktop_dst.parent.mkdir(parents=True, exist_ok=True)
@@ -93,7 +103,7 @@ def main() -> int:
 
     args = parser.parse_args()
     if args.command == "stage-deb":
-        stage_deb_tree(args.staging)
+        stage_deb_tree(args.staging, version=__version__)
         print(args.staging)
     else:
         stage_appdir(args.appdir)

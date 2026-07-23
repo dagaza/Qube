@@ -491,5 +491,12 @@
     "category": "negative",
     "question": "Who won the Stanley Cup in 2024?",
     "negative": true
+  },
+  {
+    "category": "workflow",
+    "question": "How do I uninstall Qube?",
+    "expected_doc_ids": ["workflows.uninstall_qube"],
+    "must_mention": ["Settings", "Help", "uninstall"],
+    "expect_canonical_match": true
   }
 ]

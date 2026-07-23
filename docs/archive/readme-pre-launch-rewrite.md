@@ -2,7 +2,7 @@
 
 **Status:** Preserved verbatim for reference — not maintained.  
 **Archived from:** git commit `fa3c128` (453 lines, pre–Phase 1 rewrite, July 2026)  
-**Superseded by:** [Readme.md](../../Readme.md) (user-facing storefront)  
+**Superseded by:** [README.md](../../README.md) (user-facing storefront)  
 **User docs:** [docs/user/](../user/README.md) · **Architecture:** [docs/architecture/](../architecture/README.md)
 
 Image and asset paths below are relative to the **repository root**, as in the original file.

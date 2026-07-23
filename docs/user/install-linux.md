@@ -69,9 +69,9 @@ User data is stored under `~/.qube/` (shared across variants).
    qube
    ```
 
-The package installs the PyInstaller bundle to `/opt/qube/` and a `/usr/bin/qube` wrapper.
+The package installs the PyInstaller bundle to `/opt/qube/`, a `/usr/bin/qube` wrapper, and `/usr/bin/qube-uninstall` for removal.
 
-To switch variants later, remove the installed package first, then install the other `.deb`.
+To switch variants later, remove the installed package first (`qube-uninstall` or `sudo apt remove`), then install the other `.deb`.
 
 ---
 

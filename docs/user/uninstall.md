@@ -109,16 +109,44 @@ rm -rf ~/.qube
 
 ### Debian / Ubuntu package
 
+From the terminal:
+
+```bash
+qube-uninstall
+```
+
+Or remove the package only (keeps `~/.qube`):
+
+```bash
+qube-uninstall --keep-data
+```
+
+Non-interactive removal (automation):
+
+```bash
+qube-uninstall --quiet
+```
+
+You can also use the package manager directly:
+
 ```bash
 sudo apt remove qube            # CPU package
 sudo apt remove qube-vulkan     # Vulkan package
 sudo apt remove qube-cuda       # CUDA package
 ```
 
-To remove user data as well:
+From inside Qube (packaged `.deb` only):
+
+1. Open **Settings → Help**.
+2. Under **Uninstall Qube**, choose:
+   - **Uninstall Qube and all data…** — removes the package, `~/.qube`, and related files, or
+   - **Remove Qube app only…** — removes the package but keeps `~/.qube`.
+
+Administrator privileges may be requested to remove the `.deb` package.
+
+To remove user data after `apt remove` alone:
 
 ```bash
-sudo apt remove qube
 rm -rf ~/.qube
 ```
 

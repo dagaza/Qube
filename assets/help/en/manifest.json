@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.14",
+  "corpus_version": "1.0.15",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -29,6 +29,7 @@
         "features.conversations",
         "features.library",
         "features.settings.knowledge",
+        "workflows.uninstall_qube",
         "release.whats_new"
       ]
     },
@@ -591,10 +592,12 @@
         "composer @ guide",
         "open @ composer guide",
         "replay local llm setup tour",
-        "open qube documentation"
+        "open qube documentation",
+        "uninstall qube"
       ],
       "related": [
         "reference.settings_sections",
+        "workflows.uninstall_qube",
         "index"
       ],
       "generated_sections": [
@@ -806,6 +809,29 @@
       ],
       "related": [
         "index"
+      ]
+    },
+    {
+      "id": "workflows.uninstall_qube",
+      "path": "workflows/uninstall-qube.md",
+      "title": "Uninstall Qube",
+      "type": "workflow",
+      "tags": [
+        "uninstall",
+        "remove",
+        "user-data"
+      ],
+      "synonyms": [
+        "remove qube",
+        "delete qube",
+        "uninstall app",
+        "qube-uninstall",
+        "apt remove qube"
+      ],
+      "related": [
+        "index",
+        "features.settings.help",
+        "workflows.knowledge_pack"
       ]
     },
     {
@@ -1485,7 +1511,24 @@
       ],
       "doc_id": "features.settings.help",
       "heading": "Help & guidance",
-      "answer": "Open **Settings \u2192 Help** for **Open @ Composer Guide**, guided tours, and **Open Qube documentation** (Library \u2192 Qube). Reset tours via the **Reset Help & Guidance** composer command.",
+      "answer": "Open **Settings \u2192 Help** for **Open @ Composer Guide**, guided tours, **Open Qube documentation** (Library \u2192 Qube), and **Uninstall Qube** instructions. Reset tours via the **Reset Help & Guidance** composer command.",
+      "action_id": "open_settings_help"
+    },
+    {
+      "id": "workflows.uninstall_qube.summary",
+      "question_patterns": [
+        "how do i uninstall qube",
+        "remove qube",
+        "delete qube",
+        "uninstall qube windows",
+        "uninstall qube mac",
+        "uninstall qube linux",
+        "qube-uninstall",
+        "remove user data qube"
+      ],
+      "doc_id": "workflows.uninstall_qube",
+      "heading": "Uninstall Qube",
+      "answer": "See **Uninstall Qube** in Library \u2192 Qube or **Settings \u2192 Help \u2192 Uninstall Qube**. Windows: Settings \u2192 Apps or `%LOCALAPPDATA%\\Programs\\Qube\\unins000.exe`. macOS: **Uninstall Qube.app** on the DMG or Help buttons. Linux `.deb`: **`qube-uninstall`** or **`sudo apt remove qube`**. Delete **`~/.qube`** (or **`%LOCALAPPDATA%\\Qube`**) for a full data wipe.",
       "action_id": "open_settings_help"
     },
     {

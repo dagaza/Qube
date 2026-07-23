@@ -97,4 +97,4 @@ Full CI parity: [local_validation.md](../local_validation.md).
 
 - [System requirements](system-requirements.md)
 - [How to use Qube](how-to-use.md)
-- [Readme.md](../../Readme.md) — project overview and download links
+- [README.md](../../README.md) — project overview and download links

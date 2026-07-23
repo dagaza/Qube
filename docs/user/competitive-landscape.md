@@ -508,6 +508,6 @@ Qube’s bet: **one native assistant** for people who want voice, grounded answe
 
 ## Maintenance
 
-Re-run this matrix when competitors ship major features (e.g. LM Studio RAG upgrades, Odysseus voice). Update [Readme.md](../../Readme.md) only when positioning or pillar features change — details stay here and in `@help`.
+Re-run this matrix when competitors ship major features (e.g. LM Studio RAG upgrades, Odysseus voice). Update [README.md](../../README.md) only when positioning or pillar features change — details stay here and in `@help`.
 
 See also: [launch documentation guidelines](../launch_documentation_guidelines.md) · **[Competitive roadmap](../competitive_roadmap.md)** (developer priorities: parity, moats, non-goals).

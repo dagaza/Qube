@@ -61,6 +61,7 @@ fpm -s dir -t deb \
   --conflicts "$PKG_CONFLICTS" \
   --after-install "$REPO_ROOT/packaging/linux/debian/postinst" \
   --before-remove "$REPO_ROOT/packaging/linux/debian/prerm" \
+  --after-remove "$REPO_ROOT/packaging/linux/debian/postrm" \
   -C "$STAGING" \
   -p "$REPO_ROOT/$DEB_NAME" \
   .

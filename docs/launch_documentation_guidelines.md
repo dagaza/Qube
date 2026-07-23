@@ -10,7 +10,7 @@
 
 Qube’s public docs were reorganized in mid-2026 to separate:
 
-- **Storefront** — [`Readme.md`](../Readme.md) (~120–180 lines, user-first)
+- **Storefront** — [`README.md`](../README.md) (~120–180 lines, user-first)
 - **User guides** — [`docs/user/`](user/README.md) + in-app **Library → Qube** / **`@help`**
 - **Technical depth** — [`docs/architecture/`](architecture/README.md) + existing engineering docs
 - **Archive** — [`docs/archive/readme-pre-launch-rewrite.md`](archive/readme-pre-launch-rewrite.md) (verbatim pre-rewrite README)
@@ -38,7 +38,7 @@ Borrowed from successful local-first projects (e.g. SillyTavern, Odysseus) and Q
 ### Documentation map
 
 ```text
-Readme.md (storefront)
+README.md (storefront)
     ├── docs/user/          install, requirements, workflows
     ├── Library → Qube      primary manual (assets/help/en/)
     ├── CHANGELOG.md        version history
@@ -246,7 +246,7 @@ Copy into release PR or issue when tagging:
 
 | Document | Role |
 |----------|------|
-| [Readme.md](../Readme.md) | Public storefront |
+| [README.md](../README.md) | Public storefront |
 | [docs/index.html](index.html) | GitHub Pages landing |
 | [docs/user/competitive-landscape.md](user/competitive-landscape.md) | vs LM Studio, SillyTavern, Odysseus |
 | [docs/competitive_roadmap.md](competitive_roadmap.md) | Dev priorities: parity, moats, non-goals |
