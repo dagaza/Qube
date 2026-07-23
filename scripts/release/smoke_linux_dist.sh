@@ -14,6 +14,14 @@ if [[ ! -x "$BINARY" ]]; then
   exit 1
 fi
 
+DIST_DIR="$(cd "$(dirname "$BINARY")" && pwd)"
+VARIANT_FILE="$DIST_DIR/.qube-linux-variant"
+if [[ -f "$VARIANT_FILE" && "$(<"$VARIANT_FILE")" == "cuda" ]]; then
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || ! (command -v ldconfig >/dev/null 2>&1 && ldconfig -p 2>/dev/null | rg -q "libcuda\.so\.1"); then
+    exec bash "$SCRIPT_DIR/verify_linux_cuda_bundle.sh" "$DIST_DIR"
+  fi
+fi
+
 FAKE_HOME="$(mktemp -d)"
 cleanup() { rm -rf "$FAKE_HOME"; }
 trap cleanup EXIT

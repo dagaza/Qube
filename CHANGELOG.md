@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-07-23
+
+### Fixed
+- Linux CUDA release CI: skip dist/AppImage runtime smoke on driverless GitHub runners and verify bundled CUDA wheel libraries instead (`libcuda.so.1` requires an end-user NVIDIA driver).
+
 ## [1.1.8] - 2026-07-23
 
 ### Fixed

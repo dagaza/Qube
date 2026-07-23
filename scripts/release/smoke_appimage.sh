@@ -13,6 +13,13 @@ fi
 APPIMAGE="$(cd "$(dirname "$APPIMAGE")" && pwd)/$(basename "$APPIMAGE")"
 chmod +x "$APPIMAGE"
 
+if [[ "$APPIMAGE" == *"-cuda.AppImage" ]]; then
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]] || ! (command -v ldconfig >/dev/null 2>&1 && ldconfig -p 2>/dev/null | rg -q "libcuda\.so\.1"); then
+    echo "Skipping CUDA AppImage runtime smoke (no NVIDIA driver); dist bundle already verified"
+    exit 0
+  fi
+fi
+
 FAKE_HOME="$(mktemp -d)"
 cleanup() { rm -rf "$FAKE_HOME"; }
 trap cleanup EXIT
