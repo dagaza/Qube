@@ -36,6 +36,10 @@ fi
 export QUBE_LINUX_VARIANT="$VARIANT"
 python3 -m PyInstaller qube.spec --noconfirm
 
+if [[ "$VARIANT" == "cuda" ]]; then
+  python3 "$SCRIPT_DIR/stage_cuda_runtime_libs.py" "$REPO_ROOT/dist/Qube/_internal/llama_cpp/lib"
+fi
+
 if [[ ! -x "$REPO_ROOT/dist/Qube/Qube" ]]; then
   echo "PyInstaller output missing: $REPO_ROOT/dist/Qube/Qube" >&2
   exit 1

@@ -37,22 +37,18 @@ for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
         pass
 
 if _LINUX_VARIANT == "cuda":
-    # libllama.so loads libcudart from the same directory at runtime.
     try:
         from pathlib import Path
 
-        import nvidia.cublas  # noqa: F401
         import nvidia.cuda_runtime
 
-        for mod in (nvidia.cuda_runtime, nvidia.cublas):
-            lib_dir = Path(mod.__file__).resolve().parent / "lib"
-            if not lib_dir.is_dir():
-                continue
+        lib_dir = Path(nvidia.cuda_runtime.__file__).resolve().parent / "lib"
+        if lib_dir.is_dir():
             for path in sorted(lib_dir.iterdir()):
                 if path.is_file() and ".so" in path.name:
                     binaries.append((str(path), "llama_cpp/lib"))
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"WARNING: could not pre-collect CUDA runtime libs for PyInstaller: {exc}")
 
 # pynvml drives NVIDIA/CUDA telemetry, which does not exist on macOS (Metal).
 _hidden_imports = [

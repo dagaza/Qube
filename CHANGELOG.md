@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-07-23
+
+### Fixed
+- Linux Vulkan builds: restore `spirv-headers` (required by ggml-vulkan CMake) alongside LunarG Vulkan SDK packages.
+- Linux CUDA builds: stage `libcudart` into `llama_cpp/lib/` after PyInstaller via `stage_cuda_runtime_libs.py` so smoke tests can load CUDA llama-cpp wheels on CI runners.
+
 ## [1.1.6] - 2026-07-23
 
 ### Fixed
@@ -99,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.6...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.7...HEAD
+[1.1.7]: https://github.com/dagaza/Qube/compare/v1.1.6...v1.1.7
 [1.1.6]: https://github.com/dagaza/Qube/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/dagaza/Qube/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/dagaza/Qube/compare/v1.1.3...v1.1.4
