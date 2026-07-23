@@ -33,10 +33,8 @@ PACKAGES=(
 
 if [[ "$VARIANT" == "vulkan" || "$VARIANT" == "all" ]]; then
   PACKAGES+=(
-    spirv-headers
     glslang-dev
     glslang-tools
-    libvulkan-dev
     libvulkan1
   )
 fi

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-07-23
+
+### Fixed
+- Linux Vulkan builds: install matching `vulkan-headers` and `libvulkan-dev` from LunarG (Ubuntu 22.04 stock headers are too old for current llama.cpp ggml-vulkan).
+- Linux CUDA builds: copy NVIDIA CUDA runtime `.so` files into `llama_cpp/lib/` so bundled `libllama.so` can load `libcudart.so.12` during smoke tests.
+
 ## [1.1.5] - 2026-07-22
 
 ### Fixed
@@ -93,7 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frozen-aware path resolution via `core.paths`.
 - PR CI workflow with pytest and `pip-audit`.
 
-[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.5...HEAD
+[Unreleased]: https://github.com/dagaza/Qube/compare/v1.1.6...HEAD
+[1.1.6]: https://github.com/dagaza/Qube/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/dagaza/Qube/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/dagaza/Qube/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/dagaza/Qube/compare/v1.1.2...v1.1.3
