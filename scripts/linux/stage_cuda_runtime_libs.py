@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy NVIDIA CUDA runtime shared libraries next to libllama in a Linux bundle."""
+"""Copy NVIDIA CUDA wheel shared libraries next to libllama in a Linux bundle."""
 
 from __future__ import annotations
 
@@ -7,31 +7,29 @@ import shutil
 import sys
 from pathlib import Path
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs
+
 
 def stage(dest: Path) -> int:
     dest.mkdir(parents=True, exist_ok=True)
-    copied = 0
     try:
-        import nvidia.cuda_runtime as cuda_runtime
-    except ImportError as exc:
-        print(f"ERROR: nvidia.cuda_runtime is not installed: {exc}", file=sys.stderr)
+        libs = iter_nvidia_wheel_libs(*CUDA_WHEEL_PACKAGES)
+    except (ImportError, RuntimeError) as exc:
+        print(f"ERROR: could not locate NVIDIA CUDA wheel libraries: {exc}", file=sys.stderr)
         return 1
 
-    lib_dir = Path(cuda_runtime.__file__).resolve().parent / "lib"
-    if not lib_dir.is_dir():
-        print(f"ERROR: CUDA runtime lib dir missing: {lib_dir}", file=sys.stderr)
+    if not libs:
+        print("ERROR: no NVIDIA CUDA wheel libraries found to stage", file=sys.stderr)
         return 1
 
-    for src in sorted(lib_dir.iterdir()):
-        if src.is_file() and ".so" in src.name:
-            target = dest / src.name
-            shutil.copy2(src, target)
-            print(f"Copied {src.name} -> {target}")
-            copied += 1
-
-    if copied == 0:
-        print(f"ERROR: no CUDA runtime libraries found under {lib_dir}", file=sys.stderr)
-        return 1
+    for src in libs:
+        target = dest / src.name
+        shutil.copy2(src, target)
+        print(f"Copied {src.name} -> {target}")
     return 0
 
 

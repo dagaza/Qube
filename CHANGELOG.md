@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-07-23
+
+### Fixed
+- Linux CUDA builds: resolve NVIDIA wheel lib paths via namespace `__path__` (not `__file__`) and stage `nvidia-cublas-cu12` alongside `nvidia-cuda-runtime-cu12` for llama-cpp CUDA wheels.
+
 ## [1.1.7] - 2026-07-23
 
 ### Fixed

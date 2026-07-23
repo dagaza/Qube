@@ -30,7 +30,7 @@ python3 -m pip install -r requirements.txt pyinstaller pillow
 bash "$SCRIPT_DIR/install_llama_cpp_variant.sh" "$VARIANT"
 
 if [[ "$VARIANT" == "cuda" ]]; then
-  python3 -m pip install nvidia-cuda-runtime-cu12
+  python3 -m pip install nvidia-cuda-runtime-cu12 nvidia-cublas-cu12
 fi
 
 export QUBE_LINUX_VARIANT="$VARIANT"

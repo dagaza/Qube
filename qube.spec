@@ -38,15 +38,11 @@ for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
 
 if _LINUX_VARIANT == "cuda":
     try:
-        from pathlib import Path
+        sys.path.insert(0, os.path.join(os.getcwd(), "scripts", "linux"))
+        from nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs
 
-        import nvidia.cuda_runtime
-
-        lib_dir = Path(nvidia.cuda_runtime.__file__).resolve().parent / "lib"
-        if lib_dir.is_dir():
-            for path in sorted(lib_dir.iterdir()):
-                if path.is_file() and ".so" in path.name:
-                    binaries.append((str(path), "llama_cpp/lib"))
+        for path in iter_nvidia_wheel_libs(*CUDA_WHEEL_PACKAGES):
+            binaries.append((str(path), "llama_cpp/lib"))
     except Exception as exc:
         print(f"WARNING: could not pre-collect CUDA runtime libs for PyInstaller: {exc}")
 
