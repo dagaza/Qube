@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.10] - 2026-07-23
+
+### Fixed
+- Release CI: build Intel macOS DMGs on `macos-15-intel` instead of retired `macos-13` runners (fixes indefinite queue blocking the release job).
+
 ## [1.1.9] - 2026-07-23
 
 ### Fixed

@@ -124,7 +124,7 @@ per architecture:
 | Runner | Architecture | Artifact |
 |--------|--------------|----------|
 | `macos-14` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |
-| `macos-13` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
+| `macos-15-intel` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
 
 Both DMGs are attached to the same GitHub Release as the Windows installer.
 Each DMG includes **`Uninstall Qube.app`**, a signed helper that removes
