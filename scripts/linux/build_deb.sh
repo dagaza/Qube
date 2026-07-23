@@ -50,7 +50,12 @@ python3 scripts/render_linux_packages.py stage-deb "$STAGING"
 
 rm -f "$REPO_ROOT/$DEB_NAME"
 
+# Use xz compression for the data/control tarballs. fpm defaults to gzip,
+# which leaves the CUDA bundle (~3 GB) above GitHub Releases' 2 GiB per-asset
+# limit. xz brings it in line with the SquashFS-compressed AppImage (~1.1 GB),
+# well under the cap. dpkg/apt have supported xz-compressed debs for years.
 fpm -s dir -t deb \
+  --deb-compression xz \
   -n "$PKG_NAME" \
   -v "$VERSION" \
   -a amd64 \
