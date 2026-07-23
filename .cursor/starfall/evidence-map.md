@@ -98,11 +98,14 @@ Confidence: high
 Notes: Composer attach≠grant (strict); connector ephemeral READ only; WEB promotion guarded;
 KI3 closed Run 003.
 
-## Phase 2 composer palette / INSPECT still pending
-Evidence: `core/composer_mention_search.py` (integrations section wired T15);
-`ui/components/retrieval_inspector.py` (preset/adapter trace, no cap steps)
+## Phase 2 slice 3 / T16 — INSPECT cap steps (on disk)
+Evidence: `core/integrations/capability_inspect.py:build_capability_inspect_trace`;
+`core/knowledge/observability.py` (capability_steps on RetrievalTrace);
+`core/knowledge/retrieval_trace_reader.py` (summary line);
+`ui/components/retrieval_inspector.py` (Summary/Explain cap steps);
+`workers/llm_worker.py` (CAPABILITY trace + record); `tests/test_capability_inspect_steps.py` (9 tests).
 Confidence: high
-Notes: T16–T18 remain on roadmap; T15 complete.
+Notes: Provider-agnostic pure builders; P6 clean. Success-path trace only; denied/cited follow-ups documented. T17–T18 remain.
 
 ## Phase 2 slice 2 / T15 — integrations/search + palette (on disk)
 Evidence: `core/integrations/search/capability_search.py:search_integrations_capabilities`;

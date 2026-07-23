@@ -44,6 +44,7 @@ class RetrievalTrace:
     retrieval_profile: str | None = None
     context_fingerprint: Mapping[str, Any] | None = None
     pipeline_stages: tuple[Mapping[str, Any], ...] = ()
+    capability_steps: tuple[Mapping[str, Any], ...] = ()
 
 
 def _serialize_evidence(obj: EvidenceObject) -> dict[str, Any]:
@@ -71,6 +72,7 @@ def build_retrieval_trace(
     retrieval_profile: str | None = None,
     context_fingerprint: Mapping[str, Any] | None = None,
     pipeline_stages: Sequence[Mapping[str, Any]] | None = None,
+    capability_steps: Sequence[Mapping[str, Any]] | None = None,
 ) -> RetrievalTrace:
     raw_count = 0
     if relevance_diag is not None:
@@ -107,6 +109,7 @@ def build_retrieval_trace(
         retrieval_profile=retrieval_profile,
         context_fingerprint=context_fingerprint,
         pipeline_stages=tuple(pipeline_stages or ()),
+        capability_steps=tuple(capability_steps or ()),
     )
 
 
@@ -149,6 +152,8 @@ def serialize_retrieval_trace(
         payload["context_fingerprint"] = dict(trace.context_fingerprint)
     if trace.pipeline_stages:
         payload["pipeline_stages"] = [dict(s) for s in trace.pipeline_stages]
+    if trace.capability_steps:
+        payload["capability_steps"] = [dict(s) for s in trace.capability_steps]
     return payload
 
 

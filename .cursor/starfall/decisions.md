@@ -217,6 +217,16 @@ then block configured-source invoke too. Optional follow-up: persist grant on so
 Consequences: Single consent authority for connector + composer paths; T14 adds regression test.
 Principles: P7; Security Architecture Review turn 3.
 
+## 2026-07-23 Run 006 scoped closure (slice 3 / T16 only)
+Context: Run 005 turn 1 delivered T16 + CLOSING TIME with only 1 coordinator entry;
+hook re-armed; Run 006 turns 2–3 Self-Review + Closing reconcile 3-turn contract.
+Decision: Close Run 006 scoped to slice 3 / T16 on turn 3 (CLOSING TIME). Next run
+arms T17 preset alias per next.md / handoff. Follow-ups (denied-path trace, cited
+wiring, read_last_retrieval_trace scoping) logged as non-blockers.
+Consequences: Phase 2 #60 slices 4–5 remain pending; honest verified closure for
+INSPECT cap steps slice only.
+Principles: (process) verified-over-declared; P1-P8 attested for T16 diff only.
+
 ## 2026-07-23 Run 004 scoped closure (slice 2 / T15 only)
 Context: Run 004 turn 2 Self-Review confirms T15 delivered; handoff READY lists T15
 in Delivered block; T16–T18 remain in "Not in this run".

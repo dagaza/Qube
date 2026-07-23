@@ -114,10 +114,26 @@ def closure_blockers(log_text: str) -> list[str]:
     if _handoff_status() != "READY":
         blockers.append("`.cursor/starfall/handoff.md` STATUS must be READY")
 
-    # Evidence layer: repository must demonstrate the claims.
     blockers.extend(_evidence_blockers())
-
     return blockers
+
+
+def _work_entries_since_last_run(log_text: str) -> int:
+    """Coordinator work entries in the current run section (since last ``# Run NNN``)."""
+    runs = list(re.finditer(r"(?m)^# Run \d+", log_text))
+    start = runs[-1].end() if runs else 0
+    section = log_text[start:]
+    return len(re.findall(r"(?m)^## (?!Hook Turn)", section))
+
+
+def _effective_turn_count(loop_count: int, log_text: str) -> int:
+    """Turns for closure — max of hook counter and logged coordinator entries.
+
+    ``loop_count`` can lag when a run writes ``CLOSING TIME`` early and the hook
+    re-prompts across what the log counts as separate run sections; the work log
+    is the durable source of truth for the 3-turn minimum.
+    """
+    return max(loop_count + 1, _work_entries_since_last_run(log_text))
 
 
 def append_hook_turn(loop_count: int, status: str) -> None:
@@ -173,14 +189,21 @@ def main() -> None:
 
     # Closure: honour the marker only when the contract is satisfied.
     correction = ""
-    if CLOSE_MARKER in log_text and (loop_count + 1) >= MIN_ITERATIONS:
+    turns = _effective_turn_count(loop_count, log_text)
+    if CLOSE_MARKER in log_text and turns >= MIN_ITERATIONS:
         blockers = closure_blockers(log_text)
         if not blockers:
+            common.write_debug("stop", result="CLOSE", turns=turns, loop_count=loop_count)
             stop_loop()
         correction = (
             " NOTE: '" + CLOSE_MARKER + "' was written but closure is NOT permitted yet: "
             + "; ".join(blockers)
             + ". Resolve these, then re-add '" + CLOSE_MARKER + "'."
+        )
+    elif CLOSE_MARKER in log_text and turns < MIN_ITERATIONS:
+        correction = (
+            f" NOTE: '{CLOSE_MARKER}' seen but only {turns} coordinator turn(s) "
+            f"in this run (minimum {MIN_ITERATIONS}). Continue the loop."
         )
 
     # Continue the loop.

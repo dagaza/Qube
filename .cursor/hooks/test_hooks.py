@@ -26,6 +26,7 @@ BOM = b"\xef\xbb\xbf"
 
 sys.path.insert(0, str(HOOKS))
 import common  # noqa: E402
+import starfall  # noqa: E402
 
 _results: list[tuple[bool, str]] = []
 
@@ -134,6 +135,10 @@ def test_prep() -> None:
     check("prep: malformed fails OPEN (submission)", r.get("continue") is True and not TRIGGER.exists())
     TRIGGER.unlink(missing_ok=True)
 
+    r = run_hook("starfall_prep.py", j({"prompt": "Starfall turn 2 of 10. Continue the loop..."}))
+    check("prep: hook followup does not arm fresh session", r.get("continue") is True and not TRIGGER.exists())
+    TRIGGER.unlink(missing_ok=True)
+
 
 # ---- block_main_commit ------------------------------------------------------
 def test_block() -> None:
@@ -169,6 +174,12 @@ def test_verify() -> None:
 
 
 # ---- subagent + stop --------------------------------------------------------
+def test_effective_turn_count() -> None:
+    log = "# Run 001\n\n## Starfall coordinator - x\nGates: G1 PASS\n\n## Quality - y\nCLOSING TIME\n"
+    check("turn count: work entries", starfall._work_entries_since_last_run(log) == 2)
+    check("turn count: effective >= hook", starfall._effective_turn_count(0, log) == 2)
+
+
 def test_subagent_stop() -> None:
     r = run_hook("starfall_subagent.py", j({"status": "completed", "name": "probe"}))
     check("subagent: returns {}", r == {})
@@ -186,7 +197,7 @@ def main() -> int:
     ctx_backup = common.CONTEXT.read_bytes() if common.CONTEXT.exists() else None
     archive_pre = (CURSOR_DIR / "starfall-archive").exists()
 
-    for fn in (test_read_payload, test_diagnostics_gate, test_prep, test_block,
+    for fn in (test_read_payload, test_diagnostics_gate, test_effective_turn_count, test_prep, test_block,
                test_verify, test_subagent_stop):
         try:
             fn()

@@ -2937,8 +2937,15 @@ class LLMWorker(QThread):
         if execution_route == "CAPABILITY":
             import time as _cap_time
 
+            from core.app_settings import get_retrieval_profile
+            from core.integrations.capability_inspect import build_capability_inspect_trace
             from core.integrations.capability_invoke import invoke_gated_capability
             from core.knowledge.bundle_builder import build_generic_bundle
+            from core.knowledge.observability import build_retrieval_trace, record_retrieval_trace
+            from core.knowledge.retrieval_records import (
+                RetrievalContextFingerprint,
+                save_retrieval_record,
+            )
             from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
 
             cap_urn = ""
@@ -2954,6 +2961,19 @@ class LLMWorker(QThread):
             if isinstance(decision, dict):
                 decision["capability_invoke_allowed"] = invoke_result.allowed
                 decision["capability_invoke_reason"] = invoke_result.reason
+            cap_steps = build_capability_inspect_trace(
+                urn=cap_urn,
+                query=clean_prompt or self.prompt,
+                allowed=invoke_result.allowed,
+                reason=invoke_result.reason,
+                rows=invoke_result.rows,
+                bundle_source_count=len(invoke_result.rows) if invoke_result.allowed else 0,
+                rejected_count=0,
+                latency_ms=cap_latency_ms,
+                descriptor=invoke_result.descriptor,
+            )
+            if isinstance(decision, dict):
+                decision["capability_steps"] = cap_steps
             if invoke_result.allowed and invoke_result.rows:
                 kept_rows = list(invoke_result.rows)
                 self._turn_evidence_bundle = build_generic_bundle(
@@ -2998,6 +3018,43 @@ class LLMWorker(QThread):
                     "[LLM Worker] Capability invoke integrated (%d sources, %d chars)",
                     len(kept_rows),
                     len(cap_context),
+                )
+                cap_fingerprint = RetrievalContextFingerprint(
+                    query_raw=self.prompt,
+                    query_resolved=clean_prompt or self.prompt,
+                    knowledge_service="capability",
+                    preset_id=None,
+                    adapter_filter=tuple(
+                        sorted(
+                            {
+                                str(row.get("_adapter") or "")
+                                for row in kept_rows
+                                if row.get("_adapter")
+                            }
+                        )
+                    ),
+                    retrieval_profile=get_retrieval_profile(),
+                    connector_config_hashes=(),
+                )
+                cap_trace = build_retrieval_trace(
+                    self._turn_evidence_bundle,
+                    session_id=self.session_id,
+                    turn_id=getattr(self, "_routing_debug_turn_seq", None),
+                    retrieval_profile=get_retrieval_profile(),
+                    context_fingerprint=cap_fingerprint.to_dict(),
+                    capability_steps=cap_steps,
+                )
+                record_retrieval_trace(
+                    cap_trace,
+                    sources=self._turn_evidence_bundle.sources,
+                )
+                save_retrieval_record(
+                    self.db,
+                    request_id=cap_trace.request_id,
+                    bundle=self._turn_evidence_bundle,
+                    context_fingerprint=cap_fingerprint,
+                    session_id=self.session_id,
+                    turn_id=getattr(self, "_routing_debug_turn_seq", None),
                 )
             elif not invoke_result.allowed:
                 logger.warning(

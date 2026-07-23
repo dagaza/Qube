@@ -691,3 +691,111 @@ CLOSING TIME
 status: completed
 loop_count: 0
 
+
+# Run 004 - 2026-07-23T22:29:02.276729+00:00
+
+# Run 005 - 2026-07-23T23:29:00Z
+
+## Starfall coordinator - 2026-07-23T23:29:00Z
+Phase: Discovery -> Architecture Review -> Implementation Plan -> Code -> Self-Review -> Testing -> Documentation -> Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: T16 scope = INSPECT cap steps per handoff slice 3. Pure builders in
+  `core/integrations/capability_inspect.py` (attachment→invoke→returned→ranked→cited);
+  `RetrievalTrace.capability_steps` serialized to JSONL; `retrieval_inspector.py` renders
+  Summary/Explain blocks; LLMWorker CAPABILITY route records trace + RetrievalRecord with steps.
+  T16: 9 tests PASS; T14+T15 regression 36 tests PASS; P6 grep clean; starfall_verify PASS.
+Actions: Added capability_inspect.py; extended observability + retrieval_trace_reader;
+  retrieval_inspector + llm_worker wiring; test_capability_inspect_steps.py; updated handoff,
+  active-task, test-plan-phase2, roadmap, evidence-map, context.
+Decisions: Run 005 scoped closure to T16 only (T17–T18 next run). Cite step optional until
+  post-answer citation ids available; invoke/deny/returned/ranked always recorded.
+Next step: Idle — commit T16 product files when ready; arm T17 via next.md.
+
+Architecture Review
+[x] P1 Cap steps reflect user-attached cap only; deny path stops after invoke step
+[x] P2 No connect-time injection; steps built from explicit attach→invoke
+[x] P3 Tier visible on attachment step when descriptor present
+[x] P4 Invoke/rank/cite provenance visible in INSPECT (not preset/adapter-only)
+[x] P5 Provider-agnostic builders; no duplicate INSPECT subsystem
+[x] P6 No MCP import outside providers/mcp/
+[x] P7 Denied invoke recorded with reason; no silent success steps
+[x] P8 cap: URN on attachment + row provenance preserved in trace chain
+
+PR summary (Run 005 / Phase 2 slice 3 #60 / T16): INSPECT capability steps —
+  pure builders project attachment→invoke→returned→ranked→cited; serialized on retrieval
+  traces; Retrieval Inspector Summary/Explain render the chain; LLMWorker CAPABILITY route
+  records trace + RetrievalRecord. 9 T16 tests + T14/T15 regression pass; starfall_verify PASS.
+  Deferred: T17 preset alias, T18 Sources UI label.
+
+CLOSING TIME
+
+## Hook Turn 1 - 2026-07-23T22:32:47.464854+00:00
+status: completed
+loop_count: 0
+
+# Run 006 - 2026-07-23T23:32:00Z
+
+## Capability Architecture + Security + Product Review + Quality - 2026-07-23T23:32:00Z
+Phase: Self-Review -> Closing prep (Run 006 turn 2/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Run 005 turn 1 delivered T16 + CLOSING TIME with only 1 coordinator entry — hook
+  re-armed; closure contract requires 3+ turns. Four parallel read-only experts Self-Reviewed
+  T16 on disk: (Architecture) pure builders in core/integrations/; no duplicate INSPECT subsystem;
+  P6 clean; 9/9 T16 tests PASS. (Security) deny path honest in model context; cap_steps on decision
+  but record_retrieval_trace only on allowed+rows — denied/empty invisible in INSPECT JSONL.
+  (Product) attachment/invoke carry cap: URN; tier when descriptor present; cited step builder
+  exists but worker does not wire cited_ids post-answer (Run 005 deferral). (Quality) G4 scoped
+  to unit builders + serialization; no llm_worker/inspector integration tests yet.
+Actions: Re-ran starfall_verify PASS (38 files, 20 targets, guardrail clean). Re-ran T16+T14+T15
+  regression 36/36 PASS. Updated active-task (turn 2/10), context (Run 006), evidence-map
+  (retrieval_trace_reader). No product code changes (read-only Self-Review).
+Decisions: T16 scoped closure stands; follow-ups logged (denied trace persistence, cited wiring,
+  audit-log gate, read_last_retrieval_trace scoping) — not blockers for slice 3 acceptance.
+Next step: Turn 3/10 — PR summary + CLOSING TIME (3-turn minimum).
+
+Architecture Review
+[x] P1 Cap steps from user-attached cap: URN only; dedicated CAPABILITY route
+[x] P2 No connect-time injection; explicit attach→invoke chain
+[x] P3 Tier on attachment when descriptor present; deny reason in invoke step + model context
+[x] P4 Success-path INSPECT cap steps on trace; follow-up: denied/empty trace persistence
+[x] P5 Single builder module; extends existing inspector — no duplicate subsystem
+[x] P6 guardrail PASS; capability_inspect P6 test green
+[x] P7 Default-deny invoke honest; no fabricated success steps on deny
+[x] P8 cap: URN in attachment/invoke steps + evidence row _capability preserved
+
+## Product Review + Quality - 2026-07-23T23:35:00Z
+Phase: Closing (Run 006 turn 3/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Closure contract met — 3 coordinator turns (Run 005 turn 1 + Run 006 turns 2–3),
+  handoff STATUS: READY, starfall_verify PASS (38 files, 20 targets, guardrail clean).
+  Two parallel read-only experts confirmed closure-ready: (Product/Architecture) all six T16
+  deliverables on disk match handoff; drift-rules clean; scoped follow-ups non-blocking.
+  (Quality) T16 9/9 PASS; test-plan-phase2 T16 complete; G4 PASS for scoped unit coverage.
+Actions: Final starfall_verify PASS; T16+T14+T15 regression 36/36 PASS. Regenerated baton pack
+  (starfall_export.py → next.md T17 baton). Updated active-task (Idle), context (Run 006 CLOSED),
+  decisions.md (Run 006 scoped closure). No product code (Closing turn).
+Decisions: Run 006 closes scoped to Phase 2 slice 3 / T16 only; T17–T18 next run per next.md.
+Next step: Idle — commit T16 product files when ready; arm T17 via next.md.
+
+Architecture Review
+[x] P1 Cap steps from user-attached cap only; dedicated CAPABILITY route unchanged
+[x] P2 No connect-time injection; explicit attach→invoke chain
+[x] P3 Tier on attachment when descriptor present; deny honest in invoke + model context
+[x] P4 Success-path INSPECT cap steps on trace; follow-ups logged not blockers
+[x] P5 Single builder module; extends existing inspector — no duplicate subsystem
+[x] P6 guardrail PASS on delivered T16 modules
+[x] P7 Default-deny invoke honest; no fabricated success on deny
+[x] P8 cap: URN preserved in steps + evidence _capability path
+
+PR summary (Run 006 / Phase 2 slice 3 #60 / T16): INSPECT capability steps —
+  pure builders (`capability_inspect.py`) project attachment→invoke→returned→ranked→cited;
+  `capability_steps` on RetrievalTrace + JSONL; Retrieval Inspector Summary/Explain render
+  the chain; LLMWorker CAPABILITY route records trace + RetrievalRecord on success path.
+  9 T16 tests + T14/T15 regression pass; starfall_verify PASS. Deferred: T17 preset alias,
+  T18 Sources UI label; follow-ups — denied-path trace, cited wiring, trace scoping.
+
+CLOSING TIME
+
+status: completed
+loop_count: 1
+

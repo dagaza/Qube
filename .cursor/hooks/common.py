@@ -25,7 +25,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-RUNTIME_VERSION = "1.0.0"
+RUNTIME_VERSION = "1.1.0"
 
 HOOK_DIR = Path(__file__).resolve().parent
 CURSOR_DIR = HOOK_DIR.parent

@@ -13,11 +13,24 @@ arm is diagnosable without editing code.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import common
 
 ACTIVATION_KEYWORD = "starfall"
+# Stop-hook followups start with this — they must not arm a fresh session when pasted
+# into a new chat (the substring "starfall" would otherwise match).
+_HOOK_FOLLOWUP_RE = re.compile(r"^\s*Starfall turn \d+ of \d+", re.IGNORECASE)
+
+
+def _should_arm(prompt: str) -> bool:
+    """True when the user intentionally opts in, not for hook batons in a fresh chat."""
+    stripped = prompt.strip()
+    if _HOOK_FOLLOWUP_RE.match(stripped):
+        # Mid-loop: trigger already exists from the user's original opt-in prompt.
+        return common.TRIGGER.exists()
+    return ACTIVATION_KEYWORD in prompt.lower()
 
 
 def main() -> None:
@@ -29,7 +42,7 @@ def main() -> None:
         data, parse_ok, parse_err = {}, False, str(exc)
 
     prompt = str(data.get("prompt") or "")
-    matched = ACTIVATION_KEYWORD in prompt.lower()
+    matched = _should_arm(prompt)
     run_no = None
     if matched:
         # A fresh run is one where the trigger did not already exist. Mid-loop

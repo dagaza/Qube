@@ -5,7 +5,7 @@
 STATUS: READY
 
 Phase 1 (#59) complete on this branch (see Delivered section below).
-Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) delivered on disk. Next run: T16 INSPECT.
+Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) + slice 3 (T16) delivered on disk. Next run: T17 preset alias.
 
 
 
@@ -188,11 +188,41 @@ tests/test_integrations_capability_search.py (T15, 12 tests)
 
 
 
-Not in this run (Phase 2 #60 — slices 3–5):
+Delivered (Phase 2 / #60 — slice 3 / T16):
 
 ```
 
-T16 — INSPECT cap steps
+Slice 3 / T16 — INSPECT cap steps:
+
+core/integrations/capability_inspect.py
+
+  Pure builders (attachment→invoke→returned→ranked→cited); trace merge + text formatters.
+
+core/knowledge/observability.py
+
+  RetrievalTrace.capability_steps + serialize into JSONL trace payload.
+
+core/knowledge/retrieval_trace_reader.py
+
+  Summary line when capability_steps present.
+
+ui/components/retrieval_inspector.py
+
+  Summary + Explain tabs render capability INSPECT steps from trace.
+
+workers/llm_worker.py
+
+  CAPABILITY route builds steps, records retrieval trace + RetrievalRecord.
+
+tests/test_capability_inspect_steps.py (T16, 9 tests)
+
+```
+
+
+
+Not in this run (Phase 2 #60 — slices 4–5):
+
+```
 
 T17 — KnowledgePreset.capabilities + @[tool:user:…] alias resolver
 
@@ -248,7 +278,7 @@ Constraints (must hold):
 Test requirements:
 
 See `.cursor/starfall/test-plan.md` (Phase 1 COMPLETE T1–T13) and
-`.cursor/starfall/test-plan-phase2.md` (T14–T15 complete; T16–T18 planned).
+`.cursor/starfall/test-plan-phase2.md` (T14–T16 complete; T17–T18 planned).
 
 
 
