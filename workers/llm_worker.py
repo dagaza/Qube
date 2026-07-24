@@ -2949,30 +2949,54 @@ class LLMWorker(QThread):
             from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
 
             cap_urn = ""
+            cap_preset_id = ""
             if isinstance(decision, dict):
                 cap_urn = str(decision.get("capability_urn") or "")
+                cap_preset_id = str(decision.get("capability_preset_id") or "").strip()
             cap_t0 = _cap_time.time()
-            invoke_result = invoke_gated_capability(
-                cap_urn,
-                clean_prompt or self.prompt,
-                max_results=5,
-            )
-            cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+            if cap_preset_id:
+                from core.integrations.preset_capability_alias import (
+                    build_preset_capability_inspect_trace,
+                    invoke_preset_capability_bundle,
+                )
+                from core.knowledge.presets import load_preset
+
+                invoke_result, per_cap_results = invoke_preset_capability_bundle(
+                    cap_preset_id,
+                    clean_prompt or self.prompt,
+                    max_results=5,
+                )
+                preset = load_preset(cap_preset_id)
+                cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+                cap_steps = build_preset_capability_inspect_trace(
+                    preset_id=cap_preset_id,
+                    preset_label=preset.label if preset else cap_preset_id,
+                    query=clean_prompt or self.prompt,
+                    per_cap_results=per_cap_results,
+                    bundle_result=invoke_result,
+                    latency_ms=cap_latency_ms,
+                )
+            else:
+                invoke_result = invoke_gated_capability(
+                    cap_urn,
+                    clean_prompt or self.prompt,
+                    max_results=5,
+                )
+                cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+                cap_steps = build_capability_inspect_trace(
+                    urn=cap_urn,
+                    query=clean_prompt or self.prompt,
+                    allowed=invoke_result.allowed,
+                    reason=invoke_result.reason,
+                    rows=invoke_result.rows,
+                    bundle_source_count=len(invoke_result.rows) if invoke_result.allowed else 0,
+                    rejected_count=0,
+                    latency_ms=cap_latency_ms,
+                    descriptor=invoke_result.descriptor,
+                )
             if isinstance(decision, dict):
                 decision["capability_invoke_allowed"] = invoke_result.allowed
                 decision["capability_invoke_reason"] = invoke_result.reason
-            cap_steps = build_capability_inspect_trace(
-                urn=cap_urn,
-                query=clean_prompt or self.prompt,
-                allowed=invoke_result.allowed,
-                reason=invoke_result.reason,
-                rows=invoke_result.rows,
-                bundle_source_count=len(invoke_result.rows) if invoke_result.allowed else 0,
-                rejected_count=0,
-                latency_ms=cap_latency_ms,
-                descriptor=invoke_result.descriptor,
-            )
-            if isinstance(decision, dict):
                 decision["capability_steps"] = cap_steps
             if invoke_result.allowed and invoke_result.rows:
                 kept_rows = list(invoke_result.rows)
@@ -2984,6 +3008,7 @@ class LLMWorker(QThread):
                     latency_ms=cap_latency_ms,
                     knowledge_service="capability",
                     retrieval_strategy="attachment_capability",
+                    preset_id=cap_preset_id or None,
                     adapter_calls=tuple(
                         sorted(
                             {
@@ -3023,7 +3048,7 @@ class LLMWorker(QThread):
                     query_raw=self.prompt,
                     query_resolved=clean_prompt or self.prompt,
                     knowledge_service="capability",
-                    preset_id=None,
+                    preset_id=cap_preset_id or None,
                     adapter_filter=tuple(
                         sorted(
                             {

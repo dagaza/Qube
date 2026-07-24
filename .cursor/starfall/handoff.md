@@ -5,7 +5,7 @@
 STATUS: READY
 
 Phase 1 (#59) complete on this branch (see Delivered section below).
-Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) + slice 3 (T16) delivered on disk. Next run: T17 preset alias.
+Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) + slice 3 (T16) + slice 4 (T17) delivered on disk. Next run: T18 Sources UI label.
 
 
 
@@ -220,11 +220,37 @@ tests/test_capability_inspect_steps.py (T16, 9 tests)
 
 
 
-Not in this run (Phase 2 #60 — slices 4–5):
+Delivered (Phase 2 / #60 — slice 4 / T17):
 
 ```
 
-T17 — KnowledgePreset.capabilities + @[tool:user:…] alias resolver
+Slice 4 / T17 — KnowledgePreset.capabilities + @[tool:user:…] alias resolver:
+
+core/knowledge/presets.py
+
+  KnowledgePreset.capabilities field (canonical cap: URNs); validate/dedupe; adapter-only presets unchanged.
+
+core/integrations/preset_capability_alias.py
+
+  preset_capability_bundle resolver; invoke_preset_capability_bundle; INSPECT trace for alias→bundle.
+
+core/composer_attachments.py
+
+  resolve_attachment_routing: user: preset with capabilities → route:capability (dual grammar).
+
+workers/llm_worker.py
+
+  CAPABILITY route invokes preset bundles; preset_id on retrieval fingerprint.
+
+tests/test_preset_capability_alias.py (T17, 9 tests)
+
+```
+
+
+
+Not in this run (Phase 2 #60 — slice 5):
+
+```
 
 T18 — Sources UI source_capability label
 
@@ -278,7 +304,7 @@ Constraints (must hold):
 Test requirements:
 
 See `.cursor/starfall/test-plan.md` (Phase 1 COMPLETE T1–T13) and
-`.cursor/starfall/test-plan-phase2.md` (T14–T16 complete; T17–T18 planned).
+`.cursor/starfall/test-plan-phase2.md` (T14–T17 complete; T18 planned).
 
 
 

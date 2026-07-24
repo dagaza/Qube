@@ -360,6 +360,19 @@ def resolve_attachment_routing(
             "composer_attachments": _attachments_telemetry(attachments),
         }
     tool_id = primary.id
+    if tool_id.startswith("user:"):
+        from core.integrations.preset_capability_alias import preset_capability_bundle
+
+        bundle = preset_capability_bundle(tool_id)
+        if bundle is not None:
+            return {
+                "route": "capability",
+                "strategy": "attachment_preset_capability",
+                "capability_preset_id": bundle.preset_id,
+                "capability_urns": list(bundle.urns),
+                "capability_urn": bundle.urns[0],
+                "composer_attachments": _attachments_telemetry(attachments),
+            }
     if is_web_composer_tool(tool_id):
         return {
             "route": "web",

@@ -799,3 +799,72 @@ CLOSING TIME
 status: completed
 loop_count: 1
 
+
+# Run 007 - 2026-07-24T17:29:15.592247+00:00
+
+## Coordinator - 2026-07-24T18:35:00Z
+Phase: Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: T17 slice 4 delivered — KnowledgePreset.capabilities + @[tool:user:…] alias resolver; dual grammar preserved; adapter-only presets unchanged.
+Actions: Added presets.capabilities field + URN validation; preset_capability_alias resolver/bundle invoke/INSPECT; composer routing + LLMWorker bundle path; tests/test_preset_capability_alias.py (8 tests); T14–T16 regression pass; starfall_verify PASS (41 files).
+Decisions: Scoped closure to T17 only; T18 deferred per handoff. Capability presets may omit adapters when capabilities non-empty.
+Next step: Idle — commit T17 product files when ready; arm T18 via next.md.
+
+Architecture Review
+[x] P1 MCP provider-only UX  [x] P2 cap attachments not raw tools  [x] P3 explicit grants
+[x] P4 INSPECT provenance  [x] P5 shared registry  [x] P6 no mcp import leak
+[x] P7 default-deny  [x] P8 cap: provenance on bundle rows
+
+CLOSING TIME
+
+status: completed
+loop_count: 1
+
+## Hook Turn 1 - 2026-07-24T17:34:57.009931+00:00
+status: completed
+loop_count: 0
+
+## Repository Cartographer + Security & Permissions + Quality - 2026-07-24T18:42:00Z
+Phase: Self-Review
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Cartographer — T17 integrates via existing capability_invoke/bundle/INSPECT spine; no duplicate subsystem; adapter-only presets unchanged. Security — attach≠grant preserved; bundle partial-deny merges allowed caps only; preset URN validation strict. Quality — T17 8/8 pass; P6 clean; INSPECT trace builder untested at unit level; partial bundle deny UX is follow-up only.
+Actions: Re-ran starfall_verify PASS (41 files, 20 targets, guardrail clean). Self-review fix: pass preset_id=cap_preset_id into build_generic_bundle on CAPABILITY preset path (workers/llm_worker.py). Hook blocked turn-1 CLOSING TIME (1/3 turns); loop continues.
+Decisions: None new — turn-1 scoped closure stands; defer INSPECT trace unit test + partial-deny UX to turn 3 Testing (non-blockers).
+Next step: Turn 3 Testing — optional build_preset_capability_inspect_trace unit test; re-run T14–T17 regression + starfall_verify; then Documentation/Closing on turn 4+ with CLOSING TIME.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+## Hook Turn 2 - 2026-07-24T17:38:26.643264+00:00
+status: completed
+loop_count: 1
+
+## Quality + Product Review - 2026-07-24T18:48:00Z
+Phase: Testing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Quality — T17 INSPECT trace builder lacked unit test (turn 2 gap); added TestPresetInspectTrace asserting alias attachment, per-cap invoke steps with bundle_index, final bundle ranked step. Product — dual grammar + P1-P8 satisfied; adapter-only presets unchanged. T14–T17 45/45 PASS; starfall_verify PASS.
+Actions: Added test_build_preset_capability_inspect_trace_structure to tests/test_preset_capability_alias.py (T17 9 tests). Re-ran T14–T17 suite + starfall_verify. Updated handoff/evidence-map test counts.
+Decisions: None new. KI4 partial bundle deny UX remains deferred (non-blocker).
+Next step: Turn 4 Documentation/Closing — starfall_export next.md baton, PR summary, CLOSING TIME (3 coordinator turns now met).
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+## Hook Turn 1 - 2026-07-24T21:13:55.279276+00:00
+status: completed
+loop_count: 0
+

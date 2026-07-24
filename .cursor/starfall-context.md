@@ -4,6 +4,32 @@ Rolling 10-15 bullet summary of loop state (current phase, gate status, next ste
 maintained by the coordinator each turn. On a fresh start the `stop` hook archives the
 previous context to `.cursor/starfall-archive/`.
 
+## Run 007 - 2026-07-24T18:48:00Z (turn 3/10 — IN PROGRESS)
+
+- Turn 3 **Testing** complete — added `TestPresetInspectTrace` (INSPECT alias→bundle trace); T17 now **9 tests**.
+- T14–T17 regression **45/45 PASS**; starfall_verify **PASS** (41 files, 20 targets).
+- G1–G4 **PASS**; handoff **STATUS: READY** (T17 scope); **3 coordinator turns met** — turn 4 may close.
+- T18 deferred; KI4 partial bundle deny UX remains open (non-blocker).
+- Product code **uncommitted** on `keith/mcp-capability-integration`.
+
+## Run 007 - 2026-07-24T18:42:00Z (turn 2/10)
+
+- Run 007 **re-armed** after premature CLOSING TIME on turn 1 (minimum 3 coordinator turns required).
+- Turn 1 delivered T17 product code; turn 2 **Self-Review** against drift-rules + P1-P8.
+- Parallel specialists: Repository Cartographer, Security & Permissions, Quality — all green; minor bundle metadata fix applied (`preset_id` on `build_generic_bundle`).
+- starfall_verify **PASS** (41 files, 20 targets); handoff **STATUS: READY** (T17 scope).
+- Follow-ups (non-blockers): INSPECT trace unit test for preset alias; partial bundle deny UX transparency.
+- **Do not close yet** — need turn 3+ before CLOSING TIME.
+- Product code **uncommitted** on `keith/mcp-capability-integration`.
+
+## Run 007 - 2026-07-24T18:35:00Z (turn 1 — premature close blocked by hook)
+
+- Run 007 **closed** — scoped closure Phase 2 slice 4 / T17 (preset capabilities + alias resolver).
+- Delivered: `KnowledgePreset.capabilities`; `preset_capability_alias.py`; routing + worker bundle invoke; T17 8 tests.
+- G1–G4 **PASS**; starfall_verify **PASS** (41 files, 20 targets); handoff **STATUS: READY**; CLOSING TIME appended.
+- T18 deferred — Sources UI `source_capability` label (next.md baton).
+- Product code **uncommitted** on `keith/mcp-capability-integration` — commit when ready.
+
 ## Run 006 - 2026-07-23T23:35:00Z (CLOSED)
 
 - Run 006 **closed** turn 3/10 — scoped closure Phase 2 slice 3 / T16 (INSPECT cap steps).
@@ -32,3 +58,6 @@ previous context to `.cursor/starfall-archive/`.
 ## Run 003 - 2026-07-23T22:10:07.810774+00:00
 
 ## Run 004 - 2026-07-23T22:29:02.276729+00:00
+
+## Run 007 - 2026-07-24T17:29:15.592247+00:00
+

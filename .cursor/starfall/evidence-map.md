@@ -114,6 +114,17 @@ Evidence: `core/integrations/search/capability_search.py:search_integrations_cap
 Confidence: high
 Notes: Fuzzy search over cached descriptors; lock/tier from evaluate_access; P6 clean.
 
+## Phase 2 slice 4 / T17 — preset alias + capabilities field (on disk)
+Evidence: `core/knowledge/presets.py:KnowledgePreset.capabilities`;
+`core/integrations/preset_capability_alias.py:preset_capability_bundle`,
+`.../preset_capability_alias.py:invoke_preset_capability_bundle`;
+`core/composer_attachments.py:resolve_attachment_routing` (user: → capability);
+`workers/llm_worker.py` (preset bundle CAPABILITY path);
+`tests/test_preset_capability_alias.py` (T17, 9 tests).
+Confidence: high
+Notes: Dual grammar (Option A scoped): `@[cap:…]` canonical; `@[tool:user:…]` alias to cap bundle.
+Adapter-only presets unchanged. T18 remains.
+
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered
 Confidence: high

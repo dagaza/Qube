@@ -41,6 +41,17 @@ Remaining: any future path that emits `NormalizedHit.to_evidence_dict()` _withou
 short `_adapter` would reintroduce the skew; keep the short-id overlay when wiring new callers.
 Fix owner / next step: enforce the short-id overlay in the provider registry wiring (Phase 1).
 
+## KI4 Preset bundle partial-deny UX opaque [open]
+
+Discovered: 2026-07-24, Run 007 turn 2 Self-Review (Security expert)
+Impact: When a preset bundles multiple capabilities and some are denied, allowed rows merge
+into the turn bundle but per-cap deny reasons are not surfaced in user-facing context — user
+may not know part of the preset did not run.
+Workaround: INSPECT trace records per-cap invoke steps when trace is persisted; denied caps
+visible in Retrieval Inspector on success-path turns only.
+Fix owner / next step: optional T17 follow-up — append brief deny summary to tool_context when
+bundle partial-deny; not blocking T17 closure.
+
 ## KI3 Run 002 slice 1 reverted before commit [closed]
 
 Discovered: 2026-07-23, Phase 2 Code (Run 002 turn 3)

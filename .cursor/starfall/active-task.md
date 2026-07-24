@@ -7,13 +7,13 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Idle — Run 006 closed (Phase 2 / #60 slice 3 / T16 complete).
+Documentation / Closing (Run 007 turn 3 complete — turn 4 may emit CLOSING TIME).
 
 Current work item:
-Next Starfall run: T17 (KnowledgePreset.capabilities + @[tool:user:…] alias resolver).
+Phase 2 / #60 slice 4 / T17 — close Run 007 (T18 deferred).
 
 Mode:
-Idle
+Implementation (closure in progress)
 
 Owner:
 Starfall coordinator
@@ -21,17 +21,17 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 2 slice 3 / T16 — met on branch):
-- Pure capability INSPECT step builders (attachment→invoke→returned→ranked→cited).
-- capability_steps serialized on retrieval trace; Retrieval Inspector Summary/Explain render them.
-- LLMWorker CAPABILITY route records trace + RetrievalRecord with steps (success path).
-- T16 9 tests pass; T14+T15 regression pass; starfall_verify PASS.
+Success criteria (Phase 2 slice 4 / T17 — met on branch):
+- KnowledgePreset.capabilities field persists canonical cap: URNs.
+- @[tool:user:…] alias resolves to preset cap bundle; adapter-only presets unchanged.
+- resolve_attachment_routing + LLMWorker CAPABILITY bundle invoke with INSPECT steps.
+- T17 9 tests pass; T14–T16 regression pass; starfall_verify PASS.
 
 Current blockers:
 None.
 
 Next decision:
-Commit slice 3 product files, or arm next run with `next.md` for T17.
+Turn 4 Closing — regenerate next.md baton, PR summary, CLOSING TIME (3 coordinator turns met).
 
-Gate status (Phase 2 slice 3 / T16):
+Gate status (Phase 2 slice 4 / T17):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS
