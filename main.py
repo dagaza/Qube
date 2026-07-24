@@ -1628,9 +1628,11 @@ if __name__ == "__main__":
     from core.theme.feature_flags import is_generated_theme_enabled
     from core.theme.manager import ThemeManager
     from core.theme.storage import theme_storage_from_app_settings
+    from core.surface_fill.storage import surface_fill_storage_from_app_settings
 
     theme_manager = ThemeManager(
         storage=theme_storage_from_app_settings(),
+        surface_storage=surface_fill_storage_from_app_settings(),
         applicator=ThemeApplicator(
             use_generated_stylesheet=is_generated_theme_enabled(),
         ),

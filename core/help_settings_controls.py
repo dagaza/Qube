@@ -56,6 +56,7 @@ _SECTIONS_WITH_RESET_FOOTER = frozenset(
         "memory",
         "knowledge",
         "general",
+        "appearance.themes",
         "companion.desktop",
         "notifications",
     }

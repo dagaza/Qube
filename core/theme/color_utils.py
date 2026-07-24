@@ -106,6 +106,18 @@ def adjust_lightness(value: str, delta: float) -> str:
     return RGBA(r, g, b, rgba.a).to_rgba()
 
 
+def adjust_saturation(value: str, scale: float) -> str:
+    """Scale HSL saturation by ``scale`` (1.0 = unchanged, 0.0 = grayscale)."""
+    factor = max(0.0, min(1.0, float(scale)))
+    if factor >= 0.999:
+        return value
+    rgba = parse_color(value)
+    h, s, l = _rgb_to_hsl(rgba.r, rgba.g, rgba.b)
+    s = max(0.0, min(1.0, s * factor))
+    r, g, b = _hsl_to_rgb(h, s, l)
+    return RGBA(r, g, b, rgba.a).to_rgba()
+
+
 def with_alpha(value: str, alpha: float) -> str:
     rgba = parse_color(value)
     return RGBA(rgba.r, rgba.g, rgba.b, int(round(max(0.0, min(1.0, alpha)) * 255))).to_rgba()

@@ -47,6 +47,11 @@ from ui.components.sidebar_folder_list import (
 )
 from ui.components.ingest_progress_row import IngestProgressRow
 from core.theme.view_theme import view_resolved_theme
+from core.surface_fill.constants import SURFACE_LIBRARY_PREVIEW
+from ui.surface_fill.transcript_host import (
+    TranscriptWallpaperHost,
+    bind_transcript_wallpaper_readability,
+)
 from core.theme.widget_styles import (
     ACCENT_ICON,
     ACCENT_ICON_ACTIVE,
@@ -359,10 +364,16 @@ class LibraryView(QWidget):
         frame = QFrame()
         frame.setObjectName("LibraryPreviewStage")
 
-        # 🔑 FIX 1: Strip any global card styling from the main frame
+        # Strip card styling; wallpaper host paints the mainstage background.
         frame.setStyleSheet("background: transparent; border: none;")
 
-        layout = QVBoxLayout(frame)
+        outer_layout = QVBoxLayout(frame)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        mainstage_content = QWidget()
+        mainstage_content.setObjectName("LibraryMainstageContent")
+        layout = QVBoxLayout(mainstage_content)
         # Match ConversationsView._build_chat_stage so the toolbar row lines up with chat.
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
@@ -524,9 +535,16 @@ class LibraryView(QWidget):
         )
         layout.addWidget(self._transcript_width_host, stretch=1)
 
+        self._library_transcript_wallpaper_host = TranscriptWallpaperHost(
+            SURFACE_LIBRARY_PREVIEW,
+            mainstage_content,
+            parent=frame,
+        )
         self._apply_library_layout_mode()
         self._refresh_readability_toolbar(is_dark=True)
         self._apply_library_preview_readability()
+        self._refresh_transcript_wallpaper()
+        outer_layout.addWidget(self._library_transcript_wallpaper_host, stretch=1)
 
         return frame
 
@@ -736,15 +754,24 @@ class LibraryView(QWidget):
         self._apply_library_preview_readability()
         self._refresh_readability_toolbar()
 
+    def _refresh_transcript_wallpaper(self) -> None:
+        bind_transcript_wallpaper_readability(
+            getattr(self, "_library_transcript_wallpaper_host", None),
+            high_contrast=self._high_contrast_enabled,
+            reader_focus=self._focus_mode_enabled,
+        )
+
     def _on_reader_focus_toggled(self, checked: bool) -> None:
         self._focus_mode_enabled = bool(checked)
         self._refresh_readability_toolbar()
         self._apply_preview_reader_focus_opacity()
+        self._refresh_transcript_wallpaper()
 
     def _on_high_contrast_toggled(self, checked: bool) -> None:
         self._high_contrast_enabled = bool(checked)
         self._apply_library_preview_readability()
         self._refresh_readability_toolbar()
+        self._refresh_transcript_wallpaper()
 
     def _set_header_opacity(self, w: QWidget | None, opacity: float) -> None:
         if w is None:
@@ -1291,6 +1318,7 @@ class LibraryView(QWidget):
             self._apply_library_preview_readability()
 
         self._apply_library_list_surface(is_dark)
+        self._refresh_transcript_wallpaper()
 
     def _apply_library_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""

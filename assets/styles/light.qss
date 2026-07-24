@@ -132,7 +132,7 @@ QFrame#ComposerMentionShell QListWidget#ComposerMentionList::viewport {
     color: #1e293b;
 }
 
-#LibraryPreviewStage, #ChatStage, #SettingsScrollArea {
+#LibraryPreviewStage, #SettingsScrollArea {
     background-color: #ffffff;
 }
 
@@ -482,6 +482,34 @@ QPushButton[class~="BrandDangerButton"]:hover {
     border: 1px solid #b91c1c !important;
 }
 QPushButton[class~="BrandDangerButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
+QPushButton[class~="BrandCautionButton"] {
+    background-color: #eab308 !important;
+    color: #f8fafc !important;
+    border: 1px solid #ca8a04 !important;
+}
+QPushButton[class~="BrandCautionButton"]:hover {
+    background-color: #ca8a04 !important;
+    border: 1px solid #ca8a04 !important;
+}
+QPushButton[class~="BrandCautionButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
+QPushButton[class~="BrandSecondaryButton"] {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+}
+QPushButton[class~="BrandSecondaryButton"]:hover {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #94a3b8 !important;
+}
+QPushButton[class~="BrandSecondaryButton"]:disabled {
     background-color: rgba(100, 116, 139, 0.22) !important;
     color: rgba(148, 163, 184, 0.85) !important;
     border: 1px solid rgba(148, 163, 184, 0.35) !important;

@@ -10,6 +10,7 @@
 - How do I chat with a document I uploaded?
 - How do I rename or move a document?
 - Why does preview say “Reconstructing document from vector space…”?
+- Can I set a background behind the document preview?
 
 ## What it is
 
@@ -17,7 +18,7 @@
 
 Folders organize documents. **Main** is the default user folder for your uploads. **Qube** is reserved for app-managed content (including this help corpus). User ingest into **Qube** is blocked; selecting a help document for preview does not change the ingest target unless you explicitly click the **Qube** folder row.
 
-The sidebar lists folders and documents. The preview pane shows reconstructed text, metadata, and reading controls. A floating **Chat with document** button appears when a file is open.
+The sidebar lists folders and documents. The preview pane shows reconstructed text, metadata, and reading controls. Optional **library wallpaper** can sit behind the preview area—configure it under **Settings → Themes → Wallpapers**. A floating **Chat with document** button appears when a file is open.
 
 Press **?** in the sidebar header for the guided tour (`library`). This page summarizes controls for retrieval; the tour walks the layout spatially.
 
