@@ -65,7 +65,8 @@ Controls listed top-to-bottom for **Settings → Help**.
 ### Uninstall Qube
 
 - **Uninstall Qube and all data…**
-- **Remove Qube package only…**
+- **Remove Qube package only…** (Linux)
+- **Remove Qube app only…** (macOS)
 
 ## Related
 

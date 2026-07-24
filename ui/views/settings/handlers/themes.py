@@ -7,7 +7,15 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtWidgets import QCheckBox, QFileDialog
+from PyQt6.QtCore import QTimer
 
+from core.surface_fill.constants import (
+    SURFACE_CHAT_TRANSCRIPT,
+    SURFACE_LIBRARY_PREVIEW,
+)
+from core.surface_fill.import_wallpaper import import_wallpaper_image
+from core.surface_fill.models import SurfaceProfileSet, default_surface_profile_set
+from core.surface_fill.serialization import surface_profile_set_to_json
 from core.theme.catalog import ThemeCatalog, family_display_name
 from core.theme.customization_identity import (
     customization_identity_text,
@@ -20,9 +28,15 @@ from core.theme.follow_system import ThemeAppearancePreference
 from core.theme.schemes import DEFAULT_SCHEME_ID_DARK, BUILTIN_SCHEMES
 from core.theme.tokens import CORE_TOKEN_KEYS, ResolvedTheme, ThemeMode
 from core.theme.validation import ThemeValidationResult, ThemeValidator
+from ui.components.brand_buttons import (
+    apply_brand_caution,
+    apply_brand_primary,
+    apply_brand_secondary,
+)
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.theme_color_swatch import ThemeColorSwatch
 from ui.components.theme_picker_button import ThemePickerButton
+from ui.components.wallpaper_picker import WallpaperEditorWidget
 
 logger = logging.getLogger("Qube.UI.Settings.Themes")
 
@@ -48,15 +62,22 @@ class ThemesHandlersMixin:
         self._themes_draft_scheme_id = DEFAULT_SCHEME_ID_DARK
         self._themes_draft_overrides: dict[str, str] = {}
         self._themes_draft_appearance: ThemeAppearancePreference | None = None
+        self._themes_draft_surface_profiles = default_surface_profile_set()
         self._themes_pending_fallback_scheme_id: str | None = None
         self._themes_manager_subscribed = False
-        self._sync_themes_draft_from_applied()
+        self._sync_themes_draft_from_applied(defer_preview=True)
         picker = getattr(self, "themes_theme_picker", None)
         if isinstance(picker, ThemePickerButton):
             picker.apply_theme(is_dark)
         toggle = getattr(self, "themes_advanced_toggle", None)
         if toggle is not None:
             toggle.apply_theme(is_dark=is_dark)
+        for name in ("themes_chat_wallpaper", "themes_library_wallpaper"):
+            editor = getattr(self, name, None)
+            apply_theme = getattr(editor, "apply_theme", None)
+            if callable(apply_theme):
+                apply_theme(is_dark)
+        self._apply_themes_action_button_styles(is_dark)
         self._ensure_themes_manager_subscription()
 
     def _ensure_themes_preview_initialized(self, *, is_dark: bool | None = None) -> None:
@@ -79,6 +100,9 @@ class ThemesHandlersMixin:
 
         self._themes_preview_initialized = True
         self._wire_themes_section(is_dark=is_dark)
+
+    def _schedule_themes_preview_refresh(self) -> None:
+        QTimer.singleShot(0, self._refresh_themes_preview)
 
     def _ensure_themes_manager_subscription(self) -> None:
         if getattr(self, "_themes_manager_subscribed", False):
@@ -129,6 +153,106 @@ class ThemesHandlersMixin:
             return draft
         return self._themes_effective_appearance_for_ui()
 
+    def _applied_surface_profiles(self) -> SurfaceProfileSet:
+        manager = self._settings_theme_manager()
+        if manager is None:
+            return default_surface_profile_set()
+        return self._normalized_surface_profiles(manager.surface_profiles_active)
+
+    def _normalized_surface_profiles(self, profile_set: SurfaceProfileSet) -> SurfaceProfileSet:
+        merged = dict(default_surface_profile_set().profiles)
+        merged.update(profile_set.profiles)
+        return SurfaceProfileSet(profiles=merged)
+
+    def _themes_surface_profiles_dirty(self) -> bool:
+        draft = getattr(self, "_themes_draft_surface_profiles", default_surface_profile_set())
+        applied = self._applied_surface_profiles()
+        return surface_profile_set_to_json(draft) != surface_profile_set_to_json(applied)
+
+    def _draft_surface_profiles(self) -> SurfaceProfileSet:
+        return getattr(self, "_themes_draft_surface_profiles", default_surface_profile_set())
+
+    def _set_draft_surface_profile(self, surface_id: str, profile) -> None:
+        from core.surface_fill.models import SurfaceProfile
+
+        if not isinstance(profile, SurfaceProfile):
+            return
+        draft = self._draft_surface_profiles().with_surface(surface_id, profile)
+        self._themes_draft_surface_profiles = draft
+        self._refresh_themes_preview()
+        self._update_themes_action_buttons()
+
+    def _resolved_draft_chat_profile(self):
+        manager = self._settings_theme_manager()
+        if manager is None:
+            return None, None
+        draft = self._draft_surface_profiles()
+        profile = draft.for_surface(SURFACE_CHAT_TRANSCRIPT)
+        resolved = manager._surface_resolver.effective_profile(
+            draft,
+            SURFACE_CHAT_TRANSCRIPT,
+            schemes=manager.list_schemes(),
+            scheme_id=self._draft_scheme_id(),
+            mode=manager.preview_resolve(
+                scheme_id=self._draft_scheme_id(),
+                overrides=self._effective_draft_overrides(),
+            ).mode,
+        )
+        return profile, resolved.wallpaper
+
+    def _update_themes_wallpaper_controls(self) -> None:
+        draft = self._draft_surface_profiles()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        for surface_id, attr in (
+            (SURFACE_CHAT_TRANSCRIPT, "themes_chat_wallpaper"),
+            (SURFACE_LIBRARY_PREVIEW, "themes_library_wallpaper"),
+        ):
+            editor = getattr(self, attr, None)
+            if isinstance(editor, WallpaperEditorWidget):
+                editor.blockSignals(True)
+                editor.set_is_dark(is_dark)
+                editor.set_profile(draft.for_surface(surface_id), block_signals=True)
+                editor.blockSignals(False)
+
+    def _on_themes_chat_wallpaper_changed(self) -> None:
+        editor = getattr(self, "themes_chat_wallpaper", None)
+        if isinstance(editor, WallpaperEditorWidget):
+            self._set_draft_surface_profile(SURFACE_CHAT_TRANSCRIPT, editor.profile())
+
+    def _on_themes_library_wallpaper_changed(self) -> None:
+        editor = getattr(self, "themes_library_wallpaper", None)
+        if isinstance(editor, WallpaperEditorWidget):
+            self._set_draft_surface_profile(SURFACE_LIBRARY_PREVIEW, editor.profile())
+
+    def _on_wallpaper_import_requested(self, editor: WallpaperEditorWidget) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self.window(),
+            "Import wallpaper",
+            str(Path.home()),
+            "Images (*.png *.jpg *.jpeg *.webp);;All files (*.*)",
+        )
+        if not path:
+            return
+        try:
+            result = import_wallpaper_image(Path(path))
+        except OSError as exc:
+            PrestigeDialog(
+                self.window(),
+                "Import failed",
+                str(exc),
+                self._themes_dialog_is_dark(),
+            ).exec()
+            return
+        editor.apply_imported_image(result.filename)
+        if result.downscaled and result.stored_dimensions is not None:
+            width, height = result.stored_dimensions
+            PrestigeDialog(
+                self.window(),
+                "Image optimized",
+                f"The image was resized to {width}×{height} px for smoother performance.",
+                self._themes_dialog_is_dark(),
+            ).exec()
+
     def _themes_draft_is_dirty(self) -> bool:
         applied_scheme = self._themes_applied_scheme_id()
         draft_scheme = getattr(self, "_themes_draft_scheme_id", applied_scheme)
@@ -140,6 +264,8 @@ class ThemesHandlersMixin:
         applied_appearance = self._themes_applied_appearance()
         draft_appearance = getattr(self, "_themes_draft_appearance", None)
         if draft_appearance is not None and draft_appearance != applied_appearance:
+            return True
+        if self._themes_surface_profiles_dirty():
             return True
         return False
 
@@ -156,13 +282,17 @@ class ThemesHandlersMixin:
                     overrides["text_primary"] = adjust_text_for_contrast(text, background)
         return overrides
 
-    def _sync_themes_draft_from_applied(self) -> None:
+    def _sync_themes_draft_from_applied(self, *, defer_preview: bool = False) -> None:
         self._themes_draft_scheme_id = self._themes_applied_scheme_id()
         self._themes_draft_overrides = self._applied_core_overrides()
         self._themes_draft_appearance = self._themes_applied_appearance()
+        self._themes_draft_surface_profiles = self._applied_surface_profiles()
         self._themes_pending_fallback_scheme_id = None
         self._update_themes_controls_from_draft()
-        self._refresh_themes_preview()
+        if defer_preview:
+            self._schedule_themes_preview_refresh()
+        else:
+            self._refresh_themes_preview()
         self._update_themes_action_buttons()
 
     def _draft_scheme_id(self) -> str:
@@ -305,6 +435,17 @@ class ThemesHandlersMixin:
             cb.setChecked(pref_id == appearance.value)
             cb.blockSignals(False)
 
+    def _apply_themes_action_button_styles(self, is_dark: bool) -> None:
+        revert_btn = getattr(self, "themes_revert_btn", None)
+        if revert_btn is not None:
+            apply_brand_caution(revert_btn, icon_name="fa5s.undo", is_dark=is_dark)
+        cancel_btn = getattr(self, "themes_cancel_btn", None)
+        if cancel_btn is not None:
+            apply_brand_secondary(cancel_btn, is_dark=is_dark)
+        apply_btn = getattr(self, "themes_apply_btn", None)
+        if apply_btn is not None:
+            apply_brand_primary(apply_btn, is_dark=is_dark)
+
     def _apply_themes_choice_checkbox_styles(self) -> None:
         """Re-apply Prestige checkbox styling after dynamic theme variant rebuild."""
         apply_style = getattr(self, "_apply_settings_checkbox_style", None)
@@ -314,6 +455,16 @@ class ThemesHandlersMixin:
             apply_style(cb)
         for cb in getattr(self, "themes_variant_cbs", {}).values():
             apply_style(cb)
+        for editor in (
+            getattr(self, "themes_chat_wallpaper", None),
+            getattr(self, "themes_library_wallpaper", None),
+        ):
+            if editor is None:
+                continue
+            for cb in getattr(editor, "_mode_cbs", {}).values():
+                apply_style(cb)
+            for cb in getattr(editor, "_overlay_cbs", {}).values():
+                apply_style(cb)
         layout = getattr(self, "themes_variant_layout", None)
         if layout is not None:
             for idx in range(layout.count()):
@@ -358,6 +509,7 @@ class ThemesHandlersMixin:
                 swatch.set_color(self._effective_token_color(token_key))
                 swatch.blockSignals(False)
 
+        self._update_themes_wallpaper_controls()
         self._apply_themes_choice_checkbox_styles()
 
     def _draft_validation(self) -> ThemeValidationResult | None:
@@ -401,20 +553,38 @@ class ThemesHandlersMixin:
             scheme_id=self._draft_scheme_id(),
             overrides=self._effective_draft_overrides(),
         )
-        panel.apply_theme(resolved)
+        chat_profile, chat_wallpaper = self._resolved_draft_chat_profile()
+        panel.apply_theme(
+            resolved,
+            chat_profile=chat_profile,
+            chat_resolved_wallpaper=chat_wallpaper,
+        )
         self._update_theme_contrast_status()
 
     def _update_themes_action_buttons(self) -> None:
         dirty = self._themes_draft_is_dirty()
         validation = self._draft_validation()
         can_save = validation.can_save if validation is not None else True
-        for name in ("themes_revert_btn", "themes_cancel_btn"):
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        # Keep enabled so widget-level brand QSS and :hover render on every platform.
+        # Clicks are guarded when the draft is clean or Apply would fail validation.
+        for name in ("themes_revert_btn", "themes_cancel_btn", "themes_apply_btn"):
             btn = getattr(self, name, None)
             if btn is not None:
-                btn.setEnabled(dirty)
+                btn.setEnabled(True)
+        self._apply_themes_action_button_styles(is_dark)
         apply_btn = getattr(self, "themes_apply_btn", None)
         if apply_btn is not None:
-            apply_btn.setEnabled(dirty and can_save)
+            if dirty and can_save:
+                apply_btn.setToolTip("Apply draft theme to the running app")
+            elif dirty:
+                apply_btn.setToolTip(
+                    "Fix contrast issues before applying this theme draft"
+                )
+            else:
+                apply_btn.setToolTip(
+                    "Change a theme or wallpaper setting to enable Apply"
+                )
         save_btn = getattr(self, "themes_save_as_btn", None)
         if save_btn is not None:
             has_overrides = self._themes_has_customization()
@@ -475,6 +645,8 @@ class ThemesHandlersMixin:
         self._update_themes_action_buttons()
 
     def _on_themes_apply_clicked(self) -> None:
+        if not self._themes_draft_is_dirty():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return
@@ -487,6 +659,8 @@ class ThemesHandlersMixin:
                 self._themes_dialog_is_dark(),
             ).exec()
             return
+
+        surface_dirty = self._themes_surface_profiles_dirty()
 
         applied_appearance = self._themes_applied_appearance()
         draft_appearance = getattr(self, "_themes_draft_appearance", None)
@@ -511,21 +685,34 @@ class ThemesHandlersMixin:
                 persist=True,
             )
 
+        if surface_dirty:
+            manager._surface_profiles_draft = self._draft_surface_profiles()
+            manager.apply_surface_profiles(persist=True)
+
         self._themes_draft_overrides = self._applied_core_overrides()
         self._themes_draft_appearance = manager.appearance_preference
+        self._themes_draft_surface_profiles = self._applied_surface_profiles()
         self._update_themes_controls_from_draft()
         self._update_themes_identity_label()
         self._update_themes_action_buttons()
         logger.info("Applied theme from Settings → Themes")
 
     def _on_themes_revert_clicked(self) -> None:
+        if not self._themes_draft_is_dirty():
+            return
         self._sync_themes_draft_from_applied()
 
     def _on_themes_cancel_clicked(self) -> None:
+        if not self._themes_draft_is_dirty():
+            return
         self._sync_themes_draft_from_applied()
 
     def _on_themes_section_enter(self) -> None:
-        self._ensure_themes_preview_initialized()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_themes_action_button_styles(is_dark)
+        if getattr(self, "_themes_preview_initialized", False):
+            return
+        QTimer.singleShot(0, self._ensure_themes_preview_initialized)
 
     def _on_themes_section_leave(self) -> None:
         if self._themes_draft_is_dirty():
@@ -541,6 +728,12 @@ class ThemesHandlersMixin:
         manager._storage._last_scheme_by_polarity.clear()
         _mode, scheme_id = manager._storage.load()
         manager.apply(scheme_id=scheme_id, overrides=None, persist=True)
+
+        manager._surface_profiles_active = default_surface_profile_set()
+        manager._surface_profiles_draft = None
+        manager._surface_storage.save_active(manager._surface_profiles_active, persist=True)
+        manager._surface_storage.save_draft(None, persist=True)
+        manager._notify_surface_refresh()
 
         auto_cb = getattr(self, "themes_auto_adjust_cb", None)
         if auto_cb is not None:

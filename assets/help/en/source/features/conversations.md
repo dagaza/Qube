@@ -11,12 +11,13 @@
 - How do I export or copy a conversation?
 - How do I open sources or citations in a reply?
 - Can I regenerate or edit a message?
+- How do I change the chat background wallpaper?
 
 ## What it is
 
 **Conversations** is Qube's main chat view. Each thread keeps its own message history, composer, and reading area. Use it to ask questions, attach `@[tool:…]` tokens, and read grounded answers with citations.
 
-The **left sidebar** lists folders and chats (including the built-in **Main** folder). The **main stage** shows the transcript, a readability toolbar, and the composer. The **right-hand tools panel** (global, not chat-specific) holds model, voice, generation, and retrieval toggles you can adjust while chatting. **Per-message sources** and citation previews live on assistant replies—not inside the tools panel.
+The **left sidebar** lists folders and chats (including the built-in **Main** folder). The **main stage** shows the transcript, a readability toolbar, and the composer. Optional **chat wallpaper** (gradient, colour, or image) sits behind the transcript—configure it under **Settings → Themes → Wallpapers**. The **right-hand tools panel** (global, not chat-specific) holds model, voice, generation, and retrieval toggles you can adjust while chatting. **Per-message sources** and citation previews live on assistant replies—not inside the tools panel.
 
 Press **?** in the sidebar header for a spatial guided tour (`conversations`). This page summarizes controls in retrieval-friendly prose; the tour walks the layout button-by-button.
 

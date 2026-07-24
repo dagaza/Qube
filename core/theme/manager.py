@@ -30,6 +30,11 @@ from core.theme.schemes import BUILTIN_SCHEMES, default_scheme_id_for_mode
 from core.theme.storage import ThemeStorage
 from core.theme.tokens import ResolvedTheme, ThemeMode
 from core.theme.validation import ThemeValidationResult, ThemeValidator
+from core.surface_fill.constants import V2_SURFACES
+from core.surface_fill.models import SurfaceProfile, SurfaceProfileSet, ValidatedSurfaceProfile
+from core.surface_fill.resolver import SurfaceFillResolver, merge_surface_profile_sets
+from core.surface_fill.storage import SurfaceFillStorage, surface_fill_storage_from_app_settings
+from core.surface_fill.validation import SurfaceFillValidator
 
 # Ensure built-in derivation strategies are registered.
 import core.theme.strategies  # noqa: F401
@@ -47,18 +52,26 @@ class ThemeManager:
         self,
         *,
         storage: ThemeStorage | None = None,
+        surface_storage: SurfaceFillStorage | None = None,
         resolver: ThemeResolver | None = None,
         applicator: ThemeApplicator | None = None,
         validator: ThemeValidator | None = None,
+        surface_validator: SurfaceFillValidator | None = None,
+        surface_resolver: SurfaceFillResolver | None = None,
     ) -> None:
         self._storage = storage or ThemeStorage()
+        self._surface_storage = surface_storage or SurfaceFillStorage()
         self._resolver = resolver or ThemeResolver(BUILTIN_SCHEMES)
         self._applicator = applicator or ThemeApplicator()
         self._validator = validator or ThemeValidator()
+        self._surface_validator = surface_validator or SurfaceFillValidator()
+        self._surface_resolver = surface_resolver or SurfaceFillResolver()
         self._subscribers: list[Callable[[ResolvedTheme], None]] = []
+        self._surface_refresh_callbacks: list[Callable[[], None]] = []
 
         mode, scheme_id = self._storage.load()
         self._current = self._resolve(mode=mode, scheme_id=scheme_id)
+        self._surface_profiles_active, self._surface_profiles_draft = self._surface_storage.load()
 
     @property
     def current(self) -> ResolvedTheme:
@@ -119,6 +132,91 @@ class ThemeManager:
     def subscribe(self, callback: Callable[[ResolvedTheme], None]) -> None:
         self._subscribers.append(callback)
 
+    def register_surface_refresh(self, callback: Callable[[], None]) -> None:
+        """Register a host/widget refresh hook (Phase 1+ compositor)."""
+        self._surface_refresh_callbacks.append(callback)
+
+    @property
+    def surface_profiles_active(self) -> SurfaceProfileSet:
+        return self._surface_profiles_active
+
+    @property
+    def surface_profiles_draft(self) -> SurfaceProfileSet | None:
+        return self._surface_profiles_draft
+
+    def effective_surface_profiles(self) -> SurfaceProfileSet:
+        return merge_surface_profile_sets(
+            self._surface_profiles_active,
+            self._surface_profiles_draft,
+        )
+
+    def surface_profile(self, surface_id: str) -> SurfaceProfile:
+        return self.effective_surface_profiles().for_surface(surface_id)
+
+    def set_surface_profile_draft(
+        self,
+        surface_id: str,
+        profile: SurfaceProfile,
+        *,
+        persist: bool = True,
+    ) -> None:
+        if surface_id not in V2_SURFACES:
+            raise ValueError(f"Unknown surface: {surface_id!r}")
+        base = self._surface_profiles_draft or self._surface_profiles_active
+        draft = base.with_surface(surface_id, profile)
+        self._surface_profiles_draft = draft
+        self._surface_storage.save_draft(draft, persist=persist)
+
+    def revert_surface_profiles_draft(self, *, persist: bool = True) -> None:
+        self._surface_profiles_draft = None
+        self._surface_storage.save_draft(None, persist=persist)
+
+    def apply_surface_profiles(self, *, persist: bool = True) -> SurfaceProfileSet:
+        """Persist draft surface profiles (or keep active) and refresh hosts."""
+        if self._surface_profiles_draft is not None:
+            self._surface_profiles_active = self._surface_profiles_draft
+            self._surface_profiles_draft = None
+            self._surface_storage.save_active(self._surface_profiles_active, persist=persist)
+            self._surface_storage.save_draft(None, persist=persist)
+        self._notify_surface_refresh()
+        return self._surface_profiles_active
+
+    def validate_surface_profile(
+        self,
+        surface_id: str,
+        profile: SurfaceProfile | None = None,
+    ) -> ValidatedSurfaceProfile:
+        resolved_profile = profile or self.surface_profile(surface_id)
+        schemes = self.list_schemes()
+        effective = self._surface_resolver.effective_profile(
+            SurfaceProfileSet(profiles={surface_id: resolved_profile}),
+            surface_id,
+            schemes=schemes,
+            scheme_id=self.scheme_id,
+            mode=self.mode,
+        )
+        return self._surface_validator.validate_profile(
+            surface_id,
+            resolved_profile,
+            resolved_wallpaper=effective.wallpaper,
+        )
+
+    def validate_all_surface_profiles(self) -> list[ValidatedSurfaceProfile]:
+        results: list[ValidatedSurfaceProfile] = []
+        for surface_id in sorted(V2_SURFACES):
+            results.append(self.validate_surface_profile(surface_id))
+        return results
+
+    def resolved_effective_surface_profile(self, surface_id: str) -> SurfaceProfile:
+        """Profile with theme_default / preset references expanded."""
+        return self._surface_resolver.effective_profile(
+            self.effective_surface_profiles(),
+            surface_id,
+            schemes=self.list_schemes(),
+            scheme_id=self.scheme_id,
+            mode=self.mode,
+        )
+
     def preview_resolve(
         self,
         *,
@@ -159,6 +257,7 @@ class ThemeManager:
         if persist:
             self._storage.save(mode=resolved.mode, scheme_id=resolved.scheme_id)
         self._notify(resolved)
+        self._notify_surface_refresh()
         return resolved
 
     def toggle_polarity(
@@ -358,3 +457,7 @@ class ThemeManager:
     def _notify(self, resolved: ResolvedTheme) -> None:
         for callback in list(self._subscribers):
             callback(resolved)
+
+    def _notify_surface_refresh(self) -> None:
+        for callback in list(self._surface_refresh_callbacks):
+            callback()

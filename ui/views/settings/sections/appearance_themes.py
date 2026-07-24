@@ -8,13 +8,20 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from core.theme.constants import UNRESOLVED_TOKEN_COLOR
+from ui.components.brand_buttons import (
+    apply_brand_caution,
+    apply_brand_primary,
+    apply_brand_secondary,
+)
 from ui.components.theme_color_swatch import ThemeColorSwatch
 from ui.components.theme_picker_button import ThemePickerButton
+from ui.components.wallpaper_picker import WallpaperEditorWidget
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_section_reset_footer,
@@ -22,6 +29,18 @@ from ui.views.settings.widgets import (
     make_disclosure_row,
     make_settings_hint,
 )
+
+_THEMES_ACTION_BTN_MIN_WIDTH = 96
+_THEMES_ACTION_BTN_MIN_HEIGHT = 36
+
+
+def _style_themes_action_button(btn: QPushButton) -> None:
+    btn.setMinimumWidth(_THEMES_ACTION_BTN_MIN_WIDTH)
+    btn.setMinimumHeight(_THEMES_ACTION_BTN_MIN_HEIGHT)
+    policy = btn.sizePolicy()
+    policy.setVerticalPolicy(QSizePolicy.Policy.Fixed)
+    btn.setSizePolicy(policy)
+
 
 _SIMPLE_THEME_TOKENS: tuple[tuple[str, str], ...] = (
     ("accent", "Accent"),
@@ -187,6 +206,32 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     customize_layout.addWidget(host.themes_advanced_panel)
     layout.addWidget(customize_card)
 
+    wallpapers_card, wallpapers_layout = begin_settings_section_card(host, is_dark=is_dark)
+    host.themes_wallpapers_card = wallpapers_card
+    add_subsection_to_layout(wallpapers_layout, "Wallpapers")
+    wallpapers_layout.addWidget(
+        make_settings_hint(
+            "Decorate chat and library transcript backgrounds. Wallpapers preview "
+            "here until you press Apply; they never change core theme tokens."
+        )
+    )
+    host.themes_chat_wallpaper = WallpaperEditorWidget("Chat wallpaper", parent=host)
+    host.themes_chat_wallpaper.profileChanged.connect(host._on_themes_chat_wallpaper_changed)
+    host.themes_chat_wallpaper.importImageRequested.connect(
+        lambda: host._on_wallpaper_import_requested(host.themes_chat_wallpaper)
+    )
+    wallpapers_layout.addWidget(host.themes_chat_wallpaper)
+
+    host.themes_library_wallpaper = WallpaperEditorWidget("Library wallpaper", parent=host)
+    host.themes_library_wallpaper.profileChanged.connect(
+        host._on_themes_library_wallpaper_changed
+    )
+    host.themes_library_wallpaper.importImageRequested.connect(
+        lambda: host._on_wallpaper_import_requested(host.themes_library_wallpaper)
+    )
+    wallpapers_layout.addWidget(host.themes_library_wallpaper)
+    layout.addWidget(wallpapers_card)
+
     preview_card, preview_layout = begin_settings_section_card(host, is_dark=is_dark)
     host.themes_preview_card = preview_card
     add_subsection_to_layout(preview_layout, "Preview")
@@ -205,19 +250,27 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     actions_row = QHBoxLayout()
     actions_row.setSpacing(10)
     host.themes_revert_btn = QPushButton("Revert")
+    host.themes_revert_btn.setObjectName("ThemesRevertButton")
     host.themes_revert_btn.setToolTip("Reset draft to the currently applied theme")
     host.themes_revert_btn.clicked.connect(host._on_themes_revert_clicked)
+    apply_brand_caution(host.themes_revert_btn, icon_name="fa5s.undo")
+    _style_themes_action_button(host.themes_revert_btn)
     actions_row.addWidget(host.themes_revert_btn)
 
     host.themes_cancel_btn = QPushButton("Cancel")
+    host.themes_cancel_btn.setObjectName("ThemesCancelButton")
     host.themes_cancel_btn.setToolTip("Discard draft changes")
     host.themes_cancel_btn.clicked.connect(host._on_themes_cancel_clicked)
+    apply_brand_secondary(host.themes_cancel_btn)
+    _style_themes_action_button(host.themes_cancel_btn)
     actions_row.addWidget(host.themes_cancel_btn)
 
     host.themes_apply_btn = QPushButton("Apply")
     host.themes_apply_btn.setObjectName("ThemesApplyButton")
     host.themes_apply_btn.setToolTip("Apply draft theme to the running app")
     host.themes_apply_btn.clicked.connect(host._on_themes_apply_clicked)
+    apply_brand_primary(host.themes_apply_btn)
+    _style_themes_action_button(host.themes_apply_btn)
     actions_row.addWidget(host.themes_apply_btn)
     actions_row.addStretch()
     layout.addLayout(actions_row)

@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Optional
 
 import qtawesome as qta
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QPushButton
 
 from core.theme.accessors import theme_for
@@ -19,9 +20,10 @@ BRAND_PRIMARY = "primary"
 BRAND_SUCCESS = "success"
 BRAND_DANGER = "danger"
 BRAND_CAUTION = "caution"
+BRAND_SECONDARY = "secondary"
 
 _BRAND_VARIANTS = frozenset(
-    {BRAND_PRIMARY, BRAND_SUCCESS, BRAND_DANGER, BRAND_CAUTION}
+    {BRAND_PRIMARY, BRAND_SUCCESS, BRAND_DANGER, BRAND_CAUTION, BRAND_SECONDARY}
 )
 
 
@@ -39,74 +41,140 @@ def brand_fg_color(
     return theme_for(is_dark=is_dark, resolved=theme).brand_fg
 
 
-def _brand_disabled_qss(theme: ResolvedTheme) -> str:
+def _brand_disabled_qss(theme: ResolvedTheme, variant: str) -> str:
+    """Muted variant tint when disabled — keeps semantic color visible (not flat gray)."""
+    if variant == BRAND_PRIMARY:
+        bg = with_alpha(theme.accent, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.accent, 0.45)
+    elif variant == BRAND_SUCCESS:
+        bg = with_alpha(theme.success, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.success, 0.45)
+    elif variant == BRAND_DANGER:
+        bg = with_alpha(theme.error, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.error, 0.45)
+    elif variant == BRAND_CAUTION:
+        bg = with_alpha(theme.warning, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.warning, 0.45)
+    elif variant == BRAND_SECONDARY:
+        border = theme.border_subtle if theme.is_dark else theme.border
+        bg = with_alpha("#000000", 0.12) if theme.is_dark else with_alpha(theme.surface_elevated, 0.85)
+        fg = with_alpha(theme.text_primary, 0.55)
+        border = with_alpha(border, 0.55)
+    else:
+        bg = theme.brand_disabled_bg
+        fg = theme.brand_disabled_fg
+        border = with_alpha(theme.border, 0.35)
     return (
-        f"background-color: {theme.brand_disabled_bg};"
-        f" color: {theme.brand_disabled_fg};"
-        f" border: 1px solid {with_alpha(theme.border, 0.35)};"
+        f"background-color: {bg} !important;"
+        f" color: {fg} !important;"
+        f" border: 1px solid {border} !important;"
     )
+
+
+def _brand_button_selector(button: QPushButton) -> str:
+    """Prefer #objectName selectors — they beat app-level QPushButton rules reliably."""
+    object_name = button.objectName()
+    if object_name:
+        return f"QPushButton#{object_name}"
+    return "QPushButton"
+
+
+def _brand_class_tag(variant: str) -> str:
+    """Only primary carries PrimaryActionButton (app-level disabled gray targets it)."""
+    if variant == BRAND_PRIMARY:
+        return "PrimaryActionButton BrandPrimaryButton"
+    if variant == BRAND_SUCCESS:
+        return "BrandSuccessButton"
+    if variant == BRAND_CAUTION:
+        return "BrandCautionButton"
+    if variant == BRAND_SECONDARY:
+        return "BrandSecondaryButton"
+    return "BrandDangerButton"
+
+
+def _scoped_brand_qss(selector: str, template: str) -> str:
+    return template.replace("QPushButton", selector)
 
 
 def _semantic_button_qss(
     theme: ResolvedTheme,
     *,
+    variant: str,
+    selector: str,
     base: str,
     hover: str,
     pressed: str,
     border: str,
 ) -> str:
     fg = theme.brand_fg
-    disabled = _brand_disabled_qss(theme)
-    return f"""
+    disabled = _brand_disabled_qss(theme, variant)
+    return _scoped_brand_qss(
+        selector,
+        f"""
         QPushButton {{
-            background-color: {base};
-            color: {fg};
-            border: 1px solid {border};
+            background-color: {base} !important;
+            color: {fg} !important;
+            border: 1px solid {border} !important;
             border-radius: 6px;
-            padding: 8px 15px;
+            padding: 10px 20px;
             font-weight: 700;
         }}
         QPushButton:hover {{
-            background-color: {hover};
-            border: 1px solid {hover};
+            background-color: {hover} !important;
+            border: 1px solid {hover} !important;
         }}
         QPushButton:pressed {{
-            background-color: {pressed};
-            border: 1px solid {pressed};
+            background-color: {pressed} !important;
+            border: 1px solid {pressed} !important;
         }}
         QPushButton:disabled {{
             {disabled}
         }}
-    """
+    """,
+    )
 
 
-def brand_qss_for_variant(variant: str, theme: ResolvedTheme) -> str:
-    disabled = _brand_disabled_qss(theme)
+def brand_qss_for_variant(
+    variant: str,
+    theme: ResolvedTheme,
+    *,
+    selector: str = "QPushButton",
+) -> str:
     if variant == BRAND_PRIMARY:
-        return f"""
+        disabled = _brand_disabled_qss(theme, variant)
+        return _scoped_brand_qss(
+            selector,
+            f"""
         QPushButton {{
-            background-color: {theme.accent};
-            color: {theme.brand_fg};
-            border: 1px solid {theme.accent};
+            background-color: {theme.accent} !important;
+            color: {theme.brand_fg} !important;
+            border: 1px solid {theme.accent} !important;
             border-radius: 6px;
-            padding: 8px 15px;
+            padding: 10px 20px;
             font-weight: 700;
         }}
         QPushButton:hover {{
-            background-color: {theme.accent_hover};
-            border: 1px solid {theme.accent_hover};
+            background-color: {theme.accent_hover} !important;
+            border: 1px solid {theme.accent_hover} !important;
         }}
         QPushButton:pressed {{
-            background-color: {theme.accent_pressed};
-            border: 1px solid {theme.accent_pressed};
+            background-color: {theme.accent_pressed} !important;
+            border: 1px solid {theme.accent_pressed} !important;
         }}
         QPushButton:disabled {{
             {disabled}
         }}
-    """
+    """,
+        )
     if variant == BRAND_SUCCESS:
         return _semantic_button_qss(
             theme,
+            variant=variant,
+            selector=selector,
             base=theme.success,
             hover=adjust_lightness(theme.success, -0.08),
             pressed=adjust_lightness(theme.success, -0.16),
@@ -115,6 +183,8 @@ def brand_qss_for_variant(variant: str, theme: ResolvedTheme) -> str:
     if variant == BRAND_DANGER:
         return _semantic_button_qss(
             theme,
+            variant=variant,
+            selector=selector,
             base=theme.error,
             hover=adjust_lightness(theme.error, -0.08),
             pressed=adjust_lightness(theme.error, -0.16),
@@ -123,10 +193,43 @@ def brand_qss_for_variant(variant: str, theme: ResolvedTheme) -> str:
     if variant == BRAND_CAUTION:
         return _semantic_button_qss(
             theme,
+            variant=variant,
+            selector=selector,
             base=theme.warning,
             hover=adjust_lightness(theme.warning, -0.08),
             pressed=adjust_lightness(theme.warning, -0.16),
             border=adjust_lightness(theme.warning, -0.12),
+        )
+    if variant == BRAND_SECONDARY:
+        border = theme.border_subtle if theme.is_dark else theme.border
+        bg = with_alpha("#000000", 0.2) if theme.is_dark else theme.surface_elevated
+        hover = theme.surface_hover
+        pressed = theme.surface_pressed
+        fg = theme.text_primary
+        disabled = _brand_disabled_qss(theme, variant)
+        return _scoped_brand_qss(
+            selector,
+            f"""
+        QPushButton {{
+            background-color: {bg} !important;
+            color: {fg} !important;
+            border: 1px solid {border} !important;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-weight: 700;
+        }}
+        QPushButton:hover {{
+            background-color: {hover} !important;
+            border: 1px solid {border} !important;
+        }}
+        QPushButton:pressed {{
+            background-color: {pressed} !important;
+            border: 1px solid {border} !important;
+        }}
+        QPushButton:disabled {{
+            {disabled}
+        }}
+    """,
         )
     raise ValueError(f"Unknown brand variant: {variant!r}")
 
@@ -140,18 +243,12 @@ def apply_brand_style(
     is_dark: bool | None = None,
 ) -> None:
     resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
-    qss = brand_qss_for_variant(variant, resolved)
+    selector = _brand_button_selector(button)
+    qss = brand_qss_for_variant(variant, resolved, selector=selector)
 
-    if variant == BRAND_PRIMARY:
-        class_tag = "PrimaryActionButton BrandPrimaryButton"
-    elif variant == BRAND_SUCCESS:
-        class_tag = "PrimaryActionButton BrandSuccessButton"
-    elif variant == BRAND_CAUTION:
-        class_tag = "PrimaryActionButton BrandCautionButton"
-    else:
-        class_tag = "PrimaryActionButton BrandDangerButton"
-
-    button.setProperty("class", class_tag)
+    button.setProperty("class", _brand_class_tag(variant))
+    button.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
     button.setStyleSheet(qss)
 
     if icon_name is not None:
@@ -215,4 +312,16 @@ def apply_brand_caution(
 ) -> None:
     apply_brand_style(
         button, BRAND_CAUTION, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )
+
+
+def apply_brand_secondary(
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
+) -> None:
+    apply_brand_style(
+        button, BRAND_SECONDARY, icon_name=icon_name, theme=theme, is_dark=is_dark
     )
