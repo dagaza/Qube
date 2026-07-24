@@ -34,7 +34,8 @@ from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from core.composer_attachments import validate_file_token
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
-from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_list_qss import apply_sidebar_row_theme
+from ui.shell_theme import sidebar_row_action_icon_color
 from ui.components.sidebar_folder_list import (
     FOLDER_ROW_MARGIN_LEFT,
     ROW_KIND_DOCUMENT,
@@ -45,6 +46,20 @@ from ui.components.sidebar_folder_list import (
     create_sidebar_header_actions_row,
 )
 from ui.components.ingest_progress_row import IngestProgressRow
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import (
+    ACCENT_ICON,
+    ACCENT_ICON_ACTIVE,
+    CHAT_WITH_DOC_FAB,
+    DANGER_ICON,
+    GHOST_ICON_BUTTON,
+    LINK_ICON,
+    LIST_SURFACE,
+    MUTED_ICON,
+    TRANSPARENT_FRAME,
+    TRANSPARENT_TEXT_PREVIEW,
+    UTILITY_ICON_BUTTON,
+)
 import logging
 
 logger = logging.getLogger("Qube.UI.Library")
@@ -87,8 +102,6 @@ ALIGN_JUSTIFY = "align_justify"
 _PREVIEW_TITLE_SOFT_BREAK = "\u200b"
 _CHAT_WITH_DOC_FAB_SIZE = 52
 _CHAT_WITH_DOC_FAB_MARGIN = 24
-_BRAND_PURPLE = "#8b5cf6"
-_BRAND_PURPLE_ACTIVE = "#c4b5fd"
 
 
 def _filename_title_for_label(text: str) -> str:
@@ -282,24 +295,17 @@ class LibraryView(QWidget):
         self._chat_with_doc_btn.setFixedSize(_CHAT_WITH_DOC_FAB_SIZE, _CHAT_WITH_DOC_FAB_SIZE)
         self._chat_with_doc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._chat_with_doc_btn.setToolTip("Chat with document")
+        theme = self._theme(True)
         self._chat_with_doc_btn.setIcon(
-            qta.icon("fa5s.comment-alt", color="#f8fafc")
+            qta.icon("fa5s.comment-alt", color=theme.brand_fg)
         )
         self._chat_with_doc_btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX + 2, _CHAT_UTILITY_ICON_PX + 2))
         self._chat_with_doc_btn.setStyleSheet(
-            f"""
-            QPushButton#LibraryChatWithDocFab {{
-                background-color: {_BRAND_PURPLE};
-                border: none;
-                border-radius: {_CHAT_WITH_DOC_FAB_SIZE // 2}px;
-            }}
-            QPushButton#LibraryChatWithDocFab:hover {{
-                background-color: #7c3aed;
-            }}
-            QPushButton#LibraryChatWithDocFab:pressed {{
-                background-color: #6d28d9;
-            }}
-        """
+            theme.style(
+                CHAT_WITH_DOC_FAB,
+                radius=_CHAT_WITH_DOC_FAB_SIZE // 2,
+                object_name="LibraryChatWithDocFab",
+            )
         )
         self._chat_with_doc_btn.clicked.connect(self._on_chat_with_document_clicked)
         self._chat_with_doc_btn.hide()
@@ -577,6 +583,9 @@ class LibraryView(QWidget):
         )
         self.set_layout_mode(next_mode)
 
+    def _theme(self, is_dark: bool | None = None):
+        return view_resolved_theme(self, is_dark=is_dark)
+
     def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
         pixmap = QPixmap(svg_path)
         if pixmap.isNull():
@@ -602,8 +611,8 @@ class LibraryView(QWidget):
             return
         if is_dark is None:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = _BRAND_PURPLE
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        theme = self._theme(is_dark)
+        icon_color = theme.color(ACCENT_ICON)
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
             btn.setIcon(
                 self._make_tinted_svg_icon(
@@ -624,12 +633,7 @@ class LibraryView(QWidget):
             )
         btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
         btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
-        btn.setStyleSheet(
-            f"""
-            QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-            QPushButton:hover {{ background-color: {hover_bg}; }}
-            """
-        )
+        btn.setStyleSheet(theme.style(GHOST_ICON_BUTTON))
 
     def _scaled_preview_font_pt(self) -> float:
         return max(8.0, min(28.0, _BASE_PREVIEW_FONT_PT * self._font_scale))
@@ -646,9 +650,10 @@ class LibraryView(QWidget):
             return 145
 
     def _preview_body_color(self, is_dark: bool) -> str:
+        theme = self._theme(is_dark)
         if self._high_contrast_enabled:
-            return "#f8fafc" if is_dark else "#0f172a"
-        return "#cdd6f4" if is_dark else "#1e293b"
+            return theme.brand_fg if theme.is_dark else theme.text_primary
+        return theme.text_primary
 
     def _apply_preview_paragraph_formats(self, doc) -> None:
         """Line height + transcript alignment in one merge per block (avoids format clobbering)."""
@@ -673,6 +678,7 @@ class LibraryView(QWidget):
         if not hasattr(self, "text_preview"):
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         pt = self._scaled_preview_font_pt()
         f = self.text_preview.font()
         f.setPointSizeF(pt)
@@ -682,7 +688,7 @@ class LibraryView(QWidget):
         self._apply_preview_paragraph_formats(doc)
         fg = self._preview_body_color(is_dark)
         self.text_preview.setStyleSheet(
-            f"background: transparent; border: none; color: {fg}; font-size: {pt:.1f}pt;"
+            theme.style(TRANSPARENT_TEXT_PREVIEW, color=fg, font_pt=pt)
         )
         self._apply_preview_reader_focus_opacity()
 
@@ -782,9 +788,10 @@ class LibraryView(QWidget):
         finally:
             self.reader_focus_btn.blockSignals(False)
             self.high_contrast_btn.blockSignals(False)
-        hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
-        icon_muted = _BRAND_PURPLE
-        icon_active = _BRAND_PURPLE_ACTIVE
+        theme = self._theme(is_dark)
+        icon_muted = theme.color(ACCENT_ICON)
+        icon_active = theme.color(ACCENT_ICON_ACTIVE)
+        utility_icon_style = theme.style(UTILITY_ICON_BUTTON)
         is_justify = self._transcript_alignment == ALIGN_JUSTIFY
         self.text_align_btn.setToolTip(
             "Text alignment: Justified (click for left)"
@@ -834,19 +841,7 @@ class LibraryView(QWidget):
             self.reader_focus_btn,
             self.high_contrast_btn,
         ):
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 4px;
-                }}
-                QPushButton:hover {{
-                    background-color: {hover_bg};
-                }}
-                """
-            )
+            btn.setStyleSheet(utility_icon_style)
         self._refresh_layout_mode_button(is_dark=is_dark)
 
     # --------------------------------------------------------- #
@@ -955,7 +950,8 @@ class LibraryView(QWidget):
         if main_win and hasattr(main_win, "_is_dark_theme"):
             is_dark = main_win._is_dark_theme
 
-        icon_color = "#6c7086" if is_dark else "#64748b"
+        theme = self._theme(is_dark)
+        icon_color = sidebar_row_action_icon_color(theme)
 
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, doc["filename"])
@@ -996,7 +992,7 @@ class LibraryView(QWidget):
             self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
-            qta.icon("fa5s.edit", color="#89b4fa"), "Rename Document"
+            qta.icon("fa5s.edit", color=theme.color(LINK_ICON)), "Rename Document"
         )
         rename_action.triggered.connect(
             lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
@@ -1015,7 +1011,7 @@ class LibraryView(QWidget):
         menu.addSeparator()
 
         delete_action = menu.addAction(
-            qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Document"
+            qta.icon("fa5s.trash-alt", color=theme.color(DANGER_ICON)), "Delete Document"
         )
         delete_action.triggered.connect(
             lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
@@ -1036,13 +1032,13 @@ class LibraryView(QWidget):
             self.refresh_library_list()
 
     def _update_row_colors(self):
-        """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
+        """Row title colors + action icons (QSS cannot target setItemWidget children)."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         target_list = getattr(self, "doc_list", getattr(self, "history_list", None))
         active_folder_id = None
         if target_list is getattr(self, "doc_list", None):
             active_folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
-        apply_sidebar_row_title_colors(
+        apply_sidebar_row_theme(
             target_list,
             is_dark=is_dark,
             active_folder_id=active_folder_id,
@@ -1266,40 +1262,27 @@ class LibraryView(QWidget):
 
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the color of the Add Document button."""
-        import qtawesome as qta
-
         if hasattr(self, "ingest_progress_row"):
             self.ingest_progress_row.apply_theme(is_dark)
-        
-        # Keep utility-toolbar button colors theme-based only (not status-coupled).
-        base_icon_color = _BRAND_PURPLE
-        
-        # Subtle hover background
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-        
+
+        theme = self._theme(is_dark)
+        ghost_qss = theme.style(GHOST_ICON_BUTTON)
+        base_icon_color = theme.color(ACCENT_ICON)
+
         if hasattr(self, 'add_btn'):
             self.add_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
-            self.add_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            self.add_btn.setStyleSheet(ghost_qss)
         if hasattr(self, "new_folder_btn"):
             self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
-            self.new_folder_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            self.new_folder_btn.setStyleSheet(ghost_qss)
         if hasattr(self, "sort_btn"):
             self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
-            self.sort_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            self.sort_btn.setStyleSheet(ghost_qss)
 
         self._refresh_readability_toolbar(is_dark=is_dark)
         if hasattr(self, "font_minus_btn"):
             font_btn_style = readability_font_pair_stylesheet(
-                is_dark=is_dark, button_px=_CHAT_UTILITY_BTN
+                is_dark=is_dark, theme=theme, button_px=_CHAT_UTILITY_BTN
             )
             self.font_minus_btn.setStyleSheet(font_btn_style)
             self.font_plus_btn.setStyleSheet(font_btn_style)
@@ -1311,7 +1294,7 @@ class LibraryView(QWidget):
 
     def _apply_library_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
-        bg = QColor("#232337" if is_dark else "#E9EFF5")
+        bg = self._theme(is_dark).qcolor_role(LIST_SURFACE)
         if hasattr(self, "list_pane"):
             p = self.list_pane
             p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)

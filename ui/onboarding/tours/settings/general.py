@@ -21,8 +21,10 @@ def build_settings_general_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="General settings",
             body=(
-                "Application-wide preferences such as on-screen language. Theme is toggled "
-                "from the moon icon in the left navigation rail."
+                "Application-wide preferences such as on-screen language. In Settings → "
+                "Themes you can choose Dark, Light, or Follow system appearance; the "
+                "moon/sun icon in the left navigation rail switches variants within "
+                "your theme family when a matching option exists."
             ),
             on_enter=_open,
         ),

@@ -50,6 +50,12 @@ class SettingsSectionResetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             reset_settings_section("help")
 
+    def test_themes_section_keys_include_appearance_and_scheme(self) -> None:
+        keys = set(SECTION_SETTING_KEYS["appearance.themes"])
+        self.assertIn(app_settings.KEY_UI_COLOR_SCHEME_ID, keys)
+        self.assertIn(app_settings.KEY_UI_THEME_APPEARANCE, keys)
+        self.assertIn(app_settings.KEY_LAST_SCHEME_DARK, keys)
+
 
 if __name__ == "__main__":
     unittest.main()

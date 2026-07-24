@@ -78,6 +78,11 @@ KEY_EMBEDDING_MODE = "qube.embedding.activeMode"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
 KEY_UI_LANGUAGE = "qube.ui.language"
+KEY_UI_THEME_MODE = "qube.ui.theme.mode"
+KEY_UI_COLOR_SCHEME_ID = "qube.ui.color_scheme.id"
+KEY_UI_THEME_APPEARANCE = "qube.ui.theme.appearance"
+KEY_LAST_SCHEME_DARK = "qube.ui.color_scheme.last.dark"
+KEY_LAST_SCHEME_LIGHT = "qube.ui.color_scheme.last.light"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -1765,6 +1770,46 @@ def set_ui_language(language: str) -> None:
     from core.ui_language import normalize_ui_language
 
     _store().set(KEY_UI_LANGUAGE, normalize_ui_language(language).value)
+
+
+def get_ui_theme_mode() -> str:
+    """Persisted light/dark mode (``dark`` or ``light``)."""
+    from core.theme.tokens import ThemeMode
+
+    raw = str(_store().get(KEY_UI_THEME_MODE, ThemeMode.DARK.value))
+    try:
+        return ThemeMode(raw).value
+    except ValueError:
+        return ThemeMode.DARK.value
+
+
+def set_ui_theme_mode(mode: str) -> None:
+    from core.theme.tokens import ThemeMode
+
+    _store().set(KEY_UI_THEME_MODE, ThemeMode(mode).value)
+
+
+def get_ui_color_scheme_id() -> str:
+    """Persisted color scheme id (e.g. ``builtin.catppuccin-mocha``)."""
+    from core.theme.schemes import DEFAULT_SCHEME_ID_DARK
+
+    return str(_store().get(KEY_UI_COLOR_SCHEME_ID, DEFAULT_SCHEME_ID_DARK))
+
+
+def set_ui_color_scheme_id(scheme_id: str) -> None:
+    _store().set(KEY_UI_COLOR_SCHEME_ID, str(scheme_id))
+
+
+def get_ui_theme_appearance() -> str | None:
+    """Persisted appearance preference, or ``None`` when unset (legacy scheme-driven)."""
+    raw = _store().get(KEY_UI_THEME_APPEARANCE, None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    return str(raw)
+
+
+def set_ui_theme_appearance(preference: str) -> None:
+    _store().set(KEY_UI_THEME_APPEARANCE, str(preference))
 
 
 def get_companion_cube_style() -> "CompanionCubeStyle":

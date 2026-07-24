@@ -7,7 +7,9 @@ import math
 from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QColor, QPainter, QPainterPath
 
-BRAND_STROKE_COLOR = QColor("#8b5cf6")
+from core.brand_identity import BRAND_LOGO_STROKE_COLOR
+
+BRAND_STROKE_COLOR = BRAND_LOGO_STROKE_COLOR
 DEFAULT_STROKE_WIDTH = 7.6
 
 _CUBE_VERTICES: tuple[tuple[float, float, float], ...] = (

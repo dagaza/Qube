@@ -22,6 +22,8 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QPainter, QBrush
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QWidget, QLabel
 
+from core.theme.accessors import theme_for
+
 
 def _smoothstep01(t: float) -> float:
     """Hermite ease in/out on [0, 1]."""
@@ -36,9 +38,6 @@ class TypingIndicatorMode(Enum):
 
 class TypingIndicatorWidget(QWidget):
     """Three (or N) staggered dots with fade or scale animation driven by QTimer + QPainter."""
-
-    COLOR_DARK = "#89b4fa"
-    COLOR_LIGHT = "#000000"
 
     def __init__(
         self,
@@ -56,6 +55,7 @@ class TypingIndicatorWidget(QWidget):
         self._mode = mode
         self._cycle_s = max(0.35, float(cycle_ms) / 1000.0)
         self._is_dark = True
+        self._dot_color = theme_for(is_dark=True).link
         self._phase_s = 0.0
         self._margin_x = 2
         self._base_radius = 3.25
@@ -89,6 +89,8 @@ class TypingIndicatorWidget(QWidget):
 
     def set_dark_theme(self, is_dark: bool) -> None:
         self._is_dark = bool(is_dark)
+        theme = theme_for(is_dark=self._is_dark)
+        self._dot_color = theme.link if theme.is_dark else theme.text_primary
         self.update()
 
     def start(self) -> None:
@@ -126,7 +128,7 @@ class TypingIndicatorWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        base = QColor(self.COLOR_DARK if self._is_dark else self.COLOR_LIGHT)
+        base = QColor(self._dot_color)
 
         w, h = self.width(), self.height()
         cy = h * 0.5

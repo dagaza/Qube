@@ -5,21 +5,23 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QVBoxLayout
 
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import SETTINGS_SECTION_CARD
+
 _SETTINGS_SECTION_CARD = "SettingsSectionCard"
+
+
+def _settings_theme(*, is_dark: bool):
+    return theme_for(is_dark=is_dark)
 
 
 def apply_settings_section_card_theme(card: QFrame, *, is_dark: bool) -> None:
     """Paint a Model Manager-style panel surface on ``card``."""
-    bg_hex = "#232337" if is_dark else "#E9EFF5"
-    border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
+    theme = _settings_theme(is_dark=is_dark)
     card.setObjectName(_SETTINGS_SECTION_CARD)
     card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     card.setStyleSheet(
-        f"#{_SETTINGS_SECTION_CARD} {{"
-        f" background-color: {bg_hex};"
-        f" border: 1px solid {border};"
-        f" border-radius: 10px;"
-        f" }}"
+        theme.style(SETTINGS_SECTION_CARD, object_name=_SETTINGS_SECTION_CARD)
     )
 
 

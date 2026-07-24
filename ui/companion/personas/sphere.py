@@ -19,6 +19,7 @@ from core.assistant_activity import AssistantActivity
 from core.assistant_presence import AssistantPhase
 from core.companion_personas import CompanionPersonaId
 from ui.companion.persona_audio import paint_ripples, paint_waveform_ring
+from ui.companion.companion_theme import persona_shine_qcolor
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import CompanionPersonaRenderer
 
@@ -140,7 +141,7 @@ class SpherePersonaRenderer(CompanionPersonaRenderer):
             painter.setBrush(QBrush(spin_grad))
         else:
             body = QRadialGradient(center - QPointF(core_r * 0.22, core_r * 0.28), core_r * 1.2)
-            highlight = QColor(255, 255, 255, int(90 * opacity))
+            highlight = persona_shine_qcolor(ctx, alpha=90)
             mid = QColor(primary)
             mid.setAlphaF(0.92 * opacity)
             deep = QColor(primary.darker(125))
@@ -150,7 +151,7 @@ class SpherePersonaRenderer(CompanionPersonaRenderer):
             body.setColorAt(1.0, deep)
             painter.setBrush(QBrush(body))
 
-        painter.setPen(QPen(QColor(255, 255, 255, int(50 * opacity)), 1.2))
+        painter.setPen(QPen(persona_shine_qcolor(ctx, alpha=50), 1.2))
         painter.drawEllipse(center, core_r, core_r)
 
         if ctx.activity == AssistantActivity.SPEAKING and ctx.speech_level_smooth > 0.08:

@@ -10,6 +10,8 @@ from core.companion_placement import (
     CompanionSnapZone,
     normalize_companion_snap_zone,
 )
+from core.theme.accessors import theme_for
+from ui.companion.companion_theme import companion_snap_compass_stylesheet
 
 
 class CompanionSnapCompass(QWidget):
@@ -26,6 +28,7 @@ class CompanionSnapCompass(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("CompanionSnapCompass")
+        self._is_dark = True
         self._buttons: dict[CompanionSnapZone, QToolButton] = {}
 
         layout = QGridLayout(self)
@@ -54,6 +57,10 @@ class CompanionSnapCompass(QWidget):
 
         self._apply_styles()
 
+    def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
+        self._apply_styles()
+
     def set_active_zone(self, zone: str | CompanionSnapZone | None) -> None:
         if zone is None:
             active = CompanionSnapZone.NONE
@@ -71,24 +78,4 @@ class CompanionSnapCompass(QWidget):
         self.zone_selected.emit(zone.value)
 
     def _apply_styles(self) -> None:
-        self.setStyleSheet(
-            """
-            QToolButton#CompanionSnapCompassButton {
-                background: rgba(30, 34, 48, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 8px;
-                color: #cbd5e1;
-                font-size: 10px;
-                font-weight: 600;
-            }
-            QToolButton#CompanionSnapCompassButton:hover {
-                background: rgba(45, 50, 68, 0.95);
-                border-color: rgba(255, 255, 255, 0.22);
-            }
-            QToolButton#CompanionSnapCompassButton:checked {
-                background: rgba(99, 102, 241, 0.35);
-                border-color: rgba(129, 140, 248, 0.85);
-                color: #eef2ff;
-            }
-            """
-        )
+        self.setStyleSheet(companion_snap_compass_stylesheet(theme_for(is_dark=self._is_dark)))

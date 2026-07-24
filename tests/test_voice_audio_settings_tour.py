@@ -30,6 +30,7 @@ class TestVoiceAudioSettingsTour(unittest.TestCase):
 
         attrs = {
             "mic_selector": QPushButton(sv),
+            "voice_input_enabled_toggle": PrestigeToggle(sv),
             "device_selector": QPushButton(sv),
             "tts_voice_enabled_toggle": PrestigeToggle(sv),
             "voice_selector": QPushButton(sv),

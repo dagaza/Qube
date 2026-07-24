@@ -21,6 +21,7 @@ logger = logging.getLogger("Qube.TTSModels")
 BUNDLED_DEFAULT_FILENAME = "kokoro-v1.0.onnx"
 BUNDLED_VOICES_FILENAME = "voices-v1.0.bin"
 BUNDLED_TTS_LABEL = "Kokoro v1.0 (bundled default)"
+DEFAULT_KOKORO_VOICE = "af_heart"
 TTS_SUBDIR = "tts"
 SUPPORTED_TTS_ENGINES = ("Kokoro ONNX", "Piper ONNX")
 UNSUPPORTED_TTS_ARCHITECTURE_MSG = (
@@ -50,6 +51,15 @@ def bundled_default_path() -> str:
 
 def bundled_voices_path() -> str:
     return str(Path(get_tts_models_dir()) / BUNDLED_VOICES_FILENAME)
+
+
+def resolve_default_tts_voice(available_voices: list[str] | tuple[str, ...]) -> str:
+    """Preferred Kokoro voice when TTS loads; falls back for Piper or missing ids."""
+    if not available_voices:
+        return DEFAULT_KOKORO_VOICE
+    if DEFAULT_KOKORO_VOICE in available_voices:
+        return DEFAULT_KOKORO_VOICE
+    return available_voices[0]
 
 
 def _normalize_path(path: str) -> str:

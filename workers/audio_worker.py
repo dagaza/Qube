@@ -67,6 +67,8 @@ class AudioListenerWorker(QThread):
         self._capture_cancel_requested = False
         self._voice_capture_active = False
         self._manual_capture_pending = False
+        self._level_monitor_until = 0.0
+        self._was_level_monitoring = False
         self.refresh_wakewords(include_remote=True)
 
     @property
@@ -97,6 +99,16 @@ class AudioListenerWorker(QThread):
     def set_paused(self, paused: bool):
         """Thread-safe request to pause the audio stream."""
         self.is_paused = paused
+        if paused:
+            self._level_monitor_until = 0.0
+            self.volume_update.emit(0.0)
+
+    def request_level_monitor(self, duration_sec: float = 8.0) -> None:
+        """Open the mic briefly for VU metering while voice input is paused."""
+        self._level_monitor_until = time.time() + max(0.5, float(duration_sec))
+
+    def _level_monitor_active(self) -> bool:
+        return time.time() < self._level_monitor_until
 
     def refresh_wakewords(self, include_remote: bool = True) -> dict:
         catalog = self.wakeword_manager.refresh_catalog(include_remote=include_remote)
@@ -380,6 +392,10 @@ class AudioListenerWorker(QThread):
             while self.running:
                 # --- 0. Thread-Safe Teardown (For Pauses & Device Swaps) ---
                 needs_reboot = False
+                monitoring = self._level_monitor_active()
+                if self._was_level_monitoring and not monitoring and self.is_paused:
+                    self.volume_update.emit(0.0)
+                self._was_level_monitoring = monitoring
             
                 if getattr(self, 'pending_device_index', None) is not None:
                     self.input_device_index = self.pending_device_index
@@ -387,7 +403,7 @@ class AudioListenerWorker(QThread):
                     needs_reboot = True
                     logger.info(f"Target input device updated to {self.input_device_index}")
                 
-                if getattr(self, 'is_paused', False) and self.stream is not None:
+                if getattr(self, 'is_paused', False) and not monitoring and self.stream is not None:
                     needs_reboot = True
 
                 if needs_reboot and self.stream:
@@ -412,7 +428,7 @@ class AudioListenerWorker(QThread):
                     continue
 
             # --- 1. Check for Pause State ---
-                if getattr(self, 'is_paused', False):
+                if getattr(self, 'is_paused', False) and not monitoring:
                     time.sleep(0.5)
                     continue
 
@@ -446,7 +462,7 @@ class AudioListenerWorker(QThread):
                     self.status_update.emit("Idle")
                     continue
 
-                if self.oww_model is None:
+                if self.oww_model is None and not monitoring:
                     time.sleep(0.5)
                     continue
 
@@ -496,6 +512,9 @@ class AudioListenerWorker(QThread):
                 except ValueError:
                     self.current_volume = 0
                     self.volume_update.emit(0.0)
+
+                if self.is_paused and monitoring:
+                    continue
             
             # --- 5. Hardened Inference Engine ---
                 try:

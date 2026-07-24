@@ -4,36 +4,40 @@ from __future__ import annotations
 
 from PyQt6.QtGui import QColor, QGuiApplication, QPalette
 
-# App-wide: unvisited vs visited (used in QTextDocument CSS and QPalette Link roles)
+from core.theme.accessors import theme_for
+from core.theme.color_utils import theme_qcolor
+from core.theme.link_styles import link_anchor_css as _link_anchor_css
+from core.theme.tokens import ResolvedTheme, ThemeMode
+
+# Legacy constants — prefer ``ResolvedTheme.link`` / ``link_visited``.
 LINK_COLOR_UNVISITED = "#3b82f6"
 LINK_COLOR_VISITED = "#8b5cf6"
 
 
-def link_anchor_css() -> str:
-    """CSS fragment for <a> in QTextDocument.setDefaultStyleSheet (Markdown → HTML)."""
-    u, v = LINK_COLOR_UNVISITED, LINK_COLOR_VISITED
-    # Put a:visited after generic `a` so visited wins when supported.
-    return (
-        f"a:link {{ color: {u}; text-decoration: none; }}"
-        f"a {{ color: {u}; text-decoration: none; }}"
-        f"a:visited {{ color: {v}; text-decoration: none; }}"
+def link_anchor_css(theme: ResolvedTheme | None = None, *, is_dark: bool = True) -> str:
+    resolved = theme_for(is_dark=is_dark, resolved=theme)
+    return _link_anchor_css(resolved)
+
+
+def markdown_document_stylesheet(
+    is_dark: bool | None = None,
+    *,
+    theme: ResolvedTheme | None = None,
+) -> str:
+    """QTextDocument default stylesheet for Markdown → HTML."""
+    resolved = theme_for(
+        is_dark=is_dark if is_dark is not None else True,
+        resolved=theme,
     )
-
-
-def markdown_document_stylesheet(is_dark: bool) -> str:
-    """
-    QTextDocument default stylesheet for Markdown → HTML. Must be set *before* setMarkdown()
-    so nested elements inherit foreground (see AgentMessageLabel).
-    """
-    fg = "#cdd6f4" if is_dark else "#1e293b"
-    border = "#585b70" if is_dark else "#cbd5e1"
-    code_bg = "#313244" if is_dark else "#f1f5f9"
+    fg = resolved.text_primary
+    border = resolved.border_subtle if resolved.is_dark else resolved.border
+    code_bg = resolved.surface_elevated if resolved.is_dark else "#f1f5f9"
     return (
         f"body, p, span, div, li, ul, ol, dd, dt, "
         f"table, thead, tbody, tr, th, td, "
         f"blockquote, pre, code, "
         f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
-        + link_anchor_css()
+        + _link_anchor_css(resolved)
         + f"table {{ border-color: {border}; }}"
         + f"th, td {{ border-color: {border}; border-width: 1px; border-style: solid; padding: 4px; }}"
         + f"code, pre {{ background-color: {code_bg}; }}"
@@ -49,12 +53,26 @@ def markdown_document_stylesheet(is_dark: bool) -> str:
     )
 
 
-def apply_app_link_palette(app: QGuiApplication | None = None) -> None:
-    """Set QPalette Link / LinkVisited so QLabel rich text and other palette-driven links match."""
+def apply_app_link_palette(
+    app: QGuiApplication | None = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
+) -> None:
+    """Set QPalette Link / LinkVisited from the active theme."""
     app = app or QGuiApplication.instance()
     if app is None:
         return
+    resolved = theme_for(
+        is_dark=is_dark if is_dark is not None else True,
+        resolved=theme,
+    )
     pal = app.palette()
-    pal.setColor(QPalette.ColorRole.Link, QColor(LINK_COLOR_UNVISITED))
-    pal.setColor(QPalette.ColorRole.LinkVisited, QColor(LINK_COLOR_VISITED))
+    pal.setColor(QPalette.ColorRole.Link, theme_qcolor(resolved.link))
+    pal.setColor(QPalette.ColorRole.LinkVisited, theme_qcolor(resolved.link_visited))
     app.setPalette(pal)
+
+
+def link_colors_for_mode(mode: ThemeMode) -> tuple[str, str]:
+    resolved = theme_for(is_dark=mode.is_dark)
+    return resolved.link, resolved.link_visited

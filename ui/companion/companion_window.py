@@ -35,10 +35,16 @@ from core.companion_personas import CompanionPersonaId, normalize_companion_pers
 from core.companion_verbal_prompts import truncate_companion_caption
 from core.local_gguf_library import list_local_gguf_menu_entries
 from core.platform.frameless_window import apply_translucent_window_chrome
+from core.theme.accessors import theme_for
 from ui.companion.anim_engine import CompanionAnimEngine, FRAME_DT
 from ui.companion.persona_context import CompanionPaintContext
 from ui.companion.personas.base import CompanionPersonaRenderer, get_persona_renderer
-from ui.companion.personas.colors import activity_color_pair
+from ui.companion.companion_theme import (
+    activity_color_pair,
+    companion_caption_stylesheet,
+    companion_dock_strip_background,
+)
+from ui.shell_theme import apply_prestige_menu_theme
 
 _CAPTION_MAX_CHARS = 42
 _BANTER_MAX_CHARS = 72
@@ -149,6 +155,7 @@ class CompanionWindow(QWidget):
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
         self._apply_caption_style()
+        self._snap_overlay.apply_theme(is_dark)
         self.update()
 
     def set_persona(self, persona_id: CompanionPersonaId | str) -> None:
@@ -315,18 +322,15 @@ class CompanionWindow(QWidget):
 
     def _colors(self) -> tuple[QColor, QColor]:
         primary, secondary = activity_color_pair(
-            self._activity(), app_settings.get_companion_idle_color()
+            self._activity(),
+            app_settings.get_companion_idle_color(),
+            is_dark=self._is_dark,
         )
         return QColor(primary), QColor(secondary)
 
     def _apply_caption_style(self) -> None:
-        bg = "#1e1e2e" if self._is_dark else "#ffffff"
-        fg = "#cdd6f4" if self._is_dark else "#1e293b"
-        border = "#313244" if self._is_dark else "#cbd5e1"
         self._caption_frame.setStyleSheet(
-            f"QFrame#CompanionCaptionFrame {{ background-color: {bg}; border: 1px solid {border};"
-            f" border-radius: 8px; }}"
-            f"QLabel#CompanionCaptionLabel {{ background: transparent; color: {fg}; }}"
+            companion_caption_stylesheet(theme_for(is_dark=self._is_dark))
         )
 
     def _caption_content_width(self, display: str, fm: QFontMetrics) -> int:
@@ -487,8 +491,10 @@ class CompanionWindow(QWidget):
     def _paint_dock_strip(self, painter: QPainter) -> None:
         primary, _secondary = self._colors()
         rect = QRectF(0, 0, self.width(), self.height())
-        bg = QColor("#1e1e2e" if self._is_dark else "#ffffff")
-        bg.setAlphaF(0.85 if not self._idle_faded else 0.35)
+        bg = companion_dock_strip_background(
+            theme_for(is_dark=self._is_dark),
+            idle_faded=self._idle_faded,
+        )
         painter.setBrush(bg)
         painter.setPen(QPen(primary, 2))
         painter.drawRoundedRect(rect, 6, 6)
@@ -630,12 +636,8 @@ class CompanionWindow(QWidget):
 
     def _show_context_menu(self, global_pos: QPoint) -> None:
         menu = QMenu(self)
-        bg = "#1e1e2e" if self._is_dark else "#ffffff"
-        fg = "#cdd6f4" if self._is_dark else "#1e293b"
-        menu.setStyleSheet(
-            f"QMenu {{ background-color: {bg}; color: {fg}; }}"
-            f"QMenu::item:selected {{ background-color: {'#313244' if self._is_dark else '#e2e8f0'}; }}"
-        )
+        theme = theme_for(is_dark=self._is_dark)
+        apply_prestige_menu_theme(menu, theme)
 
         open_act = menu.addAction("Open Qube")
         open_act.triggered.connect(self.open_requested.emit)
@@ -647,6 +649,7 @@ class CompanionWindow(QWidget):
         menu.addSeparator()
 
         load_menu = menu.addMenu("Load Model")
+        apply_prestige_menu_theme(load_menu, theme)
         self._populate_load_model_menu(load_menu)
         model_mgr_act = menu.addAction("Model Manager…")
         model_mgr_act.triggered.connect(self.open_model_manager_requested.emit)

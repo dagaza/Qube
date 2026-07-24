@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFrame,
     QHeaderView,
@@ -12,8 +11,9 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
 )
 
-_PLACEHOLDER_FG_DARK = QColor("#a6adc8")
-_PLACEHOLDER_FG_LIGHT = QColor("#64748b")
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import SETTINGS_BORDERLESS_TABLE
+
 _ROW_HEIGHT_PX = 34
 _HEADER_HEIGHT_PX = 32
 
@@ -53,44 +53,10 @@ def configure_borderless_list_table(
 
 
 def apply_borderless_list_table_theme(table: QTableWidget, *, is_dark: bool) -> None:
-    if is_dark:
-        table.setStyleSheet(
-            f"""
-            QTableWidget#{table.objectName()} {{
-                background: transparent;
-                border: none;
-            }}
-            QTableWidget#{table.objectName()}::item {{
-                padding: 6px 4px;
-                border: none;
-            }}
-            QTableWidget#{table.objectName()} QHeaderView::section {{
-                background: transparent;
-                border: none;
-                padding: 4px;
-                font-weight: 600;
-            }}
-            """
-        )
-    else:
-        table.setStyleSheet(
-            f"""
-            QTableWidget#{table.objectName()} {{
-                background: transparent;
-                border: none;
-            }}
-            QTableWidget#{table.objectName()}::item {{
-                padding: 6px 4px;
-                border: none;
-            }}
-            QTableWidget#{table.objectName()} QHeaderView::section {{
-                background: transparent;
-                border: none;
-                padding: 4px;
-                font-weight: 600;
-            }}
-            """
-        )
+    theme = theme_for(is_dark=is_dark)
+    table.setStyleSheet(
+        theme.style(SETTINGS_BORDERLESS_TABLE, object_name=table.objectName())
+    )
 
 
 def set_table_placeholder_row(
@@ -99,11 +65,12 @@ def set_table_placeholder_row(
     text: str,
     is_dark: bool,
 ) -> None:
+    theme = theme_for(is_dark=is_dark)
     table.setRowCount(1)
     table.clearSpans()
     item = QTableWidgetItem(text)
     item.setFlags(Qt.ItemFlag.NoItemFlags)
-    item.setForeground(_PLACEHOLDER_FG_DARK if is_dark else _PLACEHOLDER_FG_LIGHT)
+    item.setForeground(theme.qcolor(theme.text_muted))
     table.setItem(0, 0, item)
     if table.columnCount() > 1:
         table.setSpan(0, 0, 1, table.columnCount())

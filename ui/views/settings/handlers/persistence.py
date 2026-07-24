@@ -645,6 +645,8 @@ class PersistenceHandlersMixin:
             self._apply_companion_defaults_to_ui()
         elif section_id == "notifications":
             pass
+        elif section_id == "appearance.themes":
+            self._apply_themes_defaults_to_ui()
 
     def _apply_voice_audio_defaults_to_ui(self) -> None:
         if hasattr(self, "timeout_spinner"):

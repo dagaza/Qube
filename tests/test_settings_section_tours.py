@@ -26,7 +26,7 @@ def _expected_knowledge_tour_steps() -> int:
 
 
 SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
-    ("settings.voice_audio", "voice.audio", 28),
+    ("settings.voice_audio", "voice.audio", 29),
     ("settings.ai_models", "ai.models", 14),
     ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
@@ -41,6 +41,7 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
 SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     "settings.voice_audio": (
         "mic_selector",
+        "voice_input_enabled_toggle",
         "device_selector",
         "tts_voice_enabled_toggle",
         "voice_selector",
