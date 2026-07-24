@@ -14,6 +14,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from core.theme.accessors import theme_for
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_BODY_LABEL,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_MUTED_LABEL,
+    PRESTIGE_SOURCE_CONTAINER,
+)
 from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 
 
@@ -44,17 +53,15 @@ class ResearchMapDialog(QDialog):
         super().__init__(parent)
         if is_dark is None:
             is_dark = _resolve_is_dark_from_parent(parent)
+        theme = theme_for(is_dark=is_dark)
+        border = theme.border_subtle if theme.is_dark else theme.border
+        surface = theme.surface_elevated if theme.is_dark else theme.surface
+        hover_bg = with_alpha(theme.text_primary, 0.05)
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(520, 420)
         self.resize(640, 520)
-
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-        muted = "#a6adc8" if is_dark else "#64748b"
-        surface = "#313244" if is_dark else "#f8fafc"
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
@@ -62,13 +69,11 @@ class ResearchMapDialog(QDialog):
         container = QFrame()
         container.setObjectName("ResearchMapContainer")
         container.setStyleSheet(
-            f"""
-            QFrame#ResearchMapContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-        """
+            theme.style(
+                PRESTIGE_SOURCE_CONTAINER,
+                accent=theme.link,
+                object_name="ResearchMapContainer",
+            )
         )
         inner = QVBoxLayout(container)
         inner.setContentsMargins(28, 26, 28, 22)
@@ -76,7 +81,7 @@ class ResearchMapDialog(QDialog):
 
         header = QLabel(title.upper())
         header.setStyleSheet(
-            f"color: {accent}; font-weight: bold; font-size: 11px; letter-spacing: 2px;"
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=theme.link, font_size="11px")
         )
         nodes = [n for n in (graph.get("nodes") or []) if isinstance(n, dict)]
         edges = [e for e in (graph.get("edges") or []) if isinstance(e, dict)]
@@ -86,7 +91,7 @@ class ResearchMapDialog(QDialog):
             else "No research map data for this answer yet."
         )
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet(f"color: {muted}; font-size: 13px;")
+        subtitle.setStyleSheet(theme.style(PRESTIGE_MUTED_LABEL, font_size="13px"))
         inner.addWidget(header)
         inner.addWidget(subtitle)
 
@@ -105,28 +110,38 @@ class ResearchMapDialog(QDialog):
             for n in nodes
         }
 
+        section_hdr_style = theme.style(
+            PRESTIGE_ACCENT_LABEL,
+            accent=theme.link,
+            font_size="10px",
+            letter_spacing="1.5px",
+        )
+        node_row_style = (
+            theme.style(PRESTIGE_BODY_LABEL, font_size="13px", font_weight="400")
+            + f"""
+            background: {surface};
+            border: 1px solid {border};
+            border-radius: 10px;
+            padding: 10px 12px;
+            """
+        )
+        edge_row_style = theme.style(PRESTIGE_MUTED_LABEL, font_size="12px") + "padding: 4px 2px;"
+
         if nodes:
             nodes_hdr = QLabel("NODES")
-            nodes_hdr.setStyleSheet(
-                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px;"
-            )
+            nodes_hdr.setStyleSheet(section_hdr_style)
             layout.addWidget(nodes_hdr)
             for node in nodes:
                 kind = str(node.get("kind") or "node")
                 label = str(node.get("label") or node.get("id") or "?")
                 row = QLabel(f"{_kind_label(kind)}: {label}")
                 row.setWordWrap(True)
-                row.setStyleSheet(
-                    f"color: {fg}; background: {surface}; border: 1px solid {border}; "
-                    f"border-radius: 10px; padding: 10px 12px; font-size: 13px;"
-                )
+                row.setStyleSheet(node_row_style)
                 layout.addWidget(row)
 
         if edges:
             edges_hdr = QLabel("LINKS")
-            edges_hdr.setStyleSheet(
-                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px; margin-top: 8px;"
-            )
+            edges_hdr.setStyleSheet(section_hdr_style + " margin-top: 8px;")
             layout.addWidget(edges_hdr)
             for edge in edges:
                 from_id = str(edge.get("from") or "")
@@ -136,7 +151,7 @@ class ResearchMapDialog(QDialog):
                 to_label = node_labels.get(to_id, to_id)
                 row = QLabel(f"{from_label} —{_kind_label(kind)}→ {to_label}")
                 row.setWordWrap(True)
-                row.setStyleSheet(f"color: {muted}; font-size: 12px; padding: 4px 2px;")
+                row.setStyleSheet(edge_row_style)
                 layout.addWidget(row)
 
         layout.addStretch(1)
@@ -151,14 +166,17 @@ class ResearchMapDialog(QDialog):
         trace = read_last_retrieval_trace()
         if trace:
             trace_hdr = QLabel("HOW THIS WAS RETRIEVED")
-            trace_hdr.setStyleSheet(
-                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px;"
-            )
+            trace_hdr.setStyleSheet(section_hdr_style)
             trace_body = QLabel(format_retrieval_trace_summary(trace))
             trace_body.setWordWrap(True)
             trace_body.setStyleSheet(
-                f"color: {muted}; background: {surface}; border: 1px solid {border}; "
-                f"border-radius: 10px; padding: 10px 12px; font-size: 12px;"
+                theme.style(PRESTIGE_MUTED_LABEL, font_size="12px")
+                + f"""
+                background: {surface};
+                border: 1px solid {border};
+                border-radius: 10px;
+                padding: 10px 12px;
+                """
             )
             inner.addWidget(trace_hdr)
             inner.addWidget(trace_body)
@@ -167,22 +185,12 @@ class ResearchMapDialog(QDialog):
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
         close_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                padding: 12px 22px;
-                min-height: 32px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
+            theme.style(PRESTIGE_GHOST_BUTTON)
+            + f"""
             QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
+                background: {hover_bg};
             }}
-        """
+            """
         )
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)

@@ -162,6 +162,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     position_row.addWidget(position_hint, 1)
 
     host.companion_snap_compass = CompanionSnapCompass()
+    host.companion_snap_compass.apply_theme(is_dark)
     host.companion_snap_compass.setToolTip(
         tr("Compass snap zones — N, NE, E, SE, S, SW, W, NW, and centre.")
     )

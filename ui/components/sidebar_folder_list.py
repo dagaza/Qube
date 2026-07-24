@@ -21,7 +21,10 @@ from PyQt6.QtWidgets import (
 )
 
 from core.database import DatabaseManager
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import DANGER_ICON, SIDEBAR_ACTION_ICON
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.shell_theme import sidebar_row_action_icon_color
 
 SidebarScope = Literal["conversation", "library"]
 SortMode = Literal["name", "date"]
@@ -162,10 +165,17 @@ class SidebarFolderListController:
         menu = QMenu(btn)
         self.apply_menu_theme(menu, self.get_is_dark())
         self.register_menu(menu, header=True)
+        theme = theme_for(is_dark=self.get_is_dark())
 
-        by_name = menu.addAction(qta.icon("fa5s.sort-alpha-down", color="#89b4fa"), "By Name")
+        by_name = menu.addAction(
+            qta.icon("fa5s.sort-alpha-down", color=theme.color(SIDEBAR_ACTION_ICON)),
+            "By Name",
+        )
         by_name.triggered.connect(lambda: self.set_sort_mode("name"))
-        by_date = menu.addAction(qta.icon("fa5s.sort-amount-down", color="#89b4fa"), "By Date")
+        by_date = menu.addAction(
+            qta.icon("fa5s.sort-amount-down", color=theme.color(SIDEBAR_ACTION_ICON)),
+            "By Date",
+        )
         by_date.triggered.connect(lambda: self.set_sort_mode("date"))
 
         btn.setMenu(menu)
@@ -305,7 +315,10 @@ class SidebarFolderListController:
 
     def append_folder_row(self, folder: dict) -> None:
         is_dark = self.get_is_dark()
-        icon_color = "#6c7086" if is_dark else "#64748b"
+        theme = theme_for(is_dark=is_dark)
+        icon_color = sidebar_row_action_icon_color(theme)
+        action_icon = theme.color(SIDEBAR_ACTION_ICON)
+        danger_icon = theme.color(DANGER_ICON)
         collapsed = bool(folder.get("is_collapsed"))
 
         item = QListWidgetItem()
@@ -341,6 +354,7 @@ class SidebarFolderListController:
         chevron_btn.setObjectName("HistoryFolderChevronBtn")
         chevron_btn.setFixedSize(24, 24)
         chevron_icon = "fa5s.chevron-right" if collapsed else "fa5s.chevron-down"
+        chevron_btn.setProperty("sidebar_chevron_icon", chevron_icon)
         chevron_btn.setIcon(qta.icon(chevron_icon, color=icon_color))
         chevron_btn.setIconSize(QSize(12, 12))
         chevron_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -375,7 +389,7 @@ class SidebarFolderListController:
 
         if not folder.get("is_system"):
             rename_action = menu.addAction(
-                qta.icon("fa5s.edit", color="#89b4fa"), "Rename Folder"
+                qta.icon("fa5s.edit", color=action_icon), "Rename Folder"
             )
             rename_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, old=folder["name"]: self.prompt_rename_folder(
@@ -384,7 +398,7 @@ class SidebarFolderListController:
             )
         if self.on_export_folder and self.scope == "conversation":
             export_action = menu.addAction(
-                qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+                qta.icon("fa5s.file-export", color=action_icon), "Export"
             )
             export_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, name=folder["name"]: self.on_export_folder(
@@ -394,7 +408,7 @@ class SidebarFolderListController:
         if not folder.get("is_system"):
             menu.addSeparator()
             delete_action = menu.addAction(
-                qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Folder"
+                qta.icon("fa5s.trash-alt", color=danger_icon), "Delete Folder"
             )
             delete_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, name=folder["name"]: self.prompt_delete_folder(

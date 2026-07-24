@@ -26,6 +26,8 @@ from core.scenario_workflow import (
     resolve_external_api_url,
     suggested_external_model_name,
 )
+from core.theme.accessors import theme_for
+from ui.canonical_trace_diff.trace_diff_theme import scenario_workflow_surface_stylesheet
 from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 
 logger = logging.getLogger("Qube.ScenarioWorkflowDialog")
@@ -68,6 +70,7 @@ class ScenarioComparisonWorkflowDialog(QDialog):
         self.setWindowFlag(Qt.WindowType.Window, True)
         self.setMinimumWidth(520)
         self._qube_completed = False
+        self._is_dark = _resolve_is_dark_from_parent(parent)
         self._build_ui()
         self._apply_theme()
         self._refresh_readiness()
@@ -117,22 +120,16 @@ class ScenarioComparisonWorkflowDialog(QDialog):
 
         self._set_qube_gate_copy()
 
+    def refresh_theme(self, is_dark: bool | None = None) -> None:
+        if is_dark is not None:
+            self._is_dark = is_dark
+        else:
+            self._is_dark = _resolve_is_dark_from_parent(self.parent())
+        self._apply_theme()
+
     def _apply_theme(self) -> None:
-        is_dark = _resolve_is_dark_from_parent(self.parent())
-        bg = "#1e1e2e" if is_dark else "#ffffff"
-        fg = "#cdd6f4" if is_dark else "#1e293b"
-        accent = "#89b4fa"
-        self._surface.setStyleSheet(
-            f"""
-            QFrame#ScenarioWorkflowSurface {{
-                background: {bg};
-                border: 1px solid {accent};
-                border-radius: 12px;
-                padding: 8px;
-            }}
-            QLabel {{ color: {fg}; background: transparent; }}
-            """
-        )
+        theme = theme_for(is_dark=self._is_dark)
+        self._surface.setStyleSheet(scenario_workflow_surface_stylesheet(theme))
 
     def _model_name(self) -> str:
         if self._model_hint is not None:

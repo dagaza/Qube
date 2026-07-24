@@ -15,6 +15,14 @@ from PyQt6.QtWidgets import (
 )
 
 from core.composer_mention_guide import build_composer_mention_guide_text
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_BODY_LABEL,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_SOURCE_CONTAINER,
+    PRESTIGE_TEXT_VIEW,
+)
 from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 
 
@@ -25,16 +33,12 @@ class ComposerMentionGuideDialog(QDialog):
         super().__init__(parent)
         if is_dark is None:
             is_dark = _resolve_is_dark_from_parent(parent)
+        theme = theme_for(is_dark=is_dark)
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(640, 520)
         self.resize(720, 620)
-
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-        surface = "#313244" if is_dark else "#f8fafc"
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
@@ -42,13 +46,11 @@ class ComposerMentionGuideDialog(QDialog):
         container = QFrame()
         container.setObjectName("ComposerMentionGuideContainer")
         container.setStyleSheet(
-            f"""
-            QFrame#ComposerMentionGuideContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-        """
+            theme.style(
+                PRESTIGE_SOURCE_CONTAINER,
+                accent=theme.link,
+                object_name="ComposerMentionGuideContainer",
+            )
         )
 
         inner = QVBoxLayout(container)
@@ -57,19 +59,19 @@ class ComposerMentionGuideDialog(QDialog):
 
         header = QLabel("COMPOSER GUIDE")
         header.setStyleSheet(
-            f"color: {accent}; font-weight: bold; font-size: 11px; letter-spacing: 2px;"
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=theme.link, font_size="11px")
         )
         title = QLabel("@ mentions in chat")
         title.setWordWrap(True)
         title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        title.setStyleSheet(f"color: {fg}; font-size: 16px; font-weight: bold;")
+        title.setStyleSheet(theme.style(PRESTIGE_BODY_LABEL, font_size="16px"))
 
         intro = QLabel(
             "Attach files, tools, skills, and more from the composer palette. "
             "Scroll for mixing rules and limits."
         )
         intro.setWordWrap(True)
-        intro.setStyleSheet(f"color: {fg}; font-size: 13px;")
+        intro.setStyleSheet(theme.style(PRESTIGE_BODY_LABEL, font_size="13px", font_weight="400"))
 
         inner.addWidget(header)
         inner.addWidget(title)
@@ -80,43 +82,13 @@ class ComposerMentionGuideDialog(QDialog):
         self.viewer.setPlainText(build_composer_mention_guide_text())
         self.viewer.setMinimumHeight(320)
         self.viewer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.viewer.setStyleSheet(
-            f"""
-            QTextEdit {{
-                background: {surface};
-                color: {fg};
-                border: 1px solid {border};
-                border-radius: 12px;
-                padding: 14px 16px;
-                font-size: 13px;
-                line-height: 1.55;
-                font-family: "Inter", sans-serif;
-            }}
-        """
-        )
+        self.viewer.setStyleSheet(theme.style(PRESTIGE_TEXT_VIEW))
         inner.addWidget(self.viewer, stretch=1)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
-        close_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                padding: 12px 22px;
-                min-height: 32px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """
-        )
+        close_btn.setStyleSheet(theme.style(PRESTIGE_GHOST_BUTTON))
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)
         inner.addLayout(btn_row)

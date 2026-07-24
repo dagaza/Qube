@@ -109,6 +109,13 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
     "general": (
         app.KEY_UI_LANGUAGE,
     ),
+    "appearance.themes": (
+        app.KEY_UI_THEME_MODE,
+        app.KEY_UI_COLOR_SCHEME_ID,
+        app.KEY_UI_THEME_APPEARANCE,
+        app.KEY_LAST_SCHEME_DARK,
+        app.KEY_LAST_SCHEME_LIGHT,
+    ),
 }
 
 SECTION_RESET_LABELS: dict[str, str] = {
@@ -119,6 +126,7 @@ SECTION_RESET_LABELS: dict[str, str] = {
     "companion.desktop": "Desktop Companion",
     "notifications": "Notifications",
     "general": "General",
+    "appearance.themes": "Themes",
 }
 
 

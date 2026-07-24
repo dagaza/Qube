@@ -205,28 +205,18 @@ class _StartupSplashShell(QWidget):
     ) -> QPushButton:
         import qtawesome as qta
 
+        from ui.branded_theme import SPLASH_CHROME_ICON, splash_overlay_chrome_button_qss
+
         btn = QPushButton(self)
         btn.setObjectName(object_name)
         btn.setProperty("class", "WindowControlButton")
         btn.setFixedSize(_SPLASH_MINIMIZE_BTN_SIZE, _SPLASH_MINIMIZE_BTN_SIZE)
-        btn.setIcon(qta.icon(icon_name, color="#94a3b8"))
+        btn.setIcon(qta.icon(icon_name, color=SPLASH_CHROME_ICON))
         btn.setIconSize(QSize(12, 12))
         btn.setToolTip(tooltip)
         btn.setCursor(Qt.CursorShape.ArrowCursor)
         btn.clicked.connect(on_click)
-        btn.setStyleSheet(
-            f"""
-            QPushButton#{object_name} {{
-                background: rgba(18, 21, 31, 0.72);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 6px;
-            }}
-            QPushButton#{object_name}:hover {{
-                background: rgba(30, 34, 48, 0.9);
-                border-color: rgba(255, 255, 255, 0.2);
-            }}
-            """
-        )
+        btn.setStyleSheet(splash_overlay_chrome_button_qss(object_name))
         return btn
 
     def _position_chrome_buttons(self) -> None:
@@ -760,6 +750,7 @@ class _PhasedQubeRunner(QObject):
         on_phase: SplashPhaseCallback,
         on_complete: Callable[[object], None],
         on_failed: Callable[[BaseException], None] | None = None,
+        theme_manager=None,
     ) -> None:
         app = QApplication.instance()
         super().__init__(app if isinstance(app, QObject) else None)
@@ -769,6 +760,7 @@ class _PhasedQubeRunner(QObject):
         self._on_phase = on_phase
         self._on_complete = on_complete
         self._on_failed = on_failed
+        self._theme_manager = theme_manager
         self._phase = 0
         self._qube: object | None = None
 
@@ -800,6 +792,7 @@ class _PhasedQubeRunner(QObject):
         noop_tick: Callable[[str], None] = lambda _msg: None
         if self._qube is None:
             self._qube = Qube.__new__(Qube)
+            self._qube._theme_manager = self._theme_manager  # type: ignore[attr-defined]
         qube = self._qube
         if phase == 0:
             qube._boot_storage(noop_tick, self._embedder)  # type: ignore[attr-defined]
@@ -825,6 +818,7 @@ def start_phased_qube_build(
     on_phase: SplashPhaseCallback,
     on_complete: Callable[[object], None],
     on_failed: Callable[[BaseException], None] | None = None,
+    theme_manager=None,
 ) -> _PhasedQubeRunner:
     """Build ``Qube`` in boot phases; ``on_phase(step_index, percent)`` before each."""
     runner = _PhasedQubeRunner(
@@ -834,6 +828,7 @@ def start_phased_qube_build(
         on_phase=on_phase,
         on_complete=on_complete,
         on_failed=on_failed,
+        theme_manager=theme_manager,
     )
     runner.start()
     return runner

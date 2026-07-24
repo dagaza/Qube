@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
@@ -18,6 +18,8 @@ from ui.components.brand_buttons import apply_brand_caution
 from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.settings_theme import resolve_settings_theme, settings_divider_color
+from core.theme.color_utils import theme_qcolor
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
 SETTINGS_SELECTOR_LABELS_PROP = "settings_selector_labels"
@@ -184,7 +186,8 @@ class SettingsSectionDivider(QWidget):
 
     def paintEvent(self, event) -> None:
         del event
-        color = QColor("#585b70" if self._is_dark else "#cbd5e1")
+        theme = resolve_settings_theme(is_dark=self._is_dark)
+        color = theme_qcolor(settings_divider_color(theme))
         painter = QPainter(self)
         painter.fillRect(0, self._MARGIN_TOP, self.width(), self._LINE_HEIGHT, color)
 

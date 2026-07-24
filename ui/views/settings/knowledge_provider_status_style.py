@@ -5,147 +5,67 @@ from __future__ import annotations
 from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
 
+from core.theme.accessors import theme_for
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import (
+    MUTED_STATUS,
+    PROVIDER_STATUS_TABLE,
+    SUCCESS_STATUS,
+    WARNING_STATUS,
+)
+
 _TABLE_OBJECT_NAME = "KnowledgeProviderStatusTable"
 
-_STATUS_FOREGROUND: dict[str, dict[str, str]] = {
-    "Connected": {"dark": "#a6e3a1", "light": "#15803d"},
-    "Not configured": {"dark": "#f38ba8", "light": "#be123c"},
-    "Env override": {"dark": "#89b4fa", "light": "#1d4ed8"},
-    "Not available": {"dark": "#6c7086", "light": "#94a3b8"},
-    "Anonymous": {"dark": "#a6adc8", "light": "#64748b"},
+_STATUS_ROLES = {
+    "Connected": SUCCESS_STATUS,
+    "Not configured": "error",
+    "Env override": "link",
+    "Not available": MUTED_STATUS,
+    "Anonymous": MUTED_STATUS,
 }
 
-_HEALTH_FOREGROUND: dict[str, dict[str, str]] = {
-    "Good": {"dark": "#a6e3a1", "light": "#15803d"},
-    "Degraded": {"dark": "#f9e2af", "light": "#b45309"},
-    "Unknown": {"dark": "#a6adc8", "light": "#64748b"},
+_HEALTH_ROLES = {
+    "Good": SUCCESS_STATUS,
+    "Degraded": WARNING_STATUS,
+    "Unknown": MUTED_STATUS,
 }
+
+
+def _theme(*, is_dark: bool):
+    return theme_for(is_dark=is_dark)
 
 
 def provider_status_table_stylesheet(*, is_dark: bool) -> str:
     """Return a widget-level stylesheet for the provider status table."""
-    if is_dark:
-        return f"""
-        QTableWidget#{_TABLE_OBJECT_NAME} {{
-            background-color: transparent;
-            border: none;
-            gridline-color: transparent;
-            outline: none;
-            color: #cdd6f4;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QAbstractScrollArea::viewport {{
-            background-color: transparent;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME}::item {{
-            color: #cdd6f4;
-            border: none;
-            padding: 6px 10px;
-            font-size: 12px;
-            font-weight: 400;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QHeaderView::section {{
-            background-color: rgba(49, 50, 68, 0.45);
-            color: #a6adc8;
-            padding: 6px 10px;
-            border: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            font-size: 11px;
-            font-weight: 600;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QTableCornerButton::section {{
-            background-color: rgba(49, 50, 68, 0.45);
-            border: none;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar:vertical {{
-            background: transparent;
-            width: 8px;
-            margin: 4px 2px 4px 0;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::handle:vertical {{
-            background: rgba(166, 173, 200, 0.35);
-            border-radius: 4px;
-            min-height: 24px;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::add-line:vertical,
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::sub-line:vertical {{
-            height: 0px;
-        }}
-        """
-
-    return f"""
-        QTableWidget#{_TABLE_OBJECT_NAME} {{
-            background-color: transparent;
-            border: none;
-            gridline-color: transparent;
-            outline: none;
-            color: #334155;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QAbstractScrollArea::viewport {{
-            background-color: transparent;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME}::item {{
-            color: #334155;
-            border: none;
-            padding: 6px 10px;
-            font-size: 12px;
-            font-weight: 400;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QHeaderView::section {{
-            background-color: rgba(248, 250, 252, 0.95);
-            color: #64748b;
-            padding: 6px 10px;
-            border: none;
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 11px;
-            font-weight: 600;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QTableCornerButton::section {{
-            background-color: rgba(248, 250, 252, 0.95);
-            border: none;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar:vertical {{
-            background: transparent;
-            width: 8px;
-            margin: 4px 2px 4px 0;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::handle:vertical {{
-            background: rgba(100, 116, 139, 0.35);
-            border-radius: 4px;
-            min-height: 24px;
-        }}
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::add-line:vertical,
-        QTableWidget#{_TABLE_OBJECT_NAME} QScrollBar::sub-line:vertical {{
-            height: 0px;
-        }}
-        """
+    return _theme(is_dark=is_dark).style(
+        PROVIDER_STATUS_TABLE, object_name=_TABLE_OBJECT_NAME
+    )
 
 
-def _row_background_color(row_idx: int, *, is_dark: bool) -> QColor:
+def _row_background_color(row_idx: int, *, is_dark: bool, theme) -> QColor:
     if row_idx % 2 == 0:
         return QColor(0, 0, 0, 0)
     if is_dark:
-        return QColor(69, 71, 90, 71)
-    return QColor(226, 232, 240, 166)
+        return theme.qcolor(with_alpha(theme.surface_elevated, 0.28))
+    return theme.qcolor(with_alpha(theme.border, 0.65))
 
 
-def _default_text_color(*, is_dark: bool) -> QColor:
-    return QColor("#cdd6f4" if is_dark else "#334155")
+def _default_text_color(*, theme) -> QColor:
+    return theme.qcolor(theme.text_primary)
 
 
-def _status_text_color(status: str, *, is_dark: bool) -> QColor:
-    theme_key = "dark" if is_dark else "light"
-    hex_color = _STATUS_FOREGROUND.get(status, {}).get(theme_key)
-    if hex_color is None:
-        return _default_text_color(is_dark=is_dark)
-    return QColor(hex_color)
+def _status_text_color(status: str, *, theme) -> QColor:
+    role = _STATUS_ROLES.get(status, MUTED_STATUS)
+    if role == "error":
+        return theme.qcolor(theme.error)
+    if role == "link":
+        return theme.qcolor(theme.link)
+    return theme.qcolor_role(role)
 
 
-def _health_text_color(health: str, *, is_dark: bool) -> QColor:
-    theme_key = "dark" if is_dark else "light"
-    hex_color = _HEALTH_FOREGROUND.get(health)
-    if hex_color is None:
-        return _default_text_color(is_dark=is_dark)
-    return QColor(hex_color[theme_key])
+def _health_text_color(health: str, *, theme) -> QColor:
+    role = _HEALTH_ROLES.get(health, MUTED_STATUS)
+    return theme.qcolor_role(role)
 
 
 def apply_provider_status_table_theme(table: QTableWidget, *, is_dark: bool) -> None:
@@ -166,13 +86,14 @@ def apply_provider_status_row_style(
     is_dark: bool,
 ) -> None:
     """Paint row backgrounds and per-column foreground colors."""
-    row_bg = QBrush(_row_background_color(row_idx, is_dark=is_dark))
-    default_fg = _default_text_color(is_dark=is_dark)
+    theme = _theme(is_dark=is_dark)
+    row_bg = QBrush(_row_background_color(row_idx, is_dark=is_dark, theme=theme))
+    default_fg = _default_text_color(theme=theme)
 
     for item in (provider_item, status_item, quota_item, health_item):
         item.setBackground(row_bg)
 
     provider_item.setForeground(default_fg)
     quota_item.setForeground(default_fg)
-    status_item.setForeground(_status_text_color(status_text, is_dark=is_dark))
-    health_item.setForeground(_health_text_color(health_text, is_dark=is_dark))
+    status_item.setForeground(_status_text_color(status_text, theme=theme))
+    health_item.setForeground(_health_text_color(health_text, theme=theme))

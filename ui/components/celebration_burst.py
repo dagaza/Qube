@@ -10,7 +10,7 @@ from PyQt6.QtCore import QPoint, QPointF, QRect, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QGuiApplication, QPainter
 from PyQt6.QtWidgets import QWidget
 
-_PALETTE = ("#f9e2af", "#fab387", "#89b4fa", "#cba6f7", "#a6e3a1", "#f38ba8")
+from core.brand_identity import BRAND_CELEBRATION_PALETTE
 
 
 def _pad_rect(rect: QRect, margin: int) -> QRect:
@@ -69,7 +69,7 @@ def _spawn_particles(
                 "vx": math.cos(angle) * speed,
                 "vy": math.sin(angle) * speed - random.uniform(0.5, 2.5),
                 "life": random.uniform(0.55, 1.05),
-                "color": random.choice(_PALETTE),
+                "color": random.choice(BRAND_CELEBRATION_PALETTE),
                 "size": random.uniform(3.0, 6.5),
             }
         )
@@ -110,7 +110,7 @@ def _spawn_border_particles(particles: list[dict], rect: QRect, *, count: int = 
                 "vx": vx,
                 "vy": vy,
                 "life": random.uniform(0.7, 1.2),
-                "color": random.choice(_PALETTE),
+                "color": random.choice(BRAND_CELEBRATION_PALETTE),
                 "size": random.uniform(3.5, 7.0),
             }
         )

@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 from core.canonical_fingerprint import fingerprint_text
 from core.canonical_trace_diff import CanonicalTrace, coerce_canonical_trace, find_first_divergence
 from core.golden_trace_capture import load_golden_trace
+from core.theme.tokens import ResolvedTheme
 from ui.canonical_trace_diff.collapse_timeline import CollapseTimelineWidget
 from ui.canonical_trace_diff.diff_compute import (
     diff_json_trees,
@@ -39,26 +40,22 @@ from ui.canonical_trace_diff.diff_compute import (
     sentence_diff_html,
     word_diff_html,
 )
+from ui.canonical_trace_diff.trace_diff_theme import (
+    resolve_trace_diff_theme,
+    trace_diff_html_stylesheet,
+    trace_diff_qt_color,
+    trace_diff_rail_background,
+    trace_diff_rail_fallback,
+    trace_diff_rail_level_colors,
+    trace_diff_status_colors,
+    trace_diff_status_fallback,
+    trace_diff_window_stylesheet,
+)
+from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 
 logger = logging.getLogger("Qube.UI.CanonicalTraceDiff")
 
 ViewMode = Literal["diff", "normalized", "raw"]
-
-_DIFF_STYLESHEET = """
-.diff-match { color: #86efac; }
-.diff-mod { color: #fde047; background: rgba(253,224,71,0.12); }
-.diff-miss { color: #fca5a5; background: rgba(248,113,113,0.15); }
-.diff-extra { color: #93c5fd; background: rgba(147,197,253,0.12); }
-.diff-truncated { color: #94a3b8; font-style: italic; }
-.divergence-marker { color: #f97316; font-weight: 600; }
-"""
-
-_STATUS_COLORS = {
-    "match": "#166534",
-    "modified": "#854d0e",
-    "missing": "#991b1b",
-    "extra": "#1e40af",
-}
 
 
 class _DiffSignals(QObject):
@@ -90,27 +87,29 @@ class _DivergenceRail(QWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._level: Optional[str] = None
+        self._theme = resolve_trace_diff_theme(is_dark=True)
         self.setFixedWidth(28)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+
+    def set_theme(self, theme: ResolvedTheme) -> None:
+        self._theme = theme
+        self.update()
 
     def set_level(self, level: Optional[str]) -> None:
         self._level = level
         self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
-        from PyQt6.QtGui import QPainter, QColor
+        from PyQt6.QtGui import QPainter
 
         super().paintEvent(event)
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor("#0f172a"))
+        p.fillRect(self.rect(), trace_diff_rail_background(self._theme))
         if not self._level:
+            p.end()
             return
-        colors = {
-            "REQUEST": QColor("#ef4444"),
-            "PROMPT": QColor("#f59e0b"),
-            "OUTPUT": QColor("#3b82f6"),
-        }
-        color = colors.get(self._level, QColor("#64748b"))
+        colors = trace_diff_rail_level_colors(self._theme)
+        color = colors.get(self._level, trace_diff_rail_fallback(self._theme))
         slot_h = self.height() // 3
         idx = {"REQUEST": 0, "PROMPT": 1, "OUTPUT": 2}.get(self._level, 0)
         y = idx * slot_h + 4
@@ -124,6 +123,7 @@ class _TraceSidePanel(QWidget):
     def __init__(self, title: str, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._title = title
+        self._theme = resolve_trace_diff_theme(is_dark=True)
         self._sections: dict[str, QGroupBox] = {}
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
@@ -188,6 +188,9 @@ class _TraceSidePanel(QWidget):
         self._raw_edit.setFont(mono)
         root.addWidget(self._raw_edit)
 
+    def set_theme(self, theme: ResolvedTheme) -> None:
+        self._theme = theme
+
     def section_boxes(self) -> list[QGroupBox]:
         return list(self._sections.values())
 
@@ -208,6 +211,8 @@ class _TraceSidePanel(QWidget):
     ) -> None:
         tree: QTreeWidget = self._request_tree
         tree.clear()
+        status_colors = trace_diff_status_colors(self._theme)
+        fallback = trace_diff_status_fallback(self._theme)
         for row in rows:
             path = str(row.get("path") or "")
             status = str(row.get("status") or "match")
@@ -218,11 +223,12 @@ class _TraceSidePanel(QWidget):
                 continue
             display = json.dumps(value, ensure_ascii=False, default=str) if value is not None else "—"
             item = QTreeWidgetItem([path, display])
-            color = _STATUS_COLORS.get(status if status != "extra" or side == "current" else "extra", "#334155")
+            key = status if status != "extra" or side == "current" else "extra"
+            color = status_colors.get(key, fallback)
             if status == "match":
-                color = _STATUS_COLORS["match"]
-            item.setBackground(0, _qt_color(color, 0.25))
-            item.setBackground(1, _qt_color(color, 0.18))
+                color = status_colors["match"]
+            item.setBackground(0, trace_diff_qt_color(color, 0.25))
+            item.setBackground(1, trace_diff_qt_color(color, 0.18))
             tree.addTopLevelItem(item)
         tree.expandAll()
 
@@ -235,6 +241,8 @@ class _TraceSidePanel(QWidget):
     ) -> None:
         tree: QTreeWidget = self._metadata_tree
         tree.clear()
+        status_colors = trace_diff_status_colors(self._theme)
+        fallback = trace_diff_status_fallback(self._theme)
         for row in rows:
             path = str(row.get("path") or "")
             status = str(row.get("status") or "match")
@@ -245,11 +253,11 @@ class _TraceSidePanel(QWidget):
             value = row.get("baseline") if side == "baseline" else row.get("current")
             display = json.dumps(value, ensure_ascii=False, default=str) if value is not None else "—"
             item = QTreeWidgetItem([path, display])
-            color = _STATUS_COLORS.get(status, "#334155")
+            color = status_colors.get(status, fallback)
             if status == "match":
-                color = _STATUS_COLORS["match"]
-            item.setBackground(0, _qt_color(color, 0.25))
-            item.setBackground(1, _qt_color(color, 0.18))
+                color = status_colors["match"]
+            item.setBackground(0, trace_diff_qt_color(color, 0.25))
+            item.setBackground(1, trace_diff_qt_color(color, 0.18))
             tree.addTopLevelItem(item)
         tree.expandAll()
 
@@ -259,23 +267,15 @@ class _TraceSidePanel(QWidget):
             f"short={fp.get('short', '')}"
         )
         if html:
-            self._prompt_browser.setHtml(_DIFF_STYLESHEET + html)
+            self._prompt_browser.setHtml(trace_diff_html_stylesheet(self._theme) + html)
         else:
             self._prompt_browser.setPlainText(text)
 
     def set_output(self, text: str, html: str = "") -> None:
         if html:
-            self._output_browser.setHtml(_DIFF_STYLESHEET + html)
+            self._output_browser.setHtml(trace_diff_html_stylesheet(self._theme) + html)
         else:
             self._output_browser.setPlainText(text)
-
-
-def _qt_color(hex_color: str, alpha: float):
-    from PyQt6.QtGui import QColor
-
-    c = QColor(hex_color)
-    c.setAlphaF(alpha)
-    return c
 
 
 class CanonicalTraceDiffView(QWidget):
@@ -296,9 +296,12 @@ class CanonicalTraceDiffView(QWidget):
         self._scenario_runner: Any | None = None
         self._session_comparer: Any | None = None
         self._workflow_starter: Any | None = None
+        self._is_dark = _resolve_is_dark_from_parent(parent)
+        self._theme = resolve_trace_diff_theme(is_dark=self._is_dark)
         self.setObjectName("CanonicalTraceDiffWindow")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._setup_ui()
+        self.apply_theme(self._is_dark)
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -430,6 +433,18 @@ class CanonicalTraceDiffView(QWidget):
         )
         legend.setObjectName("ViewSubtitle")
         surface_l.addWidget(legend)
+
+    def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
+        self._theme = resolve_trace_diff_theme(is_dark=is_dark)
+        self.setStyleSheet(trace_diff_window_stylesheet(self._theme))
+        self._rail.set_theme(self._theme)
+        self._left.set_theme(self._theme)
+        self._right.set_theme(self._theme)
+        self._collapse_base.apply_theme(is_dark)
+        self._collapse_current.apply_theme(is_dark)
+        if self._baseline is not None and self._current is not None:
+            self._render()
 
     def set_scenario_hooks(
         self,

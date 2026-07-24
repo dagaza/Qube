@@ -27,8 +27,15 @@ class SettingsRegistryTests(unittest.TestCase):
         self.assertEqual(resolve_section_id("HELP & GUIDANCE"), "help")
         self.assertEqual(resolve_section_id("CONTACT & FEEDBACK"), "contact.feedback")
 
-    def test_ten_sections_registered(self) -> None:
-        self.assertEqual(len(SETTINGS_SECTIONS), 10)
+    def test_eleven_sections_registered(self) -> None:
+        self.assertEqual(len(SETTINGS_SECTIONS), 11)
+
+    def test_themes_section_registered(self) -> None:
+        sec = get_section("appearance.themes")
+        self.assertIsNotNone(sec)
+        assert sec is not None
+        self.assertEqual(sec.title, "Themes")
+        self.assertEqual(resolve_section_id("Themes"), "appearance.themes")
 
     def test_support_group_sections(self) -> None:
         support = [s for s in SETTINGS_SECTIONS if s.group == "Support"]

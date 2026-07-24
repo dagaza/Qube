@@ -42,18 +42,18 @@ QToolTip {
 }
 
 #NavSidebar { 
-    background-color: #f8fafc; 
+    background-color: {{surface}}; 
     border-right: 1px solid #e2e8f0; 
     border-bottom-left-radius: 12px; 
 }
 
 #HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #SettingsSidebar { 
-    background-color: #f8fafc; 
+    background-color: {{sidebar_surface}}; 
     border-right: 1px solid #e2e8f0; 
 }
 
 #ToolsPane { 
-    background-color: #f8fafc; 
+    background-color: {{surface}}; 
     border-left: 1px solid #e2e8f0; 
 }
 
@@ -350,7 +350,7 @@ QLabel[class="SettingsHint"] {
 
 /* --- 3. INPUTS & TEXT AREAS --- */
 QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
-    background-color: #ffffff;
+    background-color: {{surface_elevated}};
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 8px 12px;
@@ -359,7 +359,30 @@ QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput, #DocumentPreviewArea {
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, #ChatTextInput:focus {
     border: 1px solid #94a3b8;
+    background-color: {{surface_elevated}};
+}
+
+QPlainTextEdit#ChatUserBubble {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+}
+
+QSpinBox, QDoubleSpinBox {
     background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: #1e293b;
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #94a3b8;
+    background-color: #ffffff;
+}
+
+QSpinBox:hover, QDoubleSpinBox:hover {
+    border: 1px solid #94a3b8;
 }
 
 #SettingsSectionCard QLineEdit,
@@ -806,14 +829,17 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 }
 
 /* --- 10. LIBRARY SPECIFIC --- */
-#LibrarySearchBar, #HubModelSearchBar, #SettingsSectionSearchBar {
-    background-color: #ffffff;
+#LibrarySearchBar, #HubModelSearchBar, #SettingsSectionSearchBar,
+#HistorySearch, #MemorySearchInput, #ThemePickerSearch {
+    background-color: {{surface_elevated}};
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     padding: 8px 12px;
     margin-bottom: 5px;
 }
-#LibrarySearchBar:focus, #HubModelSearchBar:focus, #SettingsSectionSearchBar:focus {
+#LibrarySearchBar:focus, #HubModelSearchBar:focus, #SettingsSectionSearchBar:focus,
+#HistorySearch:focus, #MemorySearchInput:focus, #ThemePickerSearch:focus {
+    background-color: {{surface_elevated}};
     border: 1px solid #94a3b8;
 }
 
@@ -841,17 +867,17 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 
 /* Explicitly target the QFrame to guarantee background painting */
 #UserBubble {
-    background-color: #0f172a; /* Slate Black */
+    background-color: {{chat_user_bubble}};
     border-radius: 18px; 
 }
 
 #UserBubble QLabel {
-    color: #ffffff; 
+    color: {{chat_user_text}}; 
     background-color: transparent;
 }
 
 #UserBubble #ChatUserBubble {
-    color: #ffffff;
+    color: {{chat_user_text}};
     background-color: transparent;
     /* Override global QPlainTextEdit padding/border — otherwise viewport is narrower than
        width() and short user bubbles wrap mid-word (e.g. "te" / "st"). */
@@ -922,7 +948,9 @@ QLabel#AgentMessage {
     font-weight: 500;
 }
 
-/* Sidebar row titles: scope to QListWidget::item (setItemWidget); light = slate always */
+/* Sidebar row title typography only — colors are owned by
+   ui.components.sidebar_list_qss.apply_sidebar_row_title_colors()
+   (setItemWidget rows do not reliably inherit ::item color rules). */
 #HistoryList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#LibraryRowTitle,
@@ -930,7 +958,6 @@ QLabel#AgentMessage {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 500;
-    color: #1e293b !important;
 }
 
 #HistoryList::item QLabel#HistoryFolderTitle,
@@ -938,7 +965,6 @@ QLabel#AgentMessage {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 700;
-    color: #1e293b !important;
 }
 
 #HistoryFolderChevronBtn {

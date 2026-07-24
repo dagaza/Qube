@@ -334,7 +334,10 @@
         "microphone settings",
         "wakeword settings",
         "tts voice settings",
-        "enable tts voice"
+        "enable tts voice",
+        "microphone level meter",
+        "mic level bar",
+        "vu meter"
       ],
       "related": [
         "reference.settings_sections",
@@ -933,7 +936,9 @@
         "stt"
       ],
       "synonyms": [
-        "microphone not working"
+        "microphone not working",
+        "mic level low",
+        "microphone too quiet"
       ],
       "related": [
         "index"
@@ -1471,6 +1476,21 @@
       "doc_id": "features.settings.voice_audio",
       "heading": "Audio input device",
       "answer": "Open Settings \u2192 Voice & Audio and choose your **Audio input device**.",
+      "action_id": "open_settings_voice_audio"
+    },
+    {
+      "id": "features.settings.voice_audio.mic_level",
+      "question_patterns": [
+        "microphone level low",
+        "mic level bar not moving",
+        "vu meter not peaking",
+        "microphone not peaking",
+        "mic too quiet in qube",
+        "why is my mic level low"
+      ],
+      "doc_id": "features.settings.voice_audio",
+      "heading": "Microphone level meter (top bar)",
+      "answer": "Different mics show different levels on the top-bar meter—that is normal. If yours stays low, raise **input volume** for that mic in your **computer\u2019s sound settings** (and any gain knob on the device), confirm the correct **Audio Input** in Settings \u2192 Voice & Audio, and use the **lightbulb hint** to test. You do not need a full bar for voice to work; lower **VAD Threshold** if speech still does not trigger.",
       "action_id": "open_settings_voice_audio"
     },
     {

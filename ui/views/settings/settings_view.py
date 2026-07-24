@@ -112,9 +112,24 @@ from ui.onboarding.settings_tour_header import sync_settings_section_tour_header
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id, get_section
 from ui.views.settings.widgets import collect_theme_buttons, make_settings_section_header_row
 from ui.views.settings.settings_card_style import refresh_settings_section_cards
+from ui.views.settings.settings_theme import (
+    resolve_settings_theme,
+    settings_chevron_color,
+    settings_hint_icon_color,
+    settings_info_icon_color,
+    settings_nav_icon_color,
+    settings_preview_icon_color,
+    style_bootstrap_warning_label,
+)
+from core.theme.widget_styles import (
+    SETTINGS_GHOST_TOOL_BUTTON,
+    SETTINGS_HINT,
+    SETTINGS_ICON_BUTTON,
+)
 from ui.views.settings.sections import (
     advanced,
     ai_models,
+    appearance_themes,
     contact_feedback,
     desktop_companion,
     general,
@@ -138,6 +153,7 @@ from ui.views.settings.handlers import (
     PrestigeMenuMixin,
     StylingMixin,
     SupportHandlersMixin,
+    ThemesHandlersMixin,
     VoiceHandlersMixin,
 )
 
@@ -157,6 +173,7 @@ _SECTION_BUILDERS = {
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
     "general": general.build_section,
+    "appearance.themes": appearance_themes.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
@@ -180,6 +197,7 @@ class SettingsView(
     PersistenceHandlersMixin,
     SupportHandlersMixin,
     UninstallHandlersMixin,
+    ThemesHandlersMixin,
 ):
 
     audio_pin_toggle = pyqtSignal(bool)
@@ -210,35 +228,31 @@ class SettingsView(
         self._template_override_reload_pending = False
         self._auto_reset_reload_pending = False
         self._companion_verbal_test_worker = None
+        self._voice_section_data_loaded = False
+        self._ai_models_section_data_loaded = False
+        self._knowledge_section_data_loaded = False
+        self._skip_next_menu_theme_refresh = False
+        self._sections_built: set[str] = set()
+        self._section_content_hosts: dict[str, QWidget] = {}
+        self._settings_prefetch_queue: list[str] = []
 
         self._setup_ui()
+        self._ensure_rag_toolbar_controls()
         self.engine_mode_changed.connect(self._sync_ai_provider_enabled_for_inference)
         self.engine_mode_changed.connect(lambda _mode: self._sync_native_chat_template_label())
+        self.engine_mode_changed.connect(self._sync_internal_engine_subsections)
         native_engine = self.workers.get("native_engine")
         if native_engine is not None and hasattr(native_engine, "load_finished"):
             native_engine.load_finished.connect(self._on_native_model_load_finished)
-        self._populate_hardware_selectors()
+        QTimer.singleShot(0, self._populate_audio_device_selectors)
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         os.makedirs(get_embedding_models_dir(), exist_ok=True)
         migrate_legacy_tts_layout()
-        self._sync_models_dir_label()
-        self._sync_embedding_models_dir_label()
-        self._sync_stt_models_dir_label()
-        self._sync_tts_models_dir_label()
-        self._sync_active_native_model_label()
-        self._sync_native_chat_template_label()
-        self._refresh_local_gguf_list()
-        self._refresh_embedding_gguf_list()
-        self._sync_active_embedding_label()
-        if hasattr(self, "_sync_embedding_mode_selector"):
-            self._sync_embedding_mode_selector()
-        self._refresh_stt_model_list()
-        self._refresh_tts_model_list()
-        self._sync_active_stt_label()
-        self._sync_active_tts_label()
         self._wakeword_testbed_dialog = None
         self._settings_json_dialog: SettingsJsonEditorDialog | None = None
         self._setup_settings_file_watcher()
+        self._skip_next_menu_theme_refresh = True
+        self._schedule_settings_section_prefetch()
     def select_settings_section(
         self,
         section: str,
@@ -250,6 +264,7 @@ class SettingsView(
         section_id = resolve_section_id(section)
         if section_id is None:
             return
+        self._ensure_section_built(section_id)
         row = self._section_row_by_id.get(section_id)
         if row is not None:
             self.settings_section_list.setCurrentRow(row)
@@ -272,6 +287,36 @@ class SettingsView(
                 )
 
             QTimer.singleShot(120, _open_configure)
+
+    def _ensure_section_data_loaded(self, section_id: str, *, force: bool = False) -> None:
+        """Populate model lists and selectors the first time a section is shown."""
+        if section_id == "voice.audio":
+            if not force and self._voice_section_data_loaded:
+                return
+            self._voice_section_data_loaded = True
+            self._refresh_stt_model_list()
+            self._refresh_tts_model_list()
+            self._sync_active_stt_label()
+            self._sync_active_tts_label()
+            return
+
+        if section_id == "ai.models":
+            if not force and self._ai_models_section_data_loaded:
+                return
+            self._ai_models_section_data_loaded = True
+            self._refresh_local_gguf_list()
+            self._sync_active_native_model_label()
+            return
+
+        if section_id == "knowledge":
+            if not force and self._knowledge_section_data_loaded:
+                return
+            self._knowledge_section_data_loaded = True
+            self._refresh_embedding_gguf_list()
+            self._sync_active_embedding_label()
+            if hasattr(self, "_sync_embedding_mode_selector"):
+                self._sync_embedding_mode_selector()
+
     def _scroll_to_settings_anchor(self, anchor: str) -> None:
         scroll = self.settings_section_stack.currentWidget()
         if scroll is None or not isinstance(scroll, QScrollArea):
@@ -377,34 +422,18 @@ class SettingsView(
             if sec_def.group and sec_def.group != last_group:
                 self._add_settings_group_header(sec_def.group)
                 last_group = sec_def.group
-            builder = _SECTION_BUILDERS[sec_def.id]
-            content_widget = builder(self, is_dark=is_dark)
-            self._add_settings_section(sec_def, content_widget)
-            self._index_section_for_search(sec_def, content_widget)
+            self._register_settings_section(sec_def)
 
-        self._wire_companion_cognition_hint()
+        self._ensure_section_built("voice.audio", is_dark=is_dark)
+        self._ensure_section_data_loaded("voice.audio")
         is_dark = coalesce_settings_is_dark(self)
         collect_theme_buttons(self)
         self._finalize_settings_layout(is_dark)
-        self._sync_internal_engine_subsections(get_engine_mode())
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
     _SETTINGS_STACK_ROLE = int(Qt.ItemDataRole.UserRole)
     _SETTINGS_SECTION_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 1
-    def _add_settings_group_header(self, group_text: str) -> None:
-        item = QListWidgetItem()
-        item.setFlags(Qt.ItemFlag.NoItemFlags)
-        item.setSizeHint(QSize(0, 28))
-        header = QLabel(group_text)
-        header.setObjectName("SettingsSectionGroupHeader")
-        self.settings_section_list.addItem(item)
-        self.settings_section_list.setItemWidget(item, header)
-    def _add_settings_section(self, sec_def, content_widget: QWidget) -> None:
-        content_widget.setMinimumWidth(0)
-        content_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
-        )
-
+    def _register_settings_section(self, sec_def) -> None:
         page_content = QWidget()
         page_content.setObjectName("SettingsContent")
         page_content.setMinimumWidth(0)
@@ -414,7 +443,17 @@ class SettingsView(
         page_layout = QVBoxLayout(page_content)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(30)
-        page_layout.addWidget(content_widget)
+
+        content_host = QWidget()
+        content_host.setObjectName("SettingsSectionContentHost")
+        content_host.setMinimumWidth(0)
+        content_host.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+        host_layout = QVBoxLayout(content_host)
+        host_layout.setContentsMargins(0, 0, 0, 0)
+        host_layout.setSpacing(0)
+        page_layout.addWidget(content_host)
         page_layout.addStretch()
 
         scroll = QScrollArea()
@@ -427,6 +466,7 @@ class SettingsView(
         stack_idx = self.settings_section_stack.count()
         self.settings_section_stack.addWidget(scroll)
         self._section_stack_index_by_id[sec_def.id] = stack_idx
+        self._section_content_hosts[sec_def.id] = content_host
 
         item = QListWidgetItem()
         item.setSizeHint(QSize(0, 44))
@@ -441,9 +481,128 @@ class SettingsView(
             ),
         )
         self._section_row_by_id[sec_def.id] = row
+        self._index_section_search_base(sec_def)
 
         if len(self._section_row_by_id) == 1:
+            self.settings_section_list.blockSignals(True)
             self.settings_section_list.setCurrentRow(row)
+            self.settings_section_stack.setCurrentIndex(stack_idx)
+            self.settings_section_list.blockSignals(False)
+            self._settings_active_section_id = sec_def.id
+            self._sync_settings_section_tour_header(sec_def.id)
+
+    def _ensure_section_built(self, section_id: str, *, is_dark: bool | None = None) -> bool:
+        if section_id in self._sections_built:
+            return True
+
+        if section_id in self._settings_prefetch_queue:
+            self._settings_prefetch_queue = [
+                queued_id
+                for queued_id in self._settings_prefetch_queue
+                if queued_id != section_id
+            ]
+
+        builder = _SECTION_BUILDERS.get(section_id)
+        content_host = self._section_content_hosts.get(section_id)
+        sec_def = get_section(section_id)
+        if builder is None or content_host is None or sec_def is None:
+            return False
+
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+
+        if is_dark is None:
+            is_dark = coalesce_settings_is_dark(self)
+
+        content_widget = builder(self, is_dark=is_dark)
+        self._mount_settings_section_content(section_id, content_widget)
+        self._sections_built.add(section_id)
+        self._index_section_for_search(sec_def, content_widget)
+        collect_theme_buttons(self)
+
+        if section_id == "companion.desktop":
+            self._wire_companion_cognition_hint()
+        if section_id == "ai.models":
+            self._sync_internal_engine_subsections(get_engine_mode())
+            self._populate_engine_selectors()
+            self._sync_models_dir_label()
+            self._sync_native_chat_template_label()
+            self._sync_active_native_model_label()
+        if section_id == "voice.audio":
+            self._sync_stt_models_dir_label()
+            self._sync_tts_models_dir_label()
+        if section_id == "knowledge":
+            self._sync_embedding_models_dir_label()
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
+        return True
+
+    def _mount_settings_section_content(
+        self, section_id: str, content_widget: QWidget
+    ) -> None:
+        content_host = self._section_content_hosts.get(section_id)
+        if content_host is None:
+            return
+
+        content_widget.setMinimumWidth(0)
+        content_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+        layout = content_host.layout()
+        if layout is None:
+            layout = QVBoxLayout(content_host)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        layout.addWidget(content_widget)
+
+    def _schedule_settings_section_prefetch(self) -> None:
+        self._settings_prefetch_queue = [
+            sec_def.id
+            for sec_def in SETTINGS_SECTIONS
+            if sec_def.id not in self._sections_built
+        ]
+        if self._settings_prefetch_queue:
+            QTimer.singleShot(0, self._prefetch_next_settings_section)
+
+    def _prefetch_next_settings_section(self) -> None:
+        if not self._settings_prefetch_queue:
+            return
+        section_id = self._settings_prefetch_queue.pop(0)
+        self._ensure_section_built(section_id)
+        if self._settings_prefetch_queue:
+            QTimer.singleShot(0, self._prefetch_next_settings_section)
+    def _add_settings_group_header(self, group_text: str) -> None:
+        item = QListWidgetItem()
+        item.setFlags(Qt.ItemFlag.NoItemFlags)
+        item.setSizeHint(QSize(0, 28))
+        header = QLabel(group_text)
+        header.setObjectName("SettingsSectionGroupHeader")
+        self.settings_section_list.addItem(item)
+        self.settings_section_list.setItemWidget(item, header)
+
+    def _upsert_section_search_index(self, sec_def, keywords: set[str]) -> None:
+        self._settings_search_index = [
+            entry
+            for entry in self._settings_search_index
+            if entry["section_id"] != sec_def.id
+        ]
+        self._settings_search_index.append(
+            {
+                "section_id": sec_def.id,
+                "keywords": keywords,
+            }
+        )
+
+    def _index_section_search_base(self, sec_def) -> None:
+        keywords: set[str] = {sec_def.title.lower(), sec_def.id.lower()}
+        for legacy in sec_def.legacy_titles:
+            keywords.add(legacy.lower())
+        self._upsert_section_search_index(sec_def, keywords)
+
     def _index_section_for_search(self, sec_def, content_widget: QWidget) -> None:
         keywords: set[str] = {sec_def.title.lower(), sec_def.id.lower()}
         for legacy in sec_def.legacy_titles:
@@ -459,12 +618,8 @@ class SettingsView(
             text = cb.text().strip()
             if text:
                 keywords.add(text.lower())
-        self._settings_search_index.append(
-            {
-                "section_id": sec_def.id,
-                "keywords": keywords,
-            }
-        )
+        self._upsert_section_search_index(sec_def, keywords)
+
     def _wire_companion_cognition_hint(self) -> None:
         lbl = getattr(self, "companion_cognition_hint_lbl", None)
         if lbl is None:
@@ -556,20 +711,18 @@ class SettingsView(
         if isinstance(button, SelectorButton):
             button.apply_theme(is_dark)
             return
-        muted = "#3f3f46" if is_dark else "#a1a1aa"
-        active = "#64748b"
-        color = active if button.isEnabled() else muted
+        theme = resolve_settings_theme(self, is_dark=is_dark)
+        color = settings_chevron_color(theme, enabled=button.isEnabled())
         button.setIcon(qta.icon("fa5s.chevron-down", color=color))
     def _make_settings_info_button(self, tooltip_text: str) -> QToolButton:
+        theme = resolve_settings_theme(self)
         btn = QToolButton()
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip(tooltip_text)
-        btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        btn.setIcon(qta.icon("fa5s.info-circle", color=settings_info_icon_color(theme)))
         btn.setIconSize(QSize(14, 14))
         btn.setAutoRaise(True)
-        btn.setStyleSheet(
-            "QToolButton { border: none; padding: 0px; background: transparent; }"
-        )
+        btn.setStyleSheet(theme.style(SETTINGS_GHOST_TOOL_BUTTON))
         return btn
     def sync_active_native_model_label(self) -> None:
         """Public hook for MainWindow when the toolbar/native load state changes."""
@@ -578,16 +731,22 @@ class SettingsView(
         """Call when a .gguf is saved elsewhere (e.g. Model Manager download)."""
         self._sync_models_dir_label()
         self._sync_active_native_model_label()
-        self._refresh_local_gguf_list()
+        self._ensure_section_data_loaded("ai.models", force=True)
         if hasattr(self, "_refresh_cognition_gguf_list"):
             self._refresh_cognition_gguf_list()
     def refresh_menu_themes(self, is_dark: bool):
         """Standardizes icons and borders when the theme is toggled."""
+        if getattr(self, "_skip_next_menu_theme_refresh", False):
+            self._skip_next_menu_theme_refresh = False
+            return
         from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 
         is_dark = coalesce_settings_is_dark(self, is_dark=is_dark)
+        theme = resolve_settings_theme(self, is_dark=is_dark)
         if not getattr(self, "_theme_buttons", None):
             collect_theme_buttons(self)
+        for toggle in self.findChildren(PrestigeToggle):
+            toggle.apply_theme(is_dark=is_dark)
         for btn in self._theme_buttons:
             if btn is None:
                 continue
@@ -598,26 +757,57 @@ class SettingsView(
 
         info_btn = getattr(self, "advanced_engine_info_btn", None)
         if info_btn is not None:
-            info_color = "#94a3b8" if is_dark else "#64748b"
-            info_btn.setIcon(qta.icon("fa5s.info-circle", color=info_color))
+            info_btn.setIcon(
+                qta.icon("fa5s.info-circle", color=settings_info_icon_color(theme))
+            )
 
-        hint_color = "#eab308" if is_dark else "#ca8a04"
+        hint_color = settings_hint_icon_color(theme)
         for hint_btn in (getattr(self, "audio_input_hint_btn", None),):
             if hint_btn is not None:
                 hint_btn.setIcon(qta.icon("fa5s.lightbulb", color=hint_color))
 
+        preview_color = settings_preview_icon_color(theme)
         for preview_btn in (
             getattr(self, "tts_voice_preview_btn", None),
             getattr(self, "audio_output_preview_btn", None),
         ):
             if preview_btn is not None:
-                preview_color = "#94a3b8" if is_dark else "#64748b"
                 preview_btn.setIcon(qta.icon("fa5s.play", color=preview_color))
+
+        wakeword_info_btn = getattr(self, "wakeword_info_btn", None)
+        if wakeword_info_btn is not None:
+            wakeword_info_btn.setIcon(
+                qta.icon("fa5s.info-circle", color=settings_info_icon_color(theme))
+            )
+
+        for label in getattr(self, "_bootstrap_warning_labels", ()) or ():
+            if label is not None:
+                style_bootstrap_warning_label(label, theme)
+
+        from ui.views.settings.widgets import SettingsSectionDivider
+
+        for divider in self.findChildren(SettingsSectionDivider):
+            divider.apply_theme(is_dark)
+
+        hint_style = theme.style(SETTINGS_HINT)
+        for lbl in self.findChildren(QLabel):
+            if lbl.objectName() == "SettingsHint" or lbl.property("class") == "SettingsHint":
+                lbl.setStyleSheet(hint_style)
+
+        if hasattr(self, "custom_sources_table"):
+            from ui.views.settings.sections.knowledge_custom_sources import (
+                _refresh_custom_sources_list,
+            )
+
+            _refresh_custom_sources_list(self, is_dark=is_dark)
+        if hasattr(self, "knowledge_presets_table"):
+            from ui.views.settings.sections.knowledge_presets import _refresh_presets_list
+
+            _refresh_presets_list(self, is_dark=is_dark)
 
         refresh_settings_section_cards(self, is_dark=is_dark)
 
-        # Update section header + sidebar nav icons
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+        icon_color = settings_nav_icon_color(theme)
 
         for icon_lbl in getattr(self, "_settings_section_icon_labels", []):
             self._refresh_settings_icon_label(icon_lbl, icon_color)
@@ -627,15 +817,9 @@ class SettingsView(
 
         self._update_settings_section_nav_colors()
 
-        # Update Trigger Add Button
-        if hasattr(self, 'trigger_add_btn'):
-            btn_bg = "#313244" if is_dark else "#e2e8f0"
-            btn_hover = "#45475a" if is_dark else "#cbd5e1"
-            self.trigger_add_btn.setIcon(qta.icon('fa5s.plus', color=icon_color))
-            self.trigger_add_btn.setStyleSheet(f"""
-                QPushButton {{ background: {btn_bg}; border: none; border-radius: 8px; }}
-                QPushButton:hover {{ background: {btn_hover}; }}
-            """)
+        if hasattr(self, "trigger_add_btn"):
+            self.trigger_add_btn.setIcon(qta.icon("fa5s.plus", color=theme.accent))
+            self.trigger_add_btn.setStyleSheet(theme.style(SETTINGS_ICON_BUTTON))
 
         self._apply_spinbox_style(is_dark)
         self._apply_settings_sidebar_surface(is_dark)
@@ -650,6 +834,9 @@ class SettingsView(
 
         if hasattr(self, "companion_preview"):
             self.companion_preview.apply_theme(is_dark)
+
+        if hasattr(self, "companion_snap_compass"):
+            self.companion_snap_compass.apply_theme(is_dark)
 
         if hasattr(self, "knowledge_provider_status_table"):
             from ui.views.settings.sections.knowledge_provider_status import (
@@ -832,7 +1019,8 @@ class SettingsView(
         )
         icon_label.setProperty("icon_size", 16)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+        theme = resolve_settings_theme(self, is_dark=is_dark)
+        icon_color = settings_nav_icon_color(theme)
         icon_label.setPixmap(
             self._settings_section_icon_pixmap(
                 icon_name=icon_name,
@@ -860,9 +1048,22 @@ class SettingsView(
         stack_idx = item.data(self._SETTINGS_STACK_ROLE)
         if stack_idx is None:
             return
-        self.settings_section_stack.setCurrentIndex(int(stack_idx))
+        previous_section = getattr(self, "_settings_active_section_id", None)
         section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if section_id:
+            self._ensure_section_built(section_id)
+        if (
+            previous_section == "appearance.themes"
+            and section_id != "appearance.themes"
+            and hasattr(self, "_on_themes_section_leave")
+        ):
+            self._on_themes_section_leave()
+        self.settings_section_stack.setCurrentIndex(int(stack_idx))
+        self._settings_active_section_id = section_id
+        self._ensure_section_data_loaded(section_id)
         self._sync_settings_section_tour_header(section_id)
+        if section_id == "appearance.themes" and hasattr(self, "_on_themes_section_enter"):
+            self._on_themes_section_enter()
         if section_id == "advanced" and hasattr(
             self, "_sync_all_diagnostic_log_recording_toggles"
         ):
@@ -894,9 +1095,10 @@ class SettingsView(
         )
         icon_lbl = getattr(self, "settings_section_icon_lbl", None)
         if icon_lbl is not None and section_id:
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
-            icon_color = "#8b5cf6" if is_dark else "#4c4f69"
-            self._refresh_settings_icon_label(icon_lbl, icon_color)
+            theme = resolve_settings_theme(self)
+            self._refresh_settings_icon_label(
+                icon_lbl, settings_nav_icon_color(theme)
+            )
 
     def _update_settings_section_nav_colors(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -919,13 +1121,15 @@ class SettingsView(
             [(v, v) for v in voices],
             lambda v: self.tts_worker.set_voice(v) if self.tts_worker else None,
         )
+        from core.tts_models import resolve_default_tts_voice
+
         active = (
             self.tts_worker.active_voice_name
             if self.tts_worker and hasattr(self.tts_worker, "active_voice_name")
-            else voices[0]
+            else resolve_default_tts_voice(voices)
         )
         if active not in voices:
-            active = voices[0]
+            active = resolve_default_tts_voice(voices)
         self.voice_selector.setText(active)
         if self.tts_worker:
             self.tts_worker.set_voice(active)

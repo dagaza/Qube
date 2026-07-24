@@ -12,6 +12,7 @@ from ui.views.settings.handlers.persistence import PersistenceHandlersMixin
 from ui.views.settings.handlers.prestige_menu import PrestigeMenuMixin
 from ui.views.settings.handlers.styling import StylingMixin
 from ui.views.settings.handlers.support import SupportHandlersMixin
+from ui.views.settings.handlers.themes import ThemesHandlersMixin
 from ui.views.settings.handlers.voice import VoiceHandlersMixin
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "PrestigeMenuMixin",
     "StylingMixin",
     "SupportHandlersMixin",
+    "ThemesHandlersMixin",
     "VoiceHandlersMixin",
 ]

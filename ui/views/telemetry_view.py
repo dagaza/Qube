@@ -13,6 +13,10 @@ import qtawesome as qta
 from ui.components.page_tour_help_button import PageTourHelpButton
 from core.app_settings import get_engine_mode
 from core.inference_transparency import aggregate_app_transparency
+from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
+from core.theme.color_utils import rgba_tuple
+from ui.shell_theme import muted_icon_color, telemetry_metric_colors
 
 logger = logging.getLogger("Qube.UI.Telemetry")
 
@@ -164,21 +168,21 @@ class TelemetryView(QWidget):
             "Rolling 60-second chart of processor, memory, and GPU utilization."
         )
 
-        cpu_item, self.live_cpu_lbl = self._create_legend_item(
-            "CPU: 0%", "#10b981", "Processor utilization across all cores."
+        cpu_item, self.live_cpu_lbl, self._cpu_legend_pill = self._create_legend_item(
+            "CPU: 0%", theme_for(is_dark=True).success, "Processor utilization across all cores."
         )
-        ram_item, self.live_ram_lbl = self._create_legend_item(
-            "RAM: 0%", "#3b82f6", "System memory currently in use."
+        ram_item, self.live_ram_lbl, self._ram_legend_pill = self._create_legend_item(
+            "RAM: 0%", theme_for(is_dark=True).info, "System memory currently in use."
         )
-        gpu_item, self.live_gpu_lbl = self._create_legend_item(
-            "GPU: 0%", "#8b5cf6", "Graphics processor compute utilization."
+        gpu_item, self.live_gpu_lbl, self._gpu_legend_pill = self._create_legend_item(
+            "GPU: 0%", theme_for(is_dark=True).accent, "Graphics processor compute utilization."
         )
 
         header_layout.addWidget(header)
         header_layout.addStretch()
-        header_layout.addWidget(self.live_cpu_lbl)
-        header_layout.addWidget(self.live_ram_lbl)
-        header_layout.addWidget(self.live_gpu_lbl)
+        header_layout.addWidget(cpu_item)
+        header_layout.addWidget(ram_item)
+        header_layout.addWidget(gpu_item)
         layout.addLayout(header_layout)
 
         pg.setConfigOptions(antialias=True)
@@ -198,12 +202,11 @@ class TelemetryView(QWidget):
         self.plot_widget.wheelEvent = self._ignore_plot_wheel_event
 
         self.plot_widget.getAxis('bottom').setStyle(showValues=False)
-        self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#94a3b8', width=1))
-        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color='#94a3b8'))
 
-        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#10b981', width=2))
-        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#3b82f6', width=2))
-        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#8b5cf6', width=2))
+        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self.ram_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self._apply_plot_theme()
 
         layout.addWidget(self.plot_widget)
         return frame
@@ -531,11 +534,36 @@ class TelemetryView(QWidget):
         btn = QToolButton()
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip(tooltip_text)
-        btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        btn.setIcon(qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme())))
         btn.setIconSize(QSize(12, 12))
         btn.setAutoRaise(True)
         btn.setStyleSheet("QToolButton { border: none; padding: 0px; background: transparent; }")
         return btn
+
+    def _theme(self, is_dark: bool | None = None):
+        return view_resolved_theme(self, is_dark=is_dark)
+
+    def _apply_plot_theme(self, is_dark: bool | None = None) -> None:
+        theme = self._theme(is_dark)
+        cpu_c, ram_c, gpu_c = telemetry_metric_colors(theme)
+        axis_css = theme.text_muted
+        axis_pen = rgba_tuple(axis_css)
+        self.plot_widget.getAxis('left').setPen(pg.mkPen(color=axis_pen, width=1))
+        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color=axis_pen))
+        self.cpu_line.setPen(pg.mkPen(rgba_tuple(cpu_c), width=2))
+        self.ram_line.setPen(pg.mkPen(rgba_tuple(ram_c), width=2))
+        self.gpu_line.setPen(pg.mkPen(rgba_tuple(gpu_c), width=2))
+        for pill, lbl, color in (
+            (getattr(self, "_cpu_legend_pill", None), getattr(self, "live_cpu_lbl", None), cpu_c),
+            (getattr(self, "_ram_legend_pill", None), getattr(self, "live_ram_lbl", None), ram_c),
+            (getattr(self, "_gpu_legend_pill", None), getattr(self, "live_gpu_lbl", None), gpu_c),
+        ):
+            if pill is not None:
+                pill.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
+            if lbl is not None:
+                lbl.setStyleSheet(
+                    f"color: {color}; font-weight: bold; font-size: 13px; opacity: 1.0;"
+                )
 
     # ============================================================
     # LEGEND CREATOR
@@ -565,7 +593,7 @@ class TelemetryView(QWidget):
 
         layout.addWidget(pill)
         layout.addWidget(lbl)
-        return container, lbl
+        return container, lbl, pill
 
     # ============================================================
     # HARDWARE MONITOR
@@ -586,6 +614,7 @@ class TelemetryView(QWidget):
     def refresh_after_theme_toggle(self) -> None:
         """Keep telemetry card shells aligned with global light/dark theme."""
         self._apply_card_surfaces()
+        self._apply_plot_theme()
         self._sync_hardware_card_min_height()
 
     def _on_native_load_finished_telemetry(self, _ok: bool, _msg: str) -> None:
@@ -653,9 +682,9 @@ class TelemetryView(QWidget):
         self.gpu_line.setData(list(self.gpu_data))
 
     def _apply_card_surfaces(self) -> None:
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        bg = "#232337" if is_dark else "#E9EFF5"
-        border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
+        theme = self._theme()
+        bg = theme.surface_elevated if theme.is_dark else theme.surface
+        border = theme.border_subtle if theme.is_dark else theme.border
         for card in (
             getattr(self, "hardware_card", None),
             getattr(self, "latency_card", None),
