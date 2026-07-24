@@ -4,7 +4,16 @@ Rolling 10-15 bullet summary of loop state (current phase, gate status, next ste
 maintained by the coordinator each turn. On a fresh start the `stop` hook archives the
 previous context to `.cursor/starfall-archive/`.
 
-## Run 008 - 2026-07-24T21:35:00Z (turn 3/10 — IN PROGRESS)
+## Run 009 - 2026-07-24T22:15:00Z (turn 1/10 — CLOSING)
+
+- Phase 3 (#61) **COMPLETE** — T19 agent scope, T20 step approval + invoke gate, T21 session egress + Telemetry panel.
+- **11** Phase 3 tests PASS; Phase 2 regression **51/51 PASS**; starfall_verify **PASS** (P6 clean).
+- G1–G4 **PASS**; handoff **STATUS: READY** (Phase 3 scope).
+- KI2 mitigated; KI4 partial preset deny UX still open (non-blocker).
+- Deferred: router capability suggestions, remote MCP transport, privacy export button (formatter ready).
+- Product code **uncommitted** on `keith/mcp-capability-integration`; next baton Phase 4 (#62).
+
+## Run 008 - 2026-07-24T21:35:00Z (CLOSED)
 
 - Turn 3 **Testing** complete — T13–T18 regression **56/56 PASS** (incl. T18 7 tests); starfall_verify **PASS** (44 files, 20 targets).
 - Parallel specialists (Quality, Product) confirm G4 + G3; no test gaps for T18 acceptance criteria.
@@ -87,4 +96,7 @@ previous context to `.cursor/starfall-archive/`.
 
 
 ## Run 008 - 2026-07-24T21:17:34.600855+00:00
+
+
+## Run 009 - 2026-07-24T21:38:01.528218+00:00
 

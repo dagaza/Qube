@@ -4,15 +4,20 @@ Composer attach→invoke uses strict :func:`evaluate_access` (attach ≠ grant; 
 ephemeral READ). The configured-source :class:`~core.knowledge.connectors.mcp_connector.McpConnector`
 path synthesizes an ephemeral READ grant when none is stored — see
 ``.cursor/starfall/decisions.md`` (2026-07-23).
+
+Phase 3 (#61) adds agent-scope enforcement (P1), per-step approval for
+write/destructive tiers, dry-run preview, and session egress recording.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 
+from core.integrations.agent_scope import AgentScope, agent_scope_store
 from core.integrations.capabilities import (
     CapabilityDescriptor,
     CapabilityURN,
@@ -22,11 +27,14 @@ from core.integrations.capabilities import (
 )
 from core.integrations.capabilities.persistence import AccessDecision
 from core.integrations.consent_controller import load_cached_descriptors
+from core.integrations.egress_summary import include_raw_tools_in_egress
 from core.integrations.registry.provider_registry import (
     UnknownCapabilityProvider,
     create_capability_provider,
     ensure_providers_registered,
 )
+from core.integrations.session_egress import build_egress_record, session_egress_ledger
+from core.integrations.step_approval import requires_step_approval, step_approval_store
 
 logger = logging.getLogger("Qube.Integrations.Invoke")
 
@@ -34,6 +42,7 @@ __all__ = [
     "CapabilityInvokeResult",
     "evaluate_invoke_access",
     "parse_composer_capability_urn",
+    "preview_gated_capability",
     "resolve_descriptor_for_urn",
     "invoke_gated_capability",
 ]
@@ -48,6 +57,7 @@ class CapabilityInvokeResult:
     rows: tuple[dict[str, Any], ...] = ()
     descriptor: CapabilityDescriptor | None = None
     urn: CapabilityURN | None = None
+    dry_run: bool = False
 
     @property
     def hits(self) -> list[dict[str, Any]]:
@@ -95,6 +105,96 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+def _record_egress(
+    *,
+    session_id: str | None,
+    turn_id: str | None,
+    urn: CapabilityURN,
+    descriptor: CapabilityDescriptor | None,
+    allowed: bool,
+    reason: str,
+    latency_ms: float,
+    dry_run: bool,
+) -> None:
+    if not session_id or not turn_id:
+        return
+    record = build_egress_record(
+        session_id=session_id,
+        turn_id=turn_id,
+        urn=urn,
+        descriptor=descriptor,
+        allowed=allowed,
+        reason=reason,
+        latency_ms=latency_ms,
+        dry_run=dry_run,
+        include_raw_tool=include_raw_tools_in_egress(),
+    )
+    session_egress_ledger.record(record)
+
+
+def _check_agent_scope(
+    urn: CapabilityURN,
+    *,
+    session_id: str | None,
+    agent_scope: AgentScope | None,
+    enforce_scope: bool,
+) -> tuple[bool, str]:
+    if not enforce_scope or not session_id:
+        return True, "ok"
+    scope = agent_scope
+    if scope is None:
+        scope = agent_scope_store.get_scope(session_id)
+    if scope is None:
+        return True, "ok"
+    return scope.check(urn)
+
+
+def _check_step_approval(
+    descriptor: CapabilityDescriptor,
+    urn: CapabilityURN,
+    *,
+    session_id: str | None,
+    turn_id: str | None,
+    step_approved: bool,
+) -> tuple[bool, str]:
+    if not requires_step_approval(descriptor):
+        return True, "ok"
+    if step_approved:
+        return True, "ok"
+    if session_id and turn_id and step_approval_store.has_approval(
+        session_id, turn_id, urn
+    ):
+        return True, "ok"
+    return False, "step approval required for write/destructive capability"
+
+
+def preview_gated_capability(
+    urn: CapabilityURN | str,
+    query: str,
+    *,
+    max_results: int = 5,
+    timeout_s: float = 15.0,
+    provider_factory_kwargs: dict[str, Any] | None = None,
+    live_descriptors: list[CapabilityDescriptor] | None = None,
+    session_id: str | None = None,
+    turn_id: str | None = None,
+) -> CapabilityInvokeResult:
+    """Dry-run preview for write/destructive capabilities (no side effects)."""
+    return invoke_gated_capability(
+        urn,
+        query,
+        max_results=max_results,
+        timeout_s=timeout_s,
+        provider_factory_kwargs=provider_factory_kwargs,
+        live_descriptors=live_descriptors,
+        session_id=session_id,
+        turn_id=turn_id,
+        dry_run=True,
+        enforce_scope=False,
+        record_egress=False,
+    )
+
+
 def invoke_gated_capability(
     urn: CapabilityURN | str,
     query: str,
@@ -104,8 +204,16 @@ def invoke_gated_capability(
     provider_factory_kwargs: dict[str, Any] | None = None,
     adapter_id: str | None = None,
     live_descriptors: list[CapabilityDescriptor] | None = None,
+    session_id: str | None = None,
+    turn_id: str | None = None,
+    dry_run: bool = False,
+    step_approved: bool = False,
+    agent_scope: AgentScope | None = None,
+    enforce_scope: bool = True,
+    record_egress: bool = True,
 ) -> CapabilityInvokeResult:
-    """Invoke a capability after strict consent evaluation."""
+    """Invoke a capability after strict consent, scope, and step-approval checks."""
+    t0 = time.time()
     if isinstance(urn, str):
         parsed = parse_composer_capability_urn(urn)
         if parsed is None:
@@ -114,17 +222,99 @@ def invoke_gated_capability(
 
     descriptor = resolve_descriptor_for_urn(urn, live_descriptors=live_descriptors)
     if descriptor is None:
-        return CapabilityInvokeResult(
-            False, f"capability not found: {urn}", urn=urn
+        result = CapabilityInvokeResult(
+            False, f"capability not found: {urn}", urn=urn, dry_run=dry_run
         )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=None,
+                allowed=False,
+                reason=result.reason,
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
+
+    scope_ok, scope_reason = _check_agent_scope(
+        urn,
+        session_id=session_id,
+        agent_scope=agent_scope,
+        enforce_scope=enforce_scope,
+    )
+    if not scope_ok:
+        logger.info("[CapabilityInvoke] out of scope %s: %s", urn, scope_reason)
+        result = CapabilityInvokeResult(
+            False, scope_reason, descriptor=descriptor, urn=urn, dry_run=dry_run
+        )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=descriptor,
+                allowed=False,
+                reason=scope_reason,
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
 
     store = ConsentStore(urn.provider)
     decision = evaluate_invoke_access(descriptor, store.get(descriptor.urn))
     if not decision.allowed:
         logger.info("[CapabilityInvoke] denied %s: %s", urn, decision.reason)
-        return CapabilityInvokeResult(
-            False, decision.reason, descriptor=descriptor, urn=urn
+        result = CapabilityInvokeResult(
+            False,
+            decision.reason,
+            descriptor=descriptor,
+            urn=urn,
+            dry_run=dry_run,
         )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=descriptor,
+                allowed=False,
+                reason=decision.reason,
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
+
+    if not dry_run:
+        step_ok, step_reason = _check_step_approval(
+            descriptor,
+            urn,
+            session_id=session_id,
+            turn_id=turn_id,
+            step_approved=step_approved,
+        )
+        if not step_ok:
+            logger.info("[CapabilityInvoke] step approval required %s", urn)
+            result = CapabilityInvokeResult(
+                False,
+                step_reason,
+                descriptor=descriptor,
+                urn=urn,
+                dry_run=False,
+            )
+            if record_egress and session_id and turn_id:
+                _record_egress(
+                    session_id=session_id,
+                    turn_id=turn_id,
+                    urn=urn,
+                    descriptor=descriptor,
+                    allowed=False,
+                    reason=step_reason,
+                    latency_ms=(time.time() - t0) * 1000.0,
+                    dry_run=False,
+                )
+            return result
 
     ensure_providers_registered()
     kwargs = dict(provider_factory_kwargs or {})
@@ -133,19 +323,45 @@ def invoke_gated_capability(
     try:
         provider = create_capability_provider(urn.provider, **kwargs)
     except UnknownCapabilityProvider:
-        return CapabilityInvokeResult(
+        result = CapabilityInvokeResult(
             False,
             f"unknown provider {urn.provider!r}",
             descriptor=descriptor,
             urn=urn,
+            dry_run=dry_run,
         )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=descriptor,
+                allowed=False,
+                reason=result.reason,
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
     except Exception as exc:
-        return CapabilityInvokeResult(
+        result = CapabilityInvokeResult(
             False,
             f"provider init failed: {exc}",
             descriptor=descriptor,
             urn=urn,
+            dry_run=dry_run,
         )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=descriptor,
+                allowed=False,
+                reason=result.reason,
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
 
     try:
         if live_descriptors is None:
@@ -157,18 +373,34 @@ def invoke_gated_capability(
                     descriptor, store.get(descriptor.urn)
                 )
                 if not decision.allowed:
-                    return CapabilityInvokeResult(
+                    result = CapabilityInvokeResult(
                         False,
                         decision.reason,
                         descriptor=descriptor,
                         urn=urn,
+                        dry_run=dry_run,
                     )
+                    if record_egress and session_id and turn_id:
+                        _record_egress(
+                            session_id=session_id,
+                            turn_id=turn_id,
+                            urn=urn,
+                            descriptor=descriptor,
+                            allowed=False,
+                            reason=decision.reason,
+                            latency_ms=(time.time() - t0) * 1000.0,
+                            dry_run=dry_run,
+                        )
+                    return result
 
         invoke_urn = urn if urn.version else descriptor.urn
         ctx = InvokeContext(
             query=query,
             max_results=max_results,
             timeout_s=timeout_s,
+            conversation_id=session_id,
+            turn_id=str(turn_id) if turn_id is not None else None,
+            dry_run=dry_run,
         )
         hits = _run(
             provider.invoke(
@@ -179,9 +411,21 @@ def invoke_gated_capability(
         )
     except Exception as exc:
         logger.warning("[CapabilityInvoke] invoke failed for %s: %s", urn, exc)
-        return CapabilityInvokeResult(
-            False, str(exc), descriptor=descriptor, urn=urn
+        result = CapabilityInvokeResult(
+            False, str(exc), descriptor=descriptor, urn=urn, dry_run=dry_run
         )
+        if record_egress and session_id and turn_id:
+            _record_egress(
+                session_id=session_id,
+                turn_id=turn_id,
+                urn=urn,
+                descriptor=descriptor,
+                allowed=False,
+                reason=str(exc),
+                latency_ms=(time.time() - t0) * 1000.0,
+                dry_run=dry_run,
+            )
+        return result
     finally:
         close = getattr(provider, "close", None)
         if callable(close):
@@ -197,6 +441,19 @@ def invoke_gated_capability(
         row["_adapter"] = short_adapter
         rows.append(row)
 
-    return CapabilityInvokeResult(
-        True, "ok", rows=tuple(rows), descriptor=descriptor, urn=urn
+    latency_ms = (time.time() - t0) * 1000.0
+    result = CapabilityInvokeResult(
+        True, "ok", rows=tuple(rows), descriptor=descriptor, urn=urn, dry_run=dry_run
     )
+    if record_egress and session_id and turn_id:
+        _record_egress(
+            session_id=session_id,
+            turn_id=turn_id,
+            urn=urn,
+            descriptor=descriptor,
+            allowed=True,
+            reason="ok",
+            latency_ms=latency_ms,
+            dry_run=dry_run,
+        )
+    return result

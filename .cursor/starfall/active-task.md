@@ -7,10 +7,10 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Testing complete (Run 008 turn 3) — next: Documentation / Closing (turn 4)
+Closing (Run 009 turn 2) — starfall_verify + documentation
 
 Current work item:
-Phase 2 / #60 slice 5 / T18 — close Run 008 (Phase 2 complete).
+Phase 3 / #61 — agent scope + egress summary (T19–T21) complete on disk.
 
 Mode:
 Implementation (closure)
@@ -21,17 +21,17 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 2 slice 5 / T18 — met on branch):
-- CitationSourcesDialog type label prefers `source_capability` URN display over adapter-only labels.
-- KI2 overlay: cap-shaped `source_adapter` falls back to URN label when feasible.
-- Non-cap rows unchanged (adapter / type fallbacks).
-- T18 7 tests pass; T14–T17 + T13 regression pass (56 tests); starfall_verify PASS.
+Success criteria (Phase 3 — met on branch):
+- Agent scope blocks out-of-attachment invokes (P1).
+- Write/destructive requires per-message step approval (PrestigeDialog + StepApprovalStore).
+- Session egress ledger + Telemetry integrations panel list calls per session.
+- T19–T21 11 tests pass; T14–T18 regression pass; starfall_verify PASS.
 
 Current blockers:
 None.
 
 Next decision:
-Turn 4 Documentation/Closing — starfall_export next.md baton, PR summary, CLOSING TIME (3 coordinator turns now met).
+Turn 2 Closing — starfall_export, PR summary, CLOSING TIME (after starfall_verify PASS).
 
-Gate status (Phase 2 slice 5 / T18 — turn 3):
+Gate status (Phase 3 — turn 2):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

@@ -90,6 +90,10 @@ def invoke_preset_capability_bundle(
     max_results: int = 5,
     timeout_s: float = 15.0,
     provider_factory_kwargs: dict[str, Any] | None = None,
+    session_id: str | None = None,
+    turn_id: str | None = None,
+    agent_scope=None,
+    step_approved: bool = False,
 ) -> tuple[CapabilityInvokeResult, list[CapabilityInvokeResult]]:
     """Invoke each capability in a preset bundle; merge allowed rows."""
     urns = resolve_preset_capability_urns(preset_id)
@@ -112,6 +116,10 @@ def invoke_preset_capability_bundle(
             max_results=max_results,
             timeout_s=timeout_s,
             provider_factory_kwargs=provider_factory_kwargs,
+            session_id=session_id,
+            turn_id=turn_id,
+            agent_scope=agent_scope,
+            step_approved=step_approved,
         )
         per_cap.append(result)
         if result.allowed and result.rows:

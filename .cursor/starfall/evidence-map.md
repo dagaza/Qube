@@ -135,6 +135,29 @@ Confidence: high
 Notes: CitationSourcesDialog shows humanized cap: label + URN metadata; KI2 cap-shaped
 `source_adapter` fallback without provider branching (P6 clean). Phase 2 (#60) complete.
 
+## Phase 3 / T19 — Agent scope boundaries (on disk)
+Evidence: `core/integrations/agent_scope.py:AgentScope`, `.../agent_scope.py:build_agent_scope_from_attachments`;
+`workers/llm_worker.py` (scope registration + CAPABILITY invoke); `tests/test_agent_scope_egress_phase3.py::TestAgentScope`.
+Confidence: high
+Notes: P1 enforcement — invoke denied when URN not in turn attachment/preset bundle scope.
+
+## Phase 3 / T20 — Step approval + invoke gate (on disk)
+Evidence: `core/integrations/step_approval.py:StepApprovalStore`, `.../step_approval.py:requires_step_approval`;
+`core/integrations/capability_invoke.py:invoke_gated_capability`, `.../capability_invoke.py:preview_gated_capability`;
+`core/integrations/composer_capability_gate.py`; `ui/views/conversations_view.py` (PrestigeDialog gate);
+`tests/test_agent_scope_egress_phase3.py::TestStepApproval`, `...::TestSessionEgressAndInvoke`.
+Confidence: high
+Notes: WRITE/DESTRUCTIVE/needs_review require per-turn approval; dry_run preview path; egress on deny+allow.
+
+## Phase 3 / T21 — Session egress summary (on disk)
+Evidence: `core/integrations/session_egress.py:SessionEgressLedger`;
+`core/integrations/egress_summary.py:format_session_egress_summary`;
+`ui/components/session_egress_panel.py`; `ui/views/telemetry_view.py:set_active_session_id`;
+`core/integrations/capability_inspect.py:build_invoke_step` (server_id, group, raw_tool);
+`tests/test_agent_scope_egress_phase3.py` (11 tests). Phase 3 (#61) complete.
+Confidence: high
+Notes: Distinct from `egress_policy.py` (HTTP SSRF). raw_tool gated on Advanced unlock.
+
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered
 Confidence: high

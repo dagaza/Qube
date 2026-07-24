@@ -66,6 +66,9 @@ def build_invoke_step(
     reason: str = "",
     latency_ms: float = 0.0,
     action: str | None = None,
+    server_id: str | None = None,
+    capability_group: str | None = None,
+    raw_tool: str | None = None,
     step: int | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -79,6 +82,12 @@ def build_invoke_step(
     }
     if action:
         payload["action"] = str(action)
+    if server_id:
+        payload["server_id"] = str(server_id)
+    if capability_group:
+        payload["capability_group"] = str(capability_group)
+    if raw_tool:
+        payload["raw_tool"] = str(raw_tool)
     return payload
 
 
@@ -162,6 +171,9 @@ def build_capability_inspect_trace(
     tier = descriptor.tier.value if descriptor is not None else None
     label = _descriptor_label(descriptor)
     action = descriptor.action if descriptor is not None else None
+    server_id = descriptor.urn.namespace if descriptor is not None else None
+    capability_group = descriptor.group if descriptor is not None else None
+    raw_tool = descriptor.raw_ref if descriptor is not None else None
 
     steps: list[dict[str, Any]] = [
         build_attachment_step(
@@ -177,6 +189,9 @@ def build_capability_inspect_trace(
             reason=reason,
             latency_ms=latency_ms,
             action=action,
+            server_id=server_id,
+            capability_group=capability_group,
+            raw_tool=raw_tool,
             step=2,
         ),
     ]

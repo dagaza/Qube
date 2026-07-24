@@ -2244,6 +2244,17 @@ class LLMWorker(QThread):
                 "[LLM Worker] Composer attachments: %s",
                 attachment_summary(turn_attachments),
             )
+            if self.session_id:
+                from core.integrations.agent_scope import (
+                    agent_scope_store,
+                    build_agent_scope_from_attachments,
+                )
+
+                agent_scope_store.set_scope(
+                    build_agent_scope_from_attachments(
+                        str(self.session_id), turn_attachments
+                    )
+                )
         attachment_patch = None
         if not explicit_remember_active and turn_attachments:
             attachment_patch = resolve_attachment_routing(turn_attachments)
@@ -2954,6 +2965,13 @@ class LLMWorker(QThread):
                 cap_urn = str(decision.get("capability_urn") or "")
                 cap_preset_id = str(decision.get("capability_preset_id") or "").strip()
             cap_t0 = _cap_time.time()
+            cap_turn_id = str(getattr(self, "_routing_debug_turn_seq", "") or "")
+            cap_session_id = str(self.session_id) if self.session_id else None
+            from core.integrations.agent_scope import agent_scope_store
+
+            cap_agent_scope = (
+                agent_scope_store.get_scope(cap_session_id) if cap_session_id else None
+            )
             if cap_preset_id:
                 from core.integrations.preset_capability_alias import (
                     build_preset_capability_inspect_trace,
@@ -2965,6 +2983,9 @@ class LLMWorker(QThread):
                     cap_preset_id,
                     clean_prompt or self.prompt,
                     max_results=5,
+                    session_id=cap_session_id,
+                    turn_id=cap_turn_id,
+                    agent_scope=cap_agent_scope,
                 )
                 preset = load_preset(cap_preset_id)
                 cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
@@ -2981,6 +3002,9 @@ class LLMWorker(QThread):
                     cap_urn,
                     clean_prompt or self.prompt,
                     max_results=5,
+                    session_id=cap_session_id,
+                    turn_id=cap_turn_id,
+                    agent_scope=cap_agent_scope,
                 )
                 cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
                 cap_steps = build_capability_inspect_trace(

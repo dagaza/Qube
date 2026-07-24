@@ -939,3 +939,34 @@ loop_count: 1
 status: completed
 loop_count: 2
 
+
+# Run 009 - 2026-07-24T21:38:01.528218+00:00
+
+## Repository Cartographer + Capability Architecture + Security & Permissions + Product Review + Quality - 2026-07-24T22:15:00Z
+Phase: Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Discovery — Phase 3 (#61) greenfield for agent scope/egress; reusable T14 invoke gate, dry_run hook, INSPECT steps, PrestigeDialog. Architecture — three-plane observability extended with SessionEgressLedger (distinct from egress_policy SSRF). Security — P1 scope boundary + per-step WRITE/DESTRUCTIVE approval beyond Settings consent; egress records on deny+allow. Product — Telemetry session integrations panel (Theme B); composer send gate for write caps; P6 clean on new modules.
+Actions: Delivered T19 agent_scope + scope enforcement in LLMWorker; T20 step_approval + capability_invoke gates + composer_capability_gate + conversations PrestigeDialog; T21 session_egress + egress_summary + capability_inspect fields + SessionEgressPanel in TelemetryView. tests/test_agent_scope_egress_phase3.py (11 tests); Phase 2 regression 51/51 PASS; starfall_verify PASS (12 delivered Phase 3 files, P6 guardrail clean). Updated handoff, active-task, roadmap, evidence-map, test-plan-phase3.md; starfall_export next.md → Phase 4 (#62).
+Decisions: Router opt-in suggestions + SSE transport deferred (roadmap). Privacy report export uses formatter only (UI button deferred). KI4 remains open.
+Next step: Commit Phase 3 on branch; optional Phase 4 (#62) hardening baton in next.md.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+CLOSING TIME — Run 009; Phase 3 (#61) complete on `keith/mcp-capability-integration`. T19–T21 delivered; starfall_verify PASS; handoff STATUS: READY. Next: Phase 4 (#62) per next.md.
+
+## Hook Turn 1 - 2026-07-24T21:50:31.797484+00:00
+status: completed
+loop_count: 0
+
+## Hook Turn 1 - 2026-07-24T21:52:11.565051+00:00
+status: completed
+loop_count: 0
+
