@@ -7,13 +7,13 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Documentation / Closing (Run 007 turn 3 complete — turn 4 may emit CLOSING TIME).
+Testing complete (Run 008 turn 3) — next: Documentation / Closing (turn 4)
 
 Current work item:
-Phase 2 / #60 slice 4 / T17 — close Run 007 (T18 deferred).
+Phase 2 / #60 slice 5 / T18 — close Run 008 (Phase 2 complete).
 
 Mode:
-Implementation (closure in progress)
+Implementation (closure)
 
 Owner:
 Starfall coordinator
@@ -21,17 +21,17 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 2 slice 4 / T17 — met on branch):
-- KnowledgePreset.capabilities field persists canonical cap: URNs.
-- @[tool:user:…] alias resolves to preset cap bundle; adapter-only presets unchanged.
-- resolve_attachment_routing + LLMWorker CAPABILITY bundle invoke with INSPECT steps.
-- T17 9 tests pass; T14–T16 regression pass; starfall_verify PASS.
+Success criteria (Phase 2 slice 5 / T18 — met on branch):
+- CitationSourcesDialog type label prefers `source_capability` URN display over adapter-only labels.
+- KI2 overlay: cap-shaped `source_adapter` falls back to URN label when feasible.
+- Non-cap rows unchanged (adapter / type fallbacks).
+- T18 7 tests pass; T14–T17 + T13 regression pass (56 tests); starfall_verify PASS.
 
 Current blockers:
 None.
 
 Next decision:
-Turn 4 Closing — regenerate next.md baton, PR summary, CLOSING TIME (3 coordinator turns met).
+Turn 4 Documentation/Closing — starfall_export next.md baton, PR summary, CLOSING TIME (3 coordinator turns now met).
 
-Gate status (Phase 2 slice 4 / T17):
+Gate status (Phase 2 slice 5 / T18 — turn 3):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

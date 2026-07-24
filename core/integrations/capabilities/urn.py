@@ -137,5 +137,15 @@ class CapabilityURN:
     def __str__(self) -> str:
         return self._render(self.provider, self.namespace, self.action, self.version)
 
+    @property
+    def display_label(self) -> str:
+        """Human-readable label for UI surfaces (namespace + action)."""
+        return f"{_humanize_segment(self.namespace)} — {_humanize_segment(self.action)}"
+
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
         return f"CapabilityURN({str(self)!r})"
+
+
+def _humanize_segment(value: str) -> str:
+    cleaned = (value or "").replace("-", " ").replace("_", " ").strip()
+    return cleaned.title() if cleaned else value

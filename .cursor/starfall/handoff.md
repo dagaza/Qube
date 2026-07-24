@@ -5,7 +5,7 @@
 STATUS: READY
 
 Phase 1 (#59) complete on this branch (see Delivered section below).
-Phase 2 (#60) slice 0+1 (T14) + slice 2 (T15) + slice 3 (T16) + slice 4 (T17) delivered on disk. Next run: T18 Sources UI label.
+Phase 2 (#60) complete on this branch — slices 0–5 (T14–T18) delivered on disk.
 
 
 
@@ -248,11 +248,36 @@ tests/test_preset_capability_alias.py (T17, 9 tests)
 
 
 
-Not in this run (Phase 2 #60 — slice 5):
+Delivered (Phase 2 / #60 — slice 5 / T18):
 
 ```
 
-T18 — Sources UI source_capability label
+Slice 5 / T18 — Sources UI source_capability label:
+
+core/integrations/capabilities/urn.py
+
+  CapabilityURN.display_label — provider-agnostic human label from URN parts.
+
+core/knowledge/ui_adapter.py
+
+  source_type_label_for_row, source_provenance_metadata_parts — cap: label + metadata
+  from source_capability (KI2 cap-shaped source_adapter fallback when feasible).
+
+ui/components/prestige_dialog.py
+
+  CitationSourcesDialog type/metadata lines delegate to ui_adapter helpers.
+
+tests/test_sources_capability_provenance_ui.py (T18, 7 tests)
+
+```
+
+
+
+Not in this run (Phase 2 #60 — complete):
+
+```
+
+(none — T14–T18 delivered)
 
 ```
 

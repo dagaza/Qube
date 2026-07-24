@@ -1,6 +1,6 @@
 # Test Plan — Phase 2 (#60)
 
-STATUS: IN PROGRESS (plan only; not scanned by starfall_verify)
+STATUS: COMPLETE (T14–T18 implemented and passing; scanned only when Phase 2 Code runs)
 
 Living test plan for Phase 2. Gate 4 for Phase 2 reads from here once Code starts.
 Do not merge into `test-plan.md` until T14–T18 are implemented and passing.
@@ -13,4 +13,4 @@ Do not merge into `test-plan.md` until T14–T18 are implemented and passing.
 | T15 | Palette search          | Integrations section; fuzzy search; tier/lock from evaluate_access                | tests/test_integrations_capability_search.py   | complete |
 | T16 | INSPECT steps           | attachment→invoke→rank→cite pure builders + trace serialization                   | tests/test_capability_inspect_steps.py         | complete |
 | T17 | Preset alias            | `@[tool:user:…]` resolves to cap bundle; adapter-only presets unchanged           | tests/test_preset_capability_alias.py          | complete |
-| T18 | Sources UI              | prestige/Sources shows source_capability when present                             | tests/test_sources_capability_provenance_ui.py | planned |
+| T18 | Sources UI              | prestige/Sources shows source_capability when present                             | tests/test_sources_capability_provenance_ui.py | complete |

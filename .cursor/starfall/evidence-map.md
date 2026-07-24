@@ -123,7 +123,17 @@ Evidence: `core/knowledge/presets.py:KnowledgePreset.capabilities`;
 `tests/test_preset_capability_alias.py` (T17, 9 tests).
 Confidence: high
 Notes: Dual grammar (Option A scoped): `@[cap:…]` canonical; `@[tool:user:…]` alias to cap bundle.
-Adapter-only presets unchanged. T18 remains.
+Adapter-only presets unchanged.
+
+## Phase 2 slice 5 / T18 — Sources UI source_capability label (on disk)
+Evidence: `core/integrations/capabilities/urn.py:CapabilityURN.display_label`;
+`core/knowledge/ui_adapter.py:source_type_label_for_row`,
+`.../ui_adapter.py:source_provenance_metadata_parts`;
+`ui/components/prestige_dialog.py:_source_type_label` (delegates to ui_adapter);
+`tests/test_sources_capability_provenance_ui.py` (T18, 7 tests).
+Confidence: high
+Notes: CitationSourcesDialog shows humanized cap: label + URN metadata; KI2 cap-shaped
+`source_adapter` fallback without provider branching (P6 clean). Phase 2 (#60) complete.
 
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered

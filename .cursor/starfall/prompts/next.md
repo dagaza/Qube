@@ -19,6 +19,7 @@ Slice 5 / T18 — Sources UI source_capability label (prestige_dialog)
 
 Carried-forward known issues:
 - KI2 `_adapter` overloaded with full URN string
+- KI4 Preset bundle partial-deny UX opaque
 
 Constraints (must hold):
 - MCP is a provider only; no raw MCP tools exposed as primary UX.

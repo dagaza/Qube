@@ -18,6 +18,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShowEvent
 
+from core.knowledge.ui_adapter import (
+    source_provenance_metadata_parts,
+    source_type_label_for_row,
+)
+
 
 def _resolve_is_dark_from_parent(parent) -> bool:
     w = parent.window() if parent else None
@@ -421,21 +426,11 @@ def _source_sort_key(src: dict) -> tuple:
 
 
 def _source_type_label(src: dict) -> str:
-    st = str(src.get("type") or "").strip().lower()
-    adapter = str(src.get("source_adapter") or "").strip()
-    if adapter:
-        return adapter.replace("_", " ").title()
-    if st == "web":
-        return "Web"
-    if st == "memory":
-        return "Memory"
-    if st == "rag":
-        return "Document"
-    return st.title() if st else "Source"
+    return source_type_label_for_row(src)
 
 
 def _source_metadata_line(src: dict) -> str:
-    parts: list[str] = []
+    parts: list[str] = list(source_provenance_metadata_parts(src))
     venue = str(src.get("venue") or "").strip()
     if venue:
         parts.append(venue)

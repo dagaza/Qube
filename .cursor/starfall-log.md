@@ -868,3 +868,74 @@ Architecture Review
 status: completed
 loop_count: 0
 
+
+# Run 008 - 2026-07-24T21:17:34.600855+00:00
+
+## Coordinator + Quality - 2026-07-24T21:25:00Z
+Phase: Testing / Documentation / Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: T18 closes Phase 2 (#60) — CitationSourcesDialog now shows humanized cap: labels from source_capability; KI2 cap-shaped source_adapter fallback in ui_adapter. T14–T18 52/52 PASS; starfall_verify PASS (45 delivered files, P6 guardrail clean).
+Actions: Added CapabilityURN.display_label; source_type_label_for_row + source_provenance_metadata_parts in ui_adapter; prestige_dialog delegates; tests/test_sources_capability_provenance_ui.py (7 tests). Updated handoff/roadmap/evidence-map/test-plan-phase2/active-task.
+Decisions: Run 008 scoped closure to T18 only; Phase 2 (#60) complete on branch. KI2 remains mitigated (short-id overlay at connector); UI fallback handles cap-shaped adapter when source_capability absent.
+Next step: CLOSING TIME — starfall_export next.md baton for Phase 3 (#61) or PR.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+CLOSING TIME — Run 008 closed; Phase 2 (#60) complete on `keith/mcp-capability-integration`. T18 Sources UI cap: label delivered; starfall_verify PASS; handoff STATUS: READY. Next: Phase 3 (#61) agent scope + egress per next.md.
+
+## Hook Turn 1 - 2026-07-24T21:21:22.679862+00:00
+status: completed
+loop_count: 0
+
+## Repository Cartographer + Security & Permissions + Product Review + Quality - 2026-07-24T21:30:00Z
+Phase: Self-Review
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 pending
+Signals: Cartographer — T18 integrates via existing EvidenceBundle→ui_adapter→prestige_dialog path; no duplicate subsystem; P8 provenance surfaced in CitationSourcesDialog. Security — display-only change; no invoke/grant paths touched; try_parse fail-safe. Product — P1-P8 + drift-rules clean; provider-agnostic URN labels (P6). Quality — T18 7 tests on disk cover label preference, KI2 fallback, legacy rows; T18 not yet in starfall_verify test-plan.md targets (Phase 2 lives in test-plan-phase2.md).
+Actions: Parallel specialist Self-Review against turn-1 diff; re-ran starfall_verify PASS (44 delivered files, P6 guardrail clean); P6 grep clean under ui/ and ui_adapter. Hook blocked turn-1 CLOSING TIME (minimum 3 coordinator turns).
+Decisions: Minor `_humanize_segment` duplication between urn.py and capability_search.py — defer unification (non-blocker). KI4 partial bundle deny UX remains deferred.
+Next step: Turn 3 Testing — run T14–T18 regression (incl. test_sources_capability_provenance_ui.py); re-run starfall_verify; then turn 4 Documentation/Closing with CLOSING TIME.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+## Quality + Product Review - 2026-07-24T21:35:00Z
+Phase: Testing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Quality — T18 7/7 + T13–T17 Phase 2 regression 56/56 PASS; test_sources_capability_provenance_ui covers label preference, KI2 cap-shaped source_adapter fallback, provenance metadata, legacy row preservation. Product — P8 end-to-end EvidenceBundle→ui_adapter→CitationSourcesDialog verified; no raw MCP tools as primary UX. starfall_verify PASS (44 delivered files, P6 guardrail clean).
+Actions: Ran pytest T13–T18 suite; parallel Quality + Product specialist review; re-ran starfall_verify. 3 coordinator turns now met (turns 1–3).
+Decisions: None new. KI4 partial bundle deny UX remains deferred (non-blocker).
+Next step: Turn 4 Documentation/Closing — starfall_export next.md baton, PR summary, CLOSING TIME.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+## Hook Turn 2 - 2026-07-24T21:28:38.711271+00:00
+status: completed
+loop_count: 1
+
+## Hook Turn 3 - 2026-07-24T21:30:56.310405+00:00
+status: completed
+loop_count: 2
+
