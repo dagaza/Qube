@@ -22,6 +22,14 @@ from core.settings_store import (
     get_settings_store,
     open_user_settings_in_editor,
 )
+from core.theme.accessors import theme_for
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_BODY_LABEL,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_SOURCE_CONTAINER,
+)
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.prestige_dialog import PrestigeDialog
 
@@ -153,59 +161,46 @@ class SettingsJsonEditorDialog(QDialog):
         outer.addWidget(self.container)
 
     def _apply_theme_styles(self) -> None:
-        is_dark = self._is_dark
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.12)" if is_dark else "#cbd5e1"
-        surface = "#181825" if is_dark else "#f8fafc"
-        banner_bg = "#45475a" if is_dark else "#e2e8f0"
-        ok_color = "#a6e3a1" if is_dark else "#15803d"
-        err_color = "#f38ba8" if is_dark else "#b91c1c"
-        self._ok_color = ok_color
-        self._err_color = err_color
+        theme = theme_for(is_dark=self._is_dark)
+        border = theme.border_subtle if theme.is_dark else theme.border
+        surface = theme.surface_elevated if theme.is_dark else theme.surface
+        hover_bg = with_alpha(theme.text_primary, 0.06 if theme.is_dark else 0.05)
+        self._ok_color = theme.success
+        self._err_color = theme.error
 
         self.container.setStyleSheet(
-            f"""
-            QFrame#SettingsJsonEditorContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-            QLabel#SettingsJsonEditorTitle {{
-                color: {accent};
-                font-weight: bold;
-                font-size: 11px;
-                letter-spacing: 2px;
-            }}
+            theme.style(
+                PRESTIGE_SOURCE_CONTAINER,
+                accent=theme.link,
+                object_name="SettingsJsonEditorContainer",
+            )
+            + f"""
             QLabel#SettingsJsonEditorPath {{
-                color: {fg};
-                font-size: 12px;
+                {theme.style(PRESTIGE_BODY_LABEL, font_size="12px", font_weight="400")}
                 opacity: 0.85;
             }}
             QLabel#SettingsJsonEditorBanner {{
-                background: {banner_bg};
-                color: {fg};
+                background: {theme.surface_pressed};
+                color: {theme.text_primary};
                 border-radius: 8px;
                 padding: 8px 12px;
                 font-size: 13px;
             }}
             QLabel#SettingsJsonEditorStatus {{
-                color: {fg};
+                color: {theme.text_primary};
                 font-size: 12px;
                 min-height: 18px;
             }}
             QPlainTextEdit#SettingsJsonEditorText {{
                 background: {surface};
-                color: {fg};
+                color: {theme.text_primary};
                 border: 1px solid {border};
                 border-radius: 12px;
                 padding: 12px 14px;
-                selection-background-color: {accent};
+                selection-background-color: {theme.link};
             }}
             QPushButton#SettingsJsonEditorClose {{
-                background: transparent;
-                color: {fg};
-                border: 1px solid {border};
+                {theme.style(PRESTIGE_GHOST_BUTTON)}
                 border-radius: 8px;
                 padding: 0px;
                 min-width: 32px;
@@ -214,26 +209,23 @@ class SettingsJsonEditorDialog(QDialog):
                 max-height: 32px;
             }}
             QPushButton#SettingsJsonEditorClose:hover {{
-                background: rgba(255, 255, 255, 0.06);
+                background: {hover_bg};
             }}
-        """
+            """
         )
-        self.close_btn.setIcon(qta.icon("fa5s.times", color=fg))
+        self.header_title_lbl.setStyleSheet(
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=theme.link, font_size="11px")
+        )
+        self.close_btn.setIcon(qta.icon("fa5s.times", color=theme.text_primary))
         self.close_btn.setIconSize(QSize(14, 14))
-        btn_style = f"""
-            QPushButton {{
-                padding: 10px 16px;
-                border-radius: 10px;
-                font-weight: bold;
-                font-size: 12px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
+        btn_style = (
+            theme.style(PRESTIGE_GHOST_BUTTON)
+            + f"""
             QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
+                background: {hover_bg};
             }}
-        """
+            """
+        )
         for btn in (self.format_btn, self.reload_btn, self.external_btn):
             btn.setStyleSheet(btn_style)
 

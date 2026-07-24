@@ -17,6 +17,13 @@ from PyQt6.QtWidgets import (
 )
 
 from core.knowledge.provider_credentials import get_provider_credential_spec
+from core.theme.accessors import theme_for
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_SOURCE_CONTAINER,
+)
 from ui.components.prestige_dialog import _center_dialog_on_host, _resolve_is_dark_from_parent
 from ui.views.settings.sections.knowledge_provider_credentials import (
     build_provider_credential_card,
@@ -43,6 +50,8 @@ class ProviderCredentialDialog(QDialog):
         super().__init__(parent)
         if is_dark is None:
             is_dark = _resolve_is_dark_from_parent(parent)
+        theme = theme_for(is_dark=is_dark)
+        hover_bg = with_alpha(theme.text_primary, 0.05)
 
         spec = get_provider_credential_spec(provider_id)
         if spec is None:
@@ -57,11 +66,6 @@ class ProviderCredentialDialog(QDialog):
         self.setFixedWidth(_DIALOG_WIDTH)
         self.setMinimumHeight(_DIALOG_MIN_HEIGHT)
 
-        bg = "#1e1e2e" if is_dark else "#ffffff"
-        fg = "#cdd6f4" if is_dark else "#1e293b"
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-
         outer = QVBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
 
@@ -69,18 +73,18 @@ class ProviderCredentialDialog(QDialog):
         container.setObjectName("ProviderCredentialDialogContainer")
         container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         container.setStyleSheet(
-            f"""
-            QFrame#ProviderCredentialDialogContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
+            theme.style(
+                PRESTIGE_SOURCE_CONTAINER,
+                accent=theme.link,
+                object_name="ProviderCredentialDialogContainer",
+            )
+            + f"""
             QLabel {{
-                color: {fg};
+                color: {theme.text_primary};
                 background: transparent;
                 border: none;
             }}
-        """
+            """
         )
 
         inner = QVBoxLayout(container)
@@ -89,7 +93,7 @@ class ProviderCredentialDialog(QDialog):
 
         header = QLabel(spec.label.upper())
         header.setStyleSheet(
-            f"color: {accent}; font-weight: bold; font-size: 11px; letter-spacing: 2px;"
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=theme.link, font_size="11px")
         )
         inner.addWidget(header)
 
@@ -139,22 +143,12 @@ class ProviderCredentialDialog(QDialog):
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
         close_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                padding: 12px 22px;
-                min-height: 32px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
+            theme.style(PRESTIGE_GHOST_BUTTON)
+            + f"""
             QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
+                background: {hover_bg};
             }}
-        """
+            """
         )
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)

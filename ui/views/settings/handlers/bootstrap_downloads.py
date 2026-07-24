@@ -23,6 +23,7 @@ from core.embedding_models import (
 )
 from ui.components.brand_buttons import apply_brand_primary
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.views.settings.settings_theme import resolve_settings_theme, style_bootstrap_warning_label
 
 logger = logging.getLogger("Qube.UI.Settings.BootstrapDownloads")
 
@@ -95,7 +96,13 @@ def make_bootstrap_download_row(
     layout.setSpacing(6)
     label = QLabel(label_text)
     label.setWordWrap(True)
-    label.setStyleSheet("color: #f59e0b; font-size: 12px;")
+    theme = resolve_settings_theme(host)
+    style_bootstrap_warning_label(label, theme)
+    labels = getattr(host, "_bootstrap_warning_labels", None)
+    if labels is None:
+        host._bootstrap_warning_labels = []
+        labels = host._bootstrap_warning_labels
+    labels.append(label)
     btn = QPushButton(button_text)
     apply_brand_primary(btn)
     btn.clicked.connect(getattr(host, handler_name))

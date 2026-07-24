@@ -146,7 +146,7 @@ Synced with **Settings → AI & Models → Generation** (two-way). **Max reply t
 | **● RAG** | Library retrieval: grey = off, blue = ready, green = retrieving |
 | **● WEB** | Web search state for the current chat / turn |
 | **● HYBRID** | Hybrid Internet Mode: grey = off, coloured when enabled or actively searching |
-| Mic level + chevron | Input level; chevron opens **Select microphone input** |
+| Mic level + chevron | Input level for the selected mic (see [Microphone level meter](settings/voice-audio.md#microphone-level-meter-top-bar) if one device looks too quiet); chevron opens **Select microphone input** |
 | **⏸ DDG** | Shown only during DuckDuckGo backoff (rare) |
 
 Memory retrieval uses `@[tool:memory]` or related routing—there is **no separate MEMORY status dot**.

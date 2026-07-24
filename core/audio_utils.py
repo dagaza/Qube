@@ -63,30 +63,31 @@ def classify_mic_open_error(exc: Exception | None) -> str:
     return f"Mic Error: {compact}"
 
 
+def get_audio_devices() -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
+    """Enumerate input and output devices in a single PyAudio session."""
+    p = pyaudio.PyAudio()
+    inputs: list[tuple[int, str]] = []
+    outputs: list[tuple[int, str]] = []
+    try:
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            name = info.get("name", f"Unknown Device {i}")
+            if info.get("maxInputChannels", 0) > 0:
+                inputs.append((i, f"Input {i}: {name}"))
+            if info.get("maxOutputChannels", 0) > 0:
+                outputs.append((i, f"Device {i}: {name}"))
+    finally:
+        p.terminate()
+    return inputs, outputs
+
+
 def get_input_devices() -> list[tuple[int, str]]:
     """Returns a list of tuples: (real_device_index, display_name) for inputs."""
-    p = pyaudio.PyAudio()
-    devices = []
-    
-    for i in range(p.get_device_count()):
-        info = p.get_device_info_by_index(i)
-        if info.get('maxInputChannels', 0) > 0:
-            name = info.get('name', f'Unknown Device {i}')
-            devices.append((i, f"Input {i}: {name}"))
-            
-    p.terminate()
-    return devices
+    inputs, _outputs = get_audio_devices()
+    return inputs
+
 
 def get_output_devices() -> list[tuple[int, str]]:
     """Returns a list of tuples: (real_device_index, display_name) for outputs."""
-    p = pyaudio.PyAudio()
-    devices = []
-    
-    for i in range(p.get_device_count()):
-        info = p.get_device_info_by_index(i)
-        if info.get('maxOutputChannels', 0) > 0:
-            name = info.get('name', f'Unknown Device {i}')
-            devices.append((i, f"Device {i}: {name}"))
-            
-    p.terminate()
-    return devices
+    _inputs, outputs = get_audio_devices()
+    return outputs

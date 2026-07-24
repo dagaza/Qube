@@ -160,6 +160,8 @@ class AiModelsHandlersMixin:
         self._sync_internal_engine_subsections(m)
 
     def _sync_models_dir_label(self) -> None:
+        if not hasattr(self, "models_dir_label"):
+            return
         self.models_dir_label.setText(get_llm_models_dir())
 
     def _sync_active_native_model_label(self) -> None:

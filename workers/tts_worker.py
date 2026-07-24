@@ -230,7 +230,11 @@ class TTSWorker(QThread):
             self.model_path = model_path
             self.active_adapter = new_adapter
             self.stream = new_stream
-            self.active_voice_name = self.active_adapter.available_voices[0]
+            from core.tts_models import resolve_default_tts_voice
+
+            self.active_voice_name = resolve_default_tts_voice(
+                self.active_adapter.available_voices
+            )
 
             self.model_loaded.emit(os.path.basename(model_path), self.active_adapter.available_voices)
             self.status_update.emit(f"TTS Engine Ready ({self.active_adapter.sample_rate}Hz)")

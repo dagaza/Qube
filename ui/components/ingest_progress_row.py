@@ -5,6 +5,7 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QProgressBar, QVBoxLayout, QWidget
 
+from core.theme.accessors import theme_for
 from ui.splash_widget import SplashCircleSpinner
 
 
@@ -29,7 +30,7 @@ class IngestProgressRow(QWidget):
         bar_layout.setContentsMargins(0, 0, 0, 0)
         bar_layout.setSpacing(8)
 
-        self.spinner = SplashCircleSpinner(size=16, parent=bar_row)
+        self.spinner = SplashCircleSpinner(size=16, parent=bar_row, brand_locked=False)
         self.spinner.hide()
 
         self.progress = QProgressBar()
@@ -53,11 +54,11 @@ class IngestProgressRow(QWidget):
         self.spinner.advance(float(self._spinner_timer.interval()))
 
     def apply_theme(self, is_dark: bool) -> None:
+        theme = theme_for(is_dark=is_dark)
         self.spinner.apply_theme(is_dark)
-        if is_dark:
-            self.detail_label.setStyleSheet("color: #a6adc8; font-size: 11px;")
-        else:
-            self.detail_label.setStyleSheet("color: #64748b; font-size: 11px;")
+        self.detail_label.setStyleSheet(
+            f"color: {theme.text_muted}; font-size: 11px;"
+        )
 
     def begin(self, *, detail: str = "") -> None:
         self.progress.setValue(0)

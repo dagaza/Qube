@@ -26,6 +26,12 @@ from ui.components.toggle import PrestigeToggle
 from ui.views.settings.controls import NoScrollDoubleSpinBox, NoScrollSpinBox
 from ui.views.settings.handlers.bootstrap_downloads import make_bootstrap_download_row
 from ui.views.settings.settings_card_style import begin_settings_section_card
+from ui.views.settings.settings_theme import (
+    resolve_settings_theme,
+    settings_hint_icon_color,
+    settings_info_icon_color,
+    settings_preview_icon_color,
+)
 from ui.views.settings.widgets import (
     add_section_reset_footer,
     add_subsection_to_form,
@@ -56,10 +62,11 @@ def _apply_wakeword_action_button_width(btn: QPushButton) -> None:
 
 
 def _preview_play_button(host, *, tooltip: str, handler) -> QPushButton:
+    theme = resolve_settings_theme(host)
     btn = QPushButton()
     btn.setObjectName("TtsVoicePreviewButton")
     btn.setFixedSize(32, 32)
-    btn.setIcon(qta.icon("fa5s.play", color="#64748b"))
+    btn.setIcon(qta.icon("fa5s.play", color=settings_preview_icon_color(theme)))
     btn.setToolTip(tooltip)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.clicked.connect(handler)
@@ -67,10 +74,11 @@ def _preview_play_button(host, *, tooltip: str, handler) -> QPushButton:
 
 
 def _hint_button(host, *, tooltip: str, handler) -> QPushButton:
+    theme = resolve_settings_theme(host)
     btn = QPushButton()
     btn.setObjectName("AudioInputHintButton")
     btn.setFixedSize(32, 32)
-    btn.setIcon(qta.icon("fa5s.lightbulb", color="#64748b"))
+    btn.setIcon(qta.icon("fa5s.lightbulb", color=settings_hint_icon_color(theme)))
     btn.setToolTip(tooltip)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.clicked.connect(handler)
@@ -99,6 +107,41 @@ def _device_selector_row(selector: SelectorButton, preview_btn: QPushButton | No
         _apply_device_selector_width(selector)
         return selector
     return _selector_action_row(selector, preview_btn)
+
+
+def _voice_input_enable_row(host) -> QWidget:
+    """Match the toolbar Enable Voice Input row (toggle + label)."""
+    toggle = PrestigeToggle()
+    label = QLabel("Enable Voice Input")
+    label.setProperty("class", "ToolsPaneControl")
+    tooltip = (
+        "Listen for speech and wakeword. Turn off to pause microphone capture entirely."
+    )
+    toggle.setToolTip(tooltip)
+    label.setToolTip(tooltip)
+    row = QWidget()
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(8)
+    row_layout.addWidget(toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addWidget(label)
+    row_layout.addStretch(1)
+    host.voice_input_enabled_toggle = toggle
+    host.voice_input_enabled_label = label
+    return row
+
+
+def _audio_input_settings_column(host) -> QWidget:
+    """Enable toggle stacked above the input device selector row."""
+    column = QWidget()
+    column_layout = QVBoxLayout(column)
+    column_layout.setContentsMargins(0, 0, 0, 0)
+    column_layout.setSpacing(8)
+    column_layout.addWidget(_voice_input_enable_row(host))
+    column_layout.addWidget(
+        _selector_action_row(host.mic_selector, host.audio_input_hint_btn)
+    )
+    return column
 
 
 def _tts_voice_enable_row(host) -> QWidget:
@@ -429,7 +472,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     devices_form.addRow(
         "Audio Input",
-        _selector_action_row(host.mic_selector, host.audio_input_hint_btn),
+        _audio_input_settings_column(host),
     )
     devices_form.addRow(
         "Audio Output",
@@ -467,7 +510,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.wakeword_info_btn = QPushButton()
     host.wakeword_info_btn.setFixedSize(24, 24)
     host.wakeword_info_btn.setObjectName("WakewordInfoButton")
-    host.wakeword_info_btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+    wakeword_theme = resolve_settings_theme(host)
+    host.wakeword_info_btn.setIcon(
+        qta.icon("fa5s.info-circle", color=settings_info_icon_color(wakeword_theme))
+    )
     host.wakeword_info_btn.setToolTip(host.wakeword_selector.toolTip())
     host.wakeword_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
     wakeword_row_layout.addWidget(host.wakeword_info_btn)

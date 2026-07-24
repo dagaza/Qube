@@ -122,8 +122,10 @@ class Qube:
         *,
         embedder: EmbeddingModel | None = None,
         startup_tick: Callable[[str], None] | None = None,
+        theme_manager=None,
     ):
         tick = startup_tick or (lambda _msg: None)
+        self._theme_manager = theme_manager
         self._boot_storage(tick, embedder)  # startup_tick optional; splash uses a fixed label
         self._boot_core_workers(tick)
         self._boot_memory_workers(tick)
@@ -253,7 +255,10 @@ class Qube:
             native_engine=self.native_llama_engine,
             enable_routing_debug_tool=enable_routing_debug_tool,
             enable_trace_diff_debug_tool=enable_trace_diff_debug_tool,
+            theme_manager=self._theme_manager,
         )
+        if self._theme_manager is not None:
+            self._theme_manager.apply(persist=False)
 
     def _boot_connect_and_sync(self, tick: Callable[[str], None]) -> None:
         tick("Connecting services…")
@@ -1619,19 +1624,19 @@ if __name__ == "__main__":
         app_font.setStyleHint(QFont.StyleHint.SansSerif)
         app.setFont(app_font)
 
-    # 3. Load the Global Structural Stylesheet
-    # This interprets the ObjectNames and Classes we just added to the views.
-    style_path = resource_path("assets", "styles", "base.qss")
-    if style_path.is_file():
-        with open(style_path, "r") as f:
-            custom_style = f.read()
-            # We append our structure to the qt_material base styles
-            app.setStyleSheet(app.styleSheet() + custom_style)
-        logger.info(f"Custom structural stylesheet loaded from {style_path}")
-    else:
-        logger.warning(f"Structural stylesheet NOT found at {style_path}. UI may look unorganized.")
+    from core.theme.applicator import ThemeApplicator
+    from core.theme.feature_flags import is_generated_theme_enabled
+    from core.theme.manager import ThemeManager
+    from core.theme.storage import theme_storage_from_app_settings
 
-    # 4. Boot the Qube Assistant (first launch defaults to Internal Engine)
+    theme_manager = ThemeManager(
+        storage=theme_storage_from_app_settings(),
+        applicator=ThemeApplicator(
+            use_generated_stylesheet=is_generated_theme_enabled(),
+        ),
+    )
+
+    # 3. Boot the Qube Assistant (first launch defaults to Internal Engine)
     ensure_engine_mode_initialized()
 
     from core.bootstrap_selection import (
@@ -1664,6 +1669,7 @@ if __name__ == "__main__":
             on_phase=on_phase,
             on_complete=on_complete,
             on_failed=on_failed,
+            theme_manager=theme_manager,
         )
 
     def _on_qube_ready(qube: Qube) -> None:

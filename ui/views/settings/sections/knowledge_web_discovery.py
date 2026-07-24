@@ -53,6 +53,8 @@ from core.knowledge.discovery.session_budget import (
     get_ddg_burst_budget_status,
     get_ddg_session_budget_status,
 )
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import DISCOVERY_DIVIDER
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.discovery_card_style import (
@@ -505,12 +507,9 @@ class _DiscoveryPolicyRow(QWidget):
         parts.badge.setText(badge_text)
         style_access_badge(parts.badge, badge_kind, is_dark=is_dark)
         if parts.divider is not None:
-            color = (
-                "rgba(255, 255, 255, 0.08)"
-                if is_dark
-                else "rgba(148, 163, 184, 0.28)"
+            parts.divider.setStyleSheet(
+                theme_for(is_dark=is_dark).style(DISCOVERY_DIVIDER)
             )
-            parts.divider.setStyleSheet(f"background-color: {color}; border: none;")
         if parts.configure_btn is not None:
             style_configure_button(parts.configure_btn, is_dark=is_dark)
 

@@ -35,7 +35,7 @@ from queue import Empty, Queue
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFontMetrics, QPalette
+from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -72,6 +72,9 @@ from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.selector_button import SelectorButton
+from ui.shell_theme import apply_prestige_menu_theme, muted_icon_color, resolve_shell_theme
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import SETTINGS_LINE_EDIT
 
 logger = logging.getLogger("Qube.UI.MemoryManager")
 
@@ -523,25 +526,19 @@ class _MemoryRowCard(QFrame):
     def _cat_text(self) -> str:
         return str(self.payload.get("category") or "context").upper()
 
-    # T3.4: tier-specific colour palette for the PREF / KNOW / EP / CTX
-    # badge. Values are intentionally distinct from the category-badge
-    # purple so the two badges read as separate signals.
-    _TIER_COLOURS: dict[str, tuple[str, str]] = {
-        # (background rgba, foreground)
-        "preference": ("rgba(34, 197, 94, 0.18)", "#22c55e"),   # green
-        "knowledge":  ("rgba(139, 92, 246, 0.18)", "#8b5cf6"),  # purple
-        "episode":    ("rgba(59, 130, 246, 0.18)", "#3b82f6"),  # blue
-        "context":    ("rgba(148, 163, 184, 0.18)", "#94a3b8"), # slate
-    }
+    def _tier_colours(self, theme) -> dict[str, tuple[str, str]]:
+        return {
+            "preference": (with_alpha(theme.success, 0.18), theme.success),
+            "knowledge": (with_alpha(theme.accent, 0.18), theme.accent),
+            "episode": (with_alpha(theme.info, 0.18), theme.info),
+            "context": (with_alpha(theme.text_muted, 0.18), theme.text_muted),
+        }
 
-    def _style_tier_badge(self, is_dark: bool) -> None:
-        """Widget-level QSS for the tier badge (see brand-button rule).
-
-        Widget-level styles beat anything the app-level sheet could try,
-        so the tier pill is guaranteed to render in its colour even if a
-        future base.qss rule tries to generalise ``QLabel``.
-        """
-        bg, fg = self._TIER_COLOURS.get(self._tier, self._TIER_COLOURS["context"])
+    def _style_tier_badge(self, theme) -> None:
+        """Widget-level QSS for the tier badge (see brand-button rule)."""
+        bg, fg = self._tier_colours(theme).get(
+            self._tier, self._tier_colours(theme)["context"]
+        )
         self._tier_lbl.setStyleSheet(
             f"""
             QLabel#MemoryRowTierBadge {{
@@ -561,26 +558,26 @@ class _MemoryRowCard(QFrame):
         self.flag_toggled.emit(self.row_id, new_flag)
 
     def apply_theme(self, is_dark: bool) -> None:
-        bg = "#1e1e2e" if is_dark else "#ffffff"
-        border = "rgba(255,255,255,0.08)" if is_dark else "#e2e8f0"
-        fg = "#cdd6f4" if is_dark else "#1e293b"
-        muted = "#94a3b8" if is_dark else "#64748b"
-        accent = "#8b5cf6"
-        amber_bg = "rgba(245, 158, 11, 0.18)"
-        amber_fg = "#f59e0b"
+        theme = resolve_shell_theme(self.window(), is_dark=is_dark)
+        border = theme.border_subtle if theme.is_dark else theme.border
+        amber_bg = with_alpha(theme.warning, 0.18)
+        action_bg = with_alpha(theme.warning, 0.18)
+        action_fg = with_alpha(theme.warning, 0.85)
+        consolidation_bg = with_alpha(theme.info, 0.18)
+        hover_bg = with_alpha(theme.accent, 0.10)
 
-        self._style_tier_badge(is_dark)
+        self._style_tier_badge(theme)
 
         self.setStyleSheet(
             f"""
             QFrame#MemoryRowCard {{
-                background: {bg};
+                background: {theme.background};
                 border: 1px solid {border};
                 border-radius: 12px;
             }}
             QLabel#MemoryRowCategoryBadge {{
-                background: rgba(139, 92, 246, 0.18);
-                color: {accent};
+                background: {with_alpha(theme.accent, 0.18)};
+                color: {theme.accent};
                 border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -588,12 +585,12 @@ class _MemoryRowCard(QFrame):
                 letter-spacing: 1px;
             }}
             QLabel#MemoryRowMetaText {{
-                color: {muted};
+                color: {theme.text_muted};
                 font-size: 11px;
             }}
             QLabel#MemoryRowFlaggedBadge {{
                 background: {amber_bg};
-                color: {amber_fg};
+                color: {theme.warning};
                 border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -601,8 +598,8 @@ class _MemoryRowCard(QFrame):
                 letter-spacing: 1px;
             }}
             QLabel#MemoryRowActionBadge {{
-                background: rgba(245, 158, 11, 0.18);
-                color: #fcd34d;
+                background: {action_bg};
+                color: {action_fg};
                 border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -610,8 +607,8 @@ class _MemoryRowCard(QFrame):
                 letter-spacing: 1px;
             }}
             QLabel#MemoryRowConsolidationBadge {{
-                background: rgba(59, 130, 246, 0.18);
-                color: #3b82f6;
+                background: {consolidation_bg};
+                color: {theme.info};
                 border-radius: 6px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -619,17 +616,17 @@ class _MemoryRowCard(QFrame):
                 letter-spacing: 1px;
             }}
             QLabel#MemoryRowContent {{
-                color: {fg};
+                color: {theme.text_primary};
                 font-size: 13px;
                 line-height: 1.4;
             }}
             QLabel#MemoryRowProvenance {{
-                color: {muted};
+                color: {theme.text_muted};
                 font-size: 11px;
                 font-style: italic;
             }}
             QLabel#MemoryRowTopics {{
-                color: {accent};
+                color: {theme.accent};
                 font-size: 11px;
                 font-weight: 600;
                 letter-spacing: 0.3px;
@@ -637,7 +634,7 @@ class _MemoryRowCard(QFrame):
             QPushButton#MemoryRowEditButton,
             QPushButton#MemoryRowFlagButton {{
                 background: transparent;
-                color: {fg};
+                color: {theme.text_primary};
                 border: 1px solid {border};
                 border-radius: 6px;
                 padding: 6px 12px;
@@ -645,9 +642,9 @@ class _MemoryRowCard(QFrame):
             }}
             QPushButton#MemoryRowEditButton:hover,
             QPushButton#MemoryRowFlagButton:hover {{
-                background: rgba(139, 92, 246, 0.10);
-                border: 1px solid {accent};
-                color: {accent};
+                background: {hover_bg};
+                border: 1px solid {theme.accent};
+                color: {theme.accent};
             }}
             """
         )
@@ -680,18 +677,17 @@ class _SectionHeader(QFrame):
         self.apply_theme(is_dark)
 
     def apply_theme(self, is_dark: bool) -> None:
-        fg = "#f8fafc" if is_dark else "#0f172a"
-        muted = "#64748b"
+        theme = resolve_shell_theme(self.window(), is_dark=is_dark)
         self.setStyleSheet(
             f"""
             QLabel#MemorySectionTitle {{
-                color: {fg};
+                color: {theme.text_on_accent if theme.is_dark else theme.text_primary};
                 font-weight: 700;
                 font-size: 13px;
                 letter-spacing: 1.5px;
             }}
             QLabel#MemorySectionCount {{
-                color: {muted};
+                color: {theme.text_secondary};
                 font-size: 12px;
             }}
             """
@@ -806,7 +802,9 @@ class MemoryManagerView(QWidget):
         title_row.addWidget(self.subtitle_lbl, 1)
 
         self.refresh_btn = QPushButton()
-        self.refresh_btn.setIcon(qta.icon("fa5s.sync-alt", color="#94a3b8"))
+        self.refresh_btn.setIcon(
+            qta.icon("fa5s.sync-alt", color=muted_icon_color(resolve_shell_theme(self)))
+        )
         self.refresh_btn.setToolTip("Reload memories from disk")
         self.refresh_btn.setFixedSize(34, 34)
         self.refresh_btn.setProperty("class", "IconButton")
@@ -1025,71 +1023,7 @@ class MemoryManagerView(QWidget):
         button.setMenu(menu)
 
     def _apply_menu_theme(self, menu: QMenu, is_dark: bool) -> None:
-        palette = QPalette()
-        if is_dark:
-            bg = QColor("#1e1e2e")
-            fg = QColor("#cdd6f4")
-            sel_bg = QColor("#313244")
-            sel_fg = QColor("#cdd6f4")
-            border = "rgba(255, 255, 255, 0.1)"
-            hover = "#313244"
-        else:
-            bg = QColor("#ffffff")
-            fg = QColor("#1e293b")
-            sel_bg = QColor("#f1f5f9")
-            sel_fg = QColor("#0f172a")
-            border = "#cbd5e1"
-            hover = "#f1f5f9"
-
-        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
-            palette.setColor(role, bg)
-        palette.setColor(QPalette.ColorRole.WindowText, fg)
-        palette.setColor(QPalette.ColorRole.Text, fg)
-        palette.setColor(QPalette.ColorRole.Highlight, sel_bg)
-        palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
-
-        menu.setPalette(palette)
-        menu.setStyleSheet(
-            f"""
-            QMenu {{
-                background-color: {bg.name()};
-                border: 1px solid {border};
-                border-radius: 6px;
-                padding: 4px;
-            }}
-            QListWidget#PrestigeMenuList {{
-                background-color: transparent;
-                border: none;
-                outline: none;
-            }}
-            QListWidget#PrestigeMenuList::item {{
-                background-color: transparent;
-                color: {fg.name()};
-                padding: 8px 25px;
-                border-radius: 4px;
-                min-height: 24px;
-            }}
-            QListWidget#PrestigeMenuList::item:selected,
-            QListWidget#PrestigeMenuList::item:hover {{
-                background-color: {hover};
-                color: {sel_fg.name()};
-            }}
-            QScrollBar:vertical {{
-                border: none;
-                background: transparent;
-                width: 6px;
-                margin: 0px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {border};
-                border-radius: 3px;
-                min-height: 20px;
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0px;
-            }}
-            """
-        )
+        apply_prestige_menu_theme(menu, resolve_shell_theme(self, is_dark=is_dark))
 
     def _handle_selector_selection(self, button, label, data, callback) -> None:
         button.setText(label)
@@ -1484,24 +1418,18 @@ class MemoryManagerView(QWidget):
     # ------------------------------------------------------------------
 
     def refresh_theme(self, is_dark: bool) -> None:
-        bg_subtitle = "#94a3b8"
-        status_fg = "#94a3b8" if is_dark else "#475569"
-        input_bg = "#313244" if is_dark else "#f8fafc"
-        input_fg = "#cdd6f4" if is_dark else "#1e293b"
-        input_border = "rgba(255,255,255,0.10)" if is_dark else "#cbd5e1"
-        toggle_off_bg = "transparent"
-        toggle_on_bg = "rgba(245, 158, 11, 0.18)"
-        toggle_on_fg = "#f59e0b"
-        toggle_fg = "#cdd6f4" if is_dark else "#1e293b"
-        toggle_border = "rgba(255,255,255,0.10)" if is_dark else "#cbd5e1"
+        theme = resolve_shell_theme(self, is_dark=is_dark)
+        status_fg = theme.text_muted if theme.is_dark else theme.text_secondary
+        toggle_on_bg = with_alpha(theme.warning, 0.18)
+        themes_bg = theme.surface_elevated
+        themes_border = theme.border_subtle if theme.is_dark else theme.border
 
-        self.subtitle_lbl.setStyleSheet(f"color: {bg_subtitle}; font-size: 12px;")
+        self.subtitle_lbl.setStyleSheet(
+            f"color: {theme.text_muted}; font-size: 12px;"
+        )
         self.status_lbl.setStyleSheet(
             f"color: {status_fg}; font-size: 13px; padding: 8px 4px;"
         )
-        themes_bg = "#1e1e2e" if is_dark else "#f8fafc"
-        themes_border = "rgba(255,255,255,0.08)" if is_dark else "#e2e8f0"
-        themes_fg = "#cdd6f4" if is_dark else "#1e293b"
         profile_style = f"""
             QFrame#MemoryProfileCard {{
                 background: {themes_bg};
@@ -1509,13 +1437,13 @@ class MemoryManagerView(QWidget):
                 border-radius: 10px;
             }}
             QLabel#MemoryProfileTitle {{
-                color: {themes_fg};
+                color: {theme.text_primary};
                 font-weight: 700;
                 font-size: 12px;
                 letter-spacing: 0.5px;
             }}
             QLabel#MemoryProfileBody {{
-                color: {bg_subtitle};
+                color: {theme.text_muted};
                 font-size: 12px;
             }}
         """
@@ -1528,38 +1456,24 @@ class MemoryManagerView(QWidget):
                 border-radius: 10px;
             }}
             QLabel#MemoryThemesTitle {{
-                color: {themes_fg};
+                color: {theme.text_primary};
                 font-weight: 700;
                 font-size: 12px;
                 letter-spacing: 0.5px;
             }}
             QLabel#MemoryThemesBody {{
-                color: {bg_subtitle};
+                color: {theme.text_muted};
                 font-size: 12px;
             }}
             """
         )
-        self.search_input.setStyleSheet(
-            f"""
-            QLineEdit#MemorySearchInput {{
-                background: {input_bg};
-                color: {input_fg};
-                border: 1px solid {input_border};
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-            }}
-            QLineEdit#MemorySearchInput:focus {{
-                border: 1px solid #8b5cf6;
-            }}
-            """
-        )
+        self.search_input.setStyleSheet(theme.style(SETTINGS_LINE_EDIT))
         self.flagged_btn.setStyleSheet(
             f"""
             QPushButton#MemoryFlaggedToggle {{
-                background: {toggle_off_bg};
-                color: {toggle_fg};
-                border: 1px solid {toggle_border};
+                background: transparent;
+                color: {theme.text_primary};
+                border: 1px solid {theme.border_subtle if theme.is_dark else theme.border};
                 border-radius: 6px;
                 padding: 8px 14px;
                 font-size: 12px;
@@ -1567,13 +1481,16 @@ class MemoryManagerView(QWidget):
             }}
             QPushButton#MemoryFlaggedToggle:checked {{
                 background: {toggle_on_bg};
-                color: {toggle_on_fg};
-                border: 1px solid {toggle_on_fg};
+                color: {theme.warning};
+                border: 1px solid {theme.warning};
             }}
             QPushButton#MemoryFlaggedToggle:hover {{
-                border: 1px solid {toggle_on_fg};
+                border: 1px solid {theme.warning};
             }}
             """
+        )
+        self.refresh_btn.setIcon(
+            qta.icon("fa5s.sync-alt", color=muted_icon_color(theme))
         )
 
         # Push theme into existing rows / headers.

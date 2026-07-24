@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent
-from core.audio_utils import get_input_devices, get_output_devices
+from core.audio_utils import get_audio_devices, get_input_devices, get_output_devices
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.network import is_port_open
 from core.settings_store import (
@@ -347,8 +347,13 @@ class VoiceHandlersMixin:
         if self._wakeword_testbed_dialog is not None:
             self._wakeword_testbed_dialog.on_wakeword_selection_changed()
 
-    def _populate_hardware_selectors(self):
-        mics = get_input_devices() 
+    def _populate_audio_device_selectors(self) -> None:
+        if getattr(self, "_audio_device_selectors_populated", False):
+            return
+        if not hasattr(self, "mic_selector"):
+            return
+
+        mics, outputs = get_audio_devices()
         if mics:
             self._build_prestige_menu(
                 self.mic_selector,
@@ -358,7 +363,7 @@ class VoiceHandlersMixin:
             saved_input_idx = get_audio_input_device_index()
             if saved_input_idx is not None and self.audio_worker:
                 self.audio_worker.set_input_device(saved_input_idx)
-            active_mic_name = mics[0][1] 
+            active_mic_name = mics[0][1]
             active_input_idx = saved_input_idx
             if active_input_idx is None and self.audio_worker and hasattr(self.audio_worker, 'input_device_index'):
                 active_input_idx = self.audio_worker.input_device_index
@@ -368,7 +373,6 @@ class VoiceHandlersMixin:
                         active_mic_name = name; break
             self.mic_selector.setText(active_mic_name)
 
-        outputs = get_output_devices()
         if outputs:
             self._build_prestige_menu(
                 self.device_selector,
@@ -388,9 +392,17 @@ class VoiceHandlersMixin:
                         active_output_name = name; break
             self.device_selector.setText(active_output_name)
 
-        if self.audio_worker:
+        if self.audio_worker and hasattr(self, "wakeword_selector"):
             self.wakeword_selector.pressed.connect(self._on_wakeword_selector_pressed)
             self._sync_wakeword_catalog(trigger="settings load")
+
+        self._audio_device_selectors_populated = True
+
+    def _populate_engine_selectors(self) -> None:
+        if getattr(self, "_engine_selectors_populated", False):
+            return
+        if not hasattr(self, "engine_selector"):
+            return
 
         engine_modes = [
             ("Internal Engine (native)", "internal"),
@@ -405,13 +417,25 @@ class VoiceHandlersMixin:
         engine_label = next((lbl for lbl, m in engine_modes if m == em), engine_modes[0][0])
         self.engine_selector.setText(engine_label)
 
-        providers = [("Ollama (Port 11434)", 11434), ("LM Studio (Port 1234)", 1234)]
-        self._build_prestige_menu(self.provider_selector, providers, lambda port: self.llm_worker.set_provider(port) if self.llm_worker else None)
-        
-        if is_port_open(1234): self.provider_selector.setText("LM Studio (Port 1234)")
-        elif is_port_open(11434): self.provider_selector.setText("Ollama (Port 11434)")
+        if hasattr(self, "provider_selector"):
+            providers = [("Ollama (Port 11434)", 11434), ("LM Studio (Port 1234)", 1234)]
+            self._build_prestige_menu(
+                self.provider_selector,
+                providers,
+                lambda port: self.llm_worker.set_provider(port) if self.llm_worker else None,
+            )
+
+            if is_port_open(1234):
+                self.provider_selector.setText("LM Studio (Port 1234)")
+            elif is_port_open(11434):
+                self.provider_selector.setText("Ollama (Port 11434)")
 
         self._sync_ai_provider_enabled_for_inference(get_engine_mode())
+        self._engine_selectors_populated = True
+
+    def _populate_hardware_selectors(self):
+        self._populate_audio_device_selectors()
+        self._populate_engine_selectors()
 
     def _on_input_device_selected(self, idx: int) -> None:
         set_audio_input_device_index(idx)

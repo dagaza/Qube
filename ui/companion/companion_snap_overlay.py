@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QRect
-from PyQt6.QtGui import QFont, QPainter, QColor, QScreen
+from PyQt6.QtGui import QFont, QPainter, QScreen
 from PyQt6.QtWidgets import QWidget
 
 from core.companion_placement import (
@@ -14,12 +14,14 @@ from core.companion_placement import (
     workspace_for_screen,
 )
 from core.platform.frameless_window import apply_translucent_window_chrome
+from ui.companion.companion_theme import (
+    companion_snap_overlay_glow,
+    companion_snap_overlay_pen,
+)
+from core.theme.accessors import theme_for
 
 _LABEL_FONT_PT = 44
 _CENTER_FONT_PT = 34
-_IDLE_ALPHA = 55
-_ACTIVE_ALPHA = 210
-_ACTIVE_GLOW_ALPHA = 90
 
 
 class CompanionSnapOverlay(QWidget):
@@ -41,6 +43,11 @@ class CompanionSnapOverlay(QWidget):
         self._work_area = QRect()
         self._local_area = QRect()
         self._active_zone = CompanionSnapZone.NONE
+        self._is_dark = True
+
+    def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
+        self.update()
 
     def show_for_screen(self, screen: QScreen | None) -> None:
         geo = workspace_for_screen(screen)
@@ -76,6 +83,7 @@ class CompanionSnapOverlay(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+        theme = theme_for(is_dark=self._is_dark)
 
         for zone in COMPASS_SNAP_ZONES:
             label = COMPANION_SNAP_ZONE_LABELS.get(zone, zone.value.upper())
@@ -98,13 +106,12 @@ class CompanionSnapOverlay(QWidget):
             rect = QRect(x, y, w, h)
 
             if active:
-                glow = QColor(129, 140, 248, _ACTIVE_GLOW_ALPHA)
+                glow = companion_snap_overlay_glow(theme)
                 for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2)):
                     painter.setPen(glow)
                     painter.drawText(rect.translated(dx, dy), int(Qt.AlignmentFlag.AlignCenter), label)
 
-            alpha = _ACTIVE_ALPHA if active else _IDLE_ALPHA
-            painter.setPen(QColor(226, 232, 240, alpha))
+            painter.setPen(companion_snap_overlay_pen(theme, active=active))
             painter.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), label)
 
         painter.end()

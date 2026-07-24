@@ -6,6 +6,9 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QMenu
 
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import settings_prestige_menu_palette
+
 # Item padding: left reserves icon column; right stays tight vs legacy 25px.
 _KEBAB_MENU_ITEM_PADDING = "8px 12px 8px 12px"
 _KEBAB_MENU_ITEM_MARGIN = "0px 2px"
@@ -17,13 +20,14 @@ _KEBAB_MENU_CONTAINER_PADDING = "6px"
 def apply_prestige_kebab_menu_theme(menu: QMenu, is_dark: bool) -> None:
     """Apply rounded Prestige colors with compact icon+label spacing."""
     menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-
-    if is_dark:
-        bg, fg, sel_bg, sel_fg = "#1e1e2e", "#cdd6f4", "#313244", "#cdd6f4"
-        border, hover = "rgba(255, 255, 255, 0.1)", "#313244"
-    else:
-        bg, fg, sel_bg, sel_fg = "#ffffff", "#1e293b", "#f1f5f9", "#0f172a"
-        border, hover = "#cbd5e1", "#f1f5f9"
+    theme = theme_for(is_dark=is_dark)
+    colors = settings_prestige_menu_palette(theme)
+    bg = colors["bg"]
+    fg = colors["fg"]
+    sel_bg = colors["sel_bg"]
+    sel_fg = colors["sel_fg"]
+    border = colors["border"]
+    hover = colors["hover"]
 
     palette = QPalette()
     for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):

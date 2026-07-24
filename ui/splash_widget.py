@@ -24,6 +24,23 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from core.theme.color_utils import theme_qcolor, with_alpha
+from ui.branded_theme import (
+    SPLASH_PROGRESS_CHUNK_HEX,
+    SPLASH_PROGRESS_TEXT_RGBA,
+    SPLASH_PROGRESS_TRACK_RGBA,
+    SPLASH_SPINNER_ARC_DARK_HEX,
+    SPLASH_SPINNER_ARC_DARK_INIT_HEX,
+    SPLASH_SPINNER_ARC_LIGHT_HEX,
+    SPLASH_SPINNER_TRACK_DARK_RGBA,
+    SPLASH_SPINNER_TRACK_LIGHT_RGBA,
+    branded_theme,
+    splash_card_surface_qss,
+    splash_compact_card_qss,
+    splash_split_card_qss,
+    splash_step_list_qss,
+)
+
 # Startup steps shown beside the spinner (index must match splash_overlay phase order).
 SPLASH_STEP_LABELS: tuple[str, ...] = (
     "Search models (Balanced)",
@@ -46,10 +63,6 @@ _SPLASH_CHUNK_PROGRESS_HEIGHT = (
 class _SplashChunkProgressBar(QProgressBar):
     """Pill progress bar; chunk stays rounded from the first pixel (QSS ::chunk cannot)."""
 
-    _TRACK = QColor(255, 255, 255, 20)
-    _CHUNK = QColor("#8b5cf6")
-    _TEXT = QColor(148, 163, 184, 230)
-
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("QubeSplashChunkProgress")
@@ -59,6 +72,11 @@ class _SplashChunkProgressBar(QProgressBar):
         self.setFormat("%p%")
         self.setFixedHeight(_SPLASH_CHUNK_PROGRESS_HEIGHT)
         self.setStyleSheet("background: transparent; border: none;")
+        r, g, b, a = SPLASH_PROGRESS_TRACK_RGBA
+        self._track = QColor(r, g, b, a)
+        self._chunk = QColor(SPLASH_PROGRESS_CHUNK_HEX)
+        tr, tg, tb, ta = SPLASH_PROGRESS_TEXT_RGBA
+        self._text = QColor(tr, tg, tb, ta)
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -67,7 +85,7 @@ class _SplashChunkProgressBar(QProgressBar):
         radius = rect.height() / 2.0
 
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(self._TRACK)
+        painter.setBrush(self._track)
         painter.drawRoundedRect(rect, radius, radius)
 
         span = self.maximum() - self.minimum()
@@ -76,14 +94,14 @@ class _SplashChunkProgressBar(QProgressBar):
             if fraction > 0:
                 chunk_rect = QRectF(rect)
                 chunk_rect.setWidth(rect.width() * fraction)
-                painter.setBrush(self._CHUNK)
+                painter.setBrush(self._chunk)
                 painter.drawRoundedRect(chunk_rect, radius, radius)
 
         if self.isTextVisible():
             text_font = QFont(painter.font())
             text_font.setPixelSize(_SPLASH_CHUNK_PROGRESS_TEXT_PX)
             painter.setFont(text_font)
-            painter.setPen(self._TEXT)
+            painter.setPen(self._text)
             pad = _SPLASH_CHUNK_PROGRESS_TEXT_PAD_V
             text_rect = QRectF(
                 rect.left(),
@@ -112,21 +130,45 @@ def resolve_splash_logo_path(repo_root: Path | None = None) -> Path | None:
 class SplashCircleSpinner(QWidget):
     """Timer-driven ring spinner (decorative; may pause if the GUI thread blocks)."""
 
-    def __init__(self, size: int = 40, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        size: int = 40,
+        parent: QWidget | None = None,
+        *,
+        brand_locked: bool = True,
+    ) -> None:
         super().__init__(parent)
         self._size = size
+        self._brand_locked = brand_locked
         self.setFixedSize(size, size)
         self._angle_deg = 0.0
-        self._track = QColor(255, 255, 255, 28)
-        self._arc = QColor("#8b5cf6")
+        if brand_locked:
+            r, g, b, a = SPLASH_SPINNER_TRACK_DARK_RGBA
+            self._track = QColor(r, g, b, a)
+            self._arc = QColor(SPLASH_SPINNER_ARC_DARK_INIT_HEX)
+        else:
+            self._track = QColor(0, 0, 0, 0)
+            self._arc = QColor(0, 0, 0, 0)
+            self.apply_theme(is_dark=True)
 
     def apply_theme(self, is_dark: bool) -> None:
-        if is_dark:
-            self._track = QColor(255, 255, 255, 28)
-            self._arc = QColor("#89b4fa")
+        if self._brand_locked:
+            if is_dark:
+                r, g, b, a = SPLASH_SPINNER_TRACK_DARK_RGBA
+                self._track = QColor(r, g, b, a)
+                self._arc = QColor(SPLASH_SPINNER_ARC_DARK_HEX)
+            else:
+                r, g, b, a = SPLASH_SPINNER_TRACK_LIGHT_RGBA
+                self._track = QColor(r, g, b, a)
+                self._arc = QColor(SPLASH_SPINNER_ARC_LIGHT_HEX)
         else:
-            self._track = QColor(0, 0, 0, 22)
-            self._arc = QColor("#3b82f6")
+            theme = branded_theme(is_dark=is_dark)
+            if is_dark:
+                self._track = theme_qcolor(with_alpha(theme.text_on_accent, 0.11))
+                self._arc = theme_qcolor(theme.link)
+            else:
+                self._track = theme_qcolor(with_alpha(theme.text_primary, 0.09))
+                self._arc = theme_qcolor(theme.info)
         self.update()
 
     def advance(self, delta_ms: float = 16.67) -> None:
@@ -173,6 +215,11 @@ class SplashStepList(QWidget):
             layout.addWidget(row)
             self._rows.append(row)
         self._active_index = -1
+        self.apply_theme(is_dark=True)
+
+    def apply_theme(self, is_dark: bool = True) -> None:
+        del is_dark
+        self.setStyleSheet(splash_step_list_qss())
         self._apply_row_styles()
 
     def set_active(self, index: int) -> None:
@@ -198,23 +245,6 @@ class SplashStepList(QWidget):
         self._active_index = -1
 
     def _apply_row_styles(self) -> None:
-        self.setStyleSheet(
-            """
-            QLabel[step_state="pending"] {
-                color: rgba(148, 163, 184, 0.55);
-                font-size: 11px;
-            }
-            QLabel[step_state="active"] {
-                color: #c4b5fd;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            QLabel[step_state="done"] {
-                color: rgba(134, 239, 172, 0.85);
-                font-size: 11px;
-            }
-            """
-        )
         for row in self._rows:
             row.setProperty("step_state", "pending")
             row.style().unpolish(row)
@@ -404,15 +434,6 @@ class RotatingQubeCube(QWidget):
 RotatingLogoLabel = RotatingQubeCube
 
 
-# Frameless splash cards: QSS rounded chrome; pixels outside the radius stay
-# transparent so the translucent shell shows the desktop through (Qt-native path).
-_SPLASH_CARD_SURFACE_QSS = """
-    background-color: #12151f;
-    border: none;
-    border-radius: 16px;
-"""
-
-
 class _SplashCardChrome(QWidget):
     """Rounded splash card surface — QSS only; no custom paint (avoids corner seams)."""
 
@@ -420,7 +441,11 @@ class _SplashCardChrome(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(False)
-        self.setStyleSheet(_SPLASH_CARD_SURFACE_QSS.strip())
+        self.apply_theme(is_dark=True)
+
+    def apply_theme(self, is_dark: bool = True) -> None:
+        del is_dark
+        self.setStyleSheet(splash_card_surface_qss().strip())
 
 
 class QubeFirstRunSplitSplash(QWidget):
@@ -599,39 +624,7 @@ class QubeFirstRunSplitSplash(QWidget):
             self.detail.hide()
 
     def _apply_styles(self) -> None:
-        self.setStyleSheet(
-            """
-            QWidget#QubeFirstRunSplitSplashRoot {
-                background: transparent;
-            }
-            QWidget#QubeFirstRunSplitSplash {
-            """
-            + _SPLASH_CARD_SURFACE_QSS
-            + """
-            }
-            QWidget#QubeFirstRunSplashLeft,
-            QWidget#QubeFirstRunConsentHost {
-                background: transparent;
-            }
-            QFrame#QubeFirstRunSplitDivider {
-                background: rgba(255, 255, 255, 0.12);
-                border: none;
-                max-width: 1px;
-            }
-            QLabel#QubeSplashTitle {
-                color: #f8fafc;
-            }
-            QLabel#QubeFirstRunSplashHint {
-                color: rgba(148, 163, 184, 0.9);
-                font-size: 12px;
-            }
-            QLabel#QubeSplashDetail {
-                color: rgba(148, 163, 184, 0.95);
-                font-size: 10px;
-                line-height: 1.35;
-            }
-            """
-        )
+        self.setStyleSheet(splash_split_card_qss())
 
 
 class QubeSplashCard(QWidget):
@@ -728,23 +721,4 @@ class QubeSplashCard(QWidget):
             self.detail.hide()
 
     def _apply_styles(self) -> None:
-        self.setStyleSheet(
-            """
-            QWidget#QubeSplashCardRoot {
-                background: transparent;
-            }
-            QWidget#QubeSplashCard {
-            """
-            + _SPLASH_CARD_SURFACE_QSS
-            + """
-            }
-            QLabel#QubeSplashTitle {
-                color: #f8fafc;
-            }
-            QLabel#QubeSplashDetail {
-                color: rgba(148, 163, 184, 0.95);
-                font-size: 10px;
-                line-height: 1.35;
-            }
-            """
-        )
+        self.setStyleSheet(splash_compact_card_qss())

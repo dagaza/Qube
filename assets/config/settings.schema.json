@@ -11,6 +11,32 @@
     "enum": ["british", "american"],
     "description": "Application UI language variant (British English or American English spelling)."
   },
+  "qube.ui.theme.mode": {
+    "type": "string",
+    "default": "dark",
+    "enum": ["dark", "light"],
+    "description": "Global UI theme mode (dark or light)."
+  },
+  "qube.ui.color_scheme.id": {
+    "type": "string",
+    "default": "builtin.catppuccin-mocha",
+    "description": "Active color scheme id (built-in preset or user scheme under ~/.qube/themes/)."
+  },
+  "qube.ui.theme.appearance": {
+    "type": "string",
+    "enum": ["dark", "light", "follow_system"],
+    "description": "Theme appearance preference. When unset, the active color scheme drives polarity (legacy). follow_system matches the OS and restores the last theme used for each polarity."
+  },
+  "qube.ui.color_scheme.last.dark": {
+    "type": "string",
+    "default": "",
+    "description": "Last applied dark color scheme id (follow-system prep)."
+  },
+  "qube.ui.color_scheme.last.light": {
+    "type": "string",
+    "default": "",
+    "description": "Last applied light color scheme id (follow-system prep)."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,
