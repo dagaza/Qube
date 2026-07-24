@@ -83,6 +83,8 @@ KEY_UI_COLOR_SCHEME_ID = "qube.ui.color_scheme.id"
 KEY_UI_THEME_APPEARANCE = "qube.ui.theme.appearance"
 KEY_LAST_SCHEME_DARK = "qube.ui.color_scheme.last.dark"
 KEY_LAST_SCHEME_LIGHT = "qube.ui.color_scheme.last.light"
+KEY_SURFACE_PROFILES_ACTIVE = "qube.ui.surface_profiles.active"
+KEY_SURFACE_PROFILES_DRAFT = "qube.ui.surface_profiles.draft"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -1810,6 +1812,24 @@ def get_ui_theme_appearance() -> str | None:
 
 def set_ui_theme_appearance(preference: str) -> None:
     _store().set(KEY_UI_THEME_APPEARANCE, str(preference))
+
+
+def get_ui_surface_profiles_active() -> str:
+    """JSON blob of applied surface profiles keyed by surface id."""
+    return str(_store().get(KEY_SURFACE_PROFILES_ACTIVE, "") or "")
+
+
+def set_ui_surface_profiles_active(payload: str) -> None:
+    _store().set(KEY_SURFACE_PROFILES_ACTIVE, str(payload or ""))
+
+
+def get_ui_surface_profiles_draft() -> str:
+    """JSON blob of draft surface profiles, or empty when unset."""
+    return str(_store().get(KEY_SURFACE_PROFILES_DRAFT, "") or "")
+
+
+def set_ui_surface_profiles_draft(payload: str) -> None:
+    _store().set(KEY_SURFACE_PROFILES_DRAFT, str(payload or ""))
 
 
 def get_companion_cube_style() -> "CompanionCubeStyle":

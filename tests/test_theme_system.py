@@ -29,6 +29,7 @@ from core.theme.storage import ThemeStorage
 from core.theme.stylesheet import render_stylesheet
 from core.theme.tokens import CORE_TOKEN_KEYS, CoreTokenSet, ThemeMode
 from core.theme.validation import ThemeValidator
+from core.theme.widget_styles import WEB_INDICATOR_STANDBY
 
 
 def test_parse_color_hex_and_rgba():
@@ -1031,10 +1032,13 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
     panel = ThemePreviewPanel()
     panel.apply_theme(theme)
-    scene = panel._conversations_scene
+    _qube_app.processEvents()
+    scene = panel._conversations_live
     assert theme.chat_user_bubble in scene._user_bubble_frame.styleSheet()
     assert theme.color(WEB_INDICATOR_STANDBY) in scene._web_dot.styleSheet()
-    components = panel._components_scene
+    panel._components_cb.setChecked(True)
+    _qube_app.processEvents()
+    components = panel._components_live
     assert theme.accent in components._primary_btn.styleSheet()
 
 

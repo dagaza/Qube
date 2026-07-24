@@ -73,6 +73,11 @@ from core.citation_integrity_telemetry import log_citation_integrity
 from core.app_settings import get_citation_integrity_ui_linkify
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
 from core.theme.view_theme import view_resolved_theme
+from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+from ui.surface_fill.transcript_host import (
+    TranscriptWallpaperHost,
+    bind_transcript_wallpaper_readability,
+)
 from core.theme.widget_styles import (
     ACCENT_ICON,
     ACCENT_ICON_ACTIVE,
@@ -2371,16 +2376,25 @@ class ConversationsView(QWidget):
         self._line_height_mode = order[(i + 1) % len(order)]
         self._refresh_all_readability()
 
+    def _refresh_transcript_wallpaper(self) -> None:
+        bind_transcript_wallpaper_readability(
+            getattr(self, "_chat_transcript_wallpaper_host", None),
+            high_contrast=self._high_contrast_enabled,
+            reader_focus=self._focus_mode_enabled,
+        )
+
     def _on_reader_focus_toggled(self, checked: bool) -> None:
         self._focus_mode_enabled = bool(checked)
         if not self._focus_mode_enabled:
             self._reader_hover_wrapper = None
         self._refresh_readability_toolbar()
         self._apply_reader_focus_opacity()
+        self._refresh_transcript_wallpaper()
 
     def _on_high_contrast_toggled(self, checked: bool) -> None:
         self._high_contrast_enabled = bool(checked)
         self._refresh_all_readability()
+        self._refresh_transcript_wallpaper()
 
     def _cycle_transcript_alignment(self) -> None:
         self._transcript_alignment = (
@@ -2605,7 +2619,16 @@ class ConversationsView(QWidget):
     def _build_chat_stage(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("ChatStage")
-        layout = QVBoxLayout(frame)
+        frame.setStyleSheet(
+            "QFrame#ChatStage { background: transparent; border: none; }"
+        )
+        outer_layout = QVBoxLayout(frame)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        mainstage_content = QWidget()
+        mainstage_content.setObjectName("ChatMainstageContent")
+        layout = QVBoxLayout(mainstage_content)
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
 
@@ -2749,8 +2772,9 @@ class ConversationsView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        self._refresh_readability_toolbar(is_dark=True)
-        self._apply_layout_mode()
+        self.scroll_area.setStyleSheet(
+            "QScrollArea#ChatScrollArea { background: transparent; border: none; }"
+        )
         layout.addWidget(self.scroll_area, stretch=1)
 
         # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
@@ -2875,6 +2899,16 @@ class ConversationsView(QWidget):
         self.text_input.bind_mention_host(self)
         self._style_composer_side_buttons(is_dark=True)
         self._refresh_composer_chip_strip()
+
+        self._chat_transcript_wallpaper_host = TranscriptWallpaperHost(
+            SURFACE_CHAT_TRANSCRIPT,
+            mainstage_content,
+            parent=frame,
+        )
+        self._refresh_readability_toolbar(is_dark=True)
+        self._apply_layout_mode()
+        self._refresh_transcript_wallpaper()
+        outer_layout.addWidget(self._chat_transcript_wallpaper_host, stretch=1)
 
         return frame
 
@@ -4099,6 +4133,7 @@ class ConversationsView(QWidget):
             for ind in tw.findChildren(TypingIndicatorWidget):
                 ind.set_dark_theme(is_dark)
         self._refresh_agent_copy_buttons(is_dark)
+        self._refresh_transcript_wallpaper()
 
     def _apply_history_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""

@@ -115,6 +115,8 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_UI_THEME_APPEARANCE,
         app.KEY_LAST_SCHEME_DARK,
         app.KEY_LAST_SCHEME_LIGHT,
+        app.KEY_SURFACE_PROFILES_ACTIVE,
+        app.KEY_SURFACE_PROFILES_DRAFT,
     ),
 }
 

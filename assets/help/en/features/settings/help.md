@@ -60,7 +60,10 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Suggest models for my hardware in Model Manager**
 
-### Wakeword models
+### Uninstall Qube
+
+- **Uninstall Qube and all data…**
+- **Remove Qube app only…**
 
 ## Related
 

@@ -20,6 +20,7 @@ Open **Settings** from the main navigation, then choose a section in the left si
 | Memory | `memory` | Intelligence |
 | Knowledge | `knowledge` | Intelligence |
 | General | `general` | Interface |
+| Themes | `appearance.themes` | Interface |
 | Desktop Companion | `companion.desktop` | Interface |
 | Notifications | `notifications` | Interface |
 | Help | `help` | Support |
@@ -64,6 +65,10 @@ Also called: NLP RAG TRIGGERS
 Open **Settings → General**.
 
 Also called: GENERAL
+
+### Themes (`appearance.themes`)
+
+Open **Settings → Themes**.
 
 ### Desktop Companion (`companion.desktop`)
 

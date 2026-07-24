@@ -272,6 +272,16 @@ class StylingMixin:
         for field in self._iter_settings_line_edits():
             field.setStyleSheet(line_edit_style)
 
+        for name in ("themes_chat_wallpaper", "themes_library_wallpaper"):
+            editor = getattr(self, name, None)
+            apply_theme = getattr(editor, "apply_theme", None)
+            if callable(apply_theme):
+                apply_theme(is_dark)
+
+        apply_themes_actions = getattr(self, "_apply_themes_action_button_styles", None)
+        if callable(apply_themes_actions):
+            apply_themes_actions(is_dark)
+
         if hasattr(self, "trigger_list"):
             self.trigger_list.setStyleSheet(
                 theme.style(

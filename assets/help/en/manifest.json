@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.14",
+  "corpus_version": "1.0.15",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -509,6 +509,47 @@
           "label": "Open General",
           "kind": "open_settings_section",
           "settings_section": "general"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.themes",
+      "path": "features/settings/themes.md",
+      "title": "Themes settings",
+      "type": "feature",
+      "settings_section": "appearance.themes",
+      "tags": [
+        "themes",
+        "appearance",
+        "dark mode",
+        "light mode",
+        "wallpaper",
+        "colour scheme"
+      ],
+      "synonyms": [
+        "theme settings",
+        "color scheme",
+        "custom theme",
+        "chat wallpaper",
+        "library wallpaper",
+        "dark mode settings",
+        "accent color"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "features.conversations",
+        "features.library",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_themes",
+          "label": "Open Themes",
+          "kind": "open_settings_section",
+          "settings_section": "appearance.themes"
         }
       ]
     },
@@ -1479,6 +1520,21 @@
       "heading": "UI language variant",
       "answer": "Open **Settings \u2192 General** and choose **British English** or **American English** under **Application language**.",
       "action_id": "open_settings_general"
+    },
+    {
+      "id": "features.settings.themes.wallpaper",
+      "question_patterns": [
+        "chat wallpaper",
+        "library wallpaper",
+        "background image chat",
+        "change chat background",
+        "theme wallpaper settings",
+        "overlay strength wallpaper"
+      ],
+      "doc_id": "features.settings.themes",
+      "heading": "Chat and library wallpapers",
+      "answer": "Open **Settings → Themes → Wallpapers**. Configure **Chat wallpaper** and **Library wallpaper** separately (presets, colours, gradients, or imported images). Press **Apply** to use them in the app.",
+      "action_id": "open_settings_themes"
     },
     {
       "id": "features.settings.memory.enrichment",

@@ -37,6 +37,16 @@
     "default": "",
     "description": "Last applied light color scheme id (follow-system prep)."
   },
+  "qube.ui.surface_profiles.active": {
+    "type": "string",
+    "default": "",
+    "description": "JSON map of applied chat/library wallpaper profiles (surface id → wallpaper + overlay)."
+  },
+  "qube.ui.surface_profiles.draft": {
+    "type": "string",
+    "default": "",
+    "description": "JSON map of draft wallpaper profiles pending Apply in Settings → Themes."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,

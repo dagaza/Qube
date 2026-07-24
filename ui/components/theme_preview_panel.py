@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import qtawesome as qta
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
 )
 
 from core.brand_identity import BRAND_LOGO_STROKE_HEX
+from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+from core.surface_fill.models import SurfaceProfile
 from core.theme.color_utils import with_alpha
 from core.theme.tokens import ResolvedTheme
 from core.theme.widget_styles import (
@@ -37,6 +39,7 @@ from core.theme.widget_styles import (
 )
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
+from ui.surface_fill.transcript_host import TranscriptWallpaperHost
 from ui.shell_theme import (
     muted_icon_color,
     nav_icon_colors,
@@ -300,9 +303,9 @@ class ThemeConversationsPreviewScene(QFrame):
         history_layout.addStretch()
         body.addWidget(self._history)
 
-        self._chat = QFrame()
-        self._chat.setObjectName("ThemePreviewChatStage")
-        chat_layout = QVBoxLayout(self._chat)
+        self._chat_content = QFrame()
+        self._chat_content.setObjectName("ThemePreviewChatStage")
+        chat_layout = QVBoxLayout(self._chat_content)
         chat_layout.setContentsMargins(10, 8, 10, 8)
         chat_layout.setSpacing(6)
 
@@ -357,7 +360,12 @@ class ThemeConversationsPreviewScene(QFrame):
         composer_row.addWidget(self._composer_input, stretch=1)
         composer_row.addWidget(self._send_btn)
         chat_layout.addLayout(composer_row)
-        body.addWidget(self._chat, stretch=1)
+        self._chat_wallpaper_host = TranscriptWallpaperHost(
+            SURFACE_CHAT_TRANSCRIPT,
+            self._chat_content,
+            parent=self,
+        )
+        body.addWidget(self._chat_wallpaper_host, stretch=1)
 
         self._tools = QFrame()
         self._tools.setObjectName("ThemePreviewToolsPane")
@@ -393,8 +401,16 @@ class ThemeConversationsPreviewScene(QFrame):
 
         shell_layout.addLayout(body)
         root.addWidget(self._shell)
+        self._preview_chat_profile: SurfaceProfile | None = None
+        self._preview_resolved_wallpaper = None
 
-    def apply_theme(self, resolved: ResolvedTheme) -> None:
+    def apply_theme(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        chat_profile: SurfaceProfile | None = None,
+        chat_resolved_wallpaper=None,
+    ) -> None:
         colors = _preview_shell_colors(resolved)
         shell_border = resolved.border
         self.setStyleSheet(
@@ -467,9 +483,15 @@ class ThemeConversationsPreviewScene(QFrame):
         self._session_row.setStyleSheet(_history_session_selected_frame_style(resolved))
         self._session_title.setStyleSheet(_history_session_selected_label_style(resolved))
 
-        chat_bg = colors["chat_stage"]
-        self._chat.setStyleSheet(
-            f"QFrame#ThemePreviewChatStage {{ background-color: {chat_bg}; border: none; }}"
+        self._chat_content.setStyleSheet(
+            "QFrame#ThemePreviewChatStage { background: transparent; border: none; }"
+        )
+        self._preview_chat_profile = chat_profile
+        self._preview_resolved_wallpaper = chat_resolved_wallpaper
+        self._chat_wallpaper_host.set_preview_profile(
+            chat_profile,
+            resolved_wallpaper=chat_resolved_wallpaper,
+            theme=resolved,
         )
         self._agent_block.setStyleSheet("background: transparent; border: none;")
         self._agent_header.setStyleSheet(
@@ -667,12 +689,29 @@ class ThemeComponentsPreviewScene(QFrame):
         )
 
 
+_PREVIEW_SNAPSHOT_HEIGHT = 280
+_PREVIEW_SNAPSHOT_MIN_WIDTH = 480
+
+
+def _configure_preview_snapshot_label(label: QLabel, *, object_name: str) -> None:
+    label.setObjectName(object_name)
+    label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+    label.setScaledContents(False)
+    label.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+
+
+def _configure_offscreen_live_scene(widget: QWidget) -> None:
+    widget.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+    widget.setUpdatesEnabled(False)
+
+
 class ThemePreviewPanel(QFrame):
     """Live draft preview — Conversations shell by default, optional components view."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("ThemePreviewPanel")
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -691,30 +730,130 @@ class ThemePreviewPanel(QFrame):
         layout.addLayout(toggle_row)
 
         self._stack = QStackedWidget()
-        self._conversations_scene = ThemeConversationsPreviewScene()
-        self._components_scene = ThemeComponentsPreviewScene()
-        self._stack.addWidget(self._conversations_scene)
-        self._stack.addWidget(self._components_scene)
-        self._stack.setMinimumHeight(280)
+        self._stack.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self._conversations_live = ThemeConversationsPreviewScene(self)
+        _configure_offscreen_live_scene(self._conversations_live)
+        self._conversations_view = QLabel()
+        _configure_preview_snapshot_label(
+            self._conversations_view,
+            object_name="ThemePreviewConversationsSnapshot",
+        )
+        self._components_live = ThemeComponentsPreviewScene(self)
+        _configure_offscreen_live_scene(self._components_live)
+        self._components_view = QLabel()
+        _configure_preview_snapshot_label(
+            self._components_view,
+            object_name="ThemePreviewComponentsSnapshot",
+        )
+        self._stack.addWidget(self._conversations_view)
+        self._stack.addWidget(self._components_view)
+        self._stack.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
         layout.addWidget(self._stack)
 
         self._conversations_cb.toggled.connect(self._on_scene_toggled)
         self._components_cb.toggled.connect(self._on_scene_toggled)
+        self._pending_conversations_snapshot: tuple | None = None
+        self._pending_components_snapshot: ResolvedTheme | None = None
+        self._components_snapshot_stale = True
+        self._sync_visible_stack_page()
 
     def _on_scene_toggled(self, _checked: bool) -> None:
-        if self._components_cb.isChecked():
-            self._stack.setCurrentWidget(self._components_scene)
-        else:
-            self._stack.setCurrentWidget(self._conversations_scene)
+        self._sync_visible_stack_page()
+        if self._components_cb.isChecked() and self._components_snapshot_stale:
+            pending = self._pending_components_snapshot
+            if pending is not None:
+                self._schedule_components_snapshot(pending)
 
-    def apply_theme(self, resolved: ResolvedTheme) -> None:
+    def _sync_visible_stack_page(self) -> None:
+        if self._components_cb.isChecked():
+            self._stack.setCurrentWidget(self._components_view)
+        else:
+            self._stack.setCurrentWidget(self._conversations_view)
+
+    def _schedule_conversations_snapshot(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        chat_profile: SurfaceProfile | None,
+        chat_resolved_wallpaper,
+    ) -> None:
+        self._pending_conversations_snapshot = (
+            resolved,
+            chat_profile,
+            chat_resolved_wallpaper,
+        )
+        QTimer.singleShot(0, self._refresh_conversations_snapshot)
+
+    def _schedule_components_snapshot(self, resolved: ResolvedTheme) -> None:
+        self._pending_components_snapshot = resolved
+        QTimer.singleShot(0, self._refresh_components_snapshot)
+
+    def _refresh_conversations_snapshot(self) -> None:
+        pending = self._pending_conversations_snapshot
+        if pending is None:
+            return
+        resolved, chat_profile, chat_resolved_wallpaper = pending
+        width = max(self._stack.width(), _PREVIEW_SNAPSHOT_MIN_WIDTH)
+        self._conversations_live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
+        self._conversations_live.setUpdatesEnabled(True)
+        try:
+            self._conversations_live.apply_theme(
+                resolved,
+                chat_profile=chat_profile,
+                chat_resolved_wallpaper=chat_resolved_wallpaper,
+            )
+            pixmap = self._conversations_live.grab()
+        finally:
+            self._conversations_live.setUpdatesEnabled(False)
+        if pixmap.isNull():
+            return
+        self._conversations_view.setPixmap(pixmap)
+        self._conversations_view.setFixedHeight(pixmap.height())
+
+    def _refresh_components_snapshot(self) -> None:
+        resolved = self._pending_components_snapshot
+        if resolved is None:
+            return
+        width = max(self._stack.width(), _PREVIEW_SNAPSHOT_MIN_WIDTH)
+        self._components_live.setFixedWidth(width)
+        self._components_live.setUpdatesEnabled(True)
+        try:
+            self._components_live.apply_theme(resolved)
+            pixmap = self._components_live.grab()
+        finally:
+            self._components_live.setUpdatesEnabled(False)
+        if pixmap.isNull():
+            return
+        self._components_view.setPixmap(pixmap)
+        self._components_view.setFixedHeight(pixmap.height())
+        self._components_snapshot_stale = False
+
+    def apply_theme(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        chat_profile: SurfaceProfile | None = None,
+        chat_resolved_wallpaper=None,
+    ) -> None:
         """Repaint preview chrome from ``resolved`` only — never touches the app."""
         self.setStyleSheet(
             "QFrame#ThemePreviewPanel { background: transparent; border: none; }"
         )
         self._stack.setStyleSheet("background: transparent; border: none;")
-        self._conversations_scene.apply_theme(resolved)
-        self._components_scene.apply_theme(resolved)
+        self._schedule_conversations_snapshot(
+            resolved,
+            chat_profile=chat_profile,
+            chat_resolved_wallpaper=chat_resolved_wallpaper,
+        )
+        self._pending_components_snapshot = resolved
+        self._components_snapshot_stale = True
+        if self._components_cb.isChecked():
+            self._schedule_components_snapshot(resolved)
         toggle_style = resolved.style(SETTINGS_CHECKBOX)
         self._conversations_cb.setStyleSheet(toggle_style)
         self._components_cb.setStyleSheet(toggle_style)
+
+    @property
+    def _components_scene(self) -> ThemeComponentsPreviewScene:
+        """Backward-compatible alias for tests and callers."""
+        return self._components_live
