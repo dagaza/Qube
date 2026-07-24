@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QRadioButton,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -701,8 +702,41 @@ def _configure_preview_snapshot_label(label: QLabel, *, object_name: str) -> Non
 
 
 def _configure_offscreen_live_scene(widget: QWidget) -> None:
+    """Keep grab sources out of the panel hit-test and paint trees."""
     widget.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+    widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
     widget.setUpdatesEnabled(False)
+    widget.hide()
+    widget.move(-32000, -32000)
+
+
+def _preview_scene_toggle_style(resolved: ResolvedTheme) -> str:
+    """Radio-style scene toggles using the same indicator sizing as settings checkboxes."""
+    border = resolved.border_subtle if resolved.is_dark else resolved.border
+    return f"""
+        QRadioButton {{ color: {resolved.text_primary}; font-size: 13px; spacing: 8px; }}
+        QRadioButton::indicator {{
+            width: 18px;
+            height: 18px;
+            border: 1px solid {border};
+            border-radius: 9px;
+            background-color: transparent;
+        }}
+        QRadioButton::indicator:checked {{
+            background-color: {resolved.accent};
+            border: 1px solid {resolved.accent_pressed};
+        }}
+    """
+
+
+def _offscreen_snapshot_size(widget: QWidget, width: int) -> tuple[int, int]:
+    """Return a stable (width, height) for grabbing an off-screen preview scene."""
+    widget.setFixedWidth(width)
+    widget.adjustSize()
+    height = widget.sizeHint().height()
+    if widget.hasHeightForWidth():
+        height = max(height, widget.heightForWidth(width))
+    return width, max(height, _PREVIEW_SNAPSHOT_HEIGHT)
 
 
 class ThemePreviewPanel(QFrame):
@@ -720,9 +754,9 @@ class ThemePreviewPanel(QFrame):
         toggle_row.setSpacing(12)
         self._scene_group = QButtonGroup(self)
         self._scene_group.setExclusive(True)
-        self._conversations_cb = QCheckBox("Conversations")
+        self._conversations_cb = QRadioButton("Conversations")
         self._conversations_cb.setChecked(True)
-        self._components_cb = QCheckBox("More components")
+        self._components_cb = QRadioButton("More components")
         for cb in (self._conversations_cb, self._components_cb):
             self._scene_group.addButton(cb)
             toggle_row.addWidget(cb)
@@ -730,15 +764,14 @@ class ThemePreviewPanel(QFrame):
         layout.addLayout(toggle_row)
 
         self._stack = QStackedWidget()
-        self._stack.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
-        self._conversations_live = ThemeConversationsPreviewScene(self)
+        self._conversations_live = ThemeConversationsPreviewScene()
         _configure_offscreen_live_scene(self._conversations_live)
         self._conversations_view = QLabel()
         _configure_preview_snapshot_label(
             self._conversations_view,
             object_name="ThemePreviewConversationsSnapshot",
         )
-        self._components_live = ThemeComponentsPreviewScene(self)
+        self._components_live = ThemeComponentsPreviewScene()
         _configure_offscreen_live_scene(self._components_live)
         self._components_view = QLabel()
         _configure_preview_snapshot_label(
@@ -750,25 +783,41 @@ class ThemePreviewPanel(QFrame):
         self._stack.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
         layout.addWidget(self._stack)
 
-        self._conversations_cb.toggled.connect(self._on_scene_toggled)
-        self._components_cb.toggled.connect(self._on_scene_toggled)
+        self._scene_group.buttonClicked.connect(self._on_scene_selected)
         self._pending_conversations_snapshot: tuple | None = None
         self._pending_components_snapshot: ResolvedTheme | None = None
         self._components_snapshot_stale = True
         self._sync_visible_stack_page()
 
-    def _on_scene_toggled(self, _checked: bool) -> None:
+    def _on_scene_selected(self, _button) -> None:
         self._sync_visible_stack_page()
-        if self._components_cb.isChecked() and self._components_snapshot_stale:
-            pending = self._pending_components_snapshot
-            if pending is not None:
-                self._schedule_components_snapshot(pending)
+        if self._components_cb.isChecked():
+            self._ensure_components_snapshot()
+
+    def _ensure_components_snapshot(self) -> None:
+        pending = self._pending_components_snapshot
+        if pending is None:
+            return
+        pixmap = self._components_view.pixmap()
+        if (
+            self._components_snapshot_stale
+            or pixmap is None
+            or pixmap.isNull()
+            or pixmap.height() < 120
+        ):
+            self._schedule_components_snapshot(pending)
 
     def _sync_visible_stack_page(self) -> None:
         if self._components_cb.isChecked():
             self._stack.setCurrentWidget(self._components_view)
+            pixmap = self._components_view.pixmap()
+            if pixmap is not None and not pixmap.isNull():
+                self._stack.setMinimumHeight(pixmap.height())
         else:
             self._stack.setCurrentWidget(self._conversations_view)
+            pixmap = self._conversations_view.pixmap()
+            if pixmap is not None and not pixmap.isNull():
+                self._stack.setMinimumHeight(pixmap.height())
 
     def _schedule_conversations_snapshot(
         self,
@@ -809,16 +858,21 @@ class ThemePreviewPanel(QFrame):
             return
         self._conversations_view.setPixmap(pixmap)
         self._conversations_view.setFixedHeight(pixmap.height())
+        if not self._components_cb.isChecked():
+            self._stack.setMinimumHeight(pixmap.height())
 
     def _refresh_components_snapshot(self) -> None:
         resolved = self._pending_components_snapshot
         if resolved is None:
             return
         width = max(self._stack.width(), _PREVIEW_SNAPSHOT_MIN_WIDTH)
-        self._components_live.setFixedWidth(width)
         self._components_live.setUpdatesEnabled(True)
         try:
             self._components_live.apply_theme(resolved)
+            snap_width, snap_height = _offscreen_snapshot_size(
+                self._components_live, width
+            )
+            self._components_live.setFixedSize(snap_width, snap_height)
             pixmap = self._components_live.grab()
         finally:
             self._components_live.setUpdatesEnabled(False)
@@ -826,6 +880,8 @@ class ThemePreviewPanel(QFrame):
             return
         self._components_view.setPixmap(pixmap)
         self._components_view.setFixedHeight(pixmap.height())
+        if self._components_cb.isChecked():
+            self._stack.setMinimumHeight(pixmap.height())
         self._components_snapshot_stale = False
 
     def apply_theme(
@@ -849,7 +905,7 @@ class ThemePreviewPanel(QFrame):
         self._components_snapshot_stale = True
         if self._components_cb.isChecked():
             self._schedule_components_snapshot(resolved)
-        toggle_style = resolved.style(SETTINGS_CHECKBOX)
+        toggle_style = _preview_scene_toggle_style(resolved)
         self._conversations_cb.setStyleSheet(toggle_style)
         self._components_cb.setStyleSheet(toggle_style)
 

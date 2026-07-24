@@ -1036,10 +1036,30 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
     scene = panel._conversations_live
     assert theme.chat_user_bubble in scene._user_bubble_frame.styleSheet()
     assert theme.color(WEB_INDICATOR_STANDBY) in scene._web_dot.styleSheet()
-    panel._components_cb.setChecked(True)
+    panel._components_cb.click()
     _qube_app.processEvents()
     components = panel._components_live
     assert theme.accent in components._primary_btn.styleSheet()
+    comp_pixmap = panel._components_view.pixmap()
+    assert comp_pixmap is not None and not comp_pixmap.isNull()
+    assert comp_pixmap.height() >= 200
+
+
+def test_theme_preview_components_snapshot_sizes_offscreen_scene(_qube_app):
+    from ui.components.theme_preview_panel import ThemePreviewPanel
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
+    panel = ThemePreviewPanel()
+    panel.resize(520, 400)
+    panel.apply_theme(theme)
+    _qube_app.processEvents()
+    panel._components_cb.click()
+    _qube_app.processEvents()
+    pixmap = panel._components_view.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+    assert pixmap.height() >= 200
+    assert panel._stack.currentWidget() is panel._components_view
 
 
 def test_themes_draft_preview_does_not_apply_globally(main_window):
