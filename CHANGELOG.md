@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-24
+
+### Added
+- Customizable color schemes (Themes v1): Settings → Appearance → Themes with built-in and custom schemes, live draft preview, import/export, and follow-system light/dark polarity.
+- Surface fills / wallpapers (Themes v2): per-surface wallpaper profiles for the chat transcript and library preview, bundled presets, custom image import, and overlay strength presets (Subtle / Balanced / Vivid).
+- Python-first theme system with resolved semantic tokens for shell chrome.
+- In-app help for Themes settings and updated Conversations / Library documentation.
+
+### Fixed
+- Linux `.deb` packages: use xz compression so CUDA `.deb` artifacts stay under GitHub Releases' 2 GiB per-asset limit.
+- Themes preview: fix "More components" toggle and off-screen snapshot rendering blocking radio clicks.
+
+### Changed
+- Settings → Appearance opens faster via lazy section construction.
+
 ## [1.1.11] - 2026-07-23
 
 ### Fixed
