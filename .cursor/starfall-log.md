@@ -1004,3 +1004,75 @@ loop_count: 0
 status: completed
 loop_count: 0
 
+## Capability Architecture + Security & Permissions + Quality - 2026-07-25T08:10:00Z
+Phase: Self-Review (Run 010 turn 2/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Turn 1 delivered T22–T26 + premature CLOSING TIME (1/3 coordinator turns) — hook
+  re-armed with minimum-turn note. Three parallel read-only experts Self-Reviewed Phase 4
+  diff: (Architecture) no duplicate subsystem; capability_trace extends capability_inspect;
+  router suggestions default-off READ+granted only; KI2/KI4 closed in model + preset alias;
+  P6 clean on new modules. (Security) denied-path trace observer-only; no consent bypass;
+  partial preset deny merges allowed rows only; Phase 3 scope/step approval unchanged.
+  (Quality) T22–T26 11/11 unit tests; test-plan-phase4 targets satisfied; llm_worker
+  integration gaps noted as non-blockers (deny summary append, cited finalize, settings default).
+Actions: Re-ran starfall_verify PASS (8 Phase 4 delivered files, 21 legacy targets, P6
+  guardrail). Phase 4 + Phase 2–3 regression 64/64 PASS. Updated active-task, context.
+  No product code changes (Self-Review turn).
+Decisions: Run 010 scoped closure to Phase 4 (#62) only; Feature #57 phases 0–4 on branch.
+  Follow-ups deferred: citation-regex DRY, preset cited-step default_urn edge, T26 settings
+  schema already present — integration tests for worker wiring optional post-GA.
+Next step: Turn 3 Testing/Closing — starfall_export, PR summary, CLOSING TIME (3 turns met).
+
+Architecture Review
+[x] P1 Invoke/suggestions never auto-grant; cap attach explicit only.
+[x] P2 Router suggestions opt-in default-off; no connect-time injection.
+[x] P3/P7 Denied-path trace honest; partial preset deny does not merge denied rows.
+[x] P4 Denied/empty/success traces + post-answer cited step finalize on success path.
+[x] P5 Extends shared capability plane; no parallel registry.
+[x] P6 guardrail PASS on capability_trace + router_capability_suggestions.
+[x] P7 Default-deny invoke unchanged; READ-only suggestion filter.
+[x] P8 KI2: _adapter namespace + _capability full URN preserved end-to-end.
+
+## Product Review + Quality - 2026-07-25T08:15:00Z
+Phase: Testing / Documentation / Closing (Run 010 turn 3/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Closure contract met — 3 coordinator turns in Run 010 (turn 1 Code, turn 2
+  Self-Review, turn 3 Closing). Two parallel read-only experts confirm closure-ready:
+  (Product) handoff STATUS: READY; KI2/KI4 closed; Feature #57 phases 0–4 committed on
+  branch (`170eaa8` Phase 4); P1–P8 + drift-rules clean. (Quality) T22–T26 11/11 PASS;
+  Phase 2–3 regression 64/64 PASS; starfall_verify PASS (8 delivered files, P6 guardrail).
+Actions: Re-ran full regression + starfall_verify PASS. Regenerated baton pack
+  (starfall_export.py → Feature #57 complete / PR baton in next.md). Updated active-task
+  (Idle), context (Run 010 CLOSED). Phase 4 product code already committed on branch.
+Decisions: Run 010 closes Phase 4 (#62); Feature #57 MCP / Capability Integration complete
+  on `keith/mcp-capability-integration`. Post-GA follow-ups: worker integration tests,
+  citation-regex DRY, Live Sources bridge, remote MCP transport (roadmap future).
+Next step: Idle — open PR to dev; optional provider expansion future initiative.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+PR summary (Run 010 / Phase 4 #62 / Feature #57 complete): Hardening & GA readiness —
+  KI2 adapter namespace fix, KI4 preset partial-deny UX, denied-path INSPECT trace,
+  post-answer cited-step wiring, opt-in router capability suggestions (default off).
+  Feature #57 phases 0–4 delivered (#58–#62); T22–T26 11 tests + full regression pass;
+  starfall_verify PASS; CONTRIBUTING Capability Plane naming note. Merge recommendation:
+  PR `keith/mcp-capability-integration` → dev.
+
+CLOSING TIME
+
+## Hook Turn 2 - 2026-07-25T08:06:13.986574+00:00
+status: completed
+loop_count: 1
+
+## Hook Turn 3 - 2026-07-25T08:11:51.765980+00:00
+status: completed
+loop_count: 2
+

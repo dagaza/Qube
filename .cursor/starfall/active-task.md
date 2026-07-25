@@ -7,13 +7,13 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Closing (Run 010) — starfall_verify + documentation
+Idle — Run 010 closed (Phase 4 / #62 complete). Feature #57 phases 0–4 delivered.
 
 Current work item:
-Phase 4 / #62 — hardening / GA readiness (T22–T26) complete on disk.
+Open PR: `keith/mcp-capability-integration` → dev. Future: provider expansion (Live Sources bridge, remote MCP).
 
 Mode:
-Implementation (closure)
+Idle
 
 Owner:
 Starfall coordinator
@@ -21,15 +21,15 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 4 — met on branch):
-- KI2/KI4 closed; denied-path trace + cited-step wiring + router suggestions (default off).
-- T22–T26 11 tests pass; Phase 2–3 regression pass; starfall_verify PASS.
+Success criteria (Feature #57 — met on branch):
+- Phases 0–4 (#58–#62) committed on `keith/mcp-capability-integration`.
+- KI2/KI4 closed; starfall_verify PASS; handoff STATUS: READY.
 
 Current blockers:
 None.
 
 Next decision:
-starfall_export, PR summary, CLOSING TIME (after starfall_verify PASS).
+Human: open PR and merge. Future Starfall run only if new initiative (e.g. Live Sources provider).
 
-Gate status (Phase 4):
+Gate status (Feature #57):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

@@ -4,6 +4,23 @@ Rolling 10-15 bullet summary of loop state (current phase, gate status, next ste
 maintained by the coordinator each turn. On a fresh start the `stop` hook archives the
 previous context to `.cursor/starfall-archive/`.
 
+## Run 010 - 2026-07-25T08:15:00Z (CLOSED)
+
+- Run 010 **closed** turn 3/10 — Phase 4 (#62) hardening / GA readiness; **Feature #57 complete**.
+- Delivered T22–T26: KI2/KI4 closed, denied-path trace, cited-step wiring, router suggestions (default off).
+- **64/64** regression + **11** Phase 4 tests PASS; starfall_verify **PASS**; handoff **STATUS: READY**.
+- Committed `170eaa8` on `keith/mcp-capability-integration`; **open PR → dev**.
+- Post-GA follow-ups: worker integration tests, Live Sources bridge, remote MCP (non-blockers).
+
+## Run 010 - 2026-07-25T08:10:00Z (turn 2/10 — Self-Review)
+
+- Turn 1 delivered Phase 4 (#62) T22–T26 + premature **CLOSING TIME** (1/3 turns) — hook re-armed.
+- Turn 2 **Self-Review** complete — parallel specialists (Architecture, Security, Quality) all green.
+- **64/64** Phase 4 + Phase 2–3 regression PASS; starfall_verify **PASS** (P6 clean).
+- G1–G4 **PASS**; KI2/KI4 **closed**; handoff **STATUS: READY** (Phase 4 scope).
+- **Do not close yet in this chat turn** — turn 3 may emit final CLOSING TIME + export.
+- Product code **uncommitted** on `keith/mcp-capability-integration`.
+
 ## Run 009 - 2026-07-24T22:15:00Z (turn 1/10 — CLOSING)
 
 - Phase 3 (#61) **COMPLETE** — T19 agent scope, T20 step approval + invoke gate, T21 session egress + Telemetry panel.
