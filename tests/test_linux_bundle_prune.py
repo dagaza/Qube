@@ -81,10 +81,9 @@ def test_prune_can_strip_shared_libraries(tmp_path: Path, monkeypatch: pytest.Mo
 
         return Result()
 
-    monkeypatch.setenv("PATH", str(tmp_path))
     fake_strip = tmp_path / "strip"
-    fake_strip.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake_strip.chmod(fake_strip.stat().st_mode | stat.S_IXUSR)
+    fake_strip.write_text("stub", encoding="utf-8")
+    monkeypatch.setattr("core.linux_bundle_prune.shutil.which", lambda _name: str(fake_strip))
     monkeypatch.setattr("core.linux_bundle_prune.subprocess.run", fake_run)
 
     report = prune_pyinstaller_bundle(dist, variant="cpu", strip_binaries=True)
