@@ -88,16 +88,21 @@ def _prune_tree(root: Path, report: PruneReport) -> None:
                 _remove_path(current / name, report)
 
 
-def _strip_shared_libraries(root: Path, report: PruneReport) -> None:
+def _strip_shared_libraries(dist_dir: Path, report: PruneReport) -> None:
+    """Strip debug symbols from llama.cpp / CUDA wheel libs only.
+
+    Broad ``strip`` across vendored Python wheels (numpy/scipy OpenBLAS, ONNX,
+    etc.) can corrupt ELF PT_LOAD alignment and break imports at runtime.
+    """
     strip_bin = shutil.which("strip")
-    if not strip_bin:
+    llama_root = dist_dir / "_internal" / "llama_cpp"
+    if not strip_bin or not llama_root.is_dir():
         return
 
-    for path in sorted(root.rglob("*")):
+    for path in sorted(llama_root.rglob("*")):
         if not path.is_file() or path.is_symlink():
             continue
-        name = path.name
-        if ".so" not in name:
+        if ".so" not in path.name:
             continue
         before = path.stat().st_size
         try:

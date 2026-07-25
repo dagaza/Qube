@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Linux CUDA `.deb` release packaging: prune safe bundle bloat, bundle only required NVIDIA wheel libraries, use maximum xz compression, and fail the build early if the `.deb` still exceeds GitHub's 2 GiB asset limit.
+- Linux release bundle prune: restrict `strip --strip-debug` to llama.cpp libs only; stripping numpy/scipy OpenBLAS wheels broke CPU/Vulkan smoke tests.
 
 ## [1.2.2] - 2026-07-25
 

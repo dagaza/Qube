@@ -67,15 +67,18 @@ def test_cuda_prune_fails_if_required_libs_would_be_removed(tmp_path: Path) -> N
 
 def test_prune_can_strip_shared_libraries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     dist = tmp_path / "Qube"
-    lib = dist / "_internal" / "libfoo.so"
+    lib = dist / "_internal" / "llama_cpp" / "lib" / "libfoo.so"
+    outside = dist / "_internal" / "numpy.libs" / "libscipy_openblas64_.so"
     _touch(lib, content=b"x" * 256)
+    _touch(outside, content=b"y" * 256)
 
     calls: list[list[str]] = []
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
-        before = lib.stat().st_size
-        lib.write_bytes(b"x" * (before // 2))
+        target = Path(cmd[-1])
+        before = target.stat().st_size
+        target.write_bytes(b"x" * (before // 2))
         class Result:
             returncode = 0
 
@@ -88,6 +91,8 @@ def test_prune_can_strip_shared_libraries(tmp_path: Path, monkeypatch: pytest.Mo
 
     report = prune_pyinstaller_bundle(dist, variant="cpu", strip_binaries=True)
 
-    assert calls
+    assert len(calls) == 1
+    assert calls[0][-1].endswith("llama_cpp/lib/libfoo.so")
+    assert outside.stat().st_size == 256
     assert report.stripped_files == 1
     assert report.bytes_stripped > 0
