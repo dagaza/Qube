@@ -47,6 +47,7 @@ KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
+KEY_ROUTER_INTEGRATION_SUGGESTIONS = "qube.integrations.router_suggestions_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
@@ -295,6 +296,15 @@ def get_routing_debug_log_enabled() -> bool:
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_router_integration_suggestions_enabled() -> bool:
+    """When True, routing debug may list read-only integration cap suggestions (default off)."""
+    return bool(_store().get(KEY_ROUTER_INTEGRATION_SUGGESTIONS, False))
+
+
+def set_router_integration_suggestions_enabled(enabled: bool) -> None:
+    _store().set(KEY_ROUTER_INTEGRATION_SUGGESTIONS, enabled)
 
 
 def get_app_log_file_enabled() -> bool:

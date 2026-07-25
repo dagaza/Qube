@@ -7,14 +7,16 @@ STATUS: READY
 Phase 1 (#59) complete on this branch.
 Phase 2 (#60) complete on this branch — slices 0–5 (T14–T18).
 Phase 3 (#61) complete on this branch — agent scope + egress summary (T19–T21).
+Phase 4 (#62) complete on this branch — hardening / GA readiness (T22–T26).
 
 
 
 Feature:
 
-MCP / Capability Integration (Feature #57), Phase 3 / #61 — Agent scope + egress summary:
-scoped capability boundaries (P1), per-step write/destructive approval, session egress
-ledger + Telemetry summary UX, enforcement hooks in invoke gate + LLMWorker.
+MCP / Capability Integration (Feature #57), Phase 4 / #62 — Hardening / GA readiness:
+close KI2/KI4, deferred Phase 2–3 follow-ups (denied-path trace, cited-step wiring,
+partial bundle deny UX, router opt-in suggestions), GA checklist (architecture §12 +
+engineering checklist CONTRIBUTING note).
 
 
 
@@ -26,106 +28,115 @@ Canonical design: `docs/mcp_capability_architecture_review.md` (P1-P8, §3-§8, 
 
 
 
-Delivered (Phase 3 / #61):
+Delivered (Phase 4 / #62):
 
 ```
 
-Slice 1 / T19 — Agent scope model + enforcement:
+Slice 1 / T22 — KI2 close (_adapter short id):
 
-core/integrations/agent_scope.py
+core/integrations/capabilities/model.py
 
-  AgentScope, AgentScopeStore, build_agent_scope_from_attachments; P1 scope check
-  before invoke (composer attachments + preset bundle URNs).
+  NormalizedHit.to_evidence_dict uses source_cap.namespace for _adapter (not cap: URN).
+
+core/integrations/capability_invoke.py (unchanged overlay — namespace default)
+
+
+
+Slice 2 / T23 — KI4 partial preset bundle deny UX:
+
+core/integrations/preset_capability_alias.py
+
+  format_preset_bundle_deny_summary for partial/full deny per-cap reasons.
 
 workers/llm_worker.py
 
-  Registers agent scope from turn attachments; passes scope into CAPABILITY invoke.
+  Appends deny summary to tool_context on preset bundle partial/full deny.
 
 
 
-Slice 2 / T20 — Per-step approval + invoke gate extensions:
+Slice 3 / T24 — Denied-path INSPECT trace:
 
-core/integrations/step_approval.py
+core/integrations/capability_trace.py
 
-  StepApprovalStore; requires_step_approval for WRITE/DESTRUCTIVE/needs_review.
+  CapabilityTraceContext, record_capability_retrieval_trace, build_capability_denial_bundle.
 
-core/integrations/capability_invoke.py
+workers/llm_worker.py
 
-  Scope + step-approval gates; preview_gated_capability (dry_run); egress recording;
-  InvokeContext session/turn attribution.
-
-core/integrations/composer_capability_gate.py
-
-  Qt-free pending approval discovery + message formatting for PrestigeDialog.
-
-ui/views/conversations_view.py
-
-  Write/destructive cap send gate → PrestigeDialog → step_approval_store.grant_many.
+  Denied/empty capability invokes persist capability_steps in retrieval trace.
 
 
 
-Slice 3 / T21 — Session egress summary:
+Slice 4 / T25 — Cited-step wiring:
 
-core/integrations/session_egress.py
+core/integrations/capability_trace.py
 
-  IntegrationEgressRecord, SessionEgressLedger, build_egress_record.
+  extract_citation_ids_from_text, append_cited_step_to_trace, finalize_capability_cited_trace.
 
-core/integrations/egress_summary.py
+workers/llm_worker.py
 
-  format_session_egress_summary, format_privacy_report_integrations_section;
-  raw_tool when Advanced engine unlocked.
-
-core/integrations/capability_inspect.py
-
-  invoke steps carry server_id, capability_group, raw_tool (INSPECT parity).
-
-ui/components/session_egress_panel.py
-
-  Read-only Telemetry card for session integration calls.
-
-ui/views/telemetry_view.py
-
-  Session integrations panel + set_active_session_id refresh hook.
-
-tests/test_agent_scope_egress_phase3.py (T19–T21, 11 tests)
-
-```
+  _maybe_finalize_capability_cited_trace after citation renumber.
 
 
 
-Prior phases (retained on branch — see Phase 1/2 sections in prior handoff revisions).
+Slice 5 / T26 — Router opt-in suggestions (default off):
+
+core/app_settings.py + assets/config/settings.schema.json
+
+  qube.integrations.router_suggestions_enabled (default false).
+
+core/integrations/router_capability_suggestions.py
+
+  suggest_integration_capabilities (read-tier, granted only; never auto-invokes).
+
+workers/llm_worker.py
+
+  Adds integration_capability_suggestions to routing decision when opt-in enabled.
 
 
 
-Not in this run (Phase 3 #61 — deferred):
+GA checklist:
 
-```
+CONTRIBUTING.md — Capability Plane vs internal mcp/ package naming rule.
 
-Router opt-in capability suggestions (default off — roadmap only)
-
-SSE / streamable-http remote MCP transport (Phase 3 P2 — document BYO)
-
-Full multi-step agent plan UI (scoped single-turn composer path delivered)
-
-One-click privacy report export button (formatter ready; UI export action deferred)
+tests/test_capability_hardening_phase4.py (T22–T26, 11 tests)
 
 ```
 
 
 
-Acceptance criteria (Phase 3 / #61):
+Prior phases (retained on branch — see Phase 1/2/3 sections in prior handoff revisions).
 
-[x] Agent scope enforces attached/bundled caps only (T19, P1).
 
-[x] Write/destructive requires explicit per-message step approval beyond Settings grant (T20, P3/P7).
 
-[x] dry_run preview path wired (preview_gated_capability; provider honors ctx.dry_run).
+Not in this run (Phase 4 #62 — deferred):
 
-[x] Session egress ledger records integration calls (server id, group, tier, allow/deny).
+```
 
-[x] Telemetry shows session integrations summary (Theme B).
+Rename internal mcp/ -> routing/ (tracked debt, non-blocker)
 
-[x] INSPECT invoke steps include server_id, capability_group, raw_tool.
+SSE / streamable-http remote MCP transport
+
+Privacy report export UI button (formatter ready)
+
+Live Sources bridge into Capability Plane (architecture §11 Phase 4 expansion)
+
+```
+
+
+
+Acceptance criteria (Phase 4 / #62):
+
+[x] KI2 closed — `_adapter` is short id; `_capability` carries full URN (P8).
+
+[x] KI4 closed — preset partial-deny surfaces per-cap reasons in tool_context.
+
+[x] Denied/empty capability invokes persist INSPECT capability_steps.
+
+[x] Cited step appended post-answer when model cites sources.
+
+[x] Router integration suggestions opt-in, default off, suggestions-only (P1/P2).
+
+[x] GA CONTRIBUTING note for mcp/ vs routing/ + §12 P1-P8 preserved.
 
 [x] No `import mcp` / `provider == "mcp"` outside `providers/mcp/` (P6).
 
@@ -145,15 +156,12 @@ Constraints (must hold):
 
 Test requirements:
 
-See `.cursor/starfall/test-plan-phase3.md` (T19–T21 COMPLETE).
+See `.cursor/starfall/test-plan-phase4.md` (T22–T26 COMPLETE).
+Phase 3 regression: test-plan-phase3.md cases remain green.
 Phase 2 regression: test-plan-phase2.md cases remain green.
 
 
 
 Open questions blocking handoff:
 
-None. KI4 partial preset bundle deny UX remains deferred (non-blocker).
-
-Router suggestions + remote transport are Phase 3 roadmap deferrals, not blockers.
-
-
+None. Q2 resolved — Phase 4 scope = hardening only (Option A).

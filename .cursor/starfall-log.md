@@ -970,3 +970,37 @@ loop_count: 0
 status: completed
 loop_count: 0
 
+## Hook Turn 1 - 2026-07-24T21:54:48.359318+00:00
+status: completed
+loop_count: 0
+
+# Run 010 - 2026-07-24T23:10:00Z
+
+## Starfall coordinator - 2026-07-24T23:10:00Z
+Phase: Discovery -> Architecture Review -> Implementation Plan -> Implementation Handoff -> Code -> Self-Review -> Testing -> Documentation -> Closing
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Phase 4 (#62) scoped to hardening only (Q2 Option A): KI2/KI4 close, Phase 2–3 deferred follow-ups, GA checklist. No duplicate subsystem; P6 clean on new modules.
+Actions: T22 KI2 — NormalizedHit `_adapter` uses namespace; T23 KI4 — format_preset_bundle_deny_summary + LLMWorker tool_context; T24 denied-path trace via capability_trace.py; T25 cited-step post-answer finalize; T26 router opt-in suggestions (default off). CONTRIBUTING mcp/ vs routing/ note. tests/test_capability_hardening_phase4.py (11 tests); starfall_verify PASS; handoff STATUS: READY; roadmap Phase 4 COMPLETE.
+Decisions: Q2 answered — hardening only. KI2/KI4 closed. Provider expansion (Live Sources bridge) remains future work.
+Next step: PR summary; commit on branch.
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+CLOSING TIME — Run 010; Phase 4 (#62) complete on `keith/mcp-capability-integration`. Feature #57 phases 0–4 delivered; starfall_verify PASS.
+
+## Hook Turn 1 - 2026-07-24T22:01:30.749962+00:00
+status: completed
+loop_count: 0
+
+## Hook Turn 1 - 2026-07-25T08:02:22.857504+00:00
+status: completed
+loop_count: 0
+

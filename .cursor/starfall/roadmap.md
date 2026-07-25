@@ -9,7 +9,7 @@ Phase -> Azure DevOps work item -> status. Source: `docs/mcp_capability_integrat
 | 1 | Integrations UI + permission model | #59 | COMPLETE — provider registry (T11), Qt-free IntegrationsConsentController + Settings → Integrations section (T12), LLMWorker main-path `append_turn_evidence_bundle_sources` / bundle_to_ui_sources migration (T13, KI1 closed). 97 capability/integration tests pass. |
 | 2 | Composer palette + presets + INSPECT | #60 | COMPLETE — slice 0+1 (T14), slice 2 (T15), slice 3 (T16), slice 4 (T17), slice 5 (T18 Sources UI cap: label). |
 | 3 | Agent scope + egress summary | #61 | COMPLETE — T19 agent scope, T20 step approval + invoke gate, T21 session egress + Telemetry panel. 11 Phase 3 tests pass. |
-| 4 | Hardening / GA readiness (roadmap §11) | #62 | Not started |
+| 4 | Hardening / GA readiness (roadmap §11) | #62 | COMPLETE — T22 KI2 adapter id, T23 KI4 partial-deny UX, T24 denied-path trace, T25 cited-step wiring, T26 router opt-in suggestions (default off), CONTRIBUTING GA note. |
 
 ## Notes
 - Phase numbering follows the plan doc; #62/Phase 4 tracks hardening/GA beyond the

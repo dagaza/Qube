@@ -20,7 +20,11 @@ Resolution: Option A (scoped) — see decisions.md 2026-07-23 entry. `@[cap:…]
 Integrations caps; `@[tool:user:…]` permanent alias expanding to preset cap bundles; built-in
 `@[tool:library|internet|…]` unchanged for Phase 2.
 
-## Q2 Phase 4 exact scope  [open]
+## Q2 Phase 4 exact scope  [answered]
 Why it matters: #62 is labeled hardening/GA but isn't itemized in the plan's four phases.
 Options: (A) hardening only, (B) hardening + enterprise gateway provider, (C) TBD.
 Blocking: roadmap accuracy.
+Resolution: Option A — Phase 4 (#62) closes KI2/KI4, Phase 2–3 deferred follow-ups
+(denied-path trace, cited-step wiring, partial bundle deny UX, router opt-in suggestions),
+and GA checklist items (§12 P1-P8 attestation, CONTRIBUTING mcp/ vs routing/ note). Provider
+expansion (Live Sources bridge, Plugin SDK) remains future work per architecture §11 Phase 4.

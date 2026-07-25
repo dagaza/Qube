@@ -28,7 +28,7 @@ Closed 2026-07-23 (Phase 1 / #59): LLMWorker main path now calls
 turn bundle has sources; `_apply_sequential_source_ids` renumbers mem/rag/cap rows (T13).
 Fix owner / next step: none — closed.
 
-## KI2 `_adapter` overloaded with full URN string [mitigated]
+## KI2 `_adapter` overloaded with full URN string [closed]
 
 Discovered: 2026-07-21, Phase 0 Code
 Impact: `to_evidence_dict()` sets `_adapter = str(source_cap.base)` (a `cap:` URN), whereas
@@ -37,11 +37,11 @@ live adapters use short catalog ids (`pubmed`). Authority/diversity/transparency
 Mitigated 2026-07-22 (provider slice): on the configured-source path, `McpConnector` overlays
 `_adapter` with the short configured id and keeps the full URN in `_capability` (and thus in
 `raw_metadata`). So authority/diversity keying stays on a short id (T8 asserts this).
-Remaining: any future path that emits `NormalizedHit.to_evidence_dict()` _without_ overlaying a
-short `_adapter` would reintroduce the skew; keep the short-id overlay when wiring new callers.
-Fix owner / next step: enforce the short-id overlay in the provider registry wiring (Phase 1).
+Closed 2026-07-24 (Phase 4 / #62): `NormalizedHit.to_evidence_dict()` now uses
+`source_cap.namespace` as `_adapter`; invoke path overlay unchanged. T22 regression tests.
+Fix owner / next step: none — closed.
 
-## KI4 Preset bundle partial-deny UX opaque [open]
+## KI4 Preset bundle partial-deny UX opaque [closed]
 
 Discovered: 2026-07-24, Run 007 turn 2 Self-Review (Security expert)
 Impact: When a preset bundles multiple capabilities and some are denied, allowed rows merge
@@ -49,8 +49,9 @@ into the turn bundle but per-cap deny reasons are not surfaced in user-facing co
 may not know part of the preset did not run.
 Workaround: INSPECT trace records per-cap invoke steps when trace is persisted; denied caps
 visible in Retrieval Inspector on success-path turns only.
-Fix owner / next step: optional T17 follow-up — append brief deny summary to tool_context when
-bundle partial-deny; not blocking T17 closure.
+Closed 2026-07-24 (Phase 4 / #62): `format_preset_bundle_deny_summary` appended to tool_context
+on partial/full preset deny; INSPECT trace already records per-cap steps. T23 tests.
+Fix owner / next step: none — closed.
 
 ## KI3 Run 002 slice 1 reverted before commit [closed]
 

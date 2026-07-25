@@ -158,6 +158,30 @@ Evidence: `core/integrations/session_egress.py:SessionEgressLedger`;
 Confidence: high
 Notes: Distinct from `egress_policy.py` (HTTP SSRF). raw_tool gated on Advanced unlock.
 
+## Phase 4 / T22 — KI2 adapter short id closed (on disk)
+Evidence: `core/integrations/capabilities/model.py:NormalizedHit.to_evidence_dict` (`_adapter=namespace`);
+`core/integrations/capability_invoke.py` overlay; `tests/test_capability_hardening_phase4.py::TestKI2AdapterShortId`.
+Confidence: high
+Notes: KI2 closed; full URN remains in `_capability` (P8).
+
+## Phase 4 / T23 — KI4 partial preset deny UX (on disk)
+Evidence: `core/integrations/preset_capability_alias.py:format_preset_bundle_deny_summary`;
+`workers/llm_worker.py` (tool_context append); `tests/test_capability_hardening_phase4.py::TestKI4PresetPartialDeny`.
+Confidence: high
+Notes: KI4 closed.
+
+## Phase 4 / T24–T25 — Denied-path trace + cited-step wiring (on disk)
+Evidence: `core/integrations/capability_trace.py`; `workers/llm_worker.py:_maybe_finalize_capability_cited_trace`;
+`tests/test_capability_hardening_phase4.py::TestDeniedPathTrace`, `...::TestCitedStepWiring`.
+Confidence: high
+Notes: Denied/empty invokes persist INSPECT steps; cited step post-answer.
+
+## Phase 4 / T26 — Router opt-in suggestions (on disk)
+Evidence: `core/integrations/router_capability_suggestions.py`; `core/app_settings.py:get_router_integration_suggestions_enabled`;
+`workers/llm_worker.py` (decision integration_capability_suggestions); `tests/test_capability_hardening_phase4.py::TestRouterSuggestions`.
+Confidence: high
+Notes: Default off; read-tier granted caps only; never auto-invokes (P1/P2). Phase 4 (#62) complete.
+
 ## Q1 resolved — dual grammar
 Evidence: `.cursor/starfall/decisions.md` (2026-07-23 Q1 entry); `open-questions.md` Q1 answered
 Confidence: high

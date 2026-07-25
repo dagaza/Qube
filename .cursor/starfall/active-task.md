@@ -7,10 +7,10 @@ Initiative:
 MCP / Capability Integration (Feature #57)
 
 Current phase:
-Closing (Run 009 turn 2) — starfall_verify + documentation
+Closing (Run 010) — starfall_verify + documentation
 
 Current work item:
-Phase 3 / #61 — agent scope + egress summary (T19–T21) complete on disk.
+Phase 4 / #62 — hardening / GA readiness (T22–T26) complete on disk.
 
 Mode:
 Implementation (closure)
@@ -21,17 +21,15 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Phase 3 — met on branch):
-- Agent scope blocks out-of-attachment invokes (P1).
-- Write/destructive requires per-message step approval (PrestigeDialog + StepApprovalStore).
-- Session egress ledger + Telemetry integrations panel list calls per session.
-- T19–T21 11 tests pass; T14–T18 regression pass; starfall_verify PASS.
+Success criteria (Phase 4 — met on branch):
+- KI2/KI4 closed; denied-path trace + cited-step wiring + router suggestions (default off).
+- T22–T26 11 tests pass; Phase 2–3 regression pass; starfall_verify PASS.
 
 Current blockers:
 None.
 
 Next decision:
-Turn 2 Closing — starfall_export, PR summary, CLOSING TIME (after starfall_verify PASS).
+starfall_export, PR summary, CLOSING TIME (after starfall_verify PASS).
 
-Gate status (Phase 3 — turn 2):
+Gate status (Phase 4):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

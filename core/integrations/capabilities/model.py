@@ -129,7 +129,7 @@ class NormalizedHit:
             "snippet": self.snippet,
             "full_text": self.full_text,
             "url": self.url,
-            "_adapter": str(self.source_cap.base),
+            "_adapter": self.source_cap.namespace,
             "retrieval_method": self.source_cap.provider,
             "_capability": str(self.source_cap),
         }

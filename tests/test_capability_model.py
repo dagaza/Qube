@@ -106,7 +106,7 @@ class TestNormalizedHitProvenance(unittest.TestCase):
         self.assertEqual(row["_capability"], "cap:mcp:github/search-issues@2")
         # The provider origin survives so the hit is attributable.
         self.assertEqual(row["retrieval_method"], "mcp")
-        self.assertEqual(row["_adapter"], "cap:mcp:github/search-issues")
+        self.assertEqual(row["_adapter"], "github")
         # The versionless base is recoverable from the row.
         self.assertEqual(
             CapabilityURN.parse(row["_capability"]).base,

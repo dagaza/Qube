@@ -25,6 +25,7 @@ from core.knowledge.presets import load_preset, parse_user_preset_tool
 __all__ = [
     "PresetCapabilityBundle",
     "build_preset_capability_inspect_trace",
+    "format_preset_bundle_deny_summary",
     "invoke_preset_capability_bundle",
     "normalize_preset_capability_urn",
     "preset_capability_bundle",
@@ -162,6 +163,39 @@ def invoke_preset_capability_bundle(
         ),
         per_cap,
     )
+
+
+def format_preset_bundle_deny_summary(
+    per_cap_results: Sequence[CapabilityInvokeResult],
+    *,
+    preset_label: str = "",
+) -> str:
+    """User/model-facing summary when a preset bundle partially or fully denies (KI4)."""
+    if not per_cap_results:
+        return ""
+    denied = [result for result in per_cap_results if not result.allowed]
+    if not denied:
+        return ""
+    allowed_count = sum(
+        1 for result in per_cap_results if result.allowed and result.rows
+    )
+    label = (preset_label or "preset").strip()
+    lines = [
+        f"\n[CAPABILITY PRESET ({label}): "
+        f"{allowed_count} of {len(per_cap_results)} capabilities succeeded."
+    ]
+    if allowed_count <= 0:
+        lines[0] = f"\n[CAPABILITY PRESET ({label}): no capabilities ran."
+    lines.append("Denied capabilities:")
+    for result in denied:
+        urn = str(result.urn or "unknown")
+        reason = str(result.reason or "not permitted")
+        lines.append(f"  • {urn}: {reason}")
+    lines.append(
+        "Tell the user briefly which parts did not run. Do NOT invent results "
+        "for denied capabilities.]\n"
+    )
+    return "\n".join(lines)
 
 
 def build_preset_capability_inspect_trace(
