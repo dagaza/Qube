@@ -92,7 +92,7 @@ def test_prune_can_strip_shared_libraries(tmp_path: Path, monkeypatch: pytest.Mo
     report = prune_pyinstaller_bundle(dist, variant="cpu", strip_binaries=True)
 
     assert len(calls) == 1
-    assert calls[0][-1].endswith("llama_cpp/lib/libfoo.so")
+    assert Path(calls[0][-1]).resolve() == lib.resolve()
     assert outside.stat().st_size == 256
     assert report.stripped_files == 1
     assert report.bytes_stripped > 0
