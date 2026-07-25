@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -13,6 +14,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _SCRIPT = _REPO / "scripts" / "linux" / "recompress_deb_data.sh"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Linux packaging script")
 @pytest.mark.skipif(shutil.which("ar") is None, reason="ar not available")
 def test_recompress_deb_data_repacks_minimal_deb(tmp_path: Path) -> None:
     work = tmp_path / "work"

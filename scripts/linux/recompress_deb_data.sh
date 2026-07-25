@@ -17,7 +17,8 @@ cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 
 cd "$WORK"
-ar x "$(readlink -f "$DEB")"
+DEB_ABS="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$DEB")"
+ar x "$DEB_ABS"
 
 CONTROL_TAR=""
 DATA_TAR=""
