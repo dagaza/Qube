@@ -24,6 +24,7 @@ TOUR_DISPLAY_NAMES: dict[str, str] = {
     "settings.memory": "Memory settings",
     "settings.knowledge": "Knowledge settings",
     "settings.general": "General settings",
+    "settings.appearance_themes": "Themes settings",
     "settings.companion_desktop": "Desktop Companion settings",
     "settings.notifications": "Notifications settings",
     "settings.help": "Help settings",
@@ -67,6 +68,9 @@ def _register_all_tours() -> None:
     from ui.onboarding.tours.model_manager import build_model_manager_tour
     from ui.onboarding.tours.telemetry import build_telemetry_tour
     from ui.onboarding.tours.settings.advanced import build_settings_advanced_tour
+    from ui.onboarding.tours.settings.appearance_themes import (
+        build_settings_appearance_themes_tour,
+    )
     from ui.onboarding.tours.settings.ai_models import build_settings_ai_models_tour
     from ui.onboarding.tours.settings.companion_desktop import (
         build_settings_companion_desktop_tour,
@@ -93,6 +97,7 @@ def _register_all_tours() -> None:
     register_tour("settings.memory", build_settings_memory_tour)
     register_tour("settings.knowledge", build_settings_knowledge_tour)
     register_tour("settings.general", build_settings_general_tour)
+    register_tour("settings.appearance_themes", build_settings_appearance_themes_tour)
     register_tour("settings.companion_desktop", build_settings_companion_desktop_tour)
     register_tour("settings.notifications", build_settings_notifications_tour)
     register_tour("settings.help", build_settings_help_tour)

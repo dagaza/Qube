@@ -528,6 +528,9 @@ class SettingsView(
             self._sync_models_dir_label()
             self._sync_native_chat_template_label()
             self._sync_active_native_model_label()
+            window = self.window()
+            if window is not None and hasattr(window, "_wire_generation_settings_toolbar_sync"):
+                window._wire_generation_settings_toolbar_sync()
         if section_id == "voice.audio":
             self._sync_stt_models_dir_label()
             self._sync_tts_models_dir_label()

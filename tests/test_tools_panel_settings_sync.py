@@ -15,6 +15,8 @@ def test_toolbar_max_reply_tokens_syncs_with_settings(fresh_main_window, qtbot):
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    settings.select_settings_section("ai.models")
+    qtbot.wait(10)
 
     assert main_window.max_reply_spin.value() == settings.llm_output_limit_spin.value()
 
@@ -35,6 +37,8 @@ def test_toolbar_privacy_tier_syncs_with_settings(fresh_main_window, qtbot):
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    settings.select_settings_section("knowledge")
+    qtbot.wait(10)
 
     expected = privacy_tier_label(get_discovery_privacy_tier())
     assert main_window.toolbar_privacy_tier_selector.text() == expected

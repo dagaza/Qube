@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-25
+
+### Fixed
+- Release CI: update Settings/Themes tests for lazy section prefetch, template-based QSS rendering, and deferred Themes preview init.
+- Settings → AI & Models: wire toolbar generation spinboxes after the lazy section builds so Max Reply Tokens stays in sync.
+- Settings → Themes: add guided tour registration for the new Themes section.
+
 ## [1.2.0] - 2026-07-24
 
 ### Added

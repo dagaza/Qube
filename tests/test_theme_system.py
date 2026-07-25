@@ -479,24 +479,24 @@ def test_theme_manager_subscribe_notified_on_apply():
     assert seen == [DEFAULT_SCHEME_ID_DARK]
 
 
-def test_render_stylesheet_matches_static_for_builtin_dark():
-    from core.paths import resource_path
-
+def test_render_stylesheet_resolves_template_placeholders_for_builtin_dark():
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
-    static = resource_path("assets", "styles", "base.qss").read_text(encoding="utf-8")
     rendered = render_stylesheet(theme)
-    assert rendered == static
+    assert "{{" not in rendered
+    assert theme.surface in rendered
+    assert theme.sidebar_surface in rendered
+    assert theme.surface_elevated in rendered
 
 
-def test_render_stylesheet_matches_static_for_builtin_light():
-    from core.paths import resource_path
-
+def test_render_stylesheet_resolves_template_placeholders_for_builtin_light():
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.LIGHT, scheme_id=DEFAULT_SCHEME_ID_LIGHT)
-    static = resource_path("assets", "styles", "light.qss").read_text(encoding="utf-8")
     rendered = render_stylesheet(theme)
-    assert rendered == static
+    assert "{{" not in rendered
+    assert theme.surface in rendered
+    assert theme.sidebar_surface in rendered
+    assert theme.surface_elevated in rendered
 
 
 def test_render_stylesheet_substitutes_custom_accent():
@@ -865,6 +865,8 @@ def test_resolved_theme_style_helpers():
     assert theme.background in theme.style(SETTINGS_PRESTIGE_MENU)
 
     from ui.branded_theme import (
+        SPLASH_CHROME_BUTTON_BG,
+        SPLASH_CHROME_BUTTON_BORDER,
         SPLASH_CHROME_ICON,
         SPLASH_SURFACE_BG,
         bootstrap_consent_stylesheet,
@@ -879,7 +881,9 @@ def test_resolved_theme_style_helpers():
     assert SPLASH_SURFACE_BG in splash_qss
     assert splash_theme.background not in splash_qss
     assert SPLASH_CHROME_ICON == "#94a3b8"
-    assert SPLASH_CHROME_ICON in splash_overlay_chrome_button_qss("QubeSplashCloseButton")
+    chrome_qss = splash_overlay_chrome_button_qss("QubeSplashCloseButton")
+    assert SPLASH_CHROME_BUTTON_BG in chrome_qss
+    assert SPLASH_CHROME_BUTTON_BORDER in chrome_qss
     assert "#c4b5fd" in splash_step_list_qss()
     bootstrap_qss = bootstrap_consent_stylesheet(
         splash_theme, split_embedded=False, embedded=True

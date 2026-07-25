@@ -31,6 +31,7 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
     ("settings.general", "general", 3),
+    ("settings.appearance_themes", "appearance.themes", 7),
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
     ("settings.help", "help", 5),
@@ -156,6 +157,13 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "advanced_discovery_panel",
     ),
     "settings.general": ("general_language_card",),
+    "settings.appearance_themes": (
+        "themes_theme_picker",
+        "themes_auto_adjust_cb",
+        "themes_chat_wallpaper",
+        "themes_preview_card",
+        "themes_apply_btn",
+    ),
     "settings.companion_desktop": (
         "companion_enabled_cb",
         "companion_tray_hidden_cb",

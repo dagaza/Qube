@@ -702,6 +702,7 @@ class MainWindow(QMainWindow):
         self._model_manager_view = None
         self._settings_view = None
         self._settings_view_wired = False
+        self._generation_toolbar_sync_wired: set[str] = set()
         self._model_manager_view_wired = False
         self._model_manager_settings_crosslink_wired = False
         self._model_manager_companion_crosslink_wired = False
@@ -2582,20 +2583,27 @@ class MainWindow(QMainWindow):
         if sv is None:
             return
         pairs = (
-            (self.temp_spin, getattr(sv, "llm_temp_spin", None)),
-            (self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
-            (self.history_spin, getattr(sv, "llm_history_spin", None)),
-            (self.max_reply_spin, getattr(sv, "llm_output_limit_spin", None)),
+            ("temp", self.temp_spin, getattr(sv, "llm_temp_spin", None)),
+            ("ctx", self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
+            ("history", self.history_spin, getattr(sv, "llm_history_spin", None)),
+            ("max_reply", self.max_reply_spin, getattr(sv, "llm_output_limit_spin", None)),
         )
-        for toolbar_spin, settings_spin in pairs:
+        for key, toolbar_spin, settings_spin in pairs:
             if toolbar_spin is None or settings_spin is None:
                 continue
+            if key in self._generation_toolbar_sync_wired:
+                continue
+            self._generation_toolbar_sync_wired.add(key)
             settings_spin.valueChanged.connect(toolbar_spin.setValue)
             toolbar_spin.valueChanged.connect(settings_spin.setValue)
             toolbar_spin.blockSignals(True)
             toolbar_spin.setValue(settings_spin.value())
             toolbar_spin.blockSignals(False)
-        if hasattr(sv, "llm_output_limit_cb"):
+        if (
+            hasattr(sv, "llm_output_limit_cb")
+            and "max_reply_enabled" not in self._generation_toolbar_sync_wired
+        ):
+            self._generation_toolbar_sync_wired.add("max_reply_enabled")
             sv.llm_output_limit_cb.toggled.connect(self._sync_toolbar_output_limit_enabled)
         self._sync_toolbar_output_limit_enabled()
 

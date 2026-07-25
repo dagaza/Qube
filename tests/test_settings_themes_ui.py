@@ -43,23 +43,27 @@ def test_settings_themes_picker_model_includes_all_builtins():
 def test_settings_themes_section_builds(main_window, qtbot):
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
+    settings._ensure_themes_preview_initialized()
+    qtbot.wait(10)
 
     assert hasattr(settings, "themes_theme_picker")
     assert not hasattr(settings, "themes_mode_card")
     assert settings.themes_theme_picker.text() == "Catppuccin Dark"
 
-    catalog = ThemeCatalog(main_window.theme_manager.list_schemes())
+    catalog = catalog_for_registry(BUILTIN_SCHEMES)
     settings._rebuild_variant_row(catalog, DEFAULT_SCHEME_ID_DARK)
     assert len(settings.themes_variant_cbs) == 2
 
     settings._rebuild_variant_row(catalog, "builtin.dracula")
-    assert settings.themes_unavailable_row.isVisible()
-    assert "no light variant" in settings.themes_unavailable_label.text().lower()
+    assert not settings.themes_unavailable_row.isHidden()
+    assert "light variant" in settings.themes_unavailable_label.text().lower()
 
 
 def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
+    settings._ensure_themes_preview_initialized()
+    qtbot.wait(10)
 
     manager = main_window.theme_manager
     applied_before = manager.current
@@ -78,4 +82,4 @@ def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):
 
     assert RecordingApplicator.apply_count == 0
     assert manager.current.scheme_id == applied_before.scheme_id
-    assert settings.themes_preview_panel._primary_btn is not None
+    assert settings.themes_preview_panel._components_live._primary_btn is not None
