@@ -35,6 +35,7 @@ required_libs=(
   libcublas.so.12
   libcublasLt.so.12
 )
+# Keep in sync with core/linux_cuda_bundle.REQUIRED_CUDA_WHEEL_LIBS
 for lib in "${required_libs[@]}"; do
   if [[ ! -f "$LIB_DIR/$lib" ]]; then
     echo "Missing bundled CUDA dependency: $LIB_DIR/$lib" >&2

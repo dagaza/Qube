@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Linux CUDA `.deb` release packaging: prune safe bundle bloat, bundle only required NVIDIA wheel libraries, use maximum xz compression, and fail the build early if the `.deb` still exceeds GitHub's 2 GiB asset limit.
+
 ## [1.2.2] - 2026-07-25
 
 ### Fixed

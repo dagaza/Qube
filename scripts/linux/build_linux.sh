@@ -40,6 +40,8 @@ if [[ "$VARIANT" == "cuda" ]]; then
   python3 "$SCRIPT_DIR/stage_cuda_runtime_libs.py" "$REPO_ROOT/dist/Qube/_internal/llama_cpp/lib"
 fi
 
+python3 "$SCRIPT_DIR/prune_pyinstaller_bundle.py" "$REPO_ROOT/dist/Qube" --variant "$VARIANT"
+
 if [[ ! -x "$REPO_ROOT/dist/Qube/Qube" ]]; then
   echo "PyInstaller output missing: $REPO_ROOT/dist/Qube/Qube" >&2
   exit 1

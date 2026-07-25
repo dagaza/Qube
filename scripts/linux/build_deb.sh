@@ -54,8 +54,10 @@ rm -f "$REPO_ROOT/$DEB_NAME"
 # which leaves the CUDA bundle (~3 GB) above GitHub Releases' 2 GiB per-asset
 # limit. xz brings it in line with the SquashFS-compressed AppImage (~1.1 GB),
 # well under the cap. dpkg/apt have supported xz-compressed debs for years.
+export XZ_OPT="-9e"
 fpm -s dir -t deb \
   --deb-compression xz \
+  --deb-compression-level 9 \
   -n "$PKG_NAME" \
   -v "$VERSION" \
   -a amd64 \
@@ -72,3 +74,27 @@ fpm -s dir -t deb \
   .
 
 echo "Wrote $REPO_ROOT/$DEB_NAME"
+
+if [[ "$VARIANT" == "cuda" ]]; then
+  bash "$SCRIPT_DIR/recompress_deb_data.sh" "$REPO_ROOT/$DEB_NAME"
+fi
+
+python3 - "$REPO_ROOT" "$REPO_ROOT/$DEB_NAME" <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from core.linux_cuda_bundle import GITHUB_RELEASE_ASSET_LIMIT_BYTES
+
+deb = Path(sys.argv[2])
+size = deb.stat().st_size
+limit = GITHUB_RELEASE_ASSET_LIMIT_BYTES
+print(f"{deb.name}: {size:,} bytes ({size / (1024 ** 3):.3f} GiB)")
+if size >= limit:
+    raise SystemExit(
+        f"ERROR: {deb.name} exceeds GitHub Releases' 2 GiB asset limit "
+        f"({size:,} >= {limit:,} bytes)"
+    )
+headroom = limit - size
+print(f"GitHub Releases headroom: {headroom:,} bytes ({headroom / (1024 ** 2):.1f} MiB)")
+PY
