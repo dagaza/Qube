@@ -154,7 +154,7 @@ This is not required for typos or small fixes. It is good practice for behaviora
 
 ## Maintainer notes
 
-Release procedures (tagging, WinGet, Chocolatey, macOS, pre-launch documentation pass): [`docs/releasing.md`](docs/releasing.md).
+Release procedures (tagging, WinGet, Chocolatey, macOS, pre-launch documentation pass): [`docs/releasing.md`](docs/releasing.md). **Before tagging:** [`docs/release_versioning_quick_reference.md`](docs/release_versioning_quick_reference.md) (semver discipline, failed CI, agent guidance).
 
 Promoting integration work: merge reviewed PRs into `dev`, then cut releases by merging `dev` into `main` per [`docs/releasing.md`](docs/releasing.md).
 

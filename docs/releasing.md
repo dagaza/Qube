@@ -2,6 +2,8 @@
 
 This document describes how to cut a Windows release and publish it to WinGet and Chocolatey.
 
+**Versioning policy (when to tag, failed CI, CHANGELOG, agent guidance):** see **[Release versioning — quick reference](release_versioning_quick_reference.md)**.
+
 ## Prerequisites
 
 - Maintainer access to `dagaza/Qube`
@@ -23,6 +25,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
 
 ## Pre-release checklist
 
+0. Read **[Release versioning — quick reference](release_versioning_quick_reference.md)** — fix on `main` and get CI green **before** tagging; do not burn patch numbers on failed release attempts.
 1. Ensure [`main`](https://github.com/dagaza/Qube) is green (PR CI workflow).
 2. **Documentation pass** — see [Launch documentation guidelines](launch_documentation_guidelines.md) (**Final launch pass**). At minimum before a public launch:
    - [ ] README accurate (features, install paths, screenshots)

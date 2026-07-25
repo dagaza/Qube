@@ -43,7 +43,8 @@ class TestNavSidebarStructure:
 class TestThemeToggle:
     """Verify the moon/sun theme toggle switches state."""
 
-    def test_toggle_switches_dark_to_light(self, main_window, qtbot):
+    def test_toggle_switches_dark_to_light(self, main_window_dark, qtbot):
+        main_window = main_window_dark
         assert main_window._is_dark_theme is True
         btn = main_window.findChild(QPushButton, "NavThemeToggle")
         qtbot.mouseClick(btn, Qt.MouseButton.LeftButton)

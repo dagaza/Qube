@@ -132,13 +132,26 @@ def test_wallpaper_preset_tile_selects_profile(_qube_app):
     assert editor._mode_cbs["preset"].isChecked()
 
 
-def test_settings_themes_wallpapers_section_builds(main_window):
-    settings = main_window.ensure_settings_view()
+def test_settings_themes_wallpapers_section_builds(fresh_main_window):
+    from core.surface_fill.models import default_surface_profile_set
+
+    manager = fresh_main_window.theme_manager
+    manager._surface_profiles_active = default_surface_profile_set()
+    manager._surface_profiles_draft = None
+
+    settings = fresh_main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
+    settings._sync_themes_draft_from_applied()
 
     assert hasattr(settings, "themes_chat_wallpaper")
     assert hasattr(settings, "themes_library_wallpaper")
-    assert settings.themes_chat_wallpaper.profile().wallpaper.kind == "theme_default"
+    chat_wallpaper = (
+        settings._draft_surface_profiles()
+        .for_surface(SURFACE_CHAT_TRANSCRIPT)
+        .wallpaper
+    )
+    assert chat_wallpaper.kind == "theme_default"
+    assert isinstance(settings.themes_chat_wallpaper.profile().wallpaper, WallpaperThemeDefault)
 
 
 def test_settings_wallpaper_draft_dirty_until_apply(fresh_main_window):

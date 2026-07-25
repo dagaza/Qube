@@ -405,8 +405,9 @@ class OnboardingCoachPanel(QFrame):
             lbl.setMinimumHeight(0)
             lbl.setMaximumHeight(16_777_215)
             if lbl.isHidden() or not lbl.text().strip():
+                lbl.setFixedHeight(0)
                 continue
-            lbl.setMinimumHeight(self._label_wrapped_height(lbl, content_w) + pad)
+            lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad)
         self.adjustSize()
 
     def keyPressEvent(self, event) -> None:

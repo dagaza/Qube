@@ -54,18 +54,22 @@ class TestOnboardingCoachPanel(unittest.TestCase):
 
     def test_recalculate_content_size_does_not_grow_on_repeat(self) -> None:
         panel = OnboardingCoachPanel()
+        panel.setFixedWidth(panel.maximumWidth())
         panel.body_lbl.setText(
             "Pick a model that fits your GPU.\n"
             "You can change it later from Settings or Model Manager."
         )
-        panel.recalculate_content_size()
+        panel.show()
+        self._app.processEvents()
+        for _ in range(3):
+            panel.recalculate_content_size()
         height0 = panel.height()
-        min_h0 = panel.body_lbl.minimumHeight()
+        body_h0 = panel.body_lbl.height()
         for _ in range(40):
             panel.recalculate_content_size()
         # Width can settle by a line on some platforms; must not grow on repeat.
         self.assertLessEqual(panel.height(), height0)
-        self.assertLessEqual(panel.body_lbl.minimumHeight(), min_h0)
+        self.assertLessEqual(panel.body_lbl.height(), body_h0)
 
     def test_dropdown_step_detects_open_menu(self) -> None:
         from PyQt6.QtCore import QRect

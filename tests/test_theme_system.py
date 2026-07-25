@@ -530,10 +530,11 @@ def test_applicator_uses_static_when_opt_out(monkeypatch):
     assert applicator._use_generated is False
 
 
-def test_main_window_toggle_uses_theme_manager(main_window):
+def test_main_window_toggle_uses_theme_manager(main_window_dark):
     from core.theme.schemes import BUILTIN_CATPUCCIN_LATTE_ID
     from core.theme.tokens import ThemeMode
 
+    main_window = main_window_dark
     assert main_window.theme_manager.mode is ThemeMode.DARK
     assert main_window.theme_manager.scheme_id == DEFAULT_SCHEME_ID_DARK
     main_window._toggle_theme()

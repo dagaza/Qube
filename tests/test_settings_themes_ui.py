@@ -48,7 +48,11 @@ def test_settings_themes_section_builds(main_window, qtbot):
 
     assert hasattr(settings, "themes_theme_picker")
     assert not hasattr(settings, "themes_mode_card")
-    assert settings.themes_theme_picker.text() == "Catppuccin Dark"
+    catalog = ThemeCatalog(main_window.theme_manager.list_schemes())
+    assert (
+        settings.themes_theme_picker.text()
+        == catalog.display_name(main_window.theme_manager.scheme_id)
+    )
 
     catalog = catalog_for_registry(BUILTIN_SCHEMES)
     settings._rebuild_variant_row(catalog, DEFAULT_SCHEME_ID_DARK)
