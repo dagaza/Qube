@@ -76,7 +76,15 @@ fpm -s dir -t deb \
 echo "Wrote $REPO_ROOT/$DEB_NAME"
 
 if [[ "$VARIANT" == "cuda" ]]; then
-  bash "$SCRIPT_DIR/recompress_deb_data.sh" "$REPO_ROOT/$DEB_NAME"
+  GITHUB_RELEASE_LIMIT=$((2 * 1024 * 1024 * 1024))
+  deb_size=$(stat -c%s "$REPO_ROOT/$DEB_NAME")
+  echo "Initial $DEB_NAME size: ${deb_size} bytes"
+  if (( deb_size >= GITHUB_RELEASE_LIMIT )); then
+    echo "CUDA .deb is still >= 2 GiB after fpm; recompressing data tarball with xz -9e ..."
+    bash "$SCRIPT_DIR/recompress_deb_data.sh" "$REPO_ROOT/$DEB_NAME"
+  else
+    echo "CUDA .deb is under 2 GiB after fpm; skipping data-tar recompress"
+  fi
 fi
 
 python3 - "$REPO_ROOT" "$REPO_ROOT/$DEB_NAME" <<'PY'

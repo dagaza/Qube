@@ -50,7 +50,8 @@ export XZ_OPT="-9e"
 tar -cJf "$NEW_DATA" -C "$DATA_ROOT" .
 rm -rf "$DATA_ROOT"
 
-OUTPUT="$(mktemp --suffix=.deb)"
-ar r "$OUTPUT" debian-binary "$CONTROL_TAR" "$NEW_DATA"
+OUTPUT="$WORK/repacked.deb"
+rm -f "$OUTPUT"
+ar cr "$OUTPUT" debian-binary "$CONTROL_TAR" "$NEW_DATA"
 mv -f "$OUTPUT" "$DEB"
 echo "Recompressed $DEB with xz -9e"
