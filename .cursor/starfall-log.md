@@ -1076,3 +1076,49 @@ loop_count: 1
 status: completed
 loop_count: 2
 
+
+# Run 011 - 2026-07-25T14:17:38.648433+00:00
+
+## Hook Turn 1 - 2026-07-25T14:20:49.205181+00:00
+status: completed
+loop_count: 0
+
+## Repository Cartographer + Product Review + Security & Permissions + Quality - 2026-07-25T14:22:00Z
+Phase: Self-Review (Run 011 turn 2/10)
+Gates: G1 PASS | G2 PASS | G3 PASS | G4 PASS
+Signals: Run 011 re-armed after Run 010 CLOSING TIME; turn 1 opened PR #48
+  (`keith/mcp-capability-integration` → `dev`, dagaza/Qube) without a coordinator work entry.
+  Four parallel read-only experts Self-Review PR merge-readiness: (Cartographer) no duplicate
+  subsystem — capability stack under `core/integrations/`, MCP JSON-RPC only in
+  `providers/mcp/`, `McpConnector` delegates to `McpCapabilityProvider`, EvidenceBundle +
+  INSPECT on canonical spine; INSPECT `capability_steps` only on composer CAPABILITY route
+  (configured-source pipeline has P8 provenance but no INSPECT steps — documented, not a fork).
+  (Product) P1–P8 hold; router suggestions default-off READ+granted; legacy `mcp/` routing
+  package vs protocol provider naming debt tracked. (Security) consent default-deny + drift
+  re-review + step approval + denied-path observer-only trace; agent scope empty-set allows-all
+  is defense-in-depth gap (post-merge hardening). (Quality) all four test plans STATUS COMPLETE;
+  starfall_verify PASS (21 auto targets + P6 guardrail); phase 2–4 plans not auto-enforced by
+  verifier — manual regression relied on for T14–T26.
+Actions: Re-ran `python .cursor/hooks/starfall_verify.py` PASS (8 Phase 4 delivered files,
+  P6 guardrail clean). Confirmed PR #48 OPEN to `dev`. Updated active-task, context,
+  evidence-map (INSPECT route split), decisions (Run 011 scoped closure). No product code
+  changes (Self-Review turn).
+Decisions: Run 011 scoped to PR merge-readiness verification for Feature #57 (#58–#62).
+  Approve merge pending human review; post-merge: agent scope empty-deny, step-approval
+  integration test, extend verifier to phase 2–4 test plans, `mcp/`→`routing/` rename.
+Next step: Turn 3 Closing — starfall_export, PR summary attestation, CLOSING TIME (3 turns met).
+
+Architecture Review
+[x] P1 No path lets the model gain a capability the user didn't attach.
+[x] P2 Nothing is injected into model context on connect; attachment is explicit.
+[x] P3 Any write/destructive capability is visibly labeled before grant.
+[x] P4 Result is traceable end-to-end: cap: -> inputs -> outputs -> citation.
+[x] P5 No provider-specific code path added to registry/router/UI/INSPECT.
+[x] P6 No module outside providers/mcp/ imports MCP or branches on provider == "mcp".
+[x] P7 Nothing defaults to write/destructive; drift cannot silently escalate privilege.
+[x] P8 NormalizedHit preserves its cap: provenance through EvidenceBundle to the UI.
+
+## Hook Turn 2 - 2026-07-25T14:32:20.707895+00:00
+status: completed
+loop_count: 1
+

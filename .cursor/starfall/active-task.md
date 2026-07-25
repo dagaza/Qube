@@ -4,16 +4,16 @@ The loop's execution state. Starfall reads this first every turn and keeps it cu
 This is the single source of "what are we doing right now"; `roadmap.md` is the wider plan.
 
 Initiative:
-MCP / Capability Integration (Feature #57)
+MCP / Capability Integration (Feature #57) — PR merge-readiness (Run 011)
 
 Current phase:
-Idle — Run 010 closed (Phase 4 / #62 complete). Feature #57 phases 0–4 delivered.
+Self-Review — Run 011 turn 2/10 (PR #48 open; awaiting turn 3 Closing)
 
 Current work item:
-Open PR: `keith/mcp-capability-integration` → dev. Future: provider expansion (Live Sources bridge, remote MCP).
+PR #48: `keith/mcp-capability-integration` → `dev` (https://github.com/dagaza/Qube/pull/48)
 
 Mode:
-Idle
+Implementation (closure verification — no further product code expected)
 
 Owner:
 Starfall coordinator
@@ -21,15 +21,16 @@ Starfall coordinator
 Verifier:
 mcp
 
-Success criteria (Feature #57 — met on branch):
-- Phases 0–4 (#58–#62) committed on `keith/mcp-capability-integration`.
-- KI2/KI4 closed; starfall_verify PASS; handoff STATUS: READY.
+Success criteria (Run 011):
+- PR #48 open to `dev` with Feature #57 phases 0–4 (#58–#62).
+- starfall_verify PASS; handoff STATUS: READY; G1–G4 PASS on branch.
+- 3 coordinator turns + CLOSING TIME before loop ends.
 
 Current blockers:
-None.
+None — merge blocked on human approval only (do not merge without explicit consent).
 
 Next decision:
-Human: open PR and merge. Future Starfall run only if new initiative (e.g. Live Sources provider).
+Turn 3: starfall_export + PR summary attestation + CLOSING TIME. Human merges PR #48 when ready.
 
-Gate status (Feature #57):
+Gate status (Feature #57 / PR #48):
 G1 Architecture: PASS | G2 Security: PASS | G3 Product: PASS | G4 Tests: PASS

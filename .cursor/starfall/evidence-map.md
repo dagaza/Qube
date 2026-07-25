@@ -211,3 +211,12 @@ Evidence: `.cursor/starfall/verify/base.py:_TEST_TOKEN_RE`; `.cursor/starfall/te
 Confidence: high
 Notes: Prose containing literal `tests/*.py` inside STATUS: COMPLETE test-plan expands to entire suite;
   Phase 2 cases moved to test-plan-phase2.md.
+
+## INSPECT capability_steps — composer CAPABILITY route only (Run 011)
+Evidence: `workers/llm_worker.py` CAPABILITY branch; `core/integrations/capability_trace.py`;
+`core/knowledge/connectors/mcp_connector.py` → `pipeline_generic` / `execute_configured_source`
+Confidence: high
+Notes: Composer attach→invoke and preset-cap bundles emit `capability_steps` in retrieval trace
+(P4). Configured MCP source hits via generic knowledge pipeline carry P8 `cap:` provenance in
+EvidenceBundle/UI (`source_capability`) but do not populate INSPECT steps — intentional split,
+not a duplicate observability subsystem. Post-merge optional: emit steps for configured-source caps.

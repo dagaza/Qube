@@ -235,3 +235,13 @@ arms T16 INSPECT per next.md / handoff.
 Consequences: Phase 2 #60 roadmap stays partially complete; honest verified closure
 for palette search slice only.
 Principles: (process) verified-over-declared; P1-P8 attested for T15 diff only.
+
+## 2026-07-25 Run 011 scoped closure (PR merge-readiness)
+Context: Run 010 closed Feature #57 code on branch; PR #48 opened to `dev`. Run 011
+re-armed to satisfy 3-turn closure contract for PR merge-readiness verification.
+Decision: Scope Run 011 to PR attestation only — no further product code. Approve merge
+pending human review; defer agent-scope empty-deny, step-approval integration test, and
+verifier phase 2–4 plan scanning to post-merge follow-ups.
+Consequences: Loop closes on turn 3 with CLOSING TIME after PR summary; merge remains
+human-gated. INSPECT `capability_steps` composer-route-only split documented in evidence-map.
+Principles: (process) verified-over-declared; P1-P8 attested for full branch diff.
