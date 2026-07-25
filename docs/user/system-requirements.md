@@ -52,6 +52,8 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 | **AMD / Intel (Linux)** | Vulkan packaged Linux **`vulkan`** build, or `install_llama_cpp_gpu.sh` |
 | **CPU only** | Supported — STT (faster-whisper) and TTS (Kokoro) run well on CPU; chat will be slower |
 
+**ROCm (AMD HIP on Linux)** is not shipped today. See [ROCm support exploration](../rocm_support_exploration.md) for feasibility and trade-offs vs Vulkan.
+
 **External Server** mode delegates inference to LM Studio / Ollama — tune GPU settings in that host app instead.
 
 ---
