@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-07-25
+
+### Fixed
+- Release CI: allowlist Themes guided tour for lazy-stage footgun audit and register `settings.appearance_themes` in page tour infrastructure tests.
+
 ## [1.2.1] - 2026-07-25
 
 ### Fixed

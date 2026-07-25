@@ -40,6 +40,7 @@ _AUDIT_ALLOWLIST = frozenset(
         "ui/onboarding/tours/settings/memory.py",
         "ui/onboarding/tours/settings/knowledge.py",
         "ui/onboarding/tours/settings/general.py",
+        "ui/onboarding/tours/settings/appearance_themes.py",
         "ui/onboarding/tours/settings/companion_desktop.py",
         "ui/onboarding/tours/settings/notifications.py",
         "ui/onboarding/tours/settings/help.py",
