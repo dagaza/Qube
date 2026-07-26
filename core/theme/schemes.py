@@ -7,7 +7,8 @@ from core.theme.tokens import CORE_TOKEN_KEYS
 
 CATPUCCIN_MOCHA_PRIMITIVES: dict[str, str] = {
     "background": "#1e1e2e",
-    "surface": "#232337",
+    # Nav/tools chrome: rgba(0,0,0,0.15) over background (pre-themes-v1 NavSidebar).
+    "surface": "#1a1a27",
     "sidebar_surface": "#232337",
     "surface_elevated": "#313244",
     "text_primary": "#cdd6f4",
@@ -53,7 +54,7 @@ SLATE_PRIMITIVES: dict[str, str] = {
 NORD_PRIMITIVES: dict[str, str] = {
     **CATPUCCIN_MOCHA_PRIMITIVES,
     "background": "#2e3440",
-    "surface": "#3b4252",
+    "surface": "#272c36",
     "sidebar_surface": "#3b4252",
     "surface_elevated": "#434c5e",
     "text_primary": "#eceff4",
@@ -83,7 +84,7 @@ NORD_LIGHT_PRIMITIVES: dict[str, str] = {
 
 DRACULA_PRIMITIVES: dict[str, str] = {
     "background": "#282a36",
-    "surface": "#21222c",
+    "surface": "#22242e",
     "sidebar_surface": "#21222c",
     "surface_elevated": "#343746",
     "text_primary": "#f8f8f2",
@@ -98,7 +99,7 @@ DRACULA_PRIMITIVES: dict[str, str] = {
 
 GRUVBOX_DARK_PRIMITIVES: dict[str, str] = {
     "background": "#282828",
-    "surface": "#32302f",
+    "surface": "#222222",
     "sidebar_surface": "#32302f",
     "surface_elevated": "#3c3836",
     "text_primary": "#ebdbb2",
@@ -128,7 +129,7 @@ GRUVBOX_LIGHT_PRIMITIVES: dict[str, str] = {
 
 SOLARIZED_DARK_PRIMITIVES: dict[str, str] = {
     "background": "#002b36",
-    "surface": "#073642",
+    "surface": "#00252e",
     "sidebar_surface": "#073642",
     "surface_elevated": "#0a4a58",
     "text_primary": "#839496",
@@ -143,7 +144,7 @@ SOLARIZED_DARK_PRIMITIVES: dict[str, str] = {
 
 SOLARIZED_LIGHT_PRIMITIVES: dict[str, str] = {
     "background": "#fdf6e3",
-    "surface": "#eee8d5",
+    "surface": "#d7d1c1",
     "sidebar_surface": "#eee8d5",
     "surface_elevated": "#fdf6e3",
     "text_primary": "#657b83",
@@ -158,7 +159,7 @@ SOLARIZED_LIGHT_PRIMITIVES: dict[str, str] = {
 
 GITHUB_DARK_PRIMITIVES: dict[str, str] = {
     "background": "#0d1117",
-    "surface": "#161b22",
+    "surface": "#0b0e14",
     "sidebar_surface": "#161b22",
     "surface_elevated": "#21262d",
     "text_primary": "#c9d1d9",

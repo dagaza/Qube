@@ -28,7 +28,7 @@ def _expected_knowledge_tour_steps() -> int:
 SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.voice_audio", "voice.audio", 29),
     ("settings.ai_models", "ai.models", 14),
-    ("settings.memory", "memory", 7),
+    ("settings.memory", "memory", 8),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
     ("settings.general", "general", 3),
     ("settings.appearance_themes", "appearance.themes", 14),
@@ -89,6 +89,8 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     ),
     "settings.memory": (
         "memory_enrichment_toggle",
+        "advanced_memory_toggle",
+        "advanced_memory_panel",
         "memory_promotion_toggle",
         "memory_promotion_preset_selector",
         "memory_consolidation_toggle",
@@ -338,6 +340,14 @@ class TestSettingsSectionTours(unittest.TestCase):
             sv.end_knowledge_embedding_tutorial_preview = lambda: None
             sv.begin_knowledge_discovery_tutorial_preview = _begin_discovery
             sv.end_knowledge_discovery_tutorial_preview = lambda: None
+
+        if tour_id == "settings.memory":
+
+            def _begin_memory_advanced(*, reveal_panel: bool = True) -> None:
+                sv.advanced_memory_panel.setVisible(reveal_panel)
+
+            sv.begin_memory_advanced_tutorial_preview = _begin_memory_advanced
+            sv.end_memory_advanced_tutorial_preview = lambda: None
 
         if tour_id == "settings.companion_desktop":
             from core.companion_cube_style import CompanionCubeStyle

@@ -123,6 +123,7 @@ class ThemesHandlersMixin:
 
         self._themes_preview_initialized = True
         self._wire_themes_section(is_dark=is_dark)
+        self._refresh_themes_conversations_preview()
 
     def _ensure_themes_components_preview_initialized(self, *, is_dark: bool | None = None) -> None:
         if getattr(self, "_themes_components_preview_initialized", False):
@@ -178,6 +179,9 @@ class ThemesHandlersMixin:
         self._ensure_themes_library_preview_initialized(is_dark=is_dark)
 
     def _schedule_themes_preview_refresh(self) -> None:
+        # Preview panels mount lazily on first Themes section enter; defer until then.
+        if not getattr(self, "_themes_preview_initialized", False):
+            return
         QTimer.singleShot(0, self._refresh_themes_draft_previews)
 
     def _schedule_themes_library_preview_refresh(self) -> None:
@@ -1130,20 +1134,18 @@ class ThemesHandlersMixin:
             return
         self._sync_library_wallpaper_draft_from_applied()
 
+    def _finish_themes_section_enter(self) -> None:
+        """Mount lazy preview panels, then paint snapshots (init must precede refresh)."""
+        self._ensure_themes_previews_initialized()
+        self._refresh_themes_draft_previews()
+
     def _on_themes_section_enter(self) -> None:
         self._update_themes_action_buttons()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         QTimer.singleShot(0, lambda: self._apply_themes_action_button_styles(is_dark))
-        # Sync before the next paint: prefetch builds swatches with placeholder colors
-        # and preview panels mount on a deferred timer.
+        # Sync swatches before the next paint; preview refresh runs after lazy init.
         self._ensure_themes_draft_controls_synced(defer_preview=True)
-        if getattr(self, "_themes_preview_initialized", False) and getattr(
-            self, "_themes_components_preview_initialized", False
-        ) and getattr(
-            self, "_themes_library_preview_initialized", False
-        ):
-            return
-        QTimer.singleShot(0, self._ensure_themes_previews_initialized)
+        QTimer.singleShot(0, self._finish_themes_section_enter)
 
     def _on_themes_section_leave(self) -> None:
         if self._themes_draft_is_dirty():

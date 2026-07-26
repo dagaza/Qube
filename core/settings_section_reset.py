@@ -52,6 +52,7 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_MEMORY_PROMOTION_PRESET,
         app.KEY_MEMORY_CONSOLIDATION,
         app.KEY_PROFILE_UNITS,
+        app.KEY_ADVANCED_MEMORY_UNLOCKED,
     ),
     "knowledge": (
         app.KEY_MCP_RAG_ENABLED,

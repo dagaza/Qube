@@ -3621,7 +3621,9 @@ class MainWindow(QMainWindow):
             return int(self.main_stage.currentIndex())
         return 0
 
-    def _refresh_conversations_theme(self, is_dark: bool) -> None:
+    def _refresh_conversations_theme(
+        self, is_dark: bool, *, include_transcript: bool = True
+    ) -> None:
         cv = getattr(self, "conversations_view", None)
         if cv is None:
             return
@@ -3629,6 +3631,8 @@ class MainWindow(QMainWindow):
             cv.refresh_menu_themes(is_dark)
         if hasattr(cv, "refresh_button_themes"):
             cv.refresh_button_themes(is_dark)
+        if include_transcript and hasattr(cv, "_refresh_transcript_theme"):
+            cv._refresh_transcript_theme()
         if hasattr(cv, "_update_row_colors"):
             cv._update_row_colors()
 
@@ -3645,7 +3649,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_stage_theme(self, stage_index: int, is_dark: bool) -> None:
         if stage_index == 0:
-            self._refresh_conversations_theme(is_dark)
+            self._refresh_conversations_theme(is_dark, include_transcript=True)
         elif stage_index == 1:
             self._refresh_library_theme(is_dark)
         elif stage_index == 2:
@@ -3755,7 +3759,12 @@ class MainWindow(QMainWindow):
         dirty = getattr(self, "_theme_stage_dirty", None)
         if not dirty or stage_index not in dirty:
             return
-        self._refresh_stage_theme(stage_index, self._is_dark_theme)
+        if stage_index == MAIN_STAGE_CONVERSATIONS:
+            cv = getattr(self, "conversations_view", None)
+            if cv is not None and hasattr(cv, "_refresh_transcript_theme"):
+                cv._refresh_transcript_theme()
+        else:
+            self._refresh_stage_theme(stage_index, self._is_dark_theme)
         dirty.discard(stage_index)
 
     def _schedule_deferred_theme_refreshes(self, hidden_stage_indices: list[int]) -> None:
@@ -3774,9 +3783,16 @@ class MainWindow(QMainWindow):
         profiler = ThemeToggleProfiler.maybe_enabled()
         profiler.begin()
         is_dark = self._is_dark_theme
+        active_stage = self._active_main_stage_index()
         for stage_index in sorted(dirty):
             with profiler.step(f"stage_{stage_index}.refresh_deferred"):
-                self._refresh_stage_theme(stage_index, is_dark)
+                if stage_index == MAIN_STAGE_CONVERSATIONS:
+                    self._refresh_conversations_theme(
+                        is_dark,
+                        include_transcript=(stage_index == active_stage),
+                    )
+                else:
+                    self._refresh_stage_theme(stage_index, is_dark)
             dirty.discard(stage_index)
         profiler.finish(
             context={

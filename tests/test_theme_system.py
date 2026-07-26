@@ -268,6 +268,20 @@ def test_agent_message_frame_style_uses_surface_elevated():
     assert "background: transparent" in disabled
 
 
+def test_agent_message_frame_style_light_scheme_uses_light_surface():
+    from core.theme.schemes import BUILTIN_CATPUCCIN_LATTE_ID, CATPUCCIN_LATTE_PRIMITIVES
+    from core.theme.widget_styles import AGENT_MESSAGE_FRAME, theme_style
+    from core.richtext_styles import markdown_document_stylesheet
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    theme = resolver.resolve(mode=ThemeMode.LIGHT, scheme_id=BUILTIN_CATPUCCIN_LATTE_ID)
+    enabled = theme_style(theme, AGENT_MESSAGE_FRAME, enabled=True)
+    assert theme.surface_elevated in enabled
+    assert theme.surface_elevated == CATPUCCIN_LATTE_PRIMITIVES["surface_elevated"]
+    md = markdown_document_stylesheet(theme=theme)
+    assert theme.text_primary in md
+
+
 def test_render_stylesheet_editable_fields_use_surface_elevated():
     from core.theme.stylesheet import render_stylesheet
 
@@ -762,7 +776,26 @@ def test_sidebar_row_colors_use_theme_tokens():
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
     assert theme.text_primary == "#cdd6f4"
     assert theme.list_row_title_selected == "#ffffff"
+    assert theme.surface == "#1a1a27"
     assert theme.sidebar_surface == "#232337"
+    assert theme.surface != theme.sidebar_surface
+
+
+def test_builtin_dark_schemes_separate_nav_and_list_surfaces():
+    from core.theme.resolver import ThemeResolver
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    dark_ids = (
+        DEFAULT_SCHEME_ID_DARK,
+        "builtin.nord",
+        "builtin.dracula",
+        "builtin.gruvbox-dark",
+        "builtin.solarized-dark",
+        "builtin.github-dark",
+    )
+    for scheme_id in dark_ids:
+        theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=scheme_id)
+        assert theme.surface != theme.sidebar_surface, scheme_id
 
 
 def test_core_token_keys_count():

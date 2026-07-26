@@ -64,10 +64,14 @@ def test_settings_themes_swatch_colors_sync_on_first_enter(main_window, qtbot):
 def test_settings_themes_section_builds(main_window, qtbot):
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
-    settings._ensure_themes_preview_initialized()
-    qtbot.wait(10)
+    qtbot.wait(100)
 
     assert hasattr(settings, "themes_theme_picker")
+    assert getattr(settings, "_themes_preview_initialized", False)
+    settings._ensure_themes_preview_initialized()
+    qtbot.wait(100)
+    settings._refresh_themes_preview()
+    qtbot.wait(100)
     assert not hasattr(settings, "themes_mode_card")
     catalog = ThemeCatalog(main_window.theme_manager.list_schemes())
     assert (
@@ -82,6 +86,20 @@ def test_settings_themes_section_builds(main_window, qtbot):
     settings._rebuild_variant_row(catalog, "builtin.dracula")
     assert not settings.themes_unavailable_row.isHidden()
     assert "light variant" in settings.themes_unavailable_label.text().lower()
+
+
+def test_settings_themes_conversations_preview_paints_on_section_enter(main_window, qtbot):
+    """Chat wallpaper preview must render on first enter without manual refresh."""
+    settings = main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    qtbot.wait(200)
+
+    assert getattr(settings, "_themes_preview_initialized", False)
+    panel = settings.themes_preview_panel
+    pixmap = panel._conversations_view.pixmap()
+    assert not pixmap.isNull()
+    assert pixmap.width() > 0
+    assert pixmap.height() > 0
 
 
 def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):

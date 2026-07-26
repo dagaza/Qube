@@ -231,6 +231,13 @@ def dismiss_memory_manager_tour_transients(host) -> None:
     _close_selector_menu(getattr(mv, "category_selector", None))
 
 
+def dismiss_memory_settings_tour_transients(host) -> None:
+    """Restore Memory settings advanced panel visibility after the guided tour."""
+    sv = getattr(host, "settings_view", None)
+    if sv is not None and hasattr(sv, "end_memory_advanced_tutorial_preview"):
+        sv.end_memory_advanced_tutorial_preview()
+
+
 def _open_selector_submenu(host, *, open_view, selector_name: str) -> None:
     open_view(host)
     from PyQt6.QtCore import QTimer

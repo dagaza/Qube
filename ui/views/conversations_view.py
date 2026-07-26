@@ -806,6 +806,33 @@ class AgentMessageLabel(QTextBrowser):
         if parent is not None:
             parent.updateGeometry()
 
+    def refresh_theme_styles(
+        self,
+        *,
+        is_dark: bool,
+        document_stylesheet: str,
+        line_height_percent: int | None = None,
+        justify_transcript: bool = False,
+    ) -> None:
+        """Re-apply theme colors without re-parsing markdown (theme-toggle path)."""
+        self._agent_is_dark = is_dark
+        doc = self.document()
+        doc.setDefaultFont(self.font())
+        doc.setDefaultStyleSheet(document_stylesheet)
+        pct = (
+            line_height_percent
+            if line_height_percent is not None
+            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
+        )
+        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
+        doc.markContentsDirty(0, doc.characterCount())
+        self._ensure_document_text_width()
+        self._sync_fixed_height()
+        self.update()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.updateGeometry()
+
     def attach_citation_handling(self, conversations_view):
         self._conversations_view_ref = (
             weakref.ref(conversations_view) if conversations_view is not None else None
@@ -1940,6 +1967,17 @@ class ConversationsView(QWidget):
         agent.setFont(f)
         theme = self._theme(getattr(self.window(), "_is_dark_theme", True))
         agent.setStyleSheet(theme.style(AGENT_MESSAGE_SHELL, font_pt=pt))
+        fg = theme.qcolor(theme.text_primary)
+        palette = agent.palette()
+        palette.setColor(QPalette.ColorRole.Text, fg)
+        palette.setColor(QPalette.ColorRole.WindowText, fg)
+        agent.setPalette(palette)
+        viewport = agent.viewport()
+        if viewport is not None:
+            vpal = viewport.palette()
+            vpal.setColor(QPalette.ColorRole.Text, fg)
+            vpal.setColor(QPalette.ColorRole.WindowText, fg)
+            viewport.setPalette(vpal)
 
     def _style_agent_message_container(self, container: AgentMessageContainer) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -2343,6 +2381,34 @@ class ConversationsView(QWidget):
         if pl is not None:
             self._style_transcript_placeholder_label(pl)
 
+    def _refresh_transcript_theme(self) -> None:
+        """Update transcript chrome + markdown colors without re-parsing every bubble."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        sheet = self._agent_markdown_stylesheet(is_dark)
+        line_height = self._line_height_proportional_percent()
+        justify = self._transcript_alignment == ALIGN_JUSTIFY
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, MessageWrapper):
+                if w.is_user and w.bubble is not None:
+                    lbl = w.bubble.findChild(ChatUserBubble)
+                    if lbl is not None:
+                        self._style_user_bubble(w.bubble, lbl)
+                else:
+                    container = w.bubble
+                    if isinstance(container, AgentMessageContainer):
+                        self._style_agent_message_container(container)
+                    for agent in w.findChildren(AgentMessageLabel):
+                        self._style_agent_message_shell(agent)
+                        if agent._md_layout_source:
+                            agent.refresh_theme_styles(
+                                is_dark=is_dark,
+                                document_stylesheet=sheet,
+                                line_height_percent=line_height,
+                                justify_transcript=justify,
+                            )
+        self._refresh_ancillary_transcript_labels()
+        self._sync_agent_actions_bar_widths()
+
     def _refresh_all_readability(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         sheet = self._agent_markdown_stylesheet(is_dark)
@@ -2555,9 +2621,7 @@ class ConversationsView(QWidget):
 
         layout.addWidget(self.chat_stage, stretch=1) 
 
-        # --- ADD THIS LINE AT THE BOTTOM ---
-        # Forces the buttons to load with the default Dark Mode purple on startup
-        self.refresh_button_themes(is_dark=True)
+        self.refresh_button_themes(getattr(self.window(), "_is_dark_theme", True))
         self.refresh_think_toggle()
 
     # --------------------------------------------------------- #

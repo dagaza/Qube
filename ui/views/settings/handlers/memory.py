@@ -33,6 +33,8 @@ from core.app_settings import (
     set_memory_promotion_acknowledged,
     get_enable_memory_consolidation,
     set_enable_memory_consolidation,
+    get_advanced_memory_unlocked,
+    set_advanced_memory_unlocked,
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
     get_memory_promotion_preset,
@@ -528,3 +530,39 @@ class MemoryHandlersMixin:
     def _on_memory_consolidation_toggled(self, checked: bool):
         set_enable_memory_consolidation(checked)
         self.memory_consolidation_changed.emit(checked)
+
+    def _on_advanced_memory_toggled(self, checked: bool) -> None:
+        set_advanced_memory_unlocked(bool(checked))
+        self._apply_advanced_memory_panel_visibility()
+
+    def _apply_advanced_memory_panel_visibility(self) -> None:
+        unlocked = get_advanced_memory_unlocked()
+        tour_row = getattr(self, "_tour_memory_row_preview_active", False)
+        tour_panel = getattr(self, "_tour_memory_preview_active", False)
+        visible = unlocked or tour_panel
+        if hasattr(self, "advanced_memory_panel"):
+            self.advanced_memory_panel.setVisible(visible)
+        if hasattr(self, "advanced_memory_toggle"):
+            self.advanced_memory_toggle.blockSignals(True)
+            self.advanced_memory_toggle.setChecked(tour_row or tour_panel or unlocked)
+            self.advanced_memory_toggle.blockSignals(False)
+
+    def begin_memory_advanced_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced memory controls during the Memory settings guided tour."""
+        self._tour_memory_row_preview_active = True
+        if reveal_panel:
+            self._tour_memory_preview_active = True
+        self._apply_advanced_memory_panel_visibility()
+
+    def end_memory_advanced_tutorial_preview(self) -> None:
+        """Restore advanced memory panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_memory_preview_active", False)
+            or getattr(self, "_tour_memory_row_preview_active", False)
+        ):
+            return
+        self._tour_memory_preview_active = False
+        self._tour_memory_row_preview_active = False
+        self._apply_advanced_memory_panel_visibility()

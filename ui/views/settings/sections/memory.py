@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.app_settings import (
+    get_advanced_memory_unlocked,
     get_enable_memory_consolidation,
     get_enable_memory_enrichment,
     get_enable_memory_promotion,
@@ -43,7 +44,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     layout.setContentsMargins(15, 0, 15, 10)
     layout.setSpacing(15)
 
-    # --- Memory pipeline card ---
+    # --- Memory pipeline (simple / everyday) ---
     pipeline_card, pipeline_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     add_subsection_to_layout(pipeline_card_layout, "Memory pipeline", anchor="memory")
     pipeline_form_host, pipeline_form = _make_settings_form()
@@ -74,6 +75,56 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
     host.memory_enrichment_toggle.blockSignals(False)
     host.memory_enrichment_toggle.toggled.connect(host._on_memory_enrichment_toggled)
+
+    pipeline_form.addRow("", mem_row)
+    pipeline_card_layout.addWidget(pipeline_form_host)
+    layout.addWidget(pipeline_card)
+
+    # --- Advanced memory card (promotion / consolidation) ---
+    advanced_card, advanced_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    add_subsection_to_layout(
+        advanced_card_layout, "Advanced memory", anchor="advanced_memory"
+    )
+
+    _adv_memory_tip = (
+        "Advanced memory controls are not for everyday use.\n\n"
+        "Unlocks optional promotion and consolidation workers that adjust how "
+        "memories graduate into preferences and how recurring themes are highlighted "
+        "in Memory Manager.\n\n"
+        "Promotion and consolidation stay off until you enable them here."
+    )
+    host.advanced_memory_toggle = PrestigeToggle()
+    host.advanced_memory_toggle.setToolTip(_adv_memory_tip)
+    host.advanced_memory_label = QLabel("Show advanced memory settings")
+    host.advanced_memory_label.setToolTip(_adv_memory_tip)
+    host.advanced_memory_info_btn = host._make_settings_info_button(_adv_memory_tip)
+    adv_label_cluster = QWidget()
+    adv_label_layout = QHBoxLayout(adv_label_cluster)
+    adv_label_layout.setContentsMargins(0, 0, 0, 0)
+    adv_label_layout.setSpacing(6)
+    adv_label_layout.addWidget(host.advanced_memory_label)
+    adv_label_layout.addWidget(host.advanced_memory_info_btn)
+    advanced_row = QWidget()
+    advanced_row_layout = QHBoxLayout(advanced_row)
+    advanced_row_layout.setContentsMargins(0, 0, 0, 0)
+    advanced_row_layout.setSpacing(8)
+    advanced_row_layout.addWidget(
+        host.advanced_memory_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    advanced_row_layout.addWidget(adv_label_cluster)
+    advanced_row_layout.addStretch(1)
+    host.advanced_memory_toggle.blockSignals(True)
+    host.advanced_memory_toggle.setChecked(get_advanced_memory_unlocked())
+    host.advanced_memory_toggle.blockSignals(False)
+    host.advanced_memory_toggle.toggled.connect(host._on_advanced_memory_toggled)
+    advanced_card_layout.addWidget(advanced_row)
+
+    host.advanced_memory_panel = QWidget()
+    adv_panel_layout = QVBoxLayout(host.advanced_memory_panel)
+    adv_panel_layout.setContentsMargins(0, 8, 0, 0)
+    adv_panel_layout.setSpacing(12)
+
+    adv_form_host, adv_form = _make_settings_form()
 
     host.memory_promotion_toggle = PrestigeToggle()
     host.mem_promotion_label = QLabel("Promote well-used memories to preferences")
@@ -127,7 +178,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Those items get a gentle nudge in Memory Manager (marked for your "
         "review). Qube does not rewrite or delete them automatically, and "
         "this runs quietly in the background.\n\n"
-        "On by default. Turn off if you prefer to curate memories only yourself."
+        "Off by default. Turn on if you want recurring-theme hints in Memory Manager."
     )
     host.memory_consolidation_toggle.setToolTip(_mem_consolidation_tip)
     host.mem_consolidation_label.setToolTip(_mem_consolidation_tip)
@@ -154,12 +205,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     promo_preset_layout.addWidget(host.memory_promotion_preset_selector)
     promo_preset_layout.addStretch(1)
 
-    pipeline_form.addRow("", mem_row)
-    pipeline_form.addRow("", promo_row)
-    pipeline_form.addRow("", promo_preset_row)
-    pipeline_form.addRow("", consolidate_row)
-    pipeline_card_layout.addWidget(pipeline_form_host)
-    layout.addWidget(pipeline_card)
+    adv_form.addRow("", promo_row)
+    adv_form.addRow("", promo_preset_row)
+    adv_form.addRow("", consolidate_row)
+    adv_panel_layout.addWidget(adv_form_host)
+    host.advanced_memory_panel.setVisible(get_advanced_memory_unlocked())
+    advanced_card_layout.addWidget(host.advanced_memory_panel)
+    layout.addWidget(advanced_card)
 
     # --- Personalization card ---
     personal_card, personal_card_layout = begin_settings_section_card(host, is_dark=is_dark)

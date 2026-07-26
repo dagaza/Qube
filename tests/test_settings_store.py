@@ -230,6 +230,15 @@ class TestAppSettingsWithJsonStore(unittest.TestCase):
         reset_settings_store_for_tests()
         self.assertTrue(app_settings.get_memory_promotion_acknowledged())
 
+    def test_advanced_memory_unlocked_persists_across_reload(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            SettingsStore(user_path=self.user_path)
+        app_settings.set_advanced_memory_unlocked(True)
+        data = json.loads(self.user_path.read_text(encoding="utf-8"))
+        self.assertTrue(data.get("qube.settings.advanced_memory_unlocked"))
+        reset_settings_store_for_tests()
+        self.assertTrue(app_settings.get_advanced_memory_unlocked())
+
     def test_mcp_rag_and_web_defaults_are_off_on_first_launch(self) -> None:
         with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
             SettingsStore(user_path=self.user_path)

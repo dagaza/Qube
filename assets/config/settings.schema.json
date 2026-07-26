@@ -214,6 +214,11 @@
     "default": false,
     "description": "When true, shows advanced AI & Models chat template override for the native engine."
   },
+  "qube.settings.advanced_memory_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Memory settings including promotion and consolidation toggles."
+  },
   "qube.diagnostics.routing_debug_log_enabled": {
     "type": "boolean",
     "default": false,

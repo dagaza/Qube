@@ -46,6 +46,7 @@ KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
 KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
+KEY_ADVANCED_MEMORY_UNLOCKED = "qube.settings.advanced_memory_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
@@ -775,6 +776,14 @@ def get_advanced_chat_template_unlocked() -> bool:
 
 def set_advanced_chat_template_unlocked(unlocked: bool) -> None:
     _store().set(KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_memory_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_MEMORY_UNLOCKED, False))
+
+
+def set_advanced_memory_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_MEMORY_UNLOCKED, bool(unlocked))
 
 
 def get_stt_model_path() -> str:
