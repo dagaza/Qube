@@ -176,6 +176,41 @@ class TestProviderContractFake(unittest.TestCase):
         health = asyncio.run(provider.health())
         self.assertEqual(health.state, HealthState.DOWN)
 
+    def test_normalize_splits_multiline_filesystem_search_paths(self):
+        urn = CapabilityURN.build("mcp", "filesystem", "search-files")
+        root = "/fixture/workspace"
+        result = {
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        f"{root}/meeting-notes-alpha.txt\n"
+                        f"{root}/design-spec-beta.txt\n"
+                        f"{root}/summary-alpha.txt"
+                    ),
+                }
+            ]
+        }
+        hits = McpCapabilityProvider._normalize(
+            result,
+            source_cap=urn,
+            max_results=5,
+        )
+        self.assertEqual(len(hits), 3)
+        self.assertEqual(hits[0].title, "meeting-notes-alpha.txt")
+        self.assertEqual(hits[1].snippet, f"{root}/design-spec-beta.txt")
+
+    def test_normalize_keeps_single_block_for_non_search_capabilities(self):
+        urn = CapabilityURN.build("mcp", "docs", "read-doc")
+        text = "line one\nline two"
+        hits = McpCapabilityProvider._normalize(
+            {"content": [{"text": text}]},
+            source_cap=urn,
+            max_results=5,
+        )
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0].snippet, text[:600])
+
 
 @unittest.skipUnless(_MOCK_SERVER.exists(), "mock server fixture missing")
 class TestProviderRealStdio(unittest.TestCase):

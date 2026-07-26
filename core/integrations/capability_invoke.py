@@ -28,6 +28,12 @@ from core.integrations.capabilities import (
 from core.integrations.capabilities.persistence import AccessDecision
 from core.integrations.consent_controller import load_cached_descriptors
 from core.integrations.egress_summary import include_raw_tools_in_egress
+from core.integrations.mcp_configured_source import (
+    McpConfiguredBinding,
+    build_tool_call_arguments,
+    build_search_invoke_arg_sets,
+    merge_mcp_factory_kwargs,
+)
 from core.integrations.registry.provider_registry import (
     UnknownCapabilityProvider,
     create_capability_provider,
@@ -319,6 +325,9 @@ def invoke_gated_capability(
     ensure_providers_registered()
     kwargs = dict(provider_factory_kwargs or {})
     kwargs.setdefault("namespace", urn.namespace)
+    kwargs, mcp_binding = merge_mcp_factory_kwargs(urn.provider, urn.namespace, kwargs)
+    if mcp_binding is not None and adapter_id is None:
+        adapter_id = mcp_binding.adapter_id
 
     try:
         provider = create_capability_provider(urn.provider, **kwargs)
@@ -364,7 +373,8 @@ def invoke_gated_capability(
         return result
 
     try:
-        if live_descriptors is None:
+        should_discover = live_descriptors is None or mcp_binding is not None
+        if should_discover:
             discovered = _run(provider.discover())
             refreshed = resolve_descriptor_for_urn(urn, live_descriptors=discovered)
             if refreshed is not None:
@@ -392,8 +402,34 @@ def invoke_gated_capability(
                             dry_run=dry_run,
                         )
                     return result
+            elif mcp_binding is not None:
+                result = CapabilityInvokeResult(
+                    False,
+                    f"capability not available on MCP server: {urn}",
+                    descriptor=descriptor,
+                    urn=urn,
+                    dry_run=dry_run,
+                )
+                if record_egress and session_id and turn_id:
+                    _record_egress(
+                        session_id=session_id,
+                        turn_id=turn_id,
+                        urn=urn,
+                        descriptor=descriptor,
+                        allowed=False,
+                        reason=result.reason,
+                        latency_ms=(time.time() - t0) * 1000.0,
+                        dry_run=dry_run,
+                    )
+                return result
 
         invoke_urn = urn if urn.version else descriptor.urn
+        invoke_arg_sets = build_search_invoke_arg_sets(
+            descriptor,
+            query,
+            max_results=max_results,
+            binding=mcp_binding,
+        )
         ctx = InvokeContext(
             query=query,
             max_results=max_results,
@@ -402,13 +438,26 @@ def invoke_gated_capability(
             turn_id=str(turn_id) if turn_id is not None else None,
             dry_run=dry_run,
         )
-        hits = _run(
-            provider.invoke(
-                invoke_urn,
-                {"query": query, "max_results": max_results},
-                ctx=ctx,
+        hits = []
+        seen_snippets: set[str] = set()
+        for invoke_args in invoke_arg_sets:
+            batch = _run(
+                provider.invoke(
+                    invoke_urn,
+                    invoke_args,
+                    ctx=ctx,
+                )
             )
-        )
+            for hit in batch:
+                key = str(hit.snippet or hit.title or "").strip()
+                if not key or key in seen_snippets:
+                    continue
+                seen_snippets.add(key)
+                hits.append(hit)
+                if len(hits) >= max_results:
+                    break
+            if len(hits) >= max_results:
+                break
     except Exception as exc:
         logger.warning("[CapabilityInvoke] invoke failed for %s: %s", urn, exc)
         result = CapabilityInvokeResult(

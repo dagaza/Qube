@@ -3016,7 +3016,7 @@ class LLMWorker(QThread):
 
                 invoke_result, per_cap_results = invoke_preset_capability_bundle(
                     cap_preset_id,
-                    clean_prompt or self.prompt,
+                    original_query or self.prompt,
                     max_results=5,
                     session_id=cap_session_id,
                     turn_id=str(cap_turn_id) if cap_turn_id is not None else None,
@@ -3029,7 +3029,7 @@ class LLMWorker(QThread):
                 cap_steps = build_preset_capability_inspect_trace(
                     preset_id=cap_preset_id,
                     preset_label=preset_label,
-                    query=clean_prompt or self.prompt,
+                    query=original_query or self.prompt,
                     per_cap_results=per_cap_results,
                     bundle_result=invoke_result,
                     latency_ms=cap_latency_ms,
@@ -3037,7 +3037,7 @@ class LLMWorker(QThread):
             else:
                 invoke_result = invoke_gated_capability(
                     cap_urn,
-                    clean_prompt or self.prompt,
+                    original_query or self.prompt,
                     max_results=5,
                     session_id=cap_session_id,
                     turn_id=str(cap_turn_id) if cap_turn_id is not None else None,
@@ -3046,7 +3046,7 @@ class LLMWorker(QThread):
                 cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
                 cap_steps = build_capability_inspect_trace(
                     urn=cap_urn,
-                    query=clean_prompt or self.prompt,
+                    query=original_query or self.prompt,
                     allowed=invoke_result.allowed,
                     reason=invoke_result.reason,
                     rows=invoke_result.rows,
@@ -3063,7 +3063,7 @@ class LLMWorker(QThread):
             cap_trace_ctx = CapabilityTraceContext(
                 cap_steps=list(cap_steps),
                 query_raw=self.prompt,
-                query_resolved=clean_prompt or self.prompt,
+                query_resolved=original_query or self.prompt,
                 latency_ms=cap_latency_ms,
                 preset_id=cap_preset_id,
                 cap_urn=cap_urn,
@@ -3085,7 +3085,7 @@ class LLMWorker(QThread):
                 kept_rows = list(invoke_result.rows)
                 self._turn_evidence_bundle = build_generic_bundle(
                     query_raw=self.prompt,
-                    query_resolved=clean_prompt or self.prompt,
+                    query_resolved=original_query or self.prompt,
                     kept_rows=kept_rows,
                     rejected_count=0,
                     latency_ms=cap_latency_ms,
@@ -4130,18 +4130,29 @@ class LLMWorker(QThread):
                 "[LLM Worker] Injected composer attachment context (%d chars)",
                 len(attachment_ctx),
             )
-        if (
-            getattr(self, "_composer_knowledge_tool", None)
-            and not all_ui_sources
-            and tool_context.strip()
+        if tool_context.strip() and (
+            execution_route == "CAPABILITY"
+            or (
+                getattr(self, "_composer_knowledge_tool", None)
+                and not all_ui_sources
+            )
         ):
-            retrieval_prompt_body = tool_context.strip()
+            if retrieval_prompt_body:
+                retrieval_prompt_body = (
+                    f"{tool_context.strip()}\n\n{retrieval_prompt_body}"
+                )
+            else:
+                retrieval_prompt_body = tool_context.strip()
             logger.info(
-                "[LLM Worker] Composer web tool: injected web guidance (%d chars)",
-                len(retrieval_prompt_body),
+                "[LLM Worker] Injected capability/tool context (%d chars, route=%s)",
+                len(tool_context.strip()),
+                execution_route,
             )
         if retrieval_prompt_body:
             retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
+
+        has_retrieval_prompt = bool((retrieval_prompt_body or "").strip())
+        effective_has_retrieval = bool(all_ui_sources) or has_retrieval_prompt
 
         # Conversation @-ref: do not send unrelated prior turns from *this* session.
         # Otherwise the model answers from current-thread noise instead of the transcript.
@@ -4184,7 +4195,7 @@ class LLMWorker(QThread):
         )
         retrieval_wrapper_mode = resolve_retrieval_wrapper_mode(
             execution_route,
-            bool(all_ui_sources),
+            effective_has_retrieval,
             memory_only_sources=memory_only_sources,
         )
         self._stamp_discourse_on_decision(
@@ -4242,7 +4253,7 @@ class LLMWorker(QThread):
             execution_route=execution_route,
             follow_up=follow_up,
             prior_turn_unreliable=bool(prior_turn_unreliable),
-            has_retrieval_sources=bool(all_ui_sources),
+            has_retrieval_sources=effective_has_retrieval,
             history_turn_count=len(prompt_history),
             conversation_health=conversation_health,
         )
@@ -4317,7 +4328,7 @@ class LLMWorker(QThread):
             explicit_remember_body=explicit_remember_body or "",
             file_search_active=file_search_active,
             narrative_active=narrative_active,
-            has_retrieval_sources=bool(all_ui_sources),
+            has_retrieval_sources=effective_has_retrieval,
             engine_mode=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE),
             internal_nvidia_family=self._is_internal_nvidia_family(),
             retrieval_context=retrieval_prompt_body,

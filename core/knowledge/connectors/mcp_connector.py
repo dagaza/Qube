@@ -68,8 +68,19 @@ class McpConnector:
             save_descriptor_cache,
         )
         from core.integrations.providers.mcp import McpCapabilityProvider
+        from core.integrations.mcp_configured_source import augment_spawn_env_for_command
 
-        provider = McpCapabilityProvider(command=command, namespace=namespace)
+        cmd = [str(part) for part in command]
+        spawn_env = augment_spawn_env_for_command(
+            cmd,
+            dict(config.get("env") or {}) if isinstance(config.get("env"), dict) else None,
+        )
+        provider = McpCapabilityProvider(
+            command=cmd,
+            namespace=namespace,
+            env=spawn_env,
+            cwd=str(config.get("cwd") or "").strip() or None,
+        )
         try:
             descriptors = _run(provider.discover())
             if not descriptors:
@@ -162,8 +173,19 @@ class McpConnector:
             return False, "MCP command not configured"
 
         from core.integrations.providers.mcp import McpCapabilityProvider
+        from core.integrations.mcp_configured_source import augment_spawn_env_for_command
 
-        provider = McpCapabilityProvider(command=command, namespace=namespace)
+        cmd = [str(part) for part in command]
+        spawn_env = augment_spawn_env_for_command(
+            cmd,
+            dict(config.get("env") or {}) if isinstance(config.get("env"), dict) else None,
+        )
+        provider = McpCapabilityProvider(
+            command=cmd,
+            namespace=namespace,
+            env=spawn_env,
+            cwd=str(config.get("cwd") or "").strip() or None,
+        )
         try:
             descriptors = _run(provider.discover())
         except Exception as exc:

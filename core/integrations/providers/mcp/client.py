@@ -15,6 +15,7 @@ inside this package (P6). The rest of Qube depends only on the
 from __future__ import annotations
 
 import logging
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -41,6 +42,27 @@ from core.integrations.providers.mcp.transport import (
 )
 
 logger = logging.getLogger("Qube.Integrations.MCP.Client")
+
+
+def _is_filesystem_search_capability(source_cap: CapabilityURN) -> bool:
+    action = str(source_cap.action or "").strip().lower()
+    return "search" in action
+
+
+def _split_search_paths(text: str) -> list[str]:
+    paths: list[str] = []
+    for line in (text or "").splitlines():
+        candidate = line.strip()
+        if not candidate or candidate.lower() == "no matches found":
+            continue
+        paths.append(candidate)
+    return paths
+
+
+def _path_hit_title(path: str) -> str:
+    normalized = path.rstrip("\\/")
+    base = os.path.basename(normalized)
+    return base or normalized
 
 PROVIDER_ID = "mcp"
 _PROTOCOL_VERSION = "2024-11-05"
@@ -218,26 +240,46 @@ class McpCapabilityProvider:
         if not isinstance(content, list):
             return []
         hits: list[NormalizedHit] = []
-        for item in content[: max(1, max_results)]:
+        limit = max(1, max_results)
+        path_search = _is_filesystem_search_capability(source_cap)
+        for item in content:
             if isinstance(item, dict):
                 text = str(item.get("text") or item.get("snippet") or "")
-                title = str(item.get("title") or text[:120])
+                default_title = str(item.get("title") or text[:120])
                 url = item.get("url")
             else:
                 text = str(item)
-                title = text[:120]
+                default_title = text[:120]
                 url = None
             if not text:
                 continue
+            if text.strip().lower() == "no matches found":
+                continue
+            if path_search:
+                for path in _split_search_paths(text):
+                    hits.append(
+                        NormalizedHit(
+                            title=_path_hit_title(path),
+                            snippet=path,
+                            source_cap=source_cap,
+                            url=str(url) if url else None,
+                            full_text=None,
+                        )
+                    )
+                    if len(hits) >= limit:
+                        return hits
+                continue
             hits.append(
                 NormalizedHit(
-                    title=title,
+                    title=default_title,
                     snippet=text[:600],
                     source_cap=source_cap,
                     url=str(url) if url else None,
                     full_text=None,
                 )
             )
+            if len(hits) >= limit:
+                return hits
         return hits
 
     # -- observability ----------------------------------------------------
