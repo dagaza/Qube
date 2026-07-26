@@ -47,9 +47,11 @@ class ThemeStorage:
         *,
         settings_get: Callable[[str, object], object] | None = None,
         settings_set: Callable[[str, object], None] | None = None,
+        settings_contains: Callable[[str], bool] | None = None,
     ) -> None:
         self._get = settings_get
         self._set = settings_set
+        self._contains = settings_contains
         self._mode = ThemeMode.DARK
         self._scheme_id = DEFAULT_SCHEME_ID_DARK
         self._last_scheme_by_polarity: dict[str, str] = {}
@@ -113,6 +115,9 @@ class ThemeStorage:
     def appearance_preference(self) -> ThemeAppearancePreference | None:
         """Persisted appearance preference, or ``None`` for legacy scheme-driven mode."""
         if self._get is not None:
+            # Schema default is "dark", but unset means legacy scheme-driven load().
+            if self._contains is not None and not self._contains(KEY_THEME_APPEARANCE):
+                return None
             raw = self._get(KEY_THEME_APPEARANCE, None)
             if raw is None or str(raw).strip() == "":
                 return None
@@ -222,4 +227,8 @@ def theme_storage_from_app_settings() -> ThemeStorage:
     def _set(key: str, value: object) -> None:
         store.set(key, value)
 
-    return ThemeStorage(settings_get=_get, settings_set=_set)
+    return ThemeStorage(
+        settings_get=_get,
+        settings_set=_set,
+        settings_contains=store.contains,
+    )
