@@ -256,6 +256,18 @@ def test_render_stylesheet_user_bubble_uses_chat_tokens():
     assert theme.chat_user_bubble == "#89b4fa"
 
 
+def test_agent_message_frame_style_uses_surface_elevated():
+    from core.theme.widget_styles import AGENT_MESSAGE_FRAME, theme_style
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
+    enabled = theme_style(theme, AGENT_MESSAGE_FRAME, enabled=True)
+    disabled = theme_style(theme, AGENT_MESSAGE_FRAME, enabled=False)
+    assert theme.surface_elevated in enabled
+    assert "border-radius: 12px;" in enabled
+    assert "background: transparent" in disabled
+
+
 def test_render_stylesheet_editable_fields_use_surface_elevated():
     from core.theme.stylesheet import render_stylesheet
 
@@ -692,7 +704,13 @@ def test_sidebar_row_action_icon_color():
 
 
 def test_brand_qss_uses_theme_accent():
-    from ui.components.brand_buttons import BRAND_CAUTION, brand_qss_for_variant, BRAND_PRIMARY
+    from ui.components.brand_buttons import (
+        BRAND_CAUTION,
+        BRAND_SECONDARY,
+        brand_label_color,
+        brand_qss_for_variant,
+        BRAND_PRIMARY,
+    )
 
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(
@@ -705,7 +723,11 @@ def test_brand_qss_uses_theme_accent():
 
     caution_qss = brand_qss_for_variant(BRAND_CAUTION, theme)
     assert theme.warning in caution_qss
-    assert theme.brand_fg in caution_qss
+    assert brand_label_color(BRAND_CAUTION, theme) in caution_qss
+
+    secondary_qss = brand_qss_for_variant(BRAND_SECONDARY, theme)
+    assert brand_label_color(BRAND_SECONDARY, theme) in secondary_qss
+    assert theme.text_primary in secondary_qss
 
 
 def test_brand_identity_is_fixed_outside_theme_overrides():
@@ -1031,7 +1053,10 @@ def test_save_draft_blocks_low_contrast(tmp_path, monkeypatch):
 
 
 def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
-    from ui.components.theme_preview_panel import ThemePreviewPanel
+    from ui.components.theme_preview_panel import (
+        ThemeComponentsPreviewPanel,
+        ThemePreviewPanel,
+    )
 
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
@@ -1041,11 +1066,13 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
     scene = panel._conversations_live
     assert theme.chat_user_bubble in scene._user_bubble_frame.styleSheet()
     assert theme.color(WEB_INDICATOR_STANDBY) in scene._web_dot.styleSheet()
-    panel._components_cb.click()
+
+    components_panel = ThemeComponentsPreviewPanel()
+    components_panel.apply_theme(theme)
     _qube_app.processEvents()
-    components = panel._components_live
+    components = components_panel._components_live
     assert theme.accent in components._primary_btn.styleSheet()
-    comp_pixmap = panel._components_view.pixmap()
+    comp_pixmap = components_panel._components_view.pixmap()
     assert comp_pixmap is not None and not comp_pixmap.isNull()
     assert comp_pixmap.height() >= 200
 
@@ -1075,20 +1102,17 @@ def test_theme_preview_snapshot_matches_panel_width(_qube_app):
 
 
 def test_theme_preview_components_snapshot_sizes_offscreen_scene(_qube_app):
-    from ui.components.theme_preview_panel import ThemePreviewPanel
+    from ui.components.theme_preview_panel import ThemeComponentsPreviewPanel
 
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
-    panel = ThemePreviewPanel()
+    panel = ThemeComponentsPreviewPanel()
     panel.resize(520, 400)
     panel.apply_theme(theme)
-    _qube_app.processEvents()
-    panel._components_cb.click()
     _qube_app.processEvents()
     pixmap = panel._components_view.pixmap()
     assert pixmap is not None and not pixmap.isNull()
     assert pixmap.height() >= 200
-    assert panel._stack.currentWidget() is panel._components_view
 
 
 def test_themes_draft_preview_does_not_apply_globally(main_window):

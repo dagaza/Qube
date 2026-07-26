@@ -47,6 +47,16 @@
     "default": "",
     "description": "JSON map of draft wallpaper profiles pending Apply in Settings → Themes."
   },
+  "qube.ui.chat.assistant_message_background": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, assistant replies in chat use an elevated background card for readability over wallpapers."
+  },
+  "qube.ui.library.transcript_background": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, library document preview text uses an elevated background card for readability over wallpapers."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,

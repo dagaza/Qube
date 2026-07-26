@@ -29,6 +29,7 @@ HELP_ACTION_CHIP = "help_action_chip"
 USER_BUBBLE_FRAME = "user_bubble_frame"
 USER_BUBBLE_LABEL = "user_bubble_label"
 AGENT_MESSAGE_SHELL = "agent_message_shell"
+AGENT_MESSAGE_FRAME = "agent_message_frame"
 AGENT_COPY_BUTTON = "agent_copy_button"
 QUBE_RESPONSE_HEADER = "qube_response_header"
 PLACEHOLDER_MUTED = "placeholder_muted"
@@ -273,6 +274,12 @@ def _user_bubble_text(resolved: ResolvedTheme, *, high_contrast: bool) -> str:
     return resolved.chat_user_text
 
 
+def _agent_message_frame_bg(resolved: ResolvedTheme, *, high_contrast: bool) -> str:
+    if high_contrast:
+        return _user_bubble_frame(resolved, high_contrast=True)
+    return resolved.surface_elevated
+
+
 def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
     if role == GHOST_ICON_BUTTON:
         padding = kwargs.get("padding", "6px")
@@ -362,6 +369,21 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         return (
             f"font-size: {float(font_pt):.1f}pt; background: transparent; "
             f"border: none; padding: 0px;"
+        )
+    if role == AGENT_MESSAGE_FRAME:
+        if not kwargs.get("enabled", False):
+            object_name = kwargs.get("object_name", "AgentMessageContainer")
+            return f"QFrame#{object_name} {{ background: transparent; border: none; }}"
+        high_contrast = bool(kwargs.get("high_contrast", False))
+        bg = _agent_message_frame_bg(resolved, high_contrast=high_contrast)
+        border = resolved.border_subtle if resolved.is_dark else resolved.border
+        object_name = kwargs.get("object_name", "AgentMessageContainer")
+        return (
+            f"QFrame#{object_name} {{"
+            f" background-color: {bg};"
+            f" border: 1px solid {border};"
+            f" border-radius: 12px;"
+            f" }}"
         )
     if role == AGENT_COPY_BUTTON:
         return f"""

@@ -6,14 +6,15 @@ Logo/identity colors live in ``core.brand_identity`` and are not user-customizab
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import qtawesome as qta
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QPushButton
 
 from core.theme.accessors import theme_for
-from core.theme.color_utils import adjust_lightness, with_alpha
+from core.theme.color_utils import adjust_lightness, parse_color, with_alpha
 from core.theme.tokens import ResolvedTheme
 
 BRAND_PRIMARY = "primary"
@@ -25,6 +26,28 @@ BRAND_SECONDARY = "secondary"
 _BRAND_VARIANTS = frozenset(
     {BRAND_PRIMARY, BRAND_SUCCESS, BRAND_DANGER, BRAND_CAUTION, BRAND_SECONDARY}
 )
+_BRAND_ICON_SIZE = 16
+
+_QtaColor = Union[str, tuple[str, int]]
+
+
+def brand_label_color(
+    variant: str,
+    theme: ResolvedTheme,
+    *,
+    disabled: bool = False,
+) -> str:
+    """Foreground color for brand button labels and matching qtawesome icon tints."""
+    if variant not in _BRAND_VARIANTS:
+        raise ValueError(
+            f"Unknown brand variant: {variant!r}. "
+            f"Expected one of: {sorted(_BRAND_VARIANTS)}"
+        )
+    if disabled:
+        return _brand_disabled_colors(theme, variant)[1]
+    if variant == BRAND_SECONDARY:
+        return theme.text_primary
+    return theme.brand_fg
 
 
 def brand_fg_color(
@@ -32,17 +55,41 @@ def brand_fg_color(
     *,
     theme: ResolvedTheme | None = None,
     is_dark: bool = True,
+    disabled: bool = False,
 ) -> str:
-    if variant not in _BRAND_VARIANTS:
-        raise ValueError(
-            f"Unknown brand variant: {variant!r}. "
-            f"Expected one of: {sorted(_BRAND_VARIANTS)}"
+    resolved = theme_for(is_dark=is_dark, resolved=theme)
+    return brand_label_color(variant, resolved, disabled=disabled)
+
+
+def _qta_color(value: str) -> _QtaColor:
+    """Normalize theme token strings for qtawesome (hex or ``(hex, alpha)``)."""
+    rgba = parse_color(value)
+    if rgba.a >= 255:
+        return rgba.to_hex()
+    return (rgba.to_hex(), rgba.a)
+
+
+def _brand_button_icon(icon_name: str, fg: str, disabled_fg: str) -> QIcon:
+    """Bake qtawesome glyphs into static pixmaps so QSS/platform styles cannot retint them."""
+    icon = QIcon()
+    for mode, color in (
+        (QIcon.Mode.Normal, fg),
+        (QIcon.Mode.Active, fg),
+        (QIcon.Mode.Selected, fg),
+        (QIcon.Mode.Disabled, disabled_fg),
+    ):
+        pixmap = qta.icon(icon_name, color=_qta_color(color)).pixmap(
+            _BRAND_ICON_SIZE,
+            _BRAND_ICON_SIZE,
         )
-    return theme_for(is_dark=is_dark, resolved=theme).brand_fg
+        icon.addPixmap(pixmap, mode, QIcon.State.Off)
+    return icon
 
 
-def _brand_disabled_qss(theme: ResolvedTheme, variant: str) -> str:
-    """Muted variant tint when disabled — keeps semantic color visible (not flat gray)."""
+def _brand_disabled_colors(
+    theme: ResolvedTheme, variant: str
+) -> tuple[str, str, str]:
+    """Return ``(background, foreground, border)`` for a disabled brand button."""
     if variant == BRAND_PRIMARY:
         bg = with_alpha(theme.accent, 0.38)
         fg = with_alpha(theme.brand_fg, 0.65)
@@ -68,6 +115,12 @@ def _brand_disabled_qss(theme: ResolvedTheme, variant: str) -> str:
         bg = theme.brand_disabled_bg
         fg = theme.brand_disabled_fg
         border = with_alpha(theme.border, 0.35)
+    return bg, fg, border
+
+
+def _brand_disabled_qss(theme: ResolvedTheme, variant: str) -> str:
+    """Muted variant tint when disabled — keeps semantic color visible (not flat gray)."""
+    bg, fg, border = _brand_disabled_colors(theme, variant)
     return (
         f"background-color: {bg} !important;"
         f" color: {fg} !important;"
@@ -110,7 +163,7 @@ def _semantic_button_qss(
     pressed: str,
     border: str,
 ) -> str:
-    fg = theme.brand_fg
+    fg = brand_label_color(variant, theme)
     disabled = _brand_disabled_qss(theme, variant)
     return _scoped_brand_qss(
         selector,
@@ -205,7 +258,7 @@ def brand_qss_for_variant(
         bg = with_alpha("#000000", 0.2) if theme.is_dark else theme.surface_elevated
         hover = theme.surface_hover
         pressed = theme.surface_pressed
-        fg = theme.text_primary
+        fg = brand_label_color(BRAND_SECONDARY, theme)
         disabled = _brand_disabled_qss(theme, variant)
         return _scoped_brand_qss(
             selector,
@@ -251,19 +304,17 @@ def apply_brand_style(
     button.setCursor(Qt.CursorShape.PointingHandCursor)
     button.setStyleSheet(qss)
 
-    if icon_name is not None:
-        button.setIcon(
-            qta.icon(
-                icon_name,
-                color=resolved.brand_fg,
-                color_disabled=resolved.brand_disabled_fg,
-            )
-        )
-
     style = button.style()
     if style is not None:
         style.unpolish(button)
         style.polish(button)
+
+    if icon_name is not None:
+        fg = brand_label_color(variant, resolved)
+        disabled_fg = brand_label_color(variant, resolved, disabled=True)
+        button.setIconSize(QSize(_BRAND_ICON_SIZE, _BRAND_ICON_SIZE))
+        button.setIcon(_brand_button_icon(icon_name, fg, disabled_fg))
+
     button.update()
 
 

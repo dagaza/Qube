@@ -1,4 +1,4 @@
-"""Overlay strength mapping — lazy scrim computed at render time."""
+"""Readability overlay mapping — lazy scrim computed at render time."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from core.surface_fill.models import OverlaySpec
 from core.theme.color_utils import parse_color, with_alpha
 from core.theme.tokens import ResolvedTheme
 
-# Labels describe wallpaper appearance: vivid = artwork shows through brightest;
-# subtle = most muted for readability. Reader focus steps toward stronger overlay.
+# UI: Original / Balanced / Muted. Original = artwork shows through brightest;
+# Muted = strongest wash for readability. Reader focus steps toward Muted.
 OVERLAY_STRENGTH_BY_INCREASING_INTENSITY: tuple[OverlayStrength, ...] = (
     "vivid",
     "balanced",
@@ -36,7 +36,7 @@ def overlay_strength_with_boost(
     strength: OverlayStrength,
     boost: int = 0,
 ) -> OverlayStrength:
-    """Bump overlay one step (reader focus). Subtle stays at subtle (max overlay)."""
+    """Bump readability overlay one step (reader focus). Muted stays at Muted (max)."""
     if boost <= 0:
         return strength
     order = OVERLAY_STRENGTH_BY_INCREASING_INTENSITY

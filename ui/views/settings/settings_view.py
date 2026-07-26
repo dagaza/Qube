@@ -850,6 +850,9 @@ class SettingsView(
             sync_provider_status_panel(self, is_dark=is_dark)
 
         self._refresh_knowledge_access_ui(is_dark=is_dark)
+
+        if hasattr(self, "_apply_themes_action_button_styles"):
+            self._apply_themes_action_button_styles(is_dark)
     def _init_settings_layout(self) -> None:
         main_layout = QVBoxLayout(self)
         # Keep right breathing room, but let the sidebar reach top and bottom like Model Manager.

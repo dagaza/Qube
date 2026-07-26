@@ -34,6 +34,7 @@ def test_picker_lists_all_builtin_presets():
     ids = list_picker_preset_ids()
     assert "builtin.nebula" in ids
     assert "builtin.catppuccin-gradient" in ids
+    assert "builtin.catppuccin-latte-gradient" in ids
 
 
 def test_import_wallpaper_copies_to_user_dir(tmp_path, monkeypatch):
@@ -145,7 +146,14 @@ def test_settings_themes_wallpapers_section_builds(fresh_main_window):
 
     assert hasattr(settings, "themes_chat_wallpaper")
     assert hasattr(settings, "themes_library_wallpaper")
-    assert hasattr(settings, "themes_copy_chat_wallpaper_btn")
+    assert hasattr(settings, "themes_chat_wallpaper_card")
+    assert hasattr(settings, "themes_library_wallpaper_card")
+    assert hasattr(settings, "themes_library_revert_btn")
+    assert hasattr(settings, "themes_library_apply_btn")
+    assert hasattr(settings, "themes_library_preview_host")
+    assert hasattr(settings, "themes_components_preview_host")
+    assert hasattr(settings, "themes_assistant_message_background_cb")
+    assert hasattr(settings, "themes_library_transcript_background_cb")
     chat_wallpaper = (
         settings._draft_surface_profiles()
         .for_surface(SURFACE_CHAT_TRANSCRIPT)
@@ -268,7 +276,30 @@ def test_wallpaper_editor_adds_third_gradient_stop(fresh_main_window):
     assert wallpaper.stops[1].color == theme.accent
 
 
-def test_settings_copy_chat_wallpaper_to_library(fresh_main_window):
+def test_settings_components_preview_initializes(fresh_main_window, qtbot):
+    settings = fresh_main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._ensure_themes_components_preview_initialized()
+    assert hasattr(settings, "themes_components_preview_panel")
+    settings._refresh_themes_components_preview()
+    qtbot.wait(200)
+    pixmap = settings.themes_components_preview_panel._components_view.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+
+
+def test_settings_library_preview_initializes(fresh_main_window, qtbot):
+    settings = fresh_main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._ensure_themes_library_preview_initialized()
+    assert hasattr(settings, "themes_library_preview_panel")
+    settings._refresh_themes_library_preview()
+    qtbot.wait(200)
+    pixmap = settings.themes_library_preview_panel._view.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+
+
+def test_settings_library_wallpaper_apply_and_revert(fresh_main_window):
+    from core.surface_fill.constants import SURFACE_LIBRARY_PREVIEW
     from core.surface_fill.models import default_surface_profile_set
 
     settings = fresh_main_window.ensure_settings_view()
@@ -277,30 +308,30 @@ def test_settings_copy_chat_wallpaper_to_library(fresh_main_window):
     settings.select_settings_section("appearance.themes")
     settings._sync_themes_draft_from_applied()
 
-    chat_profile = SurfaceProfile(wallpaper=WallpaperPreset(preset_id="builtin.aurora"))
-    settings.themes_chat_wallpaper.set_profile(chat_profile, block_signals=True)
-    settings._set_draft_surface_profile(SURFACE_CHAT_TRANSCRIPT, chat_profile)
+    library_profile = SurfaceProfile(wallpaper=WallpaperPreset(preset_id="builtin.aurora"))
+    settings._set_draft_surface_profile(SURFACE_LIBRARY_PREVIEW, library_profile)
 
-    settings._on_themes_copy_chat_wallpaper_to_library()
+    assert settings._themes_library_card_is_dirty()
+    assert settings.themes_library_apply_btn.isEnabled()
 
-    library_profile = settings.themes_library_wallpaper.profile()
-    assert isinstance(library_profile.wallpaper, WallpaperPreset)
-    assert library_profile.wallpaper.preset_id == "builtin.aurora"
+    settings._apply_active_surface_profile(SURFACE_LIBRARY_PREVIEW, persist=False)
+    settings._sync_surface_draft_from_applied(SURFACE_LIBRARY_PREVIEW)
+    settings._update_themes_wallpaper_controls()
+    settings._update_themes_action_buttons()
+    assert not settings._themes_library_card_is_dirty()
     assert (
-        settings._draft_surface_profiles().for_surface(SURFACE_LIBRARY_PREVIEW)
-        == chat_profile
+        manager.surface_profiles_active.for_surface(SURFACE_LIBRARY_PREVIEW).wallpaper.preset_id
+        == "builtin.aurora"
     )
-    assert settings._themes_surface_profiles_dirty()
-    assert not settings.themes_copy_chat_wallpaper_btn.isEnabled()
 
-
-def test_settings_copy_chat_button_disabled_when_already_matched(fresh_main_window):
-    from core.surface_fill.models import default_surface_profile_set
-
-    settings = fresh_main_window.ensure_settings_view()
-    settings.select_settings_section("appearance.themes")
-    settings._sync_themes_draft_from_applied()
-    settings._update_themes_copy_chat_button_state()
-
-    assert settings._library_wallpaper_matches_chat()
-    assert not settings.themes_copy_chat_wallpaper_btn.isEnabled()
+    settings._set_draft_surface_profile(
+        SURFACE_LIBRARY_PREVIEW,
+        SurfaceProfile(wallpaper=WallpaperNone()),
+    )
+    assert settings._themes_library_card_is_dirty()
+    settings._on_themes_library_revert_clicked()
+    assert not settings._themes_library_card_is_dirty()
+    assert (
+        manager.surface_profiles_active.for_surface(SURFACE_LIBRARY_PREVIEW).wallpaper.preset_id
+        == "builtin.aurora"
+    )

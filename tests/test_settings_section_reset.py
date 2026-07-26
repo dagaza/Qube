@@ -55,6 +55,8 @@ class SettingsSectionResetTests(unittest.TestCase):
         self.assertIn(app_settings.KEY_UI_COLOR_SCHEME_ID, keys)
         self.assertIn(app_settings.KEY_UI_THEME_APPEARANCE, keys)
         self.assertIn(app_settings.KEY_LAST_SCHEME_DARK, keys)
+        self.assertIn(app_settings.KEY_ASSISTANT_MESSAGE_BACKGROUND, keys)
+        self.assertIn(app_settings.KEY_LIBRARY_TRANSCRIPT_BACKGROUND, keys)
 
 
 if __name__ == "__main__":

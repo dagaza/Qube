@@ -39,7 +39,11 @@ from core.surface_fill.storage import (
 )
 from core.surface_fill.validation import SurfaceFillValidator
 from core.theme.manager import ThemeManager
-from core.theme.schemes import BUILTIN_SCHEMES, DEFAULT_SCHEME_ID_DARK
+from core.theme.schemes import (
+    BUILTIN_CATPUCCIN_LATTE_ID,
+    BUILTIN_SCHEMES,
+    DEFAULT_SCHEME_ID_DARK,
+)
 from core.theme.storage import ThemeStorage
 from core.theme.tokens import ThemeMode
 
@@ -106,8 +110,35 @@ def test_theme_default_resolves_to_family_preset():
     assert resolved.wallpaper.stops[0].color == "#1e1e2e"
 
 
+def test_resolver_theme_default_catppuccin_latte():
+    resolver = SurfaceFillResolver()
+    scheme = BUILTIN_SCHEMES[BUILTIN_CATPUCCIN_LATTE_ID]
+    profile = SurfaceProfile(wallpaper=WallpaperThemeDefault())
+    resolved = resolver.resolve_profile(
+        profile,
+        surface_id=SURFACE_CHAT_TRANSCRIPT,
+        scheme=scheme,
+        family="catppuccin",
+        mode=ThemeMode.LIGHT,
+    )
+    assert isinstance(resolved.wallpaper, WallpaperGradient)
+    assert resolved.wallpaper.stops[0].color == "#eff1f5"
+    assert resolved.wallpaper.stops[1].color == "#e6e9ef"
+
+
 def test_theme_default_preset_id_for_nord():
     assert theme_default_preset_id(family="nord", base_mode="dark") == "builtin.mist"
+
+
+def test_theme_default_preset_id_for_catppuccin_light():
+    assert (
+        theme_default_preset_id(family="catppuccin", base_mode="light")
+        == "builtin.catppuccin-latte-gradient"
+    )
+    assert (
+        theme_default_preset_id(family="catppuccin", base_mode="dark")
+        == "builtin.catppuccin-gradient"
+    )
 
 
 def test_preset_wallpaper_expands():
@@ -365,6 +396,7 @@ def test_preset_catalog_includes_documented_ids():
         "builtin.ocean",
         "builtin.slate-gradient",
         "builtin.catppuccin-gradient",
+        "builtin.catppuccin-latte-gradient",
     ):
         assert preset_exists(preset_id)
 

@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 from core.theme.constants import UNRESOLVED_TOKEN_COLOR
 from ui.components.brand_buttons import (
     apply_brand_caution,
+    apply_brand_danger,
     apply_brand_primary,
     apply_brand_secondary,
 )
@@ -32,6 +33,20 @@ from ui.views.settings.widgets import (
 
 _THEMES_ACTION_BTN_MIN_WIDTH = 96
 _THEMES_ACTION_BTN_MIN_HEIGHT = 36
+_THEMES_PREVIEW_PLACEHOLDER_MIN_HEIGHT = 280
+
+
+def _initial_swatch_color(host, token_key: str) -> str:
+    """Resolve a token color at section build time when the theme manager is available."""
+    win = host.window()
+    manager = getattr(win, "theme_manager", None) if win is not None else None
+    if manager is None:
+        return UNRESOLVED_TOKEN_COLOR
+    try:
+        values = manager.preview_resolve(scheme_id=manager.scheme_id).core_tokens().as_dict()
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        return UNRESOLVED_TOKEN_COLOR
+    return values.get(token_key, UNRESOLVED_TOKEN_COLOR)
 
 
 def _style_themes_action_button(btn: QPushButton) -> None:
@@ -58,6 +73,71 @@ _ADVANCED_THEME_TOKENS: tuple[tuple[str, str], ...] = (
     ("error", "Error"),
     ("info", "Info"),
 )
+
+
+def _add_themes_action_row(
+    layout: QVBoxLayout,
+    host,
+    *,
+    reset_attr: str,
+    revert_attr: str,
+    cancel_attr: str,
+    apply_attr: str,
+    reset_object_name: str,
+    revert_object_name: str,
+    cancel_object_name: str,
+    apply_object_name: str,
+    reset_handler,
+    revert_handler,
+    cancel_handler,
+    apply_handler,
+    reset_tooltip: str,
+    revert_tooltip: str,
+    cancel_tooltip: str,
+    apply_tooltip: str,
+    is_dark: bool,
+) -> None:
+    row = QHBoxLayout()
+    row.setSpacing(10)
+
+    reset_btn = QPushButton("Reset to default")
+    reset_btn.setObjectName(reset_object_name)
+    reset_btn.setToolTip(reset_tooltip)
+    reset_btn.clicked.connect(reset_handler)
+    apply_brand_danger(reset_btn, icon_name="fa5s.undo", is_dark=is_dark)
+    _style_themes_action_button(reset_btn)
+    row.addWidget(reset_btn)
+    setattr(host, reset_attr, reset_btn)
+
+    revert_btn = QPushButton("Revert")
+    revert_btn.setObjectName(revert_object_name)
+    revert_btn.setToolTip(revert_tooltip)
+    revert_btn.clicked.connect(revert_handler)
+    apply_brand_caution(revert_btn, icon_name="fa5s.undo", is_dark=is_dark)
+    _style_themes_action_button(revert_btn)
+    row.addWidget(revert_btn)
+    setattr(host, revert_attr, revert_btn)
+
+    cancel_btn = QPushButton("Cancel")
+    cancel_btn.setObjectName(cancel_object_name)
+    cancel_btn.setToolTip(cancel_tooltip)
+    cancel_btn.clicked.connect(cancel_handler)
+    apply_brand_secondary(cancel_btn, is_dark=is_dark)
+    _style_themes_action_button(cancel_btn)
+    row.addWidget(cancel_btn)
+    setattr(host, cancel_attr, cancel_btn)
+
+    apply_btn = QPushButton("Apply")
+    apply_btn.setObjectName(apply_object_name)
+    apply_btn.setToolTip(apply_tooltip)
+    apply_btn.clicked.connect(apply_handler)
+    apply_brand_primary(apply_btn, is_dark=is_dark)
+    _style_themes_action_button(apply_btn)
+    row.addWidget(apply_btn)
+    setattr(host, apply_attr, apply_btn)
+
+    row.addStretch()
+    layout.addLayout(row)
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -146,7 +226,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     customize_card, customize_layout = begin_settings_section_card(host, is_dark=is_dark)
     host.themes_customize_card = customize_card
-    add_subsection_to_layout(customize_layout, "Customize")
+    host.themes_theme_colors_card = customize_card
+    add_subsection_to_layout(customize_layout, "Theme colors")
     host.themes_identity_label = QLabel("")
     host.themes_identity_label.setObjectName("SettingsHint")
     host.themes_identity_label.setWordWrap(True)
@@ -154,12 +235,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     customize_layout.addWidget(
         make_settings_hint(
             "Adjust core colors for the draft preview. Changes apply globally only "
-            "after Apply, or persist when you Save as a custom theme."
+            "after you press Apply below, or persist when you Save as a custom theme."
         )
     )
     host.themes_color_swatches: dict[str, ThemeColorSwatch] = {}
     for token_key, label in _SIMPLE_THEME_TOKENS:
-        swatch = ThemeColorSwatch(label, UNRESOLVED_TOKEN_COLOR, parent=host, token_key=token_key)
+        swatch = ThemeColorSwatch(
+            label,
+            _initial_swatch_color(host, token_key),
+            parent=host,
+            token_key=token_key,
+        )
         swatch.colorChanged.connect(
             lambda color, key=token_key: host._on_themes_color_changed(key, color)
         )
@@ -178,13 +264,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_contrast_status.setWordWrap(True)
     customize_layout.addWidget(host.themes_contrast_status)
 
-    host.themes_reset_customization_btn = QPushButton("Reset customization")
-    host.themes_reset_customization_btn.setToolTip(
-        "Clear draft color overrides and restore the selected theme defaults"
-    )
-    host.themes_reset_customization_btn.clicked.connect(host._on_themes_reset_customization)
-    customize_layout.addWidget(host.themes_reset_customization_btn)
-
     host.themes_advanced_toggle, adv_row, host.themes_advanced_panel = make_disclosure_row(
         host,
         "Advanced colors",
@@ -197,23 +276,78 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_advanced_toggle.toggled.connect(host.themes_advanced_panel.setVisible)
     customize_layout.addWidget(adv_row)
     for token_key, label in _ADVANCED_THEME_TOKENS:
-        swatch = ThemeColorSwatch(label, UNRESOLVED_TOKEN_COLOR, parent=host, token_key=token_key)
+        swatch = ThemeColorSwatch(
+            label,
+            _initial_swatch_color(host, token_key),
+            parent=host,
+            token_key=token_key,
+        )
         swatch.colorChanged.connect(
             lambda color, key=token_key: host._on_themes_color_changed(key, color)
         )
         host.themes_color_swatches[token_key] = swatch
         host.themes_advanced_panel.layout().addWidget(swatch)
     customize_layout.addWidget(host.themes_advanced_panel)
+
+    add_subsection_to_layout(customize_layout, "Preview")
+    customize_layout.addWidget(
+        make_settings_hint(
+            "Miniature Settings page with app nav, settings sidebar, mainstage "
+            "canvas, section cards, and form controls using your draft colors."
+        )
+    )
+    host.themes_components_preview_host = QWidget()
+    host.themes_components_preview_layout = QVBoxLayout(host.themes_components_preview_host)
+    host.themes_components_preview_layout.setContentsMargins(0, 0, 0, 0)
+    host.themes_components_preview_layout.setSpacing(0)
+    host.themes_components_preview_placeholder = QWidget(parent=host)
+    host.themes_components_preview_placeholder.setMinimumHeight(
+        _THEMES_PREVIEW_PLACEHOLDER_MIN_HEIGHT
+    )
+    host.themes_components_preview_layout.addWidget(host.themes_components_preview_placeholder)
+    customize_layout.addWidget(host.themes_components_preview_host)
+    host.themes_components_preview_card = customize_card
+
+    _add_themes_action_row(
+        customize_layout,
+        host,
+        reset_attr="themes_colors_reset_btn",
+        revert_attr="themes_colors_revert_btn",
+        cancel_attr="themes_colors_cancel_btn",
+        apply_attr="themes_colors_apply_btn",
+        reset_object_name="ThemesColorsResetButton",
+        revert_object_name="ThemesColorsRevertButton",
+        cancel_object_name="ThemesColorsCancelButton",
+        apply_object_name="ThemesColorsApplyButton",
+        reset_handler=host._on_themes_colors_reset_clicked,
+        revert_handler=host._on_themes_colors_revert_clicked,
+        cancel_handler=host._on_themes_colors_cancel_clicked,
+        apply_handler=host._on_themes_colors_apply_clicked,
+        reset_tooltip=(
+            "Reset the color draft to this theme preset's defaults. "
+            "The running app is unchanged until you press Apply."
+        ),
+        revert_tooltip=(
+            "Restore the color draft to the colors currently applied in the running app."
+        ),
+        cancel_tooltip="Discard unstaged color changes (same as Revert).",
+        apply_tooltip="Apply the color draft to the running app.",
+        is_dark=is_dark,
+    )
+
     layout.addWidget(customize_card)
 
-    wallpapers_card, wallpapers_layout = begin_settings_section_card(host, is_dark=is_dark)
-    host.themes_wallpapers_card = wallpapers_card
-    add_subsection_to_layout(wallpapers_layout, "Wallpapers")
-    wallpapers_layout.addWidget(
+    chat_wallpaper_card, chat_wallpaper_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    host.themes_chat_wallpaper_card = chat_wallpaper_card
+    # Backward-compatible alias (single card before split).
+    host.themes_wallpapers_card = chat_wallpaper_card
+    add_subsection_to_layout(chat_wallpaper_layout, "Chat wallpaper")
+    chat_wallpaper_layout.addWidget(
         make_settings_hint(
-            "Decorate chat and library transcript backgrounds. Wallpapers preview "
-            "here until you press Apply; they never change core theme tokens. "
-            "Use Same as Chat to mirror the library preview to your chat wallpaper."
+            "Decorate the Conversations transcript background. Wallpapers preview "
+            "here until you press Apply; they never change core theme tokens."
         )
     )
     host.themes_chat_wallpaper = WallpaperEditorWidget("Chat wallpaper", parent=host)
@@ -221,8 +355,79 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_chat_wallpaper.importImageRequested.connect(
         lambda: host._on_wallpaper_import_requested(host.themes_chat_wallpaper)
     )
-    wallpapers_layout.addWidget(host.themes_chat_wallpaper)
+    chat_wallpaper_layout.addWidget(host.themes_chat_wallpaper)
 
+    host.themes_assistant_message_background_cb = QCheckBox(
+        "Assistant message background"
+    )
+    host.themes_assistant_message_background_cb.setToolTip(
+        "Give assistant replies an elevated background card so text stays "
+        "readable over chat wallpapers."
+    )
+    host.themes_assistant_message_background_cb.toggled.connect(
+        host._on_themes_assistant_message_background_toggled
+    )
+    chat_wallpaper_layout.addWidget(host.themes_assistant_message_background_cb)
+
+    add_subsection_to_layout(chat_wallpaper_layout, "Preview")
+    chat_wallpaper_layout.addWidget(
+        make_settings_hint(
+            "Miniature Conversations page shell with the tools pane open."
+        )
+    )
+    host.themes_preview_host = QWidget()
+    host.themes_preview_layout = QVBoxLayout(host.themes_preview_host)
+    host.themes_preview_layout.setContentsMargins(0, 0, 0, 0)
+    host.themes_preview_layout.setSpacing(0)
+    host.themes_preview_placeholder = QWidget(parent=host)
+    host.themes_preview_layout.addWidget(host.themes_preview_placeholder)
+    chat_wallpaper_layout.addWidget(host.themes_preview_host)
+    host.themes_preview_card = chat_wallpaper_card
+
+    _add_themes_action_row(
+        chat_wallpaper_layout,
+        host,
+        reset_attr="themes_reset_btn",
+        revert_attr="themes_revert_btn",
+        cancel_attr="themes_cancel_btn",
+        apply_attr="themes_apply_btn",
+        reset_object_name="ThemesResetButton",
+        revert_object_name="ThemesRevertButton",
+        cancel_object_name="ThemesCancelButton",
+        apply_object_name="ThemesApplyButton",
+        reset_handler=host._on_themes_chat_reset_clicked,
+        revert_handler=host._on_themes_revert_clicked,
+        cancel_handler=host._on_themes_cancel_clicked,
+        apply_handler=host._on_themes_apply_clicked,
+        reset_tooltip=(
+            "Reset the chat wallpaper draft to theme default (wallpaper follows the "
+            "active theme). Does not change theme preset, appearance, or custom colors."
+        ),
+        revert_tooltip=(
+            "Restore the chat wallpaper and theme-preset draft to what is currently "
+            "applied in the running app."
+        ),
+        cancel_tooltip=(
+            "Discard unstaged chat wallpaper and theme-preset changes (same as Revert)."
+        ),
+        apply_tooltip=(
+            "Apply the theme-preset and chat wallpaper draft to the running app."
+        ),
+        is_dark=is_dark,
+    )
+    layout.addWidget(chat_wallpaper_card)
+
+    library_wallpaper_card, library_wallpaper_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    host.themes_library_wallpaper_card = library_wallpaper_card
+    add_subsection_to_layout(library_wallpaper_layout, "Library wallpaper")
+    library_wallpaper_layout.addWidget(
+        make_settings_hint(
+            "Decorate the library document preview background. Wallpapers preview "
+            "here until you press Apply; they never change core theme tokens."
+        )
+    )
     host.themes_library_wallpaper = WallpaperEditorWidget("Library wallpaper", parent=host)
     host.themes_library_wallpaper.profileChanged.connect(
         host._on_themes_library_wallpaper_changed
@@ -230,60 +435,64 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_library_wallpaper.importImageRequested.connect(
         lambda: host._on_wallpaper_import_requested(host.themes_library_wallpaper)
     )
-    wallpapers_layout.addWidget(host.themes_library_wallpaper)
+    library_wallpaper_layout.addWidget(host.themes_library_wallpaper)
 
-    host.themes_copy_chat_wallpaper_btn = QPushButton("Same as Chat")
-    host.themes_copy_chat_wallpaper_btn.setToolTip(
-        "Copy the chat wallpaper and overlay settings to the library preview"
+    host.themes_library_transcript_background_cb = QCheckBox(
+        "Library transcript background"
     )
-    host.themes_copy_chat_wallpaper_btn.clicked.connect(
-        host._on_themes_copy_chat_wallpaper_to_library
+    host.themes_library_transcript_background_cb.setToolTip(
+        "Give the library document preview an elevated background card so text "
+        "stays readable over library wallpapers."
     )
-    wallpapers_layout.addWidget(host.themes_copy_chat_wallpaper_btn)
-    layout.addWidget(wallpapers_card)
+    host.themes_library_transcript_background_cb.toggled.connect(
+        host._on_themes_library_transcript_background_toggled
+    )
+    library_wallpaper_layout.addWidget(host.themes_library_transcript_background_cb)
 
-    preview_card, preview_layout = begin_settings_section_card(host, is_dark=is_dark)
-    host.themes_preview_card = preview_card
-    add_subsection_to_layout(preview_layout, "Preview")
-    preview_layout.addWidget(
+    add_subsection_to_layout(library_wallpaper_layout, "Preview")
+    library_wallpaper_layout.addWidget(
         make_settings_hint(
-            "Miniature Conversations shell with the tools pane open. "
-            "Switch to More components for settings fields, memory rows, "
-            "status chips, and tooltips."
+            "Miniature Library page shell with document list sidebar, readability "
+            "toolbar, and sample transcript text."
         )
     )
-    host.themes_preview_layout = preview_layout
-    host.themes_preview_placeholder = QWidget(parent=host)
-    preview_layout.addWidget(host.themes_preview_placeholder)
-    layout.addWidget(preview_card)
+    host.themes_library_preview_host = QWidget()
+    host.themes_library_preview_layout = QVBoxLayout(host.themes_library_preview_host)
+    host.themes_library_preview_layout.setContentsMargins(0, 0, 0, 0)
+    host.themes_library_preview_layout.setSpacing(0)
+    host.themes_library_preview_placeholder = QWidget(parent=host)
+    host.themes_library_preview_layout.addWidget(host.themes_library_preview_placeholder)
+    library_wallpaper_layout.addWidget(host.themes_library_preview_host)
+    host.themes_library_preview_card = library_wallpaper_card
 
-    actions_row = QHBoxLayout()
-    actions_row.setSpacing(10)
-    host.themes_revert_btn = QPushButton("Revert")
-    host.themes_revert_btn.setObjectName("ThemesRevertButton")
-    host.themes_revert_btn.setToolTip("Reset draft to the currently applied theme")
-    host.themes_revert_btn.clicked.connect(host._on_themes_revert_clicked)
-    apply_brand_caution(host.themes_revert_btn, icon_name="fa5s.undo")
-    _style_themes_action_button(host.themes_revert_btn)
-    actions_row.addWidget(host.themes_revert_btn)
-
-    host.themes_cancel_btn = QPushButton("Cancel")
-    host.themes_cancel_btn.setObjectName("ThemesCancelButton")
-    host.themes_cancel_btn.setToolTip("Discard draft changes")
-    host.themes_cancel_btn.clicked.connect(host._on_themes_cancel_clicked)
-    apply_brand_secondary(host.themes_cancel_btn)
-    _style_themes_action_button(host.themes_cancel_btn)
-    actions_row.addWidget(host.themes_cancel_btn)
-
-    host.themes_apply_btn = QPushButton("Apply")
-    host.themes_apply_btn.setObjectName("ThemesApplyButton")
-    host.themes_apply_btn.setToolTip("Apply draft theme to the running app")
-    host.themes_apply_btn.clicked.connect(host._on_themes_apply_clicked)
-    apply_brand_primary(host.themes_apply_btn)
-    _style_themes_action_button(host.themes_apply_btn)
-    actions_row.addWidget(host.themes_apply_btn)
-    actions_row.addStretch()
-    layout.addLayout(actions_row)
+    _add_themes_action_row(
+        library_wallpaper_layout,
+        host,
+        reset_attr="themes_library_reset_btn",
+        revert_attr="themes_library_revert_btn",
+        cancel_attr="themes_library_cancel_btn",
+        apply_attr="themes_library_apply_btn",
+        reset_object_name="ThemesLibraryResetButton",
+        revert_object_name="ThemesLibraryRevertButton",
+        cancel_object_name="ThemesLibraryCancelButton",
+        apply_object_name="ThemesLibraryApplyButton",
+        reset_handler=host._on_themes_library_reset_clicked,
+        revert_handler=host._on_themes_library_revert_clicked,
+        cancel_handler=host._on_themes_library_cancel_clicked,
+        apply_handler=host._on_themes_library_apply_clicked,
+        reset_tooltip=(
+            "Reset the library wallpaper draft to theme default (wallpaper follows "
+            "the active theme). The running app is unchanged until you press Apply."
+        ),
+        revert_tooltip=(
+            "Restore the library wallpaper draft to what is currently applied in "
+            "the running app."
+        ),
+        cancel_tooltip="Discard unstaged library wallpaper changes (same as Revert).",
+        apply_tooltip="Apply the library wallpaper draft to the running app.",
+        is_dark=is_dark,
+    )
+    layout.addWidget(library_wallpaper_card)
 
     share_card, share_layout = begin_settings_section_card(host, is_dark=is_dark)
     host.themes_share_card = share_card

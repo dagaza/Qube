@@ -29,7 +29,7 @@ theme settings, colour scheme, dark mode, light mode, custom theme, chat wallpap
 2. **Pick a colour scheme** — Use the **Theme** picker for built-in families (Catppuccin, Nord, …) or custom JSON themes from `~/.qube/themes/`.
 3. **Switch variants** — When a family has both dark and light members, use the variant row. Families without a matching variant show a fallback suggestion.
 4. **Customize colours** — Adjust swatches under **Customize**; enable **Auto-adjust text for readable contrast** if body text fails WCAG checks. Press **Reset customization** to clear colour overrides.
-5. **Set chat wallpaper** — Under **Wallpapers → Chat wallpaper**, choose **None**, **Theme default**, a **Preset**, solid **Color**, **Gradient** (2–5 color stops), or **Import image**. Pick **Overlay strength** (**Subtle**, **Balanced**, or **Vivid**) to control the readability scrim.
+5. **Set chat wallpaper** — Under **Wallpapers → Chat wallpaper**, choose **None**, **Theme default**, a **Preset**, solid **Color**, **Gradient** (2–5 color stops), or **Import image**. Pick **Readability overlay** (**Original**, **Balanced**, or **Muted**) to control the readability scrim.
 6. **Set library wallpaper** — Configure **Library wallpaper** the same way for the library document preview pane.
 7. **Import a photo** — Choose **Import image** and pick a PNG, JPEG, or WebP file. Large files are copied to `~/.qube/wallpapers/` and automatically downscaled when needed.
 8. **Apply or revert** — **Apply** pushes the draft theme and wallpapers to the running app. **Revert** or **Cancel** restores the last applied state.
@@ -42,7 +42,7 @@ theme settings, colour scheme, dark mode, light mode, custom theme, chat wallpap
 | **None** | Theme background shows through the transcript area |
 | **Theme default** | Resolver picks a preset matched to your colour scheme family |
 | **Preset** | Bundled gradient, solid, or photo from the thumbnail grid |
-| **Overlay strength** | Subtle / Balanced / Vivid scrim over the wallpaper for message readability |
+| **Readability overlay** | Original / Balanced / Muted scrim over the wallpaper for message readability |
 | **High contrast** (Conversations toolbar) | Suppresses wallpapers at runtime |
 | **Reader focus** (Conversations toolbar) | Boosts overlay one step for easier reading |
 

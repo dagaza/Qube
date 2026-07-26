@@ -77,9 +77,9 @@ _MODE_LABELS: tuple[tuple[str, str], ...] = (
 )
 
 _OVERLAY_LABELS: dict[str, str] = {
-    "subtle": "Subtle",
+    "vivid": "Original",
     "balanced": "Balanced",
-    "vivid": "Vivid",
+    "subtle": "Muted",
 }
 
 _GRADIENT_DIRECTION_LABELS: dict[str, str] = {
@@ -94,6 +94,7 @@ _PRESET_THUMB_WIDTH = 96
 _PRESET_THUMB_HEIGHT = 56
 _PRESET_LABEL_MIN_HEIGHT = 34
 _PRESET_GRID_COLUMNS = 3
+_WALLPAPER_SOLID_PANEL_MARGINS = (4, 8, 4, 8)
 
 
 def _style_wallpaper_gradient_add_stop_button(
@@ -478,7 +479,7 @@ class WallpaperEditorWidget(QWidget):
             QSizePolicy.Policy.Minimum,
         )
         solid_layout = QHBoxLayout(solid_panel)
-        solid_layout.setContentsMargins(0, 0, 0, 0)
+        solid_layout.setContentsMargins(*_WALLPAPER_SOLID_PANEL_MARGINS)
         self._solid_swatch = ThemeColorSwatch(
             "Wallpaper color",
             UNRESOLVED_TOKEN_COLOR,
@@ -565,11 +566,11 @@ class WallpaperEditorWidget(QWidget):
 
         overlay_row = QHBoxLayout()
         overlay_row.setSpacing(12)
-        overlay_row.addWidget(QLabel("Overlay strength"))
+        overlay_row.addWidget(QLabel("Readability overlay"))
         self._overlay_group = QButtonGroup(self)
         self._overlay_group.setExclusive(True)
         self._overlay_cbs: dict[str, QCheckBox] = {}
-        for strength in ("subtle", "balanced", "vivid"):
+        for strength in ("vivid", "balanced", "subtle"):
             cb = QCheckBox(_OVERLAY_LABELS[strength])
             cb.setProperty("overlay_strength", strength)
             self._overlay_group.addButton(cb)
@@ -580,10 +581,6 @@ class WallpaperEditorWidget(QWidget):
             )
         overlay_row.addStretch()
         root.addLayout(overlay_row)
-
-        self._reset_btn = QPushButton("Reset to theme default")
-        self._reset_btn.clicked.connect(self._on_reset_clicked)
-        root.addWidget(self._reset_btn)
 
         self.set_profile(self._profile, block_signals=True)
         self._refresh_preset_tile_styles()
@@ -1035,14 +1032,6 @@ class WallpaperEditorWidget(QWidget):
             SurfaceProfile(
                 wallpaper=self._profile.wallpaper,
                 overlay=OverlaySpec(strength=strength),  # type: ignore[arg-type]
-            )
-        )
-
-    def _on_reset_clicked(self) -> None:
-        self.set_profile(
-            SurfaceProfile(
-                wallpaper=WallpaperThemeDefault(),
-                overlay=OverlaySpec(),
             )
         )
 

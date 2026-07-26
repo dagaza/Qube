@@ -90,6 +90,18 @@ _BUILTIN_PRESETS: dict[str, PresetDefinition] = {
             ),
         ),
     ),
+    "builtin.catppuccin-latte-gradient": PresetDefinition(
+        id="builtin.catppuccin-latte-gradient",
+        name="Catppuccin Latte gradient",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="vertical",
+            stops=(
+                GradientStop(0.0, "#eff1f5"),
+                GradientStop(1.0, "#e6e9ef"),
+            ),
+        ),
+    ),
     "builtin.nebula": PresetDefinition(
         id="builtin.nebula",
         name="Nebula",
@@ -114,7 +126,7 @@ _BUILTIN_PRESETS: dict[str, PresetDefinition] = {
 }
 
 # Family + polarity → default preset id for theme_default resolution (§14).
-_FAMILY_DEFAULT_PRESET: dict[str, str] = {
+_FAMILY_DEFAULT_PRESET_DARK: dict[str, str] = {
     "catppuccin": "builtin.catppuccin-gradient",
     "nord": "builtin.mist",
     "gruvbox": "builtin.paper",
@@ -124,7 +136,18 @@ _FAMILY_DEFAULT_PRESET: dict[str, str] = {
     "solarized": "builtin.mist",
 }
 
-_FALLBACK_DEFAULT_PRESET = "builtin.mist"
+_FAMILY_DEFAULT_PRESET_LIGHT: dict[str, str] = {
+    "catppuccin": "builtin.catppuccin-latte-gradient",
+    "nord": "builtin.slate-gradient",
+    "gruvbox": "builtin.paper",
+    "dracula": "builtin.slate-gradient",
+    "github": "builtin.slate-gradient",
+    "slate": "builtin.slate-gradient",
+    "solarized": "builtin.paper",
+}
+
+_FALLBACK_DEFAULT_PRESET_DARK = "builtin.mist"
+_FALLBACK_DEFAULT_PRESET_LIGHT = "builtin.slate-gradient"
 
 
 def list_preset_ids() -> list[str]:
@@ -154,10 +177,12 @@ def preset_asset_path(preset_id: str) -> Path | None:
 
 
 def theme_default_preset_id(*, family: str, base_mode: str) -> str:
-    """Resolve scheme family (+ mode hint) to a bundled preset id."""
-    _ = base_mode  # reserved for per-mode variants in v2.1
+    """Resolve scheme family and polarity to a bundled preset id."""
     key = (family or "").strip().lower()
-    return _FAMILY_DEFAULT_PRESET.get(key, _FALLBACK_DEFAULT_PRESET)
+    mode = (base_mode or "dark").strip().lower()
+    if mode == "light":
+        return _FAMILY_DEFAULT_PRESET_LIGHT.get(key, _FALLBACK_DEFAULT_PRESET_LIGHT)
+    return _FAMILY_DEFAULT_PRESET_DARK.get(key, _FALLBACK_DEFAULT_PRESET_DARK)
 
 
 def resolve_preset_reference(wallpaper: WallpaperPreset) -> Wallpaper:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import qtawesome as qta
 from PyQt6.QtCore import QEvent, Qt, QSize, QTimer
 from PyQt6.QtWidgets import (
-    QButtonGroup,
     QCheckBox,
     QDoubleSpinBox,
     QFrame,
@@ -13,35 +12,43 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
-    QRadioButton,
     QScrollArea,
-    QStackedWidget,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from core.brand_identity import BRAND_LOGO_STROKE_HEX
-from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT, SURFACE_LIBRARY_PREVIEW
 from core.surface_fill.models import SurfaceProfile
 from core.theme.color_utils import with_alpha
 from core.theme.tokens import ResolvedTheme
 from core.theme.widget_styles import (
+    AGENT_MESSAGE_FRAME,
     AGENT_MESSAGE_SHELL,
     LIST_SURFACE,
+    ACCENT_ICON,
     RAG_INDICATOR_STANDBY,
     SETTINGS_CHECKBOX,
     SETTINGS_FORM_CONTROLS,
     SETTINGS_LINE_EDIT,
+    SETTINGS_NAV_ICON,
     SETTINGS_SECTION_CARD,
     STAGE_SURFACE,
     TOGGLE_BUTTON,
+    TRANSPARENT_TEXT_PREVIEW,
     USER_BUBBLE_FRAME,
     USER_BUBBLE_LABEL,
+    UTILITY_ICON_BUTTON,
     WEB_INDICATOR_STANDBY,
 )
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
+from core.app_settings import (
+    get_ui_assistant_message_background,
+    get_ui_library_transcript_background,
+)
+from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.surface_fill.transcript_host import TranscriptWallpaperHost
 from ui.shell_theme import (
@@ -163,6 +170,45 @@ def _memory_edit_button_style(resolved: ResolvedTheme) -> str:
             color: {resolved.accent};
         }}
     """
+
+
+def _settings_nav_row_title_style(resolved: ResolvedTheme, *, selected: bool) -> str:
+    color = resolved.list_row_title_selected if selected else resolved.text_primary
+    return (
+        f"color: {color}; background: transparent;"
+        f" border: none; font-size: 9px; font-weight: 500; padding: 0px;"
+    )
+
+
+def _settings_nav_row_frame_style(resolved: ResolvedTheme, *, selected: bool) -> str:
+    if not selected:
+        return "QFrame { background: transparent; border: none; border-radius: 6px; }"
+    bg = (
+        with_alpha(resolved.text_primary, 0.05)
+        if resolved.is_dark
+        else with_alpha(resolved.text_primary, 0.03)
+    )
+    return (
+        f"QFrame {{"
+        f" background-color: {bg};"
+        f" border: 1px solid {resolved.accent};"
+        f" border-radius: 6px;"
+        f" }}"
+    )
+
+
+def _settings_page_title_style(resolved: ResolvedTheme) -> str:
+    return (
+        f"color: {resolved.text_primary}; font-weight: 800; font-size: 11px;"
+        f" background: transparent; border: none;"
+    )
+
+
+def _settings_section_page_title_style(resolved: ResolvedTheme) -> str:
+    return (
+        f"color: {resolved.text_primary}; font-weight: 800; font-size: 10px;"
+        f" background: transparent; border: none;"
+    )
 
 
 def _status_bubble_style(resolved: ResolvedTheme, *, state: str) -> str:
@@ -316,7 +362,7 @@ class ThemeConversationsPreviewScene(QFrame):
         self._agent_block = QFrame()
         self._agent_block.setObjectName("ThemePreviewAgentBlock")
         agent_layout = QVBoxLayout(self._agent_block)
-        agent_layout.setContentsMargins(0, 0, 0, 0)
+        agent_layout.setContentsMargins(14, 10, 14, 8)
         agent_layout.setSpacing(2)
         self._agent_header = QLabel("QUBE")
         self._agent_header.setObjectName("ThemePreviewAgentHeader")
@@ -497,7 +543,22 @@ class ThemeConversationsPreviewScene(QFrame):
             resolved_wallpaper=chat_resolved_wallpaper,
             theme=resolved,
         )
-        self._agent_block.setStyleSheet("background: transparent; border: none;")
+        assistant_bg = get_ui_assistant_message_background()
+        self._agent_block.setStyleSheet(
+            resolved.style(
+                AGENT_MESSAGE_FRAME,
+                enabled=assistant_bg,
+                high_contrast=False,
+                object_name="ThemePreviewAgentBlock",
+            )
+        )
+        self._agent_block.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            assistant_bg,
+        )
+        self._agent_block.layout().setContentsMargins(
+            *( (14, 10, 14, 8) if assistant_bg else (0, 0, 0, 0) )
+        )
         self._agent_header.setStyleSheet(
             f"color: {resolved.chat_header}; font-weight: bold; font-size: 8px;"
             f" letter-spacing: 1px; background: transparent; border: none; margin: 0px;"
@@ -554,66 +615,180 @@ class ThemeConversationsPreviewScene(QFrame):
 
 
 class ThemeComponentsPreviewScene(QFrame):
-    """Settings / Memory-style controls not shown on the Conversations mockup."""
+    """Miniature Settings page shell with theme-color samples on the mainstage."""
+
+    _SETTINGS_NAV_SECTIONS: tuple[tuple[str, str, bool], ...] = (
+        ("fa5s.globe", "General", False),
+        ("fa5s.microphone", "Voice & Audio", False),
+        ("fa5s.palette", "Themes", True),
+        ("fa5s.memory", "Memory", False),
+    )
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("ThemePreviewComponentsScene")
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        hint = QLabel(
-            "Form controls, dialogs, and status chips from Settings, Memory, and other views."
-        )
-        hint.setWordWrap(True)
-        self._hint = hint
-        layout.addWidget(hint)
+        self._shell = QFrame()
+        self._shell.setObjectName("ThemePreviewSettingsShell")
+        shell_layout = QVBoxLayout(self._shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+
+        self._top_bar = QFrame()
+        self._top_bar.setObjectName("ThemePreviewSettingsTopBar")
+        self._top_bar.setFixedHeight(26)
+        top_layout = QHBoxLayout(self._top_bar)
+        top_layout.setContentsMargins(8, 0, 8, 0)
+        top_layout.setSpacing(6)
+        left_container = QWidget()
+        left_container.setFixedWidth(36)
+        left_layout = QHBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(4)
+        self._logo_dot = QLabel()
+        self._logo_dot.setFixedSize(10, 10)
+        left_layout.addWidget(self._logo_dot)
+        self._mic_icon = QLabel()
+        self._mic_icon.setFixedSize(12, 12)
+        left_layout.addWidget(self._mic_icon)
+        left_layout.addStretch()
+        top_layout.addWidget(left_container)
+        top_layout.addStretch(1)
+        self._status_bubble = QLabel(" IDLE")
+        self._status_bubble.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_bubble.setFixedSize(68, 16)
+        top_layout.addWidget(self._status_bubble)
+        top_layout.addStretch(1)
+        top_layout.addWidget(QWidget())
+        shell_layout.addWidget(self._top_bar)
+
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+
+        self._nav = QFrame()
+        self._nav.setObjectName("ThemePreviewSettingsNavSidebar")
+        self._nav.setFixedWidth(_PREVIEW_NAV_WIDTH)
+        nav_layout = QVBoxLayout(self._nav)
+        nav_layout.setContentsMargins(0, 8, 0, 8)
+        nav_layout.setSpacing(6)
+        self._nav_buttons: list[QPushButton] = []
+        for idx, icon in enumerate(("fa5s.comment-alt", "fa5s.book", "fa5s.memory", "fa5s.cog")):
+            btn = QPushButton()
+            btn.setFixedSize(24, 24)
+            btn.setProperty("class", "NavButton")
+            btn.setCheckable(True)
+            btn.setChecked(idx == 3)
+            btn.setIconSize(QSize(11, 11))
+            btn._preview_icon = icon  # type: ignore[attr-defined]
+            self._nav_buttons.append(btn)
+            nav_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
+        nav_layout.addStretch()
+        body.addWidget(self._nav)
+
+        self._settings_hub = QWidget()
+        self._settings_hub.setObjectName("ThemePreviewSettingsHub")
+        hub_layout = QHBoxLayout(self._settings_hub)
+        hub_layout.setContentsMargins(0, 0, 0, 0)
+        hub_layout.setSpacing(0)
+
+        self._settings_sidebar = QFrame()
+        self._settings_sidebar.setObjectName("ThemePreviewSettingsSidebar")
+        self._settings_sidebar.setFixedWidth(_PREVIEW_SETTINGS_SIDEBAR_WIDTH)
+        sidebar_layout = QVBoxLayout(self._settings_sidebar)
+        sidebar_layout.setContentsMargins(8, 8, 6, 8)
+        sidebar_layout.setSpacing(6)
+        self._sidebar_title = QLabel("System Settings")
+        self._sidebar_title.setObjectName("ViewTitle")
+        sidebar_layout.addWidget(self._sidebar_title)
+        self._settings_search = QLineEdit("Search settings…")
+        self._settings_search.setReadOnly(True)
+        self._settings_search.setFixedHeight(22)
+        sidebar_layout.addWidget(self._settings_search)
+
+        self._settings_nav_rows: list[tuple[QFrame, QLabel, QLabel, str, bool]] = []
+        for icon_name, title, selected in self._SETTINGS_NAV_SECTIONS:
+            row_frame = QFrame()
+            row_layout = QHBoxLayout(row_frame)
+            row_layout.setContentsMargins(6, 4, 6, 4)
+            row_layout.setSpacing(6)
+            icon_label = QLabel()
+            icon_label.setFixedSize(12, 12)
+            title_label = QLabel(title)
+            title_label.setObjectName("HistoryRowTitle")
+            row_layout.addWidget(icon_label)
+            row_layout.addWidget(title_label, stretch=1)
+            sidebar_layout.addWidget(row_frame)
+            self._settings_nav_rows.append(
+                (row_frame, icon_label, title_label, icon_name, selected)
+            )
+        sidebar_layout.addStretch()
+        hub_layout.addWidget(self._settings_sidebar)
+
+        self._settings_content = QWidget()
+        self._settings_content.setObjectName("ThemePreviewSettingsContent")
+        content_layout = QVBoxLayout(self._settings_content)
+        content_layout.setContentsMargins(8, 10, 8, 8)
+        content_layout.setSpacing(6)
+
+        section_header = QHBoxLayout()
+        section_header.setContentsMargins(0, 0, 0, 0)
+        section_header.setSpacing(6)
+        self._section_icon = QLabel()
+        self._section_icon.setFixedSize(14, 14)
+        self._section_title = QLabel("Themes")
+        section_header.addWidget(self._section_icon)
+        section_header.addWidget(self._section_title)
+        section_header.addStretch()
+        content_layout.addLayout(section_header)
 
         card = QFrame()
         self._components_card = card
         card.setObjectName("ThemePreviewComponentsCard")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(10, 10, 10, 10)
-        card_layout.setSpacing(8)
+        card_layout.setContentsMargins(8, 8, 8, 8)
+        card_layout.setSpacing(6)
 
-        card_title = QLabel("Sample settings block")
+        card_title = QLabel("Theme colors")
         self._card_title = card_title
         card_layout.addWidget(card_title)
 
-        self._checkbox = QCheckBox("Enable sample feature")
+        self._checkbox = QCheckBox("Auto-adjust text for readable contrast")
         self._checkbox.setChecked(True)
         card_layout.addWidget(self._checkbox)
 
         form_row = QHBoxLayout()
-        self._line_edit = QLineEdit("Editable text field")
+        self._line_edit = QLineEdit("Accent color")
         self._line_edit.setReadOnly(True)
         self._spin = QDoubleSpinBox()
         self._spin.setRange(0, 100)
         self._spin.setValue(42)
-        self._spin.setFixedWidth(72)
+        self._spin.setFixedWidth(64)
         form_row.addWidget(self._line_edit, stretch=1)
         form_row.addWidget(self._spin)
         card_layout.addLayout(form_row)
 
-        self._selector = SelectorButton("Category ▾", parent=self)
+        self._selector = SelectorButton("Variant ▾", parent=self)
         card_layout.addWidget(self._selector)
 
         btn_row = QHBoxLayout()
-        self._primary_btn = QPushButton("Primary action")
-        self._danger_btn = QPushButton("Delete")
+        self._primary_btn = QPushButton("Apply")
+        self._danger_btn = QPushButton("Revert")
         btn_row.addWidget(self._primary_btn)
         btn_row.addWidget(self._danger_btn)
         btn_row.addStretch()
         card_layout.addLayout(btn_row)
-        layout.addWidget(card)
+        content_layout.addWidget(card)
 
         memory_card = QFrame()
         self._memory_card = memory_card
         memory_card.setObjectName("ThemePreviewMemoryCard")
         memory_layout = QHBoxLayout(memory_card)
-        memory_layout.setContentsMargins(10, 8, 10, 8)
-        memory_layout.setSpacing(8)
+        memory_layout.setContentsMargins(8, 6, 8, 6)
+        memory_layout.setSpacing(6)
         memory_text = QVBoxLayout()
         memory_text.setSpacing(2)
         self._memory_title = QLabel("User prefers concise answers")
@@ -623,42 +798,129 @@ class ThemeComponentsPreviewScene(QFrame):
         memory_layout.addLayout(memory_text, stretch=1)
         self._memory_edit_btn = QPushButton("Edit")
         memory_layout.addWidget(self._memory_edit_btn)
-        layout.addWidget(memory_card)
+        content_layout.addWidget(memory_card)
 
         status_row = QHBoxLayout()
-        status_row.setSpacing(8)
+        status_row.setSpacing(6)
         self._status_idle = QLabel(" IDLE")
         self._status_speaking = QLabel(" SPEAKING")
         self._status_needs = QLabel(" NEEDS MODEL")
         for lbl in (self._status_idle, self._status_speaking, self._status_needs):
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setFixedHeight(20)
+            lbl.setFixedHeight(18)
             status_row.addWidget(lbl)
         status_row.addStretch()
-        layout.addLayout(status_row)
+        content_layout.addLayout(status_row)
 
         self._tooltip_sample = QLabel("Tooltip sample")
-        layout.addWidget(self._tooltip_sample)
-        layout.addStretch()
+        content_layout.addWidget(self._tooltip_sample)
+        content_layout.addStretch()
+        hub_layout.addWidget(self._settings_content, stretch=1)
+
+        body.addWidget(self._settings_hub, stretch=1)
+        shell_layout.addLayout(body)
+        root.addWidget(self._shell)
 
     def apply_theme(self, resolved: ResolvedTheme) -> None:
-        self._hint.setStyleSheet(
-            f"color: {resolved.text_secondary}; font-size: 11px;"
-            f" background: transparent; border: none;"
-        )
-        card_style = resolved.style(SETTINGS_SECTION_CARD, object_name="ThemePreviewComponentsCard")
+        colors = _preview_shell_colors(resolved)
+        shell_border = resolved.border
         self.setStyleSheet(
-            f"QFrame#ThemePreviewComponentsScene {{ background: transparent; border: none; }}"
+            "QFrame#ThemePreviewComponentsScene { background: transparent; border: none; }"
         )
+        self._shell.setStyleSheet(
+            f"QFrame#ThemePreviewSettingsShell {{"
+            f" background-color: {colors['main_container']};"
+            f" border: 1px solid {shell_border};"
+            f" border-radius: 8px;"
+            f" }}"
+        )
+        self._top_bar.setStyleSheet(
+            f"QFrame#ThemePreviewSettingsTopBar {{"
+            f" background-color: {colors['top_bar']};"
+            f" border-bottom: 1px solid {colors['border']};"
+            f" border-top-left-radius: 8px;"
+            f" border-top-right-radius: 8px;"
+            f" }}"
+        )
+        self._logo_dot.setStyleSheet(
+            f"background-color: {BRAND_LOGO_STROKE_HEX}; border-radius: 5px; border: none;"
+        )
+        self._mic_icon.setPixmap(
+            qta.icon("fa5s.microphone", color=muted_icon_color(resolved)).pixmap(QSize(12, 12))
+        )
+        self._status_bubble.setStyleSheet(_status_bubble_style(resolved, state="idle"))
+
+        nav_active, nav_inactive = nav_icon_colors(resolved)
+        self._nav.setStyleSheet(
+            f"QFrame#ThemePreviewSettingsNavSidebar {{"
+            f" background-color: {colors['nav_sidebar']}; border: none;"
+            f" }}"
+        )
+        for idx, btn in enumerate(self._nav_buttons):
+            icon_name = btn._preview_icon  # type: ignore[attr-defined]
+            btn.setChecked(idx == 3)
+            color = nav_active if btn.isChecked() else nav_inactive
+            btn.setIcon(qta.icon(icon_name, color=color))
+            checked_bg = (
+                with_alpha(resolved.text_primary, 0.1)
+                if resolved.is_dark
+                else resolved.surface_pressed
+            )
+            btn.setStyleSheet(
+                f"QPushButton {{ background: {'transparent' if not btn.isChecked() else checked_bg};"
+                f" border: none; border-radius: 6px; }}"
+            )
+
+        sidebar_border = colors["border"]
+        self._settings_sidebar.setStyleSheet(
+            f"QFrame#ThemePreviewSettingsSidebar {{"
+            f" background-color: {resolved.sidebar_surface};"
+            f" border-right: 1px solid {sidebar_border};"
+            f" }}"
+        )
+        self._sidebar_title.setStyleSheet(_settings_page_title_style(resolved))
+        input_border = resolved.border_subtle if resolved.is_dark else resolved.border
+        self._settings_search.setStyleSheet(
+            f"QLineEdit {{"
+            f" background-color: {resolved.surface_elevated};"
+            f" color: {resolved.text_secondary};"
+            f" border: 1px solid {input_border};"
+            f" border-radius: 6px;"
+            f" padding: 2px 6px;"
+            f" font-size: 9px;"
+            f" }}"
+        )
+        nav_icon_color = resolved.color(SETTINGS_NAV_ICON)
+        for row_frame, icon_label, title_label, icon_name, selected in self._settings_nav_rows:
+            row_frame.setStyleSheet(_settings_nav_row_frame_style(resolved, selected=selected))
+            icon_label.setPixmap(
+                qta.icon(icon_name, color=nav_icon_color).pixmap(QSize(12, 12))
+            )
+            title_label.setStyleSheet(
+                _settings_nav_row_title_style(resolved, selected=selected)
+            )
+
+        self._settings_content.setStyleSheet(
+            f"QWidget#ThemePreviewSettingsContent {{"
+            f" background-color: {resolved.background};"
+            f" border: none;"
+            f" }}"
+        )
+        self._section_icon.setPixmap(
+            qta.icon("fa5s.palette", color=nav_icon_color).pixmap(QSize(14, 14))
+        )
+        self._section_title.setStyleSheet(_settings_section_page_title_style(resolved))
+
+        card_style = resolved.style(SETTINGS_SECTION_CARD, object_name="ThemePreviewComponentsCard")
         self._components_card.setStyleSheet(card_style)
         self._card_title.setStyleSheet(
-            f"color: {resolved.text_primary}; font-weight: 700; font-size: 11px;"
+            f"color: {resolved.text_primary}; font-weight: 700; font-size: 10px;"
             f" background: transparent; border: none;"
         )
         self._checkbox.setStyleSheet(resolved.style(SETTINGS_CHECKBOX))
         self._line_edit.setStyleSheet(resolved.style(SETTINGS_LINE_EDIT))
         self._spin.setStyleSheet(resolved.style(SETTINGS_FORM_CONTROLS))
-        self._selector.setText("Category ▾")
+        self._selector.setText("Variant ▾")
         self._selector.apply_theme(is_dark=resolved.is_dark, theme=resolved)
         apply_brand_primary(self._primary_btn, theme=resolved)
         apply_brand_danger(self._danger_btn, theme=resolved)
@@ -673,11 +935,11 @@ class ThemeComponentsPreviewScene(QFrame):
             f" }}"
         )
         self._memory_title.setStyleSheet(
-            f"color: {resolved.text_primary}; font-size: 11px; font-weight: 600;"
+            f"color: {resolved.text_primary}; font-size: 10px; font-weight: 600;"
             f" background: transparent; border: none;"
         )
         self._memory_meta.setStyleSheet(
-            f"color: {resolved.text_muted}; font-size: 10px;"
+            f"color: {resolved.text_muted}; font-size: 9px;"
             f" background: transparent; border: none;"
         )
         self._memory_edit_btn.setStyleSheet(_memory_edit_button_style(resolved))
@@ -689,8 +951,507 @@ class ThemeComponentsPreviewScene(QFrame):
             f"color: {resolved.text_primary};"
             f" background-color: {resolved.tooltip_bg};"
             f" border: 1px solid {resolved.tooltip_border};"
-            f" border-radius: 6px; padding: 4px 8px; font-size: 10px;"
+            f" border-radius: 6px; padding: 4px 8px; font-size: 9px;"
         )
+
+
+_LIBRARY_PREVIEW_COLUMN_MAX = 280
+_LIBRARY_TRANSCRIPT_CARD_MARGINS = (14, 10, 14, 8)
+_LIBRARY_PREVIEW_UTILITY_BTN = 22
+_LIBRARY_PREVIEW_UTILITY_ICON_PX = 12
+
+
+class _PreviewColumnWidthHost(QWidget):
+    """Centers a column; inner width = min(available, cap)."""
+
+    def __init__(self, inner: QWidget, max_w: int, parent=None) -> None:
+        super().__init__(parent)
+        self._inner = inner
+        self._max_w = max(1, int(max_w))
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        lay.addStretch(1)
+        lay.addWidget(inner, 0)
+        lay.addStretch(1)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+    def _sync_inner_width(self) -> None:
+        w = min(self._max_w, max(1, self.width()))
+        if self._inner.width() != w:
+            self._inner.setFixedWidth(w)
+        self._inner.updateGeometry()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._sync_inner_width()
+
+
+_PREVIEW_LIBRARY_SIDEBAR_WIDTH = 110
+
+
+def _library_doc_row_style(resolved: ResolvedTheme) -> str:
+    return (
+        f"color: {resolved.text_primary}; background: transparent;"
+        f" border: none; font-size: 9px; font-weight: 500; padding: 0px;"
+    )
+
+
+def _library_doc_selected_frame_style(resolved: ResolvedTheme) -> str:
+    bg = (
+        with_alpha(resolved.text_primary, 0.03)
+        if not resolved.is_dark
+        else with_alpha(resolved.text_primary, 0.05)
+    )
+    return (
+        f"QFrame#ThemePreviewLibraryDocSelected {{"
+        f" background-color: {bg};"
+        f" border: 1px solid {resolved.accent};"
+        f" border-radius: 6px;"
+        f" }}"
+    )
+
+
+class ThemeLibraryPreviewScene(QFrame):
+    """Miniature Library page shell with list sidebar, preview mainstage, and tools pane."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ThemePreviewLibraryScene")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self._shell = QFrame()
+        self._shell.setObjectName("ThemePreviewLibraryShell")
+        shell_layout = QVBoxLayout(self._shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+
+        self._top_bar = QFrame()
+        self._top_bar.setObjectName("ThemePreviewLibraryTopBar")
+        self._top_bar.setFixedHeight(30)
+        top_layout = QHBoxLayout(self._top_bar)
+        top_layout.setContentsMargins(8, 0, 8, 0)
+        top_layout.setSpacing(6)
+
+        left_container = QWidget()
+        left_container.setFixedWidth(40)
+        left_layout = QHBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(4)
+        self._logo_dot = QLabel()
+        self._logo_dot.setFixedSize(10, 10)
+        left_layout.addWidget(self._logo_dot)
+        self._mic_icon = QLabel()
+        self._mic_icon.setFixedSize(12, 12)
+        left_layout.addWidget(self._mic_icon)
+        left_layout.addStretch()
+        top_layout.addWidget(left_container)
+        top_layout.addStretch(1)
+
+        center_container = QWidget()
+        center_layout = QHBoxLayout(center_container)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(4)
+        self._status_bubble = QLabel(" IDLE")
+        self._status_bubble.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_bubble.setFixedSize(72, 18)
+        center_layout.addWidget(self._status_bubble)
+        self._rag_dot = QLabel("● RAG")
+        self._rag_dot.setFixedWidth(36)
+        self._web_dot = QLabel("● WEB")
+        self._web_dot.setFixedWidth(36)
+        self._hybrid_dot = QLabel("● HYBRID")
+        self._hybrid_dot.setFixedWidth(48)
+        for dot in (self._rag_dot, self._web_dot, self._hybrid_dot):
+            dot.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            center_layout.addWidget(dot)
+        top_layout.addWidget(center_container)
+        top_layout.addStretch(1)
+        top_layout.addWidget(QWidget())
+        shell_layout.addWidget(self._top_bar)
+
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+
+        self._nav = QFrame()
+        self._nav.setObjectName("ThemePreviewLibraryNavSidebar")
+        self._nav.setFixedWidth(_PREVIEW_NAV_WIDTH)
+        nav_layout = QVBoxLayout(self._nav)
+        nav_layout.setContentsMargins(0, 8, 0, 8)
+        nav_layout.setSpacing(6)
+        self._nav_buttons: list[QPushButton] = []
+        for idx, icon in enumerate(("fa5s.comment-alt", "fa5s.book", "fa5s.memory", "fa5s.cog")):
+            btn = QPushButton()
+            btn.setFixedSize(24, 24)
+            btn.setProperty("class", "NavButton")
+            btn.setCheckable(True)
+            btn.setChecked(idx == 1)
+            btn.setIconSize(QSize(11, 11))
+            btn._preview_icon = icon  # type: ignore[attr-defined]
+            self._nav_buttons.append(btn)
+            nav_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
+        nav_layout.addStretch()
+        body.addWidget(self._nav)
+
+        self._library_sidebar = QFrame()
+        self._library_sidebar.setObjectName("ThemePreviewLibrarySidebar")
+        self._library_sidebar.setFixedWidth(_PREVIEW_LIBRARY_SIDEBAR_WIDTH)
+        library_layout = QVBoxLayout(self._library_sidebar)
+        library_layout.setContentsMargins(8, 8, 6, 8)
+        library_layout.setSpacing(4)
+        self._library_title = QLabel("LIBRARY")
+        library_layout.addWidget(self._library_title)
+
+        self._library_search = QLineEdit("Search titles…")
+        self._library_search.setReadOnly(True)
+        self._library_search.setFixedHeight(22)
+        library_layout.addWidget(self._library_search)
+
+        self._library_folder_row = QWidget()
+        folder_layout = QHBoxLayout(self._library_folder_row)
+        folder_layout.setContentsMargins(0, 0, 0, 0)
+        folder_layout.setSpacing(2)
+        self._library_folder_chevron = QPushButton()
+        self._library_folder_chevron.setFixedSize(14, 14)
+        self._library_folder_chevron.setIconSize(QSize(8, 8))
+        self._library_folder_chevron.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._library_folder_chevron.setStyleSheet(
+            "QPushButton { border: none; background: transparent; padding: 0px; }"
+        )
+        self._library_folder_title = QLabel("Main")
+        folder_layout.addWidget(self._library_folder_chevron)
+        folder_layout.addWidget(self._library_folder_title, stretch=1)
+        library_layout.addWidget(self._library_folder_row)
+
+        self._library_doc_selected = QFrame()
+        self._library_doc_selected.setObjectName("ThemePreviewLibraryDocSelected")
+        selected_layout = QHBoxLayout(self._library_doc_selected)
+        selected_layout.setContentsMargins(14, 4, 6, 4)
+        selected_layout.setSpacing(0)
+        self._library_doc_selected_label = QLabel("Quarterly Report.pdf")
+        selected_layout.addWidget(self._library_doc_selected_label)
+        library_layout.addWidget(self._library_doc_selected)
+
+        self._library_doc_other = QLabel("Design Notes.md")
+        library_layout.addWidget(self._library_doc_other)
+        library_layout.addStretch()
+        body.addWidget(self._library_sidebar)
+
+        self._mainstage = QWidget()
+        self._mainstage.setObjectName("ThemePreviewLibraryMainstage")
+        layout = QVBoxLayout(self._mainstage)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(8)
+
+        utility_toolbar = QFrame()
+        utility_toolbar.setObjectName("ThemePreviewLibraryUtilityToolbar")
+        utility_toolbar.setFixedHeight(28)
+        utility_layout = QHBoxLayout(utility_toolbar)
+        utility_layout.setContentsMargins(0, 0, 0, 0)
+        utility_layout.setSpacing(4)
+        self._font_minus_btn = QPushButton("A−")
+        self._font_plus_btn = QPushButton("A+")
+        for btn in (self._font_minus_btn, self._font_plus_btn):
+            btn.setFixedSize(_LIBRARY_PREVIEW_UTILITY_BTN, _LIBRARY_PREVIEW_UTILITY_BTN)
+            btn.setEnabled(False)
+            utility_layout.addWidget(btn)
+        self._line_height_btn = QPushButton()
+        self._text_align_btn = QPushButton()
+        self._reader_focus_btn = QPushButton()
+        self._high_contrast_btn = QPushButton()
+        self._layout_mode_btn = QPushButton()
+        for btn in (
+            self._line_height_btn,
+            self._text_align_btn,
+            self._reader_focus_btn,
+            self._high_contrast_btn,
+            self._layout_mode_btn,
+        ):
+            btn.setFixedSize(_LIBRARY_PREVIEW_UTILITY_BTN, _LIBRARY_PREVIEW_UTILITY_BTN)
+            btn.setEnabled(False)
+            utility_layout.addWidget(btn)
+        utility_layout.addStretch()
+        layout.addWidget(utility_toolbar)
+
+        header_host = QWidget()
+        header_layout = QVBoxLayout(header_host)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(2)
+        self._doc_title = QLabel("Quarterly Report.pdf")
+        self._doc_title.setObjectName("ThemePreviewLibraryDocTitle")
+        self._doc_title.setWordWrap(True)
+        self._doc_title.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        )
+        self._doc_stats = QLabel("12 pages · 4,200 words")
+        self._doc_stats.setObjectName("ThemePreviewLibraryDocStats")
+        self._doc_stats.setWordWrap(True)
+        self._doc_stats.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        )
+        header_layout.addWidget(self._doc_title)
+        header_layout.addWidget(self._doc_stats)
+        self._header_width_host = _PreviewColumnWidthHost(
+            header_host, _LIBRARY_PREVIEW_COLUMN_MAX
+        )
+        layout.addWidget(self._header_width_host)
+
+        self._transcript_card = QFrame()
+        self._transcript_card.setObjectName("ThemePreviewLibraryTranscriptCard")
+        card_layout = QVBoxLayout(self._transcript_card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+        self._body_text = QLabel(
+            "The quarterly report summarizes revenue growth across all regions. "
+            "Key findings highlight improved margins in the enterprise segment.\n\n"
+            "Subscription services continued to expand, with retention rates "
+            "exceeding targets in North America and EMEA."
+        )
+        self._body_text.setObjectName("ThemePreviewLibraryBody")
+        self._body_text.setWordWrap(True)
+        self._body_text.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        card_layout.addWidget(self._body_text)
+        self._transcript_width_host = _PreviewColumnWidthHost(
+            self._transcript_card, _LIBRARY_PREVIEW_COLUMN_MAX
+        )
+        layout.addWidget(self._transcript_width_host, stretch=1)
+
+        self._wallpaper_host = TranscriptWallpaperHost(
+            SURFACE_LIBRARY_PREVIEW,
+            self._mainstage,
+            parent=self,
+        )
+        body.addWidget(self._wallpaper_host, stretch=1)
+
+        self._tools = QFrame()
+        self._tools.setObjectName("ThemePreviewLibraryToolsPane")
+        self._tools.setFixedWidth(_PREVIEW_TOOLS_WIDTH)
+        tools_layout = QVBoxLayout(self._tools)
+        tools_layout.setContentsMargins(8, 8, 8, 8)
+        tools_layout.setSpacing(6)
+        self._tools_title = QLabel("LOCAL LLM")
+        tools_layout.addWidget(self._tools_title)
+        self._tools_selector = QPushButton("Model ▾")
+        self._tools_selector.setObjectName("ThemePreviewLibraryToolsSelector")
+        tools_layout.addWidget(self._tools_selector)
+        param_row = QHBoxLayout()
+        self._tools_param_label = QLabel("Temp")
+        self._tools_spin = QDoubleSpinBox()
+        self._tools_spin.setRange(0.0, 2.0)
+        self._tools_spin.setValue(0.7)
+        self._tools_spin.setDecimals(1)
+        self._tools_spin.setFixedWidth(52)
+        self._tools_spin.setFixedHeight(26)
+        param_row.addWidget(self._tools_param_label)
+        param_row.addStretch()
+        param_row.addWidget(self._tools_spin)
+        tools_layout.addLayout(param_row)
+        tools_layout.addStretch()
+        body.addWidget(self._tools)
+
+        shell_layout.addLayout(body)
+        root.addWidget(self._shell)
+
+    def apply_theme(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        library_profile: SurfaceProfile | None = None,
+        library_resolved_wallpaper=None,
+    ) -> None:
+        colors = _preview_shell_colors(resolved)
+        shell_border = resolved.border
+        self.setStyleSheet(
+            "QFrame#ThemePreviewLibraryScene { background: transparent; border: none; }"
+        )
+        self._shell.setStyleSheet(
+            f"QFrame#ThemePreviewLibraryShell {{"
+            f" background-color: {colors['main_container']};"
+            f" border: 1px solid {shell_border};"
+            f" border-radius: 8px;"
+            f" }}"
+        )
+        self._top_bar.setStyleSheet(
+            f"QFrame#ThemePreviewLibraryTopBar {{"
+            f" background-color: {colors['top_bar']};"
+            f" border-bottom: 1px solid {colors['border']};"
+            f" border-top-left-radius: 8px;"
+            f" border-top-right-radius: 8px;"
+            f" }}"
+        )
+        self._logo_dot.setStyleSheet(
+            f"background-color: {BRAND_LOGO_STROKE_HEX}; border-radius: 5px; border: none;"
+        )
+        self._mic_icon.setPixmap(
+            qta.icon("fa5s.microphone", color=muted_icon_color(resolved)).pixmap(QSize(12, 12))
+        )
+        self._status_bubble.setStyleSheet(_status_bubble_style(resolved, state="idle"))
+        self._rag_dot.setStyleSheet(_indicator_label_style(resolved.color(RAG_INDICATOR_STANDBY)))
+        self._web_dot.setStyleSheet(
+            _indicator_label_style(resolved.color(WEB_INDICATOR_STANDBY))
+        )
+        indicators = retrieval_indicator_colors(resolved)
+        self._hybrid_dot.setStyleSheet(
+            _indicator_label_style(indicators["off"])
+        )
+
+        nav_active, nav_inactive = nav_icon_colors(resolved)
+        nav_bg = colors["nav_sidebar"]
+        self._nav.setStyleSheet(
+            f"QFrame#ThemePreviewLibraryNavSidebar {{ background-color: {nav_bg}; border: none; }}"
+        )
+        for idx, btn in enumerate(self._nav_buttons):
+            icon_name = btn._preview_icon  # type: ignore[attr-defined]
+            color = nav_active if btn.isChecked() else nav_inactive
+            btn.setIcon(qta.icon(icon_name, color=color))
+            checked_bg = (
+                with_alpha(resolved.text_primary, 0.1)
+                if resolved.is_dark
+                else resolved.surface_pressed
+            )
+            btn.setStyleSheet(
+                f"QPushButton {{ background: {'transparent' if not btn.isChecked() else checked_bg};"
+                f" border: none; border-radius: 6px; }}"
+            )
+            if idx == 1:
+                btn.setChecked(True)
+
+        library_bg = colors["history_sidebar"]
+        library_border = colors["border"]
+        self._library_sidebar.setStyleSheet(
+            f"QFrame#ThemePreviewLibrarySidebar {{"
+            f" background-color: {library_bg};"
+            f" border-right: 1px solid {library_border};"
+            f" }}"
+        )
+        self._library_title.setStyleSheet(_sidebar_title_style(resolved))
+        input_border = resolved.border_subtle if resolved.is_dark else resolved.border
+        self._library_search.setStyleSheet(
+            f"QLineEdit {{"
+            f" background-color: {resolved.surface_elevated};"
+            f" color: {resolved.text_secondary};"
+            f" border: 1px solid {input_border};"
+            f" border-radius: 6px;"
+            f" padding: 2px 6px;"
+            f" font-size: 9px;"
+            f" }}"
+        )
+        chevron_color = sidebar_row_action_icon_color(resolved, highlighted=False)
+        self._library_folder_chevron.setIcon(
+            qta.icon("fa5s.chevron-down", color=chevron_color)
+        )
+        self._library_folder_title.setStyleSheet(_history_folder_row_style(resolved))
+        self._library_doc_selected.setStyleSheet(_library_doc_selected_frame_style(resolved))
+        self._library_doc_selected_label.setStyleSheet(
+            _history_session_selected_label_style(resolved)
+        )
+        self._library_doc_other.setStyleSheet(_library_doc_row_style(resolved))
+
+        self._mainstage.setStyleSheet(
+            "QWidget#ThemePreviewLibraryMainstage { background: transparent; border: none; }"
+        )
+        self._wallpaper_host.set_preview_profile(
+            library_profile,
+            resolved_wallpaper=library_resolved_wallpaper,
+            theme=resolved,
+        )
+
+        icon_muted = resolved.color(ACCENT_ICON)
+        utility_icon_style = resolved.style(UTILITY_ICON_BUTTON)
+        font_btn_style = readability_font_pair_stylesheet(
+            is_dark=resolved.is_dark,
+            theme=resolved,
+            button_px=_LIBRARY_PREVIEW_UTILITY_BTN,
+        )
+        self._font_minus_btn.setStyleSheet(font_btn_style)
+        self._font_plus_btn.setStyleSheet(font_btn_style)
+        self._line_height_btn.setIcon(
+            qta.icon("fa5s.text-height", color=icon_muted)
+        )
+        self._line_height_btn.setIconSize(
+            QSize(_LIBRARY_PREVIEW_UTILITY_ICON_PX, _LIBRARY_PREVIEW_UTILITY_ICON_PX)
+        )
+        self._text_align_btn.setIcon(
+            qta.icon("fa5s.align-left", color=icon_muted)
+        )
+        self._text_align_btn.setIconSize(
+            QSize(_LIBRARY_PREVIEW_UTILITY_ICON_PX, _LIBRARY_PREVIEW_UTILITY_ICON_PX)
+        )
+        self._reader_focus_btn.setIcon(
+            qta.icon("fa5s.crosshairs", color=icon_muted)
+        )
+        self._reader_focus_btn.setIconSize(
+            QSize(_LIBRARY_PREVIEW_UTILITY_ICON_PX, _LIBRARY_PREVIEW_UTILITY_ICON_PX)
+        )
+        self._high_contrast_btn.setIcon(
+            qta.icon("fa5s.adjust", color=icon_muted)
+        )
+        self._high_contrast_btn.setIconSize(
+            QSize(_LIBRARY_PREVIEW_UTILITY_ICON_PX, _LIBRARY_PREVIEW_UTILITY_ICON_PX)
+        )
+        self._layout_mode_btn.setIcon(
+            qta.icon("fa5s.columns", color=icon_muted)
+        )
+        self._layout_mode_btn.setIconSize(
+            QSize(_LIBRARY_PREVIEW_UTILITY_ICON_PX, _LIBRARY_PREVIEW_UTILITY_ICON_PX)
+        )
+        for btn in (
+            self._line_height_btn,
+            self._text_align_btn,
+            self._reader_focus_btn,
+            self._high_contrast_btn,
+            self._layout_mode_btn,
+        ):
+            btn.setStyleSheet(utility_icon_style)
+
+        self._doc_title.setStyleSheet(
+            f"color: {resolved.text_primary}; font-weight: 700; font-size: 11px;"
+            f" letter-spacing: 0.5px; background: transparent; border: none;"
+        )
+        self._doc_stats.setStyleSheet(
+            f"color: {resolved.text_secondary}; font-size: 9px; font-weight: 500;"
+            f" background: transparent; border: none;"
+        )
+
+        transcript_bg = get_ui_library_transcript_background()
+        self._transcript_card.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            transcript_bg,
+        )
+        self._transcript_card.setStyleSheet(
+            resolved.style(
+                AGENT_MESSAGE_FRAME,
+                enabled=transcript_bg,
+                high_contrast=False,
+                object_name="ThemePreviewLibraryTranscriptCard",
+            )
+        )
+        card_layout = self._transcript_card.layout()
+        if card_layout is not None:
+            margins = _LIBRARY_TRANSCRIPT_CARD_MARGINS if transcript_bg else (0, 0, 0, 0)
+            card_layout.setContentsMargins(*margins)
+
+        self._body_text.setStyleSheet(
+            resolved.style(TRANSPARENT_TEXT_PREVIEW, color=resolved.text_primary, font_pt=9.0)
+        )
+
+        tools_bg = colors["tools_pane"]
+        tools_border = colors["border"]
+        self._tools.setStyleSheet(
+            f"QFrame#ThemePreviewLibraryToolsPane {{"
+            f" background-color: {tools_bg};"
+            f" border-left: 1px solid {tools_border};"
+            f" }}"
+        )
+        self._tools_title.setStyleSheet(_section_header_style(resolved))
+        self._tools_param_label.setStyleSheet(
+            f"color: {resolved.text_primary}; font-size: 9px; background: transparent; border: none;"
+        )
+        self._tools_selector.setStyleSheet(_settings_menu_button_style(resolved))
+        self._tools_spin.setStyleSheet(_tools_spin_style(resolved))
 
 
 _PREVIEW_SNAPSHOT_HEIGHT = 280
@@ -707,6 +1468,7 @@ _SETTINGS_SECTION_CARD = "SettingsSectionCard"
 # Fixed miniature shell proportions (sidebars stay constant; mainstage fills remainder).
 _PREVIEW_NAV_WIDTH = 34
 _PREVIEW_HISTORY_WIDTH = 110
+_PREVIEW_SETTINGS_SIDEBAR_WIDTH = 108
 _PREVIEW_TOOLS_WIDTH = 118
 _PREVIEW_LAYOUT_MIN_WIDTH = 240
 
@@ -730,7 +1492,7 @@ def _design_preview_width_at_min_window() -> int:
     )
 
 
-def _find_settings_section_card(panel: "ThemePreviewPanel") -> QWidget | None:
+def _find_settings_section_card(panel: QWidget) -> QWidget | None:
     widget = panel.parentWidget()
     while widget is not None:
         if widget.objectName() == _SETTINGS_SECTION_CARD:
@@ -739,14 +1501,14 @@ def _find_settings_section_card(panel: "ThemePreviewPanel") -> QWidget | None:
     return None
 
 
-def _preview_card_inner_width(panel: "ThemePreviewPanel") -> int | None:
+def _preview_card_inner_width(panel: QWidget) -> int | None:
     card = _find_settings_section_card(panel)
     if card is None:
         return None
     return max(0, card.width() - _PREVIEW_CARD_HORIZONTAL_PADDING)
 
 
-def _preview_scroll_viewport_width(panel: "ThemePreviewPanel") -> int | None:
+def _preview_scroll_viewport_width(panel: QWidget) -> int | None:
     widget = panel.parentWidget()
     while widget is not None:
         if isinstance(widget, QScrollArea):
@@ -755,7 +1517,7 @@ def _preview_scroll_viewport_width(panel: "ThemePreviewPanel") -> int | None:
     return None
 
 
-def _available_preview_width(panel: "ThemePreviewPanel") -> int | None:
+def _available_preview_width(panel: QWidget) -> int | None:
     """Fit the preview card; never grow with a wide settings column or window."""
     design = _design_preview_width_at_min_window()
     card = _find_settings_section_card(panel)
@@ -778,7 +1540,7 @@ def _available_preview_width(panel: "ThemePreviewPanel") -> int | None:
     return min(candidates)
 
 
-def _preview_snapshot_width(panel: "ThemePreviewPanel") -> int | None:
+def _preview_snapshot_width(panel: QWidget) -> int | None:
     return _available_preview_width(panel)
 
 
@@ -798,25 +1560,6 @@ def _configure_offscreen_live_scene(widget: QWidget) -> None:
     widget.move(-32000, -32000)
 
 
-def _preview_scene_toggle_style(resolved: ResolvedTheme) -> str:
-    """Radio-style scene toggles using the same indicator sizing as settings checkboxes."""
-    border = resolved.border_subtle if resolved.is_dark else resolved.border
-    return f"""
-        QRadioButton {{ color: {resolved.text_primary}; font-size: 13px; spacing: 8px; }}
-        QRadioButton::indicator {{
-            width: 18px;
-            height: 18px;
-            border: 1px solid {border};
-            border-radius: 9px;
-            background-color: transparent;
-        }}
-        QRadioButton::indicator:checked {{
-            background-color: {resolved.accent};
-            border: 1px solid {resolved.accent_pressed};
-        }}
-    """
-
-
 def _offscreen_snapshot_size(widget: QWidget, width: int) -> tuple[int, int]:
     """Return a stable (width, height) for grabbing an off-screen preview scene."""
     widget.setFixedWidth(width)
@@ -828,7 +1571,7 @@ def _offscreen_snapshot_size(widget: QWidget, width: int) -> tuple[int, int]:
 
 
 class ThemePreviewPanel(QFrame):
-    """Live draft preview — Conversations shell by default, optional components view."""
+    """Live draft preview — Conversations shell with chat wallpaper draft."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -842,22 +1585,8 @@ class ThemePreviewPanel(QFrame):
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(0)
 
-        toggle_row = QHBoxLayout()
-        toggle_row.setSpacing(12)
-        self._scene_group = QButtonGroup(self)
-        self._scene_group.setExclusive(True)
-        self._conversations_cb = QRadioButton("Conversations")
-        self._conversations_cb.setChecked(True)
-        self._components_cb = QRadioButton("More components")
-        for cb in (self._conversations_cb, self._components_cb):
-            self._scene_group.addButton(cb)
-            toggle_row.addWidget(cb)
-        toggle_row.addStretch()
-        layout.addLayout(toggle_row)
-
-        self._stack = QStackedWidget()
         self._conversations_live = ThemeConversationsPreviewScene()
         _configure_offscreen_live_scene(self._conversations_live)
         self._conversations_view = QLabel()
@@ -865,29 +1594,12 @@ class ThemePreviewPanel(QFrame):
             self._conversations_view,
             object_name="ThemePreviewConversationsSnapshot",
         )
-        self._components_live = ThemeComponentsPreviewScene()
-        _configure_offscreen_live_scene(self._components_live)
-        self._components_view = QLabel()
-        _configure_preview_snapshot_label(
-            self._components_view,
-            object_name="ThemePreviewComponentsSnapshot",
-        )
-        self._stack.addWidget(self._conversations_view)
-        self._stack.addWidget(self._components_view)
-        self._stack.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
-        self._stack.setSizePolicy(
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Fixed,
-        )
-        layout.addWidget(self._stack)
+        self._conversations_view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
+        layout.addWidget(self._conversations_view)
 
-        self._scene_group.buttonClicked.connect(self._on_scene_selected)
         self._pending_conversations_snapshot: tuple | None = None
-        self._pending_components_snapshot: ResolvedTheme | None = None
-        self._components_snapshot_stale = True
         self._last_snapshot_width = 0
         self._width_watch_card: QWidget | None = None
-        self._sync_visible_stack_page()
 
     def _install_preview_card_width_watch(self) -> None:
         card = _find_settings_section_card(self)
@@ -911,9 +1623,6 @@ class ThemePreviewPanel(QFrame):
         self._last_snapshot_width = width
         if self._pending_conversations_snapshot is not None:
             QTimer.singleShot(0, self._refresh_conversations_snapshot)
-        if self._pending_components_snapshot is not None:
-            self._components_snapshot_stale = True
-            QTimer.singleShot(0, self._refresh_components_snapshot)
 
     def eventFilter(self, watched, event) -> bool:
         if (
@@ -932,36 +1641,6 @@ class ThemePreviewPanel(QFrame):
         self._install_preview_card_width_watch()
         self._request_snapshot_refresh()
 
-    def _on_scene_selected(self, _button) -> None:
-        self._sync_visible_stack_page()
-        if self._components_cb.isChecked():
-            self._ensure_components_snapshot()
-
-    def _ensure_components_snapshot(self) -> None:
-        pending = self._pending_components_snapshot
-        if pending is None:
-            return
-        pixmap = self._components_view.pixmap()
-        if (
-            self._components_snapshot_stale
-            or pixmap is None
-            or pixmap.isNull()
-            or pixmap.height() < 120
-        ):
-            self._schedule_components_snapshot(pending)
-
-    def _sync_visible_stack_page(self) -> None:
-        if self._components_cb.isChecked():
-            self._stack.setCurrentWidget(self._components_view)
-            pixmap = self._components_view.pixmap()
-            if pixmap is not None and not pixmap.isNull():
-                self._stack.setMinimumHeight(pixmap.height())
-        else:
-            self._stack.setCurrentWidget(self._conversations_view)
-            pixmap = self._conversations_view.pixmap()
-            if pixmap is not None and not pixmap.isNull():
-                self._stack.setMinimumHeight(pixmap.height())
-
     def _schedule_conversations_snapshot(
         self,
         resolved: ResolvedTheme,
@@ -975,10 +1654,6 @@ class ThemePreviewPanel(QFrame):
             chat_resolved_wallpaper,
         )
         QTimer.singleShot(0, self._refresh_conversations_snapshot)
-
-    def _schedule_components_snapshot(self, resolved: ResolvedTheme) -> None:
-        self._pending_components_snapshot = resolved
-        QTimer.singleShot(0, self._refresh_components_snapshot)
 
     def _refresh_conversations_snapshot(self) -> None:
         pending = self._pending_conversations_snapshot
@@ -1004,11 +1679,106 @@ class ThemePreviewPanel(QFrame):
             return
         self._conversations_view.setPixmap(pixmap)
         self._conversations_view.setFixedSize(pixmap.width(), pixmap.height())
-        self._stack.setFixedSize(pixmap.width(), pixmap.height())
         self.setFixedWidth(pixmap.width())
         self._last_snapshot_width = pixmap.width()
-        if not self._components_cb.isChecked():
-            self._stack.setMinimumHeight(pixmap.height())
+
+    def apply_theme(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        chat_profile: SurfaceProfile | None = None,
+        chat_resolved_wallpaper=None,
+    ) -> None:
+        """Repaint preview chrome from ``resolved`` only — never touches the app."""
+        self.setStyleSheet(
+            "QFrame#ThemePreviewPanel { background: transparent; border: none; }"
+        )
+        self._schedule_conversations_snapshot(
+            resolved,
+            chat_profile=chat_profile,
+            chat_resolved_wallpaper=chat_resolved_wallpaper,
+        )
+
+
+class ThemeComponentsPreviewPanel(QFrame):
+    """Live draft preview for theme colors on a miniature Settings page shell."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ThemeComponentsPreviewPanel")
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        design_width = _design_preview_width_at_min_window()
+        self.setMaximumWidth(design_width)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Preferred,
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self._components_live = ThemeComponentsPreviewScene()
+        _configure_offscreen_live_scene(self._components_live)
+        self._components_view = QLabel()
+        _configure_preview_snapshot_label(
+            self._components_view,
+            object_name="ThemePreviewComponentsSnapshot",
+        )
+        self._components_view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
+        layout.addWidget(self._components_view)
+
+        self._pending_components_snapshot: ResolvedTheme | None = None
+        self._last_snapshot_width = 0
+        self._width_watch_card: QWidget | None = None
+
+    @property
+    def _components_scene(self) -> ThemeComponentsPreviewScene:
+        """Backward-compatible alias for tests and callers."""
+        return self._components_live
+
+    def _install_preview_card_width_watch(self) -> None:
+        card = _find_settings_section_card(self)
+        if card is self._width_watch_card:
+            return
+        if self._width_watch_card is not None:
+            self._width_watch_card.removeEventFilter(self)
+        self._width_watch_card = card
+        if card is not None:
+            card.installEventFilter(self)
+
+    def _request_snapshot_refresh(self) -> None:
+        width = _available_preview_width(self)
+        if width is None:
+            if self._pending_components_snapshot is not None:
+                QTimer.singleShot(0, self._refresh_components_snapshot)
+            return
+        previous = self._last_snapshot_width
+        if previous and abs(width - previous) < 2:
+            return
+        self._last_snapshot_width = width
+        if self._pending_components_snapshot is not None:
+            QTimer.singleShot(0, self._refresh_components_snapshot)
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            watched is self._width_watch_card
+            and event.type() == QEvent.Type.Resize
+        ):
+            self._request_snapshot_refresh()
+        return super().eventFilter(watched, event)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._request_snapshot_refresh()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._install_preview_card_width_watch()
+        self._request_snapshot_refresh()
+
+    def _schedule_components_snapshot(self, resolved: ResolvedTheme) -> None:
+        self._pending_components_snapshot = resolved
+        QTimer.singleShot(0, self._refresh_components_snapshot)
 
     def _refresh_components_snapshot(self) -> None:
         resolved = self._pending_components_snapshot
@@ -1032,39 +1802,142 @@ class ThemePreviewPanel(QFrame):
             return
         self._components_view.setPixmap(pixmap)
         self._components_view.setFixedSize(pixmap.width(), pixmap.height())
-        self._stack.setFixedSize(pixmap.width(), pixmap.height())
         self.setFixedWidth(pixmap.width())
         self._last_snapshot_width = pixmap.width()
-        if self._components_cb.isChecked():
-            self._stack.setMinimumHeight(pixmap.height())
-        self._components_snapshot_stale = False
+
+    def apply_theme(self, resolved: ResolvedTheme) -> None:
+        """Repaint component mock from ``resolved`` only — never touches the app."""
+        self.setStyleSheet(
+            "QFrame#ThemeComponentsPreviewPanel { background: transparent; border: none; }"
+        )
+        self._schedule_components_snapshot(resolved)
+
+
+class ThemeLibraryPreviewPanel(QFrame):
+    """Live draft preview for Library document wallpaper settings."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ThemeLibraryPreviewPanel")
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        design_width = _design_preview_width_at_min_window()
+        self.setMaximumWidth(design_width)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Preferred,
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self._live = ThemeLibraryPreviewScene()
+        _configure_offscreen_live_scene(self._live)
+        self._view = QLabel()
+        _configure_preview_snapshot_label(
+            self._view,
+            object_name="ThemePreviewLibrarySnapshot",
+        )
+        self._view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
+        layout.addWidget(self._view)
+
+        self._pending_snapshot: tuple | None = None
+        self._last_snapshot_width = 0
+        self._width_watch_card: QWidget | None = None
+
+    def _install_preview_card_width_watch(self) -> None:
+        card = _find_settings_section_card(self)
+        if card is self._width_watch_card:
+            return
+        if self._width_watch_card is not None:
+            self._width_watch_card.removeEventFilter(self)
+        self._width_watch_card = card
+        if card is not None:
+            card.installEventFilter(self)
+
+    def _request_snapshot_refresh(self) -> None:
+        width = _available_preview_width(self)
+        if width is None:
+            if self._pending_snapshot is not None:
+                QTimer.singleShot(0, self._refresh_snapshot)
+            return
+        previous = self._last_snapshot_width
+        if previous and abs(width - previous) < 2:
+            return
+        self._last_snapshot_width = width
+        if self._pending_snapshot is not None:
+            QTimer.singleShot(0, self._refresh_snapshot)
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            watched is self._width_watch_card
+            and event.type() == QEvent.Type.Resize
+        ):
+            self._request_snapshot_refresh()
+        return super().eventFilter(watched, event)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._request_snapshot_refresh()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._install_preview_card_width_watch()
+        self._request_snapshot_refresh()
+
+    def _schedule_snapshot(
+        self,
+        resolved: ResolvedTheme,
+        *,
+        library_profile: SurfaceProfile | None,
+        library_resolved_wallpaper,
+    ) -> None:
+        self._pending_snapshot = (
+            resolved,
+            library_profile,
+            library_resolved_wallpaper,
+        )
+        QTimer.singleShot(0, self._refresh_snapshot)
+
+    def _refresh_snapshot(self) -> None:
+        pending = self._pending_snapshot
+        if pending is None:
+            return
+        resolved, library_profile, library_resolved_wallpaper = pending
+        width = _preview_snapshot_width(self)
+        if width is None:
+            QTimer.singleShot(0, self._refresh_snapshot)
+            return
+        self._live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
+        self._live.setUpdatesEnabled(True)
+        try:
+            self._live.apply_theme(
+                resolved,
+                library_profile=library_profile,
+                library_resolved_wallpaper=library_resolved_wallpaper,
+            )
+            pixmap = self._live.grab()
+        finally:
+            self._live.setUpdatesEnabled(False)
+        if pixmap.isNull():
+            return
+        self._view.setPixmap(pixmap)
+        self._view.setFixedSize(pixmap.width(), pixmap.height())
+        self.setFixedWidth(pixmap.width())
+        self._last_snapshot_width = pixmap.width()
 
     def apply_theme(
         self,
         resolved: ResolvedTheme,
         *,
-        chat_profile: SurfaceProfile | None = None,
-        chat_resolved_wallpaper=None,
+        library_profile: SurfaceProfile | None = None,
+        library_resolved_wallpaper=None,
     ) -> None:
-        """Repaint preview chrome from ``resolved`` only — never touches the app."""
+        """Repaint library preview from draft theme and wallpaper only."""
         self.setStyleSheet(
-            "QFrame#ThemePreviewPanel { background: transparent; border: none; }"
+            "QFrame#ThemeLibraryPreviewPanel { background: transparent; border: none; }"
         )
-        self._stack.setStyleSheet("background: transparent; border: none;")
-        self._schedule_conversations_snapshot(
+        self._schedule_snapshot(
             resolved,
-            chat_profile=chat_profile,
-            chat_resolved_wallpaper=chat_resolved_wallpaper,
+            library_profile=library_profile,
+            library_resolved_wallpaper=library_resolved_wallpaper,
         )
-        self._pending_components_snapshot = resolved
-        self._components_snapshot_stale = True
-        if self._components_cb.isChecked():
-            self._schedule_components_snapshot(resolved)
-        toggle_style = _preview_scene_toggle_style(resolved)
-        self._conversations_cb.setStyleSheet(toggle_style)
-        self._components_cb.setStyleSheet(toggle_style)
-
-    @property
-    def _components_scene(self) -> ThemeComponentsPreviewScene:
-        """Backward-compatible alias for tests and callers."""
-        return self._components_live

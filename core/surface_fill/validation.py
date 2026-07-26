@@ -50,7 +50,7 @@ class SurfaceFillValidator:
             and isinstance(wallpaper, WallpaperImage)
         ):
             warnings.append(
-                "Vivid overlay with an image wallpaper may reduce readability"
+                "Original readability overlay with an image wallpaper may reduce readability"
             )
         return ValidatedSurfaceProfile(
             surface_id=surface_id,

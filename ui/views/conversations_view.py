@@ -82,6 +82,7 @@ from core.theme.widget_styles import (
     ACCENT_ICON,
     ACCENT_ICON_ACTIVE,
     AGENT_COPY_BUTTON,
+    AGENT_MESSAGE_FRAME,
     AGENT_MESSAGE_SHELL,
     COMPOSER_SIDE_BUTTON,
     COMPOSER_SIDE_DIVIDER,
@@ -135,6 +136,7 @@ from core.composer_mention_trigger import (
 from core.app_settings import (
     get_composer_at_mention_discovered,
     get_engine_mode,
+    get_ui_assistant_message_background,
     set_composer_at_mention_discovered,
     set_native_reasoning_display_enabled,
 )
@@ -223,6 +225,7 @@ _CHAT_UTILITY_ICON_PX = 18
 
 # Readability (transcript-local; no persistence yet)
 _BASE_CHAT_FONT_PT = 10.0
+_AGENT_MESSAGE_CARD_MARGINS = (14, 10, 14, 8)
 _FONT_SCALE_MIN = 0.85
 _FONT_SCALE_MAX = 1.3
 _FONT_SCALE_STEP = 0.05
@@ -992,6 +995,7 @@ class AgentMessageContainer(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("AgentMessageContainer")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -1652,6 +1656,9 @@ class ConversationsView(QWidget):
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
         self._focus_mode_enabled: bool = False
         self._high_contrast_enabled: bool = False
+        self._assistant_message_background_enabled: bool = (
+            get_ui_assistant_message_background()
+        )
         self._reader_hover_wrapper: MessageWrapper | None = None
         self._transcript_alignment: str = ALIGN_JUSTIFY
         self._agent_typing_wrapper: MessageWrapper | None = None
@@ -1933,6 +1940,29 @@ class ConversationsView(QWidget):
         agent.setFont(f)
         theme = self._theme(getattr(self.window(), "_is_dark_theme", True))
         agent.setStyleSheet(theme.style(AGENT_MESSAGE_SHELL, font_pt=pt))
+
+    def _style_agent_message_container(self, container: AgentMessageContainer) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
+        enabled = self._assistant_message_background_enabled
+        container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, enabled)
+        container.setStyleSheet(
+            theme.style(
+                AGENT_MESSAGE_FRAME,
+                enabled=enabled,
+                high_contrast=self._high_contrast_enabled,
+            )
+        )
+        left, top, right, bottom = (
+            _AGENT_MESSAGE_CARD_MARGINS if enabled else (0, 0, 0, 0)
+        )
+        container._layout.setContentsMargins(left, top, right, bottom)
+
+    def refresh_assistant_message_background(self) -> None:
+        self._assistant_message_background_enabled = (
+            get_ui_assistant_message_background()
+        )
+        self._refresh_all_readability()
 
     def _style_agent_copy_button(self, btn: QPushButton, is_dark: bool) -> None:
         theme = self._theme(is_dark)
@@ -2323,6 +2353,9 @@ class ConversationsView(QWidget):
                     if lbl is not None:
                         self._style_user_bubble(w.bubble, lbl)
                 else:
+                    container = w.bubble
+                    if isinstance(container, AgentMessageContainer):
+                        self._style_agent_message_container(container)
                     for agent in w.findChildren(AgentMessageLabel):
                         self._style_agent_message_shell(agent)
                         if agent._md_layout_source:
@@ -3142,6 +3175,7 @@ class ConversationsView(QWidget):
 
             self.agent_msg_container.attach_agent(self.current_agent_msg)
             self._add_agent_copy_button(self.agent_msg_container, self.current_agent_msg)
+            self._style_agent_message_container(self.agent_msg_container)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self._register_reader_focus_tracking(wrapper)

@@ -46,6 +46,7 @@ from ui.components.sidebar_folder_list import (
     create_sidebar_header_actions_row,
 )
 from ui.components.ingest_progress_row import IngestProgressRow
+from core.app_settings import get_ui_library_transcript_background
 from core.theme.view_theme import view_resolved_theme
 from core.surface_fill.constants import SURFACE_LIBRARY_PREVIEW
 from ui.surface_fill.transcript_host import (
@@ -55,6 +56,7 @@ from ui.surface_fill.transcript_host import (
 from core.theme.widget_styles import (
     ACCENT_ICON,
     ACCENT_ICON_ACTIVE,
+    AGENT_MESSAGE_FRAME,
     CHAT_WITH_DOC_FAB,
     DANGER_ICON,
     GHOST_ICON_BUTTON,
@@ -86,6 +88,7 @@ _LINE_SPACING_ICON = os.path.abspath(
 _CHAT_UTILITY_BTN = 30
 _CHAT_UTILITY_ICON_PX = 18
 _BASE_PREVIEW_FONT_PT = 10.0
+_LIBRARY_TRANSCRIPT_CARD_MARGINS = (14, 10, 14, 8)
 _FONT_SCALE_MIN = 0.85
 _FONT_SCALE_MAX = 1.3
 _FONT_SCALE_STEP = 0.05
@@ -168,6 +171,9 @@ class LibraryView(QWidget):
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
         self._focus_mode_enabled: bool = False
         self._high_contrast_enabled: bool = False
+        self._library_transcript_background_enabled: bool = (
+            get_ui_library_transcript_background()
+        )
         self._layout_mode: str = LAYOUT_CENTERED_COLUMN
         self._transcript_alignment: str = ALIGN_JUSTIFY
 
@@ -519,12 +525,14 @@ class LibraryView(QWidget):
 
         self.text_preview.setPlaceholderText("Select a document from the left to view its contents.")
 
-        transcript_inner = QWidget()
+        transcript_inner = QFrame()
+        transcript_inner.setObjectName("LibraryTranscriptCard")
         transcript_inner.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
         transcript_inner.setMinimumWidth(0)
+        self._library_transcript_card = transcript_inner
         ti_layout = QVBoxLayout(transcript_inner)
         ti_layout.setContentsMargins(0, 0, 0, 0)
         ti_layout.setSpacing(0)
@@ -692,6 +700,35 @@ class LibraryView(QWidget):
             block = block.next()
         cur.endEditBlock()
 
+    def _style_library_transcript_card(self) -> None:
+        card = getattr(self, "_library_transcript_card", None)
+        if card is None:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
+        enabled = self._library_transcript_background_enabled
+        card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, enabled)
+        card.setStyleSheet(
+            theme.style(
+                AGENT_MESSAGE_FRAME,
+                enabled=enabled,
+                high_contrast=self._high_contrast_enabled,
+                object_name="LibraryTranscriptCard",
+            )
+        )
+        layout = card.layout()
+        if layout is not None:
+            left, top, right, bottom = (
+                _LIBRARY_TRANSCRIPT_CARD_MARGINS if enabled else (0, 0, 0, 0)
+            )
+            layout.setContentsMargins(left, top, right, bottom)
+
+    def refresh_library_transcript_background(self) -> None:
+        self._library_transcript_background_enabled = (
+            get_ui_library_transcript_background()
+        )
+        self._apply_library_preview_readability()
+
     def _apply_library_preview_readability(self) -> None:
         if not hasattr(self, "text_preview"):
             return
@@ -708,6 +745,7 @@ class LibraryView(QWidget):
         self.text_preview.setStyleSheet(
             theme.style(TRANSPARENT_TEXT_PREVIEW, color=fg, font_pt=pt)
         )
+        self._style_library_transcript_card()
         self._apply_preview_reader_focus_opacity()
 
     def _nudge_font_scale(self, delta: float) -> None:

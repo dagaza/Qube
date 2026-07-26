@@ -183,6 +183,8 @@ class StylingMixin:
             "companion_verbal_react_ingest_cb",
             "companion_verbal_react_download_cb",
             "themes_auto_adjust_cb",
+            "themes_assistant_message_background_cb",
+            "themes_library_transcript_background_cb",
         ):
             cb = getattr(self, name, None)
             if cb is not None:

@@ -26,6 +26,7 @@ class ThemeColorSwatch(QWidget):
         super().__init__(parent)
         self._token_key = token_key
         self._color = self._normalize_color(color)
+        self.setMinimumHeight(32)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)

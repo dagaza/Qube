@@ -17,6 +17,18 @@ def _open_themes_preview(main_window, qtbot):
     return settings
 
 
+def _open_themes_library_preview(main_window, qtbot):
+    win = main_window
+    win._set_tools_pane_expanded(False, animate=False)
+    settings = win.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._ensure_themes_library_preview_initialized()
+    qtbot.wait(200)
+    settings._refresh_themes_library_preview()
+    qtbot.wait(200)
+    return settings
+
+
 def test_theme_preview_fits_settings_card_at_min_window(main_window, qtbot):
     win = main_window
     win.resize(1200, 950)
@@ -49,6 +61,39 @@ def test_theme_preview_stays_capped_on_wide_window(main_window, qtbot):
 
     panel = settings.themes_preview_panel
     pixmap = panel._conversations_view.pixmap()
+    design = _design_preview_width_at_min_window()
+
+    assert pixmap.width() == design
+    assert panel.width() == design
+
+
+def test_library_preview_fits_settings_card_at_min_window(main_window, qtbot):
+    win = main_window
+    win.resize(1200, 950)
+    qtbot.wait(50)
+    settings = _open_themes_library_preview(win, qtbot)
+
+    panel = settings.themes_library_preview_panel
+    card = settings.themes_library_preview_card
+    scroll = settings.settings_section_stack.currentWidget()
+    viewport_w = scroll.viewport().width() if scroll is not None else 0
+    pixmap = panel._view.pixmap()
+
+    design = _design_preview_width_at_min_window()
+    card_inner = card.width() - 24
+    assert pixmap.width() <= card_inner + 2
+    assert pixmap.width() <= viewport_w + 2
+    assert pixmap.width() == design
+
+
+def test_library_preview_stays_capped_on_wide_window(main_window, qtbot):
+    win = main_window
+    win.resize(1600, 950)
+    qtbot.wait(50)
+    settings = _open_themes_library_preview(win, qtbot)
+
+    panel = settings.themes_library_preview_panel
+    pixmap = panel._view.pixmap()
     design = _design_preview_width_at_min_window()
 
     assert pixmap.width() == design

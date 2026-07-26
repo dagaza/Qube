@@ -50,9 +50,16 @@ class HelpSettingsControlsTests(unittest.TestCase):
         self.assertIn("GENERATED CONTROLS", text)
         self.assertIn("Reset to default configuration", text)
 
-    def test_themes_includes_same_as_chat_action(self) -> None:
+    def test_themes_includes_per_card_wallpaper_actions(self) -> None:
+        from core.help_settings_controls import _read_section_sources, extract_settings_controls
+
+        source = _read_section_sources("appearance.themes")
+        self.assertIn("themes_library_apply_btn", source)
+        self.assertIn("themes_library_revert_btn", source)
+        self.assertNotIn("Same as Chat", source)
         labels = [entry.label for entry in extract_settings_controls("appearance.themes")]
-        self.assertIn("Same as Chat", labels)
+        self.assertIn("Apply", labels)
+        self.assertIn("Revert", labels)
 
     def test_themes_includes_theme_pack_actions(self) -> None:
         labels = [entry.label for entry in extract_settings_controls("appearance.themes")]

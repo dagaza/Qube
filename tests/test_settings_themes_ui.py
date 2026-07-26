@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from core.theme.catalog import ThemeCatalog, catalog_for_registry
+from core.theme.constants import UNRESOLVED_TOKEN_COLOR
 from core.theme.schemes import (
     BUILTIN_SCHEMES,
     BUILTIN_CATPUCCIN_LATTE_ID,
@@ -40,6 +41,26 @@ def test_settings_themes_picker_model_includes_all_builtins():
     assert len(model.entries) == len(BUILTIN_SCHEMES)
 
 
+def test_settings_themes_swatch_colors_sync_on_first_enter(main_window, qtbot):
+    settings = main_window.ensure_settings_view()
+    manager = main_window.theme_manager
+    expected_accent = (
+        manager.preview_resolve(scheme_id=manager.scheme_id)
+        .core_tokens()
+        .as_dict()["accent"]
+    )
+
+    settings._ensure_section_built("appearance.themes")
+    accent_swatch = settings.themes_color_swatches["accent"]
+    settings._themes_draft_controls_synced = False
+    accent_swatch.set_color(UNRESOLVED_TOKEN_COLOR)
+
+    settings.select_settings_section("appearance.themes")
+    assert settings._themes_draft_controls_synced is True
+    assert accent_swatch.color() == expected_accent
+    assert not getattr(settings, "_themes_preview_initialized", False)
+
+
 def test_settings_themes_section_builds(main_window, qtbot):
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
@@ -66,7 +87,7 @@ def test_settings_themes_section_builds(main_window, qtbot):
 def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
-    settings._ensure_themes_preview_initialized()
+    settings._ensure_themes_previews_initialized()
     qtbot.wait(10)
 
     manager = main_window.theme_manager
@@ -86,4 +107,4 @@ def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):
 
     assert RecordingApplicator.apply_count == 0
     assert manager.current.scheme_id == applied_before.scheme_id
-    assert settings.themes_preview_panel._components_live._primary_btn is not None
+    assert settings.themes_components_preview_panel._components_live._primary_btn is not None
