@@ -39,6 +39,7 @@ class TranscriptWallpaperHost(QWidget):
         self._refresh_registered = False
         self._background_cache: QPixmap | None = None
         self._background_cache_key: tuple[Any, ...] | None = None
+        self._cache_build_pending = False
         self._resize_debounce = QTimer(self)
         self._resize_debounce.setSingleShot(True)
         self._resize_debounce.setInterval(50)
@@ -93,12 +94,26 @@ class TranscriptWallpaperHost(QWidget):
     def refresh_surface_fill(self) -> None:
         self._invalidate_background_cache()
         self.update()
+        self._schedule_background_cache_build()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._register_theme_refresh()
-        # Reuse cached pixmap when geometry/theme are unchanged; paintEvent
-        # recomposes only on cache miss (e.g. resize while hidden).
+        self._schedule_background_cache_build()
+
+    def _schedule_background_cache_build(self) -> None:
+        if self._background_cache is not None and not self._background_cache.isNull():
+            return
+        if self._cache_build_pending:
+            return
+        self._cache_build_pending = True
+        QTimer.singleShot(0, self._build_background_cache_deferred)
+
+    def _build_background_cache_deferred(self) -> None:
+        self._cache_build_pending = False
+        if self.width() <= 0 or self.height() <= 0:
+            return
+        self._background_pixmap()
         self.update()
 
     def resizeEvent(self, event) -> None:
@@ -113,20 +128,39 @@ class TranscriptWallpaperHost(QWidget):
             if cached_w == self.width() and cached_h == self.height():
                 return
         self._invalidate_background_cache()
-        self.update()
+        self._schedule_background_cache_build()
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         try:
-            pixmap = self._background_pixmap()
+            pixmap = self._background_cache
             if pixmap is not None and not pixmap.isNull():
                 painter.drawPixmap(0, 0, pixmap)
+                return
+            self._paint_fast_fallback(painter)
+            self._schedule_background_cache_build()
         finally:
             painter.end()
+
+    def _paint_fast_fallback(self, painter: QPainter) -> None:
+        context = self._paint_context()
+        if context is None:
+            return
+        theme, profile, resolved_wallpaper = context
+        self._renderer.paint(
+            painter,
+            self.rect(),
+            profile,
+            theme=theme,
+            overlay_boost=self._overlay_boost,
+            suppressed=True,
+            resolved_wallpaper=resolved_wallpaper,
+        )
 
     def _invalidate_background_cache(self) -> None:
         self._background_cache = None
         self._background_cache_key = None
+        self._cache_build_pending = False
 
     def _background_pixmap(self) -> QPixmap | None:
         context = self._paint_context()

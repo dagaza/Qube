@@ -3784,18 +3784,20 @@ class MainWindow(QMainWindow):
         profiler.begin()
         is_dark = self._is_dark_theme
         active_stage = self._active_main_stage_index()
-        for stage_index in sorted(dirty):
+        deferred_indices = sorted(dirty)
+        for stage_index in deferred_indices:
             with profiler.step(f"stage_{stage_index}.refresh_deferred"):
                 if stage_index == MAIN_STAGE_CONVERSATIONS:
                     include_transcript = stage_index == active_stage
+                    if not include_transcript:
+                        # Hidden Conversations stays dirty until show; skip chrome
+                        # refresh here (saves ~170ms) — full refresh on navigate back.
+                        continue
                     self._refresh_conversations_theme(
                         is_dark,
-                        include_transcript=include_transcript,
+                        include_transcript=True,
                     )
-                    # Keep Conversations dirty until transcript bubbles refresh
-                    # (chrome-only refresh is not enough when user returns).
-                    if include_transcript:
-                        dirty.discard(stage_index)
+                    dirty.discard(stage_index)
                 else:
                     self._refresh_stage_theme(stage_index, is_dark)
                     dirty.discard(stage_index)
@@ -3812,6 +3814,8 @@ class MainWindow(QMainWindow):
         from core.theme_toggle_profile import is_theme_stylesheet_clear_forced
 
         app = QApplication.instance()
+        with profiler.step("freeze_updates"):
+            self.setUpdatesEnabled(False)
         with profiler.step("palette_reset"):
             app.setPalette(app.style().standardPalette())
 
@@ -3863,6 +3867,7 @@ class MainWindow(QMainWindow):
         self._active_theme_profiler = None
 
         if resolved is None:
+            self.setUpdatesEnabled(True)
             profiler.finish(
                 context={
                     **self._theme_toggle_profile_context(),

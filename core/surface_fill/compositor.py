@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PyQt6.QtCore import QPointF, QRect, QSize, Qt
-from PyQt6.QtGui import QColor, QImage, QImageReader, QLinearGradient, QPainter, QPixmap
+from PyQt6.QtGui import QImage, QImageReader, QLinearGradient, QPainter, QPixmap
 
 from core.surface_fill.compositor_cache import (
     cache_key_for_path,
@@ -184,34 +184,48 @@ class SurfaceFillCompositor:
             return cached
 
         image = pixmap.toImage().convertToFormat(QImage.Format.Format_ARGB32)
-        width = image.width()
-        height = image.height()
-        for y in range(height):
-            for x in range(width):
-                color = QColor.fromRgba(image.pixel(x, y))
-                alpha = color.alpha()
-                if alpha == 0:
-                    continue
-                gray = int(
-                    round(
-                        0.299 * color.red()
-                        + 0.587 * color.green()
-                        + 0.114 * color.blue()
-                    )
-                )
-                color.setRgb(
-                    int(round(gray + (color.red() - gray) * factor)),
-                    int(round(gray + (color.green() - gray) * factor)),
-                    int(round(gray + (color.blue() - gray) * factor)),
-                    alpha,
-                )
-                image.setPixelColor(x, y, color)
+        if image.isNull():
+            return pixmap
+        # PyQt6 does not expose QImage.isDetached(); copy ensures an exclusive buffer
+        # before in-place edits via bits().
+        image = image.copy()
+
+        SurfaceFillCompositor._desaturate_argb32_image(image, factor)
         result = QPixmap.fromImage(image)
         _SATURATION_CACHE[cache_key] = result
         _SATURATION_CACHE.move_to_end(cache_key)
         while len(_SATURATION_CACHE) > _SATURATION_CACHE_MAX:
             _SATURATION_CACHE.popitem(last=False)
         return result
+
+    @staticmethod
+    def _desaturate_argb32_image(image: QImage, factor: float) -> None:
+        """In-place BGRA saturation scale using raw buffer access (much faster than QColor loops)."""
+        width = image.width()
+        height = image.height()
+        if width <= 0 or height <= 0:
+            return
+
+        bytes_per_line = image.bytesPerLine()
+        ptr = image.bits()
+        ptr.setsize(image.sizeInBytes())
+        row = memoryview(ptr)
+
+        f = float(factor)
+        for y in range(height):
+            base = y * bytes_per_line
+            for x in range(width):
+                off = base + x * 4
+                b = row[off]
+                g = row[off + 1]
+                r = row[off + 2]
+                a = row[off + 3]
+                if a == 0:
+                    continue
+                gray = int(0.299 * r + 0.587 * g + 0.114 * b)
+                row[off] = int(round(gray + (b - gray) * f))
+                row[off + 1] = int(round(gray + (g - gray) * f))
+                row[off + 2] = int(round(gray + (r - gray) * f))
 
     @staticmethod
     def tint_fill_color(color: str, *, saturation_scale: float) -> str:
