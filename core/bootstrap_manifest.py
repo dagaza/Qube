@@ -159,8 +159,7 @@ BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
         label="Gemma 4 E4B Q5",
         size_bytes=int(5.11 * _GB),
         description_recommended=(
-            "Fallback main model when Qwen 3.5 9B does not fit your disk or memory; "
-            "also suited to 8 GB RAM systems."
+            "Fallback main model when Qwen 3.5 9B does not fit your disk or memory."
         ),
         description_advanced=(
             "Fallback main model when Qwen 3.5 9B does not fit; optimised for tighter disk/RAM."
