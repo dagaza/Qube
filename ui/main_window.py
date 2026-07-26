@@ -3760,9 +3760,9 @@ class MainWindow(QMainWindow):
         if not dirty or stage_index not in dirty:
             return
         if stage_index == MAIN_STAGE_CONVERSATIONS:
-            cv = getattr(self, "conversations_view", None)
-            if cv is not None and hasattr(cv, "_refresh_transcript_theme"):
-                cv._refresh_transcript_theme()
+            self._refresh_conversations_theme(
+                self._is_dark_theme, include_transcript=True
+            )
         else:
             self._refresh_stage_theme(stage_index, self._is_dark_theme)
         dirty.discard(stage_index)
@@ -3787,13 +3787,18 @@ class MainWindow(QMainWindow):
         for stage_index in sorted(dirty):
             with profiler.step(f"stage_{stage_index}.refresh_deferred"):
                 if stage_index == MAIN_STAGE_CONVERSATIONS:
+                    include_transcript = stage_index == active_stage
                     self._refresh_conversations_theme(
                         is_dark,
-                        include_transcript=(stage_index == active_stage),
+                        include_transcript=include_transcript,
                     )
+                    # Keep Conversations dirty until transcript bubbles refresh
+                    # (chrome-only refresh is not enough when user returns).
+                    if include_transcript:
+                        dirty.discard(stage_index)
                 else:
                     self._refresh_stage_theme(stage_index, is_dark)
-            dirty.discard(stage_index)
+                    dirty.discard(stage_index)
         profiler.finish(
             context={
                 "deferred_batch": 1,

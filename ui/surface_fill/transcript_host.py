@@ -97,13 +97,21 @@ class TranscriptWallpaperHost(QWidget):
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._register_theme_refresh()
-        self.refresh_surface_fill()
+        # Reuse cached pixmap when geometry/theme are unchanged; paintEvent
+        # recomposes only on cache miss (e.g. resize while hidden).
+        self.update()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        if event.size() == event.oldSize():
+            return
         self._resize_debounce.start()
 
     def _on_resize_debounced(self) -> None:
+        if self._background_cache_key is not None:
+            cached_w, cached_h = self._background_cache_key[0], self._background_cache_key[1]
+            if cached_w == self.width() and cached_h == self.height():
+                return
         self._invalidate_background_cache()
         self.update()
 
