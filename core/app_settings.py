@@ -1648,7 +1648,7 @@ def get_companion_enabled() -> bool:
 
     if os.environ.get("QUBE_COMPANION", "").strip().lower() in ("1", "true", "yes"):
         return True
-    return bool(_store().get(KEY_COMPANION_ENABLED, True))
+    return bool(_store().get(KEY_COMPANION_ENABLED, False))
 
 
 def set_companion_enabled(enabled: bool) -> None:

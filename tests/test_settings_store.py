@@ -238,12 +238,18 @@ class TestAppSettingsWithJsonStore(unittest.TestCase):
         self.assertFalse(app_settings.get_mcp_rag_strict_enabled())
         self.assertFalse(app_settings.get_mcp_internet_hybrid_enabled())
 
-    def test_companion_visibility_defaults_are_on_on_first_launch(self) -> None:
+    def test_companion_defaults_are_off_on_first_launch(self) -> None:
         with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
             SettingsStore(user_path=self.user_path)
-        self.assertTrue(app_settings.get_companion_enabled())
+        self.assertFalse(app_settings.get_companion_enabled())
         self.assertTrue(app_settings.get_companion_show_when_tray_hidden())
         self.assertTrue(app_settings.get_companion_show_while_window_open())
+
+    def test_theme_appearance_defaults_to_dark_on_first_launch(self) -> None:
+        with patch.object(SettingsStore, "_migrate_from_qsettings", return_value=False):
+            store = SettingsStore(user_path=self.user_path)
+        self.assertEqual(app_settings.get_ui_theme_appearance(), "dark")
+        self.assertEqual(store.get("qube.ui.theme.mode"), "dark")
 
 
 if __name__ == "__main__":

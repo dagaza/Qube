@@ -24,8 +24,9 @@
   },
   "qube.ui.theme.appearance": {
     "type": "string",
+    "default": "dark",
     "enum": ["dark", "light", "follow_system"],
-    "description": "Theme appearance preference. When unset, the active color scheme drives polarity (legacy). follow_system matches the OS and restores the last theme used for each polarity."
+    "description": "Theme appearance preference (dark, light, or follow_system). follow_system matches the OS and restores the last theme used for each polarity."
   },
   "qube.ui.color_scheme.last.dark": {
     "type": "string",
@@ -593,7 +594,7 @@
   },
   "qube.companion.enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Show the floating desktop companion when Qube is tray-hidden."
   },
   "qube.companion.showWhenTrayHidden": {
