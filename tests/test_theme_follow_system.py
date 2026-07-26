@@ -61,3 +61,22 @@ def test_storage_load_legacy_without_appearance_uses_scheme():
     assert mode is ThemeMode.LIGHT
     assert scheme_id == BUILTIN_NORD_LIGHT_ID
     assert storage.appearance_preference is None
+
+
+def test_storage_load_ignores_schema_default_appearance(tmp_path):
+    import core.settings_store as settings_store_module
+    from core.settings_store import SettingsStore, reset_settings_store_for_tests
+    from core.theme.storage import theme_storage_from_app_settings
+
+    reset_settings_store_for_tests()
+    settings_store_module._store = SettingsStore(user_path=tmp_path / "settings.json")
+
+    storage = theme_storage_from_app_settings()
+    storage.save(mode=ThemeMode.LIGHT, scheme_id=DEFAULT_SCHEME_ID_LIGHT)
+
+    mode, scheme_id = storage.load()
+    assert mode is ThemeMode.LIGHT
+    assert scheme_id == DEFAULT_SCHEME_ID_LIGHT
+    assert storage.appearance_preference is None
+
+    reset_settings_store_for_tests()
