@@ -78,8 +78,7 @@ Use this table to track progress. **Final launch pass** = re-run every unchecked
 - [ ] Platform matrix: what is **released** vs **source-only** (Linux?)
 - [ ] List screenshots in `assets/screenshots/` vs current UI (nav labels, themes, new surfaces e.g. Companion)
 - [ ] Note new `@` tools / settings sections missing from README feature pillars
-- [ ] Skim [competitive-landscape.md](user/competitive-landscape.md) — update if competitors shipped overlapping features
-- [ ] Skim [competitive_roadmap.md](competitive_roadmap.md) — adjust P0/P1 if matrix rows changed
+- [ ] *(Maintainer-private)* If using local copies in `docs/private/`, skim competitive landscape + roadmap for competitor/feature drift
 
 ---
 
@@ -248,11 +247,9 @@ Copy into release PR or issue when tagging:
 |----------|------|
 | [README.md](../README.md) | Public storefront |
 | [docs/index.html](index.html) | GitHub Pages landing |
-| [docs/user/competitive-landscape.md](user/competitive-landscape.md) | vs LM Studio, SillyTavern, Odysseus |
-| [docs/competitive_roadmap.md](competitive_roadmap.md) | Dev priorities: parity, moats, non-goals |
 | [docs/pages.md](pages.md) | Enable GitHub Pages |
-| [assets/social/README.md](../assets/social/README.md) | Social preview upload |
 | [docs/user/README.md](user/README.md) | User doc index |
+| [assets/social/README.md](../assets/social/README.md) | Social preview upload |
 | [docs/architecture/README.md](architecture/README.md) | Technical index |
 | [docs/in_app_help_knowledge_base.md](in_app_help_knowledge_base.md) | Help corpus design |
 | [docs/releasing.md](releasing.md) | Release + doc checklist |

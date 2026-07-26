@@ -155,7 +155,7 @@ More workflows: [How to use Qube](docs/user/how-to-use.md).
 
 Full hardware guidance (models, GPU paths, storage): **[System requirements](docs/user/system-requirements.md)**.
 
-Qube uses a native **PyQt6** desktop shell — not Electron and not a browser tab — so more of your **16 GB budget** stays available for models and context. [Runtime notes →](docs/user/competitive-landscape.md#verified-runtime-ui-shell-and-ram)
+Qube uses a native **PyQt6** desktop shell — not Electron and not a browser tab — so more of your **16 GB budget** stays available for models and context. See [System requirements](docs/user/system-requirements.md) for hardware guidance.
 
 ---
 
@@ -169,7 +169,6 @@ Qube uses a native **PyQt6** desktop shell — not Electron and not a browser ta
 | **In-app** | **Library → Qube** or **`@[tool:help]`** (see [Built-in help](#built-in-help)) |
 | **Contributors** | [docs/architecture/](docs/architecture/README.md) — memory, pipeline, stack |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) — setup, tests, PRs |
-| **Competitive analysis** | [Competitive landscape](docs/user/competitive-landscape.md) · [Roadmap](docs/competitive_roadmap.md) |
 | **Launch doc playbook** | [docs/launch_documentation_guidelines.md](docs/launch_documentation_guidelines.md) — re-run before official launch |
 | **Landing page** | [dagaza.github.io/Qube](https://dagaza.github.io/Qube/) · [setup](docs/pages.md) |
 | **Website** | [qubeapp.eu](https://www.qubeapp.eu) |
@@ -185,8 +184,6 @@ The pre–launch rewrite README (453 lines of technical detail) is preserved at 
 ## How Qube compares
 
 **LM Studio** excels at running and serving models; **SillyTavern** at prompt craft and character workflows; **Odysseus** at a broad self-hosted workspace. **Qube targets a different job:** a **native desktop assistant** with automatic routing to Library, memory, or live sources; **`@` composer control**; an editable **Memory Manager**; and **in-app help** — with optional voice and a lean PyQt shell on tight RAM. Qube can use **LM Studio or Ollama** as its inference backend.
-
-[Full comparison →](docs/user/competitive-landscape.md) · [Developer roadmap →](docs/competitive_roadmap.md)
 
 ---
 

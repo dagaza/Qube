@@ -80,6 +80,9 @@ tools/test_outputs/
 # --- Clinerules ---
 .clinerules
 
+# --- Maintainer-private docs (local only; never commit) ---
+docs/private/
+
 # --- Logs (runtime files stay local; app writes to ~/.qube/logs/) ---
 *.log
 *.log.*

@@ -8,7 +8,6 @@ Thank you for helping improve Qube. This project is maintained on GitHub at [dag
 
 - **Bug reports & features:** [GitHub Issues](https://github.com/dagaza/Qube/issues) or [qubeapp.eu](https://www.qubeapp.eu) via **Settings → Contact & Feedback** in the app.
 - **Documentation:** User-facing prose lives in [`docs/user/`](docs/user/README.md) and in-app help (`assets/help/en/`). The README is a short storefront — see [`docs/launch_documentation_guidelines.md`](docs/launch_documentation_guidelines.md) before large doc changes.
-- **Product priorities vs competitors:** [`docs/competitive_roadmap.md`](docs/competitive_roadmap.md) — parity gaps, moats to deepen, intentional non-goals (companion doc: [`docs/user/competitive-landscape.md`](docs/user/competitive-landscape.md)).
 
 ---
 

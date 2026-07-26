@@ -87,7 +87,7 @@ No third-party **chat API** is required.
 
 ## UI shell
 
-Qube uses **PyQt6** native widgets (not Electron or a browser tab). On memory-constrained machines, that matters because **model weights** consume most RAM — a lighter UI shell leaves more headroom for context and retrieval. See [runtime comparison](competitive-landscape.md#verified-runtime-ui-shell-and-ram).
+Qube uses **PyQt6** native widgets (not Electron or a browser tab). On memory-constrained machines, that matters because **model weights** consume most RAM — a lighter UI shell leaves more headroom for context and retrieval.
 
 ---
 

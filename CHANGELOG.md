@@ -127,8 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [docs/launch_documentation_guidelines.md](docs/launch_documentation_guidelines.md) — phased doc playbook and pre-launch checklist.
 - Release checklist in [docs/releasing.md](docs/releasing.md) now includes documentation pass before public launch.
 - Phase 4 (partial): social preview image, GitHub Pages landing, README repositioning (privacy + grounding lead; comparison at bottom).
-- [Competitive landscape](docs/user/competitive-landscape.md) — feature matrix, `@`/help, onboarding, runtime/UI RAM, observability, Live Sources, Desktop Companion, **memory**.
-- [Competitive roadmap](docs/competitive_roadmap.md) — developer priorities: parity, moats, non-goals.
 - [MCP capability integrations plan](docs/mcp_capability_integrations_plan.md) — roadmap for future MCP-based integrations.
 
 ### Changed
