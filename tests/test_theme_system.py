@@ -1050,6 +1050,30 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
     assert comp_pixmap.height() >= 200
 
 
+def test_design_preview_width_at_min_window():
+    from ui.components.theme_preview_panel import _design_preview_width_at_min_window
+
+    assert _design_preview_width_at_min_window() == 614
+
+
+def test_theme_preview_snapshot_matches_panel_width(_qube_app):
+    from ui.components.theme_preview_panel import (
+        ThemePreviewPanel,
+        _design_preview_width_at_min_window,
+    )
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
+    panel = ThemePreviewPanel()
+    target = _design_preview_width_at_min_window()
+    panel.resize(target, 360)
+    panel.apply_theme(theme)
+    _qube_app.processEvents()
+    pixmap = panel._conversations_view.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+    assert pixmap.width() == target
+
+
 def test_theme_preview_components_snapshot_sizes_offscreen_scene(_qube_app):
     from ui.components.theme_preview_panel import ThemePreviewPanel
 

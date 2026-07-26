@@ -19,7 +19,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.surface_fill.constants import GRADIENT_DIRECTIONS, OVERLAY_STRENGTHS
+from core.surface_fill.constants import (
+    GRADIENT_DIRECTIONS,
+    GRADIENT_MAX_STOPS,
+    GRADIENT_MIN_STOPS,
+    OVERLAY_STRENGTHS,
+)
 from core.surface_fill.models import (
     GradientStop,
     OverlaySpec,
@@ -40,10 +45,17 @@ from core.surface_fill.thumbnails import (
     preset_thumbnail_pixmap,
     user_wallpaper_thumbnail_pixmap,
 )
+from core.theme.constants import UNRESOLVED_TOKEN_COLOR
+from core.theme.tokens import ResolvedTheme
 from core.theme.view_theme import view_resolved_theme
 from core.theme.widget_styles import (
     SETTINGS_PRESTIGE_MENU,
     settings_prestige_menu_palette,
+)
+from ui.components.brand_buttons import (
+    BRAND_SECONDARY,
+    apply_brand_secondary,
+    brand_qss_for_variant,
 )
 from ui.components.selector_button import SelectorButton
 from ui.components.theme_color_swatch import ThemeColorSwatch
@@ -82,6 +94,102 @@ _PRESET_THUMB_WIDTH = 96
 _PRESET_THUMB_HEIGHT = 56
 _PRESET_LABEL_MIN_HEIGHT = 34
 _PRESET_GRID_COLUMNS = 3
+
+
+def _style_wallpaper_gradient_add_stop_button(
+    button: QPushButton,
+    theme: ResolvedTheme,
+) -> None:
+    button.setObjectName("WallpaperGradientAddStopButton")
+    apply_brand_secondary(button, theme=theme)
+    selector = f"QPushButton#{button.objectName()}"
+    qss = brand_qss_for_variant(BRAND_SECONDARY, theme, selector=selector)
+    button.setStyleSheet(qss.replace("padding: 10px 20px", "padding: 8px 16px"))
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+
+
+def _style_wallpaper_gradient_remove_button(
+    button: QPushButton,
+    theme: ResolvedTheme,
+) -> None:
+    from core.theme.color_utils import with_alpha
+
+    button.setObjectName("WallpaperGradientRemoveStopButton")
+    border = theme.border_subtle if theme.is_dark else theme.border
+    button.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+    button.setStyleSheet(
+        f"""
+        QPushButton#WallpaperGradientRemoveStopButton {{
+            background-color: transparent;
+            color: {theme.text_secondary};
+            border: 1px solid {with_alpha(border, 0.55)};
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 600;
+        }}
+        QPushButton#WallpaperGradientRemoveStopButton:hover {{
+            background-color: {theme.surface_hover};
+            color: {theme.text_primary};
+            border: 1px solid {border};
+        }}
+        QPushButton#WallpaperGradientRemoveStopButton:pressed {{
+            background-color: {theme.surface_pressed};
+            color: {theme.text_primary};
+            border: 1px solid {border};
+        }}
+        """
+    )
+    style = button.style()
+    if style is not None:
+        style.unpolish(button)
+        style.polish(button)
+    button.update()
+
+
+class _GradientStopRow(QWidget):
+    """Single color stop row in the gradient editor."""
+
+    colorChanged = pyqtSignal()
+    removeRequested = pyqtSignal()
+
+    def __init__(
+        self,
+        index: int,
+        color: str,
+        *,
+        can_remove: bool,
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        self._swatch = ThemeColorSwatch(f"Stop {index + 1}", color)
+        self._swatch.colorChanged.connect(lambda _color: self.colorChanged.emit())
+        layout.addWidget(self._swatch)
+        self._remove_btn = QPushButton("Remove")
+        self._remove_btn.setVisible(can_remove)
+        self._remove_btn.clicked.connect(self.removeRequested.emit)
+        layout.addWidget(self._remove_btn)
+        layout.addStretch()
+
+    def apply_theme(self, theme: ResolvedTheme) -> None:
+        _style_wallpaper_gradient_remove_button(self._remove_btn, theme)
+
+    def color(self) -> str:
+        return self._swatch.color()
+
+    def set_color(self, color: str) -> None:
+        self._swatch.blockSignals(True)
+        self._swatch.set_color(color)
+        self._swatch.blockSignals(False)
+
+
+def _even_gradient_positions(count: int) -> list[float]:
+    if count <= 1:
+        return [0.0]
+    return [index / (count - 1) for index in range(count)]
 
 
 class _GradientDirectionSelector(SelectorButton):
@@ -303,6 +411,7 @@ class WallpaperEditorWidget(QWidget):
         self._image_source_label = ""
         self._preset_thumbnails_ready = False
         self._image_tiles_built = False
+        self._resolved_theme: ResolvedTheme | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -370,7 +479,10 @@ class WallpaperEditorWidget(QWidget):
         )
         solid_layout = QHBoxLayout(solid_panel)
         solid_layout.setContentsMargins(0, 0, 0, 0)
-        self._solid_swatch = ThemeColorSwatch("Wallpaper color", "#1e1e2e")
+        self._solid_swatch = ThemeColorSwatch(
+            "Wallpaper color",
+            UNRESOLVED_TOKEN_COLOR,
+        )
         self._solid_swatch.colorChanged.connect(self._on_solid_color_changed)
         solid_layout.addWidget(self._solid_swatch)
         solid_layout.addStretch()
@@ -384,15 +496,19 @@ class WallpaperEditorWidget(QWidget):
         gradient_layout = QVBoxLayout(gradient_panel)
         gradient_layout.setContentsMargins(0, 0, 0, 0)
         gradient_layout.setSpacing(6)
-        stops_row = QHBoxLayout()
-        self._gradient_start = ThemeColorSwatch("Start", "#1e1e2e")
-        self._gradient_end = ThemeColorSwatch("End", "#313244")
-        self._gradient_start.colorChanged.connect(self._on_gradient_changed)
-        self._gradient_end.colorChanged.connect(self._on_gradient_changed)
-        stops_row.addWidget(self._gradient_start)
-        stops_row.addWidget(self._gradient_end)
-        stops_row.addStretch()
-        gradient_layout.addLayout(stops_row)
+        self._gradient_stops_host = QWidget()
+        self._gradient_stops_layout = QVBoxLayout(self._gradient_stops_host)
+        self._gradient_stops_layout.setContentsMargins(0, 0, 0, 0)
+        self._gradient_stops_layout.setSpacing(6)
+        gradient_layout.addWidget(self._gradient_stops_host)
+        self._gradient_stop_rows: list[_GradientStopRow] = []
+        self._gradient_positions: list[float] = []
+        gradient_actions = QHBoxLayout()
+        self._gradient_add_stop_btn = QPushButton("Add color stop")
+        self._gradient_add_stop_btn.clicked.connect(self._on_gradient_add_stop)
+        gradient_actions.addWidget(self._gradient_add_stop_btn)
+        gradient_actions.addStretch()
+        gradient_layout.addLayout(gradient_actions)
         direction_row = QHBoxLayout()
         direction_row.setSpacing(10)
         direction_row.addWidget(QLabel("Direction"))
@@ -471,6 +587,122 @@ class WallpaperEditorWidget(QWidget):
 
         self.set_profile(self._profile, block_signals=True)
         self._refresh_preset_tile_styles()
+        self._rebuild_gradient_stop_rows(
+            [self._active_resolved_theme().background, self._active_resolved_theme().surface_elevated],
+            positions=_even_gradient_positions(2),
+        )
+        self._style_gradient_controls(self._active_resolved_theme())
+
+    def _style_gradient_controls(self, theme: ResolvedTheme) -> None:
+        _style_wallpaper_gradient_add_stop_button(self._gradient_add_stop_btn, theme)
+        for row in self._gradient_stop_rows:
+            row.apply_theme(theme)
+        self._update_gradient_add_stop_button_state(len(self._gradient_stop_rows))
+
+    def _update_gradient_add_stop_button_state(self, stop_count: int) -> None:
+        can_add = stop_count < GRADIENT_MAX_STOPS
+        self._gradient_add_stop_btn.setEnabled(can_add)
+        self._gradient_add_stop_btn.setCursor(
+            Qt.CursorShape.PointingHandCursor
+            if can_add
+            else Qt.CursorShape.ArrowCursor
+        )
+        if can_add:
+            self._gradient_add_stop_btn.setToolTip("Add another color to the gradient")
+        else:
+            self._gradient_add_stop_btn.setToolTip(
+                f"Maximum of {GRADIENT_MAX_STOPS} color stops reached"
+            )
+
+    def _clear_gradient_stop_rows(self) -> None:
+        while self._gradient_stops_layout.count():
+            item = self._gradient_stops_layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._gradient_stop_rows = []
+        self._gradient_positions = []
+
+    def _rebuild_gradient_stop_rows(
+        self,
+        colors: list[str],
+        *,
+        positions: list[float] | None = None,
+    ) -> None:
+        count = len(colors)
+        if count < GRADIENT_MIN_STOPS:
+            raise ValueError(f"Gradient requires at least {GRADIENT_MIN_STOPS} stops")
+        if count > GRADIENT_MAX_STOPS:
+            raise ValueError(f"Gradient allows at most {GRADIENT_MAX_STOPS} stops")
+        self._clear_gradient_stop_rows()
+        self._gradient_positions = list(
+            positions if positions is not None else _even_gradient_positions(count)
+        )
+        if len(self._gradient_positions) != count:
+            self._gradient_positions = _even_gradient_positions(count)
+        can_remove = count > GRADIENT_MIN_STOPS
+        for index, color in enumerate(colors):
+            row = _GradientStopRow(
+                index,
+                color,
+                can_remove=can_remove,
+                parent=self._gradient_stops_host,
+            )
+            row.colorChanged.connect(self._on_gradient_changed)
+            row.removeRequested.connect(
+                lambda row=row: self._on_gradient_remove_stop(row)
+            )
+            self._gradient_stop_rows.append(row)
+            self._gradient_stops_layout.addWidget(row)
+        theme = self._active_resolved_theme()
+        for row in self._gradient_stop_rows:
+            row.apply_theme(theme)
+        self._update_gradient_add_stop_button_state(count)
+
+    def _sync_gradient_from_wallpaper(self, wallpaper: WallpaperGradient) -> None:
+        colors = [stop.color for stop in wallpaper.stops]
+        positions = [float(stop.position) for stop in wallpaper.stops]
+        self._rebuild_gradient_stop_rows(colors, positions=positions)
+        self._gradient_direction.blockSignals(True)
+        self._gradient_direction.set_direction(wallpaper.direction)
+        self._gradient_direction.blockSignals(False)
+
+    def _default_gradient_colors(self) -> list[str]:
+        theme = self._active_resolved_theme()
+        return [theme.background, theme.surface_elevated]
+
+    def _gradient_colors_from_rows(self) -> list[str]:
+        return [row.color() for row in self._gradient_stop_rows]
+
+    def _on_gradient_add_stop(self) -> None:
+        if len(self._gradient_stop_rows) >= GRADIENT_MAX_STOPS:
+            return
+        colors = self._gradient_colors_from_rows()
+        theme = self._active_resolved_theme()
+        insert_at = len(colors) // 2
+        colors.insert(insert_at, theme.accent)
+        self._rebuild_gradient_stop_rows(
+            colors,
+            positions=_even_gradient_positions(len(colors)),
+        )
+        self._on_gradient_changed()
+
+    def _on_gradient_remove_stop(self, row: _GradientStopRow) -> None:
+        if len(self._gradient_stop_rows) <= GRADIENT_MIN_STOPS:
+            return
+        try:
+            index = self._gradient_stop_rows.index(row)
+        except ValueError:
+            return
+        colors = self._gradient_colors_from_rows()
+        del colors[index]
+        self._rebuild_gradient_stop_rows(
+            colors,
+            positions=_even_gradient_positions(len(colors)),
+        )
+        self._on_gradient_changed()
 
     def profile(self) -> SurfaceProfile:
         return self._profile
@@ -485,10 +717,54 @@ class WallpaperEditorWidget(QWidget):
         if self._image_tiles:
             self._refresh_image_thumbnails()
 
-    def apply_theme(self, is_dark: bool | None = None) -> None:
+    def apply_theme(
+        self,
+        is_dark: bool | None = None,
+        *,
+        theme: ResolvedTheme | None = None,
+    ) -> None:
+        if theme is not None:
+            self._resolved_theme = theme
+            is_dark = theme.is_dark
         if is_dark is not None:
             self.set_is_dark(is_dark)
-        self._gradient_direction.apply_theme(is_dark)
+        self._gradient_direction.apply_theme(is_dark, theme=theme)
+        self._refresh_color_swatch_defaults_from_theme()
+        if theme is not None:
+            self._style_gradient_controls(theme)
+        elif is_dark is not None:
+            self._style_gradient_controls(self._active_resolved_theme())
+
+    def _active_resolved_theme(self) -> ResolvedTheme:
+        if self._resolved_theme is not None:
+            return self._resolved_theme
+        return view_resolved_theme(self, is_dark=self._is_dark)
+
+    def _theme_wallpaper_colors(self) -> tuple[str, str]:
+        theme = self._active_resolved_theme()
+        return theme.background, theme.surface_elevated
+
+    def _seed_solid_swatch_from_theme(self) -> None:
+        background, _ = self._theme_wallpaper_colors()
+        self._solid_swatch.blockSignals(True)
+        self._solid_swatch.set_color(background)
+        self._solid_swatch.blockSignals(False)
+
+    def _seed_gradient_swatches_from_theme(self) -> None:
+        self._rebuild_gradient_stop_rows(
+            self._default_gradient_colors(),
+            positions=_even_gradient_positions(2),
+        )
+
+    def _refresh_color_swatch_defaults_from_theme(self) -> None:
+        """Keep color/gradient swatch previews aligned with the active theme."""
+        mode = _profile_mode(self._profile)
+        if mode == _MODE_SOLID:
+            return
+        if mode == _MODE_GRADIENT:
+            return
+        self._seed_solid_swatch_from_theme()
+        self._seed_gradient_swatches_from_theme()
 
     def set_profile(self, profile: SurfaceProfile, *, block_signals: bool = False) -> None:
         self._profile = profile
@@ -503,15 +779,7 @@ class WallpaperEditorWidget(QWidget):
             self._solid_swatch.set_color(profile.wallpaper.color)
             self._solid_swatch.blockSignals(False)
         if isinstance(profile.wallpaper, WallpaperGradient):
-            self._gradient_start.blockSignals(True)
-            self._gradient_end.blockSignals(True)
-            self._gradient_direction.blockSignals(True)
-            self._gradient_start.set_color(profile.wallpaper.stops[0].color)
-            self._gradient_end.set_color(profile.wallpaper.stops[1].color)
-            self._gradient_direction.set_direction(profile.wallpaper.direction)
-            self._gradient_start.blockSignals(False)
-            self._gradient_end.blockSignals(False)
-            self._gradient_direction.blockSignals(False)
+            self._sync_gradient_from_wallpaper(profile.wallpaper)
         if isinstance(profile.wallpaper, WallpaperImage):
             stored = user_wallpaper_storage_name(profile.wallpaper.source)
             self._selected_image_source = stored
@@ -697,6 +965,8 @@ class WallpaperEditorWidget(QWidget):
         elif mode_id == _MODE_PRESET:
             self._on_preset_selected(self._selected_preset_id)
         elif mode_id == _MODE_SOLID:
+            if _profile_mode(self._profile) != _MODE_SOLID:
+                self._seed_solid_swatch_from_theme()
             self._emit_profile(
                 SurfaceProfile(
                     wallpaper=WallpaperSolid(color=self._solid_swatch.color()),
@@ -704,6 +974,8 @@ class WallpaperEditorWidget(QWidget):
                 )
             )
         elif mode_id == _MODE_GRADIENT:
+            if _profile_mode(self._profile) != _MODE_GRADIENT:
+                self._seed_gradient_swatches_from_theme()
             self._on_gradient_changed()
         elif mode_id == _MODE_IMAGE:
             source = self._resolve_image_source()
@@ -729,21 +1001,29 @@ class WallpaperEditorWidget(QWidget):
             )
         )
 
+    def _build_gradient_wallpaper(self) -> WallpaperGradient:
+        colors = self._gradient_colors_from_rows()
+        positions = (
+            list(self._gradient_positions)
+            if len(self._gradient_positions) == len(colors)
+            else _even_gradient_positions(len(colors))
+        )
+        return WallpaperGradient(
+            direction=self._gradient_direction.current_direction(),  # type: ignore[arg-type]
+            stops=tuple(
+                GradientStop(position=positions[index], color=color)
+                for index, color in enumerate(colors)
+            ),
+        )
+
     def _on_gradient_changed(self, *_args) -> None:
         if _profile_mode(self._profile) != _MODE_GRADIENT and not self._mode_cbs[
             _MODE_GRADIENT
         ].isChecked():
             return
-        direction = self._gradient_direction.current_direction()
         self._emit_profile(
             SurfaceProfile(
-                wallpaper=WallpaperGradient(
-                    direction=direction,  # type: ignore[arg-type]
-                    stops=(
-                        GradientStop(0.0, self._gradient_start.color()),
-                        GradientStop(1.0, self._gradient_end.color()),
-                    ),
-                ),
+                wallpaper=self._build_gradient_wallpaper(),
                 overlay=self._profile.overlay,
             )
         )

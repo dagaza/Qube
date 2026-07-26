@@ -62,7 +62,7 @@ class GradientStop:
 @dataclass(frozen=True)
 class WallpaperGradient:
     direction: GradientDirection
-    stops: tuple[GradientStop, GradientStop]
+    stops: tuple[GradientStop, ...]
     kind: str = "gradient"
 
 

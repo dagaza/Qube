@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import zipfile
 from pathlib import Path
 
 from PyQt6.QtWidgets import QCheckBox, QFileDialog
@@ -41,6 +42,7 @@ from ui.components.wallpaper_picker import WallpaperEditorWidget
 logger = logging.getLogger("Qube.UI.Settings.Themes")
 
 _THEME_JSON_FILTER = "Qube color scheme (*.json);;All files (*.*)"
+_THEME_PACK_FILTER = "Qube theme pack (*.qube-theme.zip);;All files (*.*)"
 
 
 class ThemesHandlersMixin:
@@ -181,6 +183,19 @@ class ThemesHandlersMixin:
         self._themes_draft_surface_profiles = draft
         self._refresh_themes_preview()
         self._update_themes_action_buttons()
+        self._update_themes_copy_chat_button_state()
+
+    def _library_wallpaper_matches_chat(self) -> bool:
+        draft = self._draft_surface_profiles()
+        return draft.for_surface(SURFACE_LIBRARY_PREVIEW) == draft.for_surface(
+            SURFACE_CHAT_TRANSCRIPT
+        )
+
+    def _update_themes_copy_chat_button_state(self) -> None:
+        btn = getattr(self, "themes_copy_chat_wallpaper_btn", None)
+        if btn is None:
+            return
+        btn.setEnabled(not self._library_wallpaper_matches_chat())
 
     def _resolved_draft_chat_profile(self):
         manager = self._settings_theme_manager()
@@ -202,7 +217,15 @@ class ThemesHandlersMixin:
 
     def _update_themes_wallpaper_controls(self) -> None:
         draft = self._draft_surface_profiles()
+        manager = self._settings_theme_manager()
+        draft_theme = None
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if manager is not None:
+            draft_theme = manager.preview_resolve(
+                scheme_id=self._draft_scheme_id(),
+                overrides=self._effective_draft_overrides(),
+            )
+            is_dark = draft_theme.is_dark
         for surface_id, attr in (
             (SURFACE_CHAT_TRANSCRIPT, "themes_chat_wallpaper"),
             (SURFACE_LIBRARY_PREVIEW, "themes_library_wallpaper"),
@@ -210,9 +233,10 @@ class ThemesHandlersMixin:
             editor = getattr(self, attr, None)
             if isinstance(editor, WallpaperEditorWidget):
                 editor.blockSignals(True)
-                editor.set_is_dark(is_dark)
+                editor.apply_theme(is_dark, theme=draft_theme)
                 editor.set_profile(draft.for_surface(surface_id), block_signals=True)
                 editor.blockSignals(False)
+        self._update_themes_copy_chat_button_state()
 
     def _on_themes_chat_wallpaper_changed(self) -> None:
         editor = getattr(self, "themes_chat_wallpaper", None)
@@ -223,6 +247,15 @@ class ThemesHandlersMixin:
         editor = getattr(self, "themes_library_wallpaper", None)
         if isinstance(editor, WallpaperEditorWidget):
             self._set_draft_surface_profile(SURFACE_LIBRARY_PREVIEW, editor.profile())
+
+    def _on_themes_copy_chat_wallpaper_to_library(self) -> None:
+        chat_editor = getattr(self, "themes_chat_wallpaper", None)
+        library_editor = getattr(self, "themes_library_wallpaper", None)
+        if not isinstance(chat_editor, WallpaperEditorWidget) or not isinstance(
+            library_editor, WallpaperEditorWidget
+        ):
+            return
+        library_editor.set_profile(chat_editor.profile())
 
     def _on_wallpaper_import_requested(self, editor: WallpaperEditorWidget) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -566,15 +599,17 @@ class ThemesHandlersMixin:
         validation = self._draft_validation()
         can_save = validation.can_save if validation is not None else True
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        # Keep enabled so widget-level brand QSS and :hover render on every platform.
-        # Clicks are guarded when the draft is clean or Apply would fail validation.
-        for name in ("themes_revert_btn", "themes_cancel_btn", "themes_apply_btn"):
-            btn = getattr(self, name, None)
-            if btn is not None:
-                btn.setEnabled(True)
         self._apply_themes_action_button_styles(is_dark)
+
+        revert_btn = getattr(self, "themes_revert_btn", None)
+        cancel_btn = getattr(self, "themes_cancel_btn", None)
         apply_btn = getattr(self, "themes_apply_btn", None)
+        if revert_btn is not None:
+            revert_btn.setEnabled(dirty)
+        if cancel_btn is not None:
+            cancel_btn.setEnabled(dirty)
         if apply_btn is not None:
+            apply_btn.setEnabled(dirty and can_save)
             if dirty and can_save:
                 apply_btn.setToolTip("Apply draft theme to the running app")
             elif dirty:
@@ -708,8 +743,7 @@ class ThemesHandlersMixin:
         self._sync_themes_draft_from_applied()
 
     def _on_themes_section_enter(self) -> None:
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        self._apply_themes_action_button_styles(is_dark)
+        self._update_themes_action_buttons()
         if getattr(self, "_themes_preview_initialized", False):
             return
         QTimer.singleShot(0, self._ensure_themes_preview_initialized)
@@ -873,3 +907,99 @@ class ThemesHandlersMixin:
             ).exec()
             return
         logger.info("Exported color scheme %s to %s", scheme_id, path)
+
+    def _on_themes_import_pack_clicked(self) -> None:
+        manager = self._settings_theme_manager()
+        if manager is None:
+            return
+        is_dark = self._themes_dialog_is_dark()
+        path, _ = QFileDialog.getOpenFileName(
+            self.window(),
+            "Import theme pack",
+            str(Path.home()),
+            _THEME_PACK_FILTER,
+        )
+        if not path:
+            return
+        try:
+            result = manager.import_theme_pack_from_path(Path(path))
+        except (OSError, json.JSONDecodeError, ValueError, zipfile.BadZipFile) as exc:
+            PrestigeDialog(
+                self.window(),
+                "Import failed",
+                str(exc),
+                is_dark,
+            ).exec()
+            return
+        self._themes_draft_overrides = {}
+        self._themes_draft_surface_profiles = self._normalized_surface_profiles(
+            result.surface_profiles
+        )
+        self._select_themes_scheme(result.scheme_id)
+        asset_note = ""
+        if result.assets_imported:
+            asset_note = (
+                f"\n\nImported {len(result.assets_imported)} wallpaper image(s) "
+                "into your library."
+            )
+        PrestigeDialog(
+            self.window(),
+            "Theme pack imported",
+            "Review the draft theme and click Apply when you are ready."
+            + asset_note,
+            is_dark,
+        ).exec()
+        logger.info(
+            "Imported theme pack as scheme %s (%d assets)",
+            result.scheme_id,
+            len(result.assets_imported),
+        )
+
+    def _on_themes_export_pack_clicked(self) -> None:
+        manager = self._settings_theme_manager()
+        if manager is None:
+            return
+        is_dark = self._themes_dialog_is_dark()
+        scheme_id = self._draft_scheme_id()
+        try:
+            definition = manager.get_scheme_definition(scheme_id)
+        except KeyError:
+            PrestigeDialog(
+                self.window(),
+                "Export failed",
+                "The selected theme could not be found.",
+                is_dark,
+            ).exec()
+            return
+        slug = definition.id.rsplit(".", 1)[-1]
+        default_name = f"{slug}.qube-theme.zip"
+        path, _ = QFileDialog.getSaveFileName(
+            self.window(),
+            "Export theme pack",
+            str(Path.home() / default_name),
+            _THEME_PACK_FILTER,
+        )
+        if not path:
+            return
+        destination = Path(path)
+        if not destination.name.endswith(".qube-theme.zip"):
+            if destination.suffix.lower() == ".zip":
+                destination = destination.with_name(f"{destination.stem}.qube-theme.zip")
+            else:
+                destination = destination.with_suffix(".qube-theme.zip")
+        try:
+            manager.export_theme_pack_to_path(
+                destination,
+                scheme_id=scheme_id,
+                surface_profiles=self._draft_surface_profiles(),
+                overrides=self._effective_draft_overrides(),
+            )
+        except OSError as exc:
+            PrestigeDialog(
+                self.window(),
+                "Export failed",
+                str(exc),
+                is_dark,
+            ).exec()
+            return
+        logger.info("Exported theme pack for %s to %s", scheme_id, destination)

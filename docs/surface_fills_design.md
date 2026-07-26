@@ -640,6 +640,7 @@ Export/import bundle: color scheme + surface profiles + assets (zip or folder), 
 | Resource | Path |
 |----------|------|
 | Theme v1 design | `docs/theme_customization_design.md` |
+| Appearance enhancements v2.1+ plan | `docs/appearance_enhancements_design.md` |
 | Theme refresh contract | `docs/theme_refresh_contract.md` |
 | ThemeManager | `core/theme/manager.py` |
 | Chat transcript | `ui/views/conversations_view.py` — `#ChatStage`, `#ChatScrollArea` |

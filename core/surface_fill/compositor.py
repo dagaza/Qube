@@ -114,14 +114,11 @@ class SurfaceFillCompositor:
         try:
             gradient = QLinearGradient()
             self._configure_gradient_endpoints(gradient, wallpaper.direction, rect)
-            gradient.setColorAt(
-                float(wallpaper.stops[0].position),
-                theme_qcolor(wallpaper.stops[0].color),
-            )
-            gradient.setColorAt(
-                float(wallpaper.stops[1].position),
-                theme_qcolor(wallpaper.stops[1].color),
-            )
+            for stop in wallpaper.stops:
+                gradient.setColorAt(
+                    float(stop.position),
+                    theme_qcolor(stop.color),
+                )
             painter.fillRect(pixmap.rect(), gradient)
         finally:
             painter.end()

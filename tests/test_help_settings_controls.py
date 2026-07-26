@@ -50,6 +50,21 @@ class HelpSettingsControlsTests(unittest.TestCase):
         self.assertIn("GENERATED CONTROLS", text)
         self.assertIn("Reset to default configuration", text)
 
+    def test_themes_includes_same_as_chat_action(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("appearance.themes")]
+        self.assertIn("Same as Chat", labels)
+
+    def test_themes_includes_theme_pack_actions(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("appearance.themes")]
+        self.assertIn("Import theme pack…", labels)
+        self.assertIn("Export theme pack…", labels)
+
+    def test_help_uninstall_labels_stable_across_platforms(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("help")]
+        self.assertIn("Remove Qube package only… (Linux)", labels)
+        self.assertIn("Remove Qube app only… (macOS)", labels)
+        self.assertNotIn("Remove Qube package only…", labels)
+
 
 if __name__ == "__main__":
     unittest.main()

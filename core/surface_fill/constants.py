@@ -22,6 +22,9 @@ GRADIENT_DIRECTIONS: frozenset[str] = frozenset(
     {"vertical", "horizontal", "diagonal_down", "diagonal_up"}
 )
 
+GRADIENT_MIN_STOPS = 2
+GRADIENT_MAX_STOPS = 5
+
 WallpaperKind = Literal[
     "none",
     "theme_default",

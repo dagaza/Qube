@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from core.paths import resource_path
-from core.surface_fill.constants import V2_SURFACES
+from core.surface_fill.constants import (
+    GRADIENT_MAX_STOPS,
+    GRADIENT_MIN_STOPS,
+    V2_SURFACES,
+)
 from core.surface_fill.image_paths import resolve_wallpaper_image_path
 from core.surface_fill.models import (
     SurfaceProfile,
@@ -75,8 +79,12 @@ class SurfaceFillValidator:
                 errors.append(str(exc))
             return
         if isinstance(wallpaper, WallpaperGradient):
-            if len(wallpaper.stops) != 2:
-                errors.append("Gradient wallpaper requires exactly 2 stops")
+            stop_count = len(wallpaper.stops)
+            if stop_count < GRADIENT_MIN_STOPS or stop_count > GRADIENT_MAX_STOPS:
+                errors.append(
+                    f"Gradient wallpaper requires {GRADIENT_MIN_STOPS}–"
+                    f"{GRADIENT_MAX_STOPS} stops"
+                )
             for stop in wallpaper.stops:
                 try:
                     parse_color(stop.color)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import qtawesome as qta
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import QEvent, Qt, QSize, QTimer
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -14,7 +14,9 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QRadioButton,
+    QScrollArea,
     QStackedWidget,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -40,6 +42,7 @@ from core.theme.widget_styles import (
 )
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
+from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.surface_fill.transcript_host import TranscriptWallpaperHost
 from ui.shell_theme import (
     muted_icon_color,
@@ -247,7 +250,7 @@ class ThemeConversationsPreviewScene(QFrame):
 
         self._nav = QFrame()
         self._nav.setObjectName("ThemePreviewNavSidebar")
-        self._nav.setFixedWidth(34)
+        self._nav.setFixedWidth(_PREVIEW_NAV_WIDTH)
         nav_layout = QVBoxLayout(self._nav)
         nav_layout.setContentsMargins(0, 8, 0, 8)
         nav_layout.setSpacing(6)
@@ -267,7 +270,7 @@ class ThemeConversationsPreviewScene(QFrame):
 
         self._history = QFrame()
         self._history.setObjectName("ThemePreviewHistorySidebar")
-        self._history.setFixedWidth(96)
+        self._history.setFixedWidth(_PREVIEW_HISTORY_WIDTH)
         history_layout = QVBoxLayout(self._history)
         history_layout.setContentsMargins(8, 8, 6, 8)
         history_layout.setSpacing(4)
@@ -370,7 +373,7 @@ class ThemeConversationsPreviewScene(QFrame):
 
         self._tools = QFrame()
         self._tools.setObjectName("ThemePreviewToolsPane")
-        self._tools.setFixedWidth(108)
+        self._tools.setFixedWidth(_PREVIEW_TOOLS_WIDTH)
         tools_layout = QVBoxLayout(self._tools)
         tools_layout.setContentsMargins(8, 8, 8, 8)
         tools_layout.setSpacing(6)
@@ -691,7 +694,92 @@ class ThemeComponentsPreviewScene(QFrame):
 
 
 _PREVIEW_SNAPSHOT_HEIGHT = 280
-_PREVIEW_SNAPSHOT_MIN_WIDTH = 480
+# Main-window chrome at the design minimum (1200px wide, tools pane collapsed).
+_MAIN_WINDOW_MIN_WIDTH = 1200
+_MAIN_NAV_WIDTH = 70
+_TOOLS_PANE_COLLAPSED_WIDTH = 40
+_SETTINGS_VIEW_RIGHT_MARGIN = 40
+_SETTINGS_RIGHT_HOST_LEFT_MARGIN = 10
+_SETTINGS_CONTENT_LEFT_MARGIN = 8
+_THEMES_PAGE_HORIZONTAL_MARGIN = 30
+_PREVIEW_CARD_HORIZONTAL_PADDING = 24
+_SETTINGS_SECTION_CARD = "SettingsSectionCard"
+# Fixed miniature shell proportions (sidebars stay constant; mainstage fills remainder).
+_PREVIEW_NAV_WIDTH = 34
+_PREVIEW_HISTORY_WIDTH = 110
+_PREVIEW_TOOLS_WIDTH = 118
+_PREVIEW_LAYOUT_MIN_WIDTH = 240
+
+
+def _design_preview_width_at_min_window() -> int:
+    """Width available to the preview card at the app layout minimum."""
+    main_stage = (
+        _MAIN_WINDOW_MIN_WIDTH
+        - _MAIN_NAV_WIDTH
+        - _TOOLS_PANE_COLLAPSED_WIDTH
+    )
+    settings_hub = main_stage - _SETTINGS_VIEW_RIGHT_MARGIN
+    return max(
+        320,
+        settings_hub
+        - LEFT_NAV_LIST_SIDEBAR_WIDTH
+        - _SETTINGS_RIGHT_HOST_LEFT_MARGIN
+        - _SETTINGS_CONTENT_LEFT_MARGIN
+        - _THEMES_PAGE_HORIZONTAL_MARGIN
+        - _PREVIEW_CARD_HORIZONTAL_PADDING,
+    )
+
+
+def _find_settings_section_card(panel: "ThemePreviewPanel") -> QWidget | None:
+    widget = panel.parentWidget()
+    while widget is not None:
+        if widget.objectName() == _SETTINGS_SECTION_CARD:
+            return widget
+        widget = widget.parentWidget()
+    return None
+
+
+def _preview_card_inner_width(panel: "ThemePreviewPanel") -> int | None:
+    card = _find_settings_section_card(panel)
+    if card is None:
+        return None
+    return max(0, card.width() - _PREVIEW_CARD_HORIZONTAL_PADDING)
+
+
+def _preview_scroll_viewport_width(panel: "ThemePreviewPanel") -> int | None:
+    widget = panel.parentWidget()
+    while widget is not None:
+        if isinstance(widget, QScrollArea):
+            return widget.viewport().width()
+        widget = widget.parentWidget()
+    return None
+
+
+def _available_preview_width(panel: "ThemePreviewPanel") -> int | None:
+    """Fit the preview card; never grow with a wide settings column or window."""
+    design = _design_preview_width_at_min_window()
+    card = _find_settings_section_card(panel)
+    card_inner = _preview_card_inner_width(panel)
+    viewport = _preview_scroll_viewport_width(panel)
+
+    card_ready = card_inner is not None and card_inner >= _PREVIEW_LAYOUT_MIN_WIDTH
+    viewport_ready = viewport is not None and viewport >= _PREVIEW_LAYOUT_MIN_WIDTH
+
+    if not card_ready and not viewport_ready:
+        if card is None:
+            return design
+        return None
+
+    candidates = [design]
+    if card_ready:
+        candidates.append(card_inner)  # type: ignore[arg-type]
+    if viewport_ready:
+        candidates.append(viewport)  # type: ignore[arg-type]
+    return min(candidates)
+
+
+def _preview_snapshot_width(panel: "ThemePreviewPanel") -> int | None:
+    return _available_preview_width(panel)
 
 
 def _configure_preview_snapshot_label(label: QLabel, *, object_name: str) -> None:
@@ -746,6 +834,12 @@ class ThemePreviewPanel(QFrame):
         super().__init__(parent)
         self.setObjectName("ThemePreviewPanel")
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        design_width = _design_preview_width_at_min_window()
+        self.setMaximumWidth(design_width)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Preferred,
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -781,13 +875,62 @@ class ThemePreviewPanel(QFrame):
         self._stack.addWidget(self._conversations_view)
         self._stack.addWidget(self._components_view)
         self._stack.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
+        self._stack.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Fixed,
+        )
         layout.addWidget(self._stack)
 
         self._scene_group.buttonClicked.connect(self._on_scene_selected)
         self._pending_conversations_snapshot: tuple | None = None
         self._pending_components_snapshot: ResolvedTheme | None = None
         self._components_snapshot_stale = True
+        self._last_snapshot_width = 0
+        self._width_watch_card: QWidget | None = None
         self._sync_visible_stack_page()
+
+    def _install_preview_card_width_watch(self) -> None:
+        card = _find_settings_section_card(self)
+        if card is self._width_watch_card:
+            return
+        if self._width_watch_card is not None:
+            self._width_watch_card.removeEventFilter(self)
+        self._width_watch_card = card
+        if card is not None:
+            card.installEventFilter(self)
+
+    def _request_snapshot_refresh(self) -> None:
+        width = _available_preview_width(self)
+        if width is None:
+            if self._pending_conversations_snapshot is not None:
+                QTimer.singleShot(0, self._refresh_conversations_snapshot)
+            return
+        previous = self._last_snapshot_width
+        if previous and abs(width - previous) < 2:
+            return
+        self._last_snapshot_width = width
+        if self._pending_conversations_snapshot is not None:
+            QTimer.singleShot(0, self._refresh_conversations_snapshot)
+        if self._pending_components_snapshot is not None:
+            self._components_snapshot_stale = True
+            QTimer.singleShot(0, self._refresh_components_snapshot)
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            watched is self._width_watch_card
+            and event.type() == QEvent.Type.Resize
+        ):
+            self._request_snapshot_refresh()
+        return super().eventFilter(watched, event)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._request_snapshot_refresh()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._install_preview_card_width_watch()
+        self._request_snapshot_refresh()
 
     def _on_scene_selected(self, _button) -> None:
         self._sync_visible_stack_page()
@@ -842,7 +985,10 @@ class ThemePreviewPanel(QFrame):
         if pending is None:
             return
         resolved, chat_profile, chat_resolved_wallpaper = pending
-        width = max(self._stack.width(), _PREVIEW_SNAPSHOT_MIN_WIDTH)
+        width = _preview_snapshot_width(self)
+        if width is None:
+            QTimer.singleShot(0, self._refresh_conversations_snapshot)
+            return
         self._conversations_live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
         self._conversations_live.setUpdatesEnabled(True)
         try:
@@ -857,7 +1003,10 @@ class ThemePreviewPanel(QFrame):
         if pixmap.isNull():
             return
         self._conversations_view.setPixmap(pixmap)
-        self._conversations_view.setFixedHeight(pixmap.height())
+        self._conversations_view.setFixedSize(pixmap.width(), pixmap.height())
+        self._stack.setFixedSize(pixmap.width(), pixmap.height())
+        self.setFixedWidth(pixmap.width())
+        self._last_snapshot_width = pixmap.width()
         if not self._components_cb.isChecked():
             self._stack.setMinimumHeight(pixmap.height())
 
@@ -865,7 +1014,10 @@ class ThemePreviewPanel(QFrame):
         resolved = self._pending_components_snapshot
         if resolved is None:
             return
-        width = max(self._stack.width(), _PREVIEW_SNAPSHOT_MIN_WIDTH)
+        width = _preview_snapshot_width(self)
+        if width is None:
+            QTimer.singleShot(0, self._refresh_components_snapshot)
+            return
         self._components_live.setUpdatesEnabled(True)
         try:
             self._components_live.apply_theme(resolved)
@@ -879,7 +1031,10 @@ class ThemePreviewPanel(QFrame):
         if pixmap.isNull():
             return
         self._components_view.setPixmap(pixmap)
-        self._components_view.setFixedHeight(pixmap.height())
+        self._components_view.setFixedSize(pixmap.width(), pixmap.height())
+        self._stack.setFixedSize(pixmap.width(), pixmap.height())
+        self.setFixedWidth(pixmap.width())
+        self._last_snapshot_width = pixmap.width()
         if self._components_cb.isChecked():
             self._stack.setMinimumHeight(pixmap.height())
         self._components_snapshot_stale = False

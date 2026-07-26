@@ -29,11 +29,11 @@ theme settings, colour scheme, dark mode, light mode, custom theme, chat wallpap
 2. **Pick a colour scheme** — Use the **Theme** picker for built-in families (Catppuccin, Nord, …) or custom JSON themes from `~/.qube/themes/`.
 3. **Switch variants** — When a family has both dark and light members, use the variant row. Families without a matching variant show a fallback suggestion.
 4. **Customize colours** — Adjust swatches under **Customize**; enable **Auto-adjust text for readable contrast** if body text fails WCAG checks. Press **Reset customization** to clear colour overrides.
-5. **Set chat wallpaper** — Under **Wallpapers → Chat wallpaper**, choose **None**, **Theme default**, a **Preset**, solid **Color**, **Gradient**, or **Import image**. Pick **Overlay strength** (**Subtle**, **Balanced**, or **Vivid**) to control the readability scrim.
+5. **Set chat wallpaper** — Under **Wallpapers → Chat wallpaper**, choose **None**, **Theme default**, a **Preset**, solid **Color**, **Gradient** (2–5 color stops), or **Import image**. Pick **Overlay strength** (**Subtle**, **Balanced**, or **Vivid**) to control the readability scrim.
 6. **Set library wallpaper** — Configure **Library wallpaper** the same way for the library document preview pane.
 7. **Import a photo** — Choose **Import image** and pick a PNG, JPEG, or WebP file. Large files are copied to `~/.qube/wallpapers/` and automatically downscaled when needed.
 8. **Apply or revert** — **Apply** pushes the draft theme and wallpapers to the running app. **Revert** or **Cancel** restores the last applied state.
-9. **Save or share schemes** — **Save as custom theme…** writes colour overrides to `~/.qube/themes/`. **Import theme…** / **Export theme…** move JSON colour schemes between machines (wallpaper images are separate).
+9. **Save or share schemes** — **Save as custom theme…** writes colour overrides to `~/.qube/themes/`. **Import theme…** / **Export theme…** move JSON colour schemes between machines (wallpaper images are separate). **Export theme pack…** / **Import theme pack…** bundle colours, surface profiles, and user wallpaper images in a `.qube-theme.zip` file for one-step sharing.
 
 ## Wallpapers & readability
 
@@ -64,6 +64,10 @@ Controls listed top-to-bottom for **Settings → Themes**.
 - **Reset customization**
 - **Advanced colors**
 
+### Wallpapers
+
+- **Same as Chat**
+
 ### Preview
 
 - **Revert**
@@ -75,6 +79,8 @@ Controls listed top-to-bottom for **Settings → Themes**.
 - **Save as custom theme…**
 - **Import theme…**
 - **Export theme…**
+- **Import theme pack…**
+- **Export theme pack…**
 
 - **Reset to default configuration** — restores all settings on this page
 

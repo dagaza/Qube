@@ -67,6 +67,20 @@ _KNOWLEDGE_LIBRARY_SEARCH_LABELS = (
     "Enable NLP Auto-Activator",
 )
 
+_HELP_UNINSTALL_KEEP_VARIANTS = frozenset(
+    {
+        "Remove Qube package only…",
+        "Remove Qube package only… (Linux)",
+        "Remove Qube app only…",
+        "Remove Qube app only… (macOS)",
+    }
+)
+
+_HELP_UNINSTALL_STABLE_LABELS: tuple[str, ...] = (
+    "Remove Qube package only… (Linux)",
+    "Remove Qube app only… (macOS)",
+)
+
 _KNOWLEDGE_WEB_DISCOVERY_LABELS = frozenset(
     {
         "Privacy tier",
@@ -268,6 +282,20 @@ def _inject_knowledge_library_search_phrases(blocks: list[_ControlBlock]) -> Non
     blocks.insert(insert_at, target)
 
 
+def _stabilize_help_uninstall_labels(blocks: list[_ControlBlock]) -> None:
+    """Emit both platform uninstall labels — source uses runtime sys.platform."""
+    for block in blocks:
+        if block.subsection != "Uninstall Qube":
+            continue
+        block.items = [
+            item for item in block.items if item not in _HELP_UNINSTALL_KEEP_VARIANTS
+        ]
+        for label in _HELP_UNINSTALL_STABLE_LABELS:
+            if label not in block.items:
+                block.items.append(label)
+        return
+
+
 def _reassign_knowledge_web_discovery(blocks: list[_ControlBlock]) -> None:
     web_items: list[str] = []
     for block in blocks:
@@ -313,6 +341,9 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
                 continue
         _inject_knowledge_library_search_phrases(blocks)
         _reassign_knowledge_web_discovery(blocks)
+
+    if section_id == "help":
+        _stabilize_help_uninstall_labels(blocks)
 
     if section_id == "advanced":
         for spec in iter_diagnostic_logs():

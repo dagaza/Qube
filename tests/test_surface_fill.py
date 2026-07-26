@@ -369,8 +369,8 @@ def test_preset_catalog_includes_documented_ids():
         assert preset_exists(preset_id)
 
 
-def test_gradient_requires_exactly_two_stops():
-    with pytest.raises(ValueError, match="exactly 2 stops"):
+def test_gradient_rejects_invalid_stop_counts():
+    with pytest.raises(ValueError, match="2–5 stops"):
         wallpaper_from_dict(
             {
                 "kind": "gradient",
@@ -378,3 +378,32 @@ def test_gradient_requires_exactly_two_stops():
                 "stops": [{"position": 0, "color": "#111111"}],
             }
         )
+    with pytest.raises(ValueError, match="2–5 stops"):
+        wallpaper_from_dict(
+            {
+                "kind": "gradient",
+                "direction": "vertical",
+                "stops": [
+                    {"position": 0.0, "color": "#111111"},
+                    {"position": 0.2, "color": "#222222"},
+                    {"position": 0.4, "color": "#333333"},
+                    {"position": 0.6, "color": "#444444"},
+                    {"position": 0.8, "color": "#555555"},
+                    {"position": 1.0, "color": "#666666"},
+                ],
+            }
+        )
+
+
+def test_gradient_three_stop_roundtrip():
+    gradient = WallpaperGradient(
+        direction="vertical",
+        stops=(
+            GradientStop(0.0, "#111111"),
+            GradientStop(0.5, "#abcdef"),
+            GradientStop(1.0, "#222222"),
+        ),
+    )
+    payload = wallpaper_to_dict(gradient)
+    restored = wallpaper_from_dict(payload)
+    assert restored == gradient

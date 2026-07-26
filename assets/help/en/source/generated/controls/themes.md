@@ -12,6 +12,10 @@ Controls listed top-to-bottom for **Settings → Themes**.
 - **Reset customization**
 - **Advanced colors**
 
+### Wallpapers
+
+- **Same as Chat**
+
 ### Preview
 
 - **Revert**
@@ -23,5 +27,7 @@ Controls listed top-to-bottom for **Settings → Themes**.
 - **Save as custom theme…**
 - **Import theme…**
 - **Export theme…**
+- **Import theme pack…**
+- **Export theme pack…**
 
 - **Reset to default configuration** — restores all settings on this page

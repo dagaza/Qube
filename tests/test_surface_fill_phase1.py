@@ -62,6 +62,26 @@ def test_compositor_gradient_pixmap(qapp):
     assert result.pixmap.size() == QSize(64, 64)
 
 
+def test_compositor_multistop_gradient_pixmap(qapp):
+    compositor = SurfaceFillCompositor()
+    theme = theme_for(is_dark=True)
+    gradient = WallpaperGradient(
+        direction="vertical",
+        stops=(
+            GradientStop(0.0, "#111111"),
+            GradientStop(0.5, "#888888"),
+            GradientStop(1.0, "#eeeeee"),
+        ),
+    )
+    result = compositor.compose_wallpaper(
+        gradient,
+        QRect(0, 0, 64, 64),
+        theme=theme,
+    )
+    assert result.pixmap is not None
+    assert not result.pixmap.isNull()
+
+
 def test_renderer_paints_overlay_from_theme(qapp):
     renderer = SurfaceFillRenderer()
     theme_dark = theme_for(is_dark=True)

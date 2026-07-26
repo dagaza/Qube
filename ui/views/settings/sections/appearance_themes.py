@@ -212,7 +212,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     wallpapers_layout.addWidget(
         make_settings_hint(
             "Decorate chat and library transcript backgrounds. Wallpapers preview "
-            "here until you press Apply; they never change core theme tokens."
+            "here until you press Apply; they never change core theme tokens. "
+            "Use Same as Chat to mirror the library preview to your chat wallpaper."
         )
     )
     host.themes_chat_wallpaper = WallpaperEditorWidget("Chat wallpaper", parent=host)
@@ -230,6 +231,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         lambda: host._on_wallpaper_import_requested(host.themes_library_wallpaper)
     )
     wallpapers_layout.addWidget(host.themes_library_wallpaper)
+
+    host.themes_copy_chat_wallpaper_btn = QPushButton("Same as Chat")
+    host.themes_copy_chat_wallpaper_btn.setToolTip(
+        "Copy the chat wallpaper and overlay settings to the library preview"
+    )
+    host.themes_copy_chat_wallpaper_btn.clicked.connect(
+        host._on_themes_copy_chat_wallpaper_to_library
+    )
+    wallpapers_layout.addWidget(host.themes_copy_chat_wallpaper_btn)
     layout.addWidget(wallpapers_card)
 
     preview_card, preview_layout = begin_settings_section_card(host, is_dark=is_dark)
@@ -280,8 +290,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_layout(share_layout, "Share themes")
     share_layout.addWidget(
         make_settings_hint(
-            "Export a theme as JSON, import one from another machine, or save "
-            "the current draft as a custom preset."
+            "Export a theme as JSON, import one from another machine, save "
+            "the current draft as a custom preset, or share a theme pack "
+            "(colors, wallpapers, and images) as a zip file."
         )
     )
     share_row = QHBoxLayout()
@@ -295,6 +306,12 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_export_btn = QPushButton("Export theme…")
     host.themes_export_btn.clicked.connect(host._on_themes_export_clicked)
     share_row.addWidget(host.themes_export_btn)
+    host.themes_import_pack_btn = QPushButton("Import theme pack…")
+    host.themes_import_pack_btn.clicked.connect(host._on_themes_import_pack_clicked)
+    share_row.addWidget(host.themes_import_pack_btn)
+    host.themes_export_pack_btn = QPushButton("Export theme pack…")
+    host.themes_export_pack_btn.clicked.connect(host._on_themes_export_pack_clicked)
+    share_row.addWidget(host.themes_export_pack_btn)
     share_row.addStretch()
     share_layout.addLayout(share_row)
     layout.addWidget(share_card)

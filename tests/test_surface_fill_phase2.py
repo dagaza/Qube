@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT, SURFACE_LIBRARY_PREVIEW
 from core.surface_fill.import_wallpaper import import_wallpaper_image
 from core.surface_fill.models import (
     SurfaceProfile,
@@ -145,6 +145,7 @@ def test_settings_themes_wallpapers_section_builds(fresh_main_window):
 
     assert hasattr(settings, "themes_chat_wallpaper")
     assert hasattr(settings, "themes_library_wallpaper")
+    assert hasattr(settings, "themes_copy_chat_wallpaper_btn")
     chat_wallpaper = (
         settings._draft_surface_profiles()
         .for_surface(SURFACE_CHAT_TRANSCRIPT)
@@ -199,3 +200,107 @@ def test_settings_wallpaper_revert_discards_draft(fresh_main_window):
         settings._draft_surface_profiles().for_surface(SURFACE_CHAT_TRANSCRIPT).wallpaper,
         WallpaperThemeDefault,
     )
+
+
+def test_wallpaper_editor_seeds_solid_from_theme_on_mode_switch(fresh_main_window):
+    from core.surface_fill.models import WallpaperSolid
+    from core.theme.schemes import DEFAULT_SCHEME_ID_LIGHT
+    from ui.components.wallpaper_picker import WallpaperEditorWidget
+
+    fresh_main_window.theme_manager.apply(
+        scheme_id=DEFAULT_SCHEME_ID_LIGHT,
+        persist=False,
+    )
+    editor = WallpaperEditorWidget("Chat wallpaper", parent=fresh_main_window)
+    editor.show()
+    theme = fresh_main_window.theme_manager.current
+    editor.apply_theme(is_dark=False, theme=theme)
+
+    editor._mode_cbs["solid"].setChecked(True)
+
+    wallpaper = editor.profile().wallpaper
+    assert isinstance(wallpaper, WallpaperSolid)
+    assert wallpaper.color == theme.background
+
+
+def test_wallpaper_editor_seeds_gradient_from_theme_on_mode_switch(fresh_main_window):
+    from core.theme.schemes import DEFAULT_SCHEME_ID_LIGHT
+    from core.surface_fill.models import WallpaperGradient
+    from ui.components.wallpaper_picker import WallpaperEditorWidget
+
+    fresh_main_window.theme_manager.apply(
+        scheme_id=DEFAULT_SCHEME_ID_LIGHT,
+        persist=False,
+    )
+    editor = WallpaperEditorWidget("Chat wallpaper", parent=fresh_main_window)
+    editor.show()
+    theme = fresh_main_window.theme_manager.current
+    editor.apply_theme(is_dark=False, theme=theme)
+
+    editor._mode_cbs["gradient"].setChecked(True)
+
+    wallpaper = editor.profile().wallpaper
+    assert isinstance(wallpaper, WallpaperGradient)
+    assert wallpaper.stops[0].color == theme.background
+    assert wallpaper.stops[1].color == theme.surface_elevated
+
+
+def test_wallpaper_editor_adds_third_gradient_stop(fresh_main_window):
+    from core.surface_fill.models import WallpaperGradient
+    from core.theme.schemes import DEFAULT_SCHEME_ID_LIGHT
+    from ui.components.wallpaper_picker import WallpaperEditorWidget
+
+    fresh_main_window.theme_manager.apply(
+        scheme_id=DEFAULT_SCHEME_ID_LIGHT,
+        persist=False,
+    )
+    editor = WallpaperEditorWidget("Chat wallpaper", parent=fresh_main_window)
+    editor.show()
+    theme = fresh_main_window.theme_manager.current
+    editor.apply_theme(is_dark=False, theme=theme)
+
+    editor._mode_cbs["gradient"].setChecked(True)
+    editor._on_gradient_add_stop()
+
+    wallpaper = editor.profile().wallpaper
+    assert isinstance(wallpaper, WallpaperGradient)
+    assert len(wallpaper.stops) == 3
+    assert wallpaper.stops[1].color == theme.accent
+
+
+def test_settings_copy_chat_wallpaper_to_library(fresh_main_window):
+    from core.surface_fill.models import default_surface_profile_set
+
+    settings = fresh_main_window.ensure_settings_view()
+    manager = fresh_main_window.theme_manager
+    manager._surface_profiles_active = default_surface_profile_set()
+    settings.select_settings_section("appearance.themes")
+    settings._sync_themes_draft_from_applied()
+
+    chat_profile = SurfaceProfile(wallpaper=WallpaperPreset(preset_id="builtin.aurora"))
+    settings.themes_chat_wallpaper.set_profile(chat_profile, block_signals=True)
+    settings._set_draft_surface_profile(SURFACE_CHAT_TRANSCRIPT, chat_profile)
+
+    settings._on_themes_copy_chat_wallpaper_to_library()
+
+    library_profile = settings.themes_library_wallpaper.profile()
+    assert isinstance(library_profile.wallpaper, WallpaperPreset)
+    assert library_profile.wallpaper.preset_id == "builtin.aurora"
+    assert (
+        settings._draft_surface_profiles().for_surface(SURFACE_LIBRARY_PREVIEW)
+        == chat_profile
+    )
+    assert settings._themes_surface_profiles_dirty()
+    assert not settings.themes_copy_chat_wallpaper_btn.isEnabled()
+
+
+def test_settings_copy_chat_button_disabled_when_already_matched(fresh_main_window):
+    from core.surface_fill.models import default_surface_profile_set
+
+    settings = fresh_main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._sync_themes_draft_from_applied()
+    settings._update_themes_copy_chat_button_state()
+
+    assert settings._library_wallpaper_matches_chat()
+    assert not settings.themes_copy_chat_wallpaper_btn.isEnabled()

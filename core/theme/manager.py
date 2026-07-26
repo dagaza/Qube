@@ -18,6 +18,12 @@ from core.theme.follow_system import (
     resolve_active_theme_choice,
 )
 from core.theme.io import export_color_scheme, import_color_scheme
+from core.theme.pack_io import (
+    ThemePackAppliedResult,
+    ThemePackImportResult,
+    export_theme_pack_to_path,
+    read_theme_pack_from_path,
+)
 from core.theme.overrides import sparse_core_overrides
 from core.theme.polarity_toggle import PolarityToggleAction, PolarityToggleRequest
 from core.theme.resolver import ThemeResolver
@@ -341,6 +347,51 @@ class ThemeManager:
 
     def export_scheme_payload(self, scheme_id: str) -> dict[str, Any]:
         return export_color_scheme(self.get_scheme_definition(scheme_id))
+
+    def export_scheme_payload_for_pack(
+        self,
+        scheme_id: str,
+        overrides: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Export scheme JSON including unsaved draft color overrides."""
+        payload = self.export_scheme_payload(scheme_id)
+        if not overrides:
+            return payload
+        sparse = self.sparse_overrides_for_draft(
+            scheme_id=scheme_id,
+            overrides=overrides,
+        )
+        if not sparse:
+            return payload
+        merged = dict(payload.get("overrides") or {})
+        merged.update(sparse)
+        payload = dict(payload)
+        payload["overrides"] = merged
+        return payload
+
+    def export_theme_pack_to_path(
+        self,
+        path: Path,
+        *,
+        scheme_id: str,
+        surface_profiles: SurfaceProfileSet,
+        overrides: Mapping[str, str] | None = None,
+    ) -> None:
+        scheme_payload = self.export_scheme_payload_for_pack(scheme_id, overrides)
+        export_theme_pack_to_path(
+            path,
+            scheme=scheme_payload,
+            surface_profiles=surface_profiles,
+        )
+
+    def import_theme_pack_from_path(self, path: Path) -> ThemePackAppliedResult:
+        parsed = read_theme_pack_from_path(path)
+        definition = self.import_scheme_payload(parsed.scheme)
+        return ThemePackAppliedResult(
+            scheme_id=definition.id,
+            surface_profiles=parsed.surface_profiles,
+            assets_imported=parsed.assets_imported,
+        )
 
     def export_scheme_to_path(self, scheme_id: str, path: Path) -> None:
         payload = self.export_scheme_payload(scheme_id)

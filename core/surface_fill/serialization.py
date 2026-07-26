@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from core.surface_fill.constants import GRADIENT_DIRECTIONS, OVERLAY_STRENGTHS, V2_SURFACES
+from core.surface_fill.constants import (
+    GRADIENT_DIRECTIONS,
+    GRADIENT_MAX_STOPS,
+    GRADIENT_MIN_STOPS,
+    OVERLAY_STRENGTHS,
+    V2_SURFACES,
+)
 from core.surface_fill.models import (
     GradientStop,
     OverlaySpec,
@@ -19,6 +25,26 @@ from core.surface_fill.models import (
     WallpaperThemeDefault,
     default_surface_profile,
 )
+
+
+def _parse_gradient_stops(stops_raw: object) -> tuple[GradientStop, ...]:
+    if not isinstance(stops_raw, list):
+        raise ValueError("gradient wallpaper requires stops array")
+    count = len(stops_raw)
+    if count < GRADIENT_MIN_STOPS or count > GRADIENT_MAX_STOPS:
+        raise ValueError(
+            f"gradient wallpaper requires {GRADIENT_MIN_STOPS}–{GRADIENT_MAX_STOPS} stops"
+        )
+    stops: list[GradientStop] = []
+    for item in stops_raw:
+        if not isinstance(item, Mapping):
+            raise ValueError("gradient stop must be an object")
+        position = float(item.get("position", 0))
+        color = str(item.get("color") or "").strip()
+        if not color:
+            raise ValueError("gradient stop requires color")
+        stops.append(GradientStop(position=position, color=color))
+    return tuple(stops)
 
 
 def wallpaper_to_dict(wallpaper: Wallpaper) -> dict[str, Any]:
@@ -67,19 +93,8 @@ def wallpaper_from_dict(raw: Mapping[str, Any]) -> Wallpaper:
         direction = str(raw.get("direction") or "").strip().lower()
         if direction not in GRADIENT_DIRECTIONS:
             raise ValueError(f"Invalid gradient direction: {direction!r}")
-        stops_raw = raw.get("stops")
-        if not isinstance(stops_raw, list) or len(stops_raw) != 2:
-            raise ValueError("gradient wallpaper requires exactly 2 stops")
-        stops: list[GradientStop] = []
-        for item in stops_raw:
-            if not isinstance(item, Mapping):
-                raise ValueError("gradient stop must be an object")
-            position = float(item.get("position", 0))
-            color = str(item.get("color") or "").strip()
-            if not color:
-                raise ValueError("gradient stop requires color")
-            stops.append(GradientStop(position=position, color=color))
-        return WallpaperGradient(direction=direction, stops=(stops[0], stops[1]))  # type: ignore[arg-type]
+        stops = _parse_gradient_stops(raw.get("stops"))
+        return WallpaperGradient(direction=direction, stops=stops)  # type: ignore[arg-type]
     if kind == "image":
         source = str(raw.get("source") or "").strip()
         if not source:

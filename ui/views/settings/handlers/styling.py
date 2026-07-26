@@ -278,9 +278,9 @@ class StylingMixin:
             if callable(apply_theme):
                 apply_theme(is_dark)
 
-        apply_themes_actions = getattr(self, "_apply_themes_action_button_styles", None)
-        if callable(apply_themes_actions):
-            apply_themes_actions(is_dark)
+        update_themes_actions = getattr(self, "_update_themes_action_buttons", None)
+        if callable(update_themes_actions):
+            update_themes_actions()
 
         if hasattr(self, "trigger_list"):
             self.trigger_list.setStyleSheet(

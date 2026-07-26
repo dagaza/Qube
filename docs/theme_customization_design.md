@@ -832,6 +832,8 @@ Do **not** build Settings UI before Phases 1–3.
 | Dark QSS (reference) | `assets/styles/base.qss` |
 | Light QSS (reference) | `assets/styles/light.qss` |
 | Theme toggle | `ui/main_window.py` — `_toggle_theme` |
+| Surface fills v2 design | `docs/surface_fills_design.md` |
+| Appearance enhancements v2.1+ plan | `docs/appearance_enhancements_design.md` |
 | Theme families UX plan | `docs/theme_customization_design.md` — §14 |
 | Theme families policy (Phase 0) | `core/theme/families_policy.py` |
 | Theme polarity toggle (Phase 3) | `core/theme/polarity_toggle.py`, `ThemeManager.toggle_polarity` |
