@@ -10,6 +10,7 @@ cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.3.3
 colorama==0.4.6
+cryptography==46.0.7
 csvw==3.7.0
 ctranslate2==4.7.1
 deprecation==2.1.0

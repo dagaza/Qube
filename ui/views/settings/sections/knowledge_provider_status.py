@@ -20,7 +20,14 @@ from ui.views.settings.knowledge_provider_status_style import (
     apply_provider_status_table_theme,
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
-from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
+from ui.views.settings.widgets import (
+    add_settings_card_form,
+    add_subsection_to_form,
+    make_settings_hint,
+    wrap_subsection,
+    add_settings_full_width_row,
+    add_settings_span_row,
+)
 
 _TABLE_OBJECT_NAME = "KnowledgeProviderStatusTable"
 _VISIBLE_ROW_CAP = 10
@@ -77,7 +84,8 @@ def _sync_provider_status_table_height(table: QTableWidget) -> None:
 
 def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QWidget:
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(card_layout, "Source status", anchor="knowledge_provider_status")
+    card_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(card_form, "Source status", anchor="knowledge_provider_status")
 
     inner = QWidget()
     inner_layout = QVBoxLayout(inner)
@@ -96,7 +104,7 @@ def build_knowledge_provider_status_section(host, *, is_dark: bool = True) -> QW
 
     host.knowledge_provider_status_table = table
 
-    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_provider_status"))
+    add_settings_span_row(card_form, wrap_subsection(inner, anchor="knowledge_provider_status"))
 
     timer = QTimer(host)
     timer.setInterval(60_000)

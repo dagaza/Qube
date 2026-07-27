@@ -1,0 +1,9 @@
+{
+  "keys": [
+    {
+      "key_id": "qube-test-1",
+      "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3fcdadc5f5889102a0a252fd0",
+      "label": "Qube development/test signing key (RFC 8032 TEST 1 — not for production packs)"
+    }
+  ]
+}

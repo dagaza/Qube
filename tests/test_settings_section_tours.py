@@ -28,9 +28,9 @@ def _expected_knowledge_tour_steps() -> int:
 SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.voice_audio", "voice.audio", 29),
     ("settings.ai_models", "ai.models", 14),
-    ("settings.memory", "memory", 8),
+    ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
-    ("settings.general", "general", 3),
+    ("settings.general", "general", 4),
     ("settings.appearance_themes", "appearance.themes", 14),
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
@@ -94,7 +94,6 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "memory_promotion_toggle",
         "memory_promotion_preset_selector",
         "memory_consolidation_toggle",
-        "profile_units_selector",
     ),
     "settings.knowledge": (
         "rag_kb_cb",
@@ -158,7 +157,10 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "advanced_embedding_panel",
         "advanced_discovery_panel",
     ),
-    "settings.general": ("general_language_card",),
+    "settings.general": (
+        "general_language_card",
+        "profile_units_selector",
+    ),
     "settings.appearance_themes": (
         "themes_appearance_row",
         "themes_theme_picker",
@@ -211,7 +213,12 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "model_manager_hardware_suggestions_cb",
     ),
     "settings.contact_feedback": ("report_bug_btn", "request_feature_btn"),
-    "settings.advanced": ("open_settings_json_btn", "open_logs_folder_btn"),
+    "settings.advanced": (
+        "import_license_btn",
+        "remove_license_btn",
+        "open_settings_json_btn",
+        "open_logs_folder_btn",
+    ),
 }
 
 

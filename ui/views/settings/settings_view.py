@@ -121,6 +121,7 @@ from ui.views.settings.settings_theme import (
     settings_preview_icon_color,
     style_bootstrap_warning_label,
 )
+from core.theme.svg_icons import tinted_svg_pixmap, themed_fa_pixmap
 from core.theme.widget_styles import (
     SETTINGS_GHOST_TOOL_BUTTON,
     SETTINGS_HINT,
@@ -147,6 +148,7 @@ from ui.views.settings.handlers import (
     DiagnosticsHandlersMixin,
     GenerationMixin,
     KnowledgeHandlersMixin,
+    LicenseHandlersMixin,
     UninstallHandlersMixin,
     MemoryHandlersMixin,
     PersistenceHandlersMixin,
@@ -192,6 +194,7 @@ class SettingsView(
     BootstrapDownloadsHandlersMixin,
     MemoryHandlersMixin,
     KnowledgeHandlersMixin,
+    LicenseHandlersMixin,
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
     PersistenceHandlersMixin,
@@ -538,6 +541,7 @@ class SettingsView(
             self._sync_embedding_models_dir_label()
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
+        self._apply_settings_section_control_styles(content_widget, is_dark=is_dark)
         return True
 
     def _mount_settings_section_content(
@@ -912,7 +916,7 @@ class SettingsView(
         right.setMaximumWidth(900)
         right.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         right_l = QVBoxLayout(right)
-        right_l.setContentsMargins(8, 75, 0, 40)
+        right_l.setContentsMargins(8, 75, 8, 40)
         right_l.setSpacing(10)
 
         section_header_row = QHBoxLayout()
@@ -961,24 +965,6 @@ class SettingsView(
         self._apply_settings_sidebar_surface(is_dark)
         self._update_settings_section_nav_colors()
         self._refresh_knowledge_access_ui(is_dark=is_dark)
-    def _make_tinted_svg_pixmap(self, svg_path, color_hex: str, size: int) -> QPixmap:
-        pixmap = QPixmap(str(svg_path))
-        if pixmap.isNull():
-            return QPixmap(size, size)
-        target_size = QSize(size, size)
-        pixmap = pixmap.scaled(
-            target_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        tinted = QPixmap(pixmap.size())
-        tinted.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(tinted)
-        painter.drawPixmap(0, 0, pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(tinted.rect(), QColor(color_hex))
-        painter.end()
-        return tinted
 
     def _settings_section_icon_pixmap(
         self,
@@ -989,20 +975,20 @@ class SettingsView(
         color: str,
     ) -> QPixmap:
         if svg_icon is not None:
-            return self._make_tinted_svg_pixmap(
-                resource_path(*svg_icon), color, size
+            return tinted_svg_pixmap(
+                str(resource_path(*svg_icon)), color, size
             )
-        return qta.icon(icon_name, color=color).pixmap(QSize(size, size))
+        return themed_fa_pixmap(icon_name, color, size)
 
     def _refresh_settings_icon_label(self, icon_lbl: QLabel, color: str) -> None:
         svg_path = icon_lbl.property("svg_path")
         icon_name = icon_lbl.property("icon_name")
         size = int(icon_lbl.property("icon_size") or 16)
         if svg_path:
-            icon_lbl.setPixmap(self._make_tinted_svg_pixmap(svg_path, color, size))
+            icon_lbl.setPixmap(tinted_svg_pixmap(str(svg_path), color, size))
         elif icon_name:
             icon_lbl.setPixmap(
-                qta.icon(icon_name, color=color).pixmap(QSize(size, size))
+                themed_fa_pixmap(str(icon_name), color, size)
             )
 
     def _build_settings_section_nav_row(
@@ -1071,10 +1057,11 @@ class SettingsView(
         self._sync_settings_section_tour_header(section_id)
         if section_id == "appearance.themes" and hasattr(self, "_on_themes_section_enter"):
             self._on_themes_section_enter()
-        if section_id == "advanced" and hasattr(
-            self, "_sync_all_diagnostic_log_recording_toggles"
-        ):
-            self._sync_all_diagnostic_log_recording_toggles()
+        if section_id == "advanced":
+            if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
+                self._sync_all_diagnostic_log_recording_toggles()
+            if hasattr(self, "_refresh_license_status_ui"):
+                self._refresh_license_status_ui()
         if section_id == "knowledge":
             from ui.views.settings.sections.knowledge_provider_status import (
                 start_provider_status_refresh_timer,

@@ -47,9 +47,11 @@ def search_searxng(
     max_results: int = 5,
     target_site: str | None = None,
     timeout: float = DEFAULT_SEARXNG_TIMEOUT_SEC,
+    base_url: str | None = None,
+    api_key: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    base_url = get_searxng_base_url()
-    if not base_url:
+    resolved_base = (base_url if base_url is not None else get_searxng_base_url()).strip().rstrip("/")
+    if not resolved_base:
         return [], {
             "response_kind": "no_credentials",
             "http_status": None,
@@ -60,7 +62,16 @@ def search_searxng(
     if target_site:
         scoped_query = f"site:{target_site} {query}"
 
-    endpoint = urljoin(base_url + "/", "search")
+    endpoint = urljoin(resolved_base + "/", "search")
+    headers = _searxng_headers() if api_key is None else {
+        "User-Agent": "Qube/1.0 (local assistant)",
+        "Accept": "application/json",
+        **(
+            {"Authorization": f"Bearer {api_key.strip()}"}
+            if (api_key or "").strip()
+            else {}
+        ),
+    }
     try:
         response = requests.get(
             endpoint,
@@ -69,7 +80,7 @@ def search_searxng(
                 "format": "json",
                 "language": "en",
             },
-            headers=_searxng_headers(),
+            headers=headers,
             timeout=timeout,
         )
         http_status = response.status_code

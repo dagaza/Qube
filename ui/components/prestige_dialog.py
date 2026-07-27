@@ -56,6 +56,25 @@ def _resolve_is_dark_from_parent(parent) -> bool:
     return getattr(w, "_is_dark_theme", True) if w else True
 
 
+def _resolve_latest_routing_record(parent) -> dict | None:
+    """Best-effort routing debug record for the most recent chat turn."""
+    import dataclasses
+
+    host = parent.window() if parent else None
+    if host is None:
+        return None
+    worker = getattr(host, "_llm_worker", None)
+    if worker is None:
+        return None
+    buf = getattr(worker, "routing_debug_buffer", None)
+    if buf is None:
+        return None
+    rec = buf.latest()
+    if rec is None:
+        return None
+    return dataclasses.asdict(rec)
+
+
 def _dialog_theme(parent, is_dark: bool | None):
     if is_dark is None:
         is_dark = _resolve_is_dark_from_parent(parent)
@@ -658,6 +677,7 @@ class CitationSourcesDialog(QDialog):
                     record=record,
                     preset_id=preset_id,
                     db=retrieval_db,
+                    routing_record=_resolve_latest_routing_record(self),
                 )
 
             inspect_btn.clicked.connect(_open_inspector)

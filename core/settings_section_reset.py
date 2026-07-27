@@ -51,7 +51,6 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_MEMORY_PROMOTION_ACKNOWLEDGED,
         app.KEY_MEMORY_PROMOTION_PRESET,
         app.KEY_MEMORY_CONSOLIDATION,
-        app.KEY_PROFILE_UNITS,
         app.KEY_ADVANCED_MEMORY_UNLOCKED,
     ),
     "knowledge": (
@@ -109,6 +108,7 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
     ),
     "general": (
         app.KEY_UI_LANGUAGE,
+        app.KEY_PROFILE_UNITS,
     ),
     "appearance.themes": (
         app.KEY_UI_THEME_MODE,

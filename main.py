@@ -10,7 +10,7 @@ from core.__version__ import __version__
 from PyQt6 import QtCore
 from PyQt6.QtGui import QFont, QFontDatabase
 from core.qube_tooltip import QubeApplication, qube_tooltip_set_theme
-from ui.app_icon import qube_window_icon
+from ui.app_icon import apply_linux_desktop_integration, qube_window_icon
 
 from core.richtext_styles import apply_app_link_palette
 
@@ -1588,6 +1588,7 @@ if __name__ == "__main__":
 
     app = QubeApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    apply_linux_desktop_integration(app)
     repo_root = install_root()
     app_icon = qube_window_icon()
     if not app_icon.isNull():

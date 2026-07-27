@@ -10,13 +10,15 @@ Call ``apply_sidebar_row_title_colors`` and ``apply_sidebar_row_action_icons`` f
 
 from __future__ import annotations
 
-import qtawesome as qta
+
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QLabel, QListWidget, QPushButton, QWidget
 
 from core.theme.accessors import theme_for
 from core.theme.tokens import ResolvedTheme
+from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import themed_fa_icon
 from ui.components.sidebar_folder_list import ROW_KIND_FOLDER, row_kind
 from ui.shell_theme import sidebar_row_action_icon_color
 
@@ -31,6 +33,19 @@ _FOLDER_TITLE_STYLE = (
 )
 
 _CHEVRON_ICON_PROPERTY = "sidebar_chevron_icon"
+
+
+def _resolve_sidebar_theme(
+    widget: QWidget | None,
+    *,
+    is_dark: bool | None = None,
+    theme: ResolvedTheme | None = None,
+) -> ResolvedTheme:
+    if theme is not None:
+        return theme
+    if widget is not None:
+        return view_resolved_theme(widget, is_dark=is_dark)
+    return theme_for(is_dark=is_dark if is_dark is not None else True)
 
 
 def _sidebar_row_icon_highlighted(
@@ -59,7 +74,7 @@ def apply_sidebar_row_action_icons(
     """Refresh chevron and ellipsis qtawesome icons (QSS cannot retint them)."""
     if list_widget is None:
         return
-    resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
+    resolved = _resolve_sidebar_theme(list_widget, is_dark=is_dark, theme=theme)
     active_folder_key = str(active_folder_id) if active_folder_id else None
 
     for i in range(list_widget.count()):
@@ -76,12 +91,12 @@ def apply_sidebar_row_action_icons(
         chevron_btn = row.findChild(QPushButton, "HistoryFolderChevronBtn")
         if chevron_btn is not None:
             icon_name = chevron_btn.property(_CHEVRON_ICON_PROPERTY) or "fa5s.chevron-down"
-            chevron_btn.setIcon(qta.icon(str(icon_name), color=icon_color))
+            chevron_btn.setIcon(themed_fa_icon(str(icon_name), icon_color, 12))
             chevron_btn.setIconSize(QSize(12, 12))
 
         opts_btn = row.findChild(QPushButton, "HistoryOptionsBtn")
         if opts_btn is not None:
-            opts_btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+            opts_btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
             opts_btn.setIconSize(QSize(16, 16))
 
 
@@ -129,7 +144,8 @@ def apply_nav_list_sidebar_surface(
     list_widget: QListWidget | None = None,
 ) -> None:
     """Paint hub sidebar frame + list viewport only (Model Manager / Library pattern)."""
-    resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
+    host = list_widget or sidebar_frame
+    resolved = _resolve_sidebar_theme(host, is_dark=is_dark, theme=theme)
     bg = _nav_list_sidebar_bg(resolved)
     if sidebar_frame is not None:
         _paint_widget_window_bg(sidebar_frame, bg)
@@ -160,7 +176,7 @@ def apply_sidebar_row_title_colors(
     """Set row label colors from selection + theme (reliable with setItemWidget)."""
     if list_widget is None:
         return
-    resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
+    resolved = _resolve_sidebar_theme(list_widget, is_dark=is_dark, theme=theme)
     normal = resolved.text_primary
     selected = resolved.list_row_title_selected
 

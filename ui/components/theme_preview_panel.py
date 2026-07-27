@@ -50,6 +50,7 @@ from core.app_settings import (
 )
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
+from ui.views.settings.settings_card_style import settings_card_content_horizontal_padding_total
 from ui.surface_fill.transcript_host import TranscriptWallpaperHost
 from ui.shell_theme import (
     muted_icon_color,
@@ -1463,8 +1464,11 @@ _SETTINGS_VIEW_RIGHT_MARGIN = 40
 _SETTINGS_RIGHT_HOST_LEFT_MARGIN = 10
 _SETTINGS_CONTENT_LEFT_MARGIN = 8
 _THEMES_PAGE_HORIZONTAL_MARGIN = 30
-_PREVIEW_CARD_HORIZONTAL_PADDING = 24
 _SETTINGS_SECTION_CARD = "SettingsSectionCard"
+
+
+def _preview_card_horizontal_padding() -> int:
+    return settings_card_content_horizontal_padding_total()
 # Fixed miniature shell proportions (sidebars stay constant; mainstage fills remainder).
 _PREVIEW_NAV_WIDTH = 34
 _PREVIEW_HISTORY_WIDTH = 110
@@ -1488,7 +1492,7 @@ def _design_preview_width_at_min_window() -> int:
         - _SETTINGS_RIGHT_HOST_LEFT_MARGIN
         - _SETTINGS_CONTENT_LEFT_MARGIN
         - _THEMES_PAGE_HORIZONTAL_MARGIN
-        - _PREVIEW_CARD_HORIZONTAL_PADDING,
+        - _preview_card_horizontal_padding(),
     )
 
 
@@ -1505,7 +1509,7 @@ def _preview_card_inner_width(panel: QWidget) -> int | None:
     card = _find_settings_section_card(panel)
     if card is None:
         return None
-    return max(0, card.width() - _PREVIEW_CARD_HORIZONTAL_PADDING)
+    return max(0, card.width() - _preview_card_horizontal_padding())
 
 
 def _preview_scroll_viewport_width(panel: QWidget) -> int | None:
@@ -1517,10 +1521,9 @@ def _preview_scroll_viewport_width(panel: QWidget) -> int | None:
     return None
 
 
-def _available_preview_width(panel: QWidget) -> int | None:
+def _available_preview_width(panel: QWidget) -> int:
     """Fit the preview card; never grow with a wide settings column or window."""
     design = _design_preview_width_at_min_window()
-    card = _find_settings_section_card(panel)
     card_inner = _preview_card_inner_width(panel)
     viewport = _preview_scroll_viewport_width(panel)
 
@@ -1528,9 +1531,7 @@ def _available_preview_width(panel: QWidget) -> int | None:
     viewport_ready = viewport is not None and viewport >= _PREVIEW_LAYOUT_MIN_WIDTH
 
     if not card_ready and not viewport_ready:
-        if card is None:
-            return design
-        return None
+        return design
 
     candidates = [design]
     if card_ready:
@@ -1540,28 +1541,17 @@ def _available_preview_width(panel: QWidget) -> int | None:
     return min(candidates)
 
 
-def _preview_snapshot_width(panel: QWidget) -> int | None:
+def _preview_snapshot_width(panel: QWidget) -> int:
     return _available_preview_width(panel)
 
 
-def _configure_preview_snapshot_label(label: QLabel, *, object_name: str) -> None:
-    label.setObjectName(object_name)
-    label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-    label.setScaledContents(False)
-    label.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
-
-
-def _configure_offscreen_live_scene(widget: QWidget) -> None:
-    """Keep grab sources out of the panel hit-test and paint trees."""
-    widget.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+def _configure_live_preview_scene(widget: QWidget) -> None:
+    """Read-only miniature shell shown directly in the settings card."""
     widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-    widget.setUpdatesEnabled(False)
-    widget.hide()
-    widget.move(-32000, -32000)
 
 
-def _offscreen_snapshot_size(widget: QWidget, width: int) -> tuple[int, int]:
-    """Return a stable (width, height) for grabbing an off-screen preview scene."""
+def _preview_scene_size(widget: QWidget, width: int) -> tuple[int, int]:
+    """Return a stable (width, height) for an inline preview scene."""
     widget.setFixedWidth(width)
     widget.adjustSize()
     height = widget.sizeHint().height()
@@ -1570,36 +1560,11 @@ def _offscreen_snapshot_size(widget: QWidget, width: int) -> tuple[int, int]:
     return width, max(height, _PREVIEW_SNAPSHOT_HEIGHT)
 
 
-class ThemePreviewPanel(QFrame):
-    """Live draft preview — Conversations shell with chat wallpaper draft."""
+class _ThemePreviewPanelBase(QFrame):
+    """Shared width tracking for inline theme preview panels."""
 
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setObjectName("ThemePreviewPanel")
-        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
-        design_width = _design_preview_width_at_min_window()
-        self.setMaximumWidth(design_width)
-        self.setSizePolicy(
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Preferred,
-        )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        self._conversations_live = ThemeConversationsPreviewScene()
-        _configure_offscreen_live_scene(self._conversations_live)
-        self._conversations_view = QLabel()
-        _configure_preview_snapshot_label(
-            self._conversations_view,
-            object_name="ThemePreviewConversationsSnapshot",
-        )
-        self._conversations_view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
-        layout.addWidget(self._conversations_view)
-
-        self._pending_conversations_snapshot: tuple | None = None
-        self._last_snapshot_width = 0
-        self._width_watch_card: QWidget | None = None
+    _last_preview_width: int
+    _width_watch_card: QWidget | None
 
     def _install_preview_card_width_watch(self) -> None:
         card = _find_settings_section_card(self)
@@ -1611,76 +1576,90 @@ class ThemePreviewPanel(QFrame):
         if card is not None:
             card.installEventFilter(self)
 
-    def _request_snapshot_refresh(self) -> None:
-        width = _available_preview_width(self)
-        if width is None:
-            if self._pending_conversations_snapshot is not None:
-                QTimer.singleShot(0, self._refresh_conversations_snapshot)
-            return
-        previous = self._last_snapshot_width
-        if previous and abs(width - previous) < 2:
-            return
-        self._last_snapshot_width = width
-        if self._pending_conversations_snapshot is not None:
-            QTimer.singleShot(0, self._refresh_conversations_snapshot)
+    def _request_preview_layout_refresh(self) -> None:
+        if not self._has_pending_preview():
+            width = _available_preview_width(self)
+            previous = self._last_preview_width
+            if previous and abs(width - previous) < 2:
+                return
+            self._last_preview_width = width
+        QTimer.singleShot(0, self._repaint_preview)
+
+    def _has_pending_preview(self) -> bool:
+        raise NotImplementedError
+
+    def _repaint_preview(self) -> None:
+        raise NotImplementedError
 
     def eventFilter(self, watched, event) -> bool:
         if (
             watched is self._width_watch_card
             and event.type() == QEvent.Type.Resize
         ):
-            self._request_snapshot_refresh()
+            self._request_preview_layout_refresh()
         return super().eventFilter(watched, event)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._request_snapshot_refresh()
+        self._request_preview_layout_refresh()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._install_preview_card_width_watch()
-        self._request_snapshot_refresh()
+        self._request_preview_layout_refresh()
 
-    def _schedule_conversations_snapshot(
-        self,
-        resolved: ResolvedTheme,
-        *,
-        chat_profile: SurfaceProfile | None,
-        chat_resolved_wallpaper,
-    ) -> None:
-        self._pending_conversations_snapshot = (
-            resolved,
-            chat_profile,
-            chat_resolved_wallpaper,
+
+class ThemePreviewPanel(_ThemePreviewPanelBase):
+    """Live draft preview — Conversations shell with chat wallpaper draft."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ThemePreviewPanel")
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        design_width = _design_preview_width_at_min_window()
+        self.setMaximumWidth(design_width)
+        self.setFixedWidth(design_width)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Preferred,
         )
-        QTimer.singleShot(0, self._refresh_conversations_snapshot)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-    def _refresh_conversations_snapshot(self) -> None:
-        pending = self._pending_conversations_snapshot
+        self._conversations_live = ThemeConversationsPreviewScene(parent=self)
+        _configure_live_preview_scene(self._conversations_live)
+        layout.addWidget(self._conversations_live)
+        self.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
+
+        self._pending_conversations: tuple | None = None
+        self._last_preview_width = 0
+        self._width_watch_card = None
+
+    @property
+    def _conversations_view(self):
+        """Backward-compatible alias for tests that referenced the snapshot label."""
+        return self._conversations_live
+
+    def _has_pending_preview(self) -> bool:
+        return self._pending_conversations is not None
+
+    def _repaint_preview(self) -> None:
+        pending = self._pending_conversations
         if pending is None:
             return
         resolved, chat_profile, chat_resolved_wallpaper = pending
         width = _preview_snapshot_width(self)
-        if width is None:
-            QTimer.singleShot(0, self._refresh_conversations_snapshot)
-            return
         self._conversations_live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
-        self._conversations_live.setUpdatesEnabled(True)
-        try:
-            self._conversations_live.apply_theme(
-                resolved,
-                chat_profile=chat_profile,
-                chat_resolved_wallpaper=chat_resolved_wallpaper,
-            )
-            pixmap = self._conversations_live.grab()
-        finally:
-            self._conversations_live.setUpdatesEnabled(False)
-        if pixmap.isNull():
-            return
-        self._conversations_view.setPixmap(pixmap)
-        self._conversations_view.setFixedSize(pixmap.width(), pixmap.height())
-        self.setFixedWidth(pixmap.width())
-        self._last_snapshot_width = pixmap.width()
+        self._conversations_live.apply_theme(
+            resolved,
+            chat_profile=chat_profile,
+            chat_resolved_wallpaper=chat_resolved_wallpaper,
+        )
+        height = max(_PREVIEW_SNAPSHOT_HEIGHT, self._conversations_live.height())
+        self.setFixedSize(width, height)
+        self.updateGeometry()
+        self._last_preview_width = width
 
     def apply_theme(
         self,
@@ -1693,14 +1672,16 @@ class ThemePreviewPanel(QFrame):
         self.setStyleSheet(
             "QFrame#ThemePreviewPanel { background: transparent; border: none; }"
         )
-        self._schedule_conversations_snapshot(
+        self._pending_conversations = (
             resolved,
-            chat_profile=chat_profile,
-            chat_resolved_wallpaper=chat_resolved_wallpaper,
+            chat_profile,
+            chat_resolved_wallpaper,
         )
+        self._last_preview_width = 0
+        QTimer.singleShot(0, self._repaint_preview)
 
 
-class ThemeComponentsPreviewPanel(QFrame):
+class ThemeComponentsPreviewPanel(_ThemePreviewPanelBase):
     """Live draft preview for theme colors on a miniature Settings page shell."""
 
     def __init__(self, parent=None) -> None:
@@ -1709,6 +1690,7 @@ class ThemeComponentsPreviewPanel(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
         design_width = _design_preview_width_at_min_window()
         self.setMaximumWidth(design_width)
+        self.setFixedWidth(design_width)
         self.setSizePolicy(
             QSizePolicy.Policy.Fixed,
             QSizePolicy.Policy.Preferred,
@@ -1717,103 +1699,51 @@ class ThemeComponentsPreviewPanel(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self._components_live = ThemeComponentsPreviewScene()
-        _configure_offscreen_live_scene(self._components_live)
-        self._components_view = QLabel()
-        _configure_preview_snapshot_label(
-            self._components_view,
-            object_name="ThemePreviewComponentsSnapshot",
-        )
-        self._components_view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
-        layout.addWidget(self._components_view)
+        self._components_live = ThemeComponentsPreviewScene(parent=self)
+        _configure_live_preview_scene(self._components_live)
+        layout.addWidget(self._components_live)
+        self.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
 
-        self._pending_components_snapshot: ResolvedTheme | None = None
-        self._last_snapshot_width = 0
-        self._width_watch_card: QWidget | None = None
+        self._pending_components: ResolvedTheme | None = None
+        self._last_preview_width = 0
+        self._width_watch_card = None
 
     @property
     def _components_scene(self) -> ThemeComponentsPreviewScene:
         """Backward-compatible alias for tests and callers."""
         return self._components_live
 
-    def _install_preview_card_width_watch(self) -> None:
-        card = _find_settings_section_card(self)
-        if card is self._width_watch_card:
-            return
-        if self._width_watch_card is not None:
-            self._width_watch_card.removeEventFilter(self)
-        self._width_watch_card = card
-        if card is not None:
-            card.installEventFilter(self)
+    @property
+    def _components_view(self):
+        """Backward-compatible alias for tests that referenced the snapshot label."""
+        return self._components_live
 
-    def _request_snapshot_refresh(self) -> None:
-        width = _available_preview_width(self)
-        if width is None:
-            if self._pending_components_snapshot is not None:
-                QTimer.singleShot(0, self._refresh_components_snapshot)
-            return
-        previous = self._last_snapshot_width
-        if previous and abs(width - previous) < 2:
-            return
-        self._last_snapshot_width = width
-        if self._pending_components_snapshot is not None:
-            QTimer.singleShot(0, self._refresh_components_snapshot)
+    def _has_pending_preview(self) -> bool:
+        return self._pending_components is not None
 
-    def eventFilter(self, watched, event) -> bool:
-        if (
-            watched is self._width_watch_card
-            and event.type() == QEvent.Type.Resize
-        ):
-            self._request_snapshot_refresh()
-        return super().eventFilter(watched, event)
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        self._request_snapshot_refresh()
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self._install_preview_card_width_watch()
-        self._request_snapshot_refresh()
-
-    def _schedule_components_snapshot(self, resolved: ResolvedTheme) -> None:
-        self._pending_components_snapshot = resolved
-        QTimer.singleShot(0, self._refresh_components_snapshot)
-
-    def _refresh_components_snapshot(self) -> None:
-        resolved = self._pending_components_snapshot
+    def _repaint_preview(self) -> None:
+        resolved = self._pending_components
         if resolved is None:
             return
         width = _preview_snapshot_width(self)
-        if width is None:
-            QTimer.singleShot(0, self._refresh_components_snapshot)
-            return
-        self._components_live.setUpdatesEnabled(True)
-        try:
-            self._components_live.apply_theme(resolved)
-            snap_width, snap_height = _offscreen_snapshot_size(
-                self._components_live, width
-            )
-            self._components_live.setFixedSize(snap_width, snap_height)
-            pixmap = self._components_live.grab()
-        finally:
-            self._components_live.setUpdatesEnabled(False)
-        if pixmap.isNull():
-            return
-        self._components_view.setPixmap(pixmap)
-        self._components_view.setFixedSize(pixmap.width(), pixmap.height())
-        self.setFixedWidth(pixmap.width())
-        self._last_snapshot_width = pixmap.width()
+        self._components_live.apply_theme(resolved)
+        snap_width, snap_height = _preview_scene_size(self._components_live, width)
+        self._components_live.setFixedSize(snap_width, snap_height)
+        self.setFixedSize(snap_width, snap_height)
+        self.updateGeometry()
+        self._last_preview_width = snap_width
 
     def apply_theme(self, resolved: ResolvedTheme) -> None:
         """Repaint component mock from ``resolved`` only — never touches the app."""
         self.setStyleSheet(
             "QFrame#ThemeComponentsPreviewPanel { background: transparent; border: none; }"
         )
-        self._schedule_components_snapshot(resolved)
+        self._pending_components = resolved
+        self._last_preview_width = 0
+        QTimer.singleShot(0, self._repaint_preview)
 
 
-class ThemeLibraryPreviewPanel(QFrame):
+class ThemeLibraryPreviewPanel(_ThemePreviewPanelBase):
     """Live draft preview for Library document wallpaper settings."""
 
     def __init__(self, parent=None) -> None:
@@ -1822,6 +1752,7 @@ class ThemeLibraryPreviewPanel(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
         design_width = _design_preview_width_at_min_window()
         self.setMaximumWidth(design_width)
+        self.setFixedWidth(design_width)
         self.setSizePolicy(
             QSizePolicy.Policy.Fixed,
             QSizePolicy.Policy.Preferred,
@@ -1830,100 +1761,39 @@ class ThemeLibraryPreviewPanel(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self._live = ThemeLibraryPreviewScene()
-        _configure_offscreen_live_scene(self._live)
-        self._view = QLabel()
-        _configure_preview_snapshot_label(
-            self._view,
-            object_name="ThemePreviewLibrarySnapshot",
-        )
-        self._view.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
-        layout.addWidget(self._view)
+        self._live = ThemeLibraryPreviewScene(parent=self)
+        _configure_live_preview_scene(self._live)
+        layout.addWidget(self._live)
+        self.setMinimumHeight(_PREVIEW_SNAPSHOT_HEIGHT)
 
-        self._pending_snapshot: tuple | None = None
-        self._last_snapshot_width = 0
-        self._width_watch_card: QWidget | None = None
+        self._pending_library: tuple | None = None
+        self._last_preview_width = 0
+        self._width_watch_card = None
 
-    def _install_preview_card_width_watch(self) -> None:
-        card = _find_settings_section_card(self)
-        if card is self._width_watch_card:
-            return
-        if self._width_watch_card is not None:
-            self._width_watch_card.removeEventFilter(self)
-        self._width_watch_card = card
-        if card is not None:
-            card.installEventFilter(self)
+    @property
+    def _view(self):
+        """Backward-compatible alias for tests that referenced the snapshot label."""
+        return self._live
 
-    def _request_snapshot_refresh(self) -> None:
-        width = _available_preview_width(self)
-        if width is None:
-            if self._pending_snapshot is not None:
-                QTimer.singleShot(0, self._refresh_snapshot)
-            return
-        previous = self._last_snapshot_width
-        if previous and abs(width - previous) < 2:
-            return
-        self._last_snapshot_width = width
-        if self._pending_snapshot is not None:
-            QTimer.singleShot(0, self._refresh_snapshot)
+    def _has_pending_preview(self) -> bool:
+        return self._pending_library is not None
 
-    def eventFilter(self, watched, event) -> bool:
-        if (
-            watched is self._width_watch_card
-            and event.type() == QEvent.Type.Resize
-        ):
-            self._request_snapshot_refresh()
-        return super().eventFilter(watched, event)
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        self._request_snapshot_refresh()
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self._install_preview_card_width_watch()
-        self._request_snapshot_refresh()
-
-    def _schedule_snapshot(
-        self,
-        resolved: ResolvedTheme,
-        *,
-        library_profile: SurfaceProfile | None,
-        library_resolved_wallpaper,
-    ) -> None:
-        self._pending_snapshot = (
-            resolved,
-            library_profile,
-            library_resolved_wallpaper,
-        )
-        QTimer.singleShot(0, self._refresh_snapshot)
-
-    def _refresh_snapshot(self) -> None:
-        pending = self._pending_snapshot
+    def _repaint_preview(self) -> None:
+        pending = self._pending_library
         if pending is None:
             return
         resolved, library_profile, library_resolved_wallpaper = pending
         width = _preview_snapshot_width(self)
-        if width is None:
-            QTimer.singleShot(0, self._refresh_snapshot)
-            return
         self._live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
-        self._live.setUpdatesEnabled(True)
-        try:
-            self._live.apply_theme(
-                resolved,
-                library_profile=library_profile,
-                library_resolved_wallpaper=library_resolved_wallpaper,
-            )
-            pixmap = self._live.grab()
-        finally:
-            self._live.setUpdatesEnabled(False)
-        if pixmap.isNull():
-            return
-        self._view.setPixmap(pixmap)
-        self._view.setFixedSize(pixmap.width(), pixmap.height())
-        self.setFixedWidth(pixmap.width())
-        self._last_snapshot_width = pixmap.width()
+        self._live.apply_theme(
+            resolved,
+            library_profile=library_profile,
+            library_resolved_wallpaper=library_resolved_wallpaper,
+        )
+        height = max(_PREVIEW_SNAPSHOT_HEIGHT, self._live.height())
+        self.setFixedSize(width, height)
+        self.updateGeometry()
+        self._last_preview_width = width
 
     def apply_theme(
         self,
@@ -1936,8 +1806,10 @@ class ThemeLibraryPreviewPanel(QFrame):
         self.setStyleSheet(
             "QFrame#ThemeLibraryPreviewPanel { background: transparent; border: none; }"
         )
-        self._schedule_snapshot(
+        self._pending_library = (
             resolved,
-            library_profile=library_profile,
-            library_resolved_wallpaper=library_resolved_wallpaper,
+            library_profile,
+            library_resolved_wallpaper,
         )
+        self._last_preview_width = 0
+        QTimer.singleShot(0, self._repaint_preview)

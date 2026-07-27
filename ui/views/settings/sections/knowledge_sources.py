@@ -36,7 +36,14 @@ from ui.views.settings.knowledge_access_badge import (
     style_free_action_button,
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
-from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint, wrap_subsection
+from ui.views.settings.widgets import (
+    add_settings_card_form,
+    add_subsection_to_form,
+    make_settings_hint,
+    wrap_subsection,
+    add_settings_full_width_row,
+    add_settings_span_row,
+)
 
 
 def _preferred_source_checkbox_copy(
@@ -148,6 +155,7 @@ class KnowledgeSourceRow(QWidget):
 
         self.checkbox = QCheckBox()
         self.checkbox.setEnabled(entry.implemented)
+        host._apply_settings_checkbox_style(self.checkbox)
         self.checkbox.setToolTip(tooltip)
         self.checkbox.toggled.connect(self._on_toggled)
         grid.addWidget(
@@ -310,7 +318,8 @@ def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
     """Build unified live source rows grouped by knowledge domain."""
     coalesce_settings_is_dark(host, is_dark=is_dark)
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(card_layout, "Live sources", anchor="knowledge_live_sources")
+    card_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(card_form, "Live sources", anchor="knowledge_live_sources")
 
     container = QWidget()
     container.setMinimumWidth(0)
@@ -408,7 +417,7 @@ def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
 
     sync_live_source_rows(host, is_dark=is_dark)
     host.knowledge_live_sources_section = container
-    card_layout.addWidget(wrap_subsection(container, anchor="knowledge_live_sources"))
+    add_settings_span_row(card_form, wrap_subsection(container, anchor="knowledge_live_sources"))
     return card
 
 

@@ -209,10 +209,18 @@ class PrestigeMenuMixin:
         menu.setStyleSheet(theme.style(SETTINGS_PRESTIGE_MENU))
 
     def _handle_selection(self, button, label, data, callback):
-        from ui.views.settings.widgets import refit_settings_selector_width
+        from ui.views.settings.widgets import (
+            SETTINGS_SELECTOR_LABELS_PROP,
+            refit_settings_selector_width,
+        )
 
-        button.setText(label)
+        callback(data)
+        stored = button.property(SETTINGS_SELECTOR_LABELS_PROP)
+        if isinstance(stored, list) and stored:
+            if label in stored:
+                button.setText(label)
+        else:
+            button.setText(label)
         refit_settings_selector_width(button)
         if hasattr(button, "update"):
             button.update()
-        callback(data)

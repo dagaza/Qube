@@ -31,18 +31,14 @@ from ui.views.settings.sections.knowledge_provider_status import (
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_subsection_to_layout,
+    add_subsection_to_form,
+    add_settings_card_form,
     add_section_reset_footer,
+    make_settings_form,
     wrap_subsection,
+    add_settings_full_width_row,
+    add_settings_span_row,
 )
-
-
-def _make_settings_form() -> tuple[QWidget, QFormLayout]:
-    form_host = QWidget()
-    form = QFormLayout(form_host)
-    form.setSpacing(12)
-    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-    return form_host, form
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -56,17 +52,18 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Library search phrases card ---
     triggers_card, triggers_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(triggers_card_layout, "Library search phrases", anchor="triggers")
-    triggers_card_layout.addWidget(host._build_triggers_manager())
+    triggers_form = add_settings_card_form(triggers_card_layout)
+    add_subsection_to_form(triggers_form, "Library search phrases", anchor="triggers")
+    add_settings_full_width_row(triggers_form, host._build_triggers_manager())
     layout.addWidget(triggers_card)
 
     # --- Search quality card ---
     search_card, search_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(search_card_layout, "Search quality", anchor="embedding_mode")
-    mode_form_host, mode_form = _make_settings_form()
+    search_form = add_settings_card_form(search_card_layout)
+    add_subsection_to_form(search_form, "Search quality", anchor="embedding_mode")
+    mode_form_host, mode_form = make_settings_form()
 
     host.embedding_mode_selector = SelectorButton("Balanced", is_dark=is_dark)
-    host.embedding_mode_selector.setMaximumWidth(280)
     host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
     host.embedding_mode_selector.setToolTip(
         "Fast — lightest on memory. Balanced — recommended default. "
@@ -75,14 +72,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
 
     host.embedding_mode_description = QLabel()
+    host.embedding_mode_description.setObjectName("SettingsHint")
     host.embedding_mode_description.setWordWrap(True)
+    host.embedding_mode_description.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+    )
 
     mode_form.addRow("Mode", host.embedding_mode_selector)
-    mode_form.addRow("", host.embedding_mode_description)
-    search_card_layout.addWidget(wrap_subsection(mode_form_host, anchor="embedding_mode"))
+    add_settings_span_row(mode_form, host.embedding_mode_description)
+    add_settings_span_row(search_form, wrap_subsection(mode_form_host, anchor="embedding_mode"))
 
-    search_card_layout.addWidget(
-        make_bootstrap_download_row(
+    add_settings_full_width_row(search_form, make_bootstrap_download_row(
             host,
             row_attr="embedding_bootstrap_download_row",
             label_attr="embedding_bootstrap_missing_lbl",
@@ -94,10 +94,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
                 "not the embedding GGUF folder). Change mode under Search quality above."
             ),
             button_text="Prepare search models",
-        )
+        ),
     )
-    search_card_layout.addWidget(
-        make_bootstrap_download_row(
+    add_settings_full_width_row(search_form, make_bootstrap_download_row(
             host,
             row_attr="embedding_all_presets_download_row",
             label_attr="embedding_all_presets_missing_lbl",
@@ -108,17 +107,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
                 "(ONNX under ~/.qube/models/search/)."
             ),
             button_text="Download all search presets",
-        )
+        ),
     )
     layout.addWidget(search_card)
 
     # --- Retrieval profile card ---
     profile_card, profile_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(profile_card_layout, "Retrieval profile", anchor="retrieval_profile")
-    profile_form_host, profile_form = _make_settings_form()
+    profile_card_form = add_settings_card_form(profile_card_layout)
+    add_subsection_to_form(profile_card_form, "Retrieval profile", anchor="retrieval_profile")
+    profile_form_host, profile_form = make_settings_form()
 
     host.retrieval_profile_selector = SelectorButton("Balanced", is_dark=is_dark)
-    host.retrieval_profile_selector.setMaximumWidth(280)
     host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
     host.retrieval_profile_selector.setToolTip(
         "How hard Qube searches on Library, Live Sources, presets, and web turns. "
@@ -127,11 +126,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "or My knowledge presets."
     )
     host.retrieval_profile_description = QLabel()
+    host.retrieval_profile_description.setObjectName("SettingsHint")
     host.retrieval_profile_description.setWordWrap(True)
+    host.retrieval_profile_description.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+    )
 
     profile_form.addRow("Profile", host.retrieval_profile_selector)
-    profile_form.addRow("", host.retrieval_profile_description)
-    profile_card_layout.addWidget(wrap_subsection(profile_form_host, anchor="retrieval_profile"))
+    add_settings_span_row(profile_form, host.retrieval_profile_description)
+    add_settings_span_row(profile_card_form, wrap_subsection(profile_form_host, anchor="retrieval_profile"))
     layout.addWidget(profile_card)
 
     layout.addWidget(build_knowledge_web_discovery_section(host, is_dark=is_dark))
@@ -143,7 +146,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Advanced embedding card ---
     embedding_card, embedding_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(embedding_card_layout, "Advanced embedding", anchor="embedding_model")
+    embedding_card_form = add_settings_card_form(embedding_card_layout)
+    add_subsection_to_form(
+        embedding_card_form, "Advanced embedding", anchor="embedding_model"
+    )
 
     _adv_tip = (
         "Advanced embedding controls are not for everyday use.\n\n"
@@ -175,7 +181,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_embedding_toggle.setChecked(get_advanced_embedding_unlocked())
     host.advanced_embedding_toggle.blockSignals(False)
     host.advanced_embedding_toggle.toggled.connect(host._on_advanced_embedding_toggled)
-    embedding_card_layout.addWidget(advanced_row)
+    add_settings_full_width_row(embedding_card_form, advanced_row)
 
     host.advanced_embedding_panel = QWidget()
     adv_panel_layout = QVBoxLayout(host.advanced_embedding_panel)
@@ -195,6 +201,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     embedding_row = QHBoxLayout()
     host.embedding_gguf_list = QListWidget()
+    host.embedding_gguf_list.setObjectName("SettingsBorderedList")
     host.embedding_gguf_list.setMinimumWidth(0)
     host.embedding_gguf_list.setMinimumHeight(90)
     host.embedding_gguf_list.setMaximumHeight(140)
@@ -235,7 +242,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     adv_panel_layout.addWidget(wrap_subsection(embedding_inner, anchor="embedding_model"))
     host.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
-    embedding_card_layout.addWidget(host.advanced_embedding_panel)
+    add_settings_full_width_row(embedding_card_form, host.advanced_embedding_panel)
     layout.addWidget(embedding_card)
 
     host._build_embedding_mode_menu()

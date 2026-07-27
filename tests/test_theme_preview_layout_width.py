@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui.views.settings.settings_card_style import settings_card_content_horizontal_padding_total
 from ui.components.theme_preview_panel import _design_preview_width_at_min_window
 
 
@@ -39,10 +40,10 @@ def test_theme_preview_fits_settings_card_at_min_window(main_window, qtbot):
     card = settings.themes_preview_card
     scroll = settings.settings_section_stack.currentWidget()
     viewport_w = scroll.viewport().width() if scroll is not None else 0
-    pixmap = panel._conversations_view.pixmap()
+    pixmap = panel._conversations_view.grab()
 
     design = _design_preview_width_at_min_window()
-    card_inner = card.width() - 24
+    card_inner = card.width() - settings_card_content_horizontal_padding_total()
     assert pixmap.width() <= card_inner + 2, (
         f"pixmap={pixmap.width()} card_inner={card_inner} panel={panel.width()} "
         f"viewport={viewport_w} design={design}"
@@ -60,7 +61,7 @@ def test_theme_preview_stays_capped_on_wide_window(main_window, qtbot):
     settings = _open_themes_preview(win, qtbot)
 
     panel = settings.themes_preview_panel
-    pixmap = panel._conversations_view.pixmap()
+    pixmap = panel._conversations_view.grab()
     design = _design_preview_width_at_min_window()
 
     assert pixmap.width() == design
@@ -77,10 +78,10 @@ def test_library_preview_fits_settings_card_at_min_window(main_window, qtbot):
     card = settings.themes_library_preview_card
     scroll = settings.settings_section_stack.currentWidget()
     viewport_w = scroll.viewport().width() if scroll is not None else 0
-    pixmap = panel._view.pixmap()
+    pixmap = panel._view.grab()
 
     design = _design_preview_width_at_min_window()
-    card_inner = card.width() - 24
+    card_inner = card.width() - settings_card_content_horizontal_padding_total()
     assert pixmap.width() <= card_inner + 2
     assert pixmap.width() <= viewport_w + 2
     assert pixmap.width() == design
@@ -93,7 +94,7 @@ def test_library_preview_stays_capped_on_wide_window(main_window, qtbot):
     settings = _open_themes_library_preview(win, qtbot)
 
     panel = settings.themes_library_preview_panel
-    pixmap = panel._view.pixmap()
+    pixmap = panel._view.grab()
     design = _design_preview_width_at_min_window()
 
     assert pixmap.width() == design

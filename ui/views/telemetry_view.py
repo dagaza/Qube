@@ -55,6 +55,7 @@ class TelemetryView(QWidget):
             except Exception as e:
                 logger.debug("Telemetry native load_finished connect skipped: %s", e)
         self._refresh_router_from_worker_snapshot()
+        self._refresh_web_discovery_snapshot()
 
     # ============================================================
     # UI SETUP
@@ -126,10 +127,16 @@ class TelemetryView(QWidget):
         bottom_row_layout.addWidget(self.router_card, stretch=1)
         bottom_row_layout.addWidget(self.sidecar_card, stretch=1)
 
+        discovery_row_layout = QHBoxLayout()
+        discovery_row_layout.setSpacing(20)
+        self.discovery_card = self._build_web_discovery_card()
+        discovery_row_layout.addWidget(self.discovery_card, stretch=1)
+
         self.inference_transparency_card = self._build_inference_transparency_card()
 
         dashboard_layout.addLayout(top_row_layout)
         dashboard_layout.addLayout(bottom_row_layout)
+        dashboard_layout.addLayout(discovery_row_layout)
         dashboard_layout.addWidget(self.inference_transparency_card)
         layout.addLayout(dashboard_layout)
         if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
@@ -438,6 +445,71 @@ class TelemetryView(QWidget):
         return frame
 
     # ============================================================
+    # WEB DISCOVERY CARD (R10 / Theme B)
+    # ============================================================
+    def _build_web_discovery_card(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("WebDiscoveryCard")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(25)
+
+        header = QLabel("Web discovery")
+        header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Live web search discovery policy: privacy tier, DDG budgets, pacing, "
+            "and backoff — read-only; mirrors Settings → Knowledge → Web search discovery."
+        )
+        layout.addWidget(header)
+
+        tier_row, self.discovery_tier_val = self._make_metric_row(
+            "Privacy tier",
+            "Active SERP discovery tier",
+            "—",
+            "Same setting as Settings → Knowledge → Web search discovery → Privacy tier.",
+        )
+        primary_row, self.discovery_primary_val = self._make_metric_row(
+            "Primary provider",
+            "Current discovery route",
+            "—",
+            "Primary SERP provider for @internet / Hybrid Internet / web routing.",
+        )
+        burst_row, self.discovery_burst_val = self._make_metric_row(
+            "DDG burst budget",
+            "Live DuckDuckGo calls in burst window",
+            "—",
+            "Rolling burst cap for live DDG HTTP requests (cache hits excluded).",
+        )
+        session_row, self.discovery_session_val = self._make_metric_row(
+            "DDG session budget",
+            "Live DuckDuckGo calls in session window",
+            "—",
+            "Rolling session cap for live DDG HTTP requests (cache hits excluded).",
+        )
+        pacing_row, self.discovery_pacing_val = self._make_metric_row(
+            "Pacing",
+            "Minimum gap between live DDG queries",
+            "—",
+            "Doubles automatically in conservative mode after repeated bot challenges.",
+        )
+        health_row, self.discovery_health_val = self._make_metric_row(
+            "System health",
+            "Discovery health summary",
+            "—",
+            "Rule-based status from backoff, budgets, and conservative pacing.",
+        )
+
+        layout.addLayout(tier_row)
+        layout.addLayout(primary_row)
+        layout.addLayout(burst_row)
+        layout.addLayout(session_row)
+        layout.addLayout(pacing_row)
+        layout.addLayout(health_row)
+        layout.addStretch()
+
+        return frame
+
+    # ============================================================
     # INFERENCE TRANSPARENCY
     # ============================================================
     def _build_inference_transparency_card(self) -> QFrame:
@@ -610,6 +682,7 @@ class TelemetryView(QWidget):
         self._refresh_model_capability_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
+        self._refresh_web_discovery_snapshot()
 
     def refresh_after_theme_toggle(self) -> None:
         """Keep telemetry card shells aligned with global light/dark theme."""
@@ -651,11 +724,20 @@ class TelemetryView(QWidget):
         except Exception as e:
             logger.debug("Sidecar telemetry snapshot failed: %s", e)
 
+    def _refresh_web_discovery_snapshot(self) -> None:
+        try:
+            from core.knowledge.discovery_telemetry import discovery_telemetry_snapshot
+
+            self.update_web_discovery_telemetry(discovery_telemetry_snapshot())
+        except Exception as e:
+            logger.debug("Web discovery telemetry snapshot failed: %s", e)
+
     def _refresh_hardware(self):
         self._refresh_model_capability_labels()
         self._refresh_inference_transparency_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
+        self._refresh_web_discovery_snapshot()
 
         try:
             cpu = int(psutil.cpu_percent())
@@ -691,6 +773,7 @@ class TelemetryView(QWidget):
             getattr(self, "model_capability_card", None),
             getattr(self, "router_card", None),
             getattr(self, "sidecar_card", None),
+            getattr(self, "discovery_card", None),
             getattr(self, "inference_transparency_card", None),
         ):
             if card is not None:
@@ -921,6 +1004,57 @@ class TelemetryView(QWidget):
 
         self.health_val.setText(health)
         self.health_val.setToolTip(f"System health: {health}")
+
+    # ============================================================
+    # WEB DISCOVERY TELEMETRY UPDATE SLOT
+    # ============================================================
+    def update_web_discovery_telemetry(self, snapshot: dict | None) -> None:
+        snapshot = snapshot or {}
+        tier_label = str(snapshot.get("privacy_tier_label") or "—")
+        self.discovery_tier_val.setText(tier_label)
+
+        primary = str(snapshot.get("primary_provider_label") or "—")
+        backoff_summary = snapshot.get("backoff_summary")
+        if backoff_summary:
+            primary = f"{primary} · {backoff_summary}"
+        self.discovery_primary_val.setText(primary)
+
+        burst_limit = int(snapshot.get("burst_limit") or 0)
+        if burst_limit <= 0:
+            burst_txt = "Off"
+        else:
+            burst_used = int(snapshot.get("burst_used") or 0)
+            burst_remaining = int(snapshot.get("burst_remaining") or 0)
+            burst_txt = f"{burst_used}/{burst_limit} ({burst_remaining} left)"
+        self.discovery_burst_val.setText(burst_txt)
+
+        session_limit = int(snapshot.get("session_limit") or 0)
+        if session_limit <= 0:
+            session_txt = "Off"
+        else:
+            session_used = int(snapshot.get("session_used") or 0)
+            session_remaining = int(snapshot.get("session_remaining") or 0)
+            session_txt = f"{session_used}/{session_limit} ({session_remaining} left)"
+        self.discovery_session_val.setText(session_txt)
+
+        if not snapshot.get("pacing_enabled"):
+            pacing_txt = "Off"
+        else:
+            effective = float(snapshot.get("pacing_effective_seconds") or 0)
+            base = float(snapshot.get("pacing_base_seconds") or 0)
+            if snapshot.get("conservative_mode") and effective > base + 0.01:
+                pacing_txt = (
+                    f"~{effective:.0f}s (conservative; base ~{base:.0f}s)"
+                )
+            else:
+                pacing_txt = f"~{effective:.0f}s between live DDG queries"
+        self.discovery_pacing_val.setText(pacing_txt)
+
+        from core.knowledge.discovery_telemetry import format_discovery_health_status
+
+        health = format_discovery_health_status(snapshot)
+        self.discovery_health_val.setText(health)
+        self.discovery_health_val.setToolTip(f"Discovery health: {health}")
 
     # ============================================================
     # SIDECAR TELEMETRY UPDATE SLOT

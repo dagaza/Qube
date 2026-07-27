@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtGui import QGuiApplication, QIcon, QPixmap
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from core.paths import resource_path
 
@@ -134,3 +134,18 @@ def finalize_window_branding(widget: QWidget) -> None:
     """Apply branding after the native window handle exists (call from showEvent)."""
     apply_window_branding(widget)
     apply_windows_taskbar_icon(widget)
+
+
+def apply_linux_desktop_integration(app: QApplication | None = None) -> None:
+    """Help Linux panels pick up the Qube icon when not launched via a .desktop file."""
+    if sys.platform != "linux":
+        return
+    app = app or QApplication.instance()
+    if app is None:
+        return
+    app.setApplicationName("Qube")
+    app.setApplicationDisplayName("Qube")
+    try:
+        QGuiApplication.setDesktopFileName("qube")
+    except Exception as exc:
+        logger.debug("Linux desktop file name apply failed: %s", exc)
