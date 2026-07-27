@@ -413,6 +413,11 @@ class WallpaperEditorWidget(QWidget):
         self._preset_thumbnails_ready = False
         self._image_tiles_built = False
         self._resolved_theme: ResolvedTheme | None = None
+        self.setMinimumWidth(0)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum,
+        )
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -422,21 +427,21 @@ class WallpaperEditorWidget(QWidget):
         title_label.setObjectName("SettingsSubsectionLabel")
         root.addWidget(title_label)
 
-        mode_row = QHBoxLayout()
-        mode_row.setSpacing(12)
+        mode_row = QGridLayout()
+        mode_row.setHorizontalSpacing(12)
+        mode_row.setVerticalSpacing(6)
         self._mode_group = QButtonGroup(self)
         self._mode_group.setExclusive(True)
         self._mode_cbs: dict[str, QCheckBox] = {}
-        for mode_id, label in _MODE_LABELS:
+        for index, (mode_id, label) in enumerate(_MODE_LABELS):
             cb = QCheckBox(label)
             cb.setProperty("wallpaper_mode", mode_id)
             self._mode_group.addButton(cb)
             self._mode_cbs[mode_id] = cb
-            mode_row.addWidget(cb)
+            mode_row.addWidget(cb, index // 3, index % 3)
             cb.toggled.connect(
                 lambda checked, mid=mode_id: self._on_mode_toggled(mid, checked)
             )
-        mode_row.addStretch()
         root.addLayout(mode_row)
 
         self._options_container = QWidget()

@@ -2,12 +2,26 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QColor
+from collections.abc import Iterable
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFontMetrics
 from PyQt6.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QWidget
 
 from core.theme.color_utils import contrasting_label_color, parse_color
 from core.theme.constants import UNRESOLVED_TOKEN_COLOR
+
+_THEME_COLOR_SWATCH_LABEL_OBJECT = "ThemeColorTokenLabel"
+_THEME_COLOR_SWATCH_LABEL_PAD = 4
+
+
+def theme_color_label_column_width(labels: Iterable[str]) -> int:
+    """Width for a right-aligned label column that fits every token name."""
+    probe = QLabel()
+    probe.setObjectName(_THEME_COLOR_SWATCH_LABEL_OBJECT)
+    metrics = QFontMetrics(probe.font())
+    widest = max((metrics.horizontalAdvance(label) for label in labels), default=0)
+    return widest + _THEME_COLOR_SWATCH_LABEL_PAD
 
 
 class ThemeColorSwatch(QWidget):
@@ -22,6 +36,7 @@ class ThemeColorSwatch(QWidget):
         *,
         parent=None,
         token_key: str = "",
+        label_min_width: int | None = None,
     ) -> None:
         super().__init__(parent)
         self._token_key = token_key
@@ -29,17 +44,22 @@ class ThemeColorSwatch(QWidget):
         self.setMinimumHeight(32)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
+        layout.setSpacing(12)
         self._label = QLabel(label)
-        self._label.setObjectName("SettingsSubsectionLabel")
+        self._label.setObjectName(_THEME_COLOR_SWATCH_LABEL_OBJECT)
+        if label_min_width is not None and label_min_width > 0:
+            self._label.setFixedWidth(label_min_width)
+            self._label.setAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
         self._button = QPushButton()
         self._button.setObjectName("ThemeColorSwatchButton")
         self._button.setFixedSize(120, 32)
         self._button.setToolTip(f"Choose {label.lower()} color")
         self._button.clicked.connect(self._pick_color)
-        layout.addWidget(self._label)
-        layout.addWidget(self._button)
-        layout.addStretch()
+        layout.addWidget(self._label, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._button, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addStretch(1)
         self._apply_button_style()
 
     @property

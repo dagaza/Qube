@@ -59,6 +59,16 @@ _THEME_JSON_FILTER = "Qube color scheme (*.json);;All files (*.*)"
 _THEME_PACK_FILTER = "Qube theme pack (*.qube-theme.zip);;All files (*.*)"
 
 
+def _themes_preview_widget_in_layout(panel, layout) -> bool:
+    if panel is None or layout is None:
+        return False
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        if item is not None and item.widget() is panel:
+            return True
+    return False
+
+
 class ThemesHandlersMixin:
     """Draft / preview / apply flow for Settings → Themes."""
 
@@ -104,44 +114,70 @@ class ThemesHandlersMixin:
         self._ensure_themes_manager_subscription()
 
     def _ensure_themes_preview_initialized(self, *, is_dark: bool | None = None) -> None:
+        panel = getattr(self, "themes_preview_panel", None)
+        layout = getattr(self, "themes_preview_layout", None)
         if getattr(self, "_themes_preview_initialized", False):
-            return
+            if _themes_preview_widget_in_layout(panel, layout):
+                return
+            if panel is not None:
+                panel.deleteLater()
+            self.themes_preview_panel = None
+            self._themes_preview_initialized = False
+
         from ui.components.theme_preview_panel import ThemePreviewPanel
         from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 
         if is_dark is None:
             is_dark = coalesce_settings_is_dark(self)
 
+        panel = getattr(self, "themes_preview_panel", None)
         layout = getattr(self, "themes_preview_layout", None)
         placeholder = getattr(self, "themes_preview_placeholder", None)
-        if layout is not None and placeholder is not None:
-            layout.removeWidget(placeholder)
-            placeholder.deleteLater()
-            self.themes_preview_placeholder = None
-            self.themes_preview_panel = ThemePreviewPanel(parent=self)
-            layout.addWidget(self.themes_preview_panel)
+        if panel is None and layout is not None:
+            if placeholder is not None:
+                layout.removeWidget(placeholder)
+                placeholder.deleteLater()
+                self.themes_preview_placeholder = None
+            panel = ThemePreviewPanel(parent=self)
+            self.themes_preview_panel = panel
+            layout.addWidget(panel)
+        if panel is None:
+            return
 
         self._themes_preview_initialized = True
         self._wire_themes_section(is_dark=is_dark)
         self._refresh_themes_conversations_preview()
 
     def _ensure_themes_components_preview_initialized(self, *, is_dark: bool | None = None) -> None:
+        panel = getattr(self, "themes_components_preview_panel", None)
+        layout = getattr(self, "themes_components_preview_layout", None)
         if getattr(self, "_themes_components_preview_initialized", False):
-            return
+            if _themes_preview_widget_in_layout(panel, layout):
+                return
+            if panel is not None:
+                panel.deleteLater()
+            self.themes_components_preview_panel = None
+            self._themes_components_preview_initialized = False
+
         from ui.components.theme_preview_panel import ThemeComponentsPreviewPanel
         from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 
         if is_dark is None:
             is_dark = coalesce_settings_is_dark(self)
 
+        panel = getattr(self, "themes_components_preview_panel", None)
         layout = getattr(self, "themes_components_preview_layout", None)
         placeholder = getattr(self, "themes_components_preview_placeholder", None)
-        if layout is not None and placeholder is not None:
-            layout.removeWidget(placeholder)
-            placeholder.deleteLater()
-            self.themes_components_preview_placeholder = None
-            self.themes_components_preview_panel = ThemeComponentsPreviewPanel(parent=self)
-            layout.addWidget(self.themes_components_preview_panel)
+        if panel is None and layout is not None:
+            if placeholder is not None:
+                layout.removeWidget(placeholder)
+                placeholder.deleteLater()
+                self.themes_components_preview_placeholder = None
+            panel = ThemeComponentsPreviewPanel(parent=self)
+            self.themes_components_preview_panel = panel
+            layout.addWidget(panel)
+        if panel is None:
+            return
 
         self._themes_components_preview_initialized = True
         if not getattr(self, "_themes_preview_initialized", False):
@@ -150,22 +186,35 @@ class ThemesHandlersMixin:
             self._refresh_themes_components_preview()
 
     def _ensure_themes_library_preview_initialized(self, *, is_dark: bool | None = None) -> None:
+        panel = getattr(self, "themes_library_preview_panel", None)
+        layout = getattr(self, "themes_library_preview_layout", None)
         if getattr(self, "_themes_library_preview_initialized", False):
-            return
+            if _themes_preview_widget_in_layout(panel, layout):
+                return
+            if panel is not None:
+                panel.deleteLater()
+            self.themes_library_preview_panel = None
+            self._themes_library_preview_initialized = False
+
         from ui.components.theme_preview_panel import ThemeLibraryPreviewPanel
         from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 
         if is_dark is None:
             is_dark = coalesce_settings_is_dark(self)
 
+        panel = getattr(self, "themes_library_preview_panel", None)
         layout = getattr(self, "themes_library_preview_layout", None)
         placeholder = getattr(self, "themes_library_preview_placeholder", None)
-        if layout is not None and placeholder is not None:
-            layout.removeWidget(placeholder)
-            placeholder.deleteLater()
-            self.themes_library_preview_placeholder = None
-            self.themes_library_preview_panel = ThemeLibraryPreviewPanel(parent=self)
-            layout.addWidget(self.themes_library_preview_panel)
+        if panel is None and layout is not None:
+            if placeholder is not None:
+                layout.removeWidget(placeholder)
+                placeholder.deleteLater()
+                self.themes_library_preview_placeholder = None
+            panel = ThemeLibraryPreviewPanel(parent=self)
+            self.themes_library_preview_panel = panel
+            layout.addWidget(panel)
+        if panel is None:
+            return
 
         self._themes_library_preview_initialized = True
         if not getattr(self, "_themes_preview_initialized", False):
@@ -804,6 +853,7 @@ class ThemesHandlersMixin:
         panel.apply_theme(resolved)
 
     def _refresh_themes_draft_previews(self) -> None:
+        self._ensure_themes_previews_initialized()
         self._refresh_themes_conversations_preview()
         self._refresh_themes_components_preview()
         self._refresh_themes_library_preview()
@@ -1005,6 +1055,7 @@ class ThemesHandlersMixin:
             self._themes_draft_appearance = ThemeAppearancePreference(pref_id)
         except ValueError:
             return
+        self._refresh_themes_preview()
         self._update_themes_action_buttons()
 
     def _on_themes_variant_toggled(self, scheme_id: str, checked: bool) -> None:
@@ -1064,6 +1115,7 @@ class ThemesHandlersMixin:
 
         self._update_themes_controls_from_draft()
         self._update_themes_identity_label()
+        self._refresh_themes_draft_previews()
         self._update_themes_action_buttons()
         logger.info("Applied chat theme/wallpaper draft from Settings → Themes")
 
@@ -1091,6 +1143,7 @@ class ThemesHandlersMixin:
         self._themes_draft_overrides = self._applied_core_overrides()
         self._update_themes_controls_from_draft()
         self._update_themes_identity_label()
+        self._refresh_themes_draft_previews()
         self._update_themes_action_buttons()
         logger.info("Applied theme color draft from Settings → Themes")
 
@@ -1100,7 +1153,7 @@ class ThemesHandlersMixin:
         self._apply_active_surface_profile(SURFACE_LIBRARY_PREVIEW, persist=True)
         self._sync_surface_draft_from_applied(SURFACE_LIBRARY_PREVIEW)
         self._update_themes_wallpaper_controls()
-        self._refresh_themes_library_preview()
+        self._refresh_themes_draft_previews()
         self._update_themes_action_buttons()
         logger.info("Applied library wallpaper draft from Settings → Themes")
 
@@ -1138,6 +1191,8 @@ class ThemesHandlersMixin:
         """Mount lazy preview panels, then paint snapshots (init must precede refresh)."""
         self._ensure_themes_previews_initialized()
         self._refresh_themes_draft_previews()
+        # Layout may settle after the scroll area first shows the Themes page.
+        QTimer.singleShot(150, self._refresh_themes_draft_previews)
 
     def _on_themes_section_enter(self) -> None:
         self._update_themes_action_buttons()

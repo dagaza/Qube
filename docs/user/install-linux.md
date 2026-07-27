@@ -10,6 +10,8 @@ Official Linux builds ship as **AppImage** (portable) and **`.deb`** (Ubuntu/Deb
 
 Install **one** `.deb` variant at a time (`qube`, `qube-vulkan`, and `qube-cuda` conflict with each other). AppImages are portable — keep the file that matches your hardware.
 
+**Flatpak** is not published today — use AppImage or `.deb` from GitHub Releases.
+
 For development or bleeding-edge checkouts, use [install from source](install-from-source.md).
 
 ---
@@ -41,7 +43,16 @@ See [system requirements](system-requirements.md) for model and storage guidance
    ./Qube-1.1.0-x86_64-vulkan.AppImage
    ```
 
-On systems without FUSE, set:
+3. **Optional — application menu entry** (from the repo checkout, or after cloning the install script):
+
+   ```bash
+   bash scripts/linux/install_appimage.sh ./Qube-*-x86_64-vulkan.AppImage
+   qube-appimage
+   ```
+
+   This copies the AppImage to `~/.local/opt/qube/`, adds `~/.local/bin/qube-appimage`, and registers a `.desktop` launcher.
+
+On systems **without FUSE**, set:
 
 ```bash
 export APPIMAGE_EXTRACT_AND_RUN=1

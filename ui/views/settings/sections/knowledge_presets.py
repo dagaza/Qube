@@ -30,7 +30,13 @@ from ui.views.settings.knowledge_list_table import (
     selected_data_row,
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
-from ui.views.settings.widgets import add_subsection_to_layout, wrap_subsection
+from ui.views.settings.widgets import (
+    add_settings_card_form,
+    add_subsection_to_form,
+    wrap_subsection,
+    add_settings_full_width_row,
+    add_settings_span_row,
+)
 
 _PRESETS_PLACEHOLDER = (
     "Custom composer tools you create will appear here."
@@ -42,7 +48,8 @@ _MODE_WEB_FETCH = "web_fetch"
 
 def build_knowledge_presets_section(host, *, is_dark: bool) -> QWidget:
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(card_layout, "My knowledge", anchor="knowledge_presets")
+    card_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(card_form, "My knowledge", anchor="knowledge_presets")
 
     inner = QWidget()
     inner_layout = QVBoxLayout(inner)
@@ -127,7 +134,7 @@ def build_knowledge_presets_section(host, *, is_dark: bool) -> QWidget:
     host.knowledge_preset_delete_btn.clicked.connect(host._delete_knowledge_preset)
     host.knowledge_preset_explain_btn.clicked.connect(host._explain_knowledge_preset)
 
-    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_presets"))
+    add_settings_span_row(card_form, wrap_subsection(inner, anchor="knowledge_presets"))
     _refresh_presets_list(host, is_dark=is_dark)
     _refresh_preset_sources_hint(host)
     return card

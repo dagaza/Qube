@@ -285,13 +285,19 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         padding = kwargs.get("padding", "6px")
         return f"""
             QPushButton {{
-                background: transparent;
+                background-color: transparent;
                 border: none;
                 border-radius: 6px;
                 padding: {padding};
             }}
             QPushButton:hover {{
                 background-color: {resolved.surface_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {resolved.surface_pressed};
+            }}
+            QPushButton:disabled {{
+                opacity: 0.45;
             }}
         """
     if role == UTILITY_ICON_BUTTON:
@@ -806,8 +812,10 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         border = resolved.border_subtle if resolved.is_dark else resolved.border
         disabled_text = resolved.text_muted
         disabled_border = with_alpha(resolved.border, 0.5)
+        disabled_indicator_bg = resolved.surface_pressed
+        focus_border = resolved.accent if resolved.is_dark else adjust_lightness(resolved.border, -0.15)
         return f"""
-            QCheckBox {{ color: {resolved.text_primary}; font-size: 13px; }}
+            QCheckBox {{ color: {resolved.text_primary}; font-size: 13px; spacing: 8px; }}
             QCheckBox:disabled {{ color: {disabled_text}; }}
             QCheckBox::indicator {{
                 width: 18px;
@@ -815,10 +823,12 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 border: 1px solid {border};
                 border-radius: 4px;
                 background-color: transparent;
+                image: none;
             }}
-            QCheckBox::indicator:disabled {{
-                background-color: transparent;
+            QCheckBox::indicator:unchecked:disabled {{
+                background-color: {disabled_indicator_bg};
                 border: 1px solid {disabled_border};
+                image: none;
             }}
             QCheckBox::indicator:checked {{
                 background-color: {resolved.accent};
@@ -829,6 +839,12 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 background-color: {resolved.accent_pressed};
                 border: 1px solid {disabled_border};
                 image: url(assets/icons/check_mark.png);
+            }}
+            QCheckBox::indicator:focus {{
+                border: 1px solid {focus_border};
+            }}
+            QCheckBox::indicator:checked:focus {{
+                border: 1px solid {resolved.accent_pressed};
             }}
         """
     if role == SETTINGS_LINE_EDIT:
@@ -966,12 +982,13 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         """
     if role == SETTINGS_BORDERED_LIST:
         border = resolved.border_subtle if resolved.is_dark else resolved.border
+        bg = resolved.background
         object_name = kwargs.get("object_name", "SettingsTriggerList")
         widget_type = kwargs.get("widget_type", "QListWidget")
         item_padding = kwargs.get("item_padding", "2px 12px")
         return f"""
             {widget_type}#{object_name}, {widget_type} {{
-                background-color: transparent;
+                background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 8px;
             }}

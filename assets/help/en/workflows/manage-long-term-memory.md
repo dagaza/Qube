@@ -21,13 +21,14 @@ review memories, edit saved memory, clear memory, memory manager workflow, forge
 ## How to…
 
 1. Open **Memory Manager** and browse memories grouped by category. Use **tier** and **category** filters or **Search memory text…** to narrow the list.
-2. Click **Edit** on a row and update text in the **Edit Memory** dialog, or **Delete** entries that are wrong or outdated.
+2. Click **Edit** on a row and update text in the **Edit Memory** dialog, or **Delete** entries that are wrong or outdated (see [Delete memory entries FAQ](../faq/delete-memory-entries.md)).
 3. Open **Settings → Memory** to adjust **Enable Memory Enrichment & Reflection**, **Promote well-used memories to preferences**, and **Highlight memories that keep coming back** if automation feels too aggressive.
 4. Click **Export visible** to back up filtered memories to Markdown under **`~/.qube/exports/`** before bulk deletion.
 5. Test in Conversations by asking the assistant to recall a fact you kept.
 
 ## Related
 
+- [Delete memory entries FAQ](../faq/delete-memory-entries.md) — permanent delete and negative list
 - [Memory settings](../features/settings/memory.md) — enrichment, promotion, review highlights
 - [Memory vs Library FAQ](../faq/memory-vs-library.md) — memory is not document storage
 - [Memory not remembering troubleshooting](../troubleshooting/memory-not-remembering.md) — recall issues

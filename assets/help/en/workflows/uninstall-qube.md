@@ -46,11 +46,12 @@ remove Qube, delete Qube, uninstall app, wipe user data, remove package, clean u
 
 ### Linux
 
-1. **AppImage** — delete the AppImage file; remove **`~/.qube`** for user data.
-2. **`.deb` package** — run **`qube-uninstall`** (or **`qube-uninstall --keep-data`** to keep **`~/.qube`**).
-3. **Package manager:** `sudo apt remove qube`, **`qube-vulkan`**, or **`qube-cuda`** (install only one variant at a time).
+1. **AppImage (portable)** — delete the AppImage file.
+2. **AppImage + install script** — remove **`~/.local/opt/qube/`**, **`~/.local/bin/qube-appimage`**, and **`~/.local/share/applications/qube-appimage.desktop`** if you used **`install_appimage.sh`**. See [Install Qube on Linux](faq/install-linux.md).
+3. **`.deb` package** — run **`qube-uninstall`** (or **`qube-uninstall --keep-data`** to keep **`~/.qube`**) or **`sudo apt remove qube`** / **`qube-vulkan`** / **`qube-cuda`** (only one variant installed at a time).
 4. **Packaged `.deb`** — use **Settings → Help → Uninstall Qube** buttons (administrator privileges may be requested).
-5. **Source install** — remove your virtual environment and repository clone, then delete **`~/.qube`**.
+5. **Source install** — remove your virtual environment and repository clone.
+6. For a **full data wipe** on any Linux install path, delete **`~/.qube`** after quitting Qube.
 
 ## Related
 

@@ -104,15 +104,6 @@ def build_settings_memory_tour(host) -> OnboardingTour:
             target_getter=lambda h: _sv(h).memory_consolidation_toggle,
             on_enter=_open_advanced_panel,
         ),
-        OnboardingStep(
-            step_id="units",
-            title="Presentation units",
-            body=(
-                "Optional display preference for measurement units in memory summaries."
-            ),
-            target_getter=lambda h: _sv(h).profile_units_selector,
-            on_enter=_open,
-        ),
         make_settings_tour_finish_step("Memory settings", _open),
     ]
     return OnboardingTour(host, steps, on_finished=_on_finished)

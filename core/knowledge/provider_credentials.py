@@ -55,7 +55,7 @@ PROVIDER_CREDENTIAL_SPECS: tuple[ProviderCredentialSpec, ...] = (
         key_required=False,
         anonymous_summary="Optional — only if your instance requires auth",
         key_benefits="Bearer token for private SearXNG instances.",
-        test_probe="",
+        test_probe="searxng_json_search",
     ),
     ProviderCredentialSpec(
         provider_id="openalex",

@@ -250,7 +250,7 @@ def _scan_source_text(text: str, blocks: list[_ControlBlock]) -> None:
         label = match.group(1).strip()
         if label.startswith("Edit ") or label.startswith("Open "):
             continue
-        if label in {"Promotion preset", "Default units", "Application language"}:
+        if label in {"Promotion preset", "Default units"}:
             events.append((match.start(), "field", label))
 
     events.sort(key=lambda item: item[0])
@@ -329,7 +329,6 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
         blocks.append(_ControlBlock(subsection="Language", items=[]))
         for label in UI_LANGUAGE_LABELS.values():
             _append_unique(blocks, "Language", label)
-        blocks.append(_ControlBlock(subsection="Application language", items=[]))
 
     _scan_source_text(text, blocks)
 

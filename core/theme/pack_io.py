@@ -23,6 +23,8 @@ from core.surface_fill.serialization import (
     surface_profile_set_from_dict,
     surface_profile_set_to_dict,
 )
+from core.licensing.schema import PackVerificationResult
+from core.licensing.verify import verify_theme_pack_signature
 from core.theme.io import import_color_scheme
 
 PACK_SCHEMA_VERSION = 1
@@ -39,6 +41,7 @@ class ThemePackImportResult:
     scheme: dict[str, Any]
     surface_profiles: SurfaceProfileSet
     assets_imported: tuple[str, ...]
+    pack_verification: PackVerificationResult = PackVerificationResult.unsigned()
 
 
 @dataclass(frozen=True)
@@ -308,6 +311,7 @@ def read_theme_pack_from_path(path: Path) -> ThemePackImportResult:
         manifest_raw = json.loads(archive.read(PACK_MANIFEST_NAME).decode("utf-8"))
         if not isinstance(manifest_raw, dict):
             raise ValueError("Theme pack manifest must be a JSON object")
+        pack_verification = verify_theme_pack_signature(manifest_raw)
         _validate_pack_manifest(manifest_raw)
 
         scheme = dict(manifest_raw["scheme"])
@@ -324,6 +328,7 @@ def read_theme_pack_from_path(path: Path) -> ThemePackImportResult:
             scheme=scheme,
             surface_profiles=profiles,
             assets_imported=tuple(sorted(set(asset_remap.values()))),
+            pack_verification=pack_verification,
         )
 
 

@@ -22,19 +22,14 @@ from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_subsection_to_layout,
+    add_subsection_to_form,
     add_section_reset_footer,
+    add_settings_card_form,
+    make_settings_form,
     register_settings_selector_width,
     schedule_settings_selector_refit,
+    add_settings_full_width_row,
 )
-
-
-def _make_settings_form() -> tuple[QWidget, QFormLayout]:
-    form_host = QWidget()
-    form = QFormLayout(form_host)
-    form.setSpacing(15)
-    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-    return form_host, form
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -46,8 +41,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Memory pipeline (simple / everyday) ---
     pipeline_card, pipeline_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(pipeline_card_layout, "Memory pipeline", anchor="memory")
-    pipeline_form_host, pipeline_form = _make_settings_form()
+    pipeline_form_host, pipeline_form = make_settings_form()
+    add_subsection_to_form(pipeline_form, "Memory pipeline", anchor="memory")
 
     host.memory_enrichment_toggle = PrestigeToggle()
     host.mem_enrichment_label = QLabel(
@@ -76,14 +71,15 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.memory_enrichment_toggle.blockSignals(False)
     host.memory_enrichment_toggle.toggled.connect(host._on_memory_enrichment_toggled)
 
-    pipeline_form.addRow("", mem_row)
+    add_settings_full_width_row(pipeline_form, mem_row)
     pipeline_card_layout.addWidget(pipeline_form_host)
     layout.addWidget(pipeline_card)
 
     # --- Advanced memory card (promotion / consolidation) ---
     advanced_card, advanced_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(
-        advanced_card_layout, "Advanced memory", anchor="advanced_memory"
+    advanced_form = add_settings_card_form(advanced_card_layout)
+    add_subsection_to_form(
+        advanced_form, "Advanced memory", anchor="advanced_memory"
     )
 
     _adv_memory_tip = (
@@ -117,14 +113,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_memory_toggle.setChecked(get_advanced_memory_unlocked())
     host.advanced_memory_toggle.blockSignals(False)
     host.advanced_memory_toggle.toggled.connect(host._on_advanced_memory_toggled)
-    advanced_card_layout.addWidget(advanced_row)
+    add_settings_full_width_row(advanced_form, advanced_row)
 
     host.advanced_memory_panel = QWidget()
     adv_panel_layout = QVBoxLayout(host.advanced_memory_panel)
     adv_panel_layout.setContentsMargins(0, 8, 0, 0)
     adv_panel_layout.setSpacing(12)
 
-    adv_form_host, adv_form = _make_settings_form()
+    adv_form_host, adv_form = make_settings_form()
 
     host.memory_promotion_toggle = PrestigeToggle()
     host.mem_promotion_label = QLabel("Promote well-used memories to preferences")
@@ -205,49 +201,18 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     promo_preset_layout.addWidget(host.memory_promotion_preset_selector)
     promo_preset_layout.addStretch(1)
 
-    adv_form.addRow("", promo_row)
-    adv_form.addRow("", promo_preset_row)
-    adv_form.addRow("", consolidate_row)
+    add_settings_full_width_row(adv_form, promo_row)
+    add_settings_full_width_row(adv_form, promo_preset_row)
+    add_settings_full_width_row(adv_form, consolidate_row)
     adv_panel_layout.addWidget(adv_form_host)
     host.advanced_memory_panel.setVisible(get_advanced_memory_unlocked())
-    advanced_card_layout.addWidget(host.advanced_memory_panel)
+    add_settings_full_width_row(advanced_form, host.advanced_memory_panel)
     layout.addWidget(advanced_card)
 
-    # --- Personalization card ---
-    personal_card, personal_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(personal_card_layout, "Personalization", anchor="personalization")
-    personal_form_host, personal_form = _make_settings_form()
-
-    host.profile_units_selector = SelectorButton("Use inferred units", is_dark=is_dark)
-    register_settings_selector_width(
-        host.profile_units_selector,
-        "Use inferred units",
-        "Metric",
-        "Imperial",
-    )
-    host.profile_units_selector.setMenu(QMenu(host.profile_units_selector))
-    host.profile_units_selector.setToolTip(
-        "Default measurement units for weather and other numeric answers. "
-        "Unset lets Qube learn units from conversation."
-    )
-    profile_units_row = QWidget()
-    profile_units_layout = QHBoxLayout(profile_units_row)
-    profile_units_layout.setContentsMargins(0, 0, 0, 0)
-    profile_units_lbl = QLabel("Default units")
-    profile_units_lbl.setToolTip(host.profile_units_selector.toolTip())
-    profile_units_layout.addWidget(profile_units_lbl)
-    profile_units_layout.addWidget(host.profile_units_selector)
-    profile_units_layout.addStretch(1)
-    personal_form.addRow("", profile_units_row)
-    personal_card_layout.addWidget(personal_form_host)
-    layout.addWidget(personal_card)
-
     host._build_memory_promotion_preset_menu()
-    host._build_profile_units_menu()
     host._sync_memory_promotion_controls_for_enrichment()
-    host._sync_profile_units_selector()
 
-    for attr in ("memory_promotion_preset_selector", "profile_units_selector"):
+    for attr in ("memory_promotion_preset_selector",):
         selector = getattr(host, attr, None)
         if selector is not None:
             schedule_settings_selector_refit(selector)

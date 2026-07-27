@@ -6,6 +6,7 @@
 - Can Qube hide the companion during fullscreen games?
 - What is companion commentary?
 - How do I change the companion shape or idle glow?
+- Why is the companion different on Linux Wayland?
 
 ## What it is
 
@@ -64,6 +65,7 @@ Controls listed top-to-bottom for **Settings → Desktop Companion**.
 
 ## Related
 
+- [Desktop Companion on Linux Wayland FAQ](../../faq/companion-wayland-linux.md) — Wayland tiers, dock strip, experimental overlay
 - [Configure companion visibility workflow](../../workflows/configure-desktop-companion-visibility.md) — step-by-step setup
 - [Companion not visible troubleshooting](../../troubleshooting/companion-not-visible.md) — when the orb disappears
 - [Companion vs main window FAQ](../../faq/companion-vs-main-window.md) — roles of each surface

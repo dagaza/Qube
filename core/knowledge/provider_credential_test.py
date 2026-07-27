@@ -99,6 +99,8 @@ def test_provider_credential(
             return _probe_epo_ops(secret, timeout=timeout)
         if probe == "brave_search_web":
             return _probe_brave_search(secret, timeout=timeout)
+        if probe == "searxng_json_search":
+            return _probe_searxng(timeout=timeout)
         return ProviderCredentialTestResult(
             False,
             "No test probe configured for this provider.",
@@ -846,4 +848,25 @@ def _probe_brave_search(secret: str | None, *, timeout: float) -> ProviderCreden
         False,
         f"Brave Search API returned HTTP {resp.status_code}.",
         resp.status_code,
+    )
+
+
+def _probe_searxng(*, timeout: float) -> ProviderCredentialTestResult:
+    from core.app_settings import get_discovery_searxng_base_url
+    from core.knowledge.credentials import resolve_credential
+    from core.knowledge.discovery.searxng_wizard import probe_searxng_base_url
+
+    base_url = get_discovery_searxng_base_url()
+    if not base_url.strip():
+        return ProviderCredentialTestResult(
+            False,
+            "Add a SearXNG base URL before testing.",
+            None,
+        )
+    secret = resolve_credential("searxng").secret
+    result = probe_searxng_base_url(base_url, api_key=secret, timeout=timeout)
+    return ProviderCredentialTestResult(
+        result.ok,
+        result.message,
+        result.http_status,
     )

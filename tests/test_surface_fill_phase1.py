@@ -139,7 +139,7 @@ def test_transcript_wallpaper_host_refresh_callback(qapp):
     from PyQt6.QtWidgets import QLabel, QWidget
 
     from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
-    from core.surface_fill.models import WallpaperGradient
+    from core.surface_fill.models import WallpaperImage
     from core.surface_fill.storage import SurfaceFillStorage
     from core.theme.manager import ThemeManager
     from core.theme.storage import ThemeStorage
@@ -184,4 +184,5 @@ def test_transcript_wallpaper_host_refresh_callback(qapp):
     assert calls == ["refresh"]
 
     resolved = manager.resolved_effective_surface_profile(SURFACE_CHAT_TRANSCRIPT)
-    assert isinstance(resolved.wallpaper, WallpaperGradient)
+    assert isinstance(resolved.wallpaper, WallpaperImage)
+    assert "nebula" in str(resolved.wallpaper.source)

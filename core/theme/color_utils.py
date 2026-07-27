@@ -185,3 +185,11 @@ def contrasting_label_color(
     if contrast_ratio(dark, background) >= contrast_ratio(light, background):
         return dark
     return light
+
+
+def qtawesome_color(value: str) -> str | tuple[str, int]:
+    """Normalize a theme token for ``qtawesome`` (hex or ``(hex, alpha)``)."""
+    rgba = parse_color(value)
+    if rgba.a >= 255:
+        return rgba.to_hex()
+    return (rgba.to_hex(), rgba.a)

@@ -65,6 +65,13 @@ def test_theme_qcolor_role_for_settings_divider():
     assert divider.alpha() > 0
 
 
+def test_qtawesome_color_normalizes_rgba():
+    from core.theme.color_utils import qtawesome_color
+
+    assert qtawesome_color("#a6adc8") == "#a6adc8"
+    assert qtawesome_color("rgba(205,214,244,0.5)") == ("#cdd6f4", 128)
+
+
 def test_brand_telemetry_ram_matches_main():
     from core.brand_identity import BRAND_TELEMETRY_RAM_HEX
     from core.theme.accessors import theme_for
@@ -705,12 +712,11 @@ def test_theme_persistence_survives_manager_recreate(tmp_path, monkeypatch):
 
 
 def test_sidebar_row_action_icon_color():
-    from core.theme.widget_styles import MUTED_ICON
-    from ui.shell_theme import sidebar_row_action_icon_color
+    from ui.shell_theme import accent_icon_color, sidebar_row_action_icon_color
 
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
-    assert sidebar_row_action_icon_color(theme) == theme.color(MUTED_ICON)
+    assert sidebar_row_action_icon_color(theme) == accent_icon_color(theme)
     assert (
         sidebar_row_action_icon_color(theme, highlighted=True)
         == theme.list_row_title_selected
@@ -896,12 +902,14 @@ def test_resolved_theme_style_helpers():
     )
     assert theme.surface_hover in theme.style(GHOST_ICON_BUTTON)
     assert theme.color(ACCENT_ICON) == theme.accent
-    assert "background: transparent" in theme.style(GHOST_ICON_BUTTON)
+    assert "background-color: transparent" in theme.style(GHOST_ICON_BUTTON)
     assert theme.sidebar_surface in theme.style(SETTINGS_SECTION_CARD)
     checkbox_style = theme.style(SETTINGS_CHECKBOX)
     assert theme.accent in checkbox_style
     assert "background-color: transparent" in checkbox_style
-    assert theme.surface not in checkbox_style
+    assert theme.surface_pressed in checkbox_style
+    assert "image: none" in checkbox_style
+    assert "indicator:unchecked:disabled" in checkbox_style
     assert theme.surface_elevated in theme.style(SETTINGS_FORM_CONTROLS)
     assert theme.background in theme.style(PRESTIGE_DIALOG_CONTAINER)
     assert theme.link in theme.style(PRESTIGE_SOURCE_CONTAINER, object_name="TestShellDialog")
@@ -1105,15 +1113,29 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
     _qube_app.processEvents()
     components = components_panel._components_live
     assert theme.accent in components._primary_btn.styleSheet()
-    comp_pixmap = components_panel._components_view.pixmap()
+    comp_pixmap = components_panel._components_view.grab()
     assert comp_pixmap is not None and not comp_pixmap.isNull()
     assert comp_pixmap.height() >= 200
 
 
 def test_design_preview_width_at_min_window():
+    from ui.components import theme_preview_panel as tpp
     from ui.components.theme_preview_panel import _design_preview_width_at_min_window
+    from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 
-    assert _design_preview_width_at_min_window() == 614
+    expected = max(
+        320,
+        tpp._MAIN_WINDOW_MIN_WIDTH
+        - tpp._MAIN_NAV_WIDTH
+        - tpp._TOOLS_PANE_COLLAPSED_WIDTH
+        - tpp._SETTINGS_VIEW_RIGHT_MARGIN
+        - LEFT_NAV_LIST_SIDEBAR_WIDTH
+        - tpp._SETTINGS_RIGHT_HOST_LEFT_MARGIN
+        - tpp._SETTINGS_CONTENT_LEFT_MARGIN
+        - tpp._THEMES_PAGE_HORIZONTAL_MARGIN
+        - tpp._preview_card_horizontal_padding(),
+    )
+    assert _design_preview_width_at_min_window() == expected
 
 
 def test_theme_preview_snapshot_matches_panel_width(_qube_app):
@@ -1129,7 +1151,7 @@ def test_theme_preview_snapshot_matches_panel_width(_qube_app):
     panel.resize(target, 360)
     panel.apply_theme(theme)
     _qube_app.processEvents()
-    pixmap = panel._conversations_view.pixmap()
+    pixmap = panel._conversations_view.grab()
     assert pixmap is not None and not pixmap.isNull()
     assert pixmap.width() == target
 
@@ -1143,7 +1165,7 @@ def test_theme_preview_components_snapshot_sizes_offscreen_scene(_qube_app):
     panel.resize(520, 400)
     panel.apply_theme(theme)
     _qube_app.processEvents()
-    pixmap = panel._components_view.pixmap()
+    pixmap = panel._components_view.grab()
     assert pixmap is not None and not pixmap.isNull()
     assert pixmap.height() >= 200
 

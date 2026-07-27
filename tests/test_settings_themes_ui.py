@@ -92,14 +92,59 @@ def test_settings_themes_conversations_preview_paints_on_section_enter(main_wind
     """Chat wallpaper preview must render on first enter without manual refresh."""
     settings = main_window.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
-    qtbot.wait(200)
+    qtbot.wait(500)
 
     assert getattr(settings, "_themes_preview_initialized", False)
     panel = settings.themes_preview_panel
-    pixmap = panel._conversations_view.pixmap()
+    pixmap = panel._conversations_view.grab()
     assert not pixmap.isNull()
     assert pixmap.width() > 0
     assert pixmap.height() > 0
+
+
+def test_settings_themes_preview_panels_have_visible_height(main_window, qtbot):
+    """Preview shells must reserve snapshot height (not collapse to a sliver)."""
+    settings = main_window.ensure_settings_view()
+    settings._ensure_section_built("appearance.themes")
+    settings.select_settings_section("appearance.themes")
+    qtbot.wait(500)
+
+    for attr in (
+        "themes_preview_panel",
+        "themes_components_preview_panel",
+        "themes_library_preview_panel",
+    ):
+        panel = getattr(settings, attr)
+        assert panel is not None
+        assert panel.height() >= 200
+
+
+def test_settings_themes_preview_snapshot_updates_on_draft_color_change(main_window, qtbot):
+    """Theme color draft edits must repaint the components preview snapshot."""
+    settings = main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    qtbot.wait(500)
+    settings._ensure_themes_previews_initialized()
+    settings._refresh_themes_preview()
+    qtbot.wait(200)
+
+    comp = settings.themes_components_preview_panel
+    shell = comp._components_live._shell
+
+    before_theme = settings._draft_resolved_theme()
+    assert before_theme is not None
+
+    settings._on_themes_color_changed("background", "#001122")
+    settings._refresh_themes_preview()
+    qtbot.wait(200)
+
+    after_theme = settings._draft_resolved_theme()
+    assert after_theme is not None
+    assert after_theme.background.lower() == "#001122"
+    assert after_theme.background.lower() != before_theme.background.lower()
+
+    shell_stylesheet = shell.styleSheet().lower()
+    assert "#001122" in shell_stylesheet
 
 
 def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):

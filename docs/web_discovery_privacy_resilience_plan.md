@@ -1,6 +1,6 @@
 # Web Discovery Privacy & Resilience — Design & Implementation Plan
 
-**Status:** Phase 1 (R1–R4) + Phase 2 (R6–R9) implemented · Phase 3 (R5, R10) planned  
+**Status:** Phase 1 (R1–R4) + Phase 2 (R6–R9) implemented · Phase 3 (R5) planned · R10 partial (Telemetry + manual QA doc; structured `[Discovery]` logs ongoing)  
 **Date:** 2026-07-15  
 **Parent:** [Web Content Fetch Plan](./web_content_fetch_plan.md)  
 **Related:** [Knowledge Adapter HTTP Resilience Plan](./knowledge_adapter_http_resilience_plan.md), [Live Knowledge Adapters](./live_knowledge_adapters.md), [Cognitive Router](./cognitive_router.md)
@@ -32,7 +32,7 @@ Qube’s general-web pipeline discovers URLs via **DuckDuckGo HTML** (`html.duck
 | **R7** | Smart opt-in fallback routing | **shipped** |
 | **R8** | Bring-your-own SearXNG provider | **shipped** |
 | **R9** | Adaptive conservative pacing | **shipped** |
-| **R10** | Metrics, Inspector surfacing, manual QA matrix | Planned |
+| **R10** | Metrics, Inspector surfacing, manual QA matrix | Partial — Telemetry card + manual QA doc shipped |
 
 **Non-goal:** CAPTCHA solving, proxy rotation farms, or weakening relevance gates to mask empty SERPs.
 
@@ -603,7 +603,7 @@ Keep tests **offline** — mock `execute_internet_search` and provider classes; 
 6. **Session budget:** after threshold, fallbacks only + Settings counter accurate.
 7. **App restart during backoff:** countdown resumes; no duplicate notification.
 
-Full matrix → `docs/manual_qa_web_discovery_resilience.md` (create during R10).
+Full matrix → [manual_qa_web_discovery_resilience.md](manual_qa_web_discovery_resilience.md).
 
 ---
 

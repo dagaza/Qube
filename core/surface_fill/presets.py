@@ -127,7 +127,7 @@ _BUILTIN_PRESETS: dict[str, PresetDefinition] = {
 
 # Family + polarity → default preset id for theme_default resolution (§14).
 _FAMILY_DEFAULT_PRESET_DARK: dict[str, str] = {
-    "catppuccin": "builtin.catppuccin-gradient",
+    "catppuccin": "builtin.nebula",
     "nord": "builtin.mist",
     "gruvbox": "builtin.paper",
     "dracula": "builtin.aurora",

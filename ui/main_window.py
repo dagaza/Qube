@@ -25,6 +25,7 @@ from PyQt6.QtGui import (
 )
 import qtawesome as qta
 from core.paths import install_root, resource_path
+from ui.app_icon import apply_window_branding, finalize_window_branding
 from ui.views.conversations_view import ConversationsView
 from ui.views.settings_view import SettingsView
 from ui.views.library_view import LibraryView
@@ -49,6 +50,7 @@ from ui.shell_theme import (
     theme_toggle_icon_colors,
     vu_meter_palette,
 )
+from core.theme.svg_icons import tinted_svg_icon, themed_fa_icon, themed_fa_pixmap
 from core.theme.color_utils import with_alpha
 from core.theme.constants import UNRESOLVED_TOKEN_COLOR
 from core.theme.widget_styles import SUCCESS_STATUS
@@ -309,10 +311,6 @@ class MainWindow(QMainWindow):
     ):
         super().__init__()
         self._project_root = install_root()
-        # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
-        logo_icon_path = self._resolve_logo_asset("qube_logo_256.png")
-        if logo_icon_path is not None:
-            self.setWindowIcon(QIcon(str(logo_icon_path)))
         self.setWindowTitle("Qube - Workspace")
         self._default_minimum_size = QSize(1200, 950)
 
@@ -330,7 +328,8 @@ class MainWindow(QMainWindow):
         # 1. Frameless Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        # setWindowFlags() recreates the native window and drops prior size constraints.
+        # setWindowFlags() recreates the native window and drops prior icon/size state.
+        apply_window_branding(self)
         self.setMinimumSize(self._default_minimum_size)
         self._old_pos = None
 
@@ -526,6 +525,9 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
+        if not getattr(self, "_window_branding_finalized", False):
+            self._window_branding_finalized = True
+            finalize_window_branding(self)
         if not getattr(self, "_theme_profile_startup_logged", False):
             self._theme_profile_startup_logged = True
             self._log_theme_profile_startup_snapshot()
@@ -1055,7 +1057,7 @@ class MainWindow(QMainWindow):
         self.topbar_mic_icon = QLabel()
         mic_theme = self._theme_manager.current
         self.topbar_mic_icon.setPixmap(
-            qta.icon("fa5s.microphone", color=muted_icon_color(mic_theme)).pixmap(QSize(14, 14))
+            themed_fa_pixmap("fa5s.microphone", accent_icon_color(mic_theme), 14)
         )
         self.vu_meter = VUMeter()
         self.vu_meter.apply_theme(mic_theme)
@@ -1166,20 +1168,24 @@ class MainWindow(QMainWindow):
         win_layout.setContentsMargins(0, 0, 0, 0)
         win_layout.setSpacing(8)
         
+        win_icon_color = muted_icon_color(self._theme_manager.current)
+
         self._min_btn = QPushButton()
-        self._min_btn.setIcon(qta.icon('fa5s.minus'))
+        self._min_btn.setIcon(themed_fa_icon("fa5s.minus", win_icon_color, 14))
         self._min_btn.setProperty("class", "WindowControlButton")
         self._min_btn.setToolTip(tr("Minimise window"))
         self._min_btn.clicked.connect(self.showMinimized)
 
         self.max_btn = QPushButton()
-        self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
+        self.max_btn.setIcon(
+            themed_fa_icon("fa5s.expand-arrows-alt", win_icon_color, 14)
+        )
         self.max_btn.setProperty("class", "WindowControlButton")
         self.max_btn.setToolTip(tr("Maximise window"))
         self.max_btn.clicked.connect(self._toggle_maximize)
 
         self._close_btn = QPushButton()
-        self._close_btn.setIcon(qta.icon('fa5s.times'))
+        self._close_btn.setIcon(themed_fa_icon("fa5s.times", win_icon_color, 14))
         self._close_btn.setProperty("class", "WindowControlButton")
         self._close_btn.setToolTip(tr("Minimise to system tray"))
         self._close_btn.clicked.connect(self.hide)
@@ -1195,9 +1201,11 @@ class MainWindow(QMainWindow):
 
     def _apply_topbar_mic_chevron_style(self) -> None:
         theme = self._theme_manager.current
-        chevron_color = chevron_colors(theme, enabled=True)
+        chevron_color = accent_icon_color(theme)
         hover = with_alpha(theme.text_muted, 0.18 if not theme.is_dark else 0.08)
-        self.mic_selector_btn.setIcon(qta.icon("fa5s.chevron-down", color=chevron_color))
+        self.mic_selector_btn.setIcon(
+            themed_fa_icon("fa5s.chevron-down", chevron_color, 10)
+        )
         self.mic_selector_btn.setStyleSheet(
             f"""
             QToolButton#TopBarMicSelector {{
@@ -1348,13 +1356,13 @@ class MainWindow(QMainWindow):
         self._topbar_mic_attention_ms -= VUMeter._ATTENTION_TICK_MS
         if self._topbar_mic_attention_ms <= 0:
             self._topbar_mic_attention_timer.stop()
-            color = muted_icon_color(self._theme_manager.current)
+            color = accent_icon_color(self._theme_manager.current)
         else:
             pulse = 0.5 + 0.5 * math.sin(self._topbar_mic_attention_phase)
             theme = self._theme_manager.current
             color = theme.accent if pulse >= 0.5 else theme.warning
         self.topbar_mic_icon.setPixmap(
-            qta.icon("fa5s.microphone", color=color).pixmap(QSize(14, 14))
+            themed_fa_pixmap("fa5s.microphone", color, 14)
         )
     
     def set_rag_state(self, state: str) -> None:
@@ -1759,8 +1767,11 @@ class MainWindow(QMainWindow):
         self.max_btn.setToolTip(tr("Restore window") if maximized else tr("Maximise window"))
 
     def _apply_maximize_chrome(self, maximized: bool) -> None:
+        win_icon_color = muted_icon_color(self._theme_manager.current)
         if maximized:
-            self.max_btn.setIcon(qta.icon("fa5s.compress-arrows-alt"))
+            self.max_btn.setIcon(
+                themed_fa_icon("fa5s.compress-arrows-alt", win_icon_color, 14)
+            )
             self.max_btn.setToolTip(tr("Restore window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;")
@@ -1768,7 +1779,9 @@ class MainWindow(QMainWindow):
             if hasattr(self, "grip"):
                 self.grip.setVisible(False)
         else:
-            self.max_btn.setIcon(qta.icon("fa5s.expand-arrows-alt"))
+            self.max_btn.setIcon(
+                themed_fa_icon("fa5s.expand-arrows-alt", win_icon_color, 14)
+            )
             self.max_btn.setToolTip(tr("Maximise window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;")
@@ -2079,7 +2092,11 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_selector.setObjectName("SettingsMenuButton")
         self.toolbar_native_model_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.toolbar_native_model_selector.setIcon(
-            qta.icon("fa5s.chevron-down", color=muted_icon_color(self._theme_manager.current))
+            themed_fa_icon(
+                "fa5s.chevron-down",
+                accent_icon_color(self._theme_manager.current),
+                12,
+            )
         )
         self.toolbar_native_model_selector.setMenu(QMenu(self.toolbar_native_model_selector))
         self.toolbar_native_model_selector.setText("Select AI Model")
@@ -2267,7 +2284,11 @@ class MainWindow(QMainWindow):
         self.global_voice_selector.setObjectName("SettingsMenuButton")
         self.global_voice_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.global_voice_selector.setIcon(
-            qta.icon("fa5s.chevron-down", color=muted_icon_color(self._theme_manager.current))
+            themed_fa_icon(
+                "fa5s.chevron-down",
+                accent_icon_color(self._theme_manager.current),
+                12,
+            )
         )
         self.global_voice_selector.setMenu(QMenu(self.global_voice_selector))
         self.global_voice_selector.setToolTip("Choose text-to-speech voice")
@@ -2787,14 +2808,18 @@ class MainWindow(QMainWindow):
             self._on_notification_action("open_models")
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
-        """QtAwesome icons ignore QSS; match chevron to #SettingsMenuButton enabled/disabled look."""
+        """QtAwesome icons ignore QSS; match chevron to menu button enabled/disabled look."""
         if isinstance(button, SelectorButton):
             button.apply_theme(getattr(self, "_is_dark_theme", True))
             return
         is_dark = getattr(self, "_is_dark_theme", True)
         theme = resolve_shell_theme(self, is_dark=is_dark)
-        color = chevron_colors(theme, enabled=button.isEnabled())
-        button.setIcon(qta.icon("fa5s.chevron-down", color=color))
+        color = (
+            accent_icon_color(theme)
+            if button.isEnabled()
+            else chevron_colors(theme, enabled=False)
+        )
+        button.setIcon(themed_fa_icon("fa5s.chevron-down", color, 12))
 
     def refresh_toolbar_native_model_dropdown(self, mode: str | None = None) -> None:
         """Toolbar picker for internal .gguf models: mirrors engine mode and downloads folder.
@@ -3222,41 +3247,31 @@ class MainWindow(QMainWindow):
     def _refresh_toolbar_control_icons(self, theme=None) -> None:
         if theme is None:
             theme = self._theme_manager.current
+        accent = accent_icon_color(theme)
         muted = muted_icon_color(theme)
+        if hasattr(self, "_min_btn"):
+            self._min_btn.setIcon(themed_fa_icon("fa5s.minus", muted, 14))
+        if hasattr(self, "_close_btn"):
+            self._close_btn.setIcon(themed_fa_icon("fa5s.times", muted, 14))
+        if hasattr(self, "max_btn"):
+            maximized = bool(self.windowState() & Qt.WindowState.WindowMaximized)
+            max_icon = "fa5s.compress-arrows-alt" if maximized else "fa5s.expand-arrows-alt"
+            self.max_btn.setIcon(themed_fa_icon(max_icon, muted, 14))
         if hasattr(self, "toolbar_native_model_selector") and not isinstance(
             self.toolbar_native_model_selector, SelectorButton
         ):
             self.toolbar_native_model_selector.setIcon(
-                qta.icon("fa5s.chevron-down", color=muted)
+                themed_fa_icon("fa5s.chevron-down", accent, 12)
             )
         if hasattr(self, "global_voice_selector") and not isinstance(
             self.global_voice_selector, SelectorButton
         ):
             self.global_voice_selector.setIcon(
-                qta.icon("fa5s.chevron-down", color=muted)
+                themed_fa_icon("fa5s.chevron-down", accent, 12)
             )
 
     def _nav_icon_colors(self) -> tuple[str, str]:
         return nav_icon_colors(self._theme_manager.current)
-
-    def _make_tinted_svg_icon(self, svg_path, color_hex: str, size: int) -> QIcon:
-        pixmap = QPixmap(str(svg_path))
-        if pixmap.isNull():
-            return QIcon(str(svg_path))
-        target_size = QSize(size, size)
-        pixmap = pixmap.scaled(
-            target_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        tinted = QPixmap(pixmap.size())
-        tinted.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(tinted)
-        painter.drawPixmap(0, 0, pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(tinted.rect(), QColor(color_hex))
-        painter.end()
-        return QIcon(tinted)
 
     def _refresh_nav_btn_icon(self, btn: QPushButton) -> None:
         size = getattr(btn, "_nav_icon_size", 24)
@@ -3264,13 +3279,13 @@ class MainWindow(QMainWindow):
         color = active_color if btn.isChecked() else inactive_color
         svg_path = getattr(btn, "_nav_svg_icon", None)
         if svg_path is not None:
-            btn.setIcon(self._make_tinted_svg_icon(svg_path, color, size))
+            btn.setIcon(tinted_svg_icon(str(svg_path), color, size))
             btn.setIconSize(QSize(size, size))
             return
         icon_name = getattr(btn, "_nav_fa_icon", None)
         if not icon_name:
             return
-        btn.setIcon(qta.icon(icon_name, color=color))
+        btn.setIcon(themed_fa_icon(icon_name, color, size))
         btn.setIconSize(QSize(size, size))
 
     def _is_main_stage_built(self, index: int) -> bool:

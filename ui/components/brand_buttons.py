@@ -6,15 +6,14 @@ Logo/identity colors live in ``core.brand_identity`` and are not user-customizab
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
-import qtawesome as qta
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QPushButton
 
 from core.theme.accessors import theme_for
-from core.theme.color_utils import adjust_lightness, parse_color, with_alpha
+from core.theme.color_utils import adjust_lightness, with_alpha
 from core.theme.tokens import ResolvedTheme
 
 BRAND_PRIMARY = "primary"
@@ -27,9 +26,6 @@ _BRAND_VARIANTS = frozenset(
     {BRAND_PRIMARY, BRAND_SUCCESS, BRAND_DANGER, BRAND_CAUTION, BRAND_SECONDARY}
 )
 _BRAND_ICON_SIZE = 16
-
-_QtaColor = Union[str, tuple[str, int]]
-
 
 def brand_label_color(
     variant: str,
@@ -61,29 +57,16 @@ def brand_fg_color(
     return brand_label_color(variant, resolved, disabled=disabled)
 
 
-def _qta_color(value: str) -> _QtaColor:
-    """Normalize theme token strings for qtawesome (hex or ``(hex, alpha)``)."""
-    rgba = parse_color(value)
-    if rgba.a >= 255:
-        return rgba.to_hex()
-    return (rgba.to_hex(), rgba.a)
-
-
 def _brand_button_icon(icon_name: str, fg: str, disabled_fg: str) -> QIcon:
     """Bake qtawesome glyphs into static pixmaps so QSS/platform styles cannot retint them."""
-    icon = QIcon()
-    for mode, color in (
-        (QIcon.Mode.Normal, fg),
-        (QIcon.Mode.Active, fg),
-        (QIcon.Mode.Selected, fg),
-        (QIcon.Mode.Disabled, disabled_fg),
-    ):
-        pixmap = qta.icon(icon_name, color=_qta_color(color)).pixmap(
-            _BRAND_ICON_SIZE,
-            _BRAND_ICON_SIZE,
-        )
-        icon.addPixmap(pixmap, mode, QIcon.State.Off)
-    return icon
+    from core.theme.svg_icons import themed_fa_icon
+
+    return themed_fa_icon(
+        icon_name,
+        fg,
+        _BRAND_ICON_SIZE,
+        disabled_color=disabled_fg,
+    )
 
 
 def _brand_disabled_colors(

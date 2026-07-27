@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.composer_mention_guide import build_composer_mention_guide_text
-from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
 from core.theme.widget_styles import (
     PRESTIGE_ACCENT_LABEL,
     PRESTIGE_BODY_LABEL,
@@ -33,7 +33,7 @@ class ComposerMentionGuideDialog(QDialog):
         super().__init__(parent)
         if is_dark is None:
             is_dark = _resolve_is_dark_from_parent(parent)
-        theme = theme_for(is_dark=is_dark)
+        theme = view_resolved_theme(parent, is_dark=is_dark)
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)

@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import qtawesome as qta
 
 from core.composer_draft import (
     ComposerDraft,
@@ -23,9 +22,10 @@ from core.composer_draft import (
     routing_chip_tooltip,
     skill_chip_tooltip,
 )
-from core.theme.accessors import theme_for
 from core.theme.color_utils import adjust_lightness, with_alpha
 from core.theme.tokens import ResolvedTheme
+from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
 
 
 class _FlowLayout(QLayout):
@@ -141,10 +141,15 @@ class _ComposerContextChip(QFrame):
         layout.setContentsMargins(pad_h, pad_v, pad_h, pad_v)
         layout.setSpacing(6)
 
+        init_theme = view_resolved_theme(parent, is_dark=is_dark)
         icon_lbl = QLabel()
         icon_lbl.setObjectName("ComposerContextChipIcon")
         icon_lbl.setPixmap(
-            qta.icon(icon_name, color=self._icon_color(theme_for(is_dark=is_dark), chip_role)).pixmap(12, 12)
+            themed_fa_pixmap(
+                icon_name,
+                self._icon_color(init_theme, chip_role),
+                12,
+            )
         )
         icon_lbl.setFixedSize(12, 12)
         layout.addWidget(icon_lbl)
@@ -161,7 +166,9 @@ class _ComposerContextChip(QFrame):
             btn.setFixedSize(16, 16)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip("Remove")
-            btn.setIcon(qta.icon("fa5s.times", color=self._muted_fg(theme_for(is_dark=is_dark))))
+            btn.setIcon(
+                themed_fa_icon("fa5s.times", self._muted_fg(init_theme), 10)
+            )
             btn.setIconSize(QSize(10, 10))
             btn.clicked.connect(self.remove_clicked.emit)
             layout.addWidget(btn)
@@ -214,10 +221,10 @@ class _ComposerContextChip(QFrame):
         )
 
     def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
-        theme = theme_for(is_dark=is_dark)
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        self._is_dark = theme.is_dark
         icon_color = self._icon_color(theme, self._chip_role)
-        self._icon.setPixmap(qta.icon(self._icon_name, color=icon_color).pixmap(12, 12))
+        self._icon.setPixmap(themed_fa_pixmap(self._icon_name, icon_color, 12))
 
         if self._chip_role == "skill":
             bg = with_alpha(theme.accent, 0.22 if theme.is_dark else 0.12)
@@ -265,7 +272,7 @@ class _ComposerContextChip(QFrame):
         )
         if self._remove_btn is not None:
             self._remove_btn.setIcon(
-                qta.icon("fa5s.times", color=self._muted_fg(theme))
+                themed_fa_icon("fa5s.times", self._muted_fg(theme), 10)
             )
 
 
@@ -321,7 +328,8 @@ class ComposerContextChipStrip(QWidget):
         self._rebuild()
 
     def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        self._is_dark = theme.is_dark
         self._rebuild()
 
     def has_chips(self) -> bool:
