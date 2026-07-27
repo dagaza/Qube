@@ -69,6 +69,7 @@ See [Install on Linux](install-linux.md) for variant choice (cpu / vulkan / cuda
 
 ## Related
 
+- [App update roadmap](../app_update_roadmap.md) — shipped Tiers 1–2 and Tier 3 automatic-update plan
 - [Install on Linux](install-linux.md)
 - [Uninstall Qube](uninstall.md)
 - [Releasing](../releasing.md) — maintainer release process

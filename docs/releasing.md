@@ -103,6 +103,8 @@ Direct download: run the new **`Qube-<version>-Setup.exe`** over an existing ins
 
 In-app: **Settings → Help → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
 
+**Update roadmap (Tiers 1–3):** see **[App update roadmap](app_update_roadmap.md)** — shipped manual/check flows vs deferred automatic apply.
+
 ## Chocolatey
 
 ### First catalog entry (one-time manual submission)
