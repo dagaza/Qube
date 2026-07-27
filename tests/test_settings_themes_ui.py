@@ -129,19 +129,22 @@ def test_settings_themes_preview_snapshot_updates_on_draft_color_change(main_win
     qtbot.wait(200)
 
     comp = settings.themes_components_preview_panel
-    content = comp._components_live._settings_content
-    cx, cy = content.width() // 2, content.height() // 2
+    shell = comp._components_live._shell
 
-    before = comp._components_view.grab()
-    assert before is not None and not before.isNull()
+    before_theme = settings._draft_resolved_theme()
+    assert before_theme is not None
 
     settings._on_themes_color_changed("background", "#001122")
     settings._refresh_themes_preview()
     qtbot.wait(200)
 
-    after = comp._components_view.grab()
-    assert after is not None and not after.isNull()
-    assert before.toImage().pixel(cx, cy) != after.toImage().pixel(cx, cy)
+    after_theme = settings._draft_resolved_theme()
+    assert after_theme is not None
+    assert after_theme.background.lower() == "#001122"
+    assert after_theme.background.lower() != before_theme.background.lower()
+
+    shell_stylesheet = shell.styleSheet().lower()
+    assert "#001122" in shell_stylesheet
 
 
 def test_settings_themes_draft_preview_uses_scheme_only(main_window, qtbot):

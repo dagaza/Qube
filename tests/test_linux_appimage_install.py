@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
 import unittest
 from pathlib import Path
 
@@ -38,10 +40,13 @@ class LinuxAppImageInstallTests(unittest.TestCase):
         self.assertIn("APPIMAGE_EXTRACT_AND_RUN=1", desktop)
         self.assertIn("StartupWMClass=Qube", desktop)
 
+    @unittest.skipUnless(
+        sys.platform.startswith("linux") and shutil.which("bash"),
+        "install_appimage.sh dry-run requires Linux bash",
+    )
     def test_install_script_dry_run(self) -> None:
         import subprocess
         import tempfile
-        from pathlib import Path
 
         repo = Path(__file__).resolve().parents[1]
         script = repo / "scripts" / "linux" / "install_appimage.sh"

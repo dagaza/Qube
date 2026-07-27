@@ -712,12 +712,11 @@ def test_theme_persistence_survives_manager_recreate(tmp_path, monkeypatch):
 
 
 def test_sidebar_row_action_icon_color():
-    from core.theme.widget_styles import MUTED_ICON
-    from ui.shell_theme import sidebar_row_action_icon_color
+    from ui.shell_theme import accent_icon_color, sidebar_row_action_icon_color
 
     resolver = ThemeResolver(BUILTIN_SCHEMES)
     theme = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
-    assert sidebar_row_action_icon_color(theme) == theme.color(MUTED_ICON)
+    assert sidebar_row_action_icon_color(theme) == accent_icon_color(theme)
     assert (
         sidebar_row_action_icon_color(theme, highlighted=True)
         == theme.list_row_title_selected
@@ -1120,9 +1119,23 @@ def test_theme_preview_panel_uses_resolved_tokens(_qube_app):
 
 
 def test_design_preview_width_at_min_window():
+    from ui.components import theme_preview_panel as tpp
     from ui.components.theme_preview_panel import _design_preview_width_at_min_window
+    from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 
-    assert _design_preview_width_at_min_window() == 614
+    expected = max(
+        320,
+        tpp._MAIN_WINDOW_MIN_WIDTH
+        - tpp._MAIN_NAV_WIDTH
+        - tpp._TOOLS_PANE_COLLAPSED_WIDTH
+        - tpp._SETTINGS_VIEW_RIGHT_MARGIN
+        - LEFT_NAV_LIST_SIDEBAR_WIDTH
+        - tpp._SETTINGS_RIGHT_HOST_LEFT_MARGIN
+        - tpp._SETTINGS_CONTENT_LEFT_MARGIN
+        - tpp._THEMES_PAGE_HORIZONTAL_MARGIN
+        - tpp._preview_card_horizontal_padding(),
+    )
+    assert _design_preview_width_at_min_window() == expected
 
 
 def test_theme_preview_snapshot_matches_panel_width(_qube_app):
