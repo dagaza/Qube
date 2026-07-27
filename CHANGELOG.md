@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-07-27
+
+### Added
+- Commercial platform foundation: capability/licensing infrastructure (offline `.qube-license` verify, pack signing, Settings import).
+- Launch-trust feature slices: composer `@` discoverability, INSPECT routing explainability, router regression baseline, trust/privacy help corpus, web discovery telemetry, SearXNG setup wizard, and Linux AppImage install path.
+- Settings and UI polish: theme preview cards, settings card layout, and faster Conversations/Library loads.
+
+### Fixed
+- Linux CUDA `.deb` release packaging: prune safe bundle bloat, bundle only required NVIDIA wheel libraries, use maximum xz compression, and fail the build early if the `.deb` still exceeds GitHub's 2 GiB asset limit.
+- Linux release bundle prune: restrict `strip --strip-debug` to llama.cpp libs only; stripping numpy/scipy OpenBLAS wheels broke CPU/Vulkan smoke tests.
+- Linux CUDA `.deb` recompress: fix `ar` repack after xz -9e (do not use empty `mktemp` deb) and skip recompress when fpm output is already under GitHub's 2 GiB cap.
+- Theme preview width test for card-constrained layouts on CI runners.
+- Bump `cryptography` to 48.0.1 (GHSA-537c-gmf6-5ccf).
+
 ## [1.2.3] - 2026-07-26
 
 ### Added
