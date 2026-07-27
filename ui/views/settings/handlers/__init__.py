@@ -6,6 +6,7 @@ from ui.views.settings.handlers.companion import CompanionHandlersMixin
 from ui.views.settings.handlers.diagnostics import DiagnosticsHandlersMixin
 from ui.views.settings.handlers.generation import GenerationMixin
 from ui.views.settings.handlers.knowledge import KnowledgeHandlersMixin
+from ui.views.settings.handlers.licensing import LicenseHandlersMixin
 from ui.views.settings.handlers.uninstall import UninstallHandlersMixin
 from ui.views.settings.handlers.memory import MemoryHandlersMixin
 from ui.views.settings.handlers.persistence import PersistenceHandlersMixin
@@ -22,6 +23,7 @@ __all__ = [
     "DiagnosticsHandlersMixin",
     "GenerationMixin",
     "KnowledgeHandlersMixin",
+    "LicenseHandlersMixin",
     "UninstallHandlersMixin",
     "MemoryHandlersMixin",
     "PersistenceHandlersMixin",

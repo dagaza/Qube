@@ -34,8 +34,9 @@ telemetry dashboard, performance monitor, routing diagnostics, hardware graphs, 
 3. **Confirm model capabilities** — Inspect **Native LLM — Model capability** for the loaded Internal Engine model: identity, reasoning support, execution mode, detection confidence, and publisher guidance when available.
 4. **Understand routing** — Use **Router Intelligence** for route mix, average retrieval phase latency, memory/RAG route shares, adaptive tuner weights, and rule-based health flags. For what each route means (and **HYBRID** vs **● HYBRID**), see [Cognitive Router — how routing works](../faq/cognitive-router-how-routing-works.md).
 5. **Monitor the sidecar** — Check **Sidecar Cognition** for runtime status, queue depth, success rate, foreground p95 latency, query-rewrite effectiveness, and health summary.
-6. **See compute paths** — Open **Inference stack** for llama.cpp build info, hardware profile heuristics, and which compute path native chat, embeddings, and sidecar use (configuration transparency, not live VRAM or timing).
-7. **Correlate with chat** — Compare dashboard stats with per-message **STT** / **TTFT** / **TTS** / **TPS** on assistant replies in **Conversations** (**TPS** only on bubbles). Follow [Advanced Telemetry — interpreting the dashboard](../faq/advanced-telemetry-interpreting.md) for a slow-reply workflow. For grounded answers, open **Sources** on the reply, then **INSPECT RETRIEVAL** when that button appears (per-turn retrieval trace — not the router summary card).
+6. **Review web discovery** — Check **Web discovery** for privacy tier, DDG budgets, pacing, and discovery health (mirrors **Settings → Knowledge → Web search discovery**).
+7. **See compute paths** — Open **Inference stack** for llama.cpp build info, hardware profile heuristics, and which compute path native chat, embeddings, and sidecar use (configuration transparency, not live VRAM or timing).
+8. **Correlate with chat** — Compare dashboard stats with per-message **STT** / **TTFT** / **TTS** / **TPS** on assistant replies in **Conversations** (**TPS** only on bubbles). Follow [Advanced Telemetry — interpreting the dashboard](../faq/advanced-telemetry-interpreting.md) for a slow-reply workflow. For grounded answers, open **Sources** on the reply, then **INSPECT RETRIEVAL** when that button appears (per-turn retrieval trace — not the router summary card).
 
 ## Controls
 
@@ -100,6 +101,21 @@ Populated when an Internal Engine (native) model is loaded; fields show **—** 
 | **Query rewrite** | Assistive follow-up expansion applied vs attempted |
 | **System health** | Rule-based sidecar health summary |
 
+### Web discovery
+
+Live web search discovery policy (R10). Refreshes about once per second while Telemetry is open. Same underlying settings as **Settings → Knowledge → Web search discovery**.
+
+| Metric | Subtext |
+|--------|---------|
+| **Privacy tier** | Active SERP discovery tier |
+| **Primary provider** | Current primary route; includes DDG backoff text when paused |
+| **DDG burst budget** | Live DuckDuckGo calls in burst window (cache hits excluded) |
+| **DDG session budget** | Live DuckDuckGo calls in session window |
+| **Pacing** | Minimum gap between live DDG queries |
+| **System health** | Stable vs budget exhausted vs backoff vs conservative pacing |
+
+For session privacy review without JSONL, see [Audit session privacy](../faq/audit-session-privacy.md).
+
 ### Inference stack
 
 Does not measure VRAM usage or timing — shows compile-time backend and configured compute paths.
@@ -123,5 +139,6 @@ When the environment variable **`QUBE_LLM_LOG_UI=1`** is set before launch, an *
 - [AI & Models settings](../features/settings/ai-models.md) — engine mode, GPU layers, and hardware knobs
 - [Knowledge settings](../features/settings/knowledge.md) — retrieval pipeline options
 - [Conversations](../features/conversations.md) — per-message timing, **Sources**, and **INSPECT RETRIEVAL**
-- [Search models not ready troubleshooting](../troubleshooting/search-models-not-ready.md) — embedding readiness
+- [Audit session privacy](../faq/audit-session-privacy.md) — Telemetry + INSPECT session review
+- [Web discovery privacy tiers](../faq/web-discovery-privacy-tiers.md) — tier egress table
 - [Model won't load troubleshooting](../troubleshooting/model-wont-load.md) — native engine load failures

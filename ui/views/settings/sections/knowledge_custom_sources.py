@@ -35,10 +35,13 @@ from ui.views.settings.knowledge_list_table import (
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_subsection_to_layout,
+    add_settings_card_form,
+    add_subsection_to_form,
     register_settings_selector_width,
     schedule_settings_selector_refit,
     wrap_subsection,
+    add_settings_full_width_row,
+    add_settings_span_row,
 )
 
 _CUSTOM_SOURCES_PLACEHOLDER = (
@@ -49,7 +52,8 @@ _DEFAULT_CONNECTOR_ID = "rest_json"
 
 def build_knowledge_custom_sources_section(host, *, is_dark: bool) -> QWidget:
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(card_layout, "Custom sources", anchor="knowledge_custom_sources")
+    card_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(card_form, "Custom sources", anchor="knowledge_custom_sources")
 
     inner = QWidget()
     outer = QVBoxLayout(inner)
@@ -121,7 +125,7 @@ def build_knowledge_custom_sources_section(host, *, is_dark: bool) -> QWidget:
     host._build_custom_source_connector_menu()
     schedule_settings_selector_refit(host.custom_source_connector_selector)
 
-    card_layout.addWidget(wrap_subsection(inner, anchor="knowledge_custom_sources"))
+    add_settings_span_row(card_form, wrap_subsection(inner, anchor="knowledge_custom_sources"))
     _refresh_custom_sources_list(host, is_dark=is_dark)
     return card
 

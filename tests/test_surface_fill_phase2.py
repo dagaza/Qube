@@ -283,7 +283,7 @@ def test_settings_components_preview_initializes(fresh_main_window, qtbot):
     assert hasattr(settings, "themes_components_preview_panel")
     settings._refresh_themes_components_preview()
     qtbot.wait(200)
-    pixmap = settings.themes_components_preview_panel._components_view.pixmap()
+    pixmap = settings.themes_components_preview_panel._components_view.grab()
     assert pixmap is not None and not pixmap.isNull()
 
 
@@ -294,7 +294,7 @@ def test_settings_library_preview_initializes(fresh_main_window, qtbot):
     assert hasattr(settings, "themes_library_preview_panel")
     settings._refresh_themes_library_preview()
     qtbot.wait(200)
-    pixmap = settings.themes_library_preview_panel._view.pixmap()
+    pixmap = settings.themes_library_preview_panel._view.grab()
     assert pixmap is not None and not pixmap.isNull()
 
 

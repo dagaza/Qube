@@ -334,9 +334,10 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="discovery_searxng_configure",
-            title="Configure SearXNG",
+            title="Set up SearXNG",
             body=(
-                "Optional API key for authenticated self-hosted SearXNG instances."
+                "Open the SearXNG setup wizard to detect a local instance, test JSON "
+                "search, and optionally switch to the Self-hosted privacy tier."
             ),
             target_getter=lambda h: _sv(h).discovery_searxng_configure_btn,
             on_enter=lambda h: _open_anchor(h, "web_discovery"),

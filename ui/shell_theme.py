@@ -6,6 +6,7 @@ from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
 from core.theme.tokens import ResolvedTheme
 from core.theme.widget_styles import (
+    ACCENT_ICON,
     MUTED_ICON,
     NAV_ICON_ACTIVE,
     NAV_ICON_INACTIVE,
@@ -14,7 +15,6 @@ from core.theme.widget_styles import (
     RETRIEVAL_INDICATOR_OFF,
     SETTINGS_CHEVRON_DISABLED,
     SETTINGS_CHEVRON_ENABLED,
-    SETTINGS_NAV_ICON,
     SETTINGS_PRESTIGE_MENU,
     TELEMETRY_CPU,
     TELEMETRY_GPU,
@@ -72,7 +72,13 @@ def chevron_colors(theme: ResolvedTheme, *, enabled: bool) -> str:
 
 
 def muted_icon_color(theme: ResolvedTheme) -> str:
+    """Secondary / hint icons (info buttons, disabled chrome)."""
     return theme.color(MUTED_ICON)
+
+
+def accent_icon_color(theme: ResolvedTheme) -> str:
+    """Primary accent tint for toolbar, sidebar, and composer utility icons."""
+    return theme.color(ACCENT_ICON)
 
 
 def sidebar_row_action_icon_color(
@@ -83,11 +89,7 @@ def sidebar_row_action_icon_color(
     """Chevron/ellipsis on sidebar list rows; brighter when folder/session is highlighted."""
     if highlighted:
         return theme.list_row_title_selected
-    return muted_icon_color(theme)
-
-
-def accent_icon_color(theme: ResolvedTheme) -> str:
-    return theme.color(SETTINGS_NAV_ICON)
+    return accent_icon_color(theme)
 
 
 def apply_prestige_menu_theme(menu, theme: ResolvedTheme) -> None:

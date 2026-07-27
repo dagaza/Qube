@@ -106,6 +106,21 @@ The **auxiliary CPU cognition worker** (background titling, contradiction judge,
 
 Elevated **Queue depth** or **Foreground p95** can add slight delay before the main LLM turn is fully prepared on follow-ups, but main **TTFT** still reflects the primary chat model stream.
 
+## Web discovery
+
+Live **web search discovery** policy — privacy tier, DDG budgets, pacing, and backoff. Refreshes about **once per second** while Telemetry is open. Mirrors **Settings → Knowledge → Web search discovery** (not a separate setting).
+
+| Metric | Meaning |
+|--------|---------|
+| **Privacy tier** | Active SERP discovery tier (Private, Balanced, SearXNG, …) |
+| **Primary provider** | Current primary SERP route; appends DDG backoff summary when paused |
+| **DDG burst budget** | Live DDG HTTP calls in the burst window (`used/limit`) |
+| **DDG session budget** | Live DDG HTTP calls in the longer session window |
+| **Pacing** | Minimum seconds between live DDG queries; doubles in **conservative mode** after bot challenges |
+| **System health** | 🟢 stable vs ⚠️ backoff, budget exhaustion, or conservative pacing |
+
+**Interpretation:** If web answers fail but **System health** shows budget or backoff warnings, check Knowledge settings counters or wait for backoff to clear. For per-reply adapter detail, use **INSPECT RETRIEVAL**. For a full session audit workflow, see [Audit session privacy](audit-session-privacy.md).
+
 ## Inference stack
 
 **Configuration transparency**, not live timing or VRAM metering (same family of data as **Settings → AI & Models → Inference stack**):
@@ -131,7 +146,9 @@ Use this card to confirm Qube **thinks** it configured — cross-check against [
 
 ## INSPECT RETRIEVAL
 
-On assistant replies with retrieved evidence, open **Sources**, then **INSPECT RETRIEVAL** (when present). Opens the retrieval inspector with the stored bundle trace — adapters used, preset id, and phase detail for **that turn**. Telemetry’s router card is session-wide aggregate; the inspector is per-reply forensics.
+On assistant replies with retrieved evidence, open **Sources**, then **INSPECT RETRIEVAL** (when present). Opens the retrieval inspector with the stored bundle trace — adapters used, preset id, phase detail, and **routing (this turn)** when available. See [INSPECT RETRIEVAL](inspect-retrieval.md) for all four tabs.
+
+Telemetry’s router card is session-wide aggregate; the inspector is per-reply forensics.
 
 ## Developer panel (optional)
 
@@ -148,4 +165,5 @@ telemetry interpretation, TTFT meaning, router intelligence explained, pipeline 
 - [Generation parameters FAQ](generation-parameters.md) — context and reply caps affecting TTFT
 - [Hardware tuning FAQ](hardware-tuning-internal-engine.md) — GPU layers and VRAM
 - [Internal engine vs external server](internal-engine-vs-external-server.md) — External context quirks
-- [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — route vocabulary and HYBRID naming
+- [Audit session privacy](audit-session-privacy.md) — session egress review without Team export
+- [Web discovery privacy tiers](web-discovery-privacy-tiers.md) — what SERP discovery sends off-device

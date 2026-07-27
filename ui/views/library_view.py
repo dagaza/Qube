@@ -48,6 +48,9 @@ from ui.components.sidebar_folder_list import (
 from ui.components.ingest_progress_row import IngestProgressRow
 from core.app_settings import get_ui_library_transcript_background
 from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import tinted_svg_icon, themed_fa_icon, themed_fa_pixmap
+from ui.components.ghost_icon_button import apply_ghost_icon_button_style
+from ui.shell_theme import accent_icon_color
 from core.surface_fill.constants import SURFACE_LIBRARY_PREVIEW
 from ui.surface_fill.transcript_host import (
     TranscriptWallpaperHost,
@@ -205,8 +208,7 @@ class LibraryView(QWidget):
         self._setup_chat_with_doc_fab()
         self.preview_stage.installEventFilter(self)
 
-        # Forces the button to load with the default Dark Mode purple on startup
-        self.refresh_button_themes(is_dark=True)
+        self.refresh_button_themes(self._theme().is_dark)
 
     def _build_list_pane(self) -> QFrame:
         frame = QFrame()
@@ -238,9 +240,12 @@ class LibraryView(QWidget):
         header_layout.addWidget(_actions_host)
 
         self.add_btn = QPushButton()
-        self.add_btn.setIcon(qta.icon('fa5s.plus')) 
-        self.add_btn.setProperty("class", "IconButton") 
+        self.add_btn.setIcon(
+            themed_fa_icon("fa5s.plus", accent_icon_color(self._theme()), 16)
+        )
+        self.add_btn.setIconSize(QSize(16, 16))
         self.add_btn.setToolTip("Ingest New Document")
+        apply_ghost_icon_button_style(self.add_btn, self._theme())
         self.add_btn.clicked.connect(self._browse_for_document)
         actions_outer.addWidget(self.add_btn)
 
@@ -249,6 +254,7 @@ class LibraryView(QWidget):
             on_new_folder=lambda: self._folder_controller.prompt_create_folder()
             if self._folder_controller
             else None,
+            theme_host=self,
         )
         
         layout.addLayout(header_layout)
@@ -308,7 +314,11 @@ class LibraryView(QWidget):
         self._chat_with_doc_btn.setToolTip("Chat with document")
         theme = self._theme(True)
         self._chat_with_doc_btn.setIcon(
-            qta.icon("fa5s.comment-alt", color=theme.brand_fg)
+            themed_fa_icon(
+                "fa5s.comment-alt",
+                theme.brand_fg,
+                _CHAT_UTILITY_ICON_PX + 2,
+            )
         )
         self._chat_with_doc_btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX + 2, _CHAT_UTILITY_ICON_PX + 2))
         self._chat_with_doc_btn.setStyleSheet(
@@ -549,7 +559,7 @@ class LibraryView(QWidget):
             parent=frame,
         )
         self._apply_library_layout_mode()
-        self._refresh_readability_toolbar(is_dark=True)
+        self._refresh_readability_toolbar(self._theme().is_dark)
         self._apply_library_preview_readability()
         self._refresh_transcript_wallpaper()
         outer_layout.addWidget(self._library_transcript_wallpaper_host, stretch=1)
@@ -612,25 +622,6 @@ class LibraryView(QWidget):
     def _theme(self, is_dark: bool | None = None):
         return view_resolved_theme(self, is_dark=is_dark)
 
-    def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
-        pixmap = QPixmap(svg_path)
-        if pixmap.isNull():
-            return QIcon(svg_path)
-        target_size = QSize(size, size)
-        pixmap = pixmap.scaled(
-            target_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        tinted = QPixmap(pixmap.size())
-        tinted.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(tinted)
-        painter.drawPixmap(0, 0, pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(tinted.rect(), QColor(color_hex))
-        painter.end()
-        return QIcon(tinted)
-
     def _refresh_layout_mode_button(self, is_dark: bool | None = None) -> None:
         btn = getattr(self, "layout_mode_btn", None)
         if btn is None:
@@ -638,10 +629,10 @@ class LibraryView(QWidget):
         if is_dark is None:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
         theme = self._theme(is_dark)
-        icon_color = theme.color(ACCENT_ICON)
+        icon_color = accent_icon_color(theme)
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
             btn.setIcon(
-                self._make_tinted_svg_icon(
+                tinted_svg_icon(
                     _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
@@ -650,7 +641,7 @@ class LibraryView(QWidget):
             )
         else:
             btn.setIcon(
-                self._make_tinted_svg_icon(
+                tinted_svg_icon(
                     _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
@@ -854,7 +845,7 @@ class LibraryView(QWidget):
             self.reader_focus_btn.blockSignals(False)
             self.high_contrast_btn.blockSignals(False)
         theme = self._theme(is_dark)
-        icon_muted = theme.color(ACCENT_ICON)
+        icon_muted = accent_icon_color(theme)
         icon_active = theme.color(ACCENT_ICON_ACTIVE)
         utility_icon_style = theme.style(UTILITY_ICON_BUTTON)
         is_justify = self._transcript_alignment == ALIGN_JUSTIFY
@@ -864,9 +855,10 @@ class LibraryView(QWidget):
             else "Text alignment: Left (click for justified)"
         )
         self.text_align_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.align-justify" if is_justify else "fa5s.align-left",
-                color=icon_muted,
+                icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.text_align_btn.setIconSize(
@@ -874,16 +866,17 @@ class LibraryView(QWidget):
         )
         self.text_align_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.line_height_btn.setIcon(
-            self._make_tinted_svg_icon(_LINE_SPACING_ICON, icon_muted, size=_CHAT_UTILITY_ICON_PX)
+            tinted_svg_icon(_LINE_SPACING_ICON, icon_muted, size=_CHAT_UTILITY_ICON_PX)
         )
         self.line_height_btn.setIconSize(
             QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
         )
         self.line_height_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.reader_focus_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.crosshairs",
-                color=icon_active if self._focus_mode_enabled else icon_muted,
+                icon_active if self._focus_mode_enabled else icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.reader_focus_btn.setIconSize(
@@ -891,9 +884,10 @@ class LibraryView(QWidget):
         )
         self.reader_focus_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.high_contrast_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.adjust",
-                color=icon_active if self._high_contrast_enabled else icon_muted,
+                icon_active if self._high_contrast_enabled else icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.high_contrast_btn.setIconSize(
@@ -1041,7 +1035,7 @@ class LibraryView(QWidget):
         btn = QPushButton()
         btn.setObjectName("HistoryOptionsBtn")
         btn.setFixedSize(28, 28)
-        btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+        btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
         btn.setIconSize(QSize(16, 16))
         btn.setStyleSheet(
             "QPushButton::menu-indicator { image: none; width: 0px; } "
@@ -1057,7 +1051,7 @@ class LibraryView(QWidget):
             self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
-            qta.icon("fa5s.edit", color=theme.color(LINK_ICON)), "Rename Document"
+            themed_fa_icon("fa5s.edit", theme.color(LINK_ICON), 16), "Rename Document"
         )
         rename_action.triggered.connect(
             lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
@@ -1076,7 +1070,7 @@ class LibraryView(QWidget):
         menu.addSeparator()
 
         delete_action = menu.addAction(
-            qta.icon("fa5s.trash-alt", color=theme.color(DANGER_ICON)), "Delete Document"
+            themed_fa_icon("fa5s.trash-alt", theme.color(DANGER_ICON), 16), "Delete Document"
         )
         delete_action.triggered.connect(
             lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
@@ -1099,6 +1093,7 @@ class LibraryView(QWidget):
     def _update_row_colors(self):
         """Row title colors + action icons (QSS cannot target setItemWidget children)."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         target_list = getattr(self, "doc_list", getattr(self, "history_list", None))
         active_folder_id = None
         if target_list is getattr(self, "doc_list", None):
@@ -1106,6 +1101,7 @@ class LibraryView(QWidget):
         apply_sidebar_row_theme(
             target_list,
             is_dark=is_dark,
+            theme=theme,
             active_folder_id=active_folder_id,
         )
 
@@ -1331,18 +1327,19 @@ class LibraryView(QWidget):
             self.ingest_progress_row.apply_theme(is_dark)
 
         theme = self._theme(is_dark)
-        ghost_qss = theme.style(GHOST_ICON_BUTTON)
-        base_icon_color = theme.color(ACCENT_ICON)
+        base_icon_color = accent_icon_color(theme)
 
-        if hasattr(self, 'add_btn'):
-            self.add_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
-            self.add_btn.setStyleSheet(ghost_qss)
+        if hasattr(self, "add_btn"):
+            self.add_btn.setIcon(themed_fa_icon("fa5s.plus", base_icon_color, 16))
+            apply_ghost_icon_button_style(self.add_btn, theme)
         if hasattr(self, "new_folder_btn"):
-            self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
-            self.new_folder_btn.setStyleSheet(ghost_qss)
+            self.new_folder_btn.setIcon(
+                themed_fa_icon("fa5s.folder-plus", base_icon_color, 16)
+            )
+            apply_ghost_icon_button_style(self.new_folder_btn, theme)
         if hasattr(self, "sort_btn"):
-            self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
-            self.sort_btn.setStyleSheet(ghost_qss)
+            self.sort_btn.setIcon(themed_fa_icon("fa5s.sort", base_icon_color, 16))
+            apply_ghost_icon_button_style(self.sort_btn, theme, hide_menu_indicator=True)
 
         self._refresh_readability_toolbar(is_dark=is_dark)
         if hasattr(self, "font_minus_btn"):

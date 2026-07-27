@@ -24,11 +24,12 @@ orb missing, floating companion gone, overlay not showing, companion disappeared
 2. Disable **Hide during fullscreen apps** temporarily to test whether suppression is active.
 3. Exit fullscreen applications and check whether the orb returns.
 4. Restart Qube if the companion process failed silently after sleep or display changes.
-5. On Linux Wayland, review platform limitations in product docs—some always-on-top features differ from Windows.
+5. On **Linux Wayland**, open **Settings → Desktop Companion** and check the **Platform** line. Enable **Use edge dock strip mode (better on Wayland)** first; only then try **Try floating overlay on Wayland (experimental)** if you need the full orb.
 6. Use the main window for full functionality while diagnosing companion visibility.
 
 ## Related
 
+- [Desktop Companion on Linux Wayland FAQ](../faq/companion-wayland-linux.md) — Wayland tiers, dock strip, experimental overlay
 - [Configure companion visibility workflow](../workflows/configure-desktop-companion-visibility.md) — intended setup
 - [Desktop Companion settings](../features/settings/desktop-companion.md) — all visibility controls
 - [Companion vs main window FAQ](../faq/companion-vs-main-window.md) — when to use each

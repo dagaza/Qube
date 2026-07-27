@@ -256,6 +256,19 @@
     "must_mention": ["Companion", "visible"]
   },
   {
+    "category": "faq",
+    "question": "Desktop companion on Linux Wayland",
+    "expected_doc_ids": ["faq.companion_wayland"],
+    "must_mention": ["Wayland", "dock"],
+    "expected_canonical_id": "faq.companion_wayland.dock_strip"
+  },
+  {
+    "category": "troubleshooting",
+    "question": "Wayland floating orb not working dock strip",
+    "expected_doc_ids": ["faq.companion_wayland", "troubleshooting.companion_not_visible"],
+    "must_mention": ["Wayland", "dock"]
+  },
+  {
     "category": "navigation",
     "question": "Where is Memory settings?",
     "expected_doc_ids": ["features.settings.memory"],
@@ -421,6 +434,33 @@
   },
   {
     "category": "faq",
+    "question": "Web discovery privacy tier settings",
+    "expected_doc_ids": ["faq.web_discovery_privacy_tiers", "features.settings.knowledge"],
+    "must_mention": ["Privacy", "tier"],
+    "expected_canonical_id": "faq.web_discovery_privacy_tiers.choose"
+  },
+  {
+    "category": "faq",
+    "question": "Delete a memory in Memory Manager",
+    "expected_doc_ids": ["faq.delete_memory_entries", "features.memory_manager"],
+    "must_mention": ["Delete", "Memory Manager"],
+    "expected_canonical_id": "faq.delete_memory_entries.how"
+  },
+  {
+    "category": "faq",
+    "question": "What is the memory negative list",
+    "expected_doc_ids": ["faq.delete_memory_entries"],
+    "must_mention": ["negative", "delete"]
+  },
+  {
+    "category": "faq",
+    "question": "What is INSPECT RETRIEVAL on Sources",
+    "expected_doc_ids": ["faq.inspect_retrieval"],
+    "must_mention": ["INSPECT", "Sources"],
+    "expected_canonical_id": "faq.inspect_retrieval.how"
+  },
+  {
+    "category": "faq",
     "question": "How does the cognitive router work in Qube",
     "expected_doc_ids": ["faq.cognitive_router"],
     "must_mention": ["route", "MEMORY"]
@@ -491,6 +531,27 @@
     "category": "negative",
     "question": "Who won the Stanley Cup in 2024?",
     "negative": true
+  },
+  {
+    "category": "faq",
+    "question": "How do I redact logs before sharing",
+    "expected_doc_ids": ["faq.log_redaction_sharing", "faq.diagnostic_logs_advanced"],
+    "must_mention": ["QUBE_WEB_SEARCH_AUDIT_REDACT"],
+    "expected_canonical_id": "faq.log_redaction_sharing.redact"
+  },
+  {
+    "category": "faq",
+    "question": "What left my machine this session egress audit",
+    "expected_doc_ids": ["faq.audit_session_privacy", "features.telemetry"],
+    "must_mention": ["Telemetry"],
+    "expected_canonical_id": "faq.audit_session_privacy.telemetry"
+  },
+  {
+    "category": "faq",
+    "question": "How do I install Qube on Linux AppImage deb",
+    "expected_doc_ids": ["faq.install_linux", "workflows.uninstall_qube"],
+    "must_mention": ["AppImage"],
+    "expected_canonical_id": "faq.install_linux.variant"
   },
   {
     "category": "workflow",

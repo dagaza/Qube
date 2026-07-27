@@ -15,11 +15,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import qtawesome as qta
 
 from core.app_notification_types import AppNotificationRequest
-from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
 from core.theme.color_utils import with_alpha
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
 from ui.components.brand_buttons import apply_brand_primary
 
 
@@ -163,7 +163,7 @@ class AppNotificationToast(QFrame):
                 self._countdown_timer.timeout.connect(self._tick_countdown)
                 self._countdown_timer.start()
 
-        self.apply_theme(True)
+        self.apply_theme(view_resolved_theme(self).is_dark)
 
     def restart_auto_dismiss(self, request: AppNotificationRequest) -> None:
         """Reset auto-dismiss and countdown when deduping the same toast."""
@@ -246,9 +246,9 @@ class AppNotificationToast(QFrame):
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
-        theme = theme_for(is_dark=is_dark)
+        theme = view_resolved_theme(self, is_dark=is_dark)
         accent = theme.link
-        sub = theme.text_secondary
+        sub = theme.text_muted if theme.is_dark else theme.text_secondary
         icon_name = self._request.icon_name or "fa5s.bell"
         self.setStyleSheet(
             notification_toast_stylesheet(
@@ -256,8 +256,8 @@ class AppNotificationToast(QFrame):
                 has_countdown=self._countdown_bar is not None,
             )
         )
-        self._icon.setPixmap(qta.icon(icon_name, color=accent).pixmap(16, 16))
-        self._close_btn.setIcon(qta.icon("fa5s.times", color=sub))
+        self._icon.setPixmap(themed_fa_pixmap(icon_name, accent, 16))
+        self._close_btn.setIcon(themed_fa_icon("fa5s.times", sub, 12))
         self._close_btn.setIconSize(self._close_btn.size())
 
 

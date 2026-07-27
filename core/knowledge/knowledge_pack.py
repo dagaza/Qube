@@ -102,5 +102,7 @@ def export_knowledge_pack_to_file(path: Path) -> None:
 
 
 def import_knowledge_pack_from_file(path: Path) -> dict[str, Any]:
+    from core.knowledge.packs import install_knowledge_pack
+
     raw = json.loads(path.read_text(encoding="utf-8"))
-    return import_knowledge_pack(raw)
+    return install_knowledge_pack(raw)

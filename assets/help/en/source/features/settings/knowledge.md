@@ -58,7 +58,7 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 2. **Enable library search** — Turn on **Enable Local Knowledge Base** under **Library search phrases**. Add custom phrases and/or enable **Enable NLP Auto-Activator** for one-turn searches even when the master switch is off.
 3. **Set search quality** — Pick **Mode**: **Fast**, **Balanced**, or **Power** to match latency vs depth for **Library embeddings**.
 4. **Set retrieval profile** — Pick **Fast**, **Balanced**, **Thorough**, or a hint profile to tune orchestration and web fetch depth for **all knowledge turns** (Library, Live Sources, presets, `@internet`).
-5. **Configure web discovery** — Under **Web search discovery**, choose a **Privacy tier** and review **Live DDG usage** before relying on `@internet` or Hybrid Internet Mode.
+5. **Configure web discovery** — Under **Web search discovery**, choose a **Privacy tier** and review **Live DDG usage** before relying on `@internet` or Hybrid Internet Mode. Use **Set up SearXNG…** for self-hosted search. See [Web discovery privacy tiers FAQ](../../faq/web-discovery-privacy-tiers.md).
 6. **Enable Live Sources** — Toggle the adapters you need; use **Configure** where API keys are required.
 7. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles.
 8. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
@@ -69,6 +69,7 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 
 ## Related
 
+- [Web discovery privacy tiers FAQ](../../faq/web-discovery-privacy-tiers.md) — tier comparison and what leaves your device
 - [Retrieval profile vs search quality FAQ](../../faq/retrieval-profile-vs-search-quality.md) — Fast/Balanced naming disambiguation
 - [Library feature](../../features/library.md) — document storage and ingest
 - [Conversations feature](../../features/conversations.md) — chat and composer attachments

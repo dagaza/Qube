@@ -403,11 +403,16 @@ class VoiceHandlersMixin:
             return
         if not hasattr(self, "engine_selector"):
             return
+        from ui.views.settings.widgets import register_settings_selector_width, refit_settings_selector_width
 
         engine_modes = [
             ("Internal Engine (native)", "internal"),
             ("External Server (localhost)", "external"),
         ]
+        register_settings_selector_width(
+            self.engine_selector,
+            *(label for label, _mode in engine_modes),
+        )
         self._build_prestige_menu(
             self.engine_selector,
             engine_modes,
@@ -419,6 +424,10 @@ class VoiceHandlersMixin:
 
         if hasattr(self, "provider_selector"):
             providers = [("Ollama (Port 11434)", 11434), ("LM Studio (Port 1234)", 1234)]
+            register_settings_selector_width(
+                self.provider_selector,
+                *(label for label, _port in providers),
+            )
             self._build_prestige_menu(
                 self.provider_selector,
                 providers,
@@ -430,6 +439,8 @@ class VoiceHandlersMixin:
             elif is_port_open(11434):
                 self.provider_selector.setText("Ollama (Port 11434)")
 
+        refit_settings_selector_width(self.engine_selector)
+        refit_settings_selector_width(self.provider_selector)
         self._sync_ai_provider_enabled_for_inference(get_engine_mode())
         self._engine_selectors_populated = True
 

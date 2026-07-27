@@ -34,3 +34,7 @@ Settings → Desktop Companion → **Enable companion commentary** uses the auxi
 - macOS: orb AOT, Spaces behavior documented
 - Ubuntu GNOME Wayland: verify default off + dock mode
 - KDE Plasma X11: transparency + AOT
+
+## In-app help (`@help`)
+
+User-facing Wayland guidance ships in **Library → Qube** as [Desktop Companion on Linux Wayland](../assets/help/en/source/faq/companion-wayland-linux.md) (`faq.companion_wayland`). Regenerate with `python scripts/compose_help_corpus.py` after editing `assets/help/en/source/`.

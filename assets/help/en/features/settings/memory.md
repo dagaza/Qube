@@ -48,7 +48,6 @@ Controls listed top-to-bottom for **Settings → Memory**.
 ### Memory pipeline
 
 - **Enable Memory Enrichment & Reflection (Requires more RAM)**
-- **Show advanced memory settings**
 - **Promote well-used memories to preferences**
 - **Highlight memories that keep coming back**
 - **Promotion preset**

@@ -27,6 +27,8 @@ eval/cache/
 eval/runs/*
 !eval/runs/shadow_policy_baseline_v1/
 !eval/runs/shadow_policy_baseline_v1/**
+!eval/runs/router_no_embeddings_v1/
+!eval/runs/router_no_embeddings_v1/**
 
 # --- Qube Architecture: Data ---
 # Ignore all LanceDB / Vector storage files

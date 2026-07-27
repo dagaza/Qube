@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.15",
+  "corpus_version": "1.0.21",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -30,6 +30,7 @@
         "features.library",
         "features.settings.knowledge",
         "workflows.uninstall_qube",
+        "faq.install_linux",
         "release.whats_new"
       ]
     },
@@ -236,11 +237,13 @@
         "long-term memory",
         "flagged memories",
         "export memories",
-        "edit memory"
+        "edit memory",
+        "delete memory"
       ],
       "related": [
         "features.settings.memory",
         "workflows.manage_memory",
+        "faq.delete_memory_entries",
         "faq.memory_vs_library",
         "faq.conversations_vs_memory",
         "troubleshooting.memory_not_working",
@@ -311,6 +314,8 @@
         "features.conversations",
         "faq.advanced_telemetry_interpreting",
         "faq.cognitive_router",
+        "faq.audit_session_privacy",
+        "faq.log_redaction_sharing",
         "troubleshooting.search_models"
       ]
     },
@@ -459,13 +464,17 @@
         "nlp auto-activator",
         "web search discovery",
         "live sources settings",
-        "knowledge presets"
+        "knowledge presets",
+        "privacy tier",
+        "private search tier"
       ],
       "related": [
         "reference.settings_sections",
         "features.library",
         "features.conversations",
         "faq.retrieval_profile_vs_search_quality",
+        "faq.web_discovery_privacy_tiers",
+        "faq.cognitive_router",
         "workflows.prepare_search_models",
         "index"
       ],
@@ -564,17 +573,23 @@
       "tags": [
         "companion",
         "desktop",
-        "overlay"
+        "overlay",
+        "wayland"
       ],
       "synonyms": [
         "floating companion settings",
         "companion commentary",
         "hide during fullscreen",
-        "companion overlay settings"
+        "companion overlay settings",
+        "wayland companion settings",
+        "dock strip mode"
       ],
       "related": [
         "reference.settings_sections",
-        "index"
+        "index",
+        "faq.companion_wayland",
+        "troubleshooting.companion_not_visible",
+        "workflows.companion_visibility"
       ],
       "generated_sections": [
         "controls"
@@ -642,6 +657,7 @@
       "related": [
         "reference.settings_sections",
         "workflows.uninstall_qube",
+        "faq.install_linux",
         "index"
       ],
       "generated_sections": [
@@ -797,13 +813,18 @@
       "tags": [
         "companion",
         "visibility",
-        "fullscreen"
+        "fullscreen",
+        "wayland"
       ],
       "synonyms": [
-        "hide companion during games"
+        "hide companion during games",
+        "show floating orb"
       ],
       "related": [
-        "index"
+        "index",
+        "features.settings.companion_desktop",
+        "faq.companion_wayland",
+        "troubleshooting.companion_not_visible"
       ]
     },
     {
@@ -960,10 +981,14 @@
         "wayland"
       ],
       "synonyms": [
-        "companion missing"
+        "companion missing",
+        "orb not showing wayland"
       ],
       "related": [
-        "index"
+        "index",
+        "faq.companion_wayland",
+        "features.settings.companion_desktop",
+        "workflows.companion_visibility"
       ]
     },
     {
@@ -1119,9 +1144,40 @@
         "features.telemetry",
         "faq.advanced_telemetry_interpreting",
         "faq.diagnostic_logs_advanced",
+        "faq.inspect_retrieval",
         "faq.memory_vs_library",
         "faq.at_mentions",
+        "faq.inspect_retrieval",
         "reference.composer_attachments"
+      ]
+    },
+    {
+      "id": "faq.inspect_retrieval",
+      "path": "faq/inspect-retrieval.md",
+      "title": "INSPECT RETRIEVAL — per-reply retrieval forensics",
+      "type": "faq",
+      "tags": [
+        "inspect",
+        "retrieval",
+        "routing",
+        "sources",
+        "transparency"
+      ],
+      "synonyms": [
+        "inspect retrieval",
+        "retrieval inspector",
+        "sources inspect button",
+        "per turn retrieval trace",
+        "inspect routing for reply"
+      ],
+      "related": [
+        "index",
+        "features.conversations",
+        "features.telemetry",
+        "faq.cognitive_router",
+        "faq.advanced_telemetry_interpreting",
+        "faq.diagnostic_logs_advanced",
+        "faq.retrieval_profile_vs_search_quality"
       ]
     },
     {
@@ -1152,7 +1208,99 @@
         "features.telemetry",
         "faq.advanced_telemetry_interpreting",
         "features.settings.knowledge",
+        "features.settings.contact_feedback",
+        "faq.web_discovery_privacy_tiers",
+        "faq.delete_memory_entries",
+        "faq.log_redaction_sharing",
+        "faq.audit_session_privacy"
+      ]
+    },
+    {
+      "id": "faq.log_redaction_sharing",
+      "path": "faq/log-redaction-sharing-logs.md",
+      "title": "Log redaction before sharing logs",
+      "type": "faq",
+      "tags": [
+        "logs",
+        "privacy",
+        "redaction",
+        "diagnostics",
+        "sharing"
+      ],
+      "synonyms": [
+        "log redaction",
+        "redact logs before sharing",
+        "QUBE_WEB_SEARCH_AUDIT_REDACT",
+        "QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY",
+        "share logs safely",
+        "privacy before sharing logs"
+      ],
+      "related": [
+        "index",
+        "features.settings.advanced",
+        "faq.diagnostic_logs_advanced",
+        "faq.audit_session_privacy",
+        "faq.web_discovery_privacy_tiers",
         "features.settings.contact_feedback"
+      ]
+    },
+    {
+      "id": "faq.audit_session_privacy",
+      "path": "faq/audit-session-privacy.md",
+      "title": "Audit session privacy — what left my machine",
+      "type": "faq",
+      "tags": [
+        "privacy",
+        "egress",
+        "telemetry",
+        "web discovery",
+        "audit"
+      ],
+      "synonyms": [
+        "what left my machine",
+        "session egress summary",
+        "audit session privacy",
+        "web discovery telemetry",
+        "privacy audit qube"
+      ],
+      "related": [
+        "index",
+        "features.telemetry",
+        "faq.advanced_telemetry_interpreting",
+        "faq.audit_session_privacy",
+        "faq.web_discovery_privacy_tiers",
+        "faq.inspect_retrieval",
+        "faq.diagnostic_logs_advanced",
+        "faq.log_redaction_sharing"
+      ]
+    },
+    {
+      "id": "faq.install_linux",
+      "path": "faq/install-linux.md",
+      "title": "Install Qube on Linux",
+      "type": "faq",
+      "tags": [
+        "linux",
+        "install",
+        "appimage",
+        "deb",
+        "ubuntu",
+        "debian"
+      ],
+      "synonyms": [
+        "install qube linux",
+        "linux appimage",
+        "linux deb package",
+        "ubuntu install qube",
+        "which appimage download",
+        "vulkan cuda cpu appimage"
+      ],
+      "related": [
+        "index",
+        "workflows.uninstall_qube",
+        "faq.hardware_tuning_internal",
+        "faq.companion_wayland_linux",
+        "faq.web_discovery_privacy_tiers"
       ]
     },
     {
@@ -1251,7 +1399,101 @@
         "companion vs chat window"
       ],
       "related": [
-        "index"
+        "index",
+        "features.settings.companion_desktop",
+        "faq.companion_wayland",
+        "troubleshooting.companion_not_visible"
+      ]
+    },
+    {
+      "id": "faq.companion_wayland",
+      "path": "faq/companion-wayland-linux.md",
+      "title": "Desktop Companion on Linux Wayland",
+      "type": "faq",
+      "tags": [
+        "companion",
+        "wayland",
+        "linux",
+        "overlay",
+        "dock-strip"
+      ],
+      "synonyms": [
+        "wayland companion",
+        "linux wayland orb",
+        "gnome wayland qube companion",
+        "edge dock strip mode",
+        "try floating overlay wayland",
+        "degraded companion tier",
+        "always on top wayland",
+        "floating orb not working wayland",
+        "orb not working on wayland",
+        "wayland overlay blocked"
+      ],
+      "related": [
+        "index",
+        "features.settings.companion_desktop",
+        "troubleshooting.companion_not_visible",
+        "workflows.companion_visibility",
+        "faq.companion_vs_main"
+      ]
+    },
+    {
+      "id": "faq.delete_memory_entries",
+      "path": "faq/delete-memory-entries.md",
+      "title": "Delete memory entries",
+      "type": "faq",
+      "tags": [
+        "memory",
+        "privacy",
+        "delete",
+        "negative-list"
+      ],
+      "synonyms": [
+        "delete memory",
+        "forget what qube learned",
+        "remove saved memory",
+        "memory negative list",
+        "bulk delete memories",
+        "clear long-term memory"
+      ],
+      "related": [
+        "index",
+        "features.memory_manager",
+        "workflows.manage_memory",
+        "features.settings.memory",
+        "faq.memory_vs_library",
+        "faq.conversations_vs_memory",
+        "troubleshooting.memory_not_working"
+      ]
+    },
+    {
+      "id": "faq.web_discovery_privacy_tiers",
+      "path": "faq/web-discovery-privacy-tiers.md",
+      "title": "Web discovery privacy tiers",
+      "type": "faq",
+      "tags": [
+        "privacy",
+        "web",
+        "discovery",
+        "internet",
+        "searxng"
+      ],
+      "synonyms": [
+        "privacy tier",
+        "web search privacy",
+        "private search tier",
+        "private plus api fallback",
+        "self-hosted searxng",
+        "what leaves device web search",
+        "duckduckgo privacy settings"
+      ],
+      "related": [
+        "index",
+        "features.settings.knowledge",
+        "features.conversations",
+        "faq.cognitive_router",
+        "faq.live_sources_vs_library",
+        "faq.diagnostic_logs_advanced"
       ]
     },
     {
@@ -1494,6 +1736,123 @@
       "heading": "Hide during fullscreen apps",
       "answer": "Open Settings \u2192 Desktop Companion and enable **Hide during fullscreen apps**.",
       "action_id": "open_settings_companion_desktop"
+    },
+    {
+      "id": "faq.companion_wayland.dock_strip",
+      "question_patterns": [
+        "companion wayland",
+        "wayland floating orb",
+        "linux wayland companion",
+        "gnome wayland qube orb",
+        "edge dock strip mode",
+        "companion not working wayland"
+      ],
+      "doc_id": "faq.companion_wayland",
+      "heading": "Recommended setup on Wayland",
+      "answer": "On Linux Wayland, open **Settings \u2192 Desktop Companion**. Prefer **Use edge dock strip mode (better on Wayland)**; only then try **Try floating overlay on Wayland (experimental)**. Tray and the main window still work if the orb is blocked.",
+      "action_id": "open_settings_companion_desktop"
+    },
+    {
+      "id": "faq.companion_wayland.experimental_overlay",
+      "question_patterns": [
+        "try floating overlay on wayland",
+        "experimental wayland overlay",
+        "always on top wayland qube"
+      ],
+      "doc_id": "faq.companion_wayland",
+      "heading": "Try floating overlay on Wayland (experimental)",
+      "answer": "**Try floating overlay on Wayland (experimental)** attempts the full orb on Wayland compositors that allow it. If the orb fails, enable **Use edge dock strip mode** instead. See **Desktop Companion on Linux Wayland** in Library \u2192 Qube.",
+      "action_id": "open_settings_companion_desktop"
+    },
+    {
+      "id": "faq.inspect_retrieval.how",
+      "question_patterns": [
+        "inspect retrieval",
+        "what is inspect retrieval",
+        "sources inspect button",
+        "how to inspect retrieval for a reply"
+      ],
+      "doc_id": "faq.inspect_retrieval",
+      "heading": "INSPECT RETRIEVAL",
+      "answer": "On an assistant reply, open **Sources**, then **INSPECT RETRIEVAL** when shown. The inspector shows Summary, Graph, Compare, and Explain tabs for that turn's retrieval and routing."
+    },
+    {
+      "id": "faq.log_redaction_sharing.redact",
+      "question_patterns": [
+        "redact logs before sharing",
+        "log redaction qube",
+        "QUBE_WEB_SEARCH_AUDIT_REDACT",
+        "share diagnostic logs safely",
+        "privacy before sharing logs"
+      ],
+      "doc_id": "faq.log_redaction_sharing",
+      "heading": "Redaction workflow",
+      "answer": "Launch with **QUBE_WEB_SEARCH_AUDIT_REDACT=1** and **QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY=1** before enabling web search or routing logs. Clear logs, reproduce once, and share only the tail — see **Settings \u2192 Advanced \u2192 Diagnostic logs**."
+    },
+    {
+      "id": "faq.audit_session_privacy.telemetry",
+      "question_patterns": [
+        "what left my machine",
+        "session egress summary",
+        "audit session privacy",
+        "web discovery telemetry card",
+        "what did qube send off device"
+      ],
+      "doc_id": "faq.audit_session_privacy",
+      "heading": "Audit today",
+      "answer": "Open **Telemetry \u2192 Web discovery** for tier and DDG budgets, **Router Intelligence** for route mix, and **INSPECT RETRIEVAL** on replies for per-turn adapters. Full session egress export is planned for Team."
+    },
+    {
+      "id": "faq.install_linux.variant",
+      "question_patterns": [
+        "install qube on linux",
+        "linux appimage which download",
+        "ubuntu install qube",
+        "deb or appimage qube",
+        "vulkan or cuda appimage"
+      ],
+      "doc_id": "faq.install_linux",
+      "heading": "Linux install",
+      "answer": "Download **AppImage** or **`.deb`** (amd64) from GitHub Releases. Pick **cpu**, **vulkan** (AMD/Intel), or **cuda** (NVIDIA). AppImage: `chmod +x` and run; optional **`install_appimage.sh`** for a menu entry. `.deb`: `sudo apt install ./qube_*.deb` then **`qube`**."
+    },
+    {
+      "id": "faq.web_discovery_privacy_tiers.choose",
+      "question_patterns": [
+        "web discovery privacy tier",
+        "privacy tier settings",
+        "private search tier",
+        "what is privacy tier qube",
+        "web search privacy settings"
+      ],
+      "doc_id": "faq.web_discovery_privacy_tiers",
+      "heading": "Privacy tier",
+      "answer": "Open **Settings \u2192 Knowledge \u2192 Web search discovery \u2192 Privacy tier**, or use the **Privacy** selector in the Conversations tools panel. Default **Private search** uses DuckDuckGo and Wikipedia only.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "faq.delete_memory_entries.how",
+      "question_patterns": [
+        "delete memory",
+        "remove memory qube saved",
+        "forget what qube remembered",
+        "how to delete a memory entry",
+        "delete a memory in memory manager",
+        "permanently delete memory"
+      ],
+      "doc_id": "faq.delete_memory_entries",
+      "heading": "Delete one memory",
+      "answer": "Open **Memory Manager**, click **Delete** on a card, and confirm. Deletion is permanent and adds the fact to the negative list so similar facts are not re-extracted."
+    },
+    {
+      "id": "faq.delete_memory_entries.bulk",
+      "question_patterns": [
+        "bulk delete memories",
+        "delete all visible memories",
+        "clear all memories"
+      ],
+      "doc_id": "faq.delete_memory_entries",
+      "heading": "Bulk delete",
+      "answer": "In **Memory Manager**, filter the list, optionally **Export visible**, then click **Delete all visible** and confirm. Each removed row is added to the negative list."
     },
     {
       "id": "features.settings.notifications.dnd",

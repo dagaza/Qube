@@ -8,6 +8,7 @@ import qtawesome as qta
 
 from core.theme.accessors import theme_for
 from core.theme.widget_styles import MUTED_ICON
+from ui.components.ghost_icon_button import apply_ghost_icon_button_style
 
 
 class PageTourHelpButton(QPushButton):
@@ -52,6 +53,7 @@ class PageTourHelpButton(QPushButton):
         if is_dark is None and window is not None and hasattr(window, "_is_dark_theme"):
             is_dark = bool(window._is_dark_theme)
         theme = theme_for(is_dark=bool(is_dark if is_dark is not None else True))
+        apply_ghost_icon_button_style(self, theme)
         self.setIcon(
             qta.icon("fa5s.question-circle", color=theme.color(MUTED_ICON))
         )

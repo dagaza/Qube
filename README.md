@@ -92,7 +92,7 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 |----------|---------|
 | **Windows** | [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` |
 | **macOS** | Download the `.dmg` for your Mac from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
-| **All platforms** | Latest installer or bundle from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
+| **Linux** | **AppImage** or **`.deb`** (amd64) from [GitHub Releases](https://github.com/dagaza/Qube/releases) — [Install on Linux](docs/user/install-linux.md) |
 
 ### First launch
 
@@ -148,7 +148,7 @@ More workflows: [How to use Qube](docs/user/how-to-use.md).
 | | Minimum | Recommended |
 |---|---------|-------------|
 | **RAM** | 16 GB | 20 GB |
-| **OS** | Windows 10+, macOS 12+ (Apple Silicon or Intel), Linux (source) | Same |
+| **OS** | Windows 10+, macOS 12+ (Apple Silicon or Intel), Linux (AppImage / `.deb` amd64, or source) | Same |
 | **Storage** | ~2 GB for app + optional voice models; plan extra for each chat model | SSD strongly recommended |
 | **Audio** | Optional — microphone and speakers for voice features | Same |
 | **GPU** | Optional — speeds up the internal engine via GPU offload layers | Discrete GPU or Apple Silicon with enough VRAM for your chosen model |

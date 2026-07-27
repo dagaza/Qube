@@ -185,6 +185,12 @@ QFrame#ComposerMentionShell QListWidget#ComposerMentionList::viewport {
     margin-bottom: 4px;
 }
 
+#ThemeColorTokenLabel {
+    color: #475569;
+    font-size: 13px;
+    font-weight: normal;
+}
+
 #SettingsSectionGroupHeader {
     color: #94a3b8;
     font-size: 10px;
@@ -228,6 +234,13 @@ QLabel[class="SettingsHint"] {
     color: #64748b;
     font-size: 12px;
     font-weight: normal;
+}
+
+#SettingsFormLabelColumnRuler {
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
 }
 
 #SettingsActionStatus {
@@ -531,10 +544,12 @@ QPushButton[class~="NavButton"]:checked {
     background-color: #e2e8f0 !important;
 }
 
-.WindowControlButton, .IconButton {
+QPushButton[class~="WindowControlButton"],
+QPushButton[class~="IconButton"] {
     background-color: transparent; border: none;
 }
-.WindowControlButton:hover, .IconButton:hover {
+QPushButton[class~="WindowControlButton"]:hover,
+QPushButton[class~="IconButton"]:hover {
     background-color: #e2e8f0;
 }
 

@@ -106,8 +106,8 @@ def test_theme_default_resolves_to_family_preset():
         family="catppuccin",
         mode=ThemeMode.DARK,
     )
-    assert isinstance(resolved.wallpaper, WallpaperGradient)
-    assert resolved.wallpaper.stops[0].color == "#1e1e2e"
+    assert isinstance(resolved.wallpaper, WallpaperImage)
+    assert resolved.wallpaper.source == "assets/wallpapers/nebula.jpg"
 
 
 def test_resolver_theme_default_catppuccin_latte():
@@ -137,7 +137,7 @@ def test_theme_default_preset_id_for_catppuccin_light():
     )
     assert (
         theme_default_preset_id(family="catppuccin", base_mode="dark")
-        == "builtin.catppuccin-gradient"
+        == "builtin.nebula"
     )
 
 

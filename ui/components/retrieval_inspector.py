@@ -57,6 +57,7 @@ class RetrievalInspector(QWidget):
         layout.addWidget(self._tabs)
         self._record: dict | None = None
         self._trace: dict | None = None
+        self._routing_record: dict | None = None
         self._db = None
 
     def set_database(self, db) -> None:
@@ -68,9 +69,11 @@ class RetrievalInspector(QWidget):
         trace: dict | None = None,
         record: dict | None = None,
         preset_id: str | None = None,
+        routing_record: dict | None = None,
     ) -> None:
         self._trace = trace
         self._record = record
+        self._routing_record = routing_record
         if trace is None and record is None:
             self._summary.setPlainText("No retrieval data for this turn.")
             self._graph.setPlainText("")
@@ -79,7 +82,9 @@ class RetrievalInspector(QWidget):
             return
 
         effective_trace = trace or self._trace_from_record(record)
-        self._summary.setPlainText(self._format_summary(effective_trace, record))
+        self._summary.setPlainText(
+            self._format_summary(effective_trace, record, self._routing_record)
+        )
         self._graph.setPlainText(format_pipeline_graph_text(effective_trace))
         self._compare.setPlainText(self._format_compare(record))
         self._explain.setPlainText(self._format_explain(effective_trace, preset_id))
@@ -106,6 +111,7 @@ class RetrievalInspector(QWidget):
         self,
         trace: dict | None,
         record: dict | None,
+        routing_record: dict | None = None,
     ) -> str:
         if not trace:
             return "No retrieval trace available."
@@ -147,6 +153,11 @@ class RetrievalInspector(QWidget):
                     diag_bits.append(f"{key}={diag[key]}")
             if diag_bits:
                 lines.append("Diagnostics: " + ", ".join(diag_bits))
+        from core.knowledge.routing_inspect_explain import format_routing_inspect_text
+
+        routing_text = format_routing_inspect_text(routing_record)
+        if routing_text:
+            lines.append(routing_text)
         return "\n".join(lines)
 
     def _format_explain(
@@ -247,6 +258,7 @@ def open_retrieval_inspector_dialog(
     record: dict | None = None,
     preset_id: str | None = None,
     db=None,
+    routing_record: dict | None = None,
 ) -> None:
     from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
@@ -256,6 +268,11 @@ def open_retrieval_inspector_dialog(
     layout = QVBoxLayout(dlg)
     inspector = RetrievalInspector(dlg)
     inspector.set_database(db)
-    inspector.load(trace=trace, record=record, preset_id=preset_id)
+    inspector.load(
+        trace=trace,
+        record=record,
+        preset_id=preset_id,
+        routing_record=routing_record,
+    )
     layout.addWidget(inspector)
     dlg.exec()

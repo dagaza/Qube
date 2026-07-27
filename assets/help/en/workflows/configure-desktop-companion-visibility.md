@@ -25,9 +25,11 @@ show companion, hide orb, fullscreen suppress, overlay visibility, floating Qube
 3. Turn on **Hide during fullscreen apps** if you want automatic hiding.
 4. Launch a fullscreen app to verify the companion hides during normal use.
 5. Remember that the companion may still appear during fullscreen when Qube needs your attention (**listening, working, speaking, or an error**).
+6. On **Linux Wayland**, prefer **Use edge dock strip mode** over the experimental floating overlay — see [Desktop Companion on Linux Wayland FAQ](../faq/companion-wayland-linux.md).
 
 ## Related
 
+- [Desktop Companion on Linux Wayland FAQ](../faq/companion-wayland-linux.md) — degraded tier and compositor limits
 - [Desktop Companion settings](../features/settings/desktop-companion.md) — every visibility control
 - [Companion not visible troubleshooting](../troubleshooting/companion-not-visible.md) — when the orb will not appear
 - [Companion vs main window FAQ](../faq/companion-vs-main-window.md) — companion role

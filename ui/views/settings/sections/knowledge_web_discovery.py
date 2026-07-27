@@ -81,10 +81,12 @@ from ui.views.settings.knowledge_access_badge import (
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
-    add_subsection_to_layout,
+    add_settings_card_form,
+    add_subsection_to_form,
     make_settings_hint,
     register_settings_selector_width,
     wrap_subsection,
+    add_settings_full_width_row,
 )
 
 _POLICY_KV_KEYS = frozenset(
@@ -643,7 +645,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.discovery_privacy_tier_description = QLabel()
     host.discovery_privacy_tier_description.setWordWrap(True)
     host.discovery_privacy_tier_description.setObjectName("SettingsLogDescription")
-    controls_form.addRow("", host.discovery_privacy_tier_description)
+    add_settings_full_width_row(controls_form, host.discovery_privacy_tier_description)
 
     _pacing_tip = (
         "Adds a short gap between DDG HTTP requests to reduce bot challenges."
@@ -666,7 +668,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.discovery_pacing_toggle.setChecked(get_discovery_pacing_enabled())
     host.discovery_pacing_toggle.blockSignals(False)
     host.discovery_pacing_toggle.toggled.connect(host._on_discovery_pacing_toggled)
-    controls_form.addRow("", pacing_row)
+    add_settings_full_width_row(controls_form, pacing_row)
 
     host.discovery_burst_usage_label = QLabel()
     host.discovery_burst_usage_label.setObjectName("SettingsLogDescription")
@@ -674,13 +676,13 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
 
     host.discovery_budget_status_label = QLabel()
     host.discovery_budget_status_label.setObjectName("SettingsLogDescription")
-    controls_form.addRow("", host.discovery_budget_status_label)
+    add_settings_full_width_row(controls_form, host.discovery_budget_status_label)
 
     limits_hint = make_settings_hint(
         "Limits apply only to live DuckDuckGo HTTP calls (not cache hits or fallbacks). "
         "After a limit is reached, Wikipedia and other fallbacks continue to work."
     )
-    controls_form.addRow("", limits_hint)
+    add_settings_full_width_row(controls_form, limits_hint)
 
     _adv_discovery_tip = (
         "Override session query limits. Raising limits increases bot-challenge risk."
@@ -700,7 +702,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_discovery_toggle.setChecked(get_advanced_discovery_unlocked())
     host.advanced_discovery_toggle.blockSignals(False)
     host.advanced_discovery_toggle.toggled.connect(host._on_advanced_discovery_toggled)
-    controls_form.addRow("", adv_toggle_row)
+    add_settings_full_width_row(controls_form, adv_toggle_row)
 
     host.advanced_discovery_panel = QWidget()
     adv_panel_layout = QFormLayout(host.advanced_discovery_panel)
@@ -721,16 +723,14 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host._discovery_budget_last_applied = get_ddg_session_budget_override()
     adv_panel_layout.addRow("Session limit override", host.discovery_budget_spin)
 
-    adv_panel_layout.addRow(
-        "",
-        make_settings_hint(
+    add_settings_full_width_row(adv_panel_layout, make_settings_hint(
             "Burst limit is fixed at 6 live queries per 10 minutes. "
             "Lowering the session limit is always allowed; raising above the "
             f"default ({DEFAULT_DDG_SESSION_BUDGET}) requires confirmation."
         ),
     )
     host.advanced_discovery_panel.setVisible(get_advanced_discovery_unlocked())
-    controls_form.addRow("", host.advanced_discovery_panel)
+    add_settings_full_width_row(controls_form, host.advanced_discovery_panel)
 
     host.discovery_searxng_url_field = QLineEdit()
     host.discovery_searxng_url_field.setPlaceholderText("https://search.example.org")
@@ -740,19 +740,30 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.discovery_searxng_url_field.editingFinished.connect(
         host._on_discovery_searxng_url_changed
     )
-    controls_form.addRow("SearXNG base URL", host.discovery_searxng_url_field)
+    host.discovery_searxng_setup_btn = QPushButton("Set up SearXNG…")
+    host.discovery_searxng_setup_btn.setToolTip(
+        "Detect local instances, test connectivity, and apply the SearXNG privacy tier."
+    )
+    host.discovery_searxng_setup_btn.clicked.connect(host._on_searxng_setup_wizard_clicked)
+    searxng_url_row = QWidget()
+    searxng_url_row_layout = QHBoxLayout(searxng_url_row)
+    searxng_url_row_layout.setContentsMargins(0, 0, 0, 0)
+    searxng_url_row_layout.setSpacing(8)
+    searxng_url_row_layout.addWidget(host.discovery_searxng_url_field, stretch=1)
+    searxng_url_row_layout.addWidget(host.discovery_searxng_setup_btn)
+    controls_form.addRow("SearXNG base URL", searxng_url_row)
 
     host.discovery_conservative_label = QLabel()
     host.discovery_conservative_label.setWordWrap(True)
     host.discovery_conservative_label.setObjectName("SettingsLogDescription")
-    controls_form.addRow("", host.discovery_conservative_label)
+    add_settings_full_width_row(controls_form, host.discovery_conservative_label)
 
     host.discovery_reset_health_btn = QPushButton("Reset discovery health")
     host.discovery_reset_health_btn.setToolTip(
         "Clear conservative pacing and challenge counters after network issues resolve."
     )
     host.discovery_reset_health_btn.clicked.connect(host._on_discovery_reset_health_clicked)
-    controls_form.addRow("", host.discovery_reset_health_btn)
+    add_settings_full_width_row(controls_form, host.discovery_reset_health_btn)
 
     layout.addWidget(controls)
 
@@ -809,8 +820,8 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
         ),
         is_dark=is_dark,
         show_configure=True,
-        configure_handler=host._on_searxng_configure_clicked,
-        configure_tooltip="Optional API key for authenticated SearXNG instances.",
+        configure_handler=host._on_searxng_setup_wizard_clicked,
+        configure_tooltip="Open the SearXNG setup wizard (detect, test, configure).",
     )
     host.discovery_searxng_configure_btn = searxng_row.configure_btn
     providers_layout.addWidget(searxng_row)
@@ -845,6 +856,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
 def build_knowledge_web_discovery_section(host, *, is_dark: bool) -> QWidget:
     """Subsection wrapper for settings layout."""
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    add_subsection_to_layout(card_layout, "Web search discovery", anchor="web_discovery")
-    card_layout.addWidget(build_web_discovery_policy_section(host, is_dark=is_dark))
+    card_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(card_form, "Web search discovery", anchor="web_discovery")
+    add_settings_full_width_row(card_form, build_web_discovery_policy_section(host, is_dark=is_dark))
     return card
