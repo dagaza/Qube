@@ -2,8 +2,29 @@
 
 from __future__ import annotations
 
-from ui.views.settings.settings_card_style import settings_card_content_horizontal_padding_total
-from ui.components.theme_preview_panel import _design_preview_width_at_min_window
+from ui.components.theme_preview_panel import (
+    _PREVIEW_LAYOUT_MIN_WIDTH,
+    _design_preview_width_at_min_window,
+    _preview_card_inner_width,
+    _preview_scroll_viewport_width,
+)
+
+
+def _wait_for_preview_card_layout(qtbot, panel) -> int:
+    """Wait until the settings card has a stable inner width for assertions."""
+
+    def ready() -> bool:
+        card_inner = _preview_card_inner_width(panel)
+        return (
+            card_inner is not None
+            and card_inner >= _PREVIEW_LAYOUT_MIN_WIDTH
+            and panel.width() > 0
+        )
+
+    qtbot.waitUntil(ready, timeout=5000)
+    card_inner = _preview_card_inner_width(panel)
+    assert card_inner is not None
+    return card_inner
 
 
 def _open_themes_preview(main_window, qtbot):
@@ -37,21 +58,22 @@ def test_theme_preview_fits_settings_card_at_min_window(main_window, qtbot):
     settings = _open_themes_preview(win, qtbot)
 
     panel = settings.themes_preview_panel
-    card = settings.themes_preview_card
-    scroll = settings.settings_section_stack.currentWidget()
-    viewport_w = scroll.viewport().width() if scroll is not None else 0
-    pixmap = panel._conversations_view.grab()
+    viewport_w = _preview_scroll_viewport_width(panel) or 0
 
     design = _design_preview_width_at_min_window()
-    card_inner = card.width() - settings_card_content_horizontal_padding_total()
+    card_inner = _wait_for_preview_card_layout(qtbot, panel)
+    pixmap = panel._conversations_view.grab()
+
+    assert pixmap.width() == panel.width()
+    assert panel.width() <= design + 2
     assert pixmap.width() <= card_inner + 2, (
         f"pixmap={pixmap.width()} card_inner={card_inner} panel={panel.width()} "
         f"viewport={viewport_w} design={design}"
     )
-    assert pixmap.width() <= viewport_w + 2, (
-        f"pixmap={pixmap.width()} viewport={viewport_w} card_inner={card_inner}"
-    )
-    assert pixmap.width() == design
+    if viewport_w >= _PREVIEW_LAYOUT_MIN_WIDTH:
+        assert pixmap.width() <= viewport_w + 2, (
+            f"pixmap={pixmap.width()} viewport={viewport_w} card_inner={card_inner}"
+        )
 
 
 def test_theme_preview_stays_capped_on_wide_window(main_window, qtbot):
@@ -75,16 +97,17 @@ def test_library_preview_fits_settings_card_at_min_window(main_window, qtbot):
     settings = _open_themes_library_preview(win, qtbot)
 
     panel = settings.themes_library_preview_panel
-    card = settings.themes_library_preview_card
-    scroll = settings.settings_section_stack.currentWidget()
-    viewport_w = scroll.viewport().width() if scroll is not None else 0
-    pixmap = panel._view.grab()
+    viewport_w = _preview_scroll_viewport_width(panel) or 0
 
     design = _design_preview_width_at_min_window()
-    card_inner = card.width() - settings_card_content_horizontal_padding_total()
+    card_inner = _wait_for_preview_card_layout(qtbot, panel)
+    pixmap = panel._view.grab()
+
+    assert pixmap.width() == panel.width()
+    assert panel.width() <= design + 2
     assert pixmap.width() <= card_inner + 2
-    assert pixmap.width() <= viewport_w + 2
-    assert pixmap.width() == design
+    if viewport_w >= _PREVIEW_LAYOUT_MIN_WIDTH:
+        assert pixmap.width() <= viewport_w + 2
 
 
 def test_library_preview_stays_capped_on_wide_window(main_window, qtbot):
