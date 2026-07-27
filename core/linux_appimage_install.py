@@ -48,7 +48,10 @@ def linux_appimage_install_plan(
 
     root = (home or Path.home()).expanduser()
     install_dir = root / ".local" / "opt" / "qube"
-    install_path = install_dir / source.name
+    if parsed is None:
+        install_path = install_dir / source.name
+    else:
+        install_path = install_dir / "Qube.AppImage"
     launcher_path = root / ".local" / "bin" / "qube-appimage"
     desktop_path = root / ".local" / "share" / "applications" / "qube-appimage.desktop"
     return LinuxAppImageInstallPlan(
@@ -59,6 +62,22 @@ def linux_appimage_install_plan(
         variant=variant,
         version=version,
     )
+
+
+def stale_appimage_install_files(plan: LinuxAppImageInstallPlan) -> list[Path]:
+    """Return older AppImages in the install dir (same folder as the active install)."""
+    install_dir = plan.install_path.parent
+    if not install_dir.is_dir():
+        return []
+
+    stale: list[Path] = []
+    target = plan.install_path.resolve()
+    for candidate in sorted(install_dir.glob("*.AppImage")):
+        resolved = candidate.resolve()
+        if resolved == target:
+            continue
+        stale.append(resolved)
+    return stale
 
 
 def render_appimage_desktop_entry(

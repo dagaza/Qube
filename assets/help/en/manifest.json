@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.21",
+  "corpus_version": "1.0.23",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -30,6 +30,7 @@
         "features.library",
         "features.settings.knowledge",
         "workflows.uninstall_qube",
+        "workflows.update_qube",
         "faq.install_linux",
         "release.whats_new"
       ]
@@ -657,6 +658,7 @@
       "related": [
         "reference.settings_sections",
         "workflows.uninstall_qube",
+        "workflows.update_qube",
         "faq.install_linux",
         "index"
       ],
@@ -896,7 +898,34 @@
       "related": [
         "index",
         "features.settings.help",
-        "workflows.knowledge_pack"
+        "workflows.knowledge_pack",
+        "workflows.update_qube"
+      ]
+    },
+    {
+      "id": "workflows.update_qube",
+      "path": "workflows/update-qube.md",
+      "title": "Update Qube",
+      "type": "workflow",
+      "tags": [
+        "update",
+        "upgrade",
+        "install",
+        "release"
+      ],
+      "synonyms": [
+        "upgrade qube",
+        "update qube",
+        "install new version",
+        "replace qube",
+        "winget upgrade",
+        "apt upgrade qube"
+      ],
+      "related": [
+        "index",
+        "faq.install_linux",
+        "workflows.uninstall_qube",
+        "release.whats_new"
       ]
     },
     {
@@ -1298,6 +1327,7 @@
       "related": [
         "index",
         "workflows.uninstall_qube",
+        "workflows.update_qube",
         "faq.hardware_tuning_internal",
         "faq.companion_wayland_linux",
         "faq.web_discovery_privacy_tiers"
@@ -1964,6 +1994,23 @@
       "doc_id": "workflows.uninstall_qube",
       "heading": "Uninstall Qube",
       "answer": "See **Uninstall Qube** in Library \u2192 Qube or **Settings \u2192 Help \u2192 Uninstall Qube**. Windows: Settings \u2192 Apps or `%LOCALAPPDATA%\\Programs\\Qube\\unins000.exe`. macOS: **Uninstall Qube.app** on the DMG or Help buttons. Linux `.deb`: **`qube-uninstall`** or **`sudo apt remove qube`**. Delete **`~/.qube`** (or **`%LOCALAPPDATA%\\Qube`**) for a full data wipe.",
+      "action_id": "open_settings_help"
+    },
+    {
+      "id": "workflows.update_qube.summary",
+      "question_patterns": [
+        "how do i update qube",
+        "upgrade qube",
+        "update qube",
+        "install new version of qube",
+        "replace qube app",
+        "update qube windows",
+        "update qube mac",
+        "update qube linux"
+      ],
+      "doc_id": "workflows.update_qube",
+      "heading": "Update Qube",
+      "answer": "Download a newer build from **GitHub Releases** or use **Settings → Help → Software updates → Check for updates**. Install over your existing copy — user data stays in **`~/.qube`** (macOS/Linux) or **`%LOCALAPPDATA%\\Qube`** (Windows). **Windows:** run **`Qube-<version>-Setup.exe`** or **`winget upgrade -e --id dagaza.Qube`**. **macOS:** replace **`Qube.app`** from the DMG. **Linux `.deb`:** **`sudo apt install ./qube_….deb`**. **AppImage + install script:** re-run **`install_appimage.sh`** (installs **`~/.local/opt/qube/Qube.AppImage`**). See **Update Qube** in Library → Qube.",
       "action_id": "open_settings_help"
     },
     {

@@ -72,7 +72,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
    - Sync version into `core/__version__.py` and `pyproject.toml`
    - Run pytest
    - Build PyInstaller output and Inno Setup installer
-   - Smoke-test dist EXE, silent install, installed EXE launch, and uninstall
+   - Smoke-test dist EXE, **installer upgrade**, silent install, installed EXE launch, and uninstall
    - Compute SHA256 and render WinGet manifests and Chocolatey package
    - Create a GitHub Release with `Qube-<version>-Setup.exe`
    - Smoke-test Chocolatey install/uninstall (after release is published)
@@ -98,6 +98,10 @@ Users install or upgrade with:
 winget install -e --id dagaza.Qube
 winget upgrade -e --id dagaza.Qube
 ```
+
+Direct download: run the new **`Qube-<version>-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.
+
+In-app: **Settings → Help → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
 
 ## Chocolatey
 

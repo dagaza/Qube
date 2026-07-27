@@ -87,7 +87,15 @@ When in doubt, start with **cpu** or **vulkan** — you can switch later (AppIma
 
 ## User data
 
-All variants store data under **`~/.qube/`** (settings, models, Library, memory).
+All variants store data under **`~/.qube/`** (settings, models, Library, memory). Upgrading the app does not remove this folder.
+
+## Updating
+
+See **[Update Qube](workflows/update-qube.md)** for full steps. Summary:
+
+- **`.deb`:** `sudo apt install ./qube_<new>_amd64.deb` (or matching vulkan/cuda package)
+- **AppImage + install script:** re-run `bash scripts/linux/install_appimage.sh ./Qube-<new>-x86_64-<variant>.AppImage` — installs to `~/.local/opt/qube/Qube.AppImage` and removes older AppImage files there
+- **Portable AppImage:** download and run the new file; delete the old one when done
 
 ## Uninstall
 
@@ -102,6 +110,7 @@ Developers can still [install from source](https://github.com/dagaza/Qube/blob/m
 
 ## Related
 
+- [Update Qube](workflows/update-qube.md)
 - [Uninstall Qube](workflows/uninstall-qube.md)
 - [Hardware tuning (Internal Engine)](hardware-tuning-internal-engine.md) — GPU layers after install
 - [Companion on Wayland (Linux)](companion-wayland-linux.md) — floating orb on Linux

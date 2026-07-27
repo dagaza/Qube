@@ -106,9 +106,44 @@ jobs:
             Select-Object -First 1
           $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
-          $setup = (Get-Item "installer\output\Qube-*-Setup.exe").FullName
+          $setup = (Resolve-Path "installer\output\Qube-${{ steps.version.outputs.version }}-Setup.exe").Path
           & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
             /tr http://timestamp.digicert.com /td SHA256 $setup
+
+      - name: Build prior-version installer for upgrade smoke test
+        id: old_installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $parts = $version -split '\.'
+          if ($parts.Count -lt 3) { throw "Expected semver MAJOR.MINOR.PATCH, got $version" }
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = [int]$parts[2]
+          if ($patch -gt 0) {
+            $oldVersion = "$major.$minor.$($patch - 1)"
+          } elseif ($minor -gt 0) {
+            $oldVersion = "$major.$($minor - 1).9"
+          } elseif ($major -gt 0) {
+            $oldVersion = "$($major - 1).9.9"
+          } else {
+            $oldVersion = "0.0.0"
+          }
+          echo "old_version=$oldVersion" >> $env:GITHUB_OUTPUT
+          iscc /DMyAppVersion=$oldVersion installer\qube.iss
+
+      - name: Smoke test installer upgrade
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $oldVersion = "${{ steps.old_installer.outputs.old_version }}"
+          $oldSetup = (Get-Item "installer\output\Qube-$oldVersion-Setup.exe").FullName
+          $newSetup = (Get-Item "installer\output\Qube-$version-Setup.exe").FullName
+          scripts/release/smoke_upgrade.ps1 `
+            -OldSetup $oldSetup `
+            -NewSetup $newSetup `
+            -ExpectedOldVersion $oldVersion `
+            -ExpectedNewVersion $version
 
       - name: Silent install, launch, and uninstall
         shell: pwsh
@@ -381,6 +416,8 @@ jobs:
             **SHA256 (Windows installer):** `${{ needs.build.outputs.installer_hash }}`
 
             **Silent install (Windows):** `${{ needs.build.outputs.installer_name }} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+
+            **Update an existing install:** run the new **`Qube-${{ needs.build.outputs.version }}-Setup.exe`** (Windows), replace **`Qube.app`** from the DMG (macOS), or **`sudo apt install ./qube_….deb`** / re-run **`install_appimage.sh`** (Linux). User data is kept — see [Update Qube](https://github.com/dagaza/Qube/blob/main/docs/user/update-qube.md).
 
   winget:
     needs: [build, release]

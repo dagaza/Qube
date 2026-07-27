@@ -6,8 +6,10 @@ Controls listed top-to-bottom for **Settings → Advanced**.
 
 - **Clear log**
 
-### Diagnostic logs
+### License
 
+- **Import license file**
+- **Remove cached license**
 
 ### Application log
 

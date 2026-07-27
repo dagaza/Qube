@@ -36,9 +36,10 @@ def test_stage_deb_tree_writes_expected_layout(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "repo_root", lambda: tmp_path)
 
     staging = tmp_path / "staging"
-    mod.stage_deb_tree(staging)
+    mod.stage_deb_tree(staging, variant="vulkan")
 
     assert (staging / "opt" / "qube" / "Qube").is_file()
+    assert (staging / "opt" / "qube" / ".qube_linux_variant").read_text(encoding="utf-8").strip() == "vulkan"
     assert (staging / "opt" / "qube" / "uninstall" / "uninstall.sh").is_file()
     assert (staging / "usr" / "bin" / "qube").is_file()
     assert (staging / "usr" / "bin" / "qube-uninstall").is_file()
@@ -63,8 +64,9 @@ def test_stage_appdir_writes_apprun_and_bundle(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "repo_root", lambda: tmp_path)
 
     appdir = tmp_path / "Qube.AppDir"
-    mod.stage_appdir(appdir)
+    mod.stage_appdir(appdir, variant="cuda")
 
     assert (appdir / "AppRun").exists()
     assert (appdir / "qube.desktop").exists()
     assert (appdir / "usr" / "bin" / "Qube" / "Qube").is_file()
+    assert (appdir / "usr" / "bin" / "Qube" / ".qube_linux_variant").read_text(encoding="utf-8").strip() == "cuda"

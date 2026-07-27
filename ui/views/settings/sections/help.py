@@ -278,6 +278,32 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     layout.addWidget(wakeword_card)
 
+    # --- Software updates card ---
+    updates_card, updates_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    updates_form = add_settings_card_form(updates_card_layout)
+    add_subsection_to_form(updates_form, "Software updates", anchor="software-updates")
+
+    from core.__version__ import __version__
+
+    host.software_updates_hint_lbl = make_settings_hint(
+        f"You are running Qube {__version__}. Check GitHub Releases for a newer build, "
+        "or open the update guide in Library → Qube."
+    )
+
+    host.check_for_updates_btn = QPushButton("Check for updates")
+    apply_brand_primary(host.check_for_updates_btn, icon_name="fa5s.sync-alt")
+    host.check_for_updates_btn.setToolTip(
+        "Contact GitHub Releases and compare with your installed version."
+    )
+    host.check_for_updates_btn.clicked.connect(host._on_check_for_updates_clicked)
+
+    _add_help_action_to_form(
+        updates_form,
+        host.software_updates_hint_lbl,
+        host.check_for_updates_btn,
+    )
+    layout.addWidget(updates_card)
+
     uninstall_card, uninstall_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     uninstall_form = add_settings_card_form(uninstall_card_layout)
     add_subsection_to_form(uninstall_form, "Uninstall Qube", anchor="uninstall-qube")

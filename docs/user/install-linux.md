@@ -50,7 +50,7 @@ See [system requirements](system-requirements.md) for model and storage guidance
    qube-appimage
    ```
 
-   This copies the AppImage to `~/.local/opt/qube/`, adds `~/.local/bin/qube-appimage`, and registers a `.desktop` launcher.
+   This copies the AppImage to `~/.local/opt/qube/Qube.AppImage`, adds `~/.local/bin/qube-appimage`, and registers a `.desktop` launcher.
 
 On systems **without FUSE**, set:
 
@@ -60,6 +60,10 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 ```
 
 User data is stored under `~/.qube/` (shared across variants).
+
+### Updating
+
+To upgrade an existing install, see **[Update Qube](update-qube.md)**. In short: run **`sudo apt install ./qube_<new>_amd64.deb`** for `.deb`, or re-run **`install_appimage.sh`** for AppImage menu integration.
 
 ---
 
@@ -109,6 +113,7 @@ Revert `core/__version__.py` and `pyproject.toml` after dry runs if needed.
 
 ## Related
 
+- [Update Qube](update-qube.md)
 - [Install from source](install-from-source.md)
 - [Uninstall Qube](uninstall.md)
 - [Releasing](../releasing.md)

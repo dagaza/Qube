@@ -26,6 +26,10 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Suggest models for my hardware in Model Manager**
 
+### Software updates
+
+- **Check for updates**
+
 ### Uninstall Qube
 
 - **Uninstall Qube and all data…**
