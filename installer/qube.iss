@@ -57,3 +57,21 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+const
+  UninstallRegKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+
+function InitializeSetup(): Boolean;
+var
+  InstalledVersion: String;
+begin
+  Result := True;
+  if RegQueryStringValue(HKCU, UninstallRegKey, 'DisplayVersion', InstalledVersion) then
+  begin
+    WizardForm.WelcomeLabel2.Caption :=
+      'Setup will update Qube from version ' + InstalledVersion +
+      ' to {#MyAppVersion}.' + #13#10 + #13#10 +
+      'Your models, Library, memory, and settings in %LOCALAPPDATA%\Qube are kept.';
+  end;
+end;

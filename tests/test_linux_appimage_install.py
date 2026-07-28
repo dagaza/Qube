@@ -11,6 +11,7 @@ from core.linux_appimage_install import (
     linux_appimage_install_plan,
     parse_appimage_filename,
     render_appimage_desktop_entry,
+    stale_appimage_install_files,
 )
 
 
@@ -27,7 +28,7 @@ class LinuxAppImageInstallTests(unittest.TestCase):
         self.assertEqual(plan.variant, "cuda")
         self.assertEqual(
             plan.install_path,
-            Path("/home/tester/.local/opt/qube/Qube-1.0.0-x86_64-cuda.AppImage"),
+            Path("/home/tester/.local/opt/qube/Qube.AppImage"),
         )
         self.assertEqual(plan.launcher_path, Path("/home/tester/.local/bin/qube-appimage"))
 
@@ -39,6 +40,28 @@ class LinuxAppImageInstallTests(unittest.TestCase):
         desktop = render_appimage_desktop_entry(plan)
         self.assertIn("APPIMAGE_EXTRACT_AND_RUN=1", desktop)
         self.assertIn("StartupWMClass=Qube", desktop)
+
+    def test_stale_appimage_install_files_remove_other_appimages(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            install_dir = home / ".local" / "opt" / "qube"
+            install_dir.mkdir(parents=True)
+            old_release = install_dir / "Qube-1.0.0-x86_64-cpu.AppImage"
+            other = install_dir / "Other.AppImage"
+            old_release.write_bytes(b"old")
+            other.write_bytes(b"other")
+
+            plan = linux_appimage_install_plan(
+                "Qube-1.1.0-x86_64-cpu.AppImage",
+                home=home,
+            )
+            stale = stale_appimage_install_files(plan)
+            self.assertEqual(
+                sorted(stale),
+                sorted([old_release.resolve(), other.resolve()]),
+            )
 
     @unittest.skipUnless(
         sys.platform.startswith("linux") and shutil.which("bash"),

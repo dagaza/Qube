@@ -34,6 +34,7 @@ sys.path.insert(0, sys.argv[1])
 from core.linux_appimage_install import (
     linux_appimage_install_plan,
     render_appimage_desktop_entry,
+    stale_appimage_install_files,
 )
 
 plan = linux_appimage_install_plan(sys.argv[2])
@@ -49,6 +50,8 @@ print(plan.install_path)
 print(plan.launcher_path)
 print(plan.desktop_path)
 print(desktop_tmp)
+for stale in stale_appimage_install_files(plan):
+    print(stale)
 PY
 )
 
@@ -56,6 +59,10 @@ INSTALL_PATH="${_PLAN_LINES[0]}"
 LAUNCHER_PATH="${_PLAN_LINES[1]}"
 DESKTOP_PATH="${_PLAN_LINES[2]}"
 DESKTOP_TMP="${_PLAN_LINES[3]}"
+STALE_PATHS=()
+if ((${#_PLAN_LINES[@]} > 4)); then
+  STALE_PATHS=("${_PLAN_LINES[@]:4}")
+fi
 
 cleanup() {
   rm -f "$DESKTOP_TMP"
@@ -80,6 +87,14 @@ run mkdir -p "$(dirname "$INSTALL_PATH")" "$(dirname "$LAUNCHER_PATH")" "$(dirna
 run cp -f "$APPIMAGE" "$INSTALL_PATH"
 run chmod +x "$INSTALL_PATH"
 run ln -sfn "$INSTALL_PATH" "$LAUNCHER_PATH"
+
+if ((${#STALE_PATHS[@]} > 0)); then
+  echo "Removing older AppImage(s) for the same variant:"
+  for stale in "${STALE_PATHS[@]}"; do
+    echo "  $stale"
+    run rm -f "$stale"
+  done
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "would write desktop entry: $DESKTOP_PATH"

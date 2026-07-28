@@ -101,6 +101,7 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - **Recommended setup**
 - **Dismiss**
 - **Configure**
+- **Set up SearXNG…**
 
 ### My knowledge
 

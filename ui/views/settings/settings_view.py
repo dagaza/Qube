@@ -156,6 +156,7 @@ from ui.views.settings.handlers import (
     StylingMixin,
     SupportHandlersMixin,
     ThemesHandlersMixin,
+    UpdateHandlersMixin,
     VoiceHandlersMixin,
 )
 
@@ -199,6 +200,7 @@ class SettingsView(
     DiagnosticsHandlersMixin,
     PersistenceHandlersMixin,
     SupportHandlersMixin,
+    UpdateHandlersMixin,
     UninstallHandlersMixin,
     ThemesHandlersMixin,
 ):

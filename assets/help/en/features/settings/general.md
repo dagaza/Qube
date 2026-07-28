@@ -37,6 +37,10 @@ Controls listed top-to-bottom for **Settings → General**.
 - **British English**
 - **American English**
 
+### Personalization
+
+- **Default units**
+
 - **Reset to default configuration** — restores all settings on this page
 
 ## Related
