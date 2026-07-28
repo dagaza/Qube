@@ -92,7 +92,7 @@ Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. 
 
 | Platform | Install |
 |----------|---------|
-| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** download `Qube-*-vulkan-Setup.exe` (AMD/Intel) or `Qube-*-cuda-Setup.exe` (NVIDIA) from Releases |
+| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** `winget install -e --id dagaza.Qube.Vulkan` (AMD/Intel) or `dagaza.Qube.CUDA` (NVIDIA) · or download from Releases |
 | **macOS** | **`brew tap dagaza/qube`** then **`brew install --cask qube`** · or download the **`.dmg`** (Apple Silicon or Intel) from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
 | **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, or **`.tar.gz`** (amd64) — [Install on Linux](docs/user/install-linux.md) |
 
