@@ -186,7 +186,11 @@ class CompanionHandlersMixin:
             "companion_verbal_test_btn",
         ):
             widget = getattr(self, name, None)
-            if widget is not None:
+            if widget is None:
+                continue
+            if isinstance(widget, QCheckBox):
+                self._set_settings_checkbox_enabled(widget, companion_on)
+            else:
                 widget.setEnabled(companion_on)
         for selector_name in (
             "companion_expression_freedom_selector",
@@ -530,7 +534,7 @@ class CompanionHandlersMixin:
 
         qube_selected = _cs.get_companion_persona() == CompanionPersonaId.QUBE
         for cb in getattr(self, "companion_cube_style_cbs", {}).values():
-            cb.setEnabled(qube_selected)
+            self._set_settings_checkbox_enabled(cb, qube_selected)
         label = getattr(self, "_companion_cube_style_lbl", None)
         if label is not None:
             label.setEnabled(qube_selected)

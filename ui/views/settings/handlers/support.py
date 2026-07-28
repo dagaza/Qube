@@ -50,7 +50,10 @@ class SupportHandlersMixin:
         from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 
         is_dark = coalesce_settings_is_dark(self)
+        built_sections = getattr(self, "_sections_built", None)
         for sec_def in SETTINGS_SECTIONS:
+            if built_sections is not None and sec_def.id not in built_sections:
+                continue
             builder = builders.get(sec_def.id)
             stack_idx = self._section_stack_index_by_id.get(sec_def.id)
             if builder is None or stack_idx is None:
@@ -58,18 +61,27 @@ class SupportHandlersMixin:
             scroll = self.settings_section_stack.widget(stack_idx)
             if scroll is None:
                 continue
-            page_content = scroll.widget()
-            if page_content is None:
-                continue
-            layout = page_content.layout()
-            if layout is None or layout.count() < 2:
-                continue
-            old_content = layout.itemAt(1).widget()
-            if old_content is not None:
-                layout.removeWidget(old_content)
-                old_content.deleteLater()
             new_content = builder(self, is_dark=is_dark)
-            layout.insertWidget(1, new_content)
+            if hasattr(self, "_mount_settings_section_content"):
+                self._mount_settings_section_content(sec_def.id, new_content)
+            else:
+                page_content = scroll.widget()
+                if page_content is None:
+                    continue
+                layout = page_content.layout()
+                if layout is None or layout.count() < 1:
+                    continue
+                old_content = layout.itemAt(0).widget()
+                if old_content is not None:
+                    layout.removeWidget(old_content)
+                    old_content.deleteLater()
+                layout.insertWidget(0, new_content)
+            if hasattr(self, "_index_section_for_search"):
+                self._index_section_for_search(sec_def, new_content)
+        if hasattr(self, "collect_theme_buttons"):
+            from ui.views.settings.widgets import collect_theme_buttons
+
+            collect_theme_buttons(self)
         if hasattr(self, "_apply_spinbox_style"):
             self._apply_spinbox_style(is_dark)
         if hasattr(self, "_refresh_knowledge_access_ui"):

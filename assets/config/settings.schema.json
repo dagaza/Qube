@@ -11,6 +11,53 @@
     "enum": ["british", "american"],
     "description": "Application UI language variant (British English or American English spelling)."
   },
+  "qube.ui.theme.mode": {
+    "type": "string",
+    "default": "dark",
+    "enum": ["dark", "light"],
+    "description": "Global UI theme mode (dark or light)."
+  },
+  "qube.ui.color_scheme.id": {
+    "type": "string",
+    "default": "builtin.catppuccin-mocha",
+    "description": "Active color scheme id (built-in preset or user scheme under ~/.qube/themes/)."
+  },
+  "qube.ui.theme.appearance": {
+    "type": "string",
+    "default": "dark",
+    "enum": ["dark", "light", "follow_system"],
+    "description": "Theme appearance preference (dark, light, or follow_system). follow_system matches the OS and restores the last theme used for each polarity."
+  },
+  "qube.ui.color_scheme.last.dark": {
+    "type": "string",
+    "default": "",
+    "description": "Last applied dark color scheme id (follow-system prep)."
+  },
+  "qube.ui.color_scheme.last.light": {
+    "type": "string",
+    "default": "",
+    "description": "Last applied light color scheme id (follow-system prep)."
+  },
+  "qube.ui.surface_profiles.active": {
+    "type": "string",
+    "default": "",
+    "description": "JSON map of applied chat/library wallpaper profiles (surface id → wallpaper + overlay)."
+  },
+  "qube.ui.surface_profiles.draft": {
+    "type": "string",
+    "default": "",
+    "description": "JSON map of draft wallpaper profiles pending Apply in Settings → Themes."
+  },
+  "qube.ui.chat.assistant_message_background": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, assistant replies in chat use an elevated background card for readability over wallpapers."
+  },
+  "qube.ui.library.transcript_background": {
+    "type": "boolean",
+    "default": false,
+    "description": "When enabled, library document preview text uses an elevated background card for readability over wallpapers."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,
@@ -166,6 +213,11 @@
     "type": "boolean",
     "default": false,
     "description": "When true, shows advanced AI & Models chat template override for the native engine."
+  },
+  "qube.settings.advanced_memory_unlocked": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, shows advanced Memory settings including promotion and consolidation toggles."
   },
   "qube.diagnostics.routing_debug_log_enabled": {
     "type": "boolean",
@@ -552,7 +604,7 @@
   },
   "qube.companion.enabled": {
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Show the floating desktop companion when Qube is tray-hidden."
   },
   "qube.companion.showWhenTrayHidden": {

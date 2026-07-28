@@ -104,6 +104,7 @@ Artifacts per run (under `eval/runs/<run_id>/`):
 | `router_corpus/` | Labeled test inputs — source of truth |
 | `fixtures/` | Seeded RAG/memory content for `--eval-fixtures` |
 | `eval/runs/shadow_policy_baseline_v1/` | **Canonical regression baseline** (full-stack shadow eval) |
+| `eval/runs/router_no_embeddings_v1/` | **Fast router regression baseline** (`--no-embeddings`, CI gate) |
 
 **What stays local** (gitignored under `eval/runs/*`)
 

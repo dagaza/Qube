@@ -22,11 +22,67 @@ from core.knowledge.ui_adapter import (
     source_provenance_metadata_parts,
     source_type_label_for_row,
 )
+from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_BODY_LABEL,
+    PRESTIGE_CITATION_ROW,
+    PRESTIGE_CITATIONS_CONTAINER,
+    PRESTIGE_DIALOG_CANCEL,
+    PRESTIGE_DIALOG_CONFIRM,
+    PRESTIGE_DIALOG_CONTAINER,
+    PRESTIGE_DIALOG_INPUT,
+    PRESTIGE_DIALOG_MESSAGE,
+    PRESTIGE_DIALOG_TITLE,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_LINK_LABEL,
+    PRESTIGE_MUTED_LABEL,
+    PRESTIGE_SOURCE_CONTAINER,
+    PRESTIGE_TEXT_VIEW,
+    prestige_accent_colors,
+)
+
+_PRESTIGE_BTN_BASE = """
+    QPushButton {
+        padding: 15px 15px;
+        min-height: 30px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 12px;
+        letter-spacing: 1px;
+    }
+"""
 
 
 def _resolve_is_dark_from_parent(parent) -> bool:
     w = parent.window() if parent else None
     return getattr(w, "_is_dark_theme", True) if w else True
+
+
+def _resolve_latest_routing_record(parent) -> dict | None:
+    """Best-effort routing debug record for the most recent chat turn."""
+    import dataclasses
+
+    host = parent.window() if parent else None
+    if host is None:
+        return None
+    worker = getattr(host, "_llm_worker", None)
+    if worker is None:
+        return None
+    buf = getattr(worker, "routing_debug_buffer", None)
+    if buf is None:
+        return None
+    rec = buf.latest()
+    if rec is None:
+        return None
+    return dataclasses.asdict(rec)
+
+
+def _dialog_theme(parent, is_dark: bool | None):
+    if is_dark is None:
+        is_dark = _resolve_is_dark_from_parent(parent)
+    return view_resolved_theme(parent, is_dark=is_dark)
 
 
 def _resolve_host_window(parent):
@@ -165,18 +221,8 @@ class PrestigeDialog(QDialog):
             self.setMinimumWidth(max(280, int(min_width)))
 
         self.result_text = None
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        tone_key = str(tone or "default").lower().strip()
-        if tone_key == "danger":
-            accent = "#dc2626"
-            confirm_fg = "#f8fafc"
-        elif "Delete" in title:
-            accent = "#f38ba8"
-            confirm_fg = "#11111b"
-        else:
-            accent = "#89b4fa"
-            confirm_fg = "#11111b"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
+        theme = _dialog_theme(parent, is_dark)
+        accent, confirm_fg = prestige_accent_colors(theme, tone=tone, title=str(title))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -185,14 +231,7 @@ class PrestigeDialog(QDialog):
         self.container = QFrame()
         self.container.setObjectName("DialogContainer")
         self.container.setStyleSheet(
-            f"""
-            QFrame#DialogContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-            QLabel {{ color: {fg}; border: none; background: transparent; }}
-        """
+            theme.style(PRESTIGE_DIALOG_CONTAINER, accent=accent, object_name="DialogContainer")
         )
 
         c_layout = QVBoxLayout(self.container)
@@ -200,12 +239,11 @@ class PrestigeDialog(QDialog):
         c_layout.setSpacing(20)
 
         if fixed_w is not None:
-            # Outer layout margins (10px) + container side padding (30px each).
             self.container.setFixedWidth(fixed_w - 20)
             message_max_w = fixed_w - 80
 
         t_lbl = QLabel(title.upper())
-        t_lbl.setStyleSheet(f"color: {accent}; font-weight: bold; font-size: 12px; letter-spacing: 2px;")
+        t_lbl.setStyleSheet(theme.style(PRESTIGE_DIALOG_TITLE, accent=accent))
 
         m_lbl = QLabel(message)
         m_lbl.setWordWrap(True)
@@ -213,7 +251,7 @@ class PrestigeDialog(QDialog):
         m_lbl.setMinimumWidth(0)
         if fixed_w is not None:
             m_lbl.setMaximumWidth(message_max_w)
-        m_lbl.setStyleSheet(f"color: {fg}; font-size: 15px; line-height: 1.4;")
+        m_lbl.setStyleSheet(theme.style(PRESTIGE_DIALOG_MESSAGE))
 
         c_layout.addWidget(t_lbl)
         c_layout.addWidget(m_lbl)
@@ -222,18 +260,7 @@ class PrestigeDialog(QDialog):
         if is_input:
             self.field = QLineEdit(default_text)
             self.field.setMinimumHeight(45)
-            self.field.setStyleSheet(
-                f"""
-                QLineEdit {{
-                    background: {'#313244' if is_dark else '#f8fafc'};
-                    color: {fg};
-                    border-radius: 10px;
-                    padding: 10px 15px;
-                    border: 1px solid {accent};
-                    font-size: 14px;
-                }}
-            """
-            )
+            self.field.setStyleSheet(theme.style(PRESTIGE_DIALOG_INPUT, accent=accent))
             c_layout.addWidget(self.field)
             self.field.setFocus()
 
@@ -243,44 +270,16 @@ class PrestigeDialog(QDialog):
         cancel_btn = QPushButton(cancel_text)
         con_b = QPushButton(confirm_text)
 
-        btn_style = """
-            QPushButton {
-                padding: 15px 15px;
-                min-height: 30px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-            }
-        """
-
         cancel_btn.setStyleSheet(
-            btn_style
-            + f"""
-            QPushButton {{
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """
+            theme.style(PRESTIGE_DIALOG_CANCEL, btn_base=_PRESTIGE_BTN_BASE)
         )
-
         con_b.setStyleSheet(
-            btn_style
-            + f"""
-            QPushButton {{
-                background: {accent};
-                color: {confirm_fg};
-                border: none;
-            }}
-            QPushButton:hover {{
-                background: {accent};
-                opacity: 0.9;
-            }}
-        """
+            theme.style(
+                PRESTIGE_DIALOG_CONFIRM,
+                btn_base=_PRESTIGE_BTN_BASE,
+                accent=accent,
+                confirm_fg=confirm_fg,
+            )
         )
 
         cancel_btn.clicked.connect(self.reject)
@@ -322,8 +321,8 @@ class SourcePreviewer(QDialog):
 
     def __init__(self, filename: str, content: str, parent=None, *, is_dark: bool | None = None):
         super().__init__(parent)
-        if is_dark is None:
-            is_dark = _resolve_is_dark_from_parent(parent)
+        theme = _dialog_theme(parent, is_dark)
+        accent = theme.link
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -331,24 +330,13 @@ class SourcePreviewer(QDialog):
         self.setMinimumSize(600, 500)
         self.resize(720, 560)
 
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-        surface = "#313244" if is_dark else "#f8fafc"
-
         outer = QVBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
 
         container = QFrame()
         container.setObjectName("SourcePreviewContainer")
         container.setStyleSheet(
-            f"""
-            QFrame#SourcePreviewContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-        """
+            theme.style(PRESTIGE_SOURCE_CONTAINER, accent=accent, object_name="SourcePreviewContainer")
         )
 
         inner = QVBoxLayout(container)
@@ -357,12 +345,14 @@ class SourcePreviewer(QDialog):
 
         header = QLabel("SOURCE PREVIEW")
         header.setStyleSheet(
-            f"color: {accent}; font-weight: bold; font-size: 11px; letter-spacing: 2px;"
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=accent, font_size="11px", letter_spacing="2px")
         )
         title = QLabel(filename)
         title.setWordWrap(True)
         title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        title.setStyleSheet(f"color: {fg}; font-size: 16px; font-weight: bold;")
+        title.setStyleSheet(
+            theme.style(PRESTIGE_BODY_LABEL, font_size="16px", font_weight="bold")
+        )
 
         inner.addWidget(header)
         inner.addWidget(title)
@@ -372,41 +362,13 @@ class SourcePreviewer(QDialog):
         self.viewer.setPlainText(content)
         self.viewer.setMinimumHeight(280)
         self.viewer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.viewer.setStyleSheet(
-            f"""
-            QTextEdit {{
-                background: {surface};
-                color: {fg};
-                border: 1px solid {border};
-                border-radius: 12px;
-                padding: 14px 16px;
-                font-size: 14px;
-                line-height: 1.55;
-            }}
-        """
-        )
+        self.viewer.setStyleSheet(theme.style(PRESTIGE_TEXT_VIEW))
         inner.addWidget(self.viewer, stretch=1)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
-        btn_style = f"""
-            QPushButton {{
-                padding: 12px 22px;
-                min-height: 32px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """
-        close_btn.setStyleSheet(btn_style)
+        close_btn.setStyleSheet(theme.style(PRESTIGE_GHOST_BUTTON))
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)
         inner.addLayout(btn_row)
@@ -499,8 +461,8 @@ class CitationSourcesDialog(QDialog):
         retrieval_db=None,
     ):
         super().__init__(parent)
-        if is_dark is None:
-            is_dark = _resolve_is_dark_from_parent(parent)
+        theme = _dialog_theme(parent, is_dark)
+        accent = theme.link
 
         self._on_open_source = on_open_source
         self._research_map_graph = research_map_graph
@@ -517,26 +479,17 @@ class CitationSourcesDialog(QDialog):
         self.setMinimumSize(_CITATION_SOURCES_MIN_W, _CITATION_SOURCES_MIN_H)
         self.resize(_CITATION_SOURCES_DEFAULT_W, _CITATION_SOURCES_DEFAULT_H)
 
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
-        surface = "#313244" if is_dark else "#f8fafc"
-        muted = "#a6adc8" if is_dark else "#64748b"
-        row_hover = "rgba(255, 255, 255, 0.06)" if is_dark else "rgba(0, 0, 0, 0.04)"
-
         outer = QVBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
 
         container = QFrame()
         container.setObjectName("CitationSourcesContainer")
         container.setStyleSheet(
-            f"""
-            QFrame#CitationSourcesContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-        """
+            theme.style(
+                PRESTIGE_CITATIONS_CONTAINER,
+                accent=accent,
+                object_name="CitationSourcesContainer",
+            )
         )
 
         inner = QVBoxLayout(container)
@@ -545,7 +498,7 @@ class CitationSourcesDialog(QDialog):
 
         header = QLabel("SOURCES")
         header.setStyleSheet(
-            f"color: {accent}; font-weight: bold; font-size: 11px; letter-spacing: 2px;"
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=accent, font_size="11px", letter_spacing="2px")
         )
         count = len(src_list)
         subtitle = QLabel(
@@ -554,7 +507,7 @@ class CitationSourcesDialog(QDialog):
             else "No sources were attached to this answer."
         )
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet(f"color: {muted}; font-size: 13px;")
+        subtitle.setStyleSheet(theme.style(PRESTIGE_MUTED_LABEL, font_size="13px"))
 
         inner.addWidget(header)
         inner.addWidget(subtitle)
@@ -563,7 +516,12 @@ class CitationSourcesDialog(QDialog):
         if why_summary:
             why_hdr = QLabel("WHY THESE SOURCES")
             why_hdr.setStyleSheet(
-                f"color: {accent}; font-weight: bold; font-size: 10px; letter-spacing: 1.5px;"
+                theme.style(
+                    PRESTIGE_ACCENT_LABEL,
+                    accent=accent,
+                    font_size="10px",
+                    letter_spacing="1.5px",
+                )
             )
             why_body = QLabel(why_summary.replace("\n", "\n"))
             why_body.setWordWrap(True)
@@ -571,7 +529,8 @@ class CitationSourcesDialog(QDialog):
                 Qt.TextInteractionFlag.TextSelectableByMouse
             )
             why_body.setStyleSheet(
-                f"color: {fg}; font-size: 12px; line-height: 1.45; padding: 8px 0;"
+                theme.style(PRESTIGE_BODY_LABEL, font_size="12px", font_weight="400")
+                + " line-height: 1.45; padding: 8px 0;"
             )
             inner.addWidget(why_hdr)
             inner.addWidget(why_body)
@@ -597,19 +556,7 @@ class CitationSourcesDialog(QDialog):
             )
             row.setObjectName("CitationSourceRow")
             row.setCursor(Qt.CursorShape.PointingHandCursor)
-            row.setStyleSheet(
-                f"""
-                QFrame#CitationSourceRow {{
-                    background: {surface};
-                    border: 1px solid {border};
-                    border-radius: 12px;
-                }}
-                QFrame#CitationSourceRow:hover {{
-                    background: {row_hover};
-                }}
-                QLabel {{ background: transparent; border: none; }}
-            """
-            )
+            row.setStyleSheet(theme.style(PRESTIGE_CITATION_ROW))
             row_layout = QVBoxLayout(row)
             row_layout.setContentsMargins(16, 14, 16, 14)
             row_layout.setSpacing(8)
@@ -618,7 +565,7 @@ class CitationSourcesDialog(QDialog):
             title_row.setSpacing(10)
             cite_lbl = QLabel(_source_cite_label(src))
             cite_lbl.setStyleSheet(
-                f"color: {accent}; font-weight: bold; font-size: 13px;"
+                theme.style(PRESTIGE_ACCENT_LABEL, accent=accent, font_size="13px", letter_spacing="0px")
             )
             name = str(src.get("filename") or "Untitled source").strip()
             title_lbl = QLabel(name)
@@ -626,9 +573,7 @@ class CitationSourcesDialog(QDialog):
             title_lbl.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
             )
-            title_lbl.setStyleSheet(
-                f"color: {fg}; font-size: 14px; font-weight: 600;"
-            )
+            title_lbl.setStyleSheet(theme.style(PRESTIGE_BODY_LABEL, font_size="14px"))
             title_row.addWidget(cite_lbl, 0)
             title_row.addWidget(title_lbl, 1)
             row_layout.addLayout(title_row)
@@ -636,7 +581,8 @@ class CitationSourcesDialog(QDialog):
             type_lbl = QLabel(_source_type_label(src))
             type_lbl.setWordWrap(True)
             type_lbl.setStyleSheet(
-                f"color: {muted}; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;"
+                theme.style(PRESTIGE_MUTED_LABEL, font_size="11px", font_weight="600")
+                + " letter-spacing: 0.5px;"
             )
             row_layout.addWidget(type_lbl)
 
@@ -645,7 +591,7 @@ class CitationSourcesDialog(QDialog):
                 meta_lbl = QLabel(meta_line)
                 meta_lbl.setWordWrap(True)
                 meta_lbl.setStyleSheet(
-                    f"color: {muted}; font-size: 11px; font-weight: 600;"
+                    theme.style(PRESTIGE_MUTED_LABEL, font_size="11px", font_weight="600")
                 )
                 row_layout.addWidget(meta_lbl)
 
@@ -661,15 +607,14 @@ class CitationSourcesDialog(QDialog):
                 body_lbl = QLabel(preview)
                 body_lbl.setWordWrap(True)
                 body_lbl.setStyleSheet(
-                    f"color: {muted}; font-size: 13px; line-height: 1.45;"
+                    theme.style(PRESTIGE_MUTED_LABEL, font_size="13px")
+                    + " line-height: 1.45;"
                 )
                 row_layout.addWidget(body_lbl)
             elif url:
                 url_lbl = QLabel(url)
                 url_lbl.setWordWrap(True)
-                url_lbl.setStyleSheet(
-                    f"color: {accent}; font-size: 12px;"
-                )
+                url_lbl.setStyleSheet(theme.style(PRESTIGE_LINK_LABEL))
                 row_layout.addWidget(url_lbl)
 
             list_layout.addWidget(row)
@@ -679,22 +624,7 @@ class CitationSourcesDialog(QDialog):
         inner.addWidget(scroll, stretch=1)
 
         btn_row = QHBoxLayout()
-        export_style = f"""
-            QPushButton {{
-                padding: 10px 14px;
-                min-height: 28px;
-                border-radius: 10px;
-                font-weight: bold;
-                font-size: 11px;
-                letter-spacing: 0.5px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """
+        export_style = theme.style(PRESTIGE_GHOST_BUTTON, compact=True)
         if src_list:
             from PyQt6.QtWidgets import QApplication
 
@@ -736,35 +666,19 @@ class CitationSourcesDialog(QDialog):
                     preset_id = trace.get("preset_id")
                 open_retrieval_inspector_dialog(
                     self,
-                    is_dark=is_dark,
+                    is_dark=theme.is_dark,
                     trace=trace,
                     record=record,
                     preset_id=preset_id,
                     db=retrieval_db,
+                    routing_record=_resolve_latest_routing_record(self),
                 )
 
             inspect_btn.clicked.connect(_open_inspector)
             btn_row.addWidget(inspect_btn)
         btn_row.addStretch()
         close_btn = QPushButton("CLOSE")
-        close_btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                padding: 12px 22px;
-                min-height: 32px;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 12px;
-                letter-spacing: 1px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
-            QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
-            }}
-        """
-        )
+        close_btn.setStyleSheet(theme.style(PRESTIGE_GHOST_BUTTON))
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)
         inner.addLayout(btn_row)

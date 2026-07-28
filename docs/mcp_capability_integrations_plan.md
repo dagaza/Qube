@@ -3,7 +3,7 @@
 **Status:** Draft — ready for engineering  
 **Date:** 2026-07-20  
 **Audience:** Developer implementing MCP interoperability; maintainers reviewing scope  
-**Related:** [Competitive roadmap](./competitive_roadmap.md) (Theme C), [Competitive landscape](./user/competitive-landscape.md), [External Knowledge Platform Plan](./external_knowledge_platform_plan.md), [Knowledge Platform Evolution Review](./knowledge_platform_evolution_review.md), [Cognitive router](./cognitive_router.md), [Logging & diagnostics](./logging_and_diagnostics.md)
+**Related:** [External Knowledge Platform Plan](./external_knowledge_platform_plan.md), [Knowledge Platform Evolution Review](./knowledge_platform_evolution_review.md), [Cognitive router](./cognitive_router.md), [Logging & diagnostics](./logging_and_diagnostics.md)
 
 This document is the **source of truth** for Qube’s MCP interoperability work. It merges competitive analysis, product strategy, and an external architecture review into one plan a developer (or Cursor agent) can execute without re-litigating product identity.
 
@@ -40,7 +40,7 @@ These are **product decisions**. Engineering should not reopen them without an e
 
 | Constraint | Rationale |
 |------------|-----------|
-| **MCP is a complement, not the primary extension model** | Curated Live Sources + `@` tools remain the default assistant path ([competitive roadmap non-goals](./competitive_roadmap.md#intentional-non-goals)) |
+| **MCP is a complement, not the primary extension model** | Curated Live Sources + `@` tools remain the default assistant path (see intentional non-goals in maintainer competitive roadmap) |
 | **Users choose capabilities; models use capabilities** | Capabilities are attached intentionally, not exposed indiscriminately to the model |
 | **Never surface raw MCP tool lists as the primary UX** | Users think in capabilities (e.g. “Search GitHub issues”), not `search_issues_v2` |
 | **Permissions are understandable before they are granted** | Default-deny for risky actions; grouped toggles, not 27 checkboxes |
@@ -251,7 +251,7 @@ Do not silently expand write/destructive grants.
 
 ### 4.8 INSPECT as a first-class goal
 
-INSPECT is not a footnote — it is a **surpass** differentiator ([competitive roadmap § Surpass](./competitive_roadmap.md#surpass--go-beyond-parity-in-core-job)).
+INSPECT is not a footnote — it is a **surpass** differentiator (see competitive roadmap § Surpass, maintainer-private).
 
 Target UX for an integration-heavy turn:
 
@@ -366,7 +366,7 @@ MCP implements `CapabilityProvider`. Live Sources can remain as today initially;
 | Retrieval Inspector | `ui/components/retrieval_inspector.py` | Summary / Graph / Compare / Explain |
 | Retrieval records | `core/knowledge/retrieval_records.py` | Persisted traces |
 | Cognitive router | `mcp/cognitive_router.py` | Memory / RAG / WEB lanes — unrelated to MCP protocol |
-| Competitive gap | [Feature matrix](./user/competitive-landscape.md#feature-matrix) | MCP tool servers **◐** vs LM Studio / Odysseus **●** |
+| Competitive gap | Feature matrix (maintainer-private competitive landscape) | MCP tool servers **◐** vs LM Studio / Odysseus **●** |
 
 ---
 
@@ -433,7 +433,7 @@ MCP implements `CapabilityProvider`. Live Sources can remain as today initially;
 
 ## 9. Engineering checklist (for issues / PRs)
 
-Link PRs to these items and update [competitive roadmap changelog](./competitive_roadmap.md#roadmap-changelog) when shipped.
+Link PRs to these items and update the competitive roadmap changelog (maintainer-private) when shipped.
 
 - [ ] MCP stdio client with session lifecycle
 - [ ] CapabilityRegistry + CapabilityMapper

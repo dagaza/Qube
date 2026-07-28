@@ -158,6 +158,16 @@ class KnowledgeHandlersMixin:
         )
         sync_web_discovery_policy_section(self)
 
+    def _on_searxng_setup_wizard_clicked(self) -> None:
+        from ui.components.searxng_setup_wizard_dialog import open_searxng_setup_wizard
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        open_searxng_setup_wizard(
+            self,
+            is_dark=is_dark,
+            parent=self.window(),
+        )
+
     def _build_discovery_privacy_tier_menu(self) -> None:
         if not hasattr(self, "discovery_privacy_tier_selector"):
             return
@@ -607,10 +617,14 @@ class KnowledgeHandlersMixin:
     def _build_embedding_mode_menu(self) -> None:
         if not hasattr(self, "embedding_mode_selector"):
             return
-        items = [
-            (f"{spec.label} — {spec.short_description}", spec.mode_id)
-            for spec in list_mode_specs()
-        ]
+        from ui.views.settings.widgets import register_settings_selector_width
+
+        specs = list_mode_specs()
+        items = [(spec.label, spec.mode_id) for spec in specs]
+        register_settings_selector_width(
+            self.embedding_mode_selector,
+            *(spec.label for spec in specs),
+        )
         self._build_prestige_menu(
             self.embedding_mode_selector,
             items,
@@ -644,10 +658,13 @@ class KnowledgeHandlersMixin:
     def _sync_embedding_mode_selector(self) -> None:
         if not hasattr(self, "embedding_mode_selector"):
             return
+        from ui.views.settings.widgets import refit_settings_selector_width
+
         spec = get_mode_spec(get_embedding_mode())
         self.embedding_mode_selector.setText(spec.label)
         if hasattr(self, "embedding_mode_description"):
             self.embedding_mode_description.setText(spec.short_description)
+        refit_settings_selector_width(self.embedding_mode_selector)
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
 
@@ -933,11 +950,14 @@ class KnowledgeHandlersMixin:
         if not hasattr(self, "retrieval_profile_selector"):
             return
         from core.knowledge.retrieval_profiles import list_profile_specs
+        from ui.views.settings.widgets import register_settings_selector_width
 
-        items = [
-            (f"{spec.label} — {spec.short_description}", spec.id)
-            for spec in list_profile_specs()
-        ]
+        specs = list_profile_specs()
+        items = [(spec.label, spec.id) for spec in specs]
+        register_settings_selector_width(
+            self.retrieval_profile_selector,
+            *(spec.label for spec in specs),
+        )
         self._build_prestige_menu(
             self.retrieval_profile_selector,
             items,
@@ -949,6 +969,7 @@ class KnowledgeHandlersMixin:
         from core.app_settings import set_retrieval_profile
 
         set_retrieval_profile(str(profile_id))
+        self._sync_retrieval_profile_selector()
 
     def _sync_retrieval_profile_selector(self) -> None:
         if not hasattr(self, "retrieval_profile_selector"):

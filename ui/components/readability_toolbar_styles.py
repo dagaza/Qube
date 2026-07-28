@@ -2,26 +2,17 @@
 
 from __future__ import annotations
 
+from core.theme.accessors import theme_for
+from core.theme.tokens import ResolvedTheme
+from core.theme.widget_styles import READABILITY_FONT_PAIR
 
-def readability_font_pair_stylesheet(*, is_dark: bool, button_px: int = 30) -> str:
+
+def readability_font_pair_stylesheet(
+    *,
+    is_dark: bool | None = None,
+    theme: ResolvedTheme | None = None,
+    button_px: int = 30,
+) -> str:
     """Theme-stable stylesheet for the font size pair; not coupled to LLM/TTS state."""
-    base_icon_color = "#8b5cf6"
-    hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-    dis = "#6c7086" if is_dark else "#94a3b8"
-    return f"""
-                QPushButton {{
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 2px 4px;
-                    color: {base_icon_color};
-                    font-weight: 700;
-                    font-size: 13px;
-                    min-width: {button_px}px;
-                    max-width: {button_px}px;
-                    min-height: {button_px}px;
-                    max-height: {button_px}px;
-                }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-                QPushButton:disabled {{ color: {dis}; }}
-            """
+    resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
+    return resolved.style(READABILITY_FONT_PAIR, button_px=button_px)

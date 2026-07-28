@@ -51,7 +51,7 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_MEMORY_PROMOTION_ACKNOWLEDGED,
         app.KEY_MEMORY_PROMOTION_PRESET,
         app.KEY_MEMORY_CONSOLIDATION,
-        app.KEY_PROFILE_UNITS,
+        app.KEY_ADVANCED_MEMORY_UNLOCKED,
     ),
     "knowledge": (
         app.KEY_MCP_RAG_ENABLED,
@@ -108,6 +108,18 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
     ),
     "general": (
         app.KEY_UI_LANGUAGE,
+        app.KEY_PROFILE_UNITS,
+    ),
+    "appearance.themes": (
+        app.KEY_UI_THEME_MODE,
+        app.KEY_UI_COLOR_SCHEME_ID,
+        app.KEY_UI_THEME_APPEARANCE,
+        app.KEY_LAST_SCHEME_DARK,
+        app.KEY_LAST_SCHEME_LIGHT,
+        app.KEY_SURFACE_PROFILES_ACTIVE,
+        app.KEY_SURFACE_PROFILES_DRAFT,
+        app.KEY_ASSISTANT_MESSAGE_BACKGROUND,
+        app.KEY_LIBRARY_TRANSCRIPT_BACKGROUND,
     ),
 }
 
@@ -119,6 +131,7 @@ SECTION_RESET_LABELS: dict[str, str] = {
     "companion.desktop": "Desktop Companion",
     "notifications": "Notifications",
     "general": "General",
+    "appearance.themes": "Themes",
 }
 
 

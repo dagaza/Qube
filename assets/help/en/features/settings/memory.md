@@ -11,11 +11,14 @@
 
 **Memory** settings govern how Qube captures, refines, and retains facts about you across conversations. Separate from Library documents, Memory stores distilled snippets the assistant can recall later through **Memory Manager** and automatic context injection.
 
-**Memory pipeline** controls three optional background processes:
+**Memory pipeline** starts with one everyday control:
 
 - **Enable Memory Enrichment & Reflection** — extracts durable facts, session episodic summaries, and periodic LLM audits that flag suspicious memories (uses more RAM)
+
+Turn on **Show advanced memory settings** to reveal optional background workers:
+
 - **Promote well-used memories to preferences** — occasionally upgrades frequently used facts into long-term preferences (off by default; requires enrichment)
-- **Highlight memories that keep coming back** — marks recurring themes in Memory Manager for **your review**; Qube does not merge or delete memories automatically
+- **Highlight memories that keep coming back** — marks recurring themes in Memory Manager for **your review**; Qube does not merge or delete memories automatically (off by default)
 
 **Personalization** sets **Default units** (metric/imperial/inferred) for formatted answers.
 
@@ -30,10 +33,11 @@ long-term memory settings, memory enrichment, memory promotion, memory consolida
 ## How to…
 
 1. **Choose enrichment level** — Enable **Enable Memory Enrichment & Reflection** when you want richer extraction and audits; disable it to reduce background LLM/RAM use (existing memories still recall).
-2. **Configure promotion** — Turn on **Promote well-used memories to preferences** only if you want automatic preference upgrades; pick **Promotion preset** (**Conservative**, **Standard**, **Aggressive**).
-3. **Review recurring themes** — Leave **Highlight memories that keep coming back** on to surface patterns in Memory Manager, or disable it for fully manual curation.
-4. **Set default units** — Under **Personalization**, choose **Default units** for weather and numeric answers.
-5. **Audit in Memory Manager** — Open [Memory Manager](../../features/memory-manager.md) to edit, flag, delete, or export entries regardless of automation settings.
+2. **Open advanced settings when needed** — Turn on **Show advanced memory settings** to configure promotion and consolidation.
+3. **Configure promotion** — Turn on **Promote well-used memories to preferences** only if you want automatic preference upgrades; pick **Promotion preset** (**Conservative**, **Standard**, **Aggressive**).
+4. **Review recurring themes** — Enable **Highlight memories that keep coming back** to surface patterns in Memory Manager, or leave it off for fully manual curation.
+5. **Set default units** — Under **Personalization**, choose **Default units** for weather and numeric answers.
+6. **Audit in Memory Manager** — Open [Memory Manager](../../features/memory-manager.md) to edit, flag, delete, or export entries regardless of automation settings.
 
 ## Controls
 
@@ -44,13 +48,13 @@ Controls listed top-to-bottom for **Settings → Memory**.
 ### Memory pipeline
 
 - **Enable Memory Enrichment & Reflection (Requires more RAM)**
+
+### Advanced memory
+
+- **Show advanced memory settings**
 - **Promote well-used memories to preferences**
 - **Highlight memories that keep coming back**
 - **Promotion preset**
-
-### Personalization
-
-- **Default units**
 
 - **Reset to default configuration** — restores all settings on this page
 

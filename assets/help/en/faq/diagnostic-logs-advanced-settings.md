@@ -90,6 +90,8 @@ Skills debug recording is controlled only via Settings (no launch override).
 - **LLM debug log** may contain **prompt excerpts**, retrieved context markers, and completion traces — review before attaching to feedback.
 - Use **Clear log** between reproduction runs so excerpts are easy to find; clear again before sharing if old sessions remain.
 
+See [Log redaction before sharing logs](log-redaction-sharing-logs.md) for the full workflow and launch examples.
+
 ## Workflow for bug reports
 
 1. Reproduce with the **smallest** log set (often **Application** + one subsystem log).
@@ -111,6 +113,10 @@ Skills debug recording is controlled only via Settings (no launch override).
 ## Related
 
 - [Advanced settings](../features/settings/advanced.md) — JSON editor and log controls
+- [Delete memory entries](delete-memory-entries.md) — local data you control vs logs you may share
+- [Web discovery privacy tiers](web-discovery-privacy-tiers.md) — what web discovery sends off-device
+- [Log redaction before sharing logs](log-redaction-sharing-logs.md) — redaction env vars and excerpt workflow
+- [Audit session privacy](audit-session-privacy.md) — Telemetry and INSPECT session review
 - [Advanced Telemetry](../features/telemetry.md) · [Interpreting telemetry](advanced-telemetry-interpreting.md)
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — route vocabulary before reading JSONL — live dashboard
 - [Knowledge settings](../features/settings/knowledge.md) — retrieval trace panel and knowledge pack import/export

@@ -1,0 +1,23 @@
+PackageIdentifier: dagaza.Qube.Vulkan
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: dagaza
+PublisherUrl: https://github.com/dagaza
+PackageName: Qube (Vulkan)
+Moniker: qube-vulkan
+License: MIT
+LicenseUrl: https://github.com/dagaza/Qube/blob/main/LICENSE
+ShortDescription: Local AI desktop assistant (Vulkan GPU offload build for AMD/Intel)
+Description: >-
+  Qube is a fully local, privacy-first AI desktop assistant. This package is
+  the Vulkan GPU offload build for AMD and Intel GPUs.
+PackageUrl: https://github.com/dagaza/Qube
+Tags:
+  - ai
+  - assistant
+  - local
+  - privacy
+  - vulkan
+  - gpu
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

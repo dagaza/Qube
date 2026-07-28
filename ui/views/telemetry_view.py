@@ -13,6 +13,10 @@ import qtawesome as qta
 from ui.components.page_tour_help_button import PageTourHelpButton
 from core.app_settings import get_engine_mode
 from core.inference_transparency import aggregate_app_transparency
+from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
+from core.theme.color_utils import rgba_tuple
+from ui.shell_theme import muted_icon_color, telemetry_metric_colors
 
 logger = logging.getLogger("Qube.UI.Telemetry")
 
@@ -51,6 +55,7 @@ class TelemetryView(QWidget):
             except Exception as e:
                 logger.debug("Telemetry native load_finished connect skipped: %s", e)
         self._refresh_router_from_worker_snapshot()
+        self._refresh_web_discovery_snapshot()
 
     # ============================================================
     # UI SETUP
@@ -122,6 +127,11 @@ class TelemetryView(QWidget):
         bottom_row_layout.addWidget(self.router_card, stretch=1)
         bottom_row_layout.addWidget(self.sidecar_card, stretch=1)
 
+        discovery_row_layout = QHBoxLayout()
+        discovery_row_layout.setSpacing(20)
+        self.discovery_card = self._build_web_discovery_card()
+        discovery_row_layout.addWidget(self.discovery_card, stretch=1)
+
         self.inference_transparency_card = self._build_inference_transparency_card()
 
         from ui.components.session_egress_panel import SessionEgressPanel
@@ -130,6 +140,7 @@ class TelemetryView(QWidget):
 
         dashboard_layout.addLayout(top_row_layout)
         dashboard_layout.addLayout(bottom_row_layout)
+        dashboard_layout.addLayout(discovery_row_layout)
         dashboard_layout.addWidget(self.inference_transparency_card)
         dashboard_layout.addWidget(self.session_egress_panel)
         layout.addLayout(dashboard_layout)
@@ -169,21 +180,21 @@ class TelemetryView(QWidget):
             "Rolling 60-second chart of processor, memory, and GPU utilization."
         )
 
-        cpu_item, self.live_cpu_lbl = self._create_legend_item(
-            "CPU: 0%", "#10b981", "Processor utilization across all cores."
+        cpu_item, self.live_cpu_lbl, self._cpu_legend_pill = self._create_legend_item(
+            "CPU: 0%", theme_for(is_dark=True).success, "Processor utilization across all cores."
         )
-        ram_item, self.live_ram_lbl = self._create_legend_item(
-            "RAM: 0%", "#3b82f6", "System memory currently in use."
+        ram_item, self.live_ram_lbl, self._ram_legend_pill = self._create_legend_item(
+            "RAM: 0%", theme_for(is_dark=True).info, "System memory currently in use."
         )
-        gpu_item, self.live_gpu_lbl = self._create_legend_item(
-            "GPU: 0%", "#8b5cf6", "Graphics processor compute utilization."
+        gpu_item, self.live_gpu_lbl, self._gpu_legend_pill = self._create_legend_item(
+            "GPU: 0%", theme_for(is_dark=True).accent, "Graphics processor compute utilization."
         )
 
         header_layout.addWidget(header)
         header_layout.addStretch()
-        header_layout.addWidget(self.live_cpu_lbl)
-        header_layout.addWidget(self.live_ram_lbl)
-        header_layout.addWidget(self.live_gpu_lbl)
+        header_layout.addWidget(cpu_item)
+        header_layout.addWidget(ram_item)
+        header_layout.addWidget(gpu_item)
         layout.addLayout(header_layout)
 
         pg.setConfigOptions(antialias=True)
@@ -203,12 +214,11 @@ class TelemetryView(QWidget):
         self.plot_widget.wheelEvent = self._ignore_plot_wheel_event
 
         self.plot_widget.getAxis('bottom').setStyle(showValues=False)
-        self.plot_widget.getAxis('left').setPen(pg.mkPen(color='#94a3b8', width=1))
-        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color='#94a3b8'))
 
-        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen('#10b981', width=2))
-        self.ram_line = self.plot_widget.plot(pen=pg.mkPen('#3b82f6', width=2))
-        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen('#8b5cf6', width=2))
+        self.cpu_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self.ram_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self.gpu_line = self.plot_widget.plot(pen=pg.mkPen(width=2))
+        self._apply_plot_theme()
 
         layout.addWidget(self.plot_widget)
         return frame
@@ -440,6 +450,71 @@ class TelemetryView(QWidget):
         return frame
 
     # ============================================================
+    # WEB DISCOVERY CARD (R10 / Theme B)
+    # ============================================================
+    def _build_web_discovery_card(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("WebDiscoveryCard")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(25)
+
+        header = QLabel("Web discovery")
+        header.setProperty("class", "SectionHeaderLabel")
+        header.setToolTip(
+            "Live web search discovery policy: privacy tier, DDG budgets, pacing, "
+            "and backoff — read-only; mirrors Settings → Knowledge → Web search discovery."
+        )
+        layout.addWidget(header)
+
+        tier_row, self.discovery_tier_val = self._make_metric_row(
+            "Privacy tier",
+            "Active SERP discovery tier",
+            "—",
+            "Same setting as Settings → Knowledge → Web search discovery → Privacy tier.",
+        )
+        primary_row, self.discovery_primary_val = self._make_metric_row(
+            "Primary provider",
+            "Current discovery route",
+            "—",
+            "Primary SERP provider for @internet / Hybrid Internet / web routing.",
+        )
+        burst_row, self.discovery_burst_val = self._make_metric_row(
+            "DDG burst budget",
+            "Live DuckDuckGo calls in burst window",
+            "—",
+            "Rolling burst cap for live DDG HTTP requests (cache hits excluded).",
+        )
+        session_row, self.discovery_session_val = self._make_metric_row(
+            "DDG session budget",
+            "Live DuckDuckGo calls in session window",
+            "—",
+            "Rolling session cap for live DDG HTTP requests (cache hits excluded).",
+        )
+        pacing_row, self.discovery_pacing_val = self._make_metric_row(
+            "Pacing",
+            "Minimum gap between live DDG queries",
+            "—",
+            "Doubles automatically in conservative mode after repeated bot challenges.",
+        )
+        health_row, self.discovery_health_val = self._make_metric_row(
+            "System health",
+            "Discovery health summary",
+            "—",
+            "Rule-based status from backoff, budgets, and conservative pacing.",
+        )
+
+        layout.addLayout(tier_row)
+        layout.addLayout(primary_row)
+        layout.addLayout(burst_row)
+        layout.addLayout(session_row)
+        layout.addLayout(pacing_row)
+        layout.addLayout(health_row)
+        layout.addStretch()
+
+        return frame
+
+    # ============================================================
     # INFERENCE TRANSPARENCY
     # ============================================================
     def _build_inference_transparency_card(self) -> QFrame:
@@ -536,11 +611,36 @@ class TelemetryView(QWidget):
         btn = QToolButton()
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip(tooltip_text)
-        btn.setIcon(qta.icon("fa5s.info-circle", color="#64748b"))
+        btn.setIcon(qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme())))
         btn.setIconSize(QSize(12, 12))
         btn.setAutoRaise(True)
         btn.setStyleSheet("QToolButton { border: none; padding: 0px; background: transparent; }")
         return btn
+
+    def _theme(self, is_dark: bool | None = None):
+        return view_resolved_theme(self, is_dark=is_dark)
+
+    def _apply_plot_theme(self, is_dark: bool | None = None) -> None:
+        theme = self._theme(is_dark)
+        cpu_c, ram_c, gpu_c = telemetry_metric_colors(theme)
+        axis_css = theme.text_muted
+        axis_pen = rgba_tuple(axis_css)
+        self.plot_widget.getAxis('left').setPen(pg.mkPen(color=axis_pen, width=1))
+        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(color=axis_pen))
+        self.cpu_line.setPen(pg.mkPen(rgba_tuple(cpu_c), width=2))
+        self.ram_line.setPen(pg.mkPen(rgba_tuple(ram_c), width=2))
+        self.gpu_line.setPen(pg.mkPen(rgba_tuple(gpu_c), width=2))
+        for pill, lbl, color in (
+            (getattr(self, "_cpu_legend_pill", None), getattr(self, "live_cpu_lbl", None), cpu_c),
+            (getattr(self, "_ram_legend_pill", None), getattr(self, "live_ram_lbl", None), ram_c),
+            (getattr(self, "_gpu_legend_pill", None), getattr(self, "live_gpu_lbl", None), gpu_c),
+        ):
+            if pill is not None:
+                pill.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
+            if lbl is not None:
+                lbl.setStyleSheet(
+                    f"color: {color}; font-weight: bold; font-size: 13px; opacity: 1.0;"
+                )
 
     # ============================================================
     # LEGEND CREATOR
@@ -570,7 +670,7 @@ class TelemetryView(QWidget):
 
         layout.addWidget(pill)
         layout.addWidget(lbl)
-        return container, lbl
+        return container, lbl, pill
 
     def set_active_session_id(self, session_id: str | None) -> None:
         if hasattr(self, "session_egress_panel"):
@@ -596,10 +696,12 @@ class TelemetryView(QWidget):
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
         self._refresh_session_egress_panel()
+        self._refresh_web_discovery_snapshot()
 
     def refresh_after_theme_toggle(self) -> None:
         """Keep telemetry card shells aligned with global light/dark theme."""
         self._apply_card_surfaces()
+        self._apply_plot_theme()
         self._sync_hardware_card_min_height()
 
     def _on_native_load_finished_telemetry(self, _ok: bool, _msg: str) -> None:
@@ -636,12 +738,21 @@ class TelemetryView(QWidget):
         except Exception as e:
             logger.debug("Sidecar telemetry snapshot failed: %s", e)
 
+    def _refresh_web_discovery_snapshot(self) -> None:
+        try:
+            from core.knowledge.discovery_telemetry import discovery_telemetry_snapshot
+
+            self.update_web_discovery_telemetry(discovery_telemetry_snapshot())
+        except Exception as e:
+            logger.debug("Web discovery telemetry snapshot failed: %s", e)
+
     def _refresh_hardware(self):
         self._refresh_model_capability_labels()
         self._refresh_inference_transparency_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
         self._refresh_session_egress_panel()
+        self._refresh_web_discovery_snapshot()
 
         try:
             cpu = int(psutil.cpu_percent())
@@ -668,15 +779,16 @@ class TelemetryView(QWidget):
         self.gpu_line.setData(list(self.gpu_data))
 
     def _apply_card_surfaces(self) -> None:
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        bg = "#232337" if is_dark else "#E9EFF5"
-        border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
+        theme = self._theme()
+        bg = theme.surface_elevated if theme.is_dark else theme.surface
+        border = theme.border_subtle if theme.is_dark else theme.border
         for card in (
             getattr(self, "hardware_card", None),
             getattr(self, "latency_card", None),
             getattr(self, "model_capability_card", None),
             getattr(self, "router_card", None),
             getattr(self, "sidecar_card", None),
+            getattr(self, "discovery_card", None),
             getattr(self, "inference_transparency_card", None),
         ):
             if card is not None:
@@ -907,6 +1019,57 @@ class TelemetryView(QWidget):
 
         self.health_val.setText(health)
         self.health_val.setToolTip(f"System health: {health}")
+
+    # ============================================================
+    # WEB DISCOVERY TELEMETRY UPDATE SLOT
+    # ============================================================
+    def update_web_discovery_telemetry(self, snapshot: dict | None) -> None:
+        snapshot = snapshot or {}
+        tier_label = str(snapshot.get("privacy_tier_label") or "—")
+        self.discovery_tier_val.setText(tier_label)
+
+        primary = str(snapshot.get("primary_provider_label") or "—")
+        backoff_summary = snapshot.get("backoff_summary")
+        if backoff_summary:
+            primary = f"{primary} · {backoff_summary}"
+        self.discovery_primary_val.setText(primary)
+
+        burst_limit = int(snapshot.get("burst_limit") or 0)
+        if burst_limit <= 0:
+            burst_txt = "Off"
+        else:
+            burst_used = int(snapshot.get("burst_used") or 0)
+            burst_remaining = int(snapshot.get("burst_remaining") or 0)
+            burst_txt = f"{burst_used}/{burst_limit} ({burst_remaining} left)"
+        self.discovery_burst_val.setText(burst_txt)
+
+        session_limit = int(snapshot.get("session_limit") or 0)
+        if session_limit <= 0:
+            session_txt = "Off"
+        else:
+            session_used = int(snapshot.get("session_used") or 0)
+            session_remaining = int(snapshot.get("session_remaining") or 0)
+            session_txt = f"{session_used}/{session_limit} ({session_remaining} left)"
+        self.discovery_session_val.setText(session_txt)
+
+        if not snapshot.get("pacing_enabled"):
+            pacing_txt = "Off"
+        else:
+            effective = float(snapshot.get("pacing_effective_seconds") or 0)
+            base = float(snapshot.get("pacing_base_seconds") or 0)
+            if snapshot.get("conservative_mode") and effective > base + 0.01:
+                pacing_txt = (
+                    f"~{effective:.0f}s (conservative; base ~{base:.0f}s)"
+                )
+            else:
+                pacing_txt = f"~{effective:.0f}s between live DDG queries"
+        self.discovery_pacing_val.setText(pacing_txt)
+
+        from core.knowledge.discovery_telemetry import format_discovery_health_status
+
+        health = format_discovery_health_status(snapshot)
+        self.discovery_health_val.setText(health)
+        self.discovery_health_val.setToolTip(f"Discovery health: {health}")
 
     # ============================================================
     # SIDECAR TELEMETRY UPDATE SLOT

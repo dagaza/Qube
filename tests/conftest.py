@@ -116,3 +116,49 @@ def main_window(_qube_app, mock_workers):
         timer.stop()
     win.close()
     _qube_app.processEvents()
+
+
+def reset_main_window_theme_dark(main_window) -> None:
+    """Reset a (usually session-scoped) MainWindow to the default dark scheme.
+
+    Many UI tests share ``main_window``; theme toggle tests leave it in light mode
+    and break later tests that assume Catppuccin Dark / ``ThemeMode.DARK``.
+    """
+    from core.theme.schemes import DEFAULT_SCHEME_ID_DARK
+    from core.theme.tokens import ThemeMode
+
+    mgr = main_window.theme_manager
+    if mgr.mode is not ThemeMode.DARK or mgr.scheme_id != DEFAULT_SCHEME_ID_DARK:
+        mgr.apply(scheme_id=DEFAULT_SCHEME_ID_DARK, overrides=None, persist=False)
+
+
+@pytest.fixture
+def main_window_dark(main_window):
+    """Session MainWindow reset to default dark scheme before the test."""
+    reset_main_window_theme_dark(main_window)
+    return main_window
+
+
+@pytest.fixture
+def fresh_main_window(_qube_app, mock_workers):
+    """
+    Function-scoped MainWindow for tests that require pristine lazy-load /
+    navigation state.  The session-scoped ``main_window`` accumulates side
+    effects when ~2,700 tests share one instance.
+    """
+    from ui.main_window import MainWindow
+
+    gpu_monitor = MagicMock(name="GPUMonitor")
+    native_engine = MagicMock(name="NativeLlamaEngine")
+
+    win = MainWindow(
+        workers=mock_workers,
+        gpu_monitor=gpu_monitor,
+        native_engine=native_engine,
+    )
+    yield win
+    timer = getattr(win, "telemetry_timer", None)
+    if timer is not None:
+        timer.stop()
+    win.close()
+    _qube_app.processEvents()

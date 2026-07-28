@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Qube — Private, voice-first AI on your machine</title>
-  <meta name="description" content="Qube is a local, privacy-first desktop AI assistant. Voice, chat, Library, memory, and optional live research — on your hardware.">
+  <title>Qube — Private desktop AI on your hardware</title>
+  <meta name="description" content="Qube is a local, privacy-first desktop AI assistant. Grounded answers from your Library, memory, and trusted sources — on your machine.">
   <meta property="og:title" content="Qube">
-  <meta property="og:description" content="Private, voice-first AI on your machine.">
+  <meta property="og:description" content="Your AI Model. Your Intelligence. Your Hardware. Complete Privacy & Sovereignty.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://dagaza.github.io/Qube/assets/social/qube-social-preview.png">
   <link rel="icon" href="assets/logos/qube_logo_256.png" type="image/png">
@@ -33,8 +33,16 @@
     .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
     header { text-align: center; padding: 2.5rem 0 1.5rem; }
     .logo { width: 72px; height: 72px; margin-bottom: 1rem; }
-    h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
-    .tagline { font-size: 1.125rem; color: var(--muted); max-width: 36rem; margin: 0 auto 1.5rem; }
+    h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; margin: 0 0 0.75rem; letter-spacing: -0.02em; }
+    .sovereignty {
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      font-weight: 600;
+      color: #f8fafc;
+      max-width: 28rem;
+      margin: 0 auto 0.75rem;
+      line-height: 1.45;
+    }
+    .tagline { font-size: 1.05rem; color: var(--muted); max-width: 36rem; margin: 0 auto 1.5rem; font-style: italic; }
     nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; justify-content: center; font-size: 0.95rem; margin-bottom: 2rem; }
     nav a { color: var(--muted); }
     nav a:hover { color: var(--brand); }
@@ -84,11 +92,12 @@
     <header>
       <img class="logo" src="assets/logos/qube_logo_256.png" width="72" height="72" alt="Qube logo">
       <h1>Qube</h1>
-      <p class="tagline">Your private, voice-first AI assistant — runs on your machine, remembers what matters, and grounds answers in your files and trusted sources.</p>
+      <p class="sovereignty">Your AI Model. Your Intelligence. Your Hardware.<br>Complete Privacy &amp; Sovereignty.</p>
+      <p class="tagline">Grounded answers from your Library, memory, and trusted sources — with citations you can inspect.</p>
       <nav>
         <a href="https://github.com/dagaza/Qube#quick-start">Quick Start</a>
         <a href="https://github.com/dagaza/Qube/tree/main/docs/user">User docs</a>
-        <a href="https://github.com/dagaza/Qube/blob/main/Readme.md">README</a>
+        <a href="https://github.com/dagaza/Qube/blob/main/README.md">README</a>
         <a href="https://github.com/dagaza/Qube/releases">Releases</a>
         <a href="https://www.qubeapp.eu">Website</a>
         <a href="https://github.com/dagaza/Qube/blob/main/CONTRIBUTING.md">Contributing</a>
@@ -100,21 +109,13 @@
     </header>
 
     <section>
-      <div class="positioning">
-        <strong>LM Studio</strong> runs models brilliantly. <strong>SillyTavern</strong> masters prompts and lorebooks.
-        <strong>Odysseus</strong> bundles a whole self-hosted workspace. <strong>Qube</strong> is built for something else:
-        a voice-first desktop assistant that routes each turn to your Library, curated memory, or live institutional sources —
-        with <code>@</code> composer tools, numbered citations, and a Memory Manager you can edit. Inference stays on your machine.
-      </div>
-    </section>
-
-    <section>
       <h2>Why Qube</h2>
       <div class="pillars">
         <div class="pillar"><strong>Private by default</strong><span>Chat, Library, and memory on your device.</span></div>
-        <div class="pillar"><strong>Voice-first</strong><span>Wake word, push-to-talk, and barge-in.</span></div>
-        <div class="pillar"><strong>Composer @ routing</strong><span>Per-message tools, files, skills, and presets.</span></div>
-        <div class="pillar"><strong>Smart routing</strong><span>Memory, Library, web, or chat — automatic or explicit.</span></div>
+        <div class="pillar"><strong>Grounded answers</strong><span>Router, @ tools, citations, INSPECT RETRIEVAL.</span></div>
+        <div class="pillar"><strong>Memory you control</strong><span>Memory Manager — edit, delete, export.</span></div>
+        <div class="pillar"><strong>Live Sources</strong><span>Institutional research adapters built in.</span></div>
+        <div class="pillar"><strong>Help inside the app</strong><span>@help and guided tours on every screen.</span></div>
         <div class="pillar"><strong>Your hardware</strong><span>Built-in engine or LM Studio / Ollama.</span></div>
       </div>
     </section>
@@ -149,6 +150,16 @@
         Help ships inside the app — open <strong>Library → Qube</strong> or type
         <strong><code>@[tool:help]</code></strong> in chat.
       </p>
+    </section>
+
+    <section>
+      <h2>How Qube compares</h2>
+      <div class="positioning">
+        <strong>LM Studio</strong> runs models brilliantly. <strong>SillyTavern</strong> masters prompts and lorebooks.
+        <strong>Odysseus</strong> bundles a whole self-hosted workspace. <strong>Qube</strong> targets a native desktop assistant:
+        routing to your Library, curated memory, or live institutional sources — with <code>@</code> composer tools,
+        numbered citations, and a Memory Manager you can edit. Inference stays on your machine.
+      </div>
     </section>
 
     <footer>

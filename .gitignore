@@ -1,5 +1,7 @@
 # --- Python & Environment ---
 venv/
+.venv/
+.venv-*/
 .deps/
 app_env/
 __pycache__/
@@ -25,6 +27,8 @@ eval/cache/
 eval/runs/*
 !eval/runs/shadow_policy_baseline_v1/
 !eval/runs/shadow_policy_baseline_v1/**
+!eval/runs/router_no_embeddings_v1/
+!eval/runs/router_no_embeddings_v1/**
 
 # --- Qube Architecture: Data ---
 # Ignore all LanceDB / Vector storage files
@@ -48,10 +52,13 @@ data/**/*
 # Keep project-level JSON configs, ignore deep model/metadata JSONs
 models/**/*.json
 
-# --- Build & Packaging ---
+# Build & Packaging ---
 dist/
 build/
 *.egg-info/
+*.AppImage
+qube_*_amd64.deb
+qube-*_*_amd64.deb
 installer/output/
 winget/out/
 chocolatey/out/
@@ -74,6 +81,9 @@ tools/test_outputs/
 
 # --- Clinerules ---
 .clinerules
+
+# --- Maintainer-private docs (local only; never commit) ---
+docs/private/
 
 # --- Logs (runtime files stay local; app writes to ~/.qube/logs/) ---
 *.log

@@ -17,12 +17,19 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Review saved memories | [Memory Manager](features/memory-manager.md) |
 | Download a local model | [Model Manager](features/model-manager.md) |
 | Monitor performance | [Advanced Telemetry](features/telemetry.md) · [Interpreting telemetry](faq/advanced-telemetry-interpreting.md) |
+| Inspect one reply's retrieval | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
 | View or share diagnostic logs | [Diagnostic logs (Advanced settings)](faq/diagnostic-logs-advanced-settings.md) |
+| Choose web search privacy tier | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) |
+| Delete something Qube remembered | [Delete memory entries](faq/delete-memory-entries.md) |
 | Understand chat routing (Memory / Library / web) | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
 | Set up a local LLM | [Set up local models](workflows/set-up-local-models.md) |
 | Search my uploaded documents | [Chat with a library document](workflows/chat-with-a-library-document.md) |
 | Fix empty Library search | [Library search returns nothing](troubleshooting/library-search-returns-nothing.md) |
 | Compare Memory and Library | [Memory vs Library FAQ](faq/memory-vs-library.md) |
+| Tune retrieval orchestration or fetch depth | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
+| Install on Linux (AppImage / .deb) | [Install Qube on Linux](faq/install-linux.md) |
+| Update Qube | [Update Qube](workflows/update-qube.md) |
+| Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 
 ## App pages
 
@@ -61,6 +68,8 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Manage long-term memory | [Manage long-term memory](workflows/manage-long-term-memory.md) |
 | Prepare search models | [Prepare search models for Library](workflows/prepare-search-models-for-library.md) |
 | Export or import a knowledge pack | [Export or import knowledge pack](workflows/export-or-import-knowledge-pack.md) |
+| Update Qube | [Update Qube](workflows/update-qube.md) |
+| Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 
 ## Troubleshooting
 
@@ -85,11 +94,16 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Generation parameters (temperature, context) | [Generation parameters](faq/generation-parameters.md) |
 | GPU layers & hardware tuning | [Hardware tuning (Internal Engine)](faq/hardware-tuning-internal-engine.md) |
 | Interpreting Telemetry / TTFT | [Advanced Telemetry — interpreting](faq/advanced-telemetry-interpreting.md) |
+| INSPECT RETRIEVAL (per-reply) | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
 | Diagnostic logs (Advanced settings) | [Diagnostic logs — Advanced](faq/diagnostic-logs-advanced-settings.md) |
 | Cognitive Router / chat routing | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
+| Web discovery privacy tiers | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) |
+| Delete memory entries | [Delete memory entries](faq/delete-memory-entries.md) |
 | What do `@` mentions do? | [What do @ mentions do](faq/what-do-at-mentions-do.md) |
 | Live Sources vs Library search | [Live sources vs Library search](faq/live-sources-vs-library-search.md) |
+| Retrieval profile vs search quality | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
 | Companion vs main window | [Companion vs main window](faq/companion-vs-main-window.md) |
+| Desktop Companion on Linux Wayland | [Companion on Wayland](faq/companion-wayland-linux.md) |
 
 ## Release
 

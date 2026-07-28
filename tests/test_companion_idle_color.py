@@ -9,7 +9,8 @@ from core.companion_idle_color import (
     idle_color_pair,
     normalize_companion_idle_color,
 )
-from ui.companion.personas.colors import ACTIVITY_COLORS, activity_color_pair
+from core.theme.accessors import theme_for
+from ui.companion.companion_theme import activity_color_pair, companion_idle_color_pair
 
 
 def test_normalize_companion_idle_color_defaults_unknown():
@@ -29,16 +30,38 @@ def test_idle_color_pair_presets():
     assert idle_color_pair(CompanionIdleColor.BLUE) == ("#89b4fa", "#b4befe")
 
 
+def test_companion_idle_color_pair_uses_theme_tokens():
+    theme = theme_for(is_dark=True)
+    purple = companion_idle_color_pair(CompanionIdleColor.PURPLE, theme)
+    blue = companion_idle_color_pair(CompanionIdleColor.BLUE, theme)
+    assert purple == (theme.accent, theme.accent_hover)
+    assert blue[0] == theme.link
+
+
 def test_activity_color_pair_idle_respects_preset():
-    purple = activity_color_pair(AssistantActivity.IDLE_LISTEN, CompanionIdleColor.PURPLE)
-    blue = activity_color_pair(AssistantActivity.IDLE_LISTEN, CompanionIdleColor.BLUE)
-    assert purple == ("#8b5cf6", "#a78bfa")
-    assert blue == ("#89b4fa", "#b4befe")
+    theme = theme_for(is_dark=True)
+    purple = activity_color_pair(
+        AssistantActivity.IDLE_LISTEN,
+        CompanionIdleColor.PURPLE,
+        is_dark=True,
+    )
+    blue = activity_color_pair(
+        AssistantActivity.IDLE_LISTEN,
+        CompanionIdleColor.BLUE,
+        is_dark=True,
+    )
+    assert purple == companion_idle_color_pair(CompanionIdleColor.PURPLE, theme)
+    assert blue == companion_idle_color_pair(CompanionIdleColor.BLUE, theme)
 
 
-def test_activity_color_pair_non_idle_unchanged():
-    working = activity_color_pair(AssistantActivity.WORKING, CompanionIdleColor.PURPLE)
-    assert working == ACTIVITY_COLORS[AssistantActivity.WORKING]
+def test_activity_color_pair_non_idle_uses_semantic_tokens():
+    theme = theme_for(is_dark=True)
+    working = activity_color_pair(
+        AssistantActivity.WORKING,
+        CompanionIdleColor.PURPLE,
+        is_dark=True,
+    )
+    assert working == (theme.info, theme.link)
 
 
 def test_companion_idle_color_settings_round_trip(monkeypatch):

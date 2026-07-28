@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import QGraphicsOpacityEffect, QWidget
+
+from core.theme.overlay import overlay_scrim_qcolor
 
 
 def resolve_modal_backdrop_host(widget: QWidget | None) -> QWidget | None:
@@ -27,6 +29,7 @@ class ModalBackdrop(QWidget):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self._is_dark = True
+        self._scrim = overlay_scrim_qcolor(is_dark=True)
         self._opacity_effect = QGraphicsOpacityEffect(self)
         self._opacity_effect.setOpacity(0.0)
         self.setGraphicsEffect(self._opacity_effect)
@@ -39,12 +42,11 @@ class ModalBackdrop(QWidget):
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = bool(is_dark)
+        self._scrim = overlay_scrim_qcolor(is_dark=is_dark)
         self.update()
 
-    def _dim_color(self) -> QColor:
-        if self._is_dark:
-            return QColor(0, 0, 0, 175)
-        return QColor(30, 41, 59, 110)
+    def _dim_color(self):
+        return self._scrim
 
     def eventFilter(self, obj, event) -> bool:
         parent = self.parentWidget()

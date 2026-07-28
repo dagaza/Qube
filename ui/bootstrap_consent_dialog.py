@@ -62,6 +62,11 @@ from core.bootstrap_selection import (
 from workers.bootstrap_metadata_worker import BootstrapMetadataWorker
 from workers.model_download_worker import SAFETY_BUFFER_BYTES
 from ui.app_icon import apply_window_branding, finalize_window_branding
+from ui.branded_theme import (
+    bootstrap_consent_stylesheet,
+    bootstrap_scrollbar_stylesheet,
+    branded_theme,
+)
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import resolve_splash_logo_path
 
@@ -749,354 +754,13 @@ class BootstrapConsentPanel(QWidget):
         return {mid: mid in selected for mid in BootstrapModelId}
 
     def _apply_styles(self) -> None:
-        if self._split_embedded:
-            root_style = """
-            QWidget#BootstrapConsentPanelSplit {
-                background: transparent;
-            }
-            """
-        elif self._embedded:
-            root_style = """
-            QWidget#BootstrapConsentPanelEmbedded {
-                background: #12151f;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 16px;
-            }
-            """
-        else:
-            root_style = """
-            QWidget#BootstrapConsentPanel {
-                background: #12151f;
-            }
-            """
+        theme = branded_theme(is_dark=True)
         self.setStyleSheet(
-            root_style
-            + """
-            QWidget#BootstrapConsentPanelSplit QLabel,
-            QWidget#BootstrapConsentPanelEmbedded QLabel,
-            QWidget#BootstrapConsentPanel QLabel,
-            QWidget#BootstrapModelTitleRow {
-                background: transparent;
-            }
-            QLabel#BootstrapBrandTitle {
-                color: #f8fafc;
-                font-size: 22px;
-                font-weight: 800;
-            }
-            QLabel#BootstrapTitle {
-                color: #f8fafc;
-                font-size: 16px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapIntro,
-            QLabel#BootstrapLegend {
-                color: #94a3b8;
-                font-size: 13px;
-            }
-            QFrame#BootstrapCollapsiblePanel {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapCollapsibleHeader {
-                background: transparent;
-                border: none;
-            }
-            QFrame#BootstrapCollapsibleHeader:hover QLabel#BootstrapCollapsibleHeaderText,
-            QFrame#BootstrapCollapsibleHeader:hover QLabel#BootstrapCollapsibleArrow {
-                color: #c4b5fd;
-            }
-            QLabel#BootstrapCollapsibleArrow {
-                color: #94a3b8;
-                font-size: 11px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapCollapsibleHeaderText {
-                color: #94a3b8;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            QLabel#BootstrapCollapsibleSummary {
-                color: #64748b;
-                font-size: 10px;
-                line-height: 1.35;
-                padding: 0 12px 8px 32px;
-            }
-            QFrame#BootstrapCollapsibleBody {
-                border-top: 1px solid rgba(255, 255, 255, 0.06);
-            }
-            QLabel#BootstrapDiskSummary {
-                color: #cbd5e1;
-                font-size: 12px;
-            }
-            QLabel#BootstrapDiskSummaryOver {
-                color: #fca5a5;
-                font-size: 12px;
-                font-weight: 600;
-            }
-            QLabel#BootstrapDiskNotice {
-                color: #fbbf24;
-                font-size: 11px;
-                line-height: 1.35;
-            }
-            QLabel#BootstrapSizeTagVerified {
-                background: rgba(34, 197, 94, 0.14);
-                color: #86efac;
-                border: 1px solid rgba(34, 197, 94, 0.28);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapSizeTagEstimate {
-                background: rgba(148, 163, 184, 0.1);
-                color: #94a3b8;
-                border: 1px solid rgba(148, 163, 184, 0.2);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapTierTagRequired {
-                background: rgba(139, 92, 246, 0.16);
-                color: #c4b5fd;
-                border: 1px solid rgba(139, 92, 246, 0.35);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapTierTagStronglyRecommended {
-                background: rgba(251, 146, 60, 0.14);
-                color: #fb923c;
-                border: 1px solid rgba(251, 146, 60, 0.28);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapTierTagRecommended {
-                background: rgba(56, 189, 248, 0.14);
-                color: #7dd3fc;
-                border: 1px solid rgba(56, 189, 248, 0.28);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapTierTagOptional {
-                background: rgba(148, 163, 184, 0.08);
-                color: #94a3b8;
-                border: 1px solid rgba(148, 163, 184, 0.18);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapBlockTagDisk {
-                background: rgba(251, 146, 60, 0.14);
-                color: #fb923c;
-                border: 1px solid rgba(251, 146, 60, 0.3);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QLabel#BootstrapBlockTagMemory {
-                background: rgba(248, 113, 113, 0.14);
-                color: #fca5a5;
-                border: 1px solid rgba(248, 113, 113, 0.3);
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-            QFrame#BootstrapBulkBar {
-                background: rgba(255, 255, 255, 0.02);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-                border-radius: 8px;
-            }
-            QLabel#BootstrapBulkCaption {
-                color: #64748b;
-                font-size: 11px;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-            }
-            QPushButton#BootstrapBulkPill {
-                background: rgba(139, 92, 246, 0.12);
-                color: #c4b5fd;
-                border: 1px solid rgba(139, 92, 246, 0.28);
-                border-radius: 12px;
-                font-size: 11px;
-                font-weight: 600;
-                padding: 4px 14px;
-                min-width: 48px;
-            }
-            QPushButton#BootstrapBulkPill:hover {
-                background: rgba(139, 92, 246, 0.22);
-                color: #ede9fe;
-            }
-            QPushButton#BootstrapBulkPill:disabled {
-                color: rgba(196, 181, 253, 0.35);
-                border-color: rgba(139, 92, 246, 0.12);
-            }
-            QLabel#BootstrapLegend {
-                font-size: 11px;
-                color: #64748b;
-            }
-            QLabel#BootstrapHardwareSummary {
-                color: #e2e8f0;
-                font-size: 12px;
-                font-weight: 600;
-            }
-            QLabel#BootstrapHfStatus {
-                color: #94a3b8;
-                font-size: 11px;
-            }
-            QLabel#BootstrapModelFeasibilityNote {
-                color: #fbbf24;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapModelFeasibilityDisk {
-                color: #fb923c;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapModelFeasibilityBlock {
-                color: #fca5a5;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapTotalLabel {
-                color: #c4b5fd;
-                font-size: 13px;
-                font-weight: 600;
-            }
-            QScrollArea#BootstrapScroll,
-            QWidget#BootstrapScrollViewport,
-            QWidget#BootstrapScrollHost,
-            QWidget#BootstrapListSection {
-                background: transparent;
-                border: none;
-            }
-            QLabel#BootstrapBulkSep {
-                color: rgba(148, 163, 184, 0.45);
-                font-size: 11px;
-                padding: 0 2px;
-            }
-            QPushButton#BootstrapLinkBtn {
-                background: transparent;
-                border: none;
-                color: #64748b;
-                font-size: 11px;
-                font-weight: 500;
-                padding: 0 2px;
-            }
-            QPushButton#BootstrapLinkBtn:hover {
-                color: #c4b5fd;
-            }
-            QFrame#BootstrapModelRowDiskBlocked {
-                background: rgba(15, 23, 42, 0.55);
-                border: 1px dashed rgba(148, 163, 184, 0.22);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapModelRow {
-                background: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapModelRowLocked {
-                background: rgba(139, 92, 246, 0.08);
-                border: 1px solid rgba(139, 92, 246, 0.22);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapModelRowInfo {
-                background: rgba(148, 163, 184, 0.06);
-                border: 1px solid rgba(148, 163, 184, 0.16);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapModelRowCaution {
-                background: rgba(251, 191, 36, 0.06);
-                border: 1px solid rgba(251, 191, 36, 0.22);
-                border-radius: 10px;
-            }
-            QFrame#BootstrapModelRowCoreWarning {
-                background: rgba(251, 146, 60, 0.08);
-                border: 1px solid rgba(251, 146, 60, 0.28);
-                border-radius: 10px;
-            }
-            QLabel#BootstrapModelDesc {
-                color: #64748b;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapModelDescInfo {
-                color: #94a3b8;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapModelDescCaution {
-                color: #fbbf24;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QLabel#BootstrapModelDescCoreWarning {
-                color: #fb923c;
-                font-size: 11px;
-                margin-left: 22px;
-            }
-            QCheckBox#BootstrapCheckLocked {
-                color: #c4b5fd;
-            }
-            QCheckBox {
-                color: #e2e8f0;
-                font-size: 13px;
-                background: transparent;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border-radius: 4px;
-                border: 1px solid rgba(255, 255, 255, 0.22);
-                background: rgba(15, 23, 42, 0.65);
-            }
-            QCheckBox::indicator:checked {
-                background: #8b5cf6;
-                border-color: #a78bfa;
-            }
-            QCheckBox::indicator:disabled {
-                background: rgba(148, 163, 184, 0.12);
-                border-color: rgba(148, 163, 184, 0.2);
-            }
-            QCheckBox::indicator:checked:disabled {
-                background: #6d28d9;
-                border-color: #a78bfa;
-            }
-            QPushButton {
-                padding: 10px 16px;
-                border-radius: 8px;
-                font-weight: 600;
-            }
-            QPushButton#BootstrapPrimaryBtn {
-                background: #8b5cf6;
-                color: #0f172a;
-                border: none;
-            }
-            QPushButton#BootstrapPrimaryBtn:disabled {
-                background: rgba(139, 92, 246, 0.28);
-                color: rgba(226, 232, 240, 0.45);
-            }
-            QPushButton#BootstrapSecondaryBtn {
-                background: transparent;
-                color: #cbd5e1;
-                border: 1px solid rgba(255, 255, 255, 0.15);
-            }
-            QPushButton#BootstrapSecondaryBtn:disabled {
-                color: rgba(203, 213, 225, 0.35);
-                border-color: rgba(255, 255, 255, 0.06);
-            }
-            """
+            bootstrap_consent_stylesheet(
+                theme,
+                split_embedded=self._split_embedded,
+                embedded=self._embedded,
+            )
         )
         self._download_btn.setObjectName("BootstrapPrimaryBtn")
         for btn in (self._back_btn, self._advanced_btn, self._recommended_btn):
@@ -1106,33 +770,7 @@ class BootstrapConsentPanel(QWidget):
         """Style the model-list scrollbar directly (dialog QSS does not reach it on Windows)."""
         bar = self._scroll.verticalScrollBar()
         bar.setObjectName("BootstrapScrollBar")
-        bar.setStyleSheet(
-            """
-            QScrollBar#BootstrapScrollBar:vertical {
-                border: none;
-                background: transparent;
-                width: 10px;
-                margin: 0px;
-            }
-            QScrollBar#BootstrapScrollBar::handle:vertical {
-                background-color: rgba(148, 163, 184, 0.38);
-                border-radius: 5px;
-                min-height: 30px;
-            }
-            QScrollBar#BootstrapScrollBar::handle:vertical:hover {
-                background-color: rgba(196, 181, 253, 0.62);
-            }
-            QScrollBar#BootstrapScrollBar::add-line:vertical,
-            QScrollBar#BootstrapScrollBar::sub-line:vertical,
-            QScrollBar#BootstrapScrollBar::add-page:vertical,
-            QScrollBar#BootstrapScrollBar::sub-page:vertical {
-                border: none;
-                background: transparent;
-                width: 0px;
-                height: 0px;
-            }
-            """
-        )
+        bar.setStyleSheet(bootstrap_scrollbar_stylesheet(branded_theme(is_dark=True)))
 
     @staticmethod
     def _row_object_name(spec, *, advanced: bool, locked: bool) -> str:
@@ -1663,12 +1301,13 @@ class BootstrapConsentDialog(QDialog):
         self.setProperty("qube_tooltip_clip", True)
         self.setWindowTitle("Welcome to Qube")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        theme = branded_theme(is_dark=True)
         self.setStyleSheet(
-            """
-            QDialog#BootstrapConsentDialog {
-                background: #12151f;
-                color: #cbd5e1;
-            }
+            f"""
+            QDialog#BootstrapConsentDialog {{
+                background: {theme.background};
+                color: {theme.text_secondary};
+            }}
             """
         )
         self.setWindowFlags(

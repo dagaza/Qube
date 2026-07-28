@@ -46,6 +46,7 @@ KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
 KEY_ADVANCED_TTS_UNLOCKED = "qube.settings.advanced_tts_unlocked"
 KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
+KEY_ADVANCED_MEMORY_UNLOCKED = "qube.settings.advanced_memory_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
 KEY_ROUTER_INTEGRATION_SUGGESTIONS = "qube.integrations.router_suggestions_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
@@ -79,6 +80,15 @@ KEY_EMBEDDING_MODE = "qube.embedding.activeMode"
 KEY_STT_MODEL_PATH = "qube.stt.modelPath"
 KEY_TTS_MODEL_PATH = "qube.tts.modelPath"
 KEY_UI_LANGUAGE = "qube.ui.language"
+KEY_UI_THEME_MODE = "qube.ui.theme.mode"
+KEY_UI_COLOR_SCHEME_ID = "qube.ui.color_scheme.id"
+KEY_UI_THEME_APPEARANCE = "qube.ui.theme.appearance"
+KEY_LAST_SCHEME_DARK = "qube.ui.color_scheme.last.dark"
+KEY_LAST_SCHEME_LIGHT = "qube.ui.color_scheme.last.light"
+KEY_SURFACE_PROFILES_ACTIVE = "qube.ui.surface_profiles.active"
+KEY_SURFACE_PROFILES_DRAFT = "qube.ui.surface_profiles.draft"
+KEY_ASSISTANT_MESSAGE_BACKGROUND = "qube.ui.chat.assistant_message_background"
+KEY_LIBRARY_TRANSCRIPT_BACKGROUND = "qube.ui.library.transcript_background"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -776,6 +786,14 @@ def get_advanced_chat_template_unlocked() -> bool:
 
 def set_advanced_chat_template_unlocked(unlocked: bool) -> None:
     _store().set(KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED, bool(unlocked))
+
+
+def get_advanced_memory_unlocked() -> bool:
+    return bool(_store().get(KEY_ADVANCED_MEMORY_UNLOCKED, False))
+
+
+def set_advanced_memory_unlocked(unlocked: bool) -> None:
+    _store().set(KEY_ADVANCED_MEMORY_UNLOCKED, bool(unlocked))
 
 
 def get_stt_model_path() -> str:
@@ -1649,7 +1667,7 @@ def get_companion_enabled() -> bool:
 
     if os.environ.get("QUBE_COMPANION", "").strip().lower() in ("1", "true", "yes"):
         return True
-    return bool(_store().get(KEY_COMPANION_ENABLED, True))
+    return bool(_store().get(KEY_COMPANION_ENABLED, False))
 
 
 def set_companion_enabled(enabled: bool) -> None:
@@ -1775,6 +1793,80 @@ def set_ui_language(language: str) -> None:
     from core.ui_language import normalize_ui_language
 
     _store().set(KEY_UI_LANGUAGE, normalize_ui_language(language).value)
+
+
+def get_ui_theme_mode() -> str:
+    """Persisted light/dark mode (``dark`` or ``light``)."""
+    from core.theme.tokens import ThemeMode
+
+    raw = str(_store().get(KEY_UI_THEME_MODE, ThemeMode.DARK.value))
+    try:
+        return ThemeMode(raw).value
+    except ValueError:
+        return ThemeMode.DARK.value
+
+
+def set_ui_theme_mode(mode: str) -> None:
+    from core.theme.tokens import ThemeMode
+
+    _store().set(KEY_UI_THEME_MODE, ThemeMode(mode).value)
+
+
+def get_ui_color_scheme_id() -> str:
+    """Persisted color scheme id (e.g. ``builtin.catppuccin-mocha``)."""
+    from core.theme.schemes import DEFAULT_SCHEME_ID_DARK
+
+    return str(_store().get(KEY_UI_COLOR_SCHEME_ID, DEFAULT_SCHEME_ID_DARK))
+
+
+def set_ui_color_scheme_id(scheme_id: str) -> None:
+    _store().set(KEY_UI_COLOR_SCHEME_ID, str(scheme_id))
+
+
+def get_ui_theme_appearance() -> str | None:
+    """Persisted appearance preference, or ``None`` when unset (legacy scheme-driven)."""
+    raw = _store().get(KEY_UI_THEME_APPEARANCE, None)
+    if raw is None or str(raw).strip() == "":
+        return None
+    return str(raw)
+
+
+def set_ui_theme_appearance(preference: str) -> None:
+    _store().set(KEY_UI_THEME_APPEARANCE, str(preference))
+
+
+def get_ui_surface_profiles_active() -> str:
+    """JSON blob of applied surface profiles keyed by surface id."""
+    return str(_store().get(KEY_SURFACE_PROFILES_ACTIVE, "") or "")
+
+
+def set_ui_surface_profiles_active(payload: str) -> None:
+    _store().set(KEY_SURFACE_PROFILES_ACTIVE, str(payload or ""))
+
+
+def get_ui_surface_profiles_draft() -> str:
+    """JSON blob of draft surface profiles, or empty when unset."""
+    return str(_store().get(KEY_SURFACE_PROFILES_DRAFT, "") or "")
+
+
+def set_ui_surface_profiles_draft(payload: str) -> None:
+    _store().set(KEY_SURFACE_PROFILES_DRAFT, str(payload or ""))
+
+
+def get_ui_assistant_message_background() -> bool:
+    return bool(_store().get(KEY_ASSISTANT_MESSAGE_BACKGROUND, False))
+
+
+def set_ui_assistant_message_background(enabled: bool) -> None:
+    _store().set(KEY_ASSISTANT_MESSAGE_BACKGROUND, bool(enabled))
+
+
+def get_ui_library_transcript_background() -> bool:
+    return bool(_store().get(KEY_LIBRARY_TRANSCRIPT_BACKGROUND, False))
+
+
+def set_ui_library_transcript_background(enabled: bool) -> None:
+    _store().set(KEY_LIBRARY_TRANSCRIPT_BACKGROUND, bool(enabled))
 
 
 def get_companion_cube_style() -> "CompanionCubeStyle":

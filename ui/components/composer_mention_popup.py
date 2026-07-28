@@ -19,8 +19,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import qtawesome as qta
-
 from core.composer_attachments import (
     ComposerAttachment,
     composer_tool_by_id,
@@ -38,6 +36,9 @@ from core.composer_mention_search import (
 from core.composer_mention_trigger import root_row_index_for_query
 from core.composer_skills import ComposerSkillMention, list_skill_mentions_for_palette
 from core.platform.frameless_window import apply_translucent_window_chrome
+from core.theme.color_utils import with_alpha
+from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import themed_fa_pixmap
 
 _ROOT_ROWS = (
     ("file", "Files", "Reference a library document", "fa5s.file-alt"),
@@ -159,8 +160,8 @@ class _ComposerContextHeader(QFrame):
         trail.addStretch(1)
         outer.addLayout(trail)
 
-        self._accent_color = "#94a3b8"
-        self._icon_color = "#a6adc8"
+        self._accent_color = ""
+        self._icon_color = ""
         self._section_kind: str | None = None
 
     def apply_theme(
@@ -171,11 +172,12 @@ class _ComposerContextHeader(QFrame):
         sub: str,
         accent: str,
         hover_bg: str,
+        border: str,
     ) -> None:
         self._accent_color = accent
-        self._icon_color = sub
-        chip_bg = hover_bg if not is_dark else "rgba(255,255,255,0.06)"
-        chip_border = "rgba(255,255,255,0.08)" if is_dark else "#e2e8f0"
+        self._icon_color = accent
+        chip_bg = hover_bg if not is_dark else with_alpha(fg, 0.06)
+        chip_border = with_alpha(border, 0.85) if is_dark else border
         self._eyebrow.setStyleSheet(
             f"color: {sub}; font-size: 10px; font-weight: 600; "
             "letter-spacing: 0.06em; background: transparent; border: none; padding: 0px;"
@@ -285,7 +287,7 @@ class _ComposerContextHeader(QFrame):
 
     def _refresh_sep_icon(self) -> None:
         self._sep.setPixmap(
-            qta.icon("fa5s.chevron-right", color=self._accent_color).pixmap(10, 10)
+            themed_fa_pixmap("fa5s.chevron-right", self._accent_color, 10)
         )
 
     def _refresh_section_icon(
@@ -296,7 +298,7 @@ class _ComposerContextHeader(QFrame):
         if icon_name is None:
             _title, _sub, icon_name = _root_kind_meta(kind)
         self._icon.setPixmap(
-            qta.icon(icon_name, color=self._icon_color).pixmap(14, 14)
+            themed_fa_pixmap(icon_name, self._icon_color, 14)
         )
 
 
@@ -464,7 +466,7 @@ class ComposerMentionPopup(QWidget):
         self._search_debounce_ms = 280
         self._anchor_global_pos: QPoint | None = None
         self._window_margin = 8
-        self.apply_theme(True)
+        self.apply_theme(view_resolved_theme(self).is_dark)
 
     def set_context(
         self,
@@ -478,13 +480,15 @@ class ComposerMentionPopup(QWidget):
         self._active_session_id = active_session_id
 
     def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
-        if is_dark:
-            bg, fg, border, hover = "#1e1e2e", "#cdd6f4", "rgba(255,255,255,0.1)", "#313244"
-            sub = "#a6adc8"
-        else:
-            bg, fg, border, hover = "#ffffff", "#1e293b", "#cbd5e1", "#f1f5f9"
-            sub = "#64748b"
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        self._theme = theme
+        self._is_dark = theme.is_dark
+        is_dark = theme.is_dark
+        bg = theme.background
+        fg = theme.text_primary
+        border = theme.border_subtle if is_dark else theme.border
+        hover = theme.surface_hover if is_dark else theme.surface
+        sub = theme.text_muted if is_dark else theme.text_secondary
 
         palette = QPalette()
         for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
@@ -498,13 +502,14 @@ class ComposerMentionPopup(QWidget):
         self._filter.setPalette(palette)
         self._list.setPalette(palette)
 
-        chevron = "#94a3b8" if is_dark else "#64748b"
+        chevron = theme.accent
         self._context_header.apply_theme(
             is_dark=is_dark,
             fg=fg,
             sub=sub,
             accent=chevron,
             hover_bg=hover,
+            border=border,
         )
         shell_ss = f"""
             QFrame#ComposerMentionShell {{
@@ -897,7 +902,8 @@ class ComposerMentionPopup(QWidget):
             self._add_empty_row("No matching results")
             self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
             return
-        sub_color = "#a6adc8" if self._is_dark else "#64748b"
+        theme = getattr(self, "_theme", view_resolved_theme(self, is_dark=self._is_dark))
+        sub_color = theme.text_muted if theme.is_dark else theme.text_secondary
         last_section: str | None = None
         for hit in hits:
             if hit.section != last_section:
@@ -935,7 +941,9 @@ class ComposerMentionPopup(QWidget):
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
 
     def _populate_root(self) -> None:
-        sub_color = "#a6adc8" if self._is_dark else "#64748b"
+        theme = getattr(self, "_theme", view_resolved_theme(self, is_dark=self._is_dark))
+        sub_color = theme.text_muted if theme.is_dark else theme.text_secondary
+        fg_color = theme.text_primary
         list_w = max(260, self._list.viewport().width())
         visible_indices = list(range(len(_ROOT_ROWS)))
         for idx, (kind, title, subtitle, icon_name) in enumerate(_ROOT_ROWS):
@@ -951,15 +959,14 @@ class ComposerMentionPopup(QWidget):
             hl.setSpacing(10)
             ic = QLabel()
             ic.setFixedSize(20, 20)
-            ic.setPixmap(qta.icon(icon_name, color=sub_color).pixmap(20, 20))
+            ic.setPixmap(themed_fa_pixmap(icon_name, sub_color, 20))
             ic.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             col = QVBoxLayout()
             col.setContentsMargins(0, 0, 0, 0)
             col.setSpacing(2)
             t = QLabel(title)
             t.setStyleSheet(
-                f"color: {'#cdd6f4' if self._is_dark else '#1e293b'}; "
-                "font-weight: 600; font-size: 13px;"
+                f"color: {fg_color}; font-weight: 600; font-size: 13px;"
             )
             s = QLabel(subtitle)
             s.setStyleSheet(f"color: {sub_color}; font-size: 11px;")

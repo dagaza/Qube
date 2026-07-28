@@ -90,7 +90,7 @@ All three are about **web**, not Memory+Library **HYBRID** routes.
 
 **● WEB** dot — web search state for the chat/turn. **● HYBRID** dot — **Hybrid Internet Mode** enabled or actively searching the web on this turn (not “Memory + Library HYBRID route”).
 
-Pair **Hybrid Internet Mode** with sensible **Settings → Knowledge → Web search discovery** privacy tier and DDG pacing before relying on automatic web.
+Pair **Hybrid Internet Mode** with sensible **Settings → Knowledge → Web search discovery** privacy tier and DDG pacing before relying on automatic web. See [Web discovery privacy tiers](web-discovery-privacy-tiers.md).
 
 ## Settings and tools that influence routing
 
@@ -131,7 +131,9 @@ See [Advanced Telemetry — interpreting](advanced-telemetry-interpreting.md) an
 
 - [Conversations](../features/conversations.md) — **Web** toggle, status dots, tools panel
 - [Knowledge settings](../features/settings/knowledge.md) — Library triggers, web discovery, retrieval trace panel
+- [Web discovery privacy tiers](web-discovery-privacy-tiers.md) — SERP provider tiers for web turns
 - [Memory vs Library](memory-vs-library.md) — two stores, two pipelines
 - [What do `@` mentions do](what-do-at-mentions-do.md) — routing attachments vs skills
+- [INSPECT RETRIEVAL](inspect-retrieval.md) — per-reply inspector tabs and routing block
 - [Advanced Telemetry](../features/telemetry.md) · [Interpreting telemetry](advanced-telemetry-interpreting.md)
 - [Composer attachments](../reference/composer-attachments.md) — `@[file:…]`, `@[chat:…]`, order rules

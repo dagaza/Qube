@@ -15,10 +15,67 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import qtawesome as qta
 
 from core.app_notification_types import AppNotificationRequest
+from core.theme.view_theme import view_resolved_theme
+from core.theme.color_utils import with_alpha
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
 from ui.components.brand_buttons import apply_brand_primary
+
+
+def notification_toast_stylesheet(
+    theme,
+    *,
+    has_countdown: bool = False,
+) -> str:
+    """QSS for :class:`AppNotificationToast` (testable without constructing widgets)."""
+    accent = theme.link
+    bg = theme.background
+    fg = theme.text_primary
+    sub = theme.text_secondary
+    border = with_alpha(theme.link, 0.45) if theme.is_dark else theme.border
+    countdown_chunk = ""
+    if has_countdown:
+        track = with_alpha(theme.text_muted, 0.25 if theme.is_dark else 0.35)
+        fill = theme.success
+        countdown_chunk = f"""
+            QProgressBar#AppNotificationCountdown {{
+                background-color: {track};
+                border: none;
+                border-radius: 2px;
+            }}
+            QProgressBar#AppNotificationCountdown::chunk {{
+                background-color: {fill};
+                border-radius: 2px;
+            }}
+            """
+    return f"""
+            QFrame#AppNotificationToast {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 12px;
+            }}
+            QLabel#AppNotificationTitle {{
+                color: {fg};
+                font-size: 13px;
+                font-weight: 700;
+                background: transparent;
+            }}
+            QLabel#AppNotificationBody {{
+                color: {sub};
+                font-size: 12px;
+                background: transparent;
+            }}
+            QPushButton#AppNotificationClose {{
+                background: transparent;
+                border: none;
+                color: {sub};
+            }}
+            QPushButton#AppNotificationClose:hover {{
+                color: {fg};
+            }}
+            {countdown_chunk}
+            """
 
 
 class AppNotificationToast(QFrame):
@@ -106,7 +163,7 @@ class AppNotificationToast(QFrame):
                 self._countdown_timer.timeout.connect(self._tick_countdown)
                 self._countdown_timer.start()
 
-        self.apply_theme(True)
+        self.apply_theme(view_resolved_theme(self).is_dark)
 
     def restart_auto_dismiss(self, request: AppNotificationRequest) -> None:
         """Reset auto-dismiss and countdown when deduping the same toast."""
@@ -189,58 +246,18 @@ class AppNotificationToast(QFrame):
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
-        accent = "#89b4fa" if is_dark else "#2563eb"
-        bg = "#1e1e2e" if is_dark else "#ffffff"
-        fg = "#cdd6f4" if is_dark else "#1e293b"
-        sub = "#a6adc8" if is_dark else "#64748b"
-        border = "rgba(137, 180, 250, 0.45)" if is_dark else "#cbd5e1"
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        accent = theme.link
+        sub = theme.text_muted if theme.is_dark else theme.text_secondary
         icon_name = self._request.icon_name or "fa5s.bell"
-        countdown_chunk = ""
-        if self._countdown_bar is not None:
-            track = "rgba(148, 163, 184, 0.25)" if is_dark else "rgba(148, 163, 184, 0.35)"
-            fill = "#34d399" if is_dark else "#10b981"
-            countdown_chunk = f"""
-            QProgressBar#AppNotificationCountdown {{
-                background-color: {track};
-                border: none;
-                border-radius: 2px;
-            }}
-            QProgressBar#AppNotificationCountdown::chunk {{
-                background-color: {fill};
-                border-radius: 2px;
-            }}
-            """
         self.setStyleSheet(
-            f"""
-            QFrame#AppNotificationToast {{
-                background-color: {bg};
-                border: 1px solid {border};
-                border-radius: 12px;
-            }}
-            QLabel#AppNotificationTitle {{
-                color: {fg};
-                font-size: 13px;
-                font-weight: 700;
-                background: transparent;
-            }}
-            QLabel#AppNotificationBody {{
-                color: {sub};
-                font-size: 12px;
-                background: transparent;
-            }}
-            QPushButton#AppNotificationClose {{
-                background: transparent;
-                border: none;
-                color: {sub};
-            }}
-            QPushButton#AppNotificationClose:hover {{
-                color: {fg};
-            }}
-            {countdown_chunk}
-            """
+            notification_toast_stylesheet(
+                theme,
+                has_countdown=self._countdown_bar is not None,
+            )
         )
-        self._icon.setPixmap(qta.icon(icon_name, color=accent).pixmap(16, 16))
-        self._close_btn.setIcon(qta.icon("fa5s.times", color=sub))
+        self._icon.setPixmap(themed_fa_pixmap(icon_name, accent, 16))
+        self._close_btn.setIcon(themed_fa_icon("fa5s.times", sub, 12))
         self._close_btn.setIconSize(self._close_btn.size())
 
 

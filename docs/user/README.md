@@ -7,8 +7,10 @@ Web-readable guides that complement the in-app help corpus (**Library → Qube**
 | Topic | Document |
 |-------|----------|
 | Install from source | [install-from-source.md](install-from-source.md) |
-| Competitive landscape (positioning) | [competitive-landscape.md](competitive-landscape.md) |
-| **Competitive roadmap (dev priorities)** | [../competitive_roadmap.md](../competitive_roadmap.md) |
+| Install on Linux (AppImage / .deb) | [install-linux.md](install-linux.md) |
+| Update Qube | [update-qube.md](update-qube.md) |
+| App update roadmap (Tiers 1–3) | [../app_update_roadmap.md](../app_update_roadmap.md) |
+| Uninstall Qube | [uninstall.md](uninstall.md) |
 | System requirements & hardware | [system-requirements.md](system-requirements.md) |
 | Workflows (voice, Library, memory) | [how-to-use.md](how-to-use.md) |
 | Release history | [CHANGELOG.md](../../CHANGELOG.md) |

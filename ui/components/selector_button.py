@@ -38,6 +38,15 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPen
 from PyQt6.QtWidgets import QPushButton, QStyle, QStyleOptionButton
 
+from core.theme.accessors import theme_for
+from core.theme.color_utils import theme_qcolor, with_alpha
+from core.theme.tokens import ResolvedTheme
+
+
+def _qcolor(value: str) -> QColor:
+    """Build QColor from theme token strings (including ``rgba(...)`` CSS)."""
+    return theme_qcolor(value)
+
 
 class SelectorButton(QPushButton):
     # Horizontal insets used when we manually paint the label / chevron.
@@ -57,31 +66,42 @@ class SelectorButton(QPushButton):
         self.setObjectName("QubeSelectorButton")
         self.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self._is_dark = is_dark
-        self._text_color = QColor("#cdd6f4")
-        self._text_disabled_color = QColor("#64748b")
-        self._chevron_active = QColor("#64748b")
-        self._chevron_muted = QColor("#94a3b8")
+        self._text_color = QColor()
+        self._text_disabled_color = QColor()
+        self._chevron_active = QColor()
+        self._chevron_muted = QColor()
         self.apply_theme(is_dark)
 
-    def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
-        if is_dark:
-            bg = "rgba(0, 0, 0, 0.2)"
-            border = "rgba(255, 255, 255, 0.08)"
-            disabled_bg = "rgba(0, 0, 0, 0.12)"
-            disabled_border = "rgba(255, 255, 255, 0.04)"
-            self._text_color = QColor("#cdd6f4")
-            self._text_disabled_color = QColor("#64748b")
-            self._chevron_muted = QColor("#3f3f46")
+    def apply_theme(
+        self,
+        is_dark: bool | None = None,
+        *,
+        theme: ResolvedTheme | None = None,
+    ) -> None:
+        resolved = theme_for(
+            is_dark=is_dark if is_dark is not None else self._is_dark,
+            resolved=theme,
+        )
+        self._is_dark = resolved.is_dark
+        if resolved.is_dark:
+            bg = with_alpha("#000000", 0.2)
+            border = with_alpha(resolved.text_on_accent, 0.08)
+            disabled_bg = with_alpha("#000000", 0.12)
+            disabled_border = with_alpha(resolved.text_on_accent, 0.04)
+            disabled_text = "#64748b"
+            self._text_color = _qcolor(resolved.text_primary)
+            self._text_disabled_color = _qcolor(disabled_text)
+            self._chevron_muted = _qcolor("#3f3f46")
         else:
-            bg = "#ffffff"
-            border = "#cbd5e1"
-            disabled_bg = "#f1f5f9"
-            disabled_border = "#e2e8f0"
-            self._text_color = QColor("#1e293b")
-            self._text_disabled_color = QColor("#94a3b8")
-            self._chevron_muted = QColor("#a1a1aa")
-        self._chevron_active = QColor("#64748b")
+            bg = resolved.surface_elevated
+            border = resolved.border
+            disabled_bg = resolved.background
+            disabled_border = resolved.border
+            disabled_text = resolved.text_muted
+            self._text_color = _qcolor(resolved.text_primary)
+            self._text_disabled_color = _qcolor(disabled_text)
+            self._chevron_muted = _qcolor(resolved.text_muted)
+        self._chevron_active = _qcolor(resolved.text_secondary)
 
         # Widget-level QSS (no #objectName) so call sites can set a stable
         # objectName for tests/tours without breaking menu-indicator suppression.
@@ -97,10 +117,12 @@ class SelectorButton(QPushButton):
                 border-radius: 6px;
                 padding: 8px 15px;
                 text-align: left;
+                color: {resolved.text_primary};
             }}
             QPushButton:disabled {{
                 background-color: {disabled_bg};
                 border: 1px solid {disabled_border};
+                color: {disabled_text};
             }}
             QPushButton::menu-indicator {{
                 image: none;

@@ -14,11 +14,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-_RISK_COLORS = {
-    "LOW": ("#166534", "#dcfce7"),
-    "MEDIUM": ("#854d0e", "#fef9c3"),
-    "HIGH": ("#991b1b", "#fee2e2"),
-}
+from core.theme.tokens import ResolvedTheme
+from ui.canonical_trace_diff.trace_diff_theme import (
+    collapse_risk_chip_stylesheet,
+    resolve_trace_diff_theme,
+)
 
 
 class _TurnChip(QFrame):
@@ -31,6 +31,7 @@ class _TurnChip(QFrame):
         risk: str,
         preview: str,
         metrics: dict[str, Any],
+        theme: ResolvedTheme,
         selected: bool = False,
         parent: Optional[QWidget] = None,
     ) -> None:
@@ -38,26 +39,24 @@ class _TurnChip(QFrame):
         self.turn_index = turn_index
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setObjectName("CollapseTurnChip")
-        fg, bg = _RISK_COLORS.get(str(risk or "LOW").upper(), _RISK_COLORS["LOW"])
-        border = "#2563eb" if selected else fg
-        self.setStyleSheet(
-            f"QFrame#CollapseTurnChip {{"
-            f"background: {bg}; color: {fg}; border: 2px solid {border};"
-            f"border-radius: 8px; padding: 4px;"
-            f"}}"
+        frame_qss, title_qss, subtitle_qss = collapse_risk_chip_stylesheet(
+            theme,
+            risk,
+            selected=selected,
         )
+        self.setStyleSheet(frame_qss)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(2)
 
         title = QLabel(f"T{turn_index} · {str(risk or 'LOW').upper()}")
-        title.setStyleSheet(f"color: {fg}; font-weight: 700;")
+        title.setStyleSheet(title_qss)
         layout.addWidget(title)
 
         subtitle = QLabel(preview[:56] or "—")
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet(f"color: {fg}; font-size: 11px;")
+        subtitle.setStyleSheet(subtitle_qss)
         layout.addWidget(subtitle)
 
         tool = (
@@ -86,6 +85,7 @@ class CollapseTimelineWidget(QFrame):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setObjectName("CollapseTimelineWidget")
+        self._is_dark = True
         self._chips: dict[int, _TurnChip] = {}
         self._selected_turn: int | None = None
         self._entries: list[dict[str, Any]] = []
@@ -119,6 +119,15 @@ class CollapseTimelineWidget(QFrame):
         self._summary.setObjectName("ViewSubtitle")
         outer.addWidget(self._summary)
 
+    def apply_theme(self, is_dark: bool) -> None:
+        self._is_dark = is_dark
+        if self._entries:
+            self.set_timeline(
+                self._entries,
+                backend_label=self._backend_label,
+                selected_turn=self._selected_turn,
+            )
+
     def set_timeline(
         self,
         entries: list[dict[str, Any]] | None,
@@ -140,6 +149,7 @@ class CollapseTimelineWidget(QFrame):
         self._title.setText(
             f"Collapse timeline{(' · ' + label) if label else ''}"
         )
+        theme = resolve_trace_diff_theme(is_dark=self._is_dark)
 
         if not entries:
             self._summary.setText("No turn diagnostics available.")
@@ -181,6 +191,7 @@ class CollapseTimelineWidget(QFrame):
                 risk=risk,
                 preview=preview,
                 metrics=entry,
+                theme=theme,
                 selected=selected_turn == turn_index,
             )
             chip.clicked.connect(self.turn_selected.emit)

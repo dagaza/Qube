@@ -99,6 +99,8 @@ from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.settings_json_editor_dialog import SettingsJsonEditorDialog
 from ui.components.selector_button import SelectorButton
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import SETTINGS_PRESTIGE_MENU, settings_prestige_menu_palette
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.views.settings.controls import (
     NoScrollComboBox,
@@ -190,22 +192,14 @@ class PrestigeMenuMixin:
     def _apply_menu_theme(self, menu, is_dark: bool):
         from PyQt6.QtGui import QPalette, QColor
 
-        palette = QPalette()
-        if is_dark:
-            bg      = QColor("#1e1e2e")
-            fg      = QColor("#cdd6f4")
-            sel_bg  = QColor("#313244")
-            sel_fg  = QColor("#cdd6f4")
-            border  = "rgba(255, 255, 255, 0.1)"
-            hover   = "#313244"
-        else:
-            bg      = QColor("#ffffff")
-            fg      = QColor("#1e293b")
-            sel_bg  = QColor("#f1f5f9")
-            sel_fg  = QColor("#0f172a")
-            border  = "#cbd5e1"
-            hover   = "#f1f5f9"
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        colors = settings_prestige_menu_palette(theme)
+        bg = QColor(colors["bg"])
+        fg = QColor(colors["fg"])
+        sel_bg = QColor(colors["sel_bg"])
+        sel_fg = QColor(colors["sel_fg"])
 
+        palette = QPalette()
         for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
             palette.setColor(role, bg)
         palette.setColor(QPalette.ColorRole.WindowText, fg)
@@ -214,21 +208,21 @@ class PrestigeMenuMixin:
         palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
 
         menu.setPalette(palette)
-        menu.setStyleSheet(f"""
-            QMenu {{ background-color: {bg.name()}; border: 1px solid {border}; border-radius: 6px; padding: 4px; }}
-            QListWidget#PrestigeMenuList {{ background-color: transparent; border: none; outline: none; }}
-            QListWidget#PrestigeMenuList::item {{ background-color: transparent; color: {fg.name()}; padding: 8px 25px; border-radius: 4px; min-height: 24px; }}
-            QListWidget#PrestigeMenuList::item:selected, QListWidget#PrestigeMenuList::item:hover {{ background-color: {hover}; color: {sel_fg.name()}; }}
-            QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
-            QScrollBar::handle:vertical {{ background: {border}; border-radius: 3px; min-height: 20px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-        """)
+        menu.setStyleSheet(theme.style(SETTINGS_PRESTIGE_MENU))
 
     def _handle_selection(self, button, label, data, callback):
-        from ui.views.settings.widgets import refit_settings_selector_width
+        from ui.views.settings.widgets import (
+            SETTINGS_SELECTOR_LABELS_PROP,
+            refit_settings_selector_width,
+        )
 
-        button.setText(label)
+        callback(data)
+        stored = button.property(SETTINGS_SELECTOR_LABELS_PROP)
+        if isinstance(stored, list) and stored:
+            if label in stored:
+                button.setText(label)
+        else:
+            button.setText(label)
         refit_settings_selector_width(button)
         if hasattr(button, "update"):
             button.update()
-        callback(data)

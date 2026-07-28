@@ -22,15 +22,16 @@ class TestComposerCommands(unittest.TestCase):
         settings = MagicMock()
         cb = MagicMock()
         settings.model_manager_hardware_suggestions_cb = cb
-        window.settings_view = settings
-        window.model_manager_view = MagicMock()
+        window._settings_view = settings
+        mm = MagicMock()
+        window._model_manager_view = mm
 
         result = execute_composer_command("reset_help_guidance", window=window)
 
         mock_reset.assert_called_once()
         cb.blockSignals.assert_called()
         cb.setChecked.assert_called_with(False)
-        window.model_manager_view.refresh_hardware_suggestions.assert_called_once()
+        mm.refresh_hardware_suggestions.assert_called_once()
         self.assertTrue(result.ok)
         self.assertFalse(result.dialog_message)
         self.assertIsNotNone(result.notification)

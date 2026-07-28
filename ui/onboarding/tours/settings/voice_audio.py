@@ -69,6 +69,17 @@ def build_settings_voice_audio_tour(host) -> OnboardingTour:
             on_enter=_open,
         ),
         OnboardingStep(
+            step_id="voice_input_enable",
+            title="Enable voice input",
+            body=(
+                "Turn always-on listening and wakeword detection on or off globally. "
+                "When off, the microphone stays closed until you use push-to-talk or "
+                "turn it back on from here or the tools panel."
+            ),
+            target_getter=lambda h: _sv(h).voice_input_enabled_toggle,
+            on_enter=_open,
+        ),
+        OnboardingStep(
             step_id="audio_output",
             title="Audio output",
             body=(

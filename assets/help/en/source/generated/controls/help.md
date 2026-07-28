@@ -26,4 +26,12 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Suggest models for my hardware in Model Manager**
 
-### Wakeword models
+### Software updates
+
+- **Check for updates**
+
+### Uninstall Qube
+
+- **Uninstall Qube and all data…**
+- **Remove Qube package only… (Linux)**
+- **Remove Qube app only… (macOS)**

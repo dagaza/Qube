@@ -19,6 +19,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from core.theme.accessors import theme_for
+from core.theme.overlay import overlay_scrim_qcolor
+from core.theme.widget_styles import ONBOARDING_COACH_PANEL, ONBOARDING_SPOTLIGHT_RING
+
 StepPredicate = Callable[[QWidget], bool] | None
 StepCallback = Callable[[QWidget], None] | None
 TargetGetter = Callable[[QWidget], QWidget | None] | None
@@ -274,7 +278,15 @@ class SpotlightOverlay(QWidget):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self._spotlight_global = QRect()
+        self._ring_color = theme_for(is_dark=True).qcolor_role(ONBOARDING_SPOTLIGHT_RING)
+        self._scrim_color = overlay_scrim_qcolor(is_dark=True)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+
+    def apply_theme(self, is_dark: bool) -> None:
+        theme = theme_for(is_dark=is_dark)
+        self._ring_color = theme.qcolor_role(ONBOARDING_SPOTLIGHT_RING)
+        self._scrim_color = overlay_scrim_qcolor(theme)
+        self.update()
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
     def set_spotlight_global_rect(self, rect: QRect) -> None:
@@ -304,10 +316,10 @@ class SpotlightOverlay(QWidget):
                 hole_path.addRoundedRect(hole_rect, 10.0, 10.0)
                 overlay_path = overlay_path.subtracted(hole_path)
 
-            painter.fillPath(overlay_path, QColor(0, 0, 0, 175))
+            painter.fillPath(overlay_path, self._scrim_color)
 
             if not hole_rect.isNull():
-                painter.setPen(QPen(QColor("#89b4fa"), 2))
+                painter.setPen(QPen(self._ring_color, 2))
                 painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawRoundedRect(hole_rect, 10.0, 10.0)
         finally:
@@ -393,8 +405,9 @@ class OnboardingCoachPanel(QFrame):
             lbl.setMinimumHeight(0)
             lbl.setMaximumHeight(16_777_215)
             if lbl.isHidden() or not lbl.text().strip():
+                lbl.setFixedHeight(0)
                 continue
-            lbl.setMinimumHeight(self._label_wrapped_height(lbl, content_w) + pad)
+            lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad)
         self.adjustSize()
 
     def keyPressEvent(self, event) -> None:
@@ -405,34 +418,8 @@ class OnboardingCoachPanel(QFrame):
         super().keyPressEvent(event)
 
     def apply_theme(self, is_dark: bool) -> None:
-        if is_dark:
-            self.setStyleSheet(
-                """
-                QFrame#OnboardingCoachPanel {
-                    background-color: #1e1e2e;
-                    border: 1px solid rgba(137, 180, 250, 0.45);
-                    border-radius: 12px;
-                }
-                QLabel#OnboardingCoachStep { color: #89b4fa; font-size: 11px; font-weight: 600; }
-                QLabel#OnboardingCoachTitle { color: #cdd6f4; font-size: 15px; font-weight: 700; }
-                QLabel#OnboardingCoachBody { color: rgba(205, 214, 244, 0.92); font-size: 13px; }
-                QLabel#OnboardingCoachHint { color: #f9e2af; font-size: 12px; font-style: italic; }
-                """
-            )
-        else:
-            self.setStyleSheet(
-                """
-                QFrame#OnboardingCoachPanel {
-                    background-color: #ffffff;
-                    border: 1px solid #cbd5e1;
-                    border-radius: 12px;
-                }
-                QLabel#OnboardingCoachStep { color: #2563eb; font-size: 11px; font-weight: 600; }
-                QLabel#OnboardingCoachTitle { color: #1e293b; font-size: 15px; font-weight: 700; }
-                QLabel#OnboardingCoachBody { color: #334155; font-size: 13px; }
-                QLabel#OnboardingCoachHint { color: #b45309; font-size: 12px; font-style: italic; }
-                """
-            )
+        theme = theme_for(is_dark=is_dark)
+        self.setStyleSheet(theme.style(ONBOARDING_COACH_PANEL))
 
 
 class _OnboardingTourInputHandler(QObject):
@@ -600,6 +587,7 @@ class OnboardingTour:
     def _apply_theme(self) -> None:
         is_dark = getattr(self._host, "_is_dark_theme", True)
         self._panel.apply_theme(is_dark)
+        self._overlay.apply_theme(is_dark)
 
     def _enter_step(self, index: int) -> None:
         step = self._steps[index]

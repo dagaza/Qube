@@ -35,15 +35,16 @@ class TestNavSidebarStructure:
         btn = main_window.findChild(QPushButton, name)
         assert btn is not None, f"Expected button '{name}' not found"
 
-    def test_chat_button_checked_by_default(self, main_window):
-        btn = main_window.findChild(QPushButton, "NavChat")
+    def test_chat_button_checked_by_default(self, fresh_main_window):
+        btn = fresh_main_window.findChild(QPushButton, "NavChat")
         assert btn.isChecked()
 
 
 class TestThemeToggle:
     """Verify the moon/sun theme toggle switches state."""
 
-    def test_toggle_switches_dark_to_light(self, main_window, qtbot):
+    def test_toggle_switches_dark_to_light(self, main_window_dark, qtbot):
+        main_window = main_window_dark
         assert main_window._is_dark_theme is True
         btn = main_window.findChild(QPushButton, "NavThemeToggle")
         qtbot.mouseClick(btn, Qt.MouseButton.LeftButton)

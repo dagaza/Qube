@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import qtawesome as qta
 
 from core.composer_draft import (
     ComposerDraft,
@@ -23,11 +22,10 @@ from core.composer_draft import (
     routing_chip_tooltip,
     skill_chip_tooltip,
 )
-
-# Match PrestigeToggle active track + telemetry accent (emerald-500 family).
-_EMERALD = "#10b981"
-_EMERALD_MUTED = "#34d399"
-_EMERALD_DEEP = "#059669"
+from core.theme.color_utils import adjust_lightness, with_alpha
+from core.theme.tokens import ResolvedTheme
+from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
 
 
 class _FlowLayout(QLayout):
@@ -143,10 +141,15 @@ class _ComposerContextChip(QFrame):
         layout.setContentsMargins(pad_h, pad_v, pad_h, pad_v)
         layout.setSpacing(6)
 
+        init_theme = view_resolved_theme(parent, is_dark=is_dark)
         icon_lbl = QLabel()
         icon_lbl.setObjectName("ComposerContextChipIcon")
         icon_lbl.setPixmap(
-            qta.icon(icon_name, color=self._icon_color(is_dark, chip_role)).pixmap(12, 12)
+            themed_fa_pixmap(
+                icon_name,
+                self._icon_color(init_theme, chip_role),
+                12,
+            )
         )
         icon_lbl.setFixedSize(12, 12)
         layout.addWidget(icon_lbl)
@@ -163,7 +166,9 @@ class _ComposerContextChip(QFrame):
             btn.setFixedSize(16, 16)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setToolTip("Remove")
-            btn.setIcon(qta.icon("fa5s.times", color=self._muted_fg(is_dark)))
+            btn.setIcon(
+                themed_fa_icon("fa5s.times", self._muted_fg(init_theme), 10)
+            )
             btn.setIconSize(QSize(10, 10))
             btn.clicked.connect(self.remove_clicked.emit)
             layout.addWidget(btn)
@@ -178,59 +183,62 @@ class _ComposerContextChip(QFrame):
         self.apply_theme(is_dark)
 
     @staticmethod
-    def _icon_color(is_dark: bool, chip_role: str) -> str:
+    def _icon_color(theme: ResolvedTheme, chip_role: str) -> str:
         if chip_role == "skill":
-            return "#c4b5fd" if is_dark else "#6d28d9"
-        return _EMERALD_MUTED if is_dark else _EMERALD
+            return theme.accent if theme.is_dark else adjust_lightness(theme.accent, -0.12)
+        return adjust_lightness(theme.success, 0.12 if theme.is_dark else 0.0)
 
     @staticmethod
-    def _muted_fg(is_dark: bool) -> str:
-        return "#a6adc8" if is_dark else "#64748b"
+    def _muted_fg(theme: ResolvedTheme) -> str:
+        return theme.text_muted if theme.is_dark else theme.text_secondary
 
-    def _routing_chip_colors(self, is_dark: bool) -> tuple[str, str, str]:
+    def _routing_chip_colors(self, theme: ResolvedTheme) -> tuple[str, str, str]:
         """Return (background, border, foreground) for knowledge/routing chips."""
         strong = self._is_primary or (self._compact and self._chip_role == "routing")
-        if is_dark:
+        success = theme.success
+        if theme.is_dark:
             if strong:
                 return (
-                    "rgba(16, 185, 129, 0.55)",
-                    _EMERALD,
-                    "#ecfdf5",
+                    with_alpha(success, 0.55),
+                    success,
+                    theme.text_on_accent,
                 )
             return (
-                "rgba(16, 185, 129, 0.20)",
-                "rgba(16, 185, 129, 0.48)",
-                "#a7f3d0",
+                with_alpha(success, 0.20),
+                with_alpha(success, 0.48),
+                adjust_lightness(success, 0.35),
             )
         if strong:
             return (
-                "rgba(16, 185, 129, 0.18)",
-                _EMERALD,
-                _EMERALD_DEEP,
+                with_alpha(success, 0.18),
+                success,
+                adjust_lightness(success, -0.18),
             )
         return (
-            "rgba(16, 185, 129, 0.08)",
-            "rgba(16, 185, 129, 0.38)",
-            "#047857",
+            with_alpha(success, 0.08),
+            with_alpha(success, 0.38),
+            adjust_lightness(success, -0.22),
         )
 
     def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
-        icon_color = self._icon_color(is_dark, self._chip_role)
-        self._icon.setPixmap(qta.icon(self._icon_name, color=icon_color).pixmap(12, 12))
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        self._is_dark = theme.is_dark
+        icon_color = self._icon_color(theme, self._chip_role)
+        self._icon.setPixmap(themed_fa_pixmap(self._icon_name, icon_color, 12))
 
         if self._chip_role == "skill":
-            bg = "rgba(139, 92, 246, 0.22)" if is_dark else "rgba(139, 92, 246, 0.12)"
-            border = "rgba(139, 92, 246, 0.55)" if is_dark else "rgba(109, 40, 217, 0.45)"
-            fg = "#e9d5ff" if is_dark else "#5b21b6"
+            bg = with_alpha(theme.accent, 0.22 if theme.is_dark else 0.12)
+            border = with_alpha(theme.accent, 0.55 if theme.is_dark else 0.45)
+            fg = adjust_lightness(theme.accent, 0.35 if theme.is_dark else -0.22)
         elif self._chip_role == "routing":
-            bg, border, fg = self._routing_chip_colors(is_dark)
+            bg, border, fg = self._routing_chip_colors(theme)
         else:
-            bg = "rgba(255, 255, 255, 0.05)" if is_dark else "rgba(0, 0, 0, 0.03)"
-            border = "rgba(148, 163, 184, 0.55)" if is_dark else "rgba(148, 163, 184, 0.55)"
-            fg = "#bac2de" if is_dark else "#475569"
+            bg = with_alpha(theme.text_primary, 0.05 if theme.is_dark else 0.03)
+            border = with_alpha(theme.text_muted, 0.55)
+            fg = theme.text_secondary if theme.is_dark else theme.text_muted
 
         radius = 8 if self._compact else 10
+        remove_hover = with_alpha(theme.text_primary, 0.08 if theme.is_dark else 0.06)
         self.setStyleSheet(
             f"""
             QFrame#ComposerContextChip {{
@@ -257,14 +265,14 @@ class _ComposerContextChip(QFrame):
                 padding: 0px;
             }}
             QPushButton#ComposerContextChipRemove:hover {{
-                background-color: {"rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.06)"};
+                background-color: {remove_hover};
                 border-radius: 8px;
             }}
             """
         )
         if self._remove_btn is not None:
             self._remove_btn.setIcon(
-                qta.icon("fa5s.times", color=self._muted_fg(is_dark))
+                themed_fa_icon("fa5s.times", self._muted_fg(theme), 10)
             )
 
 
@@ -320,7 +328,8 @@ class ComposerContextChipStrip(QWidget):
         self._rebuild()
 
     def apply_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        self._is_dark = theme.is_dark
         self._rebuild()
 
     def has_chips(self) -> bool:

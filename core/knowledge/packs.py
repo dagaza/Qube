@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from core.knowledge.knowledge_pack import import_knowledge_pack
+from core.licensing.schema import PackSignatureError, PackVerificationResult
+from core.licensing.verify import verify_knowledge_pack_signature
 
 PACK_FORMAT = "qube_knowledge_pack"
 PACK_FORMAT_VERSION = 1
@@ -54,9 +56,23 @@ def install_knowledge_pack(pack: dict[str, Any]) -> dict[str, Any]:
     errors = validate_knowledge_pack(pack)
     if errors:
         return {"installed": False, "errors": errors}
+    try:
+        verification = verify_knowledge_pack_signature(pack)
+    except PackSignatureError as exc:
+        return {"installed": False, "errors": [str(exc)]}
     summary = import_knowledge_pack(pack)
     summary["installed"] = not summary.get("errors")
+    summary["pack_verification"] = _verification_summary(verification)
     return summary
+
+
+def _verification_summary(verification: PackVerificationResult) -> dict[str, Any]:
+    return {
+        "signed": verification.signed,
+        "verified": verification.verified,
+        "key_id": verification.key_id,
+        "key_label": verification.key_label,
+    }
 
 
 def build_enterprise_pack(

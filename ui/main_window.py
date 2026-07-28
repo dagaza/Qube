@@ -25,6 +25,7 @@ from PyQt6.QtGui import (
 )
 import qtawesome as qta
 from core.paths import install_root, resource_path
+from ui.app_icon import apply_window_branding, finalize_window_branding
 from ui.views.conversations_view import ConversationsView
 from ui.views.settings_view import SettingsView
 from ui.views.library_view import LibraryView
@@ -32,10 +33,27 @@ from ui.views.memory_manager_view import MemoryManagerView
 from ui.views.telemetry_view import TelemetryView
 from ui.views.model_manager_view import ModelManagerView
 from ui.components.toggle import PrestigeToggle
+from ui.components.selector_button import SelectorButton
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.app_notifications import AppNotificationCenter
 from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.modal_backdrop import ModalBackdrop
+from ui.shell_theme import (
+    accent_icon_color,
+    apply_prestige_menu_theme,
+    chevron_colors,
+    muted_icon_color,
+    nav_icon_colors,
+    resolve_shell_theme,
+    retrieval_indicator_colors,
+    telemetry_metric_colors,
+    theme_toggle_icon_colors,
+    vu_meter_palette,
+)
+from core.theme.svg_icons import tinted_svg_icon, themed_fa_icon, themed_fa_pixmap
+from core.theme.color_utils import with_alpha
+from core.theme.constants import UNRESOLVED_TOKEN_COLOR
+from core.theme.widget_styles import SUCCESS_STATUS
 from core.app_notification_types import AppNotificationRequest
 from core.app_restart import relaunch_and_quit, manual_restart_instructions
 from core.assistant_presence import AssistantPresenceService
@@ -53,6 +71,8 @@ from core.app_settings import (
     get_llm_chat_history_messages,
     get_llm_context_limit,
     get_llm_models_dir,
+    get_llm_output_token_limit,
+    get_llm_output_token_limit_enabled,
     get_llm_temperature,
     get_mcp_internet_hybrid_enabled,
     get_mcp_rag_auto_activator_enabled,
@@ -145,6 +165,16 @@ class VUMeter(QWidget):
         self._glow_effect.setOffset(0, 0)
         self._glow_effect.setColor(QColor(0, 0, 0, 0))
         self.setGraphicsEffect(self._glow_effect)
+        self._palette: dict[str, str] = {}
+
+    def apply_theme(self, theme) -> None:
+        self._palette = vu_meter_palette(theme)
+        self.update()
+
+    def _color(self, key: str, fallback_key: str = "accent") -> QColor:
+        return QColor(
+            self._palette.get(key, self._palette.get(fallback_key, UNRESOLVED_TOKEN_COLOR))
+        )
 
     def start_attention_pulse(self, duration_ms: int | None = None) -> None:
         """Pulse a glow around the meter so users notice the live input level bar."""
@@ -170,7 +200,7 @@ class VUMeter(QWidget):
 
     def _sync_attention_glow(self) -> None:
         glow_alpha = int(120 + 135 * (0.5 + 0.5 * math.sin(self._pulse_phase)))
-        glow = QColor("#8b5cf6")
+        glow = self._color("accent")
         glow.setAlpha(glow_alpha)
         self._glow_effect.setColor(glow)
         self.update()
@@ -189,37 +219,41 @@ class VUMeter(QWidget):
 
     def set_level(self, level: float):
         """Updates the visual level and triggers a repaint."""
-        # Clamp the value between 0.0 and 1.0 for safety
         level = max(0.0, min(1.0, float(level)))
+        # Fast attack, slower release so speech reads smoothly between chunks.
+        if level >= self._level:
+            self._level = level
+        else:
+            self._level = max(level, self._level * 0.82)
         if (
             self._attention_pulse
             and level >= self._ATTENTION_LEVEL_STOP
             and self._attention_elapsed_ms >= self._ATTENTION_LEVEL_STOP_DELAY_MS
         ):
             self._stop_attention_pulse()
-        self._level = level
-        self.update() 
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # 1. Draw the dark background track
-        track_color = QColor("#45475a" if self._attention_pulse else "#313244")
+        track_color = self._color(
+            "track_pulse" if self._attention_pulse else "track_idle"
+        )
         painter.setBrush(track_color)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 3, 3)
 
         if self._attention_pulse:
             overlay_alpha = int(40 + 35 * (0.5 + 0.5 * math.sin(self._pulse_phase * 0.9)))
-            overlay = QColor("#8b5cf6")
+            overlay = self._color("accent")
             overlay.setAlpha(overlay_alpha)
             painter.setBrush(overlay)
             painter.drawRoundedRect(self.rect(), 3, 3)
 
-            # In-bounds purple rim so the highlight reads even when the outer blur is tight.
             rim_alpha = int(90 + 80 * (0.5 + 0.5 * math.sin(self._pulse_phase * 1.2)))
-            rim = QColor("#a78bfa")
+            rim = self._color("accent_hover")
             rim.setAlpha(rim_alpha)
             painter.setPen(QPen(rim, 1))
             painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -233,9 +267,9 @@ class VUMeter(QWidget):
 
             # 3. Create the Green -> Yellow -> Red gradient
             gradient = QLinearGradient(0, 0, self.width(), 0)
-            gradient.setColorAt(0.0, QColor("#a6e3a1")) # Green (Normal)
-            gradient.setColorAt(0.7, QColor("#f9e2af")) # Yellow (Loud)
-            gradient.setColorAt(1.0, QColor("#f38ba8")) # Red (Clipping)
+            gradient.setColorAt(0.0, self._color("gradient_start"))
+            gradient.setColorAt(0.7, self._color("gradient_mid"))
+            gradient.setColorAt(1.0, self._color("gradient_end"))
 
             # 4. Paint the active level
             painter.setBrush(gradient)
@@ -243,7 +277,7 @@ class VUMeter(QWidget):
         elif self._attention_pulse:
             # Subtle idle shimmer so the bar is noticeable before the user speaks.
             shimmer_alpha = int(80 + 70 * (0.5 + 0.5 * math.sin(self._pulse_phase * 1.4)))
-            shimmer = QColor("#c4b5fd")
+            shimmer = self._color("accent_muted")
             shimmer.setAlpha(shimmer_alpha)
             painter.setBrush(shimmer)
             painter.drawRoundedRect(QRect(0, 0, max(16, self.width() // 4), self.height()), 3, 3)
@@ -273,13 +307,10 @@ class MainWindow(QMainWindow):
         run_scenario_path: str = "",
         scenario_backend: str = "qube",
         compare_sessions: tuple[str, str] | None = None,
+        theme_manager=None,
     ):
         super().__init__()
         self._project_root = install_root()
-        # 🔑 Explicitly tell the OS what icon to use for the Taskbar/Window
-        logo_icon_path = self._resolve_logo_asset("qube_logo_256.png")
-        if logo_icon_path is not None:
-            self.setWindowIcon(QIcon(str(logo_icon_path)))
         self.setWindowTitle("Qube - Workspace")
         self._default_minimum_size = QSize(1200, 950)
 
@@ -297,7 +328,8 @@ class MainWindow(QMainWindow):
         # 1. Frameless Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        # setWindowFlags() recreates the native window and drops prior size constraints.
+        # setWindowFlags() recreates the native window and drops prior icon/size state.
+        apply_window_branding(self)
         self.setMinimumSize(self._default_minimum_size)
         self._old_pos = None
 
@@ -336,9 +368,26 @@ class MainWindow(QMainWindow):
         self._sidecar_client = workers.get("sidecar")
         self._sidecar_worker = workers.get("sidecar_worker")
 
-        # Global State
-        self._is_dark_theme = True
+        from core.theme.applicator import ThemeApplicator
+        from core.theme.feature_flags import is_generated_theme_enabled
+        from core.theme.manager import ThemeManager
+        from core.theme.storage import theme_storage_from_app_settings
+        from core.surface_fill.storage import surface_fill_storage_from_app_settings
+
+        self._owns_theme_manager = theme_manager is None
+        self._theme_manager = theme_manager or ThemeManager(
+            storage=theme_storage_from_app_settings(),
+            surface_storage=surface_fill_storage_from_app_settings(),
+            applicator=ThemeApplicator(
+                use_generated_stylesheet=is_generated_theme_enabled(),
+            ),
+        )
+        self._theme_manager.subscribe(self._on_theme_applied)
+        self._active_theme_profiler = None
+        self._pending_hidden_stages: list[int] | None = None
         self._theme_stage_dirty: set[int] = set()
+        self._setup_system_appearance_listener()
+
         self._cached_tts_model_name: str = ""
         self._cached_tts_voices: list[str] = []
 
@@ -358,8 +407,127 @@ class MainWindow(QMainWindow):
         self._active_tour = None
         self._theme_profile_startup_logged = False
 
+        if self._owns_theme_manager:
+            self._theme_manager.apply(persist=False)
+
+    @property
+    def theme_manager(self):
+        return self._theme_manager
+
+    @property
+    def _is_dark_theme(self) -> bool:
+        return self._theme_manager.is_dark
+
+    def _setup_system_appearance_listener(self) -> None:
+        """Follow OS light/dark changes when appearance preference is follow-system."""
+        from PyQt6.QtGui import QGuiApplication
+
+        app = QGuiApplication.instance()
+        if app is None:
+            return
+        hints = app.styleHints()
+        hints.colorSchemeChanged.connect(self._on_system_color_scheme_changed)
+
+    def _on_system_color_scheme_changed(self, _scheme) -> None:
+        from core.theme.follow_system import ThemeAppearancePreference
+
+        if self._theme_manager.appearance_preference is not ThemeAppearancePreference.FOLLOW_SYSTEM:
+            return
+        self._theme_manager.sync_with_system_appearance(persist=True)
+
+    def _on_theme_applied(self, resolved) -> None:
+        """Refresh widget-level theme chrome after ``ThemeManager.apply()``."""
+        from PyQt6.QtWidgets import QApplication
+
+        from core.qube_tooltip import qube_tooltip_set_theme
+        from core.richtext_styles import apply_app_link_palette
+        from core.theme_toggle_profile import ThemeToggleProfiler
+
+        is_dark = resolved.is_dark
+        profiler = self._active_theme_profiler or ThemeToggleProfiler.maybe_enabled()
+
+        with profiler.step("nav_theme_chrome"):
+            self._update_nav_theme_toggle(is_dark)
+            qube_tooltip_set_theme(is_dark)
+
+        if self._pending_hidden_stages is not None:
+            if is_dark:
+                logger.info("Theme switched to Dark Mode.")
+            else:
+                logger.info("Theme switched to Light Mode.")
+
+        app = QApplication.instance()
+        active_stage = self._active_main_stage_index()
+        hidden_stages = self._pending_hidden_stages
+        if hidden_stages is None:
+            hidden_stages = [
+                idx
+                for idx in range(self.main_stage.count())
+                if idx != active_stage and self._is_main_stage_built(idx)
+            ]
+
+        self.setUpdatesEnabled(False)
+        try:
+            with profiler.step("apply_app_link_palette"):
+                apply_app_link_palette(app, theme=resolved)
+
+            self._refresh_global_theme_chrome(is_dark, profiler)
+
+            with profiler.step(f"stage_{active_stage}.refresh"):
+                self._refresh_stage_theme(active_stage, is_dark)
+        finally:
+            self.setUpdatesEnabled(True)
+            self.update()
+
+        if self._active_theme_profiler is None:
+            self._schedule_deferred_theme_refreshes(hidden_stages)
+
+    def _nav_theme_tooltip(self, is_dark: bool) -> str:
+        from core.theme.catalog import ThemeCatalog
+        from core.theme.tokens import ThemeMode
+
+        catalog = ThemeCatalog(self._theme_manager.list_schemes())
+        target_mode = ThemeMode.LIGHT if is_dark else ThemeMode.DARK
+        sibling = catalog.sibling_for_polarity(self._theme_manager.scheme_id, target_mode)
+        if sibling:
+            return f"Switch to {catalog.display_name(sibling)}"
+        if is_dark:
+            return "Switch to light theme"
+        return "Switch to dark theme"
+
+    def _update_nav_theme_toggle(self, is_dark: bool) -> None:
+        import qtawesome as qta
+
+        theme = resolve_shell_theme(self, is_dark=is_dark)
+        moon, sun = theme_toggle_icon_colors(theme)
+        if is_dark:
+            self.nav_theme.setIcon(qta.icon("fa5s.moon", color=moon))
+            self.nav_theme.setToolTip(self._nav_theme_tooltip(is_dark=True))
+        else:
+            self.nav_theme.setIcon(qta.icon("fa5s.sun", color=sun))
+            self.nav_theme.setToolTip(self._nav_theme_tooltip(is_dark=False))
+
+    def _sync_retrieval_indicator_palette(self) -> None:
+        colors = retrieval_indicator_colors(self._theme_manager.current)
+        self._RETRIEVAL_COLOR_OFF = colors["off"]
+        self._RETRIEVAL_COLOR_ACTIVE = colors["active"]
+        self._RAG_COLOR_STANDBY = colors["rag_standby"]
+        self._WEB_COLOR_STANDBY = colors["web_standby"]
+        self._DDG_BACKOFF_COLOR = colors["ddg_backoff"]
+        if hasattr(self, "ddg_backoff_label"):
+            self.ddg_backoff_label.setStyleSheet(
+                self._retrieval_indicator_stylesheet(self._DDG_BACKOFF_COLOR)
+            )
+        self._apply_web_indicator()
+        if hasattr(self, "rag_status_dot"):
+            current = getattr(self, "_rag_indicator_state", "off")
+            self.set_rag_state(current)
+
     def showEvent(self, event):
         super().showEvent(event)
+        if not getattr(self, "_window_branding_finalized", False):
+            self._window_branding_finalized = True
+            finalize_window_branding(self)
         if not getattr(self, "_theme_profile_startup_logged", False):
             self._theme_profile_startup_logged = True
             self._log_theme_profile_startup_snapshot()
@@ -536,6 +704,7 @@ class MainWindow(QMainWindow):
         self._model_manager_view = None
         self._settings_view = None
         self._settings_view_wired = False
+        self._generation_toolbar_sync_wired: set[str] = set()
         self._model_manager_view_wired = False
         self._model_manager_settings_crosslink_wired = False
         self._model_manager_companion_crosslink_wired = False
@@ -886,10 +1055,12 @@ class MainWindow(QMainWindow):
 
         # Mic icon, VU meter, and chevron mic selector
         self.topbar_mic_icon = QLabel()
+        mic_theme = self._theme_manager.current
         self.topbar_mic_icon.setPixmap(
-            qta.icon('fa5s.microphone', color='#64748b').pixmap(QSize(14, 14))
+            themed_fa_pixmap("fa5s.microphone", accent_icon_color(mic_theme), 14)
         )
         self.vu_meter = VUMeter()
+        self.vu_meter.apply_theme(mic_theme)
         self._topbar_mic_attention_phase = 0.0
         self._topbar_mic_attention_ms = 0
         self._topbar_mic_attention_timer = QTimer(self)
@@ -950,28 +1121,25 @@ class MainWindow(QMainWindow):
         self.rag_status_dot.setToolTip(
             tr("Knowledge base status: grey = off, blue = ready, green = retrieving")
         )
-        self.rag_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;") 
+        self._rag_indicator_state = "off"
         center_layout.addWidget(self.rag_status_dot)
 
         self.web_status_dot = QLabel("● WEB")
         self.web_status_dot.setFixedWidth(60)
         self.web_status_dot.setObjectName("WebStatusDot")
         self.web_status_dot.setToolTip("Web search is off")
-        self.web_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
         center_layout.addWidget(self.web_status_dot)
 
         self.hybrid_status_dot = QLabel("● HYBRID")
         self.hybrid_status_dot.setFixedWidth(85)
         self.hybrid_status_dot.setObjectName("HybridStatusDot")
         self.hybrid_status_dot.setToolTip("Hybrid Internet Mode is off")
-        self.hybrid_status_dot.setStyleSheet("color: #45475a; font-weight: bold; font-size: 11px;")
         center_layout.addWidget(self.hybrid_status_dot)
 
         self.ddg_backoff_label = QLabel("⏸ DDG")
         self.ddg_backoff_label.setFixedWidth(88)
         self.ddg_backoff_label.setObjectName("DdgBackoffLabel")
         self.ddg_backoff_label.setToolTip("DuckDuckGo discovery pause")
-        self.ddg_backoff_label.setStyleSheet("color: #fab387; font-weight: bold; font-size: 11px;")
         self.ddg_backoff_label.hide()
         center_layout.addWidget(self.ddg_backoff_label)
 
@@ -986,7 +1154,7 @@ class MainWindow(QMainWindow):
         self._web_indicator_active_direct = False
         self._web_indicator_active_hybrid = False
         self._web_indicator_outcome_hint: str | None = None
-        self._apply_web_indicator()
+        self._sync_retrieval_indicator_palette()
         self.refresh_ddg_backoff_indicator()
 
         layout.addWidget(center_container)
@@ -1000,20 +1168,24 @@ class MainWindow(QMainWindow):
         win_layout.setContentsMargins(0, 0, 0, 0)
         win_layout.setSpacing(8)
         
+        win_icon_color = muted_icon_color(self._theme_manager.current)
+
         self._min_btn = QPushButton()
-        self._min_btn.setIcon(qta.icon('fa5s.minus'))
+        self._min_btn.setIcon(themed_fa_icon("fa5s.minus", win_icon_color, 14))
         self._min_btn.setProperty("class", "WindowControlButton")
         self._min_btn.setToolTip(tr("Minimise window"))
         self._min_btn.clicked.connect(self.showMinimized)
 
         self.max_btn = QPushButton()
-        self.max_btn.setIcon(qta.icon('fa5s.expand-arrows-alt'))
+        self.max_btn.setIcon(
+            themed_fa_icon("fa5s.expand-arrows-alt", win_icon_color, 14)
+        )
         self.max_btn.setProperty("class", "WindowControlButton")
         self.max_btn.setToolTip(tr("Maximise window"))
         self.max_btn.clicked.connect(self._toggle_maximize)
 
         self._close_btn = QPushButton()
-        self._close_btn.setIcon(qta.icon('fa5s.times'))
+        self._close_btn.setIcon(themed_fa_icon("fa5s.times", win_icon_color, 14))
         self._close_btn.setProperty("class", "WindowControlButton")
         self._close_btn.setToolTip(tr("Minimise to system tray"))
         self._close_btn.clicked.connect(self.hide)
@@ -1028,9 +1200,12 @@ class MainWindow(QMainWindow):
         return bar
 
     def _apply_topbar_mic_chevron_style(self) -> None:
-        chevron_color = "#64748b"
-        hover = "rgba(148, 163, 184, 0.18)" if not getattr(self, "_is_dark_theme", True) else "rgba(205, 214, 244, 0.08)"
-        self.mic_selector_btn.setIcon(qta.icon("fa5s.chevron-down", color=chevron_color))
+        theme = self._theme_manager.current
+        chevron_color = accent_icon_color(theme)
+        hover = with_alpha(theme.text_muted, 0.18 if not theme.is_dark else 0.08)
+        self.mic_selector_btn.setIcon(
+            themed_fa_icon("fa5s.chevron-down", chevron_color, 10)
+        )
         self.mic_selector_btn.setStyleSheet(
             f"""
             QToolButton#TopBarMicSelector {{
@@ -1152,7 +1327,9 @@ class MainWindow(QMainWindow):
         Expects a normalized float between 0.0 (silence) and 1.0 (clipping).
         """
         if hasattr(self, 'vu_meter'):
-            self.vu_meter.set_level(level)
+            # Linear peak often reads low on quiet mics; curve for visibility.
+            display = min(1.0, float(level) ** 0.55)
+            self.vu_meter.set_level(display)
 
     def pulse_mic_vu_meter_attention(self, duration_ms: int = 8000) -> None:
         """Highlight the top-bar mic level meter (Settings → Audio Input hint)."""
@@ -1160,6 +1337,13 @@ class MainWindow(QMainWindow):
             self.vu_meter.start_attention_pulse(duration_ms)
         if hasattr(self, "topbar_mic_icon"):
             self._start_topbar_mic_attention(duration_ms)
+        worker = self._audio_worker
+        voice_off = (
+            hasattr(self, "voice_input_toggle")
+            and not self.voice_input_toggle.isChecked()
+        )
+        if worker is not None and voice_off and hasattr(worker, "request_level_monitor"):
+            worker.request_level_monitor(duration_ms / 1000.0)
 
     def _start_topbar_mic_attention(self, duration_ms: int) -> None:
         self._topbar_mic_attention_ms = max(500, int(duration_ms))
@@ -1172,16 +1356,18 @@ class MainWindow(QMainWindow):
         self._topbar_mic_attention_ms -= VUMeter._ATTENTION_TICK_MS
         if self._topbar_mic_attention_ms <= 0:
             self._topbar_mic_attention_timer.stop()
-            color = "#64748b"
+            color = accent_icon_color(self._theme_manager.current)
         else:
             pulse = 0.5 + 0.5 * math.sin(self._topbar_mic_attention_phase)
-            color = "#8b5cf6" if pulse >= 0.5 else "#eab308"
+            theme = self._theme_manager.current
+            color = theme.accent if pulse >= 0.5 else theme.warning
         self.topbar_mic_icon.setPixmap(
-            qta.icon("fa5s.microphone", color=color).pixmap(QSize(14, 14))
+            themed_fa_pixmap("fa5s.microphone", color, 14)
         )
     
     def set_rag_state(self, state: str) -> None:
         """Manages the Traffic Light colors of the RAG indicator."""
+        self._rag_indicator_state = state
         if state == 'off':
             color = self._RETRIEVAL_COLOR_OFF
         elif state == 'standby':
@@ -1192,13 +1378,14 @@ class MainWindow(QMainWindow):
             return
 
         self.rag_status_dot.setStyleSheet(
-            f"color: {color}; font-weight: bold; font-size: 11px;"
+            self._retrieval_indicator_stylesheet(color)
         )
 
-    _RETRIEVAL_COLOR_OFF = "#45475a"
-    _RETRIEVAL_COLOR_ACTIVE = "#a6e3a1"
-    _RAG_COLOR_STANDBY = "#89b4fa"
-    _WEB_COLOR_STANDBY = "#c2410c"
+    _RETRIEVAL_COLOR_OFF = ""
+    _RETRIEVAL_COLOR_ACTIVE = ""
+    _RAG_COLOR_STANDBY = ""
+    _WEB_COLOR_STANDBY = ""
+    _DDG_BACKOFF_COLOR = ""
 
     def _retrieval_indicator_stylesheet(self, color: str) -> str:
         return f"color: {color}; font-weight: bold; font-size: 11px;"
@@ -1580,8 +1767,11 @@ class MainWindow(QMainWindow):
         self.max_btn.setToolTip(tr("Restore window") if maximized else tr("Maximise window"))
 
     def _apply_maximize_chrome(self, maximized: bool) -> None:
+        win_icon_color = muted_icon_color(self._theme_manager.current)
         if maximized:
-            self.max_btn.setIcon(qta.icon("fa5s.compress-arrows-alt"))
+            self.max_btn.setIcon(
+                themed_fa_icon("fa5s.compress-arrows-alt", win_icon_color, 14)
+            )
             self.max_btn.setToolTip(tr("Restore window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 12px;", "border-radius: 0px;")
@@ -1589,7 +1779,9 @@ class MainWindow(QMainWindow):
             if hasattr(self, "grip"):
                 self.grip.setVisible(False)
         else:
-            self.max_btn.setIcon(qta.icon("fa5s.expand-arrows-alt"))
+            self.max_btn.setIcon(
+                themed_fa_icon("fa5s.expand-arrows-alt", win_icon_color, 14)
+            )
             self.max_btn.setToolTip(tr("Maximise window"))
             self.main_container.setStyleSheet(
                 self.main_container.styleSheet().replace("border-radius: 0px;", "border-radius: 12px;")
@@ -1782,10 +1974,10 @@ class MainWindow(QMainWindow):
         self.nav_theme = QPushButton()
         self.nav_theme.setObjectName("NavThemeToggle")
         self.nav_theme.setProperty("class", "NavButton")
-        self.nav_theme.setIcon(qta.icon('fa5s.moon', color='#f9e2af'))
+        self._update_nav_theme_toggle(self._is_dark_theme)
         self.nav_theme.setIconSize(QSize(20, 20))
         self.nav_theme.setFixedSize(44, 44)
-        self.nav_theme.setToolTip("Switch to light theme")
+        self.nav_theme.setToolTip(self._nav_theme_tooltip(self._is_dark_theme))
         self.nav_theme.clicked.connect(self._toggle_theme)
         layout.addWidget(self.nav_theme, alignment=Qt.AlignmentFlag.AlignHCenter)
 
@@ -1806,11 +1998,12 @@ class MainWindow(QMainWindow):
         self.side_ram_lbl = QLabel("RAM --")
         self.side_gpu_lbl = QLabel("GPU --")
 
-        # Style mapping: Hex colors match TelemetryView exactly
+        # Style mapping: legend colors match TelemetryView
+        theme = self._theme_manager.current
         metrics = [
-            (self.side_cpu_lbl, "#10b981"), # Emerald
-            (self.side_ram_lbl, "#3b82f6"), # Blue
-            (self.side_gpu_lbl, "#8b5cf6")  # Purple
+            (self.side_cpu_lbl, telemetry_metric_colors(theme)[0]),
+            (self.side_ram_lbl, telemetry_metric_colors(theme)[1]),
+            (self.side_gpu_lbl, telemetry_metric_colors(theme)[2]),
         ]
 
         for lbl, color in metrics:
@@ -1864,7 +2057,10 @@ class MainWindow(QMainWindow):
         
         self.toggle_tools_btn = QPushButton()
         self.toggle_tools_btn.setFixedSize(30, 30)
-        self.toggle_tools_btn.setIcon(qta.icon('fa5s.chevron-right', color='#89b4fa'))
+        theme = self._theme_manager.current
+        self.toggle_tools_btn.setIcon(
+            qta.icon("fa5s.chevron-right", color=theme.link)
+        )
         self.toggle_tools_btn.setStyleSheet("background: transparent; border: none;")
         self.toggle_tools_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_tools_btn.setToolTip("Hide tools panel")
@@ -1895,7 +2091,13 @@ class MainWindow(QMainWindow):
         self.toolbar_native_model_selector = QPushButton()
         self.toolbar_native_model_selector.setObjectName("SettingsMenuButton")
         self.toolbar_native_model_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.toolbar_native_model_selector.setIcon(qta.icon("fa5s.chevron-down", color="#64748b"))
+        self.toolbar_native_model_selector.setIcon(
+            themed_fa_icon(
+                "fa5s.chevron-down",
+                accent_icon_color(self._theme_manager.current),
+                12,
+            )
+        )
         self.toolbar_native_model_selector.setMenu(QMenu(self.toolbar_native_model_selector))
         self.toolbar_native_model_selector.setText("Select AI Model")
         self.toolbar_native_model_selector.setToolTip(
@@ -1946,7 +2148,9 @@ class MainWindow(QMainWindow):
         auto_load_lbl.setToolTip("")
         auto_load_info = QLabel()
         auto_load_info.setPixmap(
-            qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12))
+            qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme_manager.current)).pixmap(
+                QSize(12, 12)
+            )
         )
         auto_load_info.setToolTip(_auto_load_model_tip)
         auto_load_info.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1992,7 +2196,11 @@ class MainWindow(QMainWindow):
             if tooltip_text:
                 lbl.setToolTip("")
                 info_icon = QLabel()
-                info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
+                info_icon.setPixmap(
+                    qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme_manager.current)).pixmap(
+                        QSize(12, 12)
+                    )
+                )
                 info_icon.setToolTip(tooltip_text)
                 info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             spinner.setFixedWidth(90)
@@ -2075,7 +2283,13 @@ class MainWindow(QMainWindow):
         self.global_voice_selector = QPushButton("Select Voice...")
         self.global_voice_selector.setObjectName("SettingsMenuButton")
         self.global_voice_selector.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.global_voice_selector.setIcon(qta.icon('fa5s.chevron-down', color='#64748b'))
+        self.global_voice_selector.setIcon(
+            themed_fa_icon(
+                "fa5s.chevron-down",
+                accent_icon_color(self._theme_manager.current),
+                12,
+            )
+        )
         self.global_voice_selector.setMenu(QMenu(self.global_voice_selector))
         self.global_voice_selector.setToolTip("Choose text-to-speech voice")
         audio_tts_layout.addWidget(self.global_voice_selector)
@@ -2087,7 +2301,11 @@ class MainWindow(QMainWindow):
             lbl.setProperty("class", "ToolsPaneControl")
             lbl.setMinimumWidth(0)
             info_icon = QLabel()
-            info_icon.setPixmap(qta.icon("fa5s.info-circle", color="#64748b").pixmap(QSize(12, 12)))
+            info_icon.setPixmap(
+                qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme_manager.current)).pixmap(
+                    QSize(12, 12)
+                )
+            )
             info_icon.setToolTip(tooltip_text)
             info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             spinner.setToolTip(tooltip_text)
@@ -2127,6 +2345,12 @@ class MainWindow(QMainWindow):
             "RAM/VRAM during inference. Long-term memory still covers facts dropped "
             "from this window."
         )
+        desc_max_reply = (
+            "Upper bound on new tokens per assistant reply when "
+            "Limit maximum reply length is on in Settings. Prompt tokens "
+            "(chat history, RAG, system text) are counted first inside the "
+            "context window."
+        )
 
         self.temp_spin = NoScrollDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
@@ -2145,6 +2369,14 @@ class MainWindow(QMainWindow):
         self.history_spin.setSingleStep(2)
         self.history_spin.setProperty("class", "ToolsPaneInput")
         param_layout.addLayout(create_spinbox_row("Chat History:", desc_history, self.history_spin))
+
+        self.max_reply_spin = NoScrollSpinBox()
+        self.max_reply_spin.setRange(256, 32768)
+        self.max_reply_spin.setSingleStep(256)
+        self.max_reply_spin.setProperty("class", "ToolsPaneInput")
+        param_layout.addLayout(
+            create_spinbox_row("Max Reply Tokens:", desc_max_reply, self.max_reply_spin)
+        )
         self._apply_toolbar_generation_spin_values()
 
         main_layout.addLayout(param_layout)
@@ -2173,7 +2405,11 @@ class MainWindow(QMainWindow):
             
             # The visual indicator icon (The ONLY thing with a tooltip now)
             info_icon = QLabel()
-            info_icon.setPixmap(qta.icon('fa5s.info-circle', color='#64748b').pixmap(QSize(12, 12)))
+            info_icon.setPixmap(
+                qta.icon("fa5s.info-circle", color=muted_icon_color(self._theme_manager.current)).pixmap(
+                    QSize(12, 12)
+                )
+            )
             info_icon.setToolTip(tooltip_text)
             info_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             row.addWidget(info_icon)
@@ -2204,10 +2440,10 @@ class MainWindow(QMainWindow):
         rag_layout.addLayout(strict_row)
         main_layout.addLayout(rag_layout)
 
-        # --- 5. MCP TOOLS ---
+        # --- 5. INTERNET TOOLS ---
         tools_layout = QVBoxLayout()
         tools_layout.setSpacing(_TOOLS_INNER_V_SPACING)
-        t_title = QLabel("MCP TOOLS")
+        t_title = QLabel("INTERNET TOOLS")
         t_title.setProperty("class", "ToolsPaneHeader")
         tools_layout.addWidget(t_title)
 
@@ -2218,6 +2454,30 @@ class MainWindow(QMainWindow):
         )
         tools_layout.addLayout(hybrid_row)
         main_layout.addLayout(tools_layout)
+
+        privacy_layout = QVBoxLayout()
+        privacy_layout.setSpacing(_TOOLS_INNER_V_SPACING)
+        privacy_title = QLabel("Privacy")
+        privacy_title.setProperty("class", "ToolsPaneHeader")
+        privacy_layout.addWidget(privacy_title)
+
+        _privacy_tier_tip = (
+            "Web discovery privacy tier for @internet and Hybrid Internet Mode. "
+            "Private keeps searches on DuckDuckGo and Wikipedia; higher tiers may "
+            "use optional API fallbacks or a self-hosted SearXNG instance."
+        )
+        self.toolbar_privacy_tier_selector = SelectorButton(
+            "Private",
+            is_dark=getattr(self, "_is_dark_theme", True),
+        )
+        self.toolbar_privacy_tier_selector.setMenu(
+            QMenu(self.toolbar_privacy_tier_selector)
+        )
+        self.toolbar_privacy_tier_selector.setToolTip(_privacy_tier_tip)
+        privacy_layout.addWidget(self.toolbar_privacy_tier_selector)
+
+        main_layout.addLayout(privacy_layout)
+        self._build_toolbar_privacy_tier_menu()
         outer_layout.addWidget(self.tools_content)
         # --------------------------------------------------------- #
         #  WIRING TO WORKERS                                        #
@@ -2233,6 +2493,7 @@ class MainWindow(QMainWindow):
             self.temp_spin.valueChanged.connect(self._llm_worker.set_temperature)
             self.ctx_spin.valueChanged.connect(self._llm_worker.set_context_window)
             self.history_spin.valueChanged.connect(self._llm_worker.set_max_history_messages)
+            self.max_reply_spin.valueChanged.connect(self._llm_worker.set_output_token_limit)
 
             # 🔑 THE NEW RAG WIRING
             def on_rag_toggled(checked):
@@ -2306,6 +2567,34 @@ class MainWindow(QMainWindow):
             spin.blockSignals(True)
             spin.setValue(value)
             spin.blockSignals(False)
+        if hasattr(self, "max_reply_spin"):
+            if self._llm_worker is not None:
+                raw_limit = getattr(self._llm_worker, "output_token_limit", None)
+                if isinstance(raw_limit, (int, float)) and not isinstance(raw_limit, bool):
+                    max_reply = int(raw_limit)
+                else:
+                    max_reply = get_llm_output_token_limit()
+            else:
+                max_reply = get_llm_output_token_limit()
+            max_reply = max(256, min(32768, max_reply))
+            self.max_reply_spin.blockSignals(True)
+            self.max_reply_spin.setValue(max_reply)
+            self.max_reply_spin.blockSignals(False)
+            self._sync_toolbar_output_limit_enabled()
+
+    def _sync_toolbar_output_limit_enabled(self, enabled: bool | None = None) -> None:
+        if not hasattr(self, "max_reply_spin"):
+            return
+        if enabled is None:
+            sv = self._settings_view
+            limit_cb = getattr(sv, "llm_output_limit_cb", None) if sv is not None else None
+            if limit_cb is not None:
+                enabled = limit_cb.isChecked()
+            elif self._llm_worker is not None:
+                enabled = bool(getattr(self._llm_worker, "output_token_limit_enabled", True))
+            else:
+                enabled = get_llm_output_token_limit_enabled()
+        self.max_reply_spin.setEnabled(bool(enabled))
 
     def _wire_generation_settings_toolbar_sync(self) -> None:
         """Keep Settings and toolbar generation spinboxes aligned (audio-style sync)."""
@@ -2315,16 +2604,93 @@ class MainWindow(QMainWindow):
         if sv is None:
             return
         pairs = (
-            (self.temp_spin, getattr(sv, "llm_temp_spin", None)),
-            (self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
-            (self.history_spin, getattr(sv, "llm_history_spin", None)),
+            ("temp", self.temp_spin, getattr(sv, "llm_temp_spin", None)),
+            ("ctx", self.ctx_spin, getattr(sv, "llm_ctx_spin", None)),
+            ("history", self.history_spin, getattr(sv, "llm_history_spin", None)),
+            ("max_reply", self.max_reply_spin, getattr(sv, "llm_output_limit_spin", None)),
         )
-        for toolbar_spin, settings_spin in pairs:
+        for key, toolbar_spin, settings_spin in pairs:
             if toolbar_spin is None or settings_spin is None:
                 continue
+            if key in self._generation_toolbar_sync_wired:
+                continue
+            self._generation_toolbar_sync_wired.add(key)
             settings_spin.valueChanged.connect(toolbar_spin.setValue)
             toolbar_spin.valueChanged.connect(settings_spin.setValue)
-        self._apply_toolbar_generation_spin_values()
+            toolbar_spin.blockSignals(True)
+            toolbar_spin.setValue(settings_spin.value())
+            toolbar_spin.blockSignals(False)
+        if (
+            hasattr(sv, "llm_output_limit_cb")
+            and "max_reply_enabled" not in self._generation_toolbar_sync_wired
+        ):
+            self._generation_toolbar_sync_wired.add("max_reply_enabled")
+            sv.llm_output_limit_cb.toggled.connect(self._sync_toolbar_output_limit_enabled)
+        self._sync_toolbar_output_limit_enabled()
+
+    def _build_toolbar_privacy_tier_menu(self) -> None:
+        if not hasattr(self, "toolbar_privacy_tier_selector"):
+            return
+        from core.knowledge.discovery.privacy_policy import (
+            TIER_BALANCED,
+            TIER_ENHANCED,
+            TIER_PRIVATE,
+            TIER_SEARXNG,
+            privacy_tier_description,
+            privacy_tier_label,
+        )
+
+        items = [
+            (
+                f"{privacy_tier_label(tier)} — {privacy_tier_description(tier)}",
+                tier,
+            )
+            for tier in (TIER_PRIVATE, TIER_BALANCED, TIER_ENHANCED, TIER_SEARXNG)
+        ]
+        self._build_prestige_menu(
+            self.toolbar_privacy_tier_selector,
+            items,
+            self._on_toolbar_privacy_tier_selected,
+        )
+        self._sync_toolbar_privacy_tier_selector()
+
+    def _on_toolbar_privacy_tier_selected(self, tier: str) -> None:
+        from core.app_settings import set_discovery_privacy_tier
+
+        if not tier:
+            return
+        set_discovery_privacy_tier(str(tier))
+        self._sync_toolbar_privacy_tier_selector()
+        sv = self._settings_view
+        if sv is not None:
+            from ui.views.settings.sections.knowledge_web_discovery import (
+                sync_web_discovery_policy_section,
+            )
+
+            sync_web_discovery_policy_section(sv)
+
+    def _sync_toolbar_privacy_tier_selector(self) -> None:
+        if not hasattr(self, "toolbar_privacy_tier_selector"):
+            return
+        from core.app_settings import get_discovery_privacy_tier
+        from core.knowledge.discovery.privacy_policy import privacy_tier_label
+
+        self.toolbar_privacy_tier_selector.setText(
+            privacy_tier_label(get_discovery_privacy_tier())
+        )
+        self.toolbar_privacy_tier_selector.update()
+
+    def _wire_toolbar_internet_settings_sync(self, sv) -> None:
+        if hasattr(sv, "_on_discovery_privacy_tier_selected"):
+            original_privacy = sv._on_discovery_privacy_tier_selected
+
+            def wrapped_privacy(tier: str) -> None:
+                original_privacy(tier)
+                self._sync_toolbar_privacy_tier_selector()
+
+            sv._on_discovery_privacy_tier_selected = wrapped_privacy
+            if hasattr(sv, "_build_discovery_privacy_tier_menu"):
+                sv._build_discovery_privacy_tier_menu()
 
     def acquire_modal_backdrop(self) -> None:
         """Dim the main window while a modal dialog is open (reference-counted)."""
@@ -2353,10 +2719,10 @@ class MainWindow(QMainWindow):
         end_frame = 300 if expanded else 40
 
         if expanded:
-            icon = qta.icon("fa5s.chevron-right", color="#89b4fa")
+            icon = qta.icon("fa5s.chevron-right", color=self._theme_manager.current.link)
             tooltip = "Hide tools panel"
         else:
-            icon = qta.icon("fa5s.chevron-left", color="#89b4fa")
+            icon = qta.icon("fa5s.chevron-left", color=self._theme_manager.current.link)
             tooltip = "Show tools panel"
 
         if animate:
@@ -2442,12 +2808,18 @@ class MainWindow(QMainWindow):
             self._on_notification_action("open_models")
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
-        """QtAwesome icons ignore QSS; match chevron to #SettingsMenuButton enabled/disabled look."""
+        """QtAwesome icons ignore QSS; match chevron to menu button enabled/disabled look."""
+        if isinstance(button, SelectorButton):
+            button.apply_theme(getattr(self, "_is_dark_theme", True))
+            return
         is_dark = getattr(self, "_is_dark_theme", True)
-        muted = "#3f3f46" if is_dark else "#a1a1aa"
-        active = "#64748b"
-        color = active if button.isEnabled() else muted
-        button.setIcon(qta.icon("fa5s.chevron-down", color=color))
+        theme = resolve_shell_theme(self, is_dark=is_dark)
+        color = (
+            accent_icon_color(theme)
+            if button.isEnabled()
+            else chevron_colors(theme, enabled=False)
+        )
+        button.setIcon(themed_fa_icon("fa5s.chevron-down", color, 12))
 
     def refresh_toolbar_native_model_dropdown(self, mode: str | None = None) -> None:
         """Toolbar picker for internal .gguf models: mirrors engine mode and downloads folder.
@@ -2599,24 +2971,24 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "toolbar_native_model_eject_btn"):
             return
         btn = self.toolbar_native_model_eject_btn
+        theme = self._theme_manager.current
+        hover = with_alpha(theme.accent, 0.12)
         btn.setStyleSheet(
-            """
-            QPushButton#NativeModelEjectButton {
+            f"""
+            QPushButton#NativeModelEjectButton {{
                 background: transparent;
                 border: none;
                 border-radius: 6px;
-            }
-            QPushButton#NativeModelEjectButton:hover:enabled {
-                background: rgba(139, 92, 246, 0.12);
-            }
-            QPushButton#NativeModelEjectButton:disabled {
+            }}
+            QPushButton#NativeModelEjectButton:hover:enabled {{
+                background: {hover};
+            }}
+            QPushButton#NativeModelEjectButton:disabled {{
                 background: transparent;
-            }
+            }}
             """
         )
-        is_dark = getattr(self, "_is_dark_theme", True)
-        muted = "#3f3f46" if is_dark else "#a1a1aa"
-        color = "#8b5cf6" if btn.isEnabled() else muted
+        color = accent_icon_color(theme) if btn.isEnabled() else chevron_colors(theme, enabled=False)
         btn.setIcon(qta.icon("fa5s.eject", color=color))
 
     def _sync_native_model_eject_button(self) -> None:
@@ -2696,19 +3068,21 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "toolbar_native_model_progress"):
             return
         bar = self.toolbar_native_model_progress
+        theme = self._theme_manager.current
         if loading:
-            bar.setRange(0, 0)  # indeterminate, no layout shift
+            bar.setRange(0, 0)
+            track = vu_meter_palette(theme)["progress_track"]
             bar.setStyleSheet(
-                """
-                QProgressBar {
-                    background: rgba(255, 255, 255, 0.08);
+                f"""
+                QProgressBar {{
+                    background: {track};
                     border: none;
                     border-radius: 2px;
-                }
-                QProgressBar::chunk {
-                    background-color: #8b5cf6;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {theme.accent};
                     border-radius: 2px;
-                }
+                }}
                 """
             )
         else:
@@ -2735,12 +3109,13 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "toolbar_native_model_selector"):
             return
         btn = self.toolbar_native_model_selector
+        theme = self._theme_manager.current
         if inactive:
-            btn.setStyleSheet(
-                "color: #64748b; font-style: italic;"
-            )
+            btn.setStyleSheet(f"color: {muted_icon_color(theme)}; font-style: italic;")
         elif success:
-            btn.setStyleSheet("color: #10b981; font-weight: 600;")
+            btn.setStyleSheet(
+                f"color: {theme.color(SUCCESS_STATUS)}; font-weight: 600;"
+            )
         else:
             btn.setStyleSheet("")
 
@@ -2863,102 +3238,40 @@ class MainWindow(QMainWindow):
         button.setMenu(menu)
 
     def _apply_menu_theme(self, menu, is_dark: bool):
-        from PyQt6.QtGui import QPalette, QColor
-        palette = QPalette()
-
-        if is_dark:
-            bg      = QColor("#1e1e2e")
-            fg      = QColor("#cdd6f4")
-            sel_bg  = QColor("#313244")
-            sel_fg  = QColor("#cdd6f4")
-            border  = "rgba(255, 255, 255, 0.1)"
-            hover   = "#313244"
-        else:
-            bg      = QColor("#ffffff")
-            fg      = QColor("#1e293b")
-            sel_bg  = QColor("#f1f5f9")
-            sel_fg  = QColor("#0f172a")
-            border  = "#cbd5e1"
-            hover   = "#f1f5f9"
-
-        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
-            palette.setColor(role, bg)
-        palette.setColor(QPalette.ColorRole.WindowText, fg)
-        palette.setColor(QPalette.ColorRole.Text, fg)
-        palette.setColor(QPalette.ColorRole.Highlight, sel_bg)
-        palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
-
-        menu.setPalette(palette)
-        menu.setStyleSheet(f"""
-            QMenu {{
-                background-color: {bg.name()};
-                border: 1px solid {border};
-                border-radius: 6px;
-                padding: 4px;
-            }}
-            /* Style the embedded list */
-            QListWidget#PrestigeMenuList {{
-                background-color: transparent;
-                border: none;
-                outline: none;
-            }}
-            QListWidget#PrestigeMenuList::item {{
-                background-color: transparent;
-                color: {fg.name()};
-                padding: 8px 25px;
-                border-radius: 4px;
-                min-height: 24px;
-            }}
-            QListWidget#PrestigeMenuList::item:selected, 
-            QListWidget#PrestigeMenuList::item:hover {{
-                background-color: {hover};
-                color: {sel_fg.name()};
-            }}
-            
-            /* Sleek internal scrollbar */
-            QScrollBar:vertical {{
-                border: none;
-                background: transparent;
-                width: 6px;
-                margin: 0px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {border};
-                border-radius: 3px;
-                min-height: 20px;
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0px;
-            }}
-        """)
+        apply_prestige_menu_theme(menu, resolve_shell_theme(self, is_dark=is_dark))
 
     def _handle_selection(self, button, label, data, callback):
         button.setText(label)
         callback(data)
 
-    def _nav_icon_colors(self) -> tuple[str, str]:
-        active = "#89b4fa"
-        inactive = "#cdd6f4" if self._is_dark_theme else "#64748b"
-        return active, inactive
+    def _refresh_toolbar_control_icons(self, theme=None) -> None:
+        if theme is None:
+            theme = self._theme_manager.current
+        accent = accent_icon_color(theme)
+        muted = muted_icon_color(theme)
+        if hasattr(self, "_min_btn"):
+            self._min_btn.setIcon(themed_fa_icon("fa5s.minus", muted, 14))
+        if hasattr(self, "_close_btn"):
+            self._close_btn.setIcon(themed_fa_icon("fa5s.times", muted, 14))
+        if hasattr(self, "max_btn"):
+            maximized = bool(self.windowState() & Qt.WindowState.WindowMaximized)
+            max_icon = "fa5s.compress-arrows-alt" if maximized else "fa5s.expand-arrows-alt"
+            self.max_btn.setIcon(themed_fa_icon(max_icon, muted, 14))
+        if hasattr(self, "toolbar_native_model_selector") and not isinstance(
+            self.toolbar_native_model_selector, SelectorButton
+        ):
+            self.toolbar_native_model_selector.setIcon(
+                themed_fa_icon("fa5s.chevron-down", accent, 12)
+            )
+        if hasattr(self, "global_voice_selector") and not isinstance(
+            self.global_voice_selector, SelectorButton
+        ):
+            self.global_voice_selector.setIcon(
+                themed_fa_icon("fa5s.chevron-down", accent, 12)
+            )
 
-    def _make_tinted_svg_icon(self, svg_path, color_hex: str, size: int) -> QIcon:
-        pixmap = QPixmap(str(svg_path))
-        if pixmap.isNull():
-            return QIcon(str(svg_path))
-        target_size = QSize(size, size)
-        pixmap = pixmap.scaled(
-            target_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        tinted = QPixmap(pixmap.size())
-        tinted.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(tinted)
-        painter.drawPixmap(0, 0, pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(tinted.rect(), QColor(color_hex))
-        painter.end()
-        return QIcon(tinted)
+    def _nav_icon_colors(self) -> tuple[str, str]:
+        return nav_icon_colors(self._theme_manager.current)
 
     def _refresh_nav_btn_icon(self, btn: QPushButton) -> None:
         size = getattr(btn, "_nav_icon_size", 24)
@@ -2966,13 +3279,13 @@ class MainWindow(QMainWindow):
         color = active_color if btn.isChecked() else inactive_color
         svg_path = getattr(btn, "_nav_svg_icon", None)
         if svg_path is not None:
-            btn.setIcon(self._make_tinted_svg_icon(svg_path, color, size))
+            btn.setIcon(tinted_svg_icon(str(svg_path), color, size))
             btn.setIconSize(QSize(size, size))
             return
         icon_name = getattr(btn, "_nav_fa_icon", None)
         if not icon_name:
             return
-        btn.setIcon(qta.icon(icon_name, color=color))
+        btn.setIcon(themed_fa_icon(icon_name, color, size))
         btn.setIconSize(QSize(size, size))
 
     def _is_main_stage_built(self, index: int) -> bool:
@@ -3113,9 +3426,11 @@ class MainWindow(QMainWindow):
             )
 
         sv.rag_kb_toggle.connect(self.tool_rag_toggle.setChecked)
-        self.tool_rag_toggle.toggled.connect(sv.rag_kb_cb.setChecked)
+        if getattr(sv, "rag_kb_cb", None) is not None:
+            self.tool_rag_toggle.toggled.connect(sv.rag_kb_cb.setChecked)
         sv.auto_activator_toggle.connect(self.rag_auto_toggle.setChecked)
-        self.rag_auto_toggle.toggled.connect(sv.auto_activator_cb.setChecked)
+        if getattr(sv, "auto_activator_cb", None) is not None:
+            self.rag_auto_toggle.toggled.connect(sv.auto_activator_cb.setChecked)
 
         sv.auto_load_last_model_changed.connect(self._sync_toolbar_auto_load_model_toggle)
 
@@ -3123,6 +3438,7 @@ class MainWindow(QMainWindow):
         sv.engine_mode_changed.connect(lambda _mode: self.refresh_active_tour_layout())
 
         self._wire_generation_settings_toolbar_sync()
+        self._wire_toolbar_internet_settings_sync(sv)
         self._sync_settings_tts_voice_selector()
         self._sync_settings_tts_voice_enabled_toggle(
             self.voice_bypass_toggle.isChecked()
@@ -3132,6 +3448,15 @@ class MainWindow(QMainWindow):
         if hasattr(sv, "tts_voice_enabled_toggle"):
             sv.tts_voice_enabled_toggle.toggled.connect(
                 self._on_settings_tts_voice_enabled_toggled
+            )
+        self._sync_settings_voice_input_enabled_toggle(
+            self.voice_input_toggle.isChecked()
+            if hasattr(self, "voice_input_toggle")
+            else True
+        )
+        if hasattr(sv, "voice_input_enabled_toggle"):
+            sv.voice_input_enabled_toggle.toggled.connect(
+                self._on_settings_voice_input_enabled_toggled
             )
 
     def _wire_model_manager_view(self) -> None:
@@ -3311,7 +3636,9 @@ class MainWindow(QMainWindow):
             return int(self.main_stage.currentIndex())
         return 0
 
-    def _refresh_conversations_theme(self, is_dark: bool) -> None:
+    def _refresh_conversations_theme(
+        self, is_dark: bool, *, include_transcript: bool = True
+    ) -> None:
         cv = getattr(self, "conversations_view", None)
         if cv is None:
             return
@@ -3319,6 +3646,8 @@ class MainWindow(QMainWindow):
             cv.refresh_menu_themes(is_dark)
         if hasattr(cv, "refresh_button_themes"):
             cv.refresh_button_themes(is_dark)
+        if include_transcript and hasattr(cv, "_refresh_transcript_theme"):
+            cv._refresh_transcript_theme()
         if hasattr(cv, "_update_row_colors"):
             cv._update_row_colors()
 
@@ -3335,7 +3664,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_stage_theme(self, stage_index: int, is_dark: bool) -> None:
         if stage_index == 0:
-            self._refresh_conversations_theme(is_dark)
+            self._refresh_conversations_theme(is_dark, include_transcript=True)
         elif stage_index == 1:
             self._refresh_library_theme(is_dark)
         elif stage_index == 2:
@@ -3375,6 +3704,14 @@ class MainWindow(QMainWindow):
                 )
                 self._apply_native_model_eject_button_style()
 
+            selector = getattr(self, "toolbar_privacy_tier_selector", None)
+            if selector is not None:
+                if isinstance(selector, SelectorButton):
+                    selector.apply_theme(is_dark)
+                menu = selector.menu()
+                if menu:
+                    self._apply_menu_theme(menu, is_dark)
+
         if hasattr(self, "background_progress_row"):
             with profiler.step("background_progress_row.apply_theme"):
                 self.background_progress_row.apply_theme(is_dark)
@@ -3395,15 +3732,54 @@ class MainWindow(QMainWindow):
             with profiler.step("companion_controller.apply_theme"):
                 self._companion_controller.apply_theme(is_dark)
 
+        if self.canonical_trace_diff_view is not None:
+            with profiler.step("canonical_trace_diff.apply_theme"):
+                self.canonical_trace_diff_view.apply_theme(is_dark)
+
+        if self._scenario_workflow_dialog is not None:
+            with profiler.step("scenario_workflow.refresh_theme"):
+                self._scenario_workflow_dialog.refresh_theme(is_dark)
+
+        with profiler.step("prestige_toggles.apply_theme"):
+            for toggle in self.findChildren(PrestigeToggle):
+                toggle.apply_theme(is_dark=is_dark)
+
         with profiler.step("nav_buttons.refresh_icons"):
             for btn in getattr(self, "nav_buttons", ()):
                 self._refresh_nav_btn_icon(btn)
+
+        with profiler.step("shell_chrome.refresh"):
+            theme = self._theme_manager.current
+            if hasattr(self, "vu_meter"):
+                self.vu_meter.apply_theme(theme)
+            self._sync_retrieval_indicator_palette()
+            cpu, ram, gpu = telemetry_metric_colors(theme)
+            for lbl, color in (
+                (getattr(self, "side_cpu_lbl", None), cpu),
+                (getattr(self, "side_ram_lbl", None), ram),
+                (getattr(self, "side_gpu_lbl", None), gpu),
+            ):
+                if lbl is not None:
+                    lbl.setStyleSheet(
+                        f"color: {color}; font-weight: bold; font-size: 10px; letter-spacing: 0.5px;"
+                    )
+            if hasattr(self, "toggle_tools_btn"):
+                expanded = not self._is_tools_pane_collapsed()
+                chevron = "fa5s.chevron-right" if expanded else "fa5s.chevron-left"
+                self.toggle_tools_btn.setIcon(qta.icon(chevron, color=theme.link))
+            self._refresh_toolbar_control_icons(theme)
+            self._on_topbar_mic_attention_tick()
 
     def _sync_stage_theme_if_dirty(self, stage_index: int) -> None:
         dirty = getattr(self, "_theme_stage_dirty", None)
         if not dirty or stage_index not in dirty:
             return
-        self._refresh_stage_theme(stage_index, self._is_dark_theme)
+        if stage_index == MAIN_STAGE_CONVERSATIONS:
+            self._refresh_conversations_theme(
+                self._is_dark_theme, include_transcript=True
+            )
+        else:
+            self._refresh_stage_theme(stage_index, self._is_dark_theme)
         dirty.discard(stage_index)
 
     def _schedule_deferred_theme_refreshes(self, hidden_stage_indices: list[int]) -> None:
@@ -3422,10 +3798,24 @@ class MainWindow(QMainWindow):
         profiler = ThemeToggleProfiler.maybe_enabled()
         profiler.begin()
         is_dark = self._is_dark_theme
-        for stage_index in sorted(dirty):
+        active_stage = self._active_main_stage_index()
+        deferred_indices = sorted(dirty)
+        for stage_index in deferred_indices:
             with profiler.step(f"stage_{stage_index}.refresh_deferred"):
-                self._refresh_stage_theme(stage_index, is_dark)
-            dirty.discard(stage_index)
+                if stage_index == MAIN_STAGE_CONVERSATIONS:
+                    include_transcript = stage_index == active_stage
+                    if not include_transcript:
+                        # Hidden Conversations stays dirty until show; skip chrome
+                        # refresh here (saves ~170ms) — full refresh on navigate back.
+                        continue
+                    self._refresh_conversations_theme(
+                        is_dark,
+                        include_transcript=True,
+                    )
+                    dirty.discard(stage_index)
+                else:
+                    self._refresh_stage_theme(stage_index, is_dark)
+                    dirty.discard(stage_index)
         profiler.finish(
             context={
                 "deferred_batch": 1,
@@ -3433,20 +3823,14 @@ class MainWindow(QMainWindow):
             }
         )
 
-    def _toggle_theme(self):
-        """Toggles the global theme; resets palette, then applies the target QSS directly."""
+    def _prepare_theme_toggle_apply(self, profiler) -> None:
         from PyQt6.QtWidgets import QApplication
-        import qtawesome as qta
 
-        from core.theme_toggle_profile import (
-            ThemeToggleProfiler,
-            is_theme_stylesheet_clear_forced,
-        )
+        from core.theme_toggle_profile import is_theme_stylesheet_clear_forced
 
         app = QApplication.instance()
-        profiler = ThemeToggleProfiler.maybe_enabled()
-        profiler.begin()
-
+        with profiler.step("freeze_updates"):
+            self.setUpdatesEnabled(False)
         with profiler.step("palette_reset"):
             app.setPalette(app.style().standardPalette())
 
@@ -3457,38 +3841,27 @@ class MainWindow(QMainWindow):
             with profiler.step("stylesheet_clear_skipped"):
                 pass
 
-        if self._is_dark_theme:
-            style_path = resource_path("assets", "styles", "light.qss")
-            qss_text = ""
-            if style_path.is_file():
-                with profiler.step("qss_load"):
-                    qss_text = self._load_theme_qss(style_path)
-                with profiler.step("qss_apply"):
-                    app.setStyleSheet(qss_text)
+    def _on_theme_polarity_no_sibling(self, request):
+        from core.theme.polarity_toggle import PolarityToggleAction
+        from ui.components.theme_polarity_fallback_dialog import prompt_theme_polarity_fallback
+        from ui.onboarding.tour_helpers import open_settings_section
 
-            with profiler.step("nav_theme_chrome"):
-                self.nav_theme.setIcon(qta.icon("fa5s.sun", color="#d7827e"))
-                self.nav_theme.setToolTip("Switch to dark theme")
-                self._is_dark_theme = False
-                qube_tooltip_set_theme(False)
-            logger.info("Theme switched to Light Mode.")
-        else:
-            style_path = resource_path("assets", "styles", "base.qss")
-            qss_text = ""
-            if style_path.is_file():
-                with profiler.step("qss_load"):
-                    qss_text = self._load_theme_qss(style_path)
-                with profiler.step("qss_apply"):
-                    app.setStyleSheet(qss_text)
+        action = prompt_theme_polarity_fallback(
+            self,
+            request,
+            is_dark=self._is_dark_theme,
+        )
+        if action is PolarityToggleAction.CHOOSE_THEME:
+            open_settings_section(self, "appearance.themes")
+        return action
 
-            with profiler.step("nav_theme_chrome"):
-                self.nav_theme.setIcon(qta.icon("fa5s.moon", color="#f9e2af"))
-                self.nav_theme.setToolTip("Switch to light theme")
-                self._is_dark_theme = True
-                qube_tooltip_set_theme(True)
-            logger.info("Theme switched to Dark Mode.")
+    def _toggle_theme(self):
+        """Toggle light/dark via ``ThemeManager.toggle_polarity()`` (family-aware)."""
+        from core.theme_toggle_profile import ThemeToggleProfiler
 
-        from core.richtext_styles import apply_app_link_palette
+        profiler = ThemeToggleProfiler.maybe_enabled()
+        profiler.begin()
+        self._active_theme_profiler = profiler
 
         active_stage = self._active_main_stage_index()
         hidden_stages = [
@@ -3496,19 +3869,28 @@ class MainWindow(QMainWindow):
             for idx in range(self.main_stage.count())
             if idx != active_stage and self._is_main_stage_built(idx)
         ]
+        self._pending_hidden_stages = hidden_stages
 
-        self.setUpdatesEnabled(False)
-        try:
-            with profiler.step("apply_app_link_palette"):
-                apply_app_link_palette(app)
+        resolved = self._theme_manager.toggle_polarity(
+            on_no_sibling=self._on_theme_polarity_no_sibling,
+            prepare_apply=lambda: self._prepare_theme_toggle_apply(profiler),
+            persist=True,
+            profiler=profiler,
+        )
 
-            self._refresh_global_theme_chrome(self._is_dark_theme, profiler)
+        self._pending_hidden_stages = None
+        self._active_theme_profiler = None
 
-            with profiler.step(f"stage_{active_stage}.refresh"):
-                self._refresh_stage_theme(active_stage, self._is_dark_theme)
-        finally:
+        if resolved is None:
             self.setUpdatesEnabled(True)
-            self.update()
+            profiler.finish(
+                context={
+                    **self._theme_toggle_profile_context(),
+                    "deferred_stage_count": len(hidden_stages),
+                    "cancelled": True,
+                }
+            )
+            return
 
         profiler.finish(
             context={
@@ -3742,6 +4124,9 @@ class MainWindow(QMainWindow):
             self.voice_input_toggle.blockSignals(False)
         if self._audio_worker is not None:
             self._audio_worker.set_paused(not enabled)
+        if hasattr(self, "vu_meter") and not enabled:
+            self.vu_meter.set_level(0.0)
+        self._sync_settings_voice_input_enabled_toggle(enabled)
         self._sync_tray_presence()
         self._sync_tray_voice_toggles()
 
@@ -4011,9 +4396,17 @@ class MainWindow(QMainWindow):
                 self.voice_input_toggle.blockSignals(True)
                 self.voice_input_toggle.setChecked(False)
                 self.voice_input_toggle.blockSignals(False)
+                self._sync_settings_voice_input_enabled_toggle(False)
                 return
         if self._audio_worker:
             self._audio_worker.set_paused(not checked)
+        if hasattr(self, "vu_meter") and not checked:
+            self.vu_meter.set_level(0.0)
+        self._sync_settings_voice_input_enabled_toggle(
+            self.voice_input_toggle.isChecked()
+            if hasattr(self, "voice_input_toggle")
+            else checked
+        )
 
     def _on_voice_bypass_toggle(self, checked: bool) -> None:
         if checked:
@@ -4190,6 +4583,22 @@ class MainWindow(QMainWindow):
         toggle.setChecked(enabled)
         toggle.blockSignals(False)
 
+    def _sync_settings_voice_input_enabled_toggle(self, enabled: bool) -> None:
+        settings = self._settings_view
+        if settings is None or not hasattr(settings, "voice_input_enabled_toggle"):
+            return
+        toggle = settings.voice_input_enabled_toggle
+        toggle.blockSignals(True)
+        toggle.setChecked(enabled)
+        toggle.blockSignals(False)
+
+    def _on_settings_voice_input_enabled_toggled(self, checked: bool) -> None:
+        if hasattr(self, "voice_input_toggle"):
+            self.voice_input_toggle.blockSignals(True)
+            self.voice_input_toggle.setChecked(checked)
+            self.voice_input_toggle.blockSignals(False)
+        self._on_voice_input_toggle(checked)
+
     def _on_settings_tts_voice_enabled_toggled(self, checked: bool) -> None:
         if hasattr(self, "voice_bypass_toggle"):
             self.voice_bypass_toggle.blockSignals(True)
@@ -4213,15 +4622,16 @@ class MainWindow(QMainWindow):
             self._on_tts_voice_selected,
         )
         from ui.views.settings.widgets import register_settings_selector_width
+        from core.tts_models import resolve_default_tts_voice
 
         register_settings_selector_width(settings.voice_selector, *voices)
         active = (
             self._tts_worker.active_voice_name
             if self._tts_worker and hasattr(self._tts_worker, "active_voice_name")
-            else voices[0]
+            else resolve_default_tts_voice(voices)
         )
         if active not in voices:
-            active = voices[0]
+            active = resolve_default_tts_voice(voices)
         settings.voice_selector.setText(active)
         settings.voice_selector.update()
 
@@ -4235,13 +4645,15 @@ class MainWindow(QMainWindow):
         self._cached_tts_model_name = model_name
         self._cached_tts_voices = list(voices)
 
+        from core.tts_models import resolve_default_tts_voice
+
         active = (
             self._tts_worker.active_voice_name
             if self._tts_worker and hasattr(self._tts_worker, "active_voice_name")
-            else voices[0]
+            else resolve_default_tts_voice(voices)
         )
         if active not in voices:
-            active = voices[0]
+            active = resolve_default_tts_voice(voices)
 
         menu_items = [(v, v) for v in voices]
         self._build_prestige_menu(

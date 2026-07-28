@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Qube
+Comment=Local hardware-accelerated AI desktop assistant
+Exec=qube %F
+Icon=qube
+Terminal=false
+Categories=Utility;
+StartupWMClass=Qube
+MimeType=

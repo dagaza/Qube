@@ -72,6 +72,7 @@ from core.app_settings import (
     get_advanced_stt_unlocked,
     get_advanced_hardware_unlocked,
     get_advanced_chat_template_unlocked,
+    get_advanced_memory_unlocked,
     get_advanced_tts_unlocked,
     set_advanced_engine_unlocked,
     get_sidecar_model_path,
@@ -374,6 +375,11 @@ class PersistenceHandlersMixin:
             self._sync_memory_promotion_preset_selector()
         if hasattr(self, "memory_promotion_toggle"):
             self._sync_memory_promotion_controls_for_enrichment()
+        if hasattr(self, "advanced_memory_toggle"):
+            self.advanced_memory_toggle.blockSignals(True)
+            self.advanced_memory_toggle.setChecked(get_advanced_memory_unlocked())
+            self.advanced_memory_toggle.blockSignals(False)
+            self._apply_advanced_memory_panel_visibility()
         if hasattr(self, "profile_units_selector"):
             self._sync_profile_units_selector()
 
@@ -632,6 +638,8 @@ class PersistenceHandlersMixin:
         elif section_id == "memory":
             if hasattr(self, "_sync_memory_promotion_controls_for_enrichment"):
                 self._sync_memory_promotion_controls_for_enrichment()
+            if hasattr(self, "_apply_advanced_memory_panel_visibility"):
+                self._apply_advanced_memory_panel_visibility()
         elif section_id == "knowledge":
             if hasattr(self, "rag_kb_cb"):
                 self.rag_kb_cb.blockSignals(True)
@@ -647,6 +655,8 @@ class PersistenceHandlersMixin:
             self._apply_companion_defaults_to_ui()
         elif section_id == "notifications":
             pass
+        elif section_id == "appearance.themes":
+            self._apply_themes_defaults_to_ui()
 
     def _apply_voice_audio_defaults_to_ui(self) -> None:
         if hasattr(self, "timeout_spinner"):

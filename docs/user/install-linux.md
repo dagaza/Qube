@@ -1,0 +1,159 @@
+# Install Qube on Linux
+
+Official Linux builds ship as **AppImage**, **`.deb`** (Ubuntu/Debian), **`.rpm`** (Fedora/RHEL), and **`.tar.gz`** (portable) in three inference variants:
+
+| Variant | Best for | Artifact examples |
+|---------|----------|-------------------|
+| **cpu** | Any PC; slowest inference | `Qube-1.1.0-x86_64-cpu.AppImage`, `qube_1.1.0_amd64.deb`, `qube-1.1.0-1.x86_64.rpm` |
+| **vulkan** | AMD / Intel GPUs | `Qube-1.1.0-x86_64-vulkan.AppImage`, `qube-vulkan_1.1.0_amd64.deb`, `qube-vulkan-1.1.0-1.x86_64.rpm` |
+| **cuda** | NVIDIA GPUs (recent driver) | `Qube-1.1.0-x86_64-cuda.AppImage`, `qube-cuda_1.1.0_amd64.deb`, `qube-cuda-1.1.0-1.x86_64.rpm` |
+
+Install **one** packaged variant at a time (`.deb` / `.rpm` packages conflict with each other). AppImages and tarballs are portable — keep the file that matches your hardware.
+
+**Flatpak** is not published today — use AppImage, `.deb`, `.rpm`, or `.tar.gz` from GitHub Releases.
+
+For development or bleeding-edge checkouts, use [install from source](install-from-source.md).
+
+---
+
+## System requirements
+
+- **Ubuntu 22.04+ / Debian 12+** (amd64) for `.deb` packages
+- **Fedora 39+ / RHEL 9+** (x86_64) for `.rpm` packages (dependency names target Fedora/RHEL)
+- **16 GB RAM** minimum (**20 GB** recommended)
+- **Microphone and speakers** for voice features
+- **Vulkan builds:** working Vulkan drivers/mesa stack (`libvulkan1`)
+- **CUDA builds:** proprietary NVIDIA driver compatible with CUDA 12.4 wheels (no separate CUDA toolkit required for the packaged app)
+- Runtime libraries (`.deb` installs these automatically; AppImage bundles most GUI libs):
+
+  ```bash
+  sudo apt install libportaudio2 libgl1 libxcb1 libxkbcommon0
+  ```
+
+See [system requirements](system-requirements.md) for model and storage guidance.
+
+---
+
+## AppImage (recommended for first try)
+
+1. Download the AppImage for your GPU from [GitHub Releases](https://github.com/dagaza/Qube/releases).
+2. Make it executable and run:
+
+   ```bash
+   chmod +x Qube-1.1.0-x86_64-vulkan.AppImage
+   ./Qube-1.1.0-x86_64-vulkan.AppImage
+   ```
+
+3. **Optional — application menu entry** (from the repo checkout, or after cloning the install script):
+
+   ```bash
+   bash scripts/linux/install_appimage.sh ./Qube-*-x86_64-vulkan.AppImage
+   qube-appimage
+   ```
+
+   This copies the AppImage to `~/.local/opt/qube/Qube.AppImage`, adds `~/.local/bin/qube-appimage`, and registers a `.desktop` launcher.
+
+On systems **without FUSE**, set:
+
+```bash
+export APPIMAGE_EXTRACT_AND_RUN=1
+./Qube-1.1.0-x86_64-vulkan.AppImage
+```
+
+User data is stored under `~/.qube/` (shared across variants).
+
+### Updating
+
+To upgrade an existing install, see **[Update Qube](update-qube.md)**. In short: run **`sudo apt install ./qube_<new>_amd64.deb`** for `.deb`, or re-run **`install_appimage.sh`** for AppImage menu integration.
+
+---
+
+## Debian / Ubuntu (.deb)
+
+1. Download the matching `.deb` from [GitHub Releases](https://github.com/dagaza/Qube/releases).
+2. Install **one** variant:
+
+   ```bash
+   sudo apt install ./qube_1.1.0_amd64.deb          # CPU
+   sudo apt install ./qube-vulkan_1.1.0_amd64.deb   # AMD/Intel (Vulkan)
+   sudo apt install ./qube-cuda_1.1.0_amd64.deb     # NVIDIA (CUDA)
+   ```
+
+3. Launch from your application menu or run:
+
+   ```bash
+   qube
+   ```
+
+The package installs the PyInstaller bundle to `/opt/qube/`, a `/usr/bin/qube` wrapper, and `/usr/bin/qube-uninstall` for removal.
+
+To switch variants later, remove the installed package first (`qube-uninstall` or `sudo apt remove`), then install the other `.deb`.
+
+---
+
+## Fedora / RHEL (.rpm)
+
+1. Download the matching `.rpm` from [GitHub Releases](https://github.com/dagaza/Qube/releases).
+2. Install **one** variant:
+
+   ```bash
+   sudo dnf install ./qube-1.1.0-1.x86_64.rpm          # CPU
+   sudo dnf install ./qube-vulkan-1.1.0-1.x86_64.rpm   # AMD/Intel (Vulkan)
+   sudo dnf install ./qube-cuda-1.1.0-1.x86_64.rpm      # NVIDIA (CUDA)
+   ```
+
+   On RHEL/CentOS with `yum`:
+
+   ```bash
+   sudo yum install ./qube-1.1.0-1.x86_64.rpm
+   ```
+
+3. Launch from your application menu or run `qube`.
+
+The RPM installs the same `/opt/qube/` layout and `/usr/bin/qube` wrapper as the `.deb`. Package names conflict — install only one variant.
+
+---
+
+## Portable tarball (.tar.gz)
+
+1. Download `Qube-<version>-x86_64-{cpu,vulkan,cuda}.tar.gz` from [GitHub Releases](https://github.com/dagaza/Qube/releases).
+2. Extract and run:
+
+   ```bash
+   tar -xzf Qube-1.1.0-x86_64-vulkan.tar.gz
+   ./Qube/Qube
+   ```
+
+No system integration (no menu entry or `/usr/bin` wrapper). User data still goes to `~/.qube/`. Install runtime libraries manually if the bundle fails to start (see system requirements above).
+
+---
+
+## Uninstall
+
+See [uninstall.md](uninstall.md).
+
+---
+
+## Build locally (maintainers)
+
+```bash
+bash scripts/linux/install_build_deps.sh vulkan   # or cpu / cuda / all
+bash scripts/linux/build_linux.sh 9.9.9 vulkan
+bash scripts/release/smoke_linux_dist.sh
+bash scripts/linux/fetch_appimage_tools.sh
+bash scripts/linux/build_appimage.sh 9.9.9 vulkan
+bash scripts/linux/build_deb.sh 9.9.9 vulkan
+bash scripts/linux/build_rpm.sh 9.9.9 vulkan
+bash scripts/linux/build_tarball.sh 9.9.9 vulkan
+```
+
+Revert `core/__version__.py` and `pyproject.toml` after dry runs if needed.
+
+---
+
+## Related
+
+- [Update Qube](update-qube.md)
+- [Install from source](install-from-source.md)
+- [Uninstall Qube](uninstall.md)
+- [Releasing](../releasing.md)

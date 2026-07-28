@@ -2,6 +2,8 @@
 
 This document describes how to cut a Windows release and publish it to WinGet and Chocolatey.
 
+**Versioning policy (when to tag, failed CI, CHANGELOG, agent guidance):** see **[Release versioning — quick reference](release_versioning_quick_reference.md)**.
+
 ## Prerequisites
 
 - Maintainer access to `dagaza/Qube`
@@ -23,6 +25,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
 
 ## Pre-release checklist
 
+0. Read **[Release versioning — quick reference](release_versioning_quick_reference.md)** — fix on `main` and get CI green **before** tagging; do not burn patch numbers on failed release attempts.
 1. Ensure [`main`](https://github.com/dagaza/Qube) is green (PR CI workflow).
 2. **Documentation pass** — see [Launch documentation guidelines](launch_documentation_guidelines.md) (**Final launch pass**). At minimum before a public launch:
    - [ ] README accurate (features, install paths, screenshots)
@@ -69,7 +72,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
    - Sync version into `core/__version__.py` and `pyproject.toml`
    - Run pytest
    - Build PyInstaller output and Inno Setup installer
-   - Smoke-test dist EXE, silent install, installed EXE launch, and uninstall
+   - Smoke-test dist EXE, **installer upgrade**, silent install, installed EXE launch, and uninstall
    - Compute SHA256 and render WinGet manifests and Chocolatey package
    - Create a GitHub Release with `Qube-<version>-Setup.exe`
    - Smoke-test Chocolatey install/uninstall (after release is published)
@@ -81,7 +84,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
 
 ### First catalog entry (one-time manual PR)
 
-Follow [`winget/README.md`](../winget/README.md).
+Follow [`winget/README.md`](../winget/README.md). Submit **`dagaza.Qube`** (CPU) first if needed, then add **`dagaza.Qube.Vulkan`** and **`dagaza.Qube.CUDA`** as separate folders in the same or follow-up PR.
 
 ### Automated updates
 
@@ -93,8 +96,18 @@ Users install or upgrade with:
 
 ```powershell
 winget install -e --id dagaza.Qube
+winget install -e --id dagaza.Qube.Vulkan
+winget install -e --id dagaza.Qube.CUDA
 winget upgrade -e --id dagaza.Qube
 ```
+
+Install **one** Windows variant only (CPU, Vulkan, or CUDA). WinGet uses separate package IDs so GPU builds are opt-in and CPU stays the safe default for `winget upgrade --all`.
+
+Direct download: run the matching **`Qube-<version>-Setup.exe`**, **`-vulkan-Setup.exe`**, or **`-cuda-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.
+
+In-app: **Settings → Help → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
+
+**Update roadmap (Tiers 1–3):** see **[App update roadmap](app_update_roadmap.md)** — shipped manual/check flows vs deferred automatic apply.
 
 ## Chocolatey
 
@@ -106,13 +119,17 @@ Follow [`chocolatey/README.md`](../chocolatey/README.md).
 
 Set repository **variable** `CHOCOLATEY_AUTO_PUSH=true` and secret `CHOCOLATEY_API_KEY` (push-only API key from chocolatey.org).
 
-After each tagged release, the workflow pushes `qube.<version>.nupkg` automatically once the GitHub Release is live and the Chocolatey smoke test passes.
+After each tagged release, the workflow pushes `qube`, `qube-vulkan`, and `qube-cuda` packages automatically once the GitHub Release is live and the Chocolatey smoke test passes.
 
 Users install or upgrade with:
 
 ```powershell
-choco install qube
-choco upgrade qube
+choco install qube              # CPU
+choco install qube-vulkan       # AMD/Intel (Vulkan)
+choco install qube-cuda         # NVIDIA (CUDA)
+choco upgrade qube -y
+choco upgrade qube-vulkan -y
+choco upgrade qube-cuda -y
 ```
 
 ## macOS
@@ -124,12 +141,38 @@ per architecture:
 | Runner | Architecture | Artifact |
 |--------|--------------|----------|
 | `macos-14` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |
-| `macos-13` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
+| `macos-15-intel` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
+
+Intel Mac builds pin `lancedb==0.25.3` and `onnxruntime==1.23.2` at packaging time because newer releases no longer ship macOS x86_64 wheels on PyPI. Apple Silicon and other platforms use the main `requirements.txt` pins.
 
 Both DMGs are attached to the same GitHub Release as the Windows installer.
+Each DMG includes **`Uninstall Qube.app`**, a signed helper that removes
+`Qube.app`, `~/.qube`, and related Library files (paths defined in
+`core/uninstall_paths.py` and shared with the Homebrew cask `zap` stanza).
 
 `llama-cpp-python` is rebuilt with `-DGGML_METAL=on` so Apple GPUs are used for
 inference (the Windows CUDA path via `pynvml` is excluded from the macOS bundle).
+
+## Linux
+
+The `linux-build` job runs on the same `v*` tag trigger on `ubuntu-22.04` and
+produces:
+
+| Artifact | Pattern |
+|----------|---------|
+| AppImage | `Qube-<version>-x86_64-{cpu,vulkan,cuda}.AppImage` |
+| Debian package | `qube_<version>_amd64.deb`, `qube-vulkan_<version>_amd64.deb`, `qube-cuda_<version>_amd64.deb` |
+| RPM package | `qube-<version>-1.x86_64.rpm`, `qube-vulkan-<version>-1.x86_64.rpm`, `qube-cuda-<version>-1.x86_64.rpm` |
+| Portable tarball | `Qube-<version>-x86_64-{cpu,vulkan,cuda}.tar.gz` |
+
+All are attached to the GitHub Release alongside the Windows and macOS assets.
+The build matrix produces **CPU**, **Vulkan**, and **CUDA** `llama-cpp-python` backends.
+Vulkan builds compile from source in CI; CUDA uses the published `cu124` wheel when
+available. Each variant is wrapped with `scripts/linux/build_appimage.sh` (linuxdeploy),
+`scripts/linux/build_deb.sh` / `scripts/linux/build_rpm.sh` (fpm), and
+`scripts/linux/build_tarball.sh`, then smoke-tested under Xvfb where applicable.
+
+User install docs: [`docs/user/install-linux.md`](user/install-linux.md).
 
 ### Signing and notarization
 
@@ -147,29 +190,34 @@ Signing, notarization, and the DMG smoke test only run when the repository
 | `MACOS_NOTARY_PASSWORD` | App-specific password (not the Apple ID password) |
 
 Until `ENABLE_MACOS_SIGNING` is set, the job still builds and uploads an
-unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs will be
-blocked by Gatekeeper on end-user machines and are not suitable for a Homebrew
-Cask — enable signing before publishing a cask.
+unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs require
+a one-time Gatekeeper approval on end-user Macs (see Homebrew cask `caveats`).
 
-### Homebrew Cask
+### Homebrew Cask (custom tap)
 
-Homebrew Cask distributes the signed, notarized DMGs. See
+Homebrew distributes release DMGs via the **`dagaza/homebrew-qube`** tap. See
 [`homebrew/README.md`](../homebrew/README.md) for full setup.
 
-**Prerequisite:** signing must be enabled (`ENABLE_MACOS_SIGNING=true`) so the
-DMGs are notarized — Gatekeeper and `brew audit` reject unsigned apps. Create a
-tap repo `dagaza/homebrew-qube` with a `Casks/` directory.
+**No Apple Developer account required** for the custom tap — unsigned DMGs are
+supported. The cask includes Gatekeeper instructions; CI runs `brew style` only
+(not strict `brew audit` codesign checks).
+
+**Prerequisite:** create tap repo `dagaza/homebrew-qube` with a `Casks/` directory.
 
 **Automated updates:** set repository variable `HOMEBREW_AUTO_SUBMIT=true` and
 secret `HOMEBREW_TAP_TOKEN` (fine-grained PAT with contents:write on
-`dagaza/homebrew-qube`). After each signed release, the `homebrew` job renders
-the cask via `scripts/render_homebrew_cask.py`, runs `brew audit`/`brew style`,
-and commits the bump to the tap.
+`dagaza/homebrew-qube`). After each release, the `homebrew` job renders the cask
+via `scripts/render_homebrew_cask.py`, validates style, and commits the bump to
+the tap.
+
+Optional: enable `ENABLE_MACOS_SIGNING` for notarized DMGs (recommended before
+submitting to **homebrew/homebrew-cask** core).
 
 Users install or upgrade with:
 
 ```bash
-brew install --cask dagaza/qube/qube
+brew tap dagaza/qube
+brew install --cask qube
 brew upgrade --cask qube
 ```
 
@@ -198,6 +246,9 @@ The release workflow signs `dist\Qube\Qube.exe` and the Inno Setup installer whe
 |----------|---------|
 | Git tag | `v1.0.1` |
 | Installer | `Qube-1.0.1-Setup.exe` |
+| macOS DMG | `Qube-1.0.1-arm64.dmg`, `Qube-1.0.1-x86_64.dmg` |
+| Linux AppImage | `Qube-1.0.1-x86_64-{cpu,vulkan,cuda}.AppImage` |
+| Linux `.deb` | `qube_1.0.1_amd64.deb`, `qube-vulkan_1.0.1_amd64.deb`, `qube-cuda_1.0.1_amd64.deb` |
 | WinGet folder | `manifests/d/dagaza/Qube/1.0.1/` |
 | Chocolatey nupkg | `qube.1.0.1.nupkg` |
 

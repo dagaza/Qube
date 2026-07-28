@@ -37,7 +37,8 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 |----------|--------------|
 | **Windows** | Installer via [GitHub Releases](https://github.com/dagaza/Qube/releases), WinGet (`dagaza.Qube`), or Chocolatey (`qube`) |
 | **macOS** | Signed/notarized `.dmg` from GitHub Releases when available; Homebrew cask via `dagaza/homebrew-qube` when published |
-| **Linux** | **Source install** from this repository (no official binary yet) |
+| **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, and **`.tar.gz`** (amd64) from GitHub Releases; [install guide](install-linux.md). Source install still supported. |
+| **macOS** | `.dmg` from GitHub Releases, or **`brew tap dagaza/qube && brew install --cask qube`** (custom tap; unsigned builds supported) |
 
 ---
 
@@ -47,10 +48,12 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 
 | Hardware | Notes |
 |----------|-------|
-| **NVIDIA (Windows/Linux)** | CUDA path via `llama-cpp-python`; see `./scripts/install_llama_cpp_gpu.sh` on Linux |
+| **NVIDIA (Windows/Linux)** | Windows: **`cuda`** Setup.exe from GitHub Releases; Linux: **`cuda`** AppImage/`.deb`; or GPU source install |
 | **Apple Silicon (macOS)** | Metal build in release DMGs |
-| **AMD / Intel (Linux)** | Vulkan build via `install_llama_cpp_gpu.sh` |
+| **AMD / Intel (Windows/Linux)** | Windows: **`vulkan`** Setup.exe; Linux: **`vulkan`** AppImage/`.deb`; or `install_llama_cpp_gpu.sh` |
 | **CPU only** | Supported — STT (faster-whisper) and TTS (Kokoro) run well on CPU; chat will be slower |
+
+**ROCm (AMD HIP on Linux)** is not shipped today. See [ROCm support exploration](../rocm_support_exploration.md) for feasibility and trade-offs vs Vulkan.
 
 **External Server** mode delegates inference to LM Studio / Ollama — tune GPU settings in that host app instead.
 
@@ -85,7 +88,7 @@ No third-party **chat API** is required.
 
 ## UI shell
 
-Qube uses **PyQt6** native widgets (not Electron or a browser tab). On memory-constrained machines, that matters because **model weights** consume most RAM — a lighter UI shell leaves more headroom for context and retrieval. See [runtime comparison](competitive-landscape.md#verified-runtime-ui-shell-and-ram).
+Qube uses **PyQt6** native widgets (not Electron or a browser tab). On memory-constrained machines, that matters because **model weights** consume most RAM — a lighter UI shell leaves more headroom for context and retrieval.
 
 ---
 

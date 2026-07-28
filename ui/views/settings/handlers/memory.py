@@ -33,6 +33,8 @@ from core.app_settings import (
     set_memory_promotion_acknowledged,
     get_enable_memory_consolidation,
     set_enable_memory_consolidation,
+    get_advanced_memory_unlocked,
+    set_advanced_memory_unlocked,
     get_enable_chat_personality_nudge,
     set_enable_chat_personality_nudge,
     get_memory_promotion_preset,
@@ -101,6 +103,13 @@ from ui.components.prestige_dialog import PrestigeDialog
 from ui.components.settings_json_editor_dialog import SettingsJsonEditorDialog
 from ui.components.selector_button import SelectorButton
 from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import (
+    PRESTIGE_MUTED_LABEL,
+    SETTINGS_DANGER_GHOST_BUTTON,
+    SETTINGS_ICON_BUTTON,
+    SETTINGS_LABEL,
+)
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.views.settings.controls import (
     NoScrollComboBox,
@@ -146,15 +155,10 @@ _SECTION_BUILDERS = {
 class MemoryHandlersMixin:
     """Behavior extracted from SettingsView."""
 
-    def _build_triggers_manager(self) -> QWidget:
-        """Builds the input box and list UI for custom RAG triggers."""
-        container = QWidget()
-        container.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(15)
+    def _ensure_rag_toolbar_controls(self) -> None:
+        """Create RAG master toggles early so toolbar wiring does not require Knowledge UI."""
+        if getattr(self, "rag_kb_cb", None) is not None:
+            return
 
         self.rag_kb_cb = QCheckBox("Enable Local Knowledge Base")
         self.rag_kb_cb.setChecked(get_mcp_rag_enabled())
@@ -164,14 +168,9 @@ class MemoryHandlersMixin:
             "if NLP Auto-Activator is enabled."
         )
         self.rag_kb_cb.toggled.connect(self._on_rag_kb_settings_toggled)
-        layout.addWidget(self.rag_kb_cb)
-        
-        # Instruction Label
-        instruction = QLabel("Add custom phrases that will trigger a semantic search of your Knowledge Base:")
-        instruction.setStyleSheet("color: #64748b; font-size: 12px; font-style: italic;")
-        layout.addWidget(instruction)
+        self.rag_kb_cb.setVisible(False)
+        self.rag_kb_cb.setParent(self)
 
-        # 🔑 NEW: Master Checkbox
         self.auto_activator_cb = QCheckBox("Enable NLP Auto-Activator")
         self.auto_activator_cb.setChecked(get_mcp_rag_auto_activator_enabled())
         self.auto_activator_cb.setToolTip(
@@ -179,6 +178,33 @@ class MemoryHandlersMixin:
             "even if the master RAG switch is off. Add magic words below."
         )
         self.auto_activator_cb.toggled.connect(self._on_auto_activator_settings_toggled)
+        self.auto_activator_cb.setVisible(False)
+        self.auto_activator_cb.setParent(self)
+
+    def _build_triggers_manager(self) -> QWidget:
+        """Builds the input box and list UI for custom RAG triggers."""
+        self._ensure_rag_toolbar_controls()
+
+        container = QWidget()
+        container.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(15)
+
+        self.rag_kb_cb.setVisible(True)
+        layout.addWidget(self.rag_kb_cb)
+
+        # Instruction Label
+        instruction = QLabel("Add custom phrases that will trigger a semantic search of your Knowledge Base:")
+        theme = view_resolved_theme(self)
+        instruction.setStyleSheet(
+            theme.style(PRESTIGE_MUTED_LABEL, font_size="12px", italic=True)
+        )
+        layout.addWidget(instruction)
+
+        self.auto_activator_cb.setVisible(True)
         layout.addWidget(self.auto_activator_cb)
         
         # Input Row
@@ -195,17 +221,8 @@ class MemoryHandlersMixin:
         self.trigger_add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.trigger_add_btn.setToolTip("Add trigger phrase")
         
-        # 🔑 FIX 1: Initialize the icon and CSS immediately upon creation
-        is_dark = getattr(self.window(), '_is_dark_theme', True)
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
-        btn_bg = "#313244" if is_dark else "#e2e8f0"
-        btn_hover = "#45475a" if is_dark else "#cbd5e1"
-        
-        self.trigger_add_btn.setIcon(qta.icon('fa5s.plus', color=icon_color))
-        self.trigger_add_btn.setStyleSheet(f"""
-            QPushButton {{ background: {btn_bg}; border: none; border-radius: 8px; }}
-            QPushButton:hover {{ background: {btn_hover}; }}
-        """)
+        self.trigger_add_btn.setIcon(qta.icon("fa5s.plus", color=theme.accent))
+        self.trigger_add_btn.setStyleSheet(theme.style(SETTINGS_ICON_BUTTON))
         
         self.trigger_add_btn.clicked.connect(self._on_add_trigger)
         
@@ -234,11 +251,9 @@ class MemoryHandlersMixin:
         self.trigger_list.clear()
         triggers = self.db.get_rag_triggers()
         
-        is_dark = getattr(self.window(), '_is_dark_theme', True)
-        text_color = "#cdd6f4" if is_dark else "#1e293b"
-        icon_color = "#ef4444" # Danger Red for Trash
-        hover_bg = "rgba(239, 68, 68, 0.1)" # Faint red hover
-        
+        theme = view_resolved_theme(self)
+        icon_color = theme.error
+
         list_width = max(0, self.trigger_list.viewport().width())
         if list_width <= 0:
             list_width = max(0, self.trigger_list.width())
@@ -261,7 +276,7 @@ class MemoryHandlersMixin:
             lbl.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
             )
-            lbl.setStyleSheet(f"color: {text_color}; font-size: 13px; font-weight: bold;")
+            lbl.setStyleSheet(theme.style(SETTINGS_LABEL, font_weight="bold"))
             lbl.setMaximumWidth(self._trigger_row_text_width(row_width))
             
             del_btn = QPushButton()
@@ -269,10 +284,7 @@ class MemoryHandlersMixin:
             del_btn.setFixedSize(28, 28)
             del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             del_btn.setToolTip("Remove this trigger phrase")
-            del_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 4px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            del_btn.setStyleSheet(theme.style(SETTINGS_DANGER_GHOST_BUTTON))
             del_btn.clicked.connect(lambda checked, p=phrase: self._on_delete_trigger(p))
             
             layout.addWidget(lbl, stretch=1, alignment=Qt.AlignmentFlag.AlignVCenter)
@@ -520,3 +532,39 @@ class MemoryHandlersMixin:
     def _on_memory_consolidation_toggled(self, checked: bool):
         set_enable_memory_consolidation(checked)
         self.memory_consolidation_changed.emit(checked)
+
+    def _on_advanced_memory_toggled(self, checked: bool) -> None:
+        set_advanced_memory_unlocked(bool(checked))
+        self._apply_advanced_memory_panel_visibility()
+
+    def _apply_advanced_memory_panel_visibility(self) -> None:
+        unlocked = get_advanced_memory_unlocked()
+        tour_row = getattr(self, "_tour_memory_row_preview_active", False)
+        tour_panel = getattr(self, "_tour_memory_preview_active", False)
+        visible = unlocked or tour_panel
+        if hasattr(self, "advanced_memory_panel"):
+            self.advanced_memory_panel.setVisible(visible)
+        if hasattr(self, "advanced_memory_toggle"):
+            self.advanced_memory_toggle.blockSignals(True)
+            self.advanced_memory_toggle.setChecked(tour_row or tour_panel or unlocked)
+            self.advanced_memory_toggle.blockSignals(False)
+
+    def begin_memory_advanced_tutorial_preview(
+        self, *, reveal_panel: bool = True
+    ) -> None:
+        """Reveal advanced memory controls during the Memory settings guided tour."""
+        self._tour_memory_row_preview_active = True
+        if reveal_panel:
+            self._tour_memory_preview_active = True
+        self._apply_advanced_memory_panel_visibility()
+
+    def end_memory_advanced_tutorial_preview(self) -> None:
+        """Restore advanced memory panel visibility after the guided tour."""
+        if not (
+            getattr(self, "_tour_memory_preview_active", False)
+            or getattr(self, "_tour_memory_row_preview_active", False)
+        ):
+            return
+        self._tour_memory_preview_active = False
+        self._tour_memory_row_preview_active = False
+        self._apply_advanced_memory_panel_visibility()

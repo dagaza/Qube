@@ -7,7 +7,8 @@ from PyQt6.QtCore import Qt
 
 
 @pytest.mark.ui
-def test_main_stages_are_lazy_until_navigation(main_window, qtbot):
+def test_main_stages_are_lazy_until_navigation(fresh_main_window, qtbot):
+    main_window = fresh_main_window
     assert main_window._main_stage_built == {0}
     assert main_window._library_view is None
     assert main_window._settings_view is None

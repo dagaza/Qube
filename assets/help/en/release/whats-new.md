@@ -1,4 +1,4 @@
-# What's new in Qube Help (v1.0.12)
+# What's new in Qube Help (v1.0.14)
 
 ## Common questions
 
@@ -10,7 +10,7 @@
 
 This page summarizes the **v1 English help corpus** shipped with Qube. The corpus lives in **Library → Qube** and powers **`@[tool:help]`** in **Conversations**.
 
-**v1.0.12** adds **[Cognitive Router — how Qube routes a chat turn](../faq/cognitive-router-how-routing-works.md)**: route vocabulary, pre/post overrides, **● HYBRID** vs **HYBRID** route naming, Web vs Hybrid Internet Mode, empty-source downgrade, and where to inspect routing.
+**v1.0.14** clarifies **[Retrieval profile](../features/settings/knowledge.md)** as global knowledge **orchestration** (not Library-only ranking) and adds **[Retrieval profile vs search quality](../faq/retrieval-profile-vs-search-quality.md)** to disambiguate Fast/Balanced naming from **Search quality** embedding presets.
 
 ## Where to find it
 
@@ -19,6 +19,12 @@ Open **Library → Qube → release/whats-new.md**, or attach **`@[tool:help]`**
 ## Also called
 
 help release notes, documentation changelog, in-app help v1, Qube documentation update
+
+## Highlights (v1.0.14 retrieval profile)
+
+1. **[Knowledge settings](../features/settings/knowledge.md)** — **Retrieval profile** section: orchestration scope, web fetch depth, profiles list, Settings-only note.
+2. **[Retrieval profile vs search quality FAQ](../faq/retrieval-profile-vs-search-quality.md)** — side-by-side comparison of the two Fast/Balanced controls.
+3. **Canonical `@help` answers** — retrieval profile location/scope; retrieval vs search quality disambiguation.
 
 ## Highlights (v1.0.12 cognitive router)
 

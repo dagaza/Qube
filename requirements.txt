@@ -10,6 +10,7 @@ cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.3.3
 colorama==0.4.6
+cryptography==48.0.1
 csvw==3.7.0
 ctranslate2==4.7.1
 deprecation==2.1.0
@@ -36,7 +37,8 @@ lance-namespace==0.6.1
 lance-namespace-urllib3-client==0.6.1
 lancedb==0.30.2
 language-tags==1.2.0
-lxml==6.1.0
+lxml==6.1.1
+lxml-html-clean>=0.4.5
 Markdown==3.10.2
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
@@ -60,7 +62,7 @@ pydantic_core==2.41.5
 Pygments==2.20.0
 pynvml==13.0.1
 pyparsing==3.3.2
-pypdf==6.13.3
+pypdf==6.14.2
 pymupdf
 PyQt6==6.11.0
 PyQt6-Qt6==6.11.0

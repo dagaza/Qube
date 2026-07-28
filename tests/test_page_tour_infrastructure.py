@@ -28,6 +28,7 @@ class TestPageTourRegistry(unittest.TestCase):
             "settings.memory",
             "settings.knowledge",
             "settings.general",
+            "settings.appearance_themes",
             "settings.companion_desktop",
             "settings.notifications",
             "settings.help",

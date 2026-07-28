@@ -8,12 +8,12 @@
 #   MACOS_SIGN_IDENTITY  e.g. "Developer ID Application: dagaza (TEAMID)"
 set -euo pipefail
 
-APP="${1:?Usage: codesign_app.sh <path-to-.app>}"
+APP="${1:?Usage: codesign_app.sh <path-to-.app> [entitlements.plist]}"
 : "${MACOS_SIGN_IDENTITY:?MACOS_SIGN_IDENTITY is required}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ENTITLEMENTS="$REPO_ROOT/packaging/macos/entitlements.plist"
+ENTITLEMENTS="${2:-$REPO_ROOT/packaging/macos/entitlements.plist}"
 
 if [[ ! -d "$APP" ]]; then
   echo "App bundle not found: $APP" >&2

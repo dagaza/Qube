@@ -20,6 +20,7 @@ from core.assistant_activity import AssistantActivity
 from core.companion_personas import CompanionPersonaId
 from ui.companion.persona_audio import paint_ripples, paint_waveform_ring
 from ui.companion.persona_context import CompanionPaintContext
+from ui.companion.companion_theme import persona_highlight_qcolor, persona_wire_qcolor
 from ui.companion.personas.base import CompanionPersonaRenderer
 
 _CUBE_VERTS = [
@@ -259,8 +260,7 @@ class QubeCubeClassicPersonaRenderer(CompanionPersonaRenderer):
             painter.setPen(QPen(edge, 1.6 if layer == 2 else 1.2))
             painter.drawPath(path)
 
-        wire = QColor("#ffffff")
-        wire.setAlphaF(min(1.0, alpha * opacity * (0.55 if layer == 2 else 0.35)))
+        wire = persona_wire_qcolor(ctx, layer=layer, alpha=alpha)
         painter.setPen(QPen(wire, 1.1 if layer == 2 else 0.8))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         for i, j in _CUBE_EDGES:
@@ -277,8 +277,7 @@ class QubeCubeClassicPersonaRenderer(CompanionPersonaRenderer):
                 core_grad = QRadialGradient(core_center, core_r)
             c1 = QColor(ctx.secondary)
             c1.setAlphaF(0.95 * opacity)
-            c2 = QColor("#ffffff")
-            c2.setAlphaF(0.85 * opacity)
+            c2 = persona_highlight_qcolor(ctx, alpha=0.85)
             if isinstance(core_grad, QConicalGradient):
                 core_grad.setColorAt(0.0, c1)
                 core_grad.setColorAt(0.5, c2)

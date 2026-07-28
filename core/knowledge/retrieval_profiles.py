@@ -63,7 +63,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_FAST: RetrievalProfileSpec(
         id=PROFILE_FAST,
         label="Fast",
-        short_description="SERP snippets only — no page fetch (lowest latency).",
+        short_description="Quickest searches app-wide; on web, search snippets only.",
         budget=RetrievalBudget(max_results=2, max_adapter_calls=2, max_latency_ms=3500),
         max_parallel_adapters=2,
         cache_policy="aggressive",
@@ -73,7 +73,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_BALANCED: RetrievalProfileSpec(
         id=PROFILE_BALANCED,
         label="Balanced",
-        short_description="Default orchestration — SERP plus fetch top page when relevant.",
+        short_description="Default for most users; on web, may open one result page.",
         budget=RetrievalBudget(
             max_results=3,
             max_adapter_calls=3,
@@ -88,7 +88,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_THOROUGH: RetrievalProfileSpec(
         id=PROFILE_THOROUGH,
         label="Thorough",
-        short_description="Wider fan-out and fetch up to three pages for higher recall.",
+        short_description="Slowest and deepest; on web, may open up to three pages.",
         budget=RetrievalBudget(
             max_results=5,
             max_adapter_calls=6,
@@ -103,7 +103,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_EVIDENCE_FIRST: RetrievalProfileSpec(
         id=PROFILE_EVIDENCE_FIRST,
         label="Evidence-first",
-        short_description="Prioritize high-confidence sources and citation quality.",
+        short_description="Favors well-cited sources when ranking; web stays snippet-first.",
         budget=RetrievalBudget(max_results=3, max_adapter_calls=4, max_latency_ms=10000),
         max_parallel_adapters=3,
         cache_policy="default",
@@ -113,7 +113,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_LOCAL_FIRST: RetrievalProfileSpec(
         id=PROFILE_LOCAL_FIRST,
         label="Local-first",
-        short_description="Query local sources before external APIs.",
+        short_description="Try your Library and local connectors before going online.",
         budget=RetrievalBudget(max_results=3, max_adapter_calls=4, max_latency_ms=8000),
         max_parallel_adapters=3,
         cache_policy="aggressive",

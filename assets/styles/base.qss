@@ -50,8 +50,13 @@ QToolTip {
     border-top-right-radius: 12px;
 }
 
-#NavSidebar, #HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #SettingsSidebar, #ToolsPane {
-    background-color: rgba(0, 0, 0, 0.15);
+#NavSidebar, #ToolsPane {
+    background-color: {{surface}};
+    border: none;
+}
+
+#HistorySidebar, #LibrarySidebar, #ModelManagerSidebar, #SettingsSidebar {
+    background-color: {{sidebar_surface}};
     border: none;
 }
 
@@ -170,7 +175,7 @@ QPushButton[class~="NavButton"]:checked {
 
 /* --- 3. INPUTS (QLineEdit, QTextEdit, QPlainTextEdit) --- */
 QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: {{surface_elevated}};
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     padding: 8px 12px;
@@ -178,8 +183,14 @@ QLineEdit, QTextEdit, QPlainTextEdit, #ChatTextInput {
 }
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, #ChatTextInput:focus {
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: {{surface_elevated}};
     border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+QPlainTextEdit#ChatUserBubble {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
 }
 
 /* --- 4. BUTTONS (QPushButton) --- */
@@ -285,13 +296,43 @@ QPushButton[class~="BrandDangerButton"]:disabled {
     color: rgba(148, 163, 184, 0.85) !important;
     border: 1px solid rgba(148, 163, 184, 0.35) !important;
 }
+QPushButton[class~="BrandCautionButton"] {
+    background-color: #eab308 !important;
+    color: #f8fafc !important;
+    border: 1px solid #ca8a04 !important;
+}
+QPushButton[class~="BrandCautionButton"]:hover {
+    background-color: #ca8a04 !important;
+    border: 1px solid #ca8a04 !important;
+}
+QPushButton[class~="BrandCautionButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
+QPushButton[class~="BrandSecondaryButton"] {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: #cdd6f4 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+QPushButton[class~="BrandSecondaryButton"]:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+QPushButton[class~="BrandSecondaryButton"]:disabled {
+    background-color: rgba(100, 116, 139, 0.22) !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
 
 /* Transparent utility buttons (window controls, nav icons) */
-.WindowControlButton, .IconButton {
+QPushButton[class~="WindowControlButton"],
+QPushButton[class~="IconButton"] {
     background-color: transparent;
     border: none;
 }
-.WindowControlButton:hover, .IconButton:hover {
+QPushButton[class~="WindowControlButton"]:hover,
+QPushButton[class~="IconButton"]:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -465,6 +506,12 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     margin-bottom: 4px;
 }
 
+#ThemeColorTokenLabel {
+    color: #bac2de;
+    font-size: 13px;
+    font-weight: normal;
+}
+
 #SettingsSectionGroupHeader {
     color: #6c7086;
     font-size: 10px;
@@ -508,6 +555,13 @@ QLabel[class="SettingsHint"] {
     color: #a6adc8;
     font-size: 12px;
     font-weight: normal;
+}
+
+#SettingsFormLabelColumnRuler {
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
 }
 
 #SettingsActionStatus {
@@ -757,14 +811,17 @@ QFrame[class~="MetaPanelCard"] QFrame[class~="capability"] {
 }
 
 /* --- 9. LIBRARY SPECIFIC --- */
-#LibrarySearchBar, #HubModelSearchBar, #SettingsSectionSearchBar {
-    background-color: rgba(0, 0, 0, 0.2);
+#LibrarySearchBar, #HubModelSearchBar, #SettingsSectionSearchBar,
+#HistorySearch, #MemorySearchInput, #ThemePickerSearch {
+    background-color: {{surface_elevated}};
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
     padding: 8px 12px;
     margin-bottom: 5px;
 }
-#LibrarySearchBar:focus, #HubModelSearchBar:focus, #SettingsSectionSearchBar:focus {
+#LibrarySearchBar:focus, #HubModelSearchBar:focus, #SettingsSectionSearchBar:focus,
+#HistorySearch:focus, #MemorySearchInput:focus, #ThemePickerSearch:focus {
+    background-color: {{surface_elevated}};
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -861,17 +918,17 @@ QAbstractScrollArea::corner {
 
 /* Explicitly target the QFrame to guarantee background painting */
 #UserBubble {
-    background-color: #89b4fa; /* Catppuccin Blue */
+    background-color: {{chat_user_bubble}};
     border-radius: 18px; 
 }
 
 #UserBubble QLabel {
-    color: #11111b; 
+    color: {{chat_user_text}}; 
     background-color: transparent;
 }
 
 #UserBubble #ChatUserBubble {
-    color: #11111b;
+    color: {{chat_user_text}};
     background-color: transparent;
     /* Override global QPlainTextEdit padding/border — otherwise viewport is narrower than
        width() and short user bubbles wrap mid-word (e.g. "te" / "st"). */
@@ -943,7 +1000,9 @@ QLabel#AgentMessage {
     font-weight: 500;
 }
 
-/* Sidebar row titles: scope to QListWidget::item so colors apply reliably to setItemWidget rows. */
+/* Sidebar row title typography only — colors are owned by
+   ui.components.sidebar_list_qss.apply_sidebar_row_title_colors()
+   (setItemWidget rows do not reliably inherit ::item color rules). */
 #HistoryList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#HistoryRowTitle,
 #LibraryDocList::item QLabel#LibraryRowTitle,
@@ -951,14 +1010,6 @@ QLabel#AgentMessage {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 500;
-    color: #6c7086 !important; /* Slate — unselected (dark) */
-}
-
-#HistoryList::item:selected QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected QLabel#HistoryRowTitle,
-#LibraryDocList::item:selected QLabel#LibraryRowTitle,
-#SettingsSectionList::item:selected QLabel#HistoryRowTitle {
-    color: #ffffff !important;
 }
 
 #HistoryList::item QLabel#HistoryFolderTitle,
@@ -966,12 +1017,6 @@ QLabel#AgentMessage {
     background-color: transparent !important;
     font-size: 13px;
     font-weight: 700;
-    color: #cdd6f4 !important;
-}
-
-#HistoryList::item:selected QLabel#HistoryFolderTitle,
-#LibraryDocList::item:selected QLabel#HistoryFolderTitle {
-    color: #ffffff !important;
 }
 
 #HistoryFolderChevronBtn {

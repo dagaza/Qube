@@ -31,11 +31,14 @@ cask "qube" do
 
   app "Qube.app"
 
+  caveats <<~EOS
+    Qube is distributed unsigned via the dagaza/qube custom tap (no Apple Developer ID).
+    macOS Gatekeeper may block the app on first launch. Use System Settings → Privacy & Security → Open Anyway,
+    or remove the quarantine attribute after install:
+      xattr -dr com.apple.quarantine "/Applications/Qube.app"
+  EOS
+
   zap trash: [
-    "~/Library/Application Support/Qube",
-    "~/Library/Caches/com.dagaza.Qube",
-    "~/Library/Preferences/com.dagaza.Qube.plist",
-    "~/Library/Saved Application State/com.dagaza.Qube.savedState",
-    "~/Library/Logs/Qube",
+{{ZAP_TRASH_LINES}}
   ]
 end

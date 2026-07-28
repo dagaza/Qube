@@ -8,7 +8,6 @@ Thank you for helping improve Qube. This project is maintained on GitHub at [dag
 
 - **Bug reports & features:** [GitHub Issues](https://github.com/dagaza/Qube/issues) or [qubeapp.eu](https://www.qubeapp.eu) via **Settings → Contact & Feedback** in the app.
 - **Documentation:** User-facing prose lives in [`docs/user/`](docs/user/README.md) and in-app help (`assets/help/en/`). The README is a short storefront — see [`docs/launch_documentation_guidelines.md`](docs/launch_documentation_guidelines.md) before large doc changes.
-- **Product priorities vs competitors:** [`docs/competitive_roadmap.md`](docs/competitive_roadmap.md) — parity gaps, moats to deepen, intentional non-goals (companion doc: [`docs/user/competitive-landscape.md`](docs/user/competitive-landscape.md)).
 
 ---
 
@@ -171,7 +170,7 @@ See [`docs/mcp_capability_architecture_review.md`](docs/mcp_capability_architect
 
 ## Maintainer notes
 
-Release procedures (tagging, WinGet, Chocolatey, macOS, pre-launch documentation pass): [`docs/releasing.md`](docs/releasing.md).
+Release procedures (tagging, WinGet, Chocolatey, macOS, pre-launch documentation pass): [`docs/releasing.md`](docs/releasing.md). **Before tagging:** [`docs/release_versioning_quick_reference.md`](docs/release_versioning_quick_reference.md) (semver discipline, failed CI, agent guidance).
 
 Promoting integration work: merge reviewed PRs into `dev`, then cut releases by merging `dev` into `main` per [`docs/releasing.md`](docs/releasing.md).
 

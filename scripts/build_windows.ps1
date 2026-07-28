@@ -3,6 +3,9 @@ param(
     # Semver X.Y.Z; defaults to core/__version__.py when omitted.
     [string]$Version,
 
+    [ValidateSet("cpu", "vulkan", "cuda")]
+    [string]$Variant = "cpu",
+
     # Stop after PyInstaller + dist EXE smoke (skip Inno installer steps).
     [switch]$SkipInstaller,
 
@@ -57,11 +60,7 @@ Install Inno Setup 6 manually from https://jrsoftware.org/isinfo.php (add ISCC t
 }
 
 python scripts/set_version.py $Version
-pip install -r requirements.txt
-pip install pyinstaller pillow
-python scripts/generate_ico.py
-pyinstaller qube.spec --noconfirm
-& "$Root\scripts\release\smoke_dist.ps1"
+& "$Root\scripts\windows\build_windows_variant.ps1" $Version $Variant
 
 if ($SkipInstaller) {
     Write-Host "SkipInstaller set — dist build OK at dist\Qube\Qube.exe"
@@ -89,6 +88,6 @@ Or re-run this script with -SkipInstaller after validating dist\Qube\Qube.exe ma
 }
 
 Write-Host "Using Inno Setup compiler: $iscc"
-& $iscc "/DMyAppVersion=$Version" "installer\qube.iss"
+& $iscc "/DMyAppVersion=$Version" "/DMyAppVariant=$Variant" "installer\qube.iss"
 & "$Root\scripts\release\smoke_installed.ps1"
 Get-Item installer\output\Qube-*-Setup.exe | Format-List Name, Length

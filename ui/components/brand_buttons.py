@@ -1,249 +1,361 @@
 """Prestige brand-action button styling helper.
 
-Why this exists
----------------
-The app's reusable "primary / brand" action buttons (Wakeword Test Lab,
-Use Selected, Delete, Retest, Apply, Model Manager Download, etc.) were
-originally styled through a dynamic `class` property and matching
-`QPushButton[class~="..."]` rules in `assets/styles/base.qss` +
-`assets/styles/light.qss`. In practice that approach produced subtle but
-persistent rendering bugs on some Qt builds / platform styles — most
-visibly in light theme, where the generic `QPushButton` rule leaked
-through and left buttons rendered as white-on-off-white even with
-`!important` on the attribute-selector Brand rules. The specificity of
-dynamic-property selectors and Qt's honoring of `!important` is not
-consistently enforced by every QStyle implementation, and adding more
-`!important` or higher-specificity app-level rules did not reliably fix
-it.
-
-Widget-level `setStyleSheet(...)` always wins: it has the highest
-specificity of any QSS source in Qt, is re-polished automatically on
-every repaint, and cannot be overridden by the app-level sheet or the
-widget's QPalette. That is exactly the guarantee we need for buttons
-whose accent colors are theme-independent by design (brand purple, brand
-red, brand green are the same in dark + light themes).
-
-This module centralizes the three canonical brand styles so every
-call-site uses the same copy of the QSS. Callers pass a
-`QPushButton`, pick a variant, and get consistent bg / border / hover
-/ disabled rendering regardless of the active theme or platform style.
+Widget-level QSS drives rendering from ``ResolvedTheme`` semantic tokens.
+Logo/identity colors live in ``core.brand_identity`` and are not user-customizable.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-import qtawesome as qta
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QPushButton
 
+from core.theme.accessors import theme_for
+from core.theme.color_utils import adjust_lightness, with_alpha
+from core.theme.tokens import ResolvedTheme
 
 BRAND_PRIMARY = "primary"
 BRAND_SUCCESS = "success"
 BRAND_DANGER = "danger"
 BRAND_CAUTION = "caution"
+BRAND_SECONDARY = "secondary"
 
-# Canonical foreground (text / icon) color per brand variant. All three share
-# the same near-white so the icon/text pair renders consistently; expose it as
-# a mapping so callers who set icons separately (qtawesome, custom pixmaps)
-# can read the correct tint without hard-coding `#f8fafc` across views.
-BRAND_FG_COLOR: dict[str, str] = {
-    BRAND_PRIMARY: "#f8fafc",
-    BRAND_SUCCESS: "#f8fafc",
-    BRAND_DANGER: "#f8fafc",
-    BRAND_CAUTION: "#f8fafc",
-}
+_BRAND_VARIANTS = frozenset(
+    {BRAND_PRIMARY, BRAND_SUCCESS, BRAND_DANGER, BRAND_CAUTION, BRAND_SECONDARY}
+)
+_BRAND_ICON_SIZE = 16
 
-# Canonical disabled-state foreground color (used when the icon tint should
-# follow the button into its disabled state). Matches the :disabled color in
-# `_BRAND_QSS` below.
-BRAND_DISABLED_FG_COLOR = "rgba(148, 163, 184, 0.85)"
-
-
-def brand_fg_color(variant: str) -> str:
-    """Return the canonical text/icon color for a brand variant."""
-    try:
-        return BRAND_FG_COLOR[variant]
-    except KeyError as exc:
+def brand_label_color(
+    variant: str,
+    theme: ResolvedTheme,
+    *,
+    disabled: bool = False,
+) -> str:
+    """Foreground color for brand button labels and matching qtawesome icon tints."""
+    if variant not in _BRAND_VARIANTS:
         raise ValueError(
             f"Unknown brand variant: {variant!r}. "
-            f"Expected one of: {sorted(BRAND_FG_COLOR)}"
-        ) from exc
+            f"Expected one of: {sorted(_BRAND_VARIANTS)}"
+        )
+    if disabled:
+        return _brand_disabled_colors(theme, variant)[1]
+    if variant == BRAND_SECONDARY:
+        return theme.text_primary
+    return theme.brand_fg
 
 
-_BRAND_QSS: dict[str, str] = {
-    BRAND_PRIMARY: """
-        QPushButton {
-            background-color: #8b5cf6;
-            color: #f8fafc;
-            border: 1px solid #8b5cf6;
+def brand_fg_color(
+    variant: str,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool = True,
+    disabled: bool = False,
+) -> str:
+    resolved = theme_for(is_dark=is_dark, resolved=theme)
+    return brand_label_color(variant, resolved, disabled=disabled)
+
+
+def _brand_button_icon(icon_name: str, fg: str, disabled_fg: str) -> QIcon:
+    """Bake qtawesome glyphs into static pixmaps so QSS/platform styles cannot retint them."""
+    from core.theme.svg_icons import themed_fa_icon
+
+    return themed_fa_icon(
+        icon_name,
+        fg,
+        _BRAND_ICON_SIZE,
+        disabled_color=disabled_fg,
+    )
+
+
+def _brand_disabled_colors(
+    theme: ResolvedTheme, variant: str
+) -> tuple[str, str, str]:
+    """Return ``(background, foreground, border)`` for a disabled brand button."""
+    if variant == BRAND_PRIMARY:
+        bg = with_alpha(theme.accent, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.accent, 0.45)
+    elif variant == BRAND_SUCCESS:
+        bg = with_alpha(theme.success, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.success, 0.45)
+    elif variant == BRAND_DANGER:
+        bg = with_alpha(theme.error, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.error, 0.45)
+    elif variant == BRAND_CAUTION:
+        bg = with_alpha(theme.warning, 0.38)
+        fg = with_alpha(theme.brand_fg, 0.65)
+        border = with_alpha(theme.warning, 0.45)
+    elif variant == BRAND_SECONDARY:
+        border = theme.border_subtle if theme.is_dark else theme.border
+        bg = with_alpha("#000000", 0.12) if theme.is_dark else with_alpha(theme.surface_elevated, 0.85)
+        fg = with_alpha(theme.text_primary, 0.55)
+        border = with_alpha(border, 0.55)
+    else:
+        bg = theme.brand_disabled_bg
+        fg = theme.brand_disabled_fg
+        border = with_alpha(theme.border, 0.35)
+    return bg, fg, border
+
+
+def _brand_disabled_qss(theme: ResolvedTheme, variant: str) -> str:
+    """Muted variant tint when disabled — keeps semantic color visible (not flat gray)."""
+    bg, fg, border = _brand_disabled_colors(theme, variant)
+    return (
+        f"background-color: {bg} !important;"
+        f" color: {fg} !important;"
+        f" border: 1px solid {border} !important;"
+    )
+
+
+def _brand_button_selector(button: QPushButton) -> str:
+    """Prefer #objectName selectors — they beat app-level QPushButton rules reliably."""
+    object_name = button.objectName()
+    if object_name:
+        return f"QPushButton#{object_name}"
+    return "QPushButton"
+
+
+def _brand_class_tag(variant: str) -> str:
+    """Only primary carries PrimaryActionButton (app-level disabled gray targets it)."""
+    if variant == BRAND_PRIMARY:
+        return "PrimaryActionButton BrandPrimaryButton"
+    if variant == BRAND_SUCCESS:
+        return "BrandSuccessButton"
+    if variant == BRAND_CAUTION:
+        return "BrandCautionButton"
+    if variant == BRAND_SECONDARY:
+        return "BrandSecondaryButton"
+    return "BrandDangerButton"
+
+
+def _scoped_brand_qss(selector: str, template: str) -> str:
+    return template.replace("QPushButton", selector)
+
+
+def _semantic_button_qss(
+    theme: ResolvedTheme,
+    *,
+    variant: str,
+    selector: str,
+    base: str,
+    hover: str,
+    pressed: str,
+    border: str,
+) -> str:
+    fg = brand_label_color(variant, theme)
+    disabled = _brand_disabled_qss(theme, variant)
+    return _scoped_brand_qss(
+        selector,
+        f"""
+        QPushButton {{
+            background-color: {base} !important;
+            color: {fg} !important;
+            border: 1px solid {border} !important;
             border-radius: 6px;
-            padding: 8px 15px;
+            padding: 10px 20px;
             font-weight: 700;
-        }
-        QPushButton:hover {
-            background-color: #7c3aed;
-            border: 1px solid #7c3aed;
-        }
-        QPushButton:pressed {
-            background-color: #6d28d9;
-            border: 1px solid #6d28d9;
-        }
-        QPushButton:disabled {
-            background-color: rgba(100, 116, 139, 0.22);
-            color: rgba(148, 163, 184, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-        }
+        }}
+        QPushButton:hover {{
+            background-color: {hover} !important;
+            border: 1px solid {hover} !important;
+        }}
+        QPushButton:pressed {{
+            background-color: {pressed} !important;
+            border: 1px solid {pressed} !important;
+        }}
+        QPushButton:disabled {{
+            {disabled}
+        }}
     """,
-    BRAND_SUCCESS: """
-        QPushButton {
-            background-color: #16a34a;
-            color: #f8fafc;
-            border: 1px solid #15803d;
+    )
+
+
+def brand_qss_for_variant(
+    variant: str,
+    theme: ResolvedTheme,
+    *,
+    selector: str = "QPushButton",
+) -> str:
+    if variant == BRAND_PRIMARY:
+        disabled = _brand_disabled_qss(theme, variant)
+        return _scoped_brand_qss(
+            selector,
+            f"""
+        QPushButton {{
+            background-color: {theme.accent} !important;
+            color: {theme.brand_fg} !important;
+            border: 1px solid {theme.accent} !important;
             border-radius: 6px;
-            padding: 8px 15px;
+            padding: 10px 20px;
             font-weight: 700;
-        }
-        QPushButton:hover {
-            background-color: #15803d;
-            border: 1px solid #15803d;
-        }
-        QPushButton:pressed {
-            background-color: #166534;
-            border: 1px solid #166534;
-        }
-        QPushButton:disabled {
-            background-color: rgba(100, 116, 139, 0.22);
-            color: rgba(148, 163, 184, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-        }
+        }}
+        QPushButton:hover {{
+            background-color: {theme.accent_hover} !important;
+            border: 1px solid {theme.accent_hover} !important;
+        }}
+        QPushButton:pressed {{
+            background-color: {theme.accent_pressed} !important;
+            border: 1px solid {theme.accent_pressed} !important;
+        }}
+        QPushButton:disabled {{
+            {disabled}
+        }}
     """,
-    BRAND_DANGER: """
-        QPushButton {
-            background-color: #dc2626;
-            color: #f8fafc;
-            border: 1px solid #b91c1c;
+        )
+    if variant == BRAND_SUCCESS:
+        return _semantic_button_qss(
+            theme,
+            variant=variant,
+            selector=selector,
+            base=theme.success,
+            hover=adjust_lightness(theme.success, -0.08),
+            pressed=adjust_lightness(theme.success, -0.16),
+            border=adjust_lightness(theme.success, -0.12),
+        )
+    if variant == BRAND_DANGER:
+        return _semantic_button_qss(
+            theme,
+            variant=variant,
+            selector=selector,
+            base=theme.error,
+            hover=adjust_lightness(theme.error, -0.08),
+            pressed=adjust_lightness(theme.error, -0.16),
+            border=adjust_lightness(theme.error, -0.12),
+        )
+    if variant == BRAND_CAUTION:
+        return _semantic_button_qss(
+            theme,
+            variant=variant,
+            selector=selector,
+            base=theme.warning,
+            hover=adjust_lightness(theme.warning, -0.08),
+            pressed=adjust_lightness(theme.warning, -0.16),
+            border=adjust_lightness(theme.warning, -0.12),
+        )
+    if variant == BRAND_SECONDARY:
+        border = theme.border_subtle if theme.is_dark else theme.border
+        bg = with_alpha("#000000", 0.2) if theme.is_dark else theme.surface_elevated
+        hover = theme.surface_hover
+        pressed = theme.surface_pressed
+        fg = brand_label_color(BRAND_SECONDARY, theme)
+        disabled = _brand_disabled_qss(theme, variant)
+        return _scoped_brand_qss(
+            selector,
+            f"""
+        QPushButton {{
+            background-color: {bg} !important;
+            color: {fg} !important;
+            border: 1px solid {border} !important;
             border-radius: 6px;
-            padding: 8px 15px;
+            padding: 10px 20px;
             font-weight: 700;
-        }
-        QPushButton:hover {
-            background-color: #b91c1c;
-            border: 1px solid #b91c1c;
-        }
-        QPushButton:pressed {
-            background-color: #991b1b;
-            border: 1px solid #991b1b;
-        }
-        QPushButton:disabled {
-            background-color: rgba(100, 116, 139, 0.22);
-            color: rgba(148, 163, 184, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-        }
+        }}
+        QPushButton:hover {{
+            background-color: {hover} !important;
+            border: 1px solid {border} !important;
+        }}
+        QPushButton:pressed {{
+            background-color: {pressed} !important;
+            border: 1px solid {border} !important;
+        }}
+        QPushButton:disabled {{
+            {disabled}
+        }}
     """,
-    BRAND_CAUTION: """
-        QPushButton {
-            background-color: #c2410c;
-            color: #f8fafc;
-            border: 1px solid #9a3412;
-            border-radius: 6px;
-            padding: 8px 15px;
-            font-weight: 700;
-        }
-        QPushButton:hover {
-            background-color: #9a3412;
-            border: 1px solid #9a3412;
-        }
-        QPushButton:pressed {
-            background-color: #7c2d12;
-            border: 1px solid #7c2d12;
-        }
-        QPushButton:disabled {
-            background-color: rgba(100, 116, 139, 0.22);
-            color: rgba(148, 163, 184, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-        }
-    """,
-}
+        )
+    raise ValueError(f"Unknown brand variant: {variant!r}")
 
 
 def apply_brand_style(
     button: QPushButton,
     variant: str,
     icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
 ) -> None:
-    """Apply the brand style (widget-level QSS) and optionally tint an icon.
+    resolved = theme_for(is_dark=is_dark if is_dark is not None else True, resolved=theme)
+    selector = _brand_button_selector(button)
+    qss = brand_qss_for_variant(variant, resolved, selector=selector)
 
-    Widget-level QSS is what actually drives the visible render: it has the
-    highest specificity of any QSS source in Qt and will defeat any
-    app-level `QPushButton { background-color: ... }` rule on every render
-    path. The dynamic `class` property is kept in sync for backward
-    compatibility with any code that still matches on `class~=` and for
-    future migrations.
-
-    If `icon_name` is provided it is rendered through `qtawesome` using the
-    variant's canonical foreground color (`BRAND_FG_COLOR[variant]`) so the
-    icon always matches the button's text color. Pass `icon_name=None` for
-    text-only brand buttons or when the caller manages the icon separately
-    (for example when stacking multiple icons via `qta.icon(..., options=...)`
-    or switching icons across runtime states with state-specific names — in
-    that case, read the tint with `brand_fg_color(variant)` at the call site
-    and pass it as the `color` kwarg).
-    """
-    try:
-        qss = _BRAND_QSS[variant]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown brand variant: {variant!r}. "
-            f"Expected one of: {sorted(_BRAND_QSS)}"
-        ) from exc
-
-    if variant == BRAND_PRIMARY:
-        class_tag = "PrimaryActionButton BrandPrimaryButton"
-    elif variant == BRAND_SUCCESS:
-        class_tag = "PrimaryActionButton BrandSuccessButton"
-    elif variant == BRAND_CAUTION:
-        class_tag = "PrimaryActionButton BrandCautionButton"
-    else:
-        class_tag = "PrimaryActionButton BrandDangerButton"
-
-    button.setProperty("class", class_tag)
+    button.setProperty("class", _brand_class_tag(variant))
+    button.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
     button.setStyleSheet(qss)
-
-    if icon_name is not None:
-        button.setIcon(
-            qta.icon(
-                icon_name,
-                color=BRAND_FG_COLOR[variant],
-                color_disabled=BRAND_DISABLED_FG_COLOR,
-            )
-        )
 
     style = button.style()
     if style is not None:
         style.unpolish(button)
         style.polish(button)
+
+    if icon_name is not None:
+        fg = brand_label_color(variant, resolved)
+        disabled_fg = brand_label_color(variant, resolved, disabled=True)
+        button.setIconSize(QSize(_BRAND_ICON_SIZE, _BRAND_ICON_SIZE))
+        button.setIcon(_brand_button_icon(icon_name, fg, disabled_fg))
+
     button.update()
 
 
 def apply_brand_primary(
-    button: QPushButton, icon_name: Optional[str] = None
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
 ) -> None:
-    apply_brand_style(button, BRAND_PRIMARY, icon_name=icon_name)
+    apply_brand_style(
+        button, BRAND_PRIMARY, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )
 
 
 def apply_brand_success(
-    button: QPushButton, icon_name: Optional[str] = None
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
 ) -> None:
-    apply_brand_style(button, BRAND_SUCCESS, icon_name=icon_name)
+    apply_brand_style(
+        button, BRAND_SUCCESS, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )
 
 
 def apply_brand_danger(
-    button: QPushButton, icon_name: Optional[str] = None
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
 ) -> None:
-    apply_brand_style(button, BRAND_DANGER, icon_name=icon_name)
+    apply_brand_style(
+        button, BRAND_DANGER, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )
 
 
 def apply_brand_caution(
-    button: QPushButton, icon_name: Optional[str] = None
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
 ) -> None:
-    apply_brand_style(button, BRAND_CAUTION, icon_name=icon_name)
+    apply_brand_style(
+        button, BRAND_CAUTION, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )
+
+
+def apply_brand_secondary(
+    button: QPushButton,
+    icon_name: Optional[str] = None,
+    *,
+    theme: ResolvedTheme | None = None,
+    is_dark: bool | None = None,
+) -> None:
+    apply_brand_style(
+        button, BRAND_SECONDARY, icon_name=icon_name, theme=theme, is_dark=is_dark
+    )

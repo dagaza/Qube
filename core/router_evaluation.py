@@ -1310,6 +1310,14 @@ def write_csv(path: Path, results: list[RouterEvalResult]) -> None:
         writer.writerows(rows)
 
 
+def _config_to_json(config: RouterEvalConfig) -> dict[str, Any]:
+    payload = asdict(config)
+    fixtures_dir = payload.get("web_fixtures_dir")
+    if fixtures_dir is not None:
+        payload["web_fixtures_dir"] = str(fixtures_dir)
+    return payload
+
+
 def write_run_json(
     path: Path,
     *,
@@ -1338,7 +1346,7 @@ def write_run_json(
         "corpus_version": corpus_meta.get("version"),
         "corpus_description": corpus_meta.get("description", ""),
         "notes": notes,
-        "config": asdict(config),
+        "config": _config_to_json(config),
         "summary": asdict(summary),
         "results": [asdict(r) for r in results],
     }

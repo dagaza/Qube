@@ -36,7 +36,7 @@ memory browser, saved memories, long-term memory view, memory cards, recall mana
 5. **Review flagged entries** — Toggle **Flagged only** to show memories you marked for review.
 6. **Edit a memory** — Click **Edit** on a card, update the text in the dialog (**Update the memory text. Provenance and metadata are kept.**), and save. Qube re-embeds the updated text.
 7. **Flag or unflag** — Click **Flag** / **Unflag** on a card to mark for the next reflection pass.
-8. **Delete one memory** — Click **Delete** and confirm (**Delete Memory**). Deletion is permanent and adds the fact to the negative list.
+8. **Delete one memory** — Click **Delete** and confirm (**Delete Memory**). Deletion is permanent and adds the fact to the negative list. See [Delete memory entries FAQ](../faq/delete-memory-entries.md).
 9. **Export or bulk delete** — **Export visible** saves filtered rows to `~/.qube/exports/memory_YYYYMMDD.md`. **Delete all visible** removes every row currently shown after confirmation.
 10. **Refresh the list** — Click the sync icon (**Reload memories from disk**) after external changes or if the list looks stale.
 
@@ -108,6 +108,7 @@ Promotion-candidate cards may show a score breakdown in the card tooltip.
 
 ## Related
 
+- [Delete memory entries FAQ](../faq/delete-memory-entries.md) — single/bulk delete and negative list
 - [Memory settings](settings/memory.md) — enrichment, promotion, consolidation
 - [Manage long-term memory workflow](../workflows/manage-long-term-memory.md) — curation workflow
 - [Memory vs Library FAQ](../faq/memory-vs-library.md) — memory vs uploaded files

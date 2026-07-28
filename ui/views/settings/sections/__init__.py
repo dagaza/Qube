@@ -3,6 +3,7 @@
 from ui.views.settings.sections import (
     advanced,
     ai_models,
+    appearance_themes,
     contact_feedback,
     desktop_companion,
     general,
@@ -17,6 +18,7 @@ from ui.views.settings.sections import (
 __all__ = [
     "advanced",
     "ai_models",
+    "appearance_themes",
     "contact_feedback",
     "desktop_companion",
     "general",

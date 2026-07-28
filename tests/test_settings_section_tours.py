@@ -26,11 +26,12 @@ def _expected_knowledge_tour_steps() -> int:
 
 
 SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
-    ("settings.voice_audio", "voice.audio", 28),
+    ("settings.voice_audio", "voice.audio", 29),
     ("settings.ai_models", "ai.models", 14),
     ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
-    ("settings.general", "general", 3),
+    ("settings.general", "general", 4),
+    ("settings.appearance_themes", "appearance.themes", 14),
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
     ("settings.help", "help", 5),
@@ -41,6 +42,7 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
 SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     "settings.voice_audio": (
         "mic_selector",
+        "voice_input_enabled_toggle",
         "device_selector",
         "tts_voice_enabled_toggle",
         "voice_selector",
@@ -87,10 +89,11 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     ),
     "settings.memory": (
         "memory_enrichment_toggle",
+        "advanced_memory_toggle",
+        "advanced_memory_panel",
         "memory_promotion_toggle",
         "memory_promotion_preset_selector",
         "memory_consolidation_toggle",
-        "profile_units_selector",
     ),
     "settings.knowledge": (
         "rag_kb_cb",
@@ -154,7 +157,24 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "advanced_embedding_panel",
         "advanced_discovery_panel",
     ),
-    "settings.general": ("general_language_card",),
+    "settings.general": (
+        "general_language_card",
+        "profile_units_selector",
+    ),
+    "settings.appearance_themes": (
+        "themes_appearance_row",
+        "themes_theme_picker",
+        "themes_auto_adjust_cb",
+        "themes_components_preview_card",
+        "themes_colors_apply_btn",
+        "themes_chat_wallpaper",
+        "themes_preview_card",
+        "themes_apply_btn",
+        "themes_library_wallpaper",
+        "themes_library_preview_card",
+        "themes_library_apply_btn",
+        "themes_save_as_btn",
+    ),
     "settings.companion_desktop": (
         "companion_enabled_cb",
         "companion_tray_hidden_cb",
@@ -193,7 +213,12 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "model_manager_hardware_suggestions_cb",
     ),
     "settings.contact_feedback": ("report_bug_btn", "request_feature_btn"),
-    "settings.advanced": ("open_settings_json_btn", "open_logs_folder_btn"),
+    "settings.advanced": (
+        "import_license_btn",
+        "remove_license_btn",
+        "open_settings_json_btn",
+        "open_logs_folder_btn",
+    ),
 }
 
 
@@ -322,6 +347,14 @@ class TestSettingsSectionTours(unittest.TestCase):
             sv.end_knowledge_embedding_tutorial_preview = lambda: None
             sv.begin_knowledge_discovery_tutorial_preview = _begin_discovery
             sv.end_knowledge_discovery_tutorial_preview = lambda: None
+
+        if tour_id == "settings.memory":
+
+            def _begin_memory_advanced(*, reveal_panel: bool = True) -> None:
+                sv.advanced_memory_panel.setVisible(reveal_panel)
+
+            sv.begin_memory_advanced_tutorial_preview = _begin_memory_advanced
+            sv.end_memory_advanced_tutorial_preview = lambda: None
 
         if tour_id == "settings.companion_desktop":
             from core.companion_cube_style import CompanionCubeStyle

@@ -6,7 +6,7 @@ if ($env:chocolateyforcex86 -eq 'true') {
 }
 
 $version    = '{{VERSION}}'
-$url        = "https://github.com/dagaza/Qube/releases/download/v$version/Qube-$version-Setup.exe"
+$url        = '{{INSTALLER_URL}}'
 $checksum   = '{{SHA256}}'
 $silentArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
 

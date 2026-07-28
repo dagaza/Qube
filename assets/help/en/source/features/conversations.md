@@ -11,12 +11,13 @@
 - How do I export or copy a conversation?
 - How do I open sources or citations in a reply?
 - Can I regenerate or edit a message?
+- How do I change the chat background wallpaper?
 
 ## What it is
 
 **Conversations** is Qube's main chat view. Each thread keeps its own message history, composer, and reading area. Use it to ask questions, attach `@[tool:…]` tokens, and read grounded answers with citations.
 
-The **left sidebar** lists folders and chats (including the built-in **Main** folder). The **main stage** shows the transcript, a readability toolbar, and the composer. The **right-hand tools panel** (global, not chat-specific) holds model, voice, generation, and retrieval toggles you can adjust while chatting. **Per-message sources** and citation previews live on assistant replies—not inside the tools panel.
+The **left sidebar** lists folders and chats (including the built-in **Main** folder). The **main stage** shows the transcript, a readability toolbar, and the composer. Optional **chat wallpaper** (gradient, colour, or image) sits behind the transcript—configure it under **Settings → Themes → Wallpapers**. The **right-hand tools panel** (global, not chat-specific) holds model, voice, generation, and retrieval toggles you can adjust while chatting. **Per-message sources** and citation previews live on assistant replies—not inside the tools panel.
 
 Press **?** in the sidebar header for a spatial guided tour (`conversations`). This page summarizes controls in retrieval-friendly prose; the tour walks the layout button-by-button.
 
@@ -146,7 +147,7 @@ Synced with **Settings → AI & Models → Generation** (two-way). **Max reply t
 | **● RAG** | Library retrieval: grey = off, blue = ready, green = retrieving |
 | **● WEB** | Web search state for the current chat / turn |
 | **● HYBRID** | Hybrid Internet Mode: grey = off, coloured when enabled or actively searching |
-| Mic level + chevron | Input level; chevron opens **Select microphone input** |
+| Mic level + chevron | Input level for the selected mic (see [Microphone level meter](settings/voice-audio.md#microphone-level-meter-top-bar) if one device looks too quiet); chevron opens **Select microphone input** |
 | **⏸ DDG** | Shown only during DuckDuckGo backoff (rare) |
 
 Memory retrieval uses `@[tool:memory]` or related routing—there is **no separate MEMORY status dot**.

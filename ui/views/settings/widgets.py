@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
@@ -18,6 +18,9 @@ from ui.components.brand_buttons import apply_brand_caution
 from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
+from ui.views.settings.settings_card_style import SETTINGS_CARD_FORM_HORIZONTAL_INSET
+from ui.views.settings.settings_theme import resolve_settings_theme, settings_divider_color
+from core.theme.color_utils import theme_qcolor
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
 SETTINGS_SELECTOR_LABELS_PROP = "settings_selector_labels"
@@ -157,7 +160,7 @@ def add_section_reset_footer(
 
     if isinstance(layout, QFormLayout):
         layout.addRow(divider)
-        layout.addRow("", row)
+        add_settings_full_width_row(layout, row)
     else:
         layout.addWidget(divider)
         layout.addWidget(row)
@@ -184,9 +187,91 @@ class SettingsSectionDivider(QWidget):
 
     def paintEvent(self, event) -> None:
         del event
-        color = QColor("#585b70" if self._is_dark else "#cbd5e1")
+        theme = resolve_settings_theme(is_dark=self._is_dark)
+        color = theme_qcolor(settings_divider_color(theme))
         painter = QPainter(self)
         painter.fillRect(0, self._MARGIN_TOP, self.width(), self._LINE_HEIGHT, color)
+
+
+def _prepare_settings_form_row_widget(widget: QWidget) -> None:
+    policy = widget.sizePolicy()
+    if policy.horizontalPolicy() != QSizePolicy.Policy.Fixed:
+        widget.setSizePolicy(QSizePolicy.Policy.Expanding, policy.verticalPolicy())
+    widget.setMinimumWidth(0)
+
+
+def _install_form_label_column_ruler(form: QFormLayout) -> None:
+    """Reserve label-column width on hint-only forms (matches labeled settings cards)."""
+    ruler = QLabel("Context limit")
+    ruler.setObjectName("SettingsFormLabelColumnRuler")
+    ruler.setFixedHeight(0)
+    ruler.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+    field = QWidget()
+    field.setFixedHeight(0)
+    field.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+    form.addRow(ruler, field)
+
+
+def make_settings_form() -> tuple[QWidget, QFormLayout]:
+    """Standard settings QFormLayout host (label column + field column rhythm)."""
+    form_host = QWidget()
+    form_host.setMinimumWidth(0)
+    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    form = QFormLayout(form_host)
+    form.setSpacing(15)
+    form.setHorizontalSpacing(12)
+    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    inset = SETTINGS_CARD_FORM_HORIZONTAL_INSET
+    form.setContentsMargins(inset, 0, inset, 0)
+    form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+    _install_form_label_column_ruler(form)
+    return form_host, form
+
+
+def add_settings_full_width_row(form: QFormLayout, widget: QWidget) -> None:
+    """Add a row in the field column that expands to the form's right margin."""
+    _prepare_settings_form_row_widget(widget)
+    form.addRow("", widget)
+
+
+def add_settings_span_row(form: QFormLayout, widget: QWidget) -> None:
+    """Span both form columns (nested sub-forms and inner mini-form descriptions)."""
+    _prepare_settings_form_row_widget(widget)
+    form.addRow(widget)
+
+
+def add_settings_field_column_row(form: QFormLayout, widget: QWidget) -> None:
+    """Add a control aligned with labeled field rows (toggle/disclosure rows)."""
+    add_settings_full_width_row(form, widget)
+
+
+def add_settings_field_row(
+    form: QFormLayout, label: str | QWidget, field: QWidget
+) -> None:
+    """Add a classic label + field row (controls align to the shared field column)."""
+    form.addRow(label, field)
+
+
+def add_settings_card_form(card_layout: QVBoxLayout) -> QFormLayout:
+    """Attach a settings form to a section card and return its layout."""
+    form_host, form = make_settings_form()
+    card_layout.addWidget(form_host)
+    return form
+
+
+def add_settings_card_row(card_layout: QVBoxLayout, widget: QWidget) -> None:
+    """Add one full-width row to a card with the same inset as form field rows."""
+    form_host, form = make_settings_form()
+    add_settings_full_width_row(form, widget)
+    card_layout.addWidget(form_host)
+
+
+def settings_layout_row(layout: QHBoxLayout | QVBoxLayout) -> QWidget:
+    """Wrap a row/column layout for use in a settings card form."""
+    host = QWidget()
+    host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    host.setLayout(layout)
+    return host
 
 
 def make_subsection_label(text: str, *, anchor: str | None = None) -> QLabel:
@@ -234,6 +319,8 @@ def make_settings_hint(text: str) -> QLabel:
     hint = QLabel(text)
     hint.setWordWrap(True)
     hint.setObjectName("SettingsHint")
+    hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    hint.setMinimumWidth(0)
     return hint
 
 
@@ -259,6 +346,7 @@ def make_settings_action_row(button: QPushButton) -> QWidget:
 def wrap_subsection(content: QWidget, *, anchor: str | None = None) -> QWidget:
     """Wrap content in a container tagged for engine-mode visibility toggles."""
     wrapper = QWidget()
+    wrapper.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     if anchor:
         wrapper.setProperty("settings_anchor", anchor)
     layout = QVBoxLayout(wrapper)

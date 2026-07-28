@@ -27,6 +27,7 @@ SECTION_SOURCE_FILES: dict[str, tuple[str, ...]] = {
         "knowledge_provider_status.py",
     ),
     "general": ("general.py",),
+    "appearance.themes": ("appearance_themes.py",),
     "companion.desktop": ("desktop_companion.py",),
     "notifications": ("notifications.py",),
     "help": ("help.py",),
@@ -40,6 +41,7 @@ SECTION_SLUGS: dict[str, str] = {
     "memory": "memory",
     "knowledge": "knowledge",
     "general": "general",
+    "appearance.themes": "themes",
     "companion.desktop": "desktop-companion",
     "notifications": "notifications",
     "help": "help",
@@ -54,6 +56,7 @@ _SECTIONS_WITH_RESET_FOOTER = frozenset(
         "memory",
         "knowledge",
         "general",
+        "appearance.themes",
         "companion.desktop",
         "notifications",
     }
@@ -62,6 +65,20 @@ _SECTIONS_WITH_RESET_FOOTER = frozenset(
 _KNOWLEDGE_LIBRARY_SEARCH_LABELS = (
     "Enable Local Knowledge Base",
     "Enable NLP Auto-Activator",
+)
+
+_HELP_UNINSTALL_KEEP_VARIANTS = frozenset(
+    {
+        "Remove Qube package only…",
+        "Remove Qube package only… (Linux)",
+        "Remove Qube app only…",
+        "Remove Qube app only… (macOS)",
+    }
+)
+
+_HELP_UNINSTALL_STABLE_LABELS: tuple[str, ...] = (
+    "Remove Qube package only… (Linux)",
+    "Remove Qube app only… (macOS)",
 )
 
 _KNOWLEDGE_WEB_DISCOVERY_LABELS = frozenset(
@@ -233,7 +250,7 @@ def _scan_source_text(text: str, blocks: list[_ControlBlock]) -> None:
         label = match.group(1).strip()
         if label.startswith("Edit ") or label.startswith("Open "):
             continue
-        if label in {"Promotion preset", "Default units", "Application language"}:
+        if label in {"Promotion preset", "Default units"}:
             events.append((match.start(), "field", label))
 
     events.sort(key=lambda item: item[0])
@@ -263,6 +280,20 @@ def _inject_knowledge_library_search_phrases(blocks: list[_ControlBlock]) -> Non
             insert_at = idx
             break
     blocks.insert(insert_at, target)
+
+
+def _stabilize_help_uninstall_labels(blocks: list[_ControlBlock]) -> None:
+    """Emit both platform uninstall labels — source uses runtime sys.platform."""
+    for block in blocks:
+        if block.subsection != "Uninstall Qube":
+            continue
+        block.items = [
+            item for item in block.items if item not in _HELP_UNINSTALL_KEEP_VARIANTS
+        ]
+        for label in _HELP_UNINSTALL_STABLE_LABELS:
+            if label not in block.items:
+                block.items.append(label)
+        return
 
 
 def _reassign_knowledge_web_discovery(blocks: list[_ControlBlock]) -> None:
@@ -298,7 +329,6 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
         blocks.append(_ControlBlock(subsection="Language", items=[]))
         for label in UI_LANGUAGE_LABELS.values():
             _append_unique(blocks, "Language", label)
-        blocks.append(_ControlBlock(subsection="Application language", items=[]))
 
     _scan_source_text(text, blocks)
 
@@ -310,6 +340,9 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
                 continue
         _inject_knowledge_library_search_phrases(blocks)
         _reassign_knowledge_web_discovery(blocks)
+
+    if section_id == "help":
+        _stabilize_help_uninstall_labels(blocks)
 
     if section_id == "advanced":
         for spec in iter_diagnostic_logs():

@@ -6,6 +6,10 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from PyQt6.QtWidgets import QPushButton
 import qtawesome as qta
 
+from core.theme.accessors import theme_for
+from core.theme.widget_styles import MUTED_ICON
+from ui.components.ghost_icon_button import apply_ghost_icon_button_style
+
 
 class PageTourHelpButton(QPushButton):
     """Icon button that requests a registered page tour by id."""
@@ -27,9 +31,9 @@ class PageTourHelpButton(QPushButton):
         self.setFixedSize(28, 28)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip("Start guided tour")
-        self.setIcon(qta.icon("fa5s.question-circle", color="#94a3b8"))
         self.setIconSize(QSize(16, 16))
         self.clicked.connect(self._on_clicked)
+        self.apply_theme()
 
     @property
     def tour_id(self) -> str:
@@ -43,6 +47,22 @@ class PageTourHelpButton(QPushButton):
         self._tour_id = tour_id
         if area_display_name is not None:
             self._area_display_name = area_display_name
+
+    def apply_theme(self, is_dark: bool | None = None) -> None:
+        window = self.window()
+        if is_dark is None and window is not None and hasattr(window, "_is_dark_theme"):
+            is_dark = bool(window._is_dark_theme)
+        theme = theme_for(is_dark=bool(is_dark if is_dark is not None else True))
+        apply_ghost_icon_button_style(self, theme)
+        self.setIcon(
+            qta.icon("fa5s.question-circle", color=theme.color(MUTED_ICON))
+        )
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        window = self.window()
+        if window is not None and hasattr(window, "_is_dark_theme"):
+            self.apply_theme(bool(window._is_dark_theme))
 
     def _on_clicked(self) -> None:
         win = self.window()

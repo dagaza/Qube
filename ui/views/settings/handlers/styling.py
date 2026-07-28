@@ -102,6 +102,15 @@ from ui.components.sidebar_list_qss import (
     apply_nav_list_sidebar_surface,
     apply_sidebar_row_title_colors,
 )
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import (
+    SETTINGS_BORDERED_LIST,
+    SETTINGS_CHECKBOX,
+    SETTINGS_FORM_CONTROLS,
+    SETTINGS_LABEL,
+    SETTINGS_LINE_EDIT,
+    SETTINGS_SLIDER,
+)
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.views.settings.controls import (
     NoScrollComboBox,
@@ -149,49 +158,95 @@ class StylingMixin:
 
     def _iter_settings_checkboxes(self):
         """All Settings-page QCheckBox widgets that share the Prestige indicator style."""
-        for name in (
-            "pin_audio_cb",
-            "pin_tts_voice_cb",
-            "auto_load_last_model_cb",
-            "auto_activator_cb",
-            "rag_kb_cb",
-            "model_manager_hardware_suggestions_cb",
-            "notifications_enabled_cb",
-            "notifications_dnd_cb",
-            "notifications_suppress_focus_cb",
-            "notifications_os_hidden_cb",
-            "notifications_sound_cb",
-            "notifications_preview_cb",
-            "notifications_memory_cb",
-            "companion_enabled_cb",
-            "companion_tray_hidden_cb",
-            "companion_while_open_cb",
-            "companion_auto_hide_cb",
-            "companion_caption_cb",
-            "companion_fullscreen_cb",
-            "companion_wayland_cb",
-            "companion_dock_cb",
-            "companion_verbal_enabled_cb",
-            "companion_cognition_v2_cb",
-            "companion_verbal_react_ingest_cb",
-            "companion_verbal_react_download_cb",
-        ):
-            cb = getattr(self, name, None)
-            if cb is not None:
+        seen: set[int] = set()
+        stack = getattr(self, "settings_section_stack", None)
+        if stack is not None:
+            for cb in stack.findChildren(QCheckBox):
+                seen.add(id(cb))
                 yield cb
-        for choice_cbs in (
-            getattr(self, "companion_persona_cbs", {}),
-            getattr(self, "companion_cube_style_cbs", {}),
-            getattr(self, "companion_idle_color_cbs", {}),
-            getattr(self, "ui_language_cbs", {}),
-        ):
-            if isinstance(choice_cbs, dict):
-                yield from choice_cbs.values()
-        knowledge_cbs = getattr(self, "knowledge_source_checkboxes", None)
-        if isinstance(knowledge_cbs, dict):
-            for cb_list in knowledge_cbs.values():
-                if isinstance(cb_list, list):
-                    yield from cb_list
+        for name in ("rag_kb_cb", "auto_activator_cb"):
+            cb = getattr(self, name, None)
+            if cb is not None and id(cb) not in seen:
+                yield cb
+
+    def _apply_settings_checkbox_style(self, checkbox: QCheckBox | None) -> None:
+        """Apply Prestige indicator styling to a single settings checkbox."""
+        if checkbox is None:
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        checkbox.setStyleSheet(theme.style(SETTINGS_CHECKBOX))
+        checkbox.update()
+
+    def _set_settings_checkbox_enabled(
+        self, checkbox: QCheckBox | None, enabled: bool
+    ) -> None:
+        """Toggle a settings checkbox and re-apply indicator QSS (Qt may revert when disabled)."""
+        if checkbox is None:
+            return
+        checkbox.setEnabled(enabled)
+        self._apply_settings_checkbox_style(checkbox)
+
+    def _apply_settings_section_control_styles(
+        self, root: QWidget | None, *, is_dark: bool
+    ) -> None:
+        """Apply Prestige checkbox/toggle styling after a section is built lazily."""
+        if root is None:
+            return
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        checkbox_style = theme.style(SETTINGS_CHECKBOX)
+        for cb in root.findChildren(QCheckBox):
+            cb.setStyleSheet(checkbox_style)
+        for toggle in root.findChildren(PrestigeToggle):
+            toggle.apply_theme(is_dark=is_dark, theme=theme)
+        self._apply_settings_bordered_lists_style(is_dark)
+
+    def _apply_settings_bordered_list_style(
+        self,
+        list_widget: QListWidget | None,
+        theme,
+        *,
+        object_name: str | None = None,
+        item_padding: str = "2px 12px",
+    ) -> None:
+        """Apply bordered panel chrome to a settings model/trigger list."""
+        if list_widget is None:
+            return
+        kwargs: dict[str, str] = {
+            "widget_type": "QListWidget",
+            "item_padding": item_padding,
+        }
+        resolved_name = object_name or list_widget.objectName()
+        if resolved_name:
+            kwargs["object_name"] = resolved_name
+        list_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        list_widget.setAutoFillBackground(True)
+        list_widget.setStyleSheet(theme.style(SETTINGS_BORDERED_LIST, **kwargs))
+        viewport = list_widget.viewport()
+        if viewport is not None:
+            viewport.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            viewport.setAutoFillBackground(True)
+
+    def _apply_settings_bordered_lists_style(self, is_dark: bool) -> None:
+        """Restyle all settings bordered lists (lazy sections may build after init)."""
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        if hasattr(self, "trigger_list"):
+            self._apply_settings_bordered_list_style(
+                self.trigger_list,
+                theme,
+                object_name="SettingsTriggerList",
+                item_padding="0px",
+            )
+        if hasattr(self, "local_gguf_list"):
+            self._apply_settings_bordered_list_style(
+                self.local_gguf_list,
+                theme,
+                item_padding="4px 12px",
+            )
+        if hasattr(self, "cognition_gguf_list"):
+            self._apply_settings_bordered_list_style(self.cognition_gguf_list, theme)
+        if hasattr(self, "embedding_gguf_list"):
+            self._apply_settings_bordered_list_style(self.embedding_gguf_list, theme)
 
     def _iter_settings_line_edits(self):
         """Settings form text fields that need explicit light/dark input styling."""
@@ -199,6 +254,7 @@ class StylingMixin:
         for name in (
             "trigger_input",
             "discovery_searxng_url_field",
+            "discovery_searxng_setup_btn",
             "custom_source_id_input",
             "custom_source_label_input",
             "custom_source_base_url_input",
@@ -220,55 +276,16 @@ class StylingMixin:
 
     def _apply_spinbox_style(self, is_dark: bool):
         """Forces borders to be visible on inputs, checkboxes, and the custom trigger elements."""
-        border_color = "rgba(255, 255, 255, 0.15)" if is_dark else "#cbd5e1"
-        bg_color = "#313244" if is_dark else "#ffffff"
-        text_color = "#cdd6f4" if is_dark else "#1e293b"
-        check_bg = "#45475a" if is_dark else "#f1f5f9"
-        disabled_border = "rgba(255, 255, 255, 0.08)" if is_dark else "#e2e8f0"
-        disabled_bg = "#252536" if is_dark else "#f1f5f9"
-        disabled_text = "#71717a" if is_dark else "#94a3b8"
-        disabled_check = "#3f3f46" if is_dark else "#e2e8f0"
+        theme = view_resolved_theme(self, is_dark=is_dark)
+        style = theme.style(SETTINGS_FORM_CONTROLS)
+        slider_css = theme.style(SETTINGS_SLIDER)
+        label_style = theme.style(SETTINGS_LABEL, min_width="44px")
+        line_edit_style = theme.style(SETTINGS_LINE_EDIT)
 
-        style = f"""
-            QDoubleSpinBox, QSpinBox, QComboBox {{
-                background-color: {bg_color};
-                color: {text_color};
-                border: 1px solid {border_color};
-                border-radius: 8px;
-                padding: 5px 10px;
-            }}
-            QDoubleSpinBox:disabled, QSpinBox:disabled, QComboBox:disabled {{
-                background-color: {disabled_bg};
-                color: {disabled_text};
-                border: 1px solid {disabled_border};
-            }}
-        """
-        checkbox_style = f"""
-            QCheckBox {{ color: {text_color}; font-size: 13px; }}
-            QCheckBox:disabled {{ color: {disabled_text}; }}
-            QCheckBox::indicator {{
-                width: 18px;
-                height: 18px;
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                background-color: {check_bg};
-            }}
-            QCheckBox::indicator:disabled {{
-                background-color: {disabled_check};
-                border: 1px solid {disabled_border};
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: #8b5cf6; 
-                image: url(assets/icons/check_mark.png);
-            }}
-            QCheckBox::indicator:checked:disabled {{
-                background-color: #6d28d9;
-                border: 1px solid {disabled_border};
-                image: url(assets/icons/check_mark.png);
-            }}
-        """
-        self.timeout_spinner.setStyleSheet(style)
-        self.threshold_spinner.setStyleSheet(style)
+        if hasattr(self, "timeout_spinner"):
+            self.timeout_spinner.setStyleSheet(style)
+        if hasattr(self, "threshold_spinner"):
+            self.threshold_spinner.setStyleSheet(style)
         for spinbox in getattr(self, "_generation_spinboxes", ()):
             spinbox.setStyleSheet(style)
         if hasattr(self, "native_chat_format_selector"):
@@ -276,94 +293,36 @@ class StylingMixin:
         if hasattr(self, "embedding_mode_selector"):
             self._apply_settings_menu_button_chevron_state(self.embedding_mode_selector)
         if hasattr(self, "gpu_layers_slider"):
-            handle = "#8b5cf6" if is_dark else "#7c3aed"
-            slider_css = f"""
-                QSlider::groove:horizontal {{
-                    height: 6px;
-                    background: {bg_color};
-                    border: 1px solid {border_color};
-                    border-radius: 3px;
-                }}
-                QSlider::handle:horizontal {{
-                    background: {handle};
-                    border: 1px solid {border_color};
-                    width: 16px;
-                    margin: -6px 0;
-                    border-radius: 8px;
-                }}
-                QSlider::sub-page:horizontal {{
-                    background: {handle};
-                    border-radius: 3px;
-                }}
-                QSlider:disabled {{
-                    opacity: 0.5;
-                }}
-            """
             self.gpu_layers_slider.setStyleSheet(slider_css)
-            self.gpu_layers_value_lbl.setStyleSheet(
-                f"color: {text_color}; font-size: 13px; min-width: 44px;"
-            )
+            self.gpu_layers_value_lbl.setStyleSheet(label_style)
             if hasattr(self, "cpu_threads_slider"):
                 self.cpu_threads_slider.setStyleSheet(slider_css)
-                self.cpu_threads_value_lbl.setStyleSheet(
-                    f"color: {text_color}; font-size: 13px; min-width: 44px;"
-                )
+                self.cpu_threads_value_lbl.setStyleSheet(label_style)
         for cb in self._iter_settings_checkboxes():
-            cb.setStyleSheet(checkbox_style)
-        if hasattr(self, 'mem_enrichment_label'):
-            self.mem_enrichment_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
-        if hasattr(self, 'mem_promotion_label'):
-            self.mem_promotion_label.setStyleSheet(f"color: {text_color}; font-size: 13px;")
-        if hasattr(self, 'discovery_pacing_label'):
-            self.discovery_pacing_label.setStyleSheet(
-                f"color: {text_color}; font-size: 13px;"
-            )
-        
-        line_edit_style = f"""
-            QLineEdit {{
-                background-color: {bg_color};
-                color: {text_color};
-                border: 1px solid {border_color};
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 13px;
-            }}
-            QLineEdit:disabled {{
-                background-color: {disabled_bg};
-                color: {disabled_text};
-                border: 1px solid {disabled_border};
-            }}
-        """
+            self._apply_settings_checkbox_style(cb)
+        for name in (
+            "mem_enrichment_label",
+            "mem_promotion_label",
+            "discovery_pacing_label",
+            "active_native_model_lbl",
+        ):
+            lbl = getattr(self, name, None)
+            if lbl is not None:
+                lbl.setStyleSheet(theme.style(SETTINGS_LABEL))
         for field in self._iter_settings_line_edits():
             field.setStyleSheet(line_edit_style)
-            
-        if hasattr(self, 'trigger_list'):
-            self.trigger_list.setStyleSheet(f"""
-                #SettingsTriggerList {{
-                    background-color: transparent;
-                    border: 1px solid {border_color};
-                    border-radius: 8px;
-                }}
-                #SettingsTriggerList::item {{
-                    padding: 0px;
-                    margin-bottom: 0px;
-                    border-bottom: 1px solid {border_color};
-                }}
-            """)
 
-        if hasattr(self, "local_gguf_list"):
-            self.local_gguf_list.setStyleSheet(f"""
-                QListWidget {{
-                    background-color: transparent;
-                    border: 1px solid {border_color};
-                    border-radius: 8px;
-                }}
-                QListWidget::item {{
-                    border-bottom: 1px solid {border_color};
-                }}
-            """)
-        if hasattr(self, "active_native_model_lbl"):
-            self.active_native_model_lbl.setStyleSheet(f"color: {text_color}; font-size: 13px;")
+        for name in ("themes_chat_wallpaper", "themes_library_wallpaper"):
+            editor = getattr(self, name, None)
+            apply_theme = getattr(editor, "apply_theme", None)
+            if callable(apply_theme):
+                apply_theme(is_dark)
+
+        update_themes_actions = getattr(self, "_update_themes_action_buttons", None)
+        if callable(update_themes_actions):
+            update_themes_actions()
+
+        self._apply_settings_bordered_lists_style(is_dark)
 
     def _apply_settings_sidebar_surface(self, is_dark: bool) -> None:
         """Match Model Manager: tint only the left sidebar frame and section list."""

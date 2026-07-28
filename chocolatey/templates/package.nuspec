@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>{{PACKAGE_ID}}</id>
+    <version>{{VERSION}}</version>
+    <title>{{TITLE}}</title>
+    <authors>dagaza</authors>
+    <owners>dagaza</owners>
+    <projectUrl>https://github.com/dagaza/Qube</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/dagaza/Qube@main/assets/logos/qube.ico</iconUrl>
+    <licenseUrl>https://github.com/dagaza/Qube/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <packageSourceUrl>https://github.com/dagaza/Qube/tree/main/chocolatey</packageSourceUrl>
+    <docsUrl>https://github.com/dagaza/Qube/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/dagaza/Qube/issues</bugTrackerUrl>
+    <tags>{{TAGS}}</tags>
+    <summary>{{SUMMARY}}</summary>
+    <description>{{DESCRIPTION}}</description>
+    <releaseNotes>https://github.com/dagaza/Qube/releases/tag/v{{VERSION}}</releaseNotes>
+  </metadata>
+</package>

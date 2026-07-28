@@ -72,7 +72,49 @@ from core.citation_integrity import (
 from core.citation_integrity_telemetry import log_citation_integrity
 from core.app_settings import get_citation_integrity_ui_linkify
 from core.richtext_styles import markdown_document_stylesheet as _markdown_ui_stylesheet
-from core.composer_attachments import resolve_attachment_routing, validate_file_token
+from core.theme.svg_icons import tinted_svg_icon, themed_fa_icon, themed_fa_pixmap
+from core.theme.view_theme import view_resolved_theme
+from ui.components.ghost_icon_button import apply_ghost_icon_button_style
+from ui.shell_theme import accent_icon_color
+from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+from ui.surface_fill.transcript_host import (
+    TranscriptWallpaperHost,
+    bind_transcript_wallpaper_readability,
+)
+from core.theme.widget_styles import (
+    ACCENT_ICON,
+    ACCENT_ICON_ACTIVE,
+    AGENT_COPY_BUTTON,
+    AGENT_MESSAGE_FRAME,
+    AGENT_MESSAGE_SHELL,
+    COMPOSER_SIDE_BUTTON,
+    COMPOSER_SIDE_DIVIDER,
+    DANGER_ICON,
+    GHOST_ICON_BUTTON,
+    HELP_ACTION_CHIP,
+    HIGH_CONTRAST_MARKDOWN,
+    LIST_SURFACE,
+    LINK_ICON,
+    MUTED_ICON,
+    PLACEHOLDER_MUTED,
+    QUBE_RESPONSE_HEADER,
+    SETTINGS_LINE_EDIT,
+    TELEMETRY_LABEL,
+    TOGGLE_BUTTON,
+    USER_BUBBLE_FRAME,
+    USER_BUBBLE_LABEL,
+    UTILITY_ICON_BUTTON,
+)
+from core.composer_discoverability import (
+    COMPOSER_IDLE_PLACEHOLDER,
+    EMPTY_SESSION_TRANSCRIPT_HINT,
+    NEW_CHAT_TRANSCRIPT_HINT,
+    RecentMention,
+    composer_hint_entries,
+    record_recent_attachment,
+    record_recent_skill,
+    resolve_recent_mention,
+)
 from core.composer_draft import (
     ComposerDraft,
     ROUTING_REJECT_ONE_SOURCE,
@@ -87,7 +129,7 @@ from core.composer_draft import (
     remove_skill_at,
     serialize_draft,
 )
-from core.composer_skills import parse_composer_input, strip_all_composer_tokens_for_display
+from core.composer_skills import ComposerSkillMention, parse_composer_input, strip_all_composer_tokens_for_display
 from core.help_action_blocks import HelpActionChip, parse_help_action_blocks
 from core.conversation_export import (
     export_conversation_markdown,
@@ -106,6 +148,7 @@ from core.composer_mention_trigger import (
 from core.app_settings import (
     get_composer_at_mention_discovered,
     get_engine_mode,
+    get_ui_assistant_message_background,
     set_composer_at_mention_discovered,
     set_native_reasoning_display_enabled,
 )
@@ -117,7 +160,8 @@ from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
 from ui.components.research_map_dialog import ResearchMapDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
-from ui.components.sidebar_list_qss import apply_sidebar_row_title_colors
+from ui.components.sidebar_list_qss import apply_sidebar_row_theme
+from ui.shell_theme import sidebar_row_action_icon_color
 from ui.components.sidebar_folder_list import (
     FOLDER_ROW_MARGIN_LEFT,
     ROW_KIND_SESSION,
@@ -141,6 +185,7 @@ from ui.components.stream_markdown_split import (
 )
 from ui.components.composer_mention_popup import ComposerMentionPopup
 from ui.components.composer_context_chips import ComposerContextChipStrip
+from ui.components.composer_recent_mentions import ComposerRecentMentionsRow
 from ui.components.hidden_feature_discovery import present_composer_at_mention_discovery
 from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
@@ -190,11 +235,10 @@ _LINE_SPACING_ICON = os.path.abspath(
 # Chat utility toolbar: uniform icon / hit-target sizes
 _CHAT_UTILITY_BTN = 30
 _CHAT_UTILITY_ICON_PX = 18
-_BRAND_PURPLE = "#8b5cf6"
-_BRAND_PURPLE_ACTIVE = "#c4b5fd"
 
 # Readability (transcript-local; no persistence yet)
 _BASE_CHAT_FONT_PT = 10.0
+_AGENT_MESSAGE_CARD_MARGINS = (14, 10, 14, 8)
 _FONT_SCALE_MIN = 0.85
 _FONT_SCALE_MAX = 1.3
 _FONT_SCALE_STEP = 0.05
@@ -775,6 +819,33 @@ class AgentMessageLabel(QTextBrowser):
         if parent is not None:
             parent.updateGeometry()
 
+    def refresh_theme_styles(
+        self,
+        *,
+        is_dark: bool,
+        document_stylesheet: str,
+        line_height_percent: int | None = None,
+        justify_transcript: bool = False,
+    ) -> None:
+        """Re-apply theme colors without re-parsing markdown (theme-toggle path)."""
+        self._agent_is_dark = is_dark
+        doc = self.document()
+        doc.setDefaultFont(self.font())
+        doc.setDefaultStyleSheet(document_stylesheet)
+        pct = (
+            line_height_percent
+            if line_height_percent is not None
+            else int(round(float(_LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]) * 100))
+        )
+        self._apply_document_paragraph_formats(doc, pct, justify_transcript)
+        doc.markContentsDirty(0, doc.characterCount())
+        self._ensure_document_text_width()
+        self._sync_fixed_height()
+        self.update()
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.updateGeometry()
+
     def attach_citation_handling(self, conversations_view):
         self._conversations_view_ref = (
             weakref.ref(conversations_view) if conversations_view is not None else None
@@ -964,6 +1035,7 @@ class AgentMessageContainer(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("AgentMessageContainer")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -1624,6 +1696,9 @@ class ConversationsView(QWidget):
         self._line_height_mode: str = _LINE_HEIGHT_COMFORTABLE
         self._focus_mode_enabled: bool = False
         self._high_contrast_enabled: bool = False
+        self._assistant_message_background_enabled: bool = (
+            get_ui_assistant_message_background()
+        )
         self._reader_hover_wrapper: MessageWrapper | None = None
         self._transcript_alignment: str = ALIGN_JUSTIFY
         self._agent_typing_wrapper: MessageWrapper | None = None
@@ -1743,24 +1818,8 @@ class ConversationsView(QWidget):
             self.transcript_container.updateGeometry()
             self._sync_agent_actions_bar_widths()
 
-    def _make_tinted_svg_icon(self, svg_path: str, color_hex: str, size: int = 18) -> QIcon:
-        pixmap = QPixmap(svg_path)
-        if pixmap.isNull():
-            return QIcon(svg_path)
-        target_size = QSize(size, size)
-        pixmap = pixmap.scaled(
-            target_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        tinted = QPixmap(pixmap.size())
-        tinted.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(tinted)
-        painter.drawPixmap(0, 0, pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(tinted.rect(), QColor(color_hex))
-        painter.end()
-        return QIcon(tinted)
+    def _theme(self, is_dark: bool | None = None):
+        return view_resolved_theme(self, is_dark=is_dark)
 
     def _refresh_layout_mode_button(self, is_dark: bool | None = None) -> None:
         btn = getattr(self, "layout_mode_btn", None)
@@ -1768,30 +1827,25 @@ class ConversationsView(QWidget):
             return
         if is_dark is None:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = _BRAND_PURPLE
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        theme = self._theme(is_dark)
+        icon_color = accent_icon_color(theme)
         if self.layout_mode == LAYOUT_CENTERED_COLUMN:
             btn.setIcon(
-                self._make_tinted_svg_icon(
+                tinted_svg_icon(
                     _LAYOUT_ICON_NARROW, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
             btn.setToolTip(f"Layout mode: Narrow column ({_CENTERED_COLUMN_MAX_WIDTH}px)")
         else:
             btn.setIcon(
-                self._make_tinted_svg_icon(
+                tinted_svg_icon(
                     _LAYOUT_ICON_WIDE, icon_color, size=_CHAT_UTILITY_ICON_PX
                 )
             )
             btn.setToolTip(f"Layout mode: Wide column ({_FULL_WIDTH_COLUMN_MAX_WIDTH}px)")
         btn.setIconSize(QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX))
         btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
-        btn.setStyleSheet(
-            f"""
-            QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-            QPushButton:hover {{ background-color: {hover_bg}; }}
-            """
-        )
+        btn.setStyleSheet(theme.style(GHOST_ICON_BUTTON))
 
     def _toggle_layout_mode(self) -> None:
         next_mode = (
@@ -1823,85 +1877,61 @@ class ConversationsView(QWidget):
     def _high_contrast_markdown_css(self, is_dark: bool) -> str:
         if not self._high_contrast_enabled:
             return ""
-        fg, _ = self._user_bubble_label_colors(is_dark)
-        code_bg = self._user_bubble_frame_bg(is_dark)
-        _hdr = (
-            "h1 { font-size: 1.35em; font-weight: 700; margin-top: 0.45em; margin-bottom: 0.2em; }"
-            "h2 { font-size: 1.2em; font-weight: 600; margin-top: 0.4em; margin-bottom: 0.18em; }"
-            "h3 { font-size: 1.1em; font-weight: 600; margin-top: 0.35em; margin-bottom: 0.15em; }"
-            "h4, h5, h6 { font-size: 1.05em; font-weight: 600; margin-top: 0.3em; margin-bottom: 0.12em; }"
-        )
-        if is_dark:
-            return (
-                f"body, p, span, div, li, ul, ol, dd, dt, "
-                f"table, thead, tbody, tr, th, td, "
-                f"blockquote, "
-                f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
-                f"a:link, a {{ color: #93c5fd; text-decoration: none; }}"
-                f"a:visited {{ color: #c4b5fd; text-decoration: none; }}"
-                f"code, pre {{ background-color: {code_bg}; color: {fg}; }}"
-                f"table {{ border-color: #94a3b8; }}"
-                f"th, td {{ border-color: #94a3b8; border-width: 1px; border-style: solid; }}"
-                f"hr {{ border-color: #94a3b8; color: #94a3b8; }}"
-                + _hdr
-            )
-        return (
-            f"body, p, span, div, li, ul, ol, dd, dt, "
-            f"table, thead, tbody, tr, th, td, "
-            f"blockquote, "
-            f"h1, h2, h3, h4, h5, h6, strong, em {{ color: {fg}; }}"
-            f"a:link, a {{ color: #1d4ed8; text-decoration: none; }}"
-            f"a:visited {{ color: #6d28d9; text-decoration: none; }}"
-            f"code, pre {{ background-color: {code_bg}; color: {fg}; }}"
-            f"table {{ border-color: #475569; }}"
-            f"th, td {{ border-color: #475569; border-width: 1px; border-style: solid; }}"
-            f"hr {{ border-color: #475569; color: #475569; }}"
-            + _hdr
+        theme = self._theme(is_dark)
+        return theme.style(
+            HIGH_CONTRAST_MARKDOWN,
+            enabled=True,
+            high_contrast=self._high_contrast_enabled,
         )
 
     def _agent_markdown_stylesheet(self, is_dark: bool) -> str:
-        base = _markdown_ui_stylesheet(is_dark)
+        base = _markdown_ui_stylesheet(is_dark, theme=self._theme(is_dark))
         parts = [base, self._high_contrast_markdown_css(is_dark)]
         return "".join(parts)
 
     def _user_bubble_label_colors(self, is_dark: bool) -> tuple[str, str]:
         """(text_color, optional extra label style fragment)."""
-        if self._high_contrast_enabled:
-            if is_dark:
-                return "#020617", ""
-            return "#000000", ""
-        return "#11111b", ""
+        from core.theme.widget_styles import _user_bubble_text
+
+        fg = _user_bubble_text(self._theme(is_dark), high_contrast=self._high_contrast_enabled)
+        return fg, ""
 
     def _user_bubble_frame_bg(self, is_dark: bool) -> str:
-        if self._high_contrast_enabled:
-            if is_dark:
-                return "#7dd3fc"
-            return "#38bdf8"
-        return "#89b4fa"
+        from core.theme.widget_styles import _user_bubble_frame
+
+        return _user_bubble_frame(self._theme(is_dark), high_contrast=self._high_contrast_enabled)
 
     def _qube_response_header_color(self, is_dark: bool) -> str:
         """Assistant turn 'QUBE' label — unchanged by high-contrast transcript mode."""
-        return "#8b5cf6" if is_dark else "#8839ef"
+        return self._theme(is_dark).color(QUBE_RESPONSE_HEADER)
 
     def _placeholder_muted_color(self, is_dark: bool) -> str:
-        if self._high_contrast_enabled:
-            return "#cbd5e1" if is_dark else "#475569"
-        return "#6c7086"
+        return self._theme(is_dark).color(PLACEHOLDER_MUTED)
 
     def _make_transcript_placeholder_label(self, text: str) -> QLabel:
         """Empty-state label: wraps within the transcript column and never forces horizontal growth."""
         lbl = QLabel(text)
+        lbl.setObjectName("TranscriptPlaceholderLabel")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setWordWrap(True)
         lbl.setMinimumWidth(0)
         lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self._style_transcript_placeholder_label(lbl)
         return lbl
+
+    def _style_transcript_placeholder_label(self, lbl: QLabel) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        pt = self._scaled_chat_font_pt()
+        muted = self._placeholder_muted_color(is_dark)
+        lbl.setStyleSheet(
+            f"color: {muted}; font-size: {pt:.1f}pt; margin-top: 50px; font-weight: bold;"
+            f" background: transparent; border: none;"
+        )
 
     def _style_user_bubble(self, bubble: QFrame, lbl: ChatUserBubble) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         pt = self._scaled_chat_font_pt()
-        fg, _ = self._user_bubble_label_colors(is_dark)
-        bg = self._user_bubble_frame_bg(is_dark)
         f = lbl.font()
         f.setPointSizeF(pt)
         lbl.setFont(f)
@@ -1911,11 +1941,14 @@ class ConversationsView(QWidget):
         opt.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         lbl.document().setDefaultTextOption(opt)
         lbl.setStyleSheet(
-            f"background: transparent; border: none; padding: 0px; "
-            f"font-size: {pt:.1f}pt; color: {fg};"
+            theme.style(
+                USER_BUBBLE_LABEL,
+                high_contrast=self._high_contrast_enabled,
+                font_pt=pt,
+            )
         )
         bubble.setStyleSheet(
-            f"background-color: {bg}; border-radius: 18px;"
+            theme.style(USER_BUBBLE_FRAME, high_contrast=self._high_contrast_enabled)
         )
         lbl.document().setTextWidth(float(max(1, lbl._effective_wrap_width())))
         lbl._schedule_height_sync()
@@ -1926,36 +1959,54 @@ class ConversationsView(QWidget):
         f = agent.font()
         f.setPointSizeF(pt)
         agent.setFont(f)
-        # Zero padding so the bubble viewport matches the per-message action row width
-        # (global QTextEdit QSS applies 8px 12px otherwise).
-        agent.setStyleSheet(
-            f"font-size: {pt:.1f}pt; background: transparent; border: none; padding: 0px;"
+        theme = self._theme(getattr(self.window(), "_is_dark_theme", True))
+        agent.setStyleSheet(theme.style(AGENT_MESSAGE_SHELL, font_pt=pt))
+        fg = theme.qcolor(theme.text_primary)
+        palette = agent.palette()
+        palette.setColor(QPalette.ColorRole.Text, fg)
+        palette.setColor(QPalette.ColorRole.WindowText, fg)
+        agent.setPalette(palette)
+        viewport = agent.viewport()
+        if viewport is not None:
+            vpal = viewport.palette()
+            vpal.setColor(QPalette.ColorRole.Text, fg)
+            vpal.setColor(QPalette.ColorRole.WindowText, fg)
+            viewport.setPalette(vpal)
+
+    def _style_agent_message_container(self, container: AgentMessageContainer) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
+        enabled = self._assistant_message_background_enabled
+        container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, enabled)
+        container.setStyleSheet(
+            theme.style(
+                AGENT_MESSAGE_FRAME,
+                enabled=enabled,
+                high_contrast=self._high_contrast_enabled,
+            )
         )
+        left, top, right, bottom = (
+            _AGENT_MESSAGE_CARD_MARGINS if enabled else (0, 0, 0, 0)
+        )
+        container._layout.setContentsMargins(left, top, right, bottom)
+
+    def refresh_assistant_message_background(self) -> None:
+        self._assistant_message_background_enabled = (
+            get_ui_assistant_message_background()
+        )
+        self._refresh_all_readability()
 
     def _style_agent_copy_button(self, btn: QPushButton, is_dark: bool) -> None:
-        icon_color = "#a6adc8" if is_dark else "#64748b"
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-        btn.setIcon(qta.icon("fa5s.copy", color=icon_color))
+        theme = self._theme(is_dark)
+        btn.setIcon(themed_fa_icon("fa5s.copy", theme.color(MUTED_ICON), 16))
         btn.setIconSize(QSize(14, 14))
-        btn.setStyleSheet(
-            f"""
-            QPushButton::menu-indicator {{ image: none; width: 0px; }}
-            QPushButton {{ background: transparent; border: none; border-radius: 4px; padding: 4px; }}
-            QPushButton:hover {{ background-color: {hover_bg}; }}
-            """
-        )
+        btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
 
     def _style_agent_sources_button(self, btn: QPushButton, is_dark: bool) -> None:
-        icon_color = "#a6adc8" if is_dark else "#64748b"
-        hover_bg = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
-        btn.setIcon(qta.icon("fa5s.globe", color=icon_color))
+        theme = self._theme(is_dark)
+        btn.setIcon(themed_fa_icon("fa5s.globe", theme.color(MUTED_ICON), 16))
         btn.setIconSize(QSize(14, 14))
-        btn.setStyleSheet(
-            f"""
-            QPushButton {{ background: transparent; border: none; border-radius: 4px; padding: 4px; }}
-            QPushButton:hover {{ background-color: {hover_bg}; }}
-            """
-        )
+        btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
 
     def _sync_agent_sources_button(
         self, agent: AgentMessageLabel, btn: QPushButton | None = None
@@ -2064,10 +2115,7 @@ class ConversationsView(QWidget):
         return lbl
 
     def _style_agent_telemetry_label(self, lbl: QLabel, is_dark: bool) -> None:
-        color = "#a6adc8" if is_dark else "#64748b"
-        lbl.setStyleSheet(
-            f"color: {color}; font-size: 9px; background: transparent; border: none; padding: 0px 4px;"
-        )
+        lbl.setStyleSheet(self._theme(is_dark).style(TELEMETRY_LABEL))
 
     def _default_agent_telemetry_labels(self, is_dark: bool) -> dict[str, QLabel]:
         return {
@@ -2178,21 +2226,7 @@ class ConversationsView(QWidget):
         agent._help_action_buttons = []
 
     def _style_help_action_chip(self, btn: QPushButton, is_dark: bool) -> None:
-        fg = "#89b4fa" if is_dark else "#2563eb"
-        hover_bg = "rgba(137, 180, 250, 0.12)" if is_dark else "rgba(37, 99, 235, 0.08)"
-        btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                color: {fg};
-                background: transparent;
-                border: 1px solid {fg};
-                border-radius: 10px;
-                padding: 2px 8px;
-                font-size: 9pt;
-            }}
-            QPushButton:hover {{ background-color: {hover_bg}; }}
-            """
-        )
+        btn.setStyleSheet(self._theme(is_dark).style(HELP_ACTION_CHIP))
 
     def _on_help_action_chip_clicked(self, settings_section: str) -> None:
         win = self.window()
@@ -2331,7 +2365,6 @@ class ConversationsView(QWidget):
     def _refresh_ancillary_transcript_labels(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         pt = self._scaled_chat_font_pt()
-        muted = self._placeholder_muted_color(is_dark)
         for w in self._iter_transcript_widgets():
             if isinstance(w, QLabel) and w is not getattr(self, "placeholder_lbl", None):
                 qube_hdr = self._qube_response_header_color(is_dark)
@@ -2340,9 +2373,35 @@ class ConversationsView(QWidget):
                 )
         pl = getattr(self, "placeholder_lbl", None)
         if pl is not None:
-            pl.setStyleSheet(
-                f"color: {muted}; font-size: {pt:.1f}pt; margin-top: 50px; font-weight: bold;"
-            )
+            self._style_transcript_placeholder_label(pl)
+
+    def _refresh_transcript_theme(self) -> None:
+        """Update transcript chrome + markdown colors without re-parsing every bubble."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        sheet = self._agent_markdown_stylesheet(is_dark)
+        line_height = self._line_height_proportional_percent()
+        justify = self._transcript_alignment == ALIGN_JUSTIFY
+        for w in self._iter_transcript_widgets():
+            if isinstance(w, MessageWrapper):
+                if w.is_user and w.bubble is not None:
+                    lbl = w.bubble.findChild(ChatUserBubble)
+                    if lbl is not None:
+                        self._style_user_bubble(w.bubble, lbl)
+                else:
+                    container = w.bubble
+                    if isinstance(container, AgentMessageContainer):
+                        self._style_agent_message_container(container)
+                    for agent in w.findChildren(AgentMessageLabel):
+                        self._style_agent_message_shell(agent)
+                        if agent._md_layout_source:
+                            agent.refresh_theme_styles(
+                                is_dark=is_dark,
+                                document_stylesheet=sheet,
+                                line_height_percent=line_height,
+                                justify_transcript=justify,
+                            )
+        self._refresh_ancillary_transcript_labels()
+        self._sync_agent_actions_bar_widths()
 
     def _refresh_all_readability(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -2354,6 +2413,9 @@ class ConversationsView(QWidget):
                     if lbl is not None:
                         self._style_user_bubble(w.bubble, lbl)
                 else:
+                    container = w.bubble
+                    if isinstance(container, AgentMessageContainer):
+                        self._style_agent_message_container(container)
                     for agent in w.findChildren(AgentMessageLabel):
                         self._style_agent_message_shell(agent)
                         if agent._md_layout_source:
@@ -2407,16 +2469,25 @@ class ConversationsView(QWidget):
         self._line_height_mode = order[(i + 1) % len(order)]
         self._refresh_all_readability()
 
+    def _refresh_transcript_wallpaper(self) -> None:
+        bind_transcript_wallpaper_readability(
+            getattr(self, "_chat_transcript_wallpaper_host", None),
+            high_contrast=self._high_contrast_enabled,
+            reader_focus=self._focus_mode_enabled,
+        )
+
     def _on_reader_focus_toggled(self, checked: bool) -> None:
         self._focus_mode_enabled = bool(checked)
         if not self._focus_mode_enabled:
             self._reader_hover_wrapper = None
         self._refresh_readability_toolbar()
         self._apply_reader_focus_opacity()
+        self._refresh_transcript_wallpaper()
 
     def _on_high_contrast_toggled(self, checked: bool) -> None:
         self._high_contrast_enabled = bool(checked)
         self._refresh_all_readability()
+        self._refresh_transcript_wallpaper()
 
     def _cycle_transcript_alignment(self) -> None:
         self._transcript_alignment = (
@@ -2449,9 +2520,10 @@ class ConversationsView(QWidget):
         finally:
             self.reader_focus_btn.blockSignals(False)
             self.high_contrast_btn.blockSignals(False)
-        hover_bg = "rgba(255,255,255,0.08)" if is_dark else "rgba(0,0,0,0.05)"
-        icon_muted = _BRAND_PURPLE
-        icon_active = _BRAND_PURPLE_ACTIVE
+        theme = self._theme(is_dark)
+        icon_muted = accent_icon_color(theme)
+        icon_active = theme.color(ACCENT_ICON_ACTIVE)
+        utility_icon_style = theme.style(UTILITY_ICON_BUTTON)
         is_justify = self._transcript_alignment == ALIGN_JUSTIFY
         self.text_align_btn.setToolTip(
             "Text alignment: Justified (click for left)"
@@ -2459,9 +2531,10 @@ class ConversationsView(QWidget):
             else "Text alignment: Left (click for justified)"
         )
         self.text_align_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.align-justify" if is_justify else "fa5s.align-left",
-                color=icon_muted,
+                icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.text_align_btn.setIconSize(
@@ -2470,16 +2543,17 @@ class ConversationsView(QWidget):
         self.text_align_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         lh_icon_color = icon_muted
         self.line_height_btn.setIcon(
-            self._make_tinted_svg_icon(_LINE_SPACING_ICON, lh_icon_color, size=_CHAT_UTILITY_ICON_PX)
+            tinted_svg_icon(_LINE_SPACING_ICON, lh_icon_color, size=_CHAT_UTILITY_ICON_PX)
         )
         self.line_height_btn.setIconSize(
             QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
         )
         self.line_height_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.reader_focus_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.crosshairs",
-                color=icon_active if self._focus_mode_enabled else icon_muted,
+                icon_active if self._focus_mode_enabled else icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.reader_focus_btn.setIconSize(
@@ -2487,9 +2561,10 @@ class ConversationsView(QWidget):
         )
         self.reader_focus_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         self.high_contrast_btn.setIcon(
-            qta.icon(
+            themed_fa_icon(
                 "fa5s.adjust",
-                color=icon_active if self._high_contrast_enabled else icon_muted,
+                icon_active if self._high_contrast_enabled else icon_muted,
+                _CHAT_UTILITY_ICON_PX,
             )
         )
         self.high_contrast_btn.setIconSize(
@@ -2498,7 +2573,7 @@ class ConversationsView(QWidget):
         self.high_contrast_btn.setFixedSize(_CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN)
         if hasattr(self, "conversation_download_btn"):
             self.conversation_download_btn.setIcon(
-                qta.icon("fa5s.download", color=icon_muted)
+                themed_fa_icon("fa5s.download", icon_muted, _CHAT_UTILITY_ICON_PX)
             )
             self.conversation_download_btn.setIconSize(
                 QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
@@ -2507,27 +2582,15 @@ class ConversationsView(QWidget):
                 _CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN
             )
         if hasattr(self, "conversation_copy_btn"):
-            self.conversation_copy_btn.setIcon(qta.icon("fa5s.copy", color=icon_muted))
+            self.conversation_copy_btn.setIcon(
+                themed_fa_icon("fa5s.copy", icon_muted, _CHAT_UTILITY_ICON_PX)
+            )
             self.conversation_copy_btn.setIconSize(
                 QSize(_CHAT_UTILITY_ICON_PX, _CHAT_UTILITY_ICON_PX)
             )
             self.conversation_copy_btn.setFixedSize(
                 _CHAT_UTILITY_BTN, _CHAT_UTILITY_BTN
             )
-        utility_icon_style = f"""
-            QPushButton {{
-                background: transparent;
-                border: none;
-                border-radius: 6px;
-                padding: 4px;
-            }}
-            QPushButton:hover {{
-                background-color: {hover_bg};
-            }}
-            QPushButton:disabled {{
-                opacity: 0.45;
-            }}
-        """
         for btn in (
             self.line_height_btn,
             self.text_align_btn,
@@ -2557,9 +2620,7 @@ class ConversationsView(QWidget):
 
         layout.addWidget(self.chat_stage, stretch=1) 
 
-        # --- ADD THIS LINE AT THE BOTTOM ---
-        # Forces the buttons to load with the default Dark Mode purple on startup
-        self.refresh_button_themes(is_dark=True)
+        self.refresh_button_themes(getattr(self.window(), "_is_dark_theme", True))
         self.refresh_think_toggle()
 
     # --------------------------------------------------------- #
@@ -2599,9 +2660,12 @@ class ConversationsView(QWidget):
         header_layout.addWidget(_actions_host)
 
         self.new_chat_btn = QPushButton()
-        self.new_chat_btn.setIcon(qta.icon('fa5s.plus'))
-        self.new_chat_btn.setProperty("class", "IconButton")
+        self.new_chat_btn.setIcon(
+            themed_fa_icon("fa5s.plus", accent_icon_color(self._theme()), 16)
+        )
+        self.new_chat_btn.setIconSize(QSize(16, 16))
         self.new_chat_btn.setToolTip("New conversation")
+        apply_ghost_icon_button_style(self.new_chat_btn, self._theme())
         actions_outer.addWidget(self.new_chat_btn)
 
         self.new_folder_btn = add_new_folder_header_button(
@@ -2609,6 +2673,7 @@ class ConversationsView(QWidget):
             on_new_folder=lambda: self._folder_controller.prompt_create_folder()
             if self._folder_controller
             else None,
+            theme_host=self,
         )
         layout.addLayout(header_layout)
 
@@ -2654,7 +2719,16 @@ class ConversationsView(QWidget):
     def _build_chat_stage(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("ChatStage")
-        layout = QVBoxLayout(frame)
+        frame.setStyleSheet(
+            "QFrame#ChatStage { background: transparent; border: none; }"
+        )
+        outer_layout = QVBoxLayout(frame)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        mainstage_content = QWidget()
+        mainstage_content.setObjectName("ChatMainstageContent")
+        layout = QVBoxLayout(mainstage_content)
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
 
@@ -2798,8 +2872,9 @@ class ConversationsView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        self._refresh_readability_toolbar(is_dark=True)
-        self._apply_layout_mode()
+        self.scroll_area.setStyleSheet(
+            "QScrollArea#ChatScrollArea { background: transparent; border: none; }"
+        )
         layout.addWidget(self.scroll_area, stretch=1)
 
         # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
@@ -2843,6 +2918,10 @@ class ConversationsView(QWidget):
         self.composer_chip_strip.routing_removed.connect(self._on_composer_routing_removed)
         self.composer_chip_strip.skill_removed.connect(self._on_composer_skill_removed)
         bottom_stack_layout.addWidget(self.composer_chip_strip)
+
+        self.composer_recent_row = ComposerRecentMentionsRow()
+        self.composer_recent_row.mention_clicked.connect(self._on_composer_recent_mention_clicked)
+        bottom_stack_layout.addWidget(self.composer_recent_row)
 
         self.deep_research_progress_row = IngestProgressRow()
         self.deep_research_progress_row.hide()
@@ -2888,12 +2967,17 @@ class ConversationsView(QWidget):
         composer_side_layout.addStretch(1)
 
         self.text_input = ChatComposerEdit()
-        self.text_input.setPlaceholderText("Type a message to Qube...")
+        self.text_input.setPlaceholderText(COMPOSER_IDLE_PLACEHOLDER)
         self.text_input.setObjectName("ChatTextInput")
-        self.text_input.setToolTip("Enter to send. Shift+Enter adds a line break.")
+        self.text_input.setToolTip(
+            "Enter to send. Shift+Enter adds a line break. Type @ to attach tools, files, and skills."
+        )
         
         self.send_btn = QPushButton()
-        self.send_btn.setIcon(qta.icon('fa5s.paper-plane'))
+        _init_theme = self._theme()
+        self.send_btn.setIcon(
+            themed_fa_icon("fa5s.paper-plane", accent_icon_color(_init_theme), 18)
+        )
         self.send_btn.setFixedSize(35, 35)
         self.send_btn.setProperty("class", "SendButton")
         self.send_btn.setToolTip("Send message")
@@ -2922,8 +3006,19 @@ class ConversationsView(QWidget):
         self.text_input.submit_requested.connect(self._handle_text_submit)
         self.text_input.textChanged.connect(self._on_composer_body_changed)
         self.text_input.bind_mention_host(self)
-        self._style_composer_side_buttons(is_dark=True)
+        _composer_is_dark = self._theme().is_dark
+        self._style_composer_side_buttons(_composer_is_dark)
         self._refresh_composer_chip_strip()
+
+        self._chat_transcript_wallpaper_host = TranscriptWallpaperHost(
+            SURFACE_CHAT_TRANSCRIPT,
+            mainstage_content,
+            parent=frame,
+        )
+        self._refresh_readability_toolbar(_composer_is_dark)
+        self._apply_layout_mode()
+        self._refresh_transcript_wallpaper()
+        outer_layout.addWidget(self._chat_transcript_wallpaper_host, stretch=1)
 
         return frame
 
@@ -3157,6 +3252,7 @@ class ConversationsView(QWidget):
 
             self.agent_msg_container.attach_agent(self.current_agent_msg)
             self._add_agent_copy_button(self.agent_msg_container, self.current_agent_msg)
+            self._style_agent_message_container(self.agent_msg_container)
 
             wrapper = MessageWrapper(self.agent_msg_container, is_user=False)
             self._register_reader_focus_tracking(wrapper)
@@ -3231,49 +3327,31 @@ class ConversationsView(QWidget):
         return bool(getattr(self, "web_btn", None) and self.web_btn.isChecked())
 
     def _composer_action_icon_color(self, is_dark: bool) -> str:
-        """Qube brand purple for composer/sidebar icon buttons (theme-independent)."""
-        return _BRAND_PURPLE
+        return self._theme(is_dark).color(ACCENT_ICON)
 
     def _composer_action_hover_bg(self, is_dark: bool) -> str:
-        return "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.05)"
+        return self._theme(is_dark).surface_hover
 
     def _composer_side_divider_color(self, is_dark: bool) -> str:
-        """Muted line matching chat input border / placeholder tone."""
-        return "rgba(255, 255, 255, 0.10)" if is_dark else "#cbd5e1"
+        theme = self._theme(is_dark)
+        return theme.border_subtle if theme.is_dark else theme.border
 
     def _style_composer_side_buttons(self, is_dark: bool) -> None:
-        icon_color = self._composer_action_icon_color(is_dark)
-        hover_bg = self._composer_action_hover_bg(is_dark)
-        button_qss = f"""
-            QPushButton#ComposerAttachButton,
-            QPushButton#ComposerVoiceButton {{
-                background: transparent;
-                border: none;
-                border-radius: 8px;
-                padding: 4px;
-            }}
-            QPushButton#ComposerAttachButton:hover,
-            QPushButton#ComposerVoiceButton:hover {{
-                background-color: {hover_bg};
-            }}
-            QPushButton#ComposerAttachButton:disabled,
-            QPushButton#ComposerVoiceButton:disabled {{
-                opacity: 0.45;
-            }}
-        """
+        theme = self._theme(is_dark)
+        icon_color = accent_icon_color(theme)
+        button_qss = theme.style(COMPOSER_SIDE_BUTTON)
         if hasattr(self, "composer_attach_btn"):
-            self.composer_attach_btn.setIcon(qta.icon("fa5s.at", color=icon_color))
+            self.composer_attach_btn.setIcon(themed_fa_icon("fa5s.at", icon_color, 16))
             self.composer_attach_btn.setIconSize(QSize(16, 16))
             self.composer_attach_btn.setStyleSheet(button_qss)
         if hasattr(self, "composer_voice_btn"):
-            self.composer_voice_btn.setIcon(qta.icon("fa5s.microphone", color=icon_color))
+            self.composer_voice_btn.setIcon(
+                themed_fa_icon("fa5s.microphone", icon_color, 16)
+            )
             self.composer_voice_btn.setIconSize(QSize(16, 16))
             self.composer_voice_btn.setStyleSheet(button_qss)
         if hasattr(self, "composer_side_divider"):
-            line_color = self._composer_side_divider_color(is_dark)
-            self.composer_side_divider.setStyleSheet(
-                f"QFrame#ComposerSideDivider {{ background-color: {line_color}; border: none; }}"
-            )
+            self.composer_side_divider.setStyleSheet(theme.style(COMPOSER_SIDE_DIVIDER))
 
     def _style_composer_attach_button(self, is_dark: bool) -> None:
         self._style_composer_side_buttons(is_dark)
@@ -3294,6 +3372,7 @@ class ConversationsView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self.composer_chip_strip.set_draft(self._composer_draft, editable=True)
         self.composer_chip_strip.apply_theme(is_dark)
+        self._refresh_composer_recent_mentions()
 
     def _reset_composer_draft(self) -> None:
         self._composer_draft = ComposerDraft()
@@ -3341,6 +3420,7 @@ class ConversationsView(QWidget):
             self._notify_composer_one_source_limit()
             return
         self._composer_draft = updated
+        record_recent_attachment(attachment)
         self._refresh_composer_chip_strip()
         if hasattr(self, "text_input"):
             self.text_input.setFocus()
@@ -3348,9 +3428,30 @@ class ConversationsView(QWidget):
     def add_composer_skill(self, mention) -> None:
         updated, _added = add_skill(self._composer_draft, mention)
         self._composer_draft = updated
+        record_recent_skill(mention)
         self._refresh_composer_chip_strip()
         if hasattr(self, "text_input"):
             self.text_input.setFocus()
+
+    def _refresh_composer_recent_mentions(self) -> None:
+        row = getattr(self, "composer_recent_row", None)
+        if row is None:
+            return
+        if not self._composer_draft.is_empty():
+            row.hide()
+            return
+        entries, using_defaults = composer_hint_entries()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        row.set_entries(entries, using_defaults=using_defaults)
+        row.apply_theme(is_dark)
+
+    def _on_composer_recent_mention_clicked(self, mention: RecentMention) -> None:
+        resolved = resolve_recent_mention(mention)
+        if isinstance(resolved, ComposerSkillMention):
+            self.add_composer_skill(resolved)
+            return
+        if resolved is not None:
+            self.add_composer_attachment(resolved)
 
     def _on_composer_routing_removed(self, index: int) -> None:
         self._composer_draft = remove_routing_at(self._composer_draft, index)
@@ -3364,6 +3465,7 @@ class ConversationsView(QWidget):
         text = self.text_input.toPlainText()
         if "@[" not in text:
             self._composer_draft.body = text
+            self._refresh_composer_recent_mentions()
             return
         lifted = draft_from_text(text)
         merged, reject_reason = merge_drafts(
@@ -3417,6 +3519,10 @@ class ConversationsView(QWidget):
         before_send = self._before_send_callback
         if callable(before_send) and not before_send():
             return
+        for att in self._composer_draft.routing:
+            record_recent_attachment(att)
+        for skill in self._composer_draft.skills:
+            record_recent_skill(skill)
         raw = serialize_draft(self._composer_draft)
         clean, attachments, enforced_skills = parse_composer_input(raw)
         routing = resolve_attachment_routing(attachments)
@@ -3678,6 +3784,24 @@ class ConversationsView(QWidget):
 
     def _set_active_folder_id(self, folder_id: str) -> None:
         self._active_folder_id = folder_id
+        self._update_row_colors()
+
+    def _sidebar_active_folder_id(self) -> str | None:
+        if not hasattr(self, "history_list"):
+            return None
+        return getattr(self, "_active_folder_id", None) or self.db.get_main_conversation_folder_id()
+
+    def _update_row_colors(self):
+        """Row title colors + action icons (QSS cannot target setItemWidget children)."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
+        target_list = getattr(self, "history_list", None)
+        apply_sidebar_row_theme(
+            target_list,
+            is_dark=is_dark,
+            theme=theme,
+            active_folder_id=self._sidebar_active_folder_id(),
+        )
 
     def _on_history_item_clicked(self, item) -> None:
         if self._folder_controller and self._folder_controller.handle_item_clicked(item):
@@ -3714,7 +3838,8 @@ class ConversationsView(QWidget):
         if main_win and hasattr(main_win, "_is_dark_theme"):
             is_dark = main_win._is_dark_theme
 
-        icon_color = "#6c7086" if is_dark else "#64748b"
+        theme = self._theme(is_dark)
+        icon_color = sidebar_row_action_icon_color(theme)
 
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, session["id"])
@@ -3735,7 +3860,7 @@ class ConversationsView(QWidget):
         opts_btn = QPushButton()
         opts_btn.setObjectName("HistoryOptionsBtn")
         opts_btn.setFixedSize(28, 28)
-        opts_btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+        opts_btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
         opts_btn.setIconSize(QSize(16, 16))
         opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         opts_btn.setStyleSheet(
@@ -3751,7 +3876,7 @@ class ConversationsView(QWidget):
             self._folder_controller.register_menu(menu)
 
         rename_action = menu.addAction(
-            qta.icon("fa5s.edit", color="#89b4fa"), "Rename Chat"
+            themed_fa_icon("fa5s.edit", theme.color(LINK_ICON), 16), "Rename Chat"
         )
         rename_action.triggered.connect(
             lambda _, s_id=session["id"], old_t=session["title"]: self._trigger_rename_chat(
@@ -3770,7 +3895,7 @@ class ConversationsView(QWidget):
             )
 
         export_action = menu.addAction(
-            qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+            themed_fa_icon("fa5s.file-export", theme.color(LINK_ICON), 16), "Export"
         )
         export_action.triggered.connect(
             lambda _, s_id=session["id"], title=session["title"]: self._trigger_export_chat(
@@ -3781,7 +3906,7 @@ class ConversationsView(QWidget):
         menu.addSeparator()
 
         delete_action = menu.addAction(
-            qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Chat"
+            themed_fa_icon("fa5s.trash-alt", theme.color(DANGER_ICON), 16), "Delete Chat"
         )
         delete_action.triggered.connect(
             lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id)
@@ -3885,12 +4010,6 @@ class ConversationsView(QWidget):
         self._session_count = self.db.get_session_count()
         self._reload_history_sidebar()
 
-    def _update_row_colors(self):
-        """Row title colors: QSS cannot target setItemWidget children via ::item; apply explicitly."""
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        target_list = getattr(self, "doc_list", getattr(self, "history_list", None))
-        apply_sidebar_row_title_colors(target_list, is_dark=is_dark)
-
     def _trigger_delete_chat(self, session_id):
         """Modern confirmation with full original safety logic."""
         is_dark = getattr(self.window(), '_is_dark_theme', True)
@@ -3955,7 +4074,7 @@ class ConversationsView(QWidget):
         self._clear_transcript()
 
         self.placeholder_lbl = self._make_transcript_placeholder_label(
-            "New chat started. Type or speak a message after saying your wake word!"
+            NEW_CHAT_TRANSCRIPT_HINT
         )
         self.transcript_layout.addWidget(self.placeholder_lbl)
         self._refresh_ancillary_transcript_labels()
@@ -3988,7 +4107,7 @@ class ConversationsView(QWidget):
         history = self.db.get_session_history(session_id)
         if not history:
             self.placeholder_lbl = self._make_transcript_placeholder_label(
-                "Empty conversation."
+                EMPTY_SESSION_TRANSCRIPT_HINT
             )
             self.transcript_layout.addWidget(self.placeholder_lbl)
             self._flush_pending_stream_for_active_session()
@@ -4127,113 +4246,85 @@ class ConversationsView(QWidget):
     def _apply_action_toggle_styles(self) -> None:
         """Render Web/Think toggle buttons with active/inactive styles."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         self._apply_toggle_button_style(
             self.web_btn if hasattr(self, "web_btn") else None,
-            is_dark=is_dark,
-            active_bg=("#89b4fa" if is_dark else "#1d4ed8"),
+            theme=theme,
+            active_bg=theme.link,
         )
         self._apply_toggle_button_style(
             self.think_btn if hasattr(self, "think_btn") else None,
-            is_dark=is_dark,
-            active_bg=("#a6e3a1" if is_dark else "#40a02b"),
+            theme=theme,
+            active_bg=theme.success,
         )
 
-    def _apply_toggle_button_style(self, btn, *, is_dark: bool, active_bg: str) -> None:
+    def _apply_toggle_button_style(self, btn, *, theme, active_bg: str) -> None:
         if btn is None:
             return
-        if btn.isChecked():
-            fg = "#11111b" if is_dark else "#ffffff"
-            bg = active_bg
-            border = bg
-        else:
-            fg = "#cdd6f4" if is_dark else "#1e293b"
-            bg = "rgba(255, 255, 255, 0.05)" if is_dark else "rgba(0, 0, 0, 0.04)"
-            border = "#6c7086" if is_dark else "#cbd5e1"
-        hover = "rgba(255, 255, 255, 0.1)" if is_dark else "rgba(0, 0, 0, 0.08)"
         btn.setStyleSheet(
-            f"""
-            QPushButton {{
-                color: {fg};
-                background: {bg};
-                border: 1px solid {border};
-                border-radius: 8px;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 6px 12px;
-            }}
-            QPushButton:hover {{
-                background-color: {hover};
-            }}
-            """
+            theme.style(TOGGLE_BUTTON, checked=btn.isChecked(), active_bg=active_bg)
         )
 
     def refresh_button_themes(self, is_dark: bool):
         """Dynamically updates the colors of the New Chat and Send buttons."""
         if hasattr(self, "text_input") and hasattr(self.text_input, "apply_mention_theme"):
             self.text_input.apply_mention_theme(is_dark)
+        theme = self._theme(is_dark)
+        editable_field = theme.style(SETTINGS_LINE_EDIT)
+        if hasattr(self, "text_input"):
+            self.text_input.setStyleSheet(editable_field)
+        if hasattr(self, "search_bar"):
+            self.search_bar.setStyleSheet(editable_field)
         if hasattr(self, "composer_chip_strip"):
             self.composer_chip_strip.apply_theme(is_dark)
         if hasattr(self, "deep_research_progress_row"):
             self.deep_research_progress_row.apply_theme(is_dark)
         self._style_composer_side_buttons(is_dark)
-        import qtawesome as qta
-        
-        base_icon_color = self._composer_action_icon_color(is_dark)
-        
-        # Subtle hover background: faint white wash for Dark, faint black wash for Light
-        hover_bg = self._composer_action_hover_bg(is_dark)
-        
-        # 1. Update New Chat Button (+)
-        if hasattr(self, 'new_chat_btn'):
-            self.new_chat_btn.setIcon(qta.icon('fa5s.plus', color=base_icon_color))
-            self.new_chat_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+        base_icon_color = accent_icon_color(theme)
+
+        if hasattr(self, "new_chat_btn"):
+            self.new_chat_btn.setIcon(themed_fa_icon("fa5s.plus", base_icon_color, 16))
+            apply_ghost_icon_button_style(self.new_chat_btn, theme)
         if hasattr(self, "new_folder_btn"):
-            self.new_folder_btn.setIcon(qta.icon("fa5s.folder-plus", color=base_icon_color))
-            self.new_folder_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            self.new_folder_btn.setIcon(
+                themed_fa_icon("fa5s.folder-plus", base_icon_color, 16)
+            )
+            apply_ghost_icon_button_style(self.new_folder_btn, theme)
         if hasattr(self, "sort_btn"):
-            self.sort_btn.setIcon(qta.icon("fa5s.sort", color=base_icon_color))
-            self.sort_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
-            
-        # 2. Update Send / Stop button icon + style
-        if hasattr(self, 'send_btn'):
-            icon_name = 'fa5s.stop' if self._is_stop_mode() else 'fa5s.paper-plane'
-            send_icon_color = "#f38ba8" if self._is_stop_mode() and is_dark else base_icon_color
-            if self._is_stop_mode() and not is_dark:
-                send_icon_color = "#dc2626"
-            self.send_btn.setIcon(qta.icon(icon_name, color=send_icon_color))
+            self.sort_btn.setIcon(themed_fa_icon("fa5s.sort", base_icon_color, 16))
+            apply_ghost_icon_button_style(self.sort_btn, theme, hide_menu_indicator=True)
+
+        if hasattr(self, "send_btn"):
+            icon_name = "fa5s.stop" if self._is_stop_mode() else "fa5s.paper-plane"
+            send_icon_color = (
+                theme.color(DANGER_ICON)
+                if self._is_stop_mode()
+                else base_icon_color
+            )
+            self.send_btn.setIcon(themed_fa_icon(icon_name, send_icon_color, 18))
             self.send_btn.setToolTip(self._stop_button_tooltip())
-            self.send_btn.setStyleSheet(f"""
-                QPushButton {{ background: transparent; border: none; border-radius: 6px; padding: 6px; }}
-                QPushButton:hover {{ background-color: {hover_bg}; }}
-            """)
+            apply_ghost_icon_button_style(self.send_btn, theme, fixed_size=None)
         self._refresh_readability_toolbar(is_dark=is_dark)
         self._refresh_layout_mode_button(is_dark=is_dark)
         if hasattr(self, "font_minus_btn"):
             font_btn_style = readability_font_pair_stylesheet(
-                is_dark=is_dark, button_px=_CHAT_UTILITY_BTN
+                is_dark=is_dark, theme=theme, button_px=_CHAT_UTILITY_BTN
             )
             self.font_minus_btn.setStyleSheet(font_btn_style)
             self.font_plus_btn.setStyleSheet(font_btn_style)
         self._apply_action_toggle_styles()
         self._apply_history_list_surface(is_dark)
+        self._refresh_ancillary_transcript_labels()
         tw = self._agent_typing_wrapper
         if tw is not None:
             for ind in tw.findChildren(TypingIndicatorWidget):
                 ind.set_dark_theme(is_dark)
         self._refresh_agent_copy_buttons(is_dark)
+        self._refresh_transcript_wallpaper()
 
     def _apply_history_list_surface(self, is_dark: bool) -> None:
         """Sidebar list tint: QListWidget paints in an internal viewport — set palette on list + viewport."""
-        bg = QColor("#232337" if is_dark else "#E9EFF5")
+        bg = self._theme(is_dark).qcolor_role(LIST_SURFACE)
         if hasattr(self, "history_pane"):
             p = self.history_pane
             p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -4485,7 +4576,7 @@ class ConversationsView(QWidget):
 
             if enabled:
                 if not getattr(self, "_deep_research_in_progress", False):
-                    self.text_input.setPlaceholderText("Type a message to Qube...")
+                    self.text_input.setPlaceholderText(COMPOSER_IDLE_PLACEHOLDER)
                     self.text_input.setFocus()
             elif not self._is_stop_mode():
                 self.text_input.setPlaceholderText("Qube is working...")

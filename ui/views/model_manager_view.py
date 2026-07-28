@@ -66,6 +66,32 @@ from core.hf_publisher_branding import HuggingFaceBrandingResolver, owner_from_r
 from core.model_capability_service import ModelCapabilityService
 from core.publisher_guidance_service import PublisherGuidanceService
 from core.richtext_styles import markdown_document_stylesheet
+from core.theme.accessors import theme_for
+from core.theme.view_theme import view_resolved_theme
+from core.theme.widget_styles import (
+    ACCENT_CHIP,
+    ACCENT_ICON,
+    CAPABILITY_CHIP,
+    COMBO_POPUP_LIST,
+    COMBO_POPUP_SHELL,
+    COMBO_POPUP_VIEWPORT,
+    CONNECTIVITY_ERROR_BANNER,
+    DIVIDER_ACCENT,
+    LINK_ICON,
+    LIST_SURFACE,
+    META_HINT,
+    META_LABEL,
+    MODEL_HUB_OFFICIAL_BADGE,
+    MUTED_ICON,
+    MUTED_STATUS,
+    QUANT_BADGE_PRIMARY,
+    QUANT_BADGE_SECONDARY,
+    STAGE_SURFACE,
+    SUCCESS_STATUS,
+    WARNING_STATUS,
+    HUB_MUTED_HINT,
+    HUB_MUTED_ROW,
+)
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.prestige_dialog import PrestigeDialog
@@ -108,59 +134,13 @@ def _model_manager_project_root() -> Path:
     return install_root()
 
 
-def _hub_file_combo_list_qss(is_dark: bool) -> str:
+def _hub_file_combo_list_qss(theme) -> str:
     """Widget-local QSS for the combo's QAbstractItemView (app QSS misses detached popups on many styles)."""
-    if is_dark:
-        return """
-            QAbstractItemView {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-                border: none;
-                outline: none;
-            }
-            QAbstractItemView::item {
-                min-height: 32px;
-                padding: 8px 12px;
-                color: #cdd6f4;
-            }
-            QAbstractItemView::item:selected {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: #ffffff;
-            }
-            QAbstractItemView::item:hover {
-                background-color: #313244;
-                color: #cdd6f4;
-            }
-        """
-    return """
-        QAbstractItemView {
-            background-color: #ffffff;
-            color: #1e293b;
-            border: none;
-            outline: none;
-        }
-        QAbstractItemView::item {
-            min-height: 32px;
-            padding: 8px 12px;
-            color: #1e293b;
-        }
-        QAbstractItemView::item:selected {
-            background-color: #f1f5f9;
-            color: #0f172a;
-        }
-        QAbstractItemView::item:hover {
-            background-color: #f1f5f9;
-            color: #0f172a;
-        }
-    """
+    return theme.style(COMBO_POPUP_LIST)
 
 
-def _hub_file_combo_viewport_qss(is_dark: bool) -> str:
-    return (
-        "background-color: #1e1e2e;"
-        if is_dark
-        else "background-color: #ffffff;"
-    )
+def _hub_file_combo_viewport_qss(theme) -> str:
+    return theme.style(COMBO_POPUP_VIEWPORT)
 
 
 class HubFileComboDelegate(QStyledItemDelegate):
@@ -253,14 +233,15 @@ class HubFileComboDelegate(QStyledItemDelegate):
             host = option.widget
             win = host.window() if host is not None else None
             is_dark = bool(getattr(win, "_is_dark_theme", True))
+            theme = view_resolved_theme(host, is_dark=is_dark)
             if badge_primary:
-                bg = QColor("#8b5cf6")
+                bg = theme.qcolor(theme.accent)
                 bg.setAlpha(90)
-                fg = QColor("#f8fafc")
+                fg = theme.qcolor(theme.text_on_accent)
             else:
-                bg = QColor("#64748b" if not is_dark else "#94a3b8")
+                bg = theme.qcolor(theme.text_muted)
                 bg.setAlpha(70)
-                fg = QColor("#1e293b" if not is_dark else "#e2e8f0")
+                fg = theme.qcolor(theme.text_primary)
             tw = fm.horizontalAdvance(badge_text) + 22
             cw = max(72, tw)
             cr = QRect(left, chip_y, cw, chip_h)
@@ -424,6 +405,9 @@ class ModelManagerView(QWidget):
         lbl.setSizePolicy(pol)
         lbl.setMinimumWidth(0)
 
+    def _theme(self, is_dark: bool | None = None):
+        return view_resolved_theme(self, is_dark=is_dark)
+
     def _refresh_download_options_card_geometry(self) -> None:
         if not hasattr(self, "download_options_card"):
             return
@@ -579,10 +563,11 @@ class ModelManagerView(QWidget):
     def _style_hub_title_label(self, lbl: QLabel, item: QListWidgetItem) -> None:
         """Explicit font + foreground (Library row pattern): QSS alone drifts when the app sheet is replaced on toggle."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         if item.isSelected():
-            fg = "#ffffff" if is_dark else "#1e293b"
+            fg = theme.text_on_accent if theme.is_dark else theme.text_primary
         else:
-            fg = "#cdd6f4" if is_dark else "#1e293b"
+            fg = theme.text_primary
         lbl.setStyleSheet(
             f"color: {fg}; background: transparent; border: none; "
             'font-size: 13px; font-weight: 500; font-family: "Inter"; '
@@ -740,6 +725,22 @@ class ModelManagerView(QWidget):
         )
         row.update()
 
+    def _official_badge_stylesheet(self, *, is_dark: bool | None = None) -> str:
+        theme = self._theme(is_dark)
+        fg = theme.color(MODEL_HUB_OFFICIAL_BADGE)
+        return (
+            f"QLabel {{ color: {fg}; font-size: 10px; font-weight: 700; "
+            f"background: transparent; }}"
+        )
+
+    def _apply_hub_official_badge_theme(
+        self, row: QWidget, *, is_dark: bool | None = None
+    ) -> None:
+        badge = row.findChild(QLabel, "HubModelRowOfficialBadge")
+        if badge is None:
+            return
+        badge.setStyleSheet(self._official_badge_stylesheet(is_dark=is_dark))
+
     def _refresh_hub_row_heights(self) -> None:
         """Recompute after resize, first show, or when viewport width was unknown during populate."""
         if not hasattr(self, "hub_model_list"):
@@ -881,7 +882,10 @@ class ModelManagerView(QWidget):
         self.detail_info_btn.setObjectName("ModelManagerDetailInfoButton")
         self.detail_info_btn.setProperty("class", "IconButton")
         self.detail_info_btn.setFixedSize(24, 24)
-        self.detail_info_btn.setIcon(qta.icon("fa5s.info-circle", color="#94a3b8"))
+        _boot_theme = theme_for(is_dark=True)
+        self.detail_info_btn.setIcon(
+            qta.icon("fa5s.info-circle", color=_boot_theme.color(MUTED_STATUS))
+        )
         self.detail_info_btn.setIconSize(QSize(16, 16))
         self.detail_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.detail_info_btn.setVisible(False)
@@ -901,7 +905,9 @@ class ModelManagerView(QWidget):
         self.detail_source_btn.setObjectName("ModelManagerSourceButton")
         self.detail_source_btn.setProperty("class", "IconButton")
         self.detail_source_btn.setToolTip("Open source repository on Hugging Face")
-        self.detail_source_btn.setIcon(qta.icon("fa5s.external-link-alt", color="#8b5cf6"))
+        self.detail_source_btn.setIcon(
+            qta.icon("fa5s.external-link-alt", color=_boot_theme.color(ACCENT_ICON))
+        )
         self.detail_source_btn.setIconSize(QSize(14, 14))
         self.detail_source_btn.setVisible(False)
         self.detail_source_btn.clicked.connect(self._open_current_repo_source)
@@ -1026,9 +1032,7 @@ class ModelManagerView(QWidget):
         self.meta_rows_divider = QFrame(parent=self.meta_panel)
         self.meta_rows_divider.setFrameShape(QFrame.Shape.HLine)
         self.meta_rows_divider.setFrameShadow(QFrame.Shadow.Plain)
-        self.meta_rows_divider.setStyleSheet(
-            "QFrame { border: none; background: rgba(139, 92, 246, 0.45); min-height: 1px; max-height: 1px; }"
-        )
+        self.meta_rows_divider.setStyleSheet(_boot_theme.style(DIVIDER_ACCENT))
         divider_host = QWidget(parent=self.meta_panel)
         divider_l = QHBoxLayout(divider_host)
         divider_l.setContentsMargins(8, 2, 8, 2)
@@ -1238,12 +1242,11 @@ class ModelManagerView(QWidget):
         self._set_hub_load_more_visible(False)
 
     def _meta_style(self, label: QLabel, *, is_dark: bool, strong: bool = False) -> None:
-        fg = "#cdd6f4" if is_dark else "#1e293b"
-        muted = "#94a3b8" if is_dark else "#64748b"
-        color = fg if strong else muted
-        weight = 600 if strong else 500
+        theme = self._theme(is_dark)
         label.setStyleSheet(
-            f"color: {color}; font-size: 12px; font-weight: {weight}; background: transparent;"
+            theme.style(META_LABEL, strong=strong)
+            + " font-size: 12px;"
+            + (" font-weight: 600;" if strong else " font-weight: 500;")
         )
 
     def _reset_hub_metadata_labels(self) -> None:
@@ -1306,9 +1309,9 @@ class ModelManagerView(QWidget):
         # Capability chips are built dynamically with widget-local styles, so rebuild
         # them on theme refresh instead of relying on app-level QSS to override them.
         self._render_capability_chips(list(getattr(self, "_current_meta_capabilities", [])))
-        hint_color = "#6c7086" if is_dark else "#64748b"
+        theme = self._theme(is_dark)
         self.meta_hint_lbl.setStyleSheet(
-            f"color: {hint_color}; font-size: 11px; font-weight: 500; background: transparent;"
+            theme.style(HUB_MUTED_HINT) + " font-weight: 500; background: transparent;"
         )
         self._set_system_match_style("unknown")
         self._refresh_download_options_header_icon()
@@ -1317,9 +1320,9 @@ class ModelManagerView(QWidget):
         if not hasattr(self, "_download_options_icon_label"):
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+        theme = self._theme(is_dark)
         self._download_options_icon_label.setPixmap(
-            qta.icon("fa5s.box-open", color=icon_color).pixmap(QSize(14, 14))
+            qta.icon("fa5s.box-open", color=theme.color(ACCENT_ICON)).pixmap(QSize(14, 14))
         )
 
     def _capability_icon_name(self, cap: str) -> str:
@@ -1347,10 +1350,9 @@ class ModelManagerView(QWidget):
             return
         self._current_meta_capabilities = [str(cap).strip() for cap in (caps or []) if str(cap).strip()]
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        # Keep capability chips aligned with metadata chip language in each theme.
-        chip_fg = "#cdd6f4" if is_dark else "#1e3a8a"
-        icon_color = chip_fg
-        chip_border = "#8b5cf6" if is_dark else "#93c5fd"
+        theme = self._theme(is_dark)
+        chip_style = theme.style(CAPABILITY_CHIP)
+        icon_color = theme.text_primary
         while self.meta_caps_wrap_l.count():
             it = self.meta_caps_wrap_l.takeAt(0)
             w = it.widget()
@@ -1364,10 +1366,7 @@ class ModelManagerView(QWidget):
         for cap in self._current_meta_capabilities:
             chip = QFrame()
             chip.setProperty("class", "Chip capability")
-            chip.setStyleSheet(
-                f"QFrame {{ border: 1px solid {chip_border}; border-radius: 10px; background: transparent; }}"
-                f"QLabel[class='ChipLabel'], QLabel[class='ChipIcon'] {{ color: {chip_fg}; background: transparent; border: none; }}"
-            )
+            chip.setStyleSheet(chip_style)
             chip_l = QHBoxLayout(chip)
             chip_l.setContentsMargins(8, 3, 8, 3)
             chip_l.setSpacing(6)
@@ -1546,18 +1545,9 @@ class ModelManagerView(QWidget):
         self._update_gpu_fit_status()
 
     def _style_quant_rationale_badge(self, badge_lbl: QLabel, *, is_primary: bool, is_dark: bool) -> None:
-        if is_primary:
-            bg = "rgba(139, 92, 246, 0.35)" if is_dark else "rgba(139, 92, 246, 0.22)"
-            fg = "#e9d5ff" if is_dark else "#5b21b6"
-            border = "rgba(139, 92, 246, 0.55)"
-        else:
-            bg = "rgba(100, 116, 139, 0.22)" if is_dark else "rgba(100, 116, 139, 0.14)"
-            fg = "#cbd5e1" if is_dark else "#475569"
-            border = "rgba(100, 116, 139, 0.35)"
-        badge_lbl.setStyleSheet(
-            f"QLabel {{ background-color: {bg}; color: {fg}; border: 1px solid {border};"
-            f" border-radius: 9px; padding: 3px 10px; font-size: 11px; font-weight: 600; }}"
-        )
+        theme = self._theme(is_dark)
+        role = QUANT_BADGE_PRIMARY if is_primary else QUANT_BADGE_SECONDARY
+        badge_lbl.setStyleSheet(theme.style(role))
 
     def _update_quant_rationale_label(self) -> None:
         if not hasattr(self, "hub_quant_rationale_lbl") or not hasattr(self, "hf_file_combo"):
@@ -1589,8 +1579,8 @@ class ModelManagerView(QWidget):
             self._refresh_download_options_card_geometry()
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        muted = "#94a3b8" if is_dark else "#64748b"
-        text_lbl.setStyleSheet(f"color: {muted}; font-size: 12px; background: transparent;")
+        theme = self._theme(is_dark)
+        text_lbl.setStyleSheet(theme.style(META_LABEL) + " font-size: 12px;")
         text_lbl.setText(text)
         if badge_lbl is not None:
             if rec_raw.badge != QuantBadgeKind.NONE and rec_raw.badge_text:
@@ -1801,11 +1791,12 @@ class ModelManagerView(QWidget):
 
     def _apply_hub_list_surface(self, is_dark: bool) -> None:
         """Match Conversations sidebar/list background palette on both themes."""
-        bg = QColor("#232337" if is_dark else "#E9EFF5")
-        bg_hex = "#232337" if is_dark else "#E9EFF5"
-        stage_bg = QColor("#1e1e2e" if is_dark else "#ffffff")
-        stage_bg_hex = "#1e1e2e" if is_dark else "#ffffff"
-        border = "rgba(255, 255, 255, 0.08)" if is_dark else "#dbe4ee"
+        theme = self._theme(is_dark)
+        bg_hex = theme.color(LIST_SURFACE)
+        bg = QColor(bg_hex)
+        stage_bg_hex = theme.color(STAGE_SURFACE)
+        stage_bg = QColor(stage_bg_hex)
+        border = theme.border_subtle if theme.is_dark else theme.border
         if hasattr(self, "hub_sidebar"):
             p = self.hub_sidebar
             p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -1904,18 +1895,13 @@ class ModelManagerView(QWidget):
         """Palette + widget-local QSS on the list view (matches MainWindow prestige menus)."""
         if not hasattr(self, "hf_file_combo"):
             return
+        theme = self._theme(is_dark)
         v = self.hf_file_combo.view()
         palette = QPalette()
-        if is_dark:
-            bg = QColor("#1e1e2e")
-            fg = QColor("#cdd6f4")
-            sel_bg = QColor("#313244")
-            sel_fg = QColor("#cdd6f4")
-        else:
-            bg = QColor("#ffffff")
-            fg = QColor("#1e293b")
-            sel_bg = QColor("#f1f5f9")
-            sel_fg = QColor("#0f172a")
+        bg = theme.qcolor(theme.background)
+        fg = theme.qcolor(theme.text_primary)
+        sel_bg = theme.qcolor(theme.surface_elevated)
+        sel_fg = theme.qcolor(theme.text_primary)
         for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
             palette.setColor(role, bg)
         palette.setColor(QPalette.ColorRole.WindowText, fg)
@@ -1923,11 +1909,11 @@ class ModelManagerView(QWidget):
         palette.setColor(QPalette.ColorRole.Highlight, sel_bg)
         palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
         v.setPalette(palette)
-        v.setStyleSheet(_hub_file_combo_list_qss(is_dark))
+        v.setStyleSheet(_hub_file_combo_list_qss(theme))
         vp = v.viewport()
         if vp is not None:
             vp.setPalette(palette)
-            vp.setStyleSheet(_hub_file_combo_viewport_qss(is_dark))
+            vp.setStyleSheet(_hub_file_combo_viewport_qss(theme))
 
     def _on_hub_file_combo_popup_opened(self) -> None:
         """After the popup is shown: detached window + parents often stay system-colored until styled here."""
@@ -1941,39 +1927,41 @@ class ModelManagerView(QWidget):
 
     def _polish_hub_file_combo_popup_shell(self, is_dark: bool) -> None:
         """Paint the popup container / scroll chrome (not a child of HubFileComboBox for QSS)."""
+        theme = self._theme(is_dark)
         combo = self.hf_file_combo
         v = combo.view()
         if v is None:
             return
-        bg = "#1e1e2e" if is_dark else "#ffffff"
-        border = "rgba(255, 255, 255, 0.1)" if is_dark else "#cbd5e1"
+        shell_qss = theme.style(COMBO_POPUP_SHELL)
+        bg_qss = theme.style(COMBO_POPUP_VIEWPORT)
         main_win = self.window()
 
         outer = v.window()
         if outer is not None and outer is not main_win:
             outer.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-            outer.setStyleSheet(
-                f"QWidget {{ background-color: {bg}; border: 1px solid {border}; border-radius: 8px; }}"
-            )
+            outer.setStyleSheet(shell_qss)
 
         p = v.parentWidget()
         depth = 0
         while p is not None and p is not combo and depth < 10:
             p.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
             if p is not outer:
-                p.setStyleSheet(f"background-color: {bg}; border: none;")
+                p.setStyleSheet(bg_qss)
             p = p.parentWidget()
             depth += 1
 
     def _apply_hub_muted_labels(self, is_dark: bool) -> None:
         """Secondary text — matches muted sidebar copy in Chat / Library."""
-        muted = "#94a3b8" if is_dark else "#64748b"
-        hint_style = f"color: {muted}; font-size: 11px;"
+        theme = self._theme(is_dark)
+        hint_style = theme.style(HUB_MUTED_HINT)
         if hasattr(self, "hub_list_hint"):
             self.hub_list_hint.setStyleSheet(hint_style)
         if hasattr(self, "detail_info_btn"):
-            self.detail_info_btn.setIcon(qta.icon("fa5s.info-circle", color=muted))
+            self.detail_info_btn.setIcon(
+                qta.icon("fa5s.info-circle", color=theme.color(MUTED_STATUS))
+            )
         if hasattr(self, "hub_model_list"):
+            row_style = theme.style(HUB_MUTED_ROW)
             for i in range(self.hub_model_list.count()):
                 item = self.hub_model_list.item(i)
                 row = self.hub_model_list.itemWidget(item)
@@ -1982,13 +1970,9 @@ class ModelManagerView(QWidget):
                 desc_lbl = row.findChild(QLabel, "HubModelRowDescription")
                 ts_lbl = row.findChild(QLabel, "HubModelRowTimestamp")
                 if desc_lbl is not None:
-                    desc_lbl.setStyleSheet(
-                        f"color: {muted}; background: transparent; border: none; font-size: 11px; font-weight: 500;"
-                    )
+                    desc_lbl.setStyleSheet(row_style)
                 if ts_lbl is not None:
-                    ts_lbl.setStyleSheet(
-                        f"color: {muted}; background: transparent; border: none; font-size: 11px; font-weight: 500;"
-                    )
+                    ts_lbl.setStyleSheet(row_style)
 
     def _append_hub_model_row(
         self,
@@ -2082,18 +2066,16 @@ class ModelManagerView(QWidget):
 
         verified_lbl = QLabel()
         verified_lbl.setObjectName("HubModelRowVerifiedIcon")
-        verified_lbl.setPixmap(qta.icon("fa5s.award", color="#8b5cf6").pixmap(QSize(12, 12)))
+        verified_lbl.setPixmap(
+            qta.icon("fa5s.award", color=self._theme().accent).pixmap(QSize(12, 12))
+        )
         verified_lbl.setVisible(bool(verified))
         top_l.addWidget(verified_lbl, stretch=0)
 
         if logo_path is not None and is_official:
             official_lbl = QLabel("Official")
             official_lbl.setObjectName("HubModelRowOfficialBadge")
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
-            badge_fg = "#cdd6f4" if is_dark else "#1e3a8a"
-            official_lbl.setStyleSheet(
-                f"QLabel {{ color: {badge_fg}; font-size: 10px; font-weight: 700; background: transparent; }}"
-            )
+            official_lbl.setStyleSheet(self._official_badge_stylesheet())
             official_lbl.setToolTip(f"Official model by {publisher_name}" if publisher_name else "Official model")
             top_l.addWidget(official_lbl, stretch=0)
 
@@ -2101,11 +2083,11 @@ class ModelManagerView(QWidget):
         if fit_label:
             fit_lbl = QLabel(fit_label)
             fit_lbl.setObjectName("HubModelRowHardwareFitBadge")
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            theme = self._theme()
             if fit_label == "Good fit":
-                fit_fg = "#10b981"
+                fit_fg = theme.success
             else:
-                fit_fg = "#f59e0b" if is_dark else "#b45309"
+                fit_fg = theme.warning
             fit_lbl.setStyleSheet(
                 f"QLabel {{ color: {fit_fg}; font-size: 10px; font-weight: 700; background: transparent; }}"
             )
@@ -2176,8 +2158,9 @@ class ModelManagerView(QWidget):
         is_official = bool(data.get("official", False))
         logo_path = self._resolve_hub_brand_logo(logo_url)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        official_fg = "#cdd6f4" if is_dark else "#1e3a8a"
-        variant_fg = "#94a3b8" if is_dark else "#64748b"
+        theme = self._theme(is_dark)
+        official_fg = theme.color(MODEL_HUB_OFFICIAL_BADGE)
+        variant_fg = theme.text_muted
 
         show_official = bool(publisher_name and is_official and logo_path is not None)
         if show_official:
@@ -2238,8 +2221,9 @@ class ModelManagerView(QWidget):
         if lay is None:
             return
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6"
-        chip_border = "#8b5cf6"
+        theme = self._theme(is_dark)
+        icon_color = theme.accent
+        chip_border = theme.accent
         while lay.count():
             it = lay.takeAt(0)
             w = it.widget()
@@ -2309,11 +2293,13 @@ class ModelManagerView(QWidget):
 
     def _update_hub_row_colors(self) -> None:
         """Re-apply hub title fg for selection + theme, then re-layout row heights."""
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
         for i in range(self.hub_model_list.count()):
             it = self.hub_model_list.item(i)
             row = self.hub_model_list.itemWidget(it)
             if row is not None:
                 self._apply_hub_row_surface(row)
+                self._apply_hub_official_badge_theme(row, is_dark=is_dark)
         self.hub_model_list.viewport().update()
         self._refresh_hub_row_heights()
 
@@ -2342,14 +2328,13 @@ class ModelManagerView(QWidget):
     def _set_system_match_style(self, state: str) -> None:
         """Render System label as plain text (no chip card), colored by memory experience."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
         if state == "fit":
-            color = "#10b981"
-        elif state == "caution":
-            color = "#f59e0b" if is_dark else "#b45309"
-        elif state == "no_fit":
-            color = "#f59e0b" if is_dark else "#b45309"
+            color = theme.color(SUCCESS_STATUS)
+        elif state in ("caution", "no_fit"):
+            color = theme.color(WARNING_STATUS)
         else:
-            color = "#94a3b8" if is_dark else "#64748b"
+            color = theme.color(MUTED_STATUS)
         if hasattr(self, "system_chip_lbl"):
             self.system_chip_lbl.setStyleSheet(
                 f"background: transparent; border: none; padding: 0px; color: {color}; font-size: 12px; font-weight: 600;"
@@ -3119,7 +3104,8 @@ class ModelManagerView(QWidget):
         h = QHBoxLayout(row)
         h.setContentsMargins(0, 0, 0, 0)
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        icon_color = "#8b5cf6" if is_dark else "#4c4f69"
+        theme = self._theme(is_dark)
+        icon_color = theme.accent if theme.is_dark else theme.text_secondary
         ic = QLabel()
         ic.setProperty("icon_name", icon_name)
         ic.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(QSize(18, 18)))
@@ -3397,22 +3383,12 @@ class ModelManagerView(QWidget):
     def _apply_hub_connectivity_banner(self, is_dark: bool) -> None:
         if not hasattr(self, "hub_status_banner"):
             return
-        bg = "#3b2f2f" if is_dark else "#fef2f2"
-        border = "#f38ba8" if is_dark else "#fecaca"
-        fg = "#fcd8e0" if is_dark else "#991b1b"
+        theme = self._theme(is_dark)
         self.hub_status_banner.setStyleSheet(
-            f"""
-            QFrame#ModelManagerHubStatusBanner {{
-                background-color: {bg};
-                border: 1px solid {border};
-                border-radius: 10px;
-            }}
-            QLabel {{ color: {fg}; background: transparent; border: none; font-size: 12px; }}
-            """
+            theme.style(CONNECTIVITY_ERROR_BANNER, object_name="ModelManagerHubStatusBanner")
         )
-        icon_color = "#f38ba8" if is_dark else "#dc2626"
         self.hub_status_banner_icon.setPixmap(
-            qta.icon("fa5s.exclamation-triangle", color=icon_color).pixmap(QSize(16, 16))
+            qta.icon("fa5s.exclamation-triangle", color=theme.error).pixmap(QSize(16, 16))
         )
         if self._hub_reachable is False:
             detail = self._hub_status_detail.strip()
@@ -3552,7 +3528,8 @@ class ModelManagerView(QWidget):
         if hasattr(self, "_hub_section_icon_label") and self._hub_section_icon_label:
             name = self._hub_section_icon_label.property("icon_name")
             if name:
-                c = "#8b5cf6" if is_dark else "#4c4f69"
+                theme = self._theme(is_dark)
+                c = theme.accent if theme.is_dark else theme.text_secondary
                 self._hub_section_icon_label.setPixmap(
                     qta.icon(str(name), color=c).pixmap(QSize(18, 18))
                 )

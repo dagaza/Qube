@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 
-import qtawesome as qta
+
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
@@ -21,7 +21,12 @@ from PyQt6.QtWidgets import (
 )
 
 from core.database import DatabaseManager
+from ui.components.ghost_icon_button import apply_ghost_icon_button_style
+from core.theme.view_theme import view_resolved_theme
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
+from core.theme.widget_styles import DANGER_ICON, SIDEBAR_ACTION_ICON
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.shell_theme import accent_icon_color, sidebar_row_action_icon_color
 
 SidebarScope = Literal["conversation", "library"]
 SortMode = Literal["name", "date"]
@@ -70,12 +75,15 @@ def add_new_folder_header_button(
     *,
     on_new_folder: Callable[[], None],
     before_widget: QWidget | None = None,
+    theme_host: QWidget | None = None,
 ) -> QPushButton:
     """Add a folder-plus icon button to a sidebar header action row."""
     btn = QPushButton()
-    btn.setIcon(qta.icon("fa5s.folder-plus"))
-    btn.setProperty("class", "IconButton")
+    theme = view_resolved_theme(theme_host)
+    btn.setIcon(themed_fa_icon("fa5s.folder-plus", accent_icon_color(theme), 16))
+    btn.setIconSize(QSize(16, 16))
     btn.setToolTip("New folder")
+    apply_ghost_icon_button_style(btn, theme)
     btn.clicked.connect(on_new_folder)
     if before_widget is not None:
         idx = header_layout.indexOf(before_widget)
@@ -150,22 +158,26 @@ class SidebarFolderListController:
     ) -> QPushButton:
         """Add sort menu button to a sidebar header action row."""
         btn = QPushButton()
-        btn.setIcon(qta.icon("fa5s.sort"))
-        btn.setProperty("class", "IconButton")
+        theme = view_resolved_theme(self.parent)
+        btn.setIcon(themed_fa_icon("fa5s.sort", accent_icon_color(theme), 16))
+        btn.setIconSize(QSize(16, 16))
         btn.setToolTip("Sort folders and items")
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        btn.setStyleSheet(
-            "QPushButton::menu-indicator { image: none; width: 0px; } "
-            "QPushButton { border: none; background: transparent; padding: 0px; }"
-        )
+        apply_ghost_icon_button_style(btn, theme, hide_menu_indicator=True)
 
         menu = QMenu(btn)
         self.apply_menu_theme(menu, self.get_is_dark())
         self.register_menu(menu, header=True)
+        theme = view_resolved_theme(self.parent, is_dark=self.get_is_dark())
 
-        by_name = menu.addAction(qta.icon("fa5s.sort-alpha-down", color="#89b4fa"), "By Name")
+        by_name = menu.addAction(
+            themed_fa_icon("fa5s.sort-alpha-down", theme.color(SIDEBAR_ACTION_ICON), 16),
+            "By Name",
+        )
         by_name.triggered.connect(lambda: self.set_sort_mode("name"))
-        by_date = menu.addAction(qta.icon("fa5s.sort-amount-down", color="#89b4fa"), "By Date")
+        by_date = menu.addAction(
+            themed_fa_icon("fa5s.sort-amount-down", theme.color(SIDEBAR_ACTION_ICON), 16),
+            "By Date",
+        )
         by_date.triggered.connect(lambda: self.set_sort_mode("date"))
 
         btn.setMenu(menu)
@@ -305,7 +317,10 @@ class SidebarFolderListController:
 
     def append_folder_row(self, folder: dict) -> None:
         is_dark = self.get_is_dark()
-        icon_color = "#6c7086" if is_dark else "#64748b"
+        theme = view_resolved_theme(self.parent, is_dark=is_dark)
+        icon_color = sidebar_row_action_icon_color(theme)
+        action_icon = theme.color(SIDEBAR_ACTION_ICON)
+        danger_icon = theme.color(DANGER_ICON)
         collapsed = bool(folder.get("is_collapsed"))
 
         item = QListWidgetItem()
@@ -341,7 +356,8 @@ class SidebarFolderListController:
         chevron_btn.setObjectName("HistoryFolderChevronBtn")
         chevron_btn.setFixedSize(24, 24)
         chevron_icon = "fa5s.chevron-right" if collapsed else "fa5s.chevron-down"
-        chevron_btn.setIcon(qta.icon(chevron_icon, color=icon_color))
+        chevron_btn.setProperty("sidebar_chevron_icon", chevron_icon)
+        chevron_btn.setIcon(themed_fa_icon(chevron_icon, icon_color, 12))
         chevron_btn.setIconSize(QSize(12, 12))
         chevron_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         chevron_btn.setStyleSheet(
@@ -360,7 +376,7 @@ class SidebarFolderListController:
         opts_btn = QPushButton()
         opts_btn.setObjectName("HistoryOptionsBtn")
         opts_btn.setFixedSize(28, 28)
-        opts_btn.setIcon(qta.icon("fa5s.ellipsis-v", color=icon_color))
+        opts_btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
         opts_btn.setIconSize(QSize(16, 16))
         opts_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         opts_btn.setStyleSheet(
@@ -375,7 +391,7 @@ class SidebarFolderListController:
 
         if not folder.get("is_system"):
             rename_action = menu.addAction(
-                qta.icon("fa5s.edit", color="#89b4fa"), "Rename Folder"
+                themed_fa_icon("fa5s.edit", action_icon, 16), "Rename Folder"
             )
             rename_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, old=folder["name"]: self.prompt_rename_folder(
@@ -384,7 +400,7 @@ class SidebarFolderListController:
             )
         if self.on_export_folder and self.scope == "conversation":
             export_action = menu.addAction(
-                qta.icon("fa5s.file-export", color="#89b4fa"), "Export"
+                themed_fa_icon("fa5s.file-export", action_icon, 16), "Export"
             )
             export_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, name=folder["name"]: self.on_export_folder(
@@ -394,7 +410,7 @@ class SidebarFolderListController:
         if not folder.get("is_system"):
             menu.addSeparator()
             delete_action = menu.addAction(
-                qta.icon("fa5s.trash-alt", color="#ef4444"), "Delete Folder"
+                themed_fa_icon("fa5s.trash-alt", danger_icon, 16), "Delete Folder"
             )
             delete_action.triggered.connect(
                 lambda _checked=False, f_id=folder_id, name=folder["name"]: self.prompt_delete_folder(

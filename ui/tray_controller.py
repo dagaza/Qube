@@ -17,10 +17,11 @@ from core.assistant_activity import (
     menu_status_line,
     tray_tooltip_for_activity,
 )
+from core.theme.view_theme import view_resolved_theme
+from ui.shell_theme import apply_prestige_menu_theme, resolve_shell_theme
 
 _TRAY_LOGO_NAME = "qube_logo_256.png"
 _TRAY_ICON_SIZES_PX = (16, 22, 24, 32)
-_TRAY_ICON_FALLBACK_COLOR = "#8b5cf6"
 
 
 def resolve_qube_logo_path() -> Path | None:
@@ -36,15 +37,20 @@ def resolve_qube_logo_path() -> Path | None:
     return None
 
 
-def build_tray_logo_icon(logo_path: Path | str | None = None) -> QIcon:
+def build_tray_logo_icon(
+    logo_path: Path | str | None = None,
+    *,
+    fallback_theme=None,
+) -> QIcon:
     """Build a multi-resolution QIcon suitable for Linux panel trays."""
     path = Path(logo_path) if logo_path is not None else resolve_qube_logo_path()
+    accent = (fallback_theme or resolve_shell_theme(None, is_dark=True)).accent
     if path is None or not path.is_file():
-        return qta.icon("fa5s.cube", color=_TRAY_ICON_FALLBACK_COLOR)
+        return qta.icon("fa5s.cube", color=accent)
 
     source = QPixmap(str(path))
     if source.isNull():
-        return qta.icon("fa5s.cube", color=_TRAY_ICON_FALLBACK_COLOR)
+        return qta.icon("fa5s.cube", color=accent)
 
     icon = QIcon()
     for size in _TRAY_ICON_SIZES_PX:
@@ -108,15 +114,11 @@ class TrayController(QWidget):
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
-        menu_bg = "#1e1e2e" if is_dark else "#ffffff"
-        menu_fg = "#cdd6f4" if is_dark else "#1e293b"
+        theme = resolve_shell_theme(self.parent(), is_dark=is_dark)
         if self._tray_icon is not None:
             menu = self._tray_icon.contextMenu()
             if menu is not None:
-                menu.setStyleSheet(
-                    f"QMenu {{ background-color: {menu_bg}; color: {menu_fg}; }}"
-                    f"QMenu::item:selected {{ background-color: {'#313244' if is_dark else '#e2e8f0'}; }}"
-                )
+                apply_prestige_menu_theme(menu, theme)
 
     def set_activity(
         self,

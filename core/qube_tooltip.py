@@ -162,44 +162,47 @@ class QubeToolTipController(QObject):
         self._refine_seq: int = 0
         self._refine_anchor_pos = QPoint()
         self._is_dark = True
+        self._theme: ResolvedTheme | None = None
 
     def set_dark_theme(self, is_dark: bool) -> None:
-        self._is_dark = is_dark
-        self._apply_shell_style()
+        self.set_theme(is_dark=is_dark)
 
-    def _apply_shell_style(self) -> None:
+    def set_theme(
+        self,
+        *,
+        is_dark: bool | None = None,
+        theme: "ResolvedTheme | None" = None,
+    ) -> None:
+        from core.theme.accessors import theme_for
+
+        resolved = theme_for(
+            is_dark=is_dark if is_dark is not None else self._is_dark,
+            resolved=theme,
+        )
+        self._is_dark = resolved.is_dark
+        self._theme = resolved
+        self._apply_shell_style(resolved)
+
+    def _apply_shell_style(self, theme: "ResolvedTheme | None" = None) -> None:
         if self._shell is None:
             return
-        if self._is_dark:
-            self._shell.setStyleSheet(
-                "QFrame#QubeToolTipFrame {"
-                " background-color: #1e1e2e;"
-                " border: 1px solid #89b4fa;"
-                " border-radius: 6px;"
-                "}"
-                "QLabel#QubeToolTipLabel {"
-                " color: #cdd6f4;"
-                " background: transparent;"
-                " border: none;"
-                " padding: 0px;"
-                " font-size: 11px;"
-                "}"
-            )
-        else:
-            self._shell.setStyleSheet(
-                "QFrame#QubeToolTipFrame {"
-                " background-color: #ffffff;"
-                " border: 1px solid #cbd5e1;"
-                " border-radius: 6px;"
-                "}"
-                "QLabel#QubeToolTipLabel {"
-                " color: #1e293b;"
-                " background: transparent;"
-                " border: none;"
-                " padding: 0px;"
-                " font-size: 11px;"
-                "}"
-            )
+        from core.theme.accessors import theme_for
+
+        resolved = theme or self._theme or theme_for(is_dark=self._is_dark)
+        self._shell.setStyleSheet(
+            "QFrame#QubeToolTipFrame {"
+            f" background-color: {resolved.tooltip_bg};"
+            f" border: 1px solid {resolved.tooltip_border};"
+            " border-radius: 6px;"
+            "}"
+            "QLabel#QubeToolTipLabel {"
+            f" color: {resolved.text_primary};"
+            " background: transparent;"
+            " border: none;"
+            " padding: 0px;"
+            " font-size: 11px;"
+            "}"
+        )
 
     def _ensure_popup(self) -> None:
         if self._popup is not None:
@@ -346,4 +349,4 @@ class QubeToolTipController(QObject):
 
 
 def qube_tooltip_set_theme(is_dark: bool) -> None:
-    QubeToolTipController.instance().set_dark_theme(is_dark)
+    QubeToolTipController.instance().set_theme(is_dark=is_dark)

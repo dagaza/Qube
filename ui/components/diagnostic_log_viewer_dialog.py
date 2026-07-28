@@ -21,8 +21,6 @@ from PyQt6.QtWidgets import (
 )
 
 from core.app_log_sink import app_log_env_override
-from core.llm_debug_sink import llm_debug_log_env_override
-from core.web_search_audit import web_search_audit_log_env_override
 from core.diagnostic_logs import (
     DiagnosticLogSpec,
     describe_log_status,
@@ -30,7 +28,18 @@ from core.diagnostic_logs import (
     open_path_in_system,
     read_log_tail,
 )
+from core.llm_debug_sink import llm_debug_log_env_override
+from core.theme.accessors import theme_for
+from core.theme.color_utils import with_alpha
+from core.theme.widget_styles import (
+    PRESTIGE_ACCENT_LABEL,
+    PRESTIGE_BODY_LABEL,
+    PRESTIGE_GHOST_BUTTON,
+    PRESTIGE_SOURCE_CONTAINER,
+)
+from core.web_search_audit import web_search_audit_log_env_override
 from mcp.routing_debug import routing_debug_log_env_override
+from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 from ui.components.toggle import PrestigeToggle
 
 logger = logging.getLogger("Qube.UI.DiagnosticLogViewer")
@@ -47,7 +56,7 @@ class DiagnosticLogViewerDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         if is_dark is None:
-            is_dark = getattr(parent.window() if parent else None, "_is_dark_theme", True)
+            is_dark = _resolve_is_dark_from_parent(parent)
         self._spec = spec
         self._is_dark = is_dark
         self._on_recording_toggle = on_recording_toggle
@@ -70,6 +79,8 @@ class DiagnosticLogViewerDialog(QDialog):
 
     def refresh_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
+        if self._recording_toggle is not None:
+            self._recording_toggle.apply_theme(is_dark=is_dark)
         self._apply_theme_styles()
 
     def sync_recording_toggle(self) -> None:
@@ -221,51 +232,41 @@ class DiagnosticLogViewerDialog(QDialog):
         outer.addWidget(self.container)
 
     def _apply_theme_styles(self) -> None:
-        is_dark = self._is_dark
-        bg, fg = ("#1e1e2e", "#cdd6f4") if is_dark else ("#ffffff", "#1e293b")
-        accent = "#89b4fa"
-        border = "rgba(255, 255, 255, 0.12)" if is_dark else "#cbd5e1"
-        surface = "#181825" if is_dark else "#f8fafc"
-        note_bg = "#45475a" if is_dark else "#e2e8f0"
+        theme = theme_for(is_dark=self._is_dark)
+        border = theme.border_subtle if theme.is_dark else theme.border
+        surface = theme.surface_elevated if theme.is_dark else theme.surface
+        hover_bg = with_alpha(theme.text_primary, 0.06 if theme.is_dark else 0.05)
+        body_style = theme.style(PRESTIGE_BODY_LABEL, font_size="12px", font_weight="400")
 
         self.container.setStyleSheet(
-            f"""
-            QFrame#DiagnosticLogViewerContainer {{
-                background: {bg};
-                border: 2px solid {accent};
-                border-radius: 20px;
-            }}
-            QLabel#DiagnosticLogViewerTitle {{
-                color: {accent};
-                font-weight: bold;
-                font-size: 11px;
-                letter-spacing: 2px;
-            }}
+            theme.style(
+                PRESTIGE_SOURCE_CONTAINER,
+                accent=theme.link,
+                object_name="DiagnosticLogViewerContainer",
+            )
+            + f"""
             QLabel#DiagnosticLogViewerPath,
             QLabel#DiagnosticLogViewerDescription,
             QLabel#DiagnosticLogViewerStatus {{
-                color: {fg};
-                font-size: 12px;
+                {body_style}
             }}
             QLabel#DiagnosticLogViewerNote {{
-                background: {note_bg};
-                color: {fg};
+                background: {theme.surface_pressed};
+                color: {theme.text_primary};
                 border-radius: 8px;
                 padding: 8px 12px;
                 font-size: 12px;
             }}
             QPlainTextEdit#DiagnosticLogViewerText {{
                 background: {surface};
-                color: {fg};
+                color: {theme.text_primary};
                 border: 1px solid {border};
                 border-radius: 12px;
                 padding: 12px 14px;
-                selection-background-color: {accent};
+                selection-background-color: {theme.link};
             }}
             QPushButton#DiagnosticLogViewerClose {{
-                background: transparent;
-                color: {fg};
-                border: 1px solid {border};
+                {theme.style(PRESTIGE_GHOST_BUTTON)}
                 border-radius: 8px;
                 padding: 0px;
                 min-width: 32px;
@@ -274,26 +275,23 @@ class DiagnosticLogViewerDialog(QDialog):
                 max-height: 32px;
             }}
             QPushButton#DiagnosticLogViewerClose:hover {{
-                background: rgba(255, 255, 255, 0.06);
+                background: {hover_bg};
             }}
             """
         )
-        self.close_btn.setIcon(qta.icon("fa5s.times", color=fg))
+        self.header_title_lbl.setStyleSheet(
+            theme.style(PRESTIGE_ACCENT_LABEL, accent=theme.link, font_size="11px")
+        )
+        self.close_btn.setIcon(qta.icon("fa5s.times", color=theme.text_primary))
         self.close_btn.setIconSize(QSize(14, 14))
-        btn_style = f"""
-            QPushButton {{
-                padding: 10px 16px;
-                border-radius: 10px;
-                font-weight: bold;
-                font-size: 12px;
-                color: {fg};
-                border: 1px solid {border};
-                background: transparent;
-            }}
+        btn_style = (
+            theme.style(PRESTIGE_GHOST_BUTTON)
+            + f"""
             QPushButton:hover {{
-                background: rgba(255, 255, 255, 0.05);
+                background: {hover_bg};
             }}
-        """
+            """
+        )
         for btn in (self.refresh_btn, self.external_btn):
             btn.setStyleSheet(btn_style)
 

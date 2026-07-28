@@ -159,7 +159,9 @@ class CompanionPreviewWidget(QFrame):
         body_radius = _PREVIEW_BODY_RADIUS
 
         primary_hex, secondary_hex = activity_color_pair(
-            self._demo_activity, app_settings.get_companion_idle_color()
+            self._demo_activity,
+            app_settings.get_companion_idle_color(),
+            is_dark=self._is_dark,
         )
         ctx = CompanionPaintContext(
             activity=self._demo_activity,

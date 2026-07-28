@@ -22,6 +22,8 @@ from PyQt6.QtWidgets import (
 from core.wakeword_testbed import WakewordTestbedState
 from ui.components.modal_backdrop import resolve_modal_backdrop_host
 from ui.components.selector_button import SelectorButton
+from ui.components.wakeword_testbed_theme import wakeword_testbed_stylesheet
+from ui.shell_theme import apply_prestige_menu_theme, chevron_colors, resolve_shell_theme
 from ui.components.brand_buttons import (
     apply_brand_primary,
     apply_brand_success,
@@ -312,161 +314,8 @@ class WakewordTestbedDialog(QDialog):
         outer.addWidget(self.container)
 
     def _apply_theme_styles(self) -> None:
-        if self._is_dark:
-            bg = "#1e1e2e"
-            fg = "#cdd6f4"
-            card = "#232337"
-            border = "rgba(255, 255, 255, 0.10)"
-            subtext = "rgba(205, 214, 244, 0.75)"
-            alert = "#f59e0b"
-            header_subtext = "rgba(205, 214, 244, 0.72)"
-        else:
-            bg = "#f8fafc"
-            fg = "#1e293b"
-            card = "#ffffff"
-            border = "#cbd5e1"
-            subtext = "#64748b"
-            alert = "#ea580c"
-            header_subtext = "#64748b"
-
-        self.container.setStyleSheet(
-            f"""
-            QFrame#WakewordLabContainer {{
-                background-color: {bg};
-                border: 1px solid {border};
-                border-radius: 14px;
-            }}
-            QFrame#WakewordGuidanceCard, QFrame#WakewordLiveCard, QFrame#WakewordResultsCard, QFrame#WakewordAdvancedCard {{
-                background-color: {card};
-                border: 1px solid {border};
-                border-radius: 10px;
-            }}
-            QFrame#WakewordGuidanceCard[state="attention"] {{ border: 1px solid #3b82f6; }}
-            QFrame#WakewordGuidanceCard[state="cancelled"] {{ border: 1px solid #dc2626; }}
-            QFrame#WakewordLiveCard[state="attention"] {{ border: 1px solid #3b82f6; }}
-            QFrame#WakewordResultsCard[state="success"] {{ border: 1px solid #16a34a; }}
-            QFrame#WakewordResultsCard[state="caution"] {{ border: 1px solid #eab308; }}
-            QFrame#WakewordResultsCard[state="failure"] {{ border: 1px solid #dc2626; }}
-            QLabel {{ color: {fg}; }}
-            QLabel#WakewordHeaderTitle {{ font-size: 18px; font-weight: 700; }}
-            QLabel#WakewordHeaderSubtitle {{ color: {header_subtext}; font-size: 12px; }}
-            QLabel#WakewordStageBadge {{
-                font-size: 11px;
-                font-weight: 700;
-                padding: 4px 10px;
-                border-radius: 8px;
-                background: rgba(139, 92, 246, 0.16);
-                color: #a78bfa;
-            }}
-            QLabel#WakewordStageBadge[state="attention"] {{ background: rgba(59, 130, 246, 0.16); color: #3b82f6; }}
-            QLabel#WakewordStageBadge[state="false_positive"] {{ background: rgba(245, 158, 11, 0.16); color: #f59e0b; }}
-            QLabel#WakewordStageBadge[state="success"] {{ background: rgba(34, 197, 94, 0.16); color: #16a34a; }}
-            QLabel#WakewordStageBadge[state="warning"] {{ background: rgba(234, 88, 12, 0.16); color: #ea580c; }}
-            QLabel#WakewordStageBadge[state="cancelled"] {{ background: rgba(239, 68, 68, 0.16); color: #dc2626; }}
-            QLabel#WakewordStageBadge[state="error"] {{ background: rgba(239, 68, 68, 0.16); color: #dc2626; }}
-            QLabel#WakewordGuidanceTitle {{ font-size: 15px; font-weight: 600; }}
-            QLabel#WakewordGuidanceHint, QLabel#WakewordAdvancedLockHint {{ color: {subtext}; font-size: 12px; }}
-            QLabel#WakewordAlertLabel {{ color: {alert}; font-weight: 600; }}
-            QLabel#WakewordAdvancedTitle {{ color: {fg}; font-size: 12px; font-weight: 700; }}
-            QLabel#WakewordResultsVerdict {{ font-size: 15px; font-weight: 700; }}
-            QLabel#WakewordResultsVerdict[result_tone="success"] {{ color: #16a34a; }}
-            QLabel#WakewordResultsVerdict[result_tone="caution"] {{ color: #eab308; }}
-            QLabel#WakewordResultsVerdict[result_tone="failure"] {{ color: #dc2626; }}
-            QLabel#WakewordResultsMetric {{ font-size: 13px; }}
-            QLabel#WakewordResultsDetail {{ color: {subtext}; font-size: 12px; }}
-            QLabel#WakewordFalsePositivePromptLabel {{
-                color: #3b82f6;
-                font-size: 12px;
-                font-weight: 700;
-            }}
-            QLabel#WakewordFalsePositiveScriptLabel {{
-                color: {fg};
-                font-size: 12px;
-                font-style: italic;
-            }}
-            QPushButton#WakewordHeaderCloseButton {{
-                border: 1px solid {border};
-                border-radius: 8px;
-                padding: 4px;
-                font-weight: 700;
-            }}
-            QPushButton#WakewordApplyButton[result_tone="success"] {{
-                background-color: #16a34a;
-                color: #ffffff;
-                border: 1px solid #16a34a;
-                border-radius: 8px;
-                padding: 8px 15px;
-                font-weight: 600;
-            }}
-            QPushButton#WakewordApplyButton[result_tone="caution"] {{
-                background-color: #eab308;
-                color: #1e293b;
-                border: 1px solid #eab308;
-                border-radius: 8px;
-                padding: 8px 15px;
-                font-weight: 600;
-            }}
-            QPushButton#WakewordApplyButton[result_tone="failure"] {{
-                background-color: #dc2626;
-                color: #ffffff;
-                border: 1px solid #dc2626;
-                border-radius: 8px;
-                padding: 8px 15px;
-                font-weight: 600;
-            }}
-            QProgressBar {{
-                background-color: transparent;
-                border: 1px solid {border};
-                border-radius: 6px;
-                text-align: center;
-                color: {subtext};
-                min-height: 16px;
-            }}
-            QProgressBar::chunk {{
-                background-color: #8b5cf6;
-                border-radius: 5px;
-            }}
-            QProgressBar#WakewordInstructionBar {{
-                background-color: transparent;
-                border: 1px solid transparent;
-                padding: 2px 0px;
-                font-weight: 700;
-                color: #3b82f6;
-            }}
-            QProgressBar#WakewordInstructionBar::chunk {{
-                background-color: transparent;
-                border-radius: 0px;
-            }}
-            QProgressBar#WakewordInstructionBar[state="countdown"] {{ color: #ea580c; }}
-            QProgressBar#WakewordInstructionBar[state="listening"] {{ color: #16a34a; }}
-            QProgressBar#WakewordAttemptCounter {{
-                background-color: transparent;
-                border: 1px solid transparent;
-                padding: 4px 0px 0px 0px;
-            }}
-            QProgressBar#WakewordAttemptCounter::chunk {{
-                background-color: transparent;
-                border-radius: 0px;
-            }}
-            QSlider::groove:horizontal {{
-                height: 6px;
-                background: transparent;
-                border: 1px solid {border};
-                border-radius: 3px;
-            }}
-            QSlider::sub-page:horizontal {{
-                background: #8b5cf6;
-                border-radius: 3px;
-            }}
-            QSlider::handle:horizontal {{
-                width: 16px;
-                margin: -6px 0;
-                border-radius: 8px;
-                background: #8b5cf6;
-                border: 1px solid {border};
-            }}
-            """
-        )
+        theme = resolve_shell_theme(self, is_dark=self._is_dark)
+        self.container.setStyleSheet(wakeword_testbed_stylesheet(theme))
         self._refresh_widget_style(self.guidance_card)
         self._refresh_widget_style(self.stage_badge_lbl)
 
@@ -613,49 +462,15 @@ class WakewordTestbedDialog(QDialog):
         button.setMenu(menu)
 
     def _apply_menu_theme(self, menu, is_dark: bool) -> None:
-        from PyQt6.QtGui import QColor, QPalette
-
-        palette = QPalette()
-        if is_dark:
-            bg = QColor("#1e1e2e")
-            fg = QColor("#cdd6f4")
-            sel_fg = QColor("#cdd6f4")
-            border = "rgba(255, 255, 255, 0.1)"
-            hover = "#313244"
-        else:
-            bg = QColor("#ffffff")
-            fg = QColor("#1e293b")
-            sel_fg = QColor("#0f172a")
-            border = "#cbd5e1"
-            hover = "#f1f5f9"
-
-        for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base):
-            palette.setColor(role, bg)
-        palette.setColor(QPalette.ColorRole.WindowText, fg)
-        palette.setColor(QPalette.ColorRole.Text, fg)
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(hover))
-        palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
-
-        menu.setPalette(palette)
-        menu.setStyleSheet(
-            f"""
-            QMenu {{ background-color: {bg.name()}; border: 1px solid {border}; border-radius: 6px; padding: 4px; }}
-            QListWidget#PrestigeMenuList {{ background-color: transparent; border: none; outline: none; }}
-            QListWidget#PrestigeMenuList::item {{ background-color: transparent; color: {fg.name()}; padding: 8px 25px; border-radius: 4px; min-height: 24px; }}
-            QListWidget#PrestigeMenuList::item:selected, QListWidget#PrestigeMenuList::item:hover {{ background-color: {hover}; color: {sel_fg.name()}; }}
-            QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
-            QScrollBar::handle:vertical {{ background: {border}; border-radius: 3px; min-height: 20px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-            """
-        )
+        apply_prestige_menu_theme(menu, resolve_shell_theme(self, is_dark=is_dark))
 
     def _apply_settings_menu_button_chevron_state(self, button: QPushButton) -> None:
         if isinstance(button, SelectorButton):
             button.apply_theme(self._is_dark)
             return
-        muted = "#3f3f46" if self._is_dark else "#a1a1aa"
-        active = "#64748b"
-        button.setIcon(qta.icon("fa5s.chevron-down", color=active if button.isEnabled() else muted))
+        theme = resolve_shell_theme(self, is_dark=self._is_dark)
+        color = chevron_colors(theme, enabled=button.isEnabled())
+        button.setIcon(qta.icon("fa5s.chevron-down", color=color))
 
     def _on_wakeword_selector_changed(self, display_name: str) -> None:
         if not self.audio_worker:

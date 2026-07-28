@@ -26,8 +26,6 @@ Technical reference for contributors and advanced users. For everyday how-to, us
 | Memory manual QA | [memory_manual_qa.md](../memory_manual_qa.md) |
 | ADRs | [adr/README.md](../adr/README.md) |
 | Launch doc playbook | [launch_documentation_guidelines.md](../launch_documentation_guidelines.md) |
-| Competitive positioning | [user/competitive-landscape.md](../user/competitive-landscape.md) |
-| **Competitive roadmap (dev priorities)** | [competitive_roadmap.md](../competitive_roadmap.md) |
 
 ---
 

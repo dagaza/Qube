@@ -108,7 +108,7 @@ class TestThemeToggleProfiler:
         assert result["total_ms"] >= 0
         assert [name for name, _ in result["steps"]] == ["alpha", "beta"]
         assert "theme toggle total=" in caplog.text
-        assert "context widgets=3" in caplog.text
+        assert "widgets=3" in caplog.text
         assert "alpha=" in caplog.text
         assert "beta=" in caplog.text
 
