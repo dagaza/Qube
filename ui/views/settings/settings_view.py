@@ -562,6 +562,9 @@ class SettingsView(
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
         self._apply_settings_section_control_styles(content_widget, is_dark=is_dark)
+        from ui.views.settings.settings_card_style import sync_settings_collapsible_cards
+
+        sync_settings_collapsible_cards(self, is_dark=is_dark)
         return True
 
     def _mount_settings_section_content(
@@ -675,12 +678,20 @@ class SettingsView(
             if wrapper is not None:
                 wrapper.setVisible(internal)
         for lbl in getattr(self, "_ai_internal_subsection_labels", []):
-            lbl.setVisible(internal)
+            if lbl is not None:
+                lbl.setVisible(internal)
+        internal_tuning_card = getattr(self, "_ai_internal_tuning_card", None)
+        if internal_tuning_card is not None:
+            internal_tuning_card.setVisible(internal)
         hint = getattr(self, "_ai_external_engine_hint", None)
         if hint is not None:
             hint.setVisible(not internal)
         if hasattr(self, "_sync_hardware_chat_template_panels"):
             self._sync_hardware_chat_template_panels()
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+        from ui.views.settings.settings_card_style import sync_settings_collapsible_cards
+
+        sync_settings_collapsible_cards(self, is_dark=coalesce_settings_is_dark(self))
     def _on_settings_search_changed(self, text: str) -> None:
         query = text.strip().lower()
         first_match_row: int | None = None
@@ -1115,13 +1126,20 @@ class SettingsView(
         cards = getattr(self, "_settings_collapsible_cards_by_section", {}).get(
             section_id, ()
         )
-        if len(cards) < 2:
+        from ui.views.settings.settings_card_style import collapsible_card_has_title
+
+        titled_cards = [
+            handle
+            for handle in cards
+            if collapsible_card_has_title(handle)
+        ]
+        if len(titled_cards) < 2:
             btn.hide()
             return
         btn.show()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         color = "#89b4fa" if is_dark else "#64748b"
-        all_expanded = all(handle.expanded for handle in cards)
+        all_expanded = all(handle.expanded for handle in titled_cards)
         icon_name = "fa5s.chevron-up" if all_expanded else "fa5s.chevron-down"
         btn.setIcon(qta.icon(icon_name, color=color))
         btn.setToolTip(

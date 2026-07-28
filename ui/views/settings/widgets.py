@@ -262,15 +262,23 @@ def add_settings_field_row(
     form.addRow(label, field)
 
 
-def add_settings_card_form(card_layout: QVBoxLayout) -> QFormLayout:
-    """Attach a settings form to a section card and return its layout."""
+def prepare_settings_card_form(
+    card_layout: QVBoxLayout,
+) -> tuple[QWidget, QFormLayout]:
+    """Create a card form wired for collapse headers before ``addWidget(form_host)``."""
     from ui.views.settings.settings_card_style import resolve_collapsible_handle_for_layout
 
     form_host, form = make_settings_form()
-    card_layout.addWidget(form_host)
     handle = resolve_collapsible_handle_for_layout(card_layout)
     if handle is not None:
         form._settings_collapsible_handle = handle  # type: ignore[attr-defined]
+    return form_host, form
+
+
+def add_settings_card_form(card_layout: QVBoxLayout) -> QFormLayout:
+    """Attach a settings form to a section card and return its layout."""
+    form_host, form = prepare_settings_card_form(card_layout)
+    card_layout.addWidget(form_host)
     return form
 
 
@@ -300,12 +308,14 @@ def make_subsection_label(text: str, *, anchor: str | None = None) -> QLabel:
 def add_subsection_to_form(
     form: QFormLayout, text: str, *, anchor: str | None = None
 ) -> QLabel:
-    handle = getattr(form, "_settings_collapsible_handle", None)
+    from ui.views.settings.settings_card_style import (
+        apply_collapsible_card_title,
+        resolve_collapsible_handle_for_form,
+    )
+
+    handle = resolve_collapsible_handle_for_form(form)
     if handle is not None:
-        handle.title_lbl.setText(text)
-        if anchor:
-            handle.title_lbl.setProperty("settings_anchor", anchor)
-        return handle.title_lbl
+        return apply_collapsible_card_title(handle, text, anchor=anchor)
     lbl = make_subsection_label(text, anchor=anchor)
     form.addRow(lbl)
     return lbl
@@ -314,14 +324,14 @@ def add_subsection_to_form(
 def add_subsection_to_layout(
     layout: QVBoxLayout, text: str, *, anchor: str | None = None
 ) -> QLabel:
-    from ui.views.settings.settings_card_style import resolve_collapsible_handle_for_layout
+    from ui.views.settings.settings_card_style import (
+        apply_collapsible_card_title,
+        resolve_collapsible_handle_for_layout,
+    )
 
     handle = resolve_collapsible_handle_for_layout(layout)
     if handle is not None:
-        handle.title_lbl.setText(text)
-        if anchor:
-            handle.title_lbl.setProperty("settings_anchor", anchor)
-        return handle.title_lbl
+        return apply_collapsible_card_title(handle, text, anchor=anchor)
     lbl = make_subsection_label(text, anchor=anchor)
     layout.addWidget(lbl)
     return lbl
@@ -437,7 +447,9 @@ def collect_theme_buttons(host) -> None:
         host._theme_buttons.append(btn)
 
 
-def track_internal_ai_label(host, label: QLabel) -> None:
+def track_internal_ai_label(host, label: QLabel | None) -> None:
+    if label is None:
+        return
     labels = getattr(host, "_ai_internal_subsection_labels", None)
     if labels is None:
         host._ai_internal_subsection_labels = []

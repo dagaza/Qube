@@ -27,7 +27,7 @@ from ui.views.settings.widgets import (
     add_settings_card_form,
     add_subsection_to_form,
     add_settings_full_width_row,
-    make_settings_form,
+    prepare_settings_card_form,
     register_settings_selector_width,
     schedule_settings_selector_refit,
 )
@@ -72,7 +72,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     general_layout.addWidget(language_card)
 
     personal_card, personal_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    personal_form_host, personal_form = make_settings_form()
+    personal_form_host, personal_form = prepare_settings_card_form(personal_card_layout)
     add_subsection_to_form(personal_form, "Personalization", anchor="personalization")
 
     host.profile_units_selector = SelectorButton("Use inferred units", is_dark=is_dark)

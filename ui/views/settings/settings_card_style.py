@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import qtawesome as qta
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QFormLayout,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -24,6 +25,30 @@ _COLLAPSE_ICON = "fa5s.chevron-right"
 _EXPAND_ICON = "fa5s.chevron-down"
 
 
+class _CollapsibleCardHeader(QWidget):
+    """Full-width header row; click anywhere (chevron or title) to toggle the card."""
+
+    def __init__(self, host, *, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("SettingsCollapsibleCardHeader")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._host = host
+        self._handle: SettingsCollapsibleCardHandle | None = None
+
+    def bind(self, handle: SettingsCollapsibleCardHandle) -> None:
+        self._handle = handle
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if (
+            self._handle is not None
+            and event.button() == Qt.MouseButton.LeftButton
+        ):
+            _on_card_toggle_clicked(self._handle, self._host)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
 @dataclass
 class SettingsCollapsibleCardHandle:
     """One collapsible settings card on a settings page."""
@@ -38,6 +63,14 @@ class SettingsCollapsibleCardHandle:
     expanded: bool = True
 
     def set_expanded(self, expanded: bool) -> None:
+        from core.app_settings import get_settings_section_cards_collapsible
+
+        if not get_settings_section_cards_collapsible() or not collapsible_card_has_title(
+            self
+        ):
+            self.expanded = True
+            self.card.setVisible(True)
+            return
         self.expanded = expanded
         self.card.setVisible(expanded)
         icon_name = _EXPAND_ICON if expanded else _COLLAPSE_ICON
@@ -80,8 +113,19 @@ def apply_settings_section_card_theme(card: QFrame, *, is_dark: bool) -> None:
     )
 
 
-def begin_settings_section_card(host, *, is_dark: bool) -> tuple[QWidget, QVBoxLayout]:
-    """Create a settings section card (optionally wrapped with collapse chrome)."""
+def begin_settings_section_card(
+    host,
+    *,
+    is_dark: bool,
+    card_title: str | None = None,
+    card_anchor: str | None = None,
+) -> tuple[QWidget, QVBoxLayout]:
+    """Create a settings section card (optionally wrapped with collapse chrome).
+
+    Collapse chevron + header title stay hidden until title text is applied via
+    ``add_subsection_to_*`` or a ``settings_card_title`` property (see
+    ``sync_settings_collapsible_cards`` after the card body is built).
+    """
     card = QFrame()
     card.setMinimumWidth(0)
     card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -101,6 +145,10 @@ def begin_settings_section_card(host, *, is_dark: bool) -> tuple[QWidget, QVBoxL
     )
     if handle is not None:
         inner_layout._settings_collapsible_handle = handle  # type: ignore[attr-defined]
+        if card_title and card_title.strip():
+            handle.wrapper.setProperty("settings_card_title", card_title.strip())
+        if card_anchor and card_anchor.strip():
+            handle.wrapper.setProperty("settings_card_anchor", card_anchor.strip())
         from core.app_settings import get_settings_section_cards_default_expanded
 
         handle.set_expanded(get_settings_section_cards_default_expanded())
@@ -131,11 +179,12 @@ def sync_settings_collapsible_cards(host, *, is_dark: bool) -> None:
     by_section = getattr(host, "_settings_collapsible_cards_by_section", {}) or {}
     for handles in by_section.values():
         for handle in handles:
-            handle.header.setVisible(enabled)
             handle.toggle_btn.setProperty("_chevron_color", chevron_color)
-            if enabled:
+            _apply_pending_collapsible_card_title(handle)
+            sync_collapsible_header_visibility(handle)
+            if enabled and collapsible_card_has_title(handle):
                 handle.set_expanded(handle.expanded)
-            else:
+            elif not enabled:
                 handle.card.setVisible(True)
     if hasattr(host, "_sync_settings_collapse_all_button"):
         section_id = _current_settings_section_id(host)
@@ -152,6 +201,9 @@ def set_settings_collapsible_cards_expanded(
         getattr(host, "_settings_collapsible_cards_by_section", {}) or {}
     ).get(section_id, ())
     for handle in handles:
+        if not collapsible_card_has_title(handle):
+            handle.set_expanded(True)
+            continue
         handle.set_expanded(expanded)
     if hasattr(host, "_sync_settings_collapse_all_button"):
         host._sync_settings_collapse_all_button(section_id)
@@ -159,6 +211,84 @@ def set_settings_collapsible_cards_expanded(
 
 def resolve_collapsible_handle_for_layout(layout) -> SettingsCollapsibleCardHandle | None:
     return getattr(layout, "_settings_collapsible_handle", None)
+
+
+def resolve_collapsible_handle_for_form(
+    form: QFormLayout,
+) -> SettingsCollapsibleCardHandle | None:
+    """Find the card collapse handle for forms created via ``make_settings_form()``."""
+    cached = getattr(form, "_settings_collapsible_handle", None)
+    if cached is not None:
+        return cached
+
+    widget = form.parentWidget()
+    while widget is not None:
+        layout = widget.layout()
+        if isinstance(layout, QVBoxLayout):
+            handle = resolve_collapsible_handle_for_layout(layout)
+            if handle is not None:
+                form._settings_collapsible_handle = handle  # type: ignore[attr-defined]
+                return handle
+        widget = widget.parentWidget()
+    return None
+
+
+def collapsible_card_has_title(handle: SettingsCollapsibleCardHandle) -> bool:
+    """True when the outward-facing header title is set and visible."""
+    title_lbl = handle.title_lbl
+    return bool((title_lbl.text() or "").strip()) and title_lbl.isVisibleTo(
+        handle.header
+    )
+
+
+def _apply_pending_collapsible_card_title(handle: SettingsCollapsibleCardHandle) -> None:
+    """Apply a declarative ``settings_card_title`` property once the card body is ready."""
+    if collapsible_card_has_title(handle):
+        return
+    pending = handle.wrapper.property("settings_card_title")
+    if not pending or not str(pending).strip():
+        return
+    anchor = handle.wrapper.property("settings_card_anchor")
+    anchor_text = str(anchor).strip() if anchor else None
+    apply_collapsible_card_title(handle, str(pending).strip(), anchor=anchor_text)
+
+
+def sync_collapsible_header_visibility(handle: SettingsCollapsibleCardHandle) -> None:
+    """Show chevron + title only when collapse is enabled and title text is available."""
+    from core.app_settings import get_settings_section_cards_collapsible
+
+    enabled = get_settings_section_cards_collapsible()
+    has_title = collapsible_card_has_title(handle)
+    handle.header.setVisible(enabled and has_title)
+    if not enabled or not has_title:
+        handle.card.setVisible(True)
+        handle.expanded = True
+
+
+def apply_collapsible_card_title(
+    handle: SettingsCollapsibleCardHandle,
+    text: str,
+    *,
+    anchor: str | None = None,
+) -> QLabel:
+    """Set the outward-facing title beside the chevron (not inside the card body)."""
+    title = (text or "").strip()
+    handle.title_lbl.setText(title)
+    if anchor:
+        handle.title_lbl.setProperty("settings_anchor", anchor)
+    else:
+        handle.title_lbl.setProperty("settings_anchor", None)
+    handle.title_lbl._settings_collapsible_handle = handle  # type: ignore[attr-defined]
+    sync_collapsible_header_visibility(handle)
+    if collapsible_card_has_title(handle):
+        from core.app_settings import (
+            get_settings_section_cards_collapsible,
+            get_settings_section_cards_default_expanded,
+        )
+
+        if get_settings_section_cards_collapsible():
+            handle.set_expanded(get_settings_section_cards_default_expanded())
+    return handle.title_lbl
 
 
 def _wrap_collapsible_card(
@@ -179,22 +309,28 @@ def _wrap_collapsible_card(
     toggle_btn = QPushButton()
     toggle_btn.setObjectName("SettingsSectionCardToggle")
     toggle_btn.setFixedSize(30, 30)
-    toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    toggle_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     toggle_btn.setStyleSheet("background: transparent; border: none;")
     toggle_btn.setProperty("_chevron_color", chevron_color)
+    toggle_btn.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
     title_lbl = QLabel("")
     title_lbl.setObjectName("SettingsSubsectionLabel")
+    title_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    title_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
-    header = QWidget()
-    header.setObjectName("SettingsCollapsibleCardHeader")
+    header = _CollapsibleCardHeader(host)
     header_layout = QHBoxLayout(header)
     header_layout.setContentsMargins(0, 0, 0, 0)
     header_layout.setSpacing(4)
     header_layout.addWidget(
         toggle_btn, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
     )
-    header_layout.addWidget(title_lbl, stretch=1)
+    header_layout.addWidget(
+        title_lbl,
+        stretch=1,
+        alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+    )
 
     wrapper_layout.addWidget(header)
     wrapper_layout.addWidget(card)
@@ -209,10 +345,7 @@ def _wrap_collapsible_card(
         title_lbl=title_lbl,
     )
     title_lbl._settings_collapsible_handle = handle  # type: ignore[attr-defined]
-
-    toggle_btn.clicked.connect(
-        lambda _checked=False, h=handle, view=host: _on_card_toggle_clicked(h, view)
-    )
+    header.bind(handle)
 
     by_section = getattr(host, "_settings_collapsible_cards_by_section", None)
     if by_section is None:
@@ -222,8 +355,9 @@ def _wrap_collapsible_card(
 
     from core.app_settings import get_settings_section_cards_collapsible
 
-    header.setVisible(get_settings_section_cards_collapsible())
-    handle.set_expanded(True)
+    sync_collapsible_header_visibility(handle)
+    if get_settings_section_cards_collapsible():
+        handle.set_expanded(True)
     return wrapper, handle
 
 

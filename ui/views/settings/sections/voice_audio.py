@@ -35,7 +35,7 @@ from ui.views.settings.settings_theme import (
 from ui.views.settings.widgets import (
     add_section_reset_footer,
     add_subsection_to_form,
-    make_settings_form,
+    prepare_settings_card_form,
     SETTINGS_SELECTOR_MIN_WIDTH_PROP,
     wrap_subsection,
     add_settings_full_width_row,
@@ -415,7 +415,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Devices card ---
     devices_card, devices_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    devices_form_host, devices_form = make_settings_form()
+    devices_form_host, devices_form = prepare_settings_card_form(devices_card_layout)
     add_subsection_to_form(devices_form, "Devices")
 
     host.mic_selector = SelectorButton("Select Input Device...", is_dark=is_dark)
@@ -476,7 +476,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Wakeword + Speech Detection card ---
     detection_card, detection_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    detection_form_host, detection_form = make_settings_form()
+    detection_form_host, detection_form = prepare_settings_card_form(detection_card_layout)
 
     add_subsection_to_form(detection_form, "Wakeword", anchor="wakeword")
 
@@ -596,7 +596,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Toolbar card ---
     toolbar_card, toolbar_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    toolbar_form_host, toolbar_form = make_settings_form()
+    toolbar_form_host, toolbar_form = prepare_settings_card_form(toolbar_card_layout)
     add_subsection_to_form(toolbar_form, "Toolbar")
 
     host.pin_audio_cb = QCheckBox("Pin Audio Controls to Toolbar")
@@ -625,7 +625,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Advanced Voice & Audio Options card ---
     advanced_card, advanced_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    advanced_form_host, advanced_form = make_settings_form()
+    advanced_form_host, advanced_form = prepare_settings_card_form(advanced_card_layout)
     add_subsection_to_form(advanced_form, "Advanced Voice & Audio Options")
     _add_stt_advanced_options(host, advanced_form)
     _add_tts_advanced_options(host, advanced_form)
