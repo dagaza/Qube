@@ -194,15 +194,6 @@ jobs:
           "sha256=$hash" >> $env:GITHUB_OUTPUT
           "filename=$($file.Name)" >> $env:GITHUB_OUTPUT
 
-      - name: Generate WinGet manifests
-        if: matrix.variant == 'cpu'
-        run: python scripts/render_winget_manifests.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
-
-      - name: Validate WinGet manifests
-        if: matrix.variant == 'cpu'
-        shell: pwsh
-        run: winget validate --manifest "winget/out/${{ steps.version.outputs.version }}"
-
       - name: Render Chocolatey package
         if: matrix.variant == 'cpu'
         run: python scripts/render_chocolatey_package.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
@@ -229,13 +220,6 @@ jobs:
             installer/output/Qube-${{ steps.version.outputs.version }}-Setup.exe
             installer/output/Qube-${{ steps.version.outputs.version }}-vulkan-Setup.exe
             installer/output/Qube-${{ steps.version.outputs.version }}-cuda-Setup.exe
-
-      - name: Upload WinGet manifests
-        if: matrix.variant == 'cpu'
-        uses: actions/upload-artifact@v4
-        with:
-          name: winget-manifests-${{ steps.version.outputs.version }}
-          path: winget/out/${{ steps.version.outputs.version }}/
 
       - name: Upload Chocolatey package
         if: matrix.variant == 'cpu'
@@ -440,11 +424,15 @@ jobs:
             **Windows** (pick the build that matches your GPU)
 
             ```powershell
-            # CPU-only (works everywhere; WinGet/Chocolatey use this build):
-            winget install -e --id ${{ env.PACKAGE_ID }}
+            # CPU (works everywhere; Chocolatey uses this build):
+            winget install -e --id dagaza.Qube
             choco install qube
 
-            # Direct download from assets below:
+            # GPU builds (WinGet — install one variant only):
+            winget install -e --id dagaza.Qube.Vulkan   # AMD / Intel
+            winget install -e --id dagaza.Qube.CUDA     # NVIDIA
+
+            # Or direct download from assets below:
             # Qube-${{ needs.build.outputs.version }}-Setup.exe          — CPU
             # Qube-${{ needs.build.outputs.version }}-vulkan-Setup.exe   — AMD / Intel (Vulkan)
             # Qube-${{ needs.build.outputs.version }}-cuda-Setup.exe     — NVIDIA (CUDA)
@@ -498,8 +486,51 @@ jobs:
 
             **Update an existing install:** run the new **`Qube-${{ needs.build.outputs.version }}-Setup.exe`** (Windows), replace **`Qube.app`** from the DMG (macOS), or **`sudo apt install ./qube_….deb`** / re-run **`install_appimage.sh`** (Linux). User data is kept — see [Update Qube](https://github.com/dagaza/Qube/blob/main/docs/user/update-qube.md).
 
+  winget-manifests:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*-${{ needs.build.outputs.version }}
+          merge-multiple: true
+          path: installers
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Compute SHA256 and render WinGet manifests
+        shell: pwsh
+        run: |
+          $version = "${{ needs.build.outputs.version }}"
+          $cpu = (Get-FileHash "installers/Qube-$version-Setup.exe" -Algorithm SHA256).Hash
+          $vulkan = (Get-FileHash "installers/Qube-$version-vulkan-Setup.exe" -Algorithm SHA256).Hash
+          $cuda = (Get-FileHash "installers/Qube-$version-cuda-Setup.exe" -Algorithm SHA256).Hash
+          python scripts/render_winget_manifests.py `
+            --version $version `
+            --cpu-sha256 $cpu `
+            --vulkan-sha256 $vulkan `
+            --cuda-sha256 $cuda
+
+      - name: Validate WinGet manifests
+        shell: pwsh
+        run: |
+          $version = "${{ needs.build.outputs.version }}"
+          foreach ($pkg in @("dagaza.Qube", "dagaza.Qube.Vulkan", "dagaza.Qube.CUDA")) {
+            winget validate --manifest "winget/out/$version/$pkg"
+          }
+
+      - name: Upload WinGet manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests-${{ needs.build.outputs.version }}
+          path: winget/out/${{ needs.build.outputs.version }}/
+
   winget:
-    needs: [build, release]
+    needs: [build, release, winget-manifests]
     runs-on: windows-latest
     if: github.repository == 'dagaza/Qube' && vars.WINGET_AUTO_SUBMIT == 'true'
     steps:
@@ -508,19 +539,16 @@ jobs:
           name: winget-manifests-${{ needs.build.outputs.version }}
           path: winget/out/${{ needs.build.outputs.version }}
 
-      - name: Submit WinGet manifest PR
+      - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash
         env:
           WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
         run: |
-          VERSION="${{ needs.build.outputs.version }}"
-          URL="https://github.com/dagaza/Qube/releases/download/v${VERSION}/Qube-${VERSION}-Setup.exe"
           curl -sL "${{ env.WINGETCREATE_URL }}" -o wingetcreate.exe
-          ./wingetcreate.exe update ${{ env.PACKAGE_ID }} \
-            --version "$VERSION" \
-            --urls "$URL" \
-            --token "$WINGET_TOKEN" \
-            --submit
+          bash scripts/release/submit_winget_packages.sh \
+            "${{ needs.build.outputs.version }}" \
+            "$WINGET_TOKEN" \
+            ./wingetcreate.exe
 
   homebrew:
     needs: [macos-build, release]

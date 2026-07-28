@@ -1,12 +1,13 @@
 name: WinGet Submit
 
 # One-off or catch-up WinGet PRs without cutting a new app release.
-# Requires an existing GitHub Release with Qube-<version>-Setup.exe.
+# Requires an existing GitHub Release with all three Windows installers:
+# Qube-<version>-Setup.exe, -vulkan-Setup.exe, and -cuda-Setup.exe.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version to submit (e.g. 1.2.4 or v1.2.4)"
+        description: "Release version to submit (e.g. 1.2.5 or v1.2.5)"
         required: true
         type: string
 
@@ -14,7 +15,6 @@ permissions:
   contents: read
 
 env:
-  PACKAGE_ID: dagaza.Qube
   WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe
 
 jobs:
@@ -22,17 +22,15 @@ jobs:
     runs-on: windows-latest
     if: github.repository == 'dagaza/Qube'
     steps:
-      - name: Submit WinGet manifest PR
+      - uses: actions/checkout@v4
+
+      - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash
         env:
           WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
         run: |
-          VERSION="${{ inputs.version }}"
-          VERSION="${VERSION#v}"
-          URL="https://github.com/dagaza/Qube/releases/download/v${VERSION}/Qube-${VERSION}-Setup.exe"
           curl -sL "${{ env.WINGETCREATE_URL }}" -o wingetcreate.exe
-          ./wingetcreate.exe update ${{ env.PACKAGE_ID }} \
-            --version "$VERSION" \
-            --urls "$URL" \
-            --token "$WINGET_TOKEN" \
-            --submit
+          bash scripts/release/submit_winget_packages.sh \
+            "${{ inputs.version }}" \
+            "$WINGET_TOKEN" \
+            ./wingetcreate.exe
