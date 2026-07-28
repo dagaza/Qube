@@ -104,7 +104,33 @@ Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. 
 | **vulkan** | AMD / Intel GPU |
 | **cuda** | NVIDIA GPU (recent driver) |
 
-Linux artifact examples: `Qube-<version>-x86_64-vulkan.AppImage`, `qube-vulkan_<version>_amd64.deb`, `qube-vulkan-<version>-1.x86_64.rpm`. Windows: `Qube-<version>-vulkan-Setup.exe`, `Qube-<version>-cuda-Setup.exe`.
+**Windows package managers** — same three variants on WinGet and Chocolatey:
+
+| Variant | WinGet | Chocolatey | GitHub Releases installer |
+|---------|--------|------------|---------------------------|
+| **cpu** | `dagaza.Qube` | `qube` | `Qube-<version>-Setup.exe` |
+| **vulkan** | `dagaza.Qube.Vulkan` | `qube-vulkan` | `Qube-<version>-vulkan-Setup.exe` |
+| **cuda** | `dagaza.Qube.CUDA` | `qube-cuda` | `Qube-<version>-cuda-Setup.exe` |
+
+```powershell
+# CPU (works on any PC)
+winget install -e --id dagaza.Qube
+choco install qube -y
+
+# Vulkan (AMD / Intel GPU)
+winget install -e --id dagaza.Qube.Vulkan
+choco install qube-vulkan -y
+
+# CUDA (NVIDIA GPU — recent driver required)
+winget install -e --id dagaza.Qube.CUDA
+choco install qube-cuda -y
+```
+
+To **upgrade**, use the same ID as your installed variant (`winget upgrade -e --id …` or `choco upgrade qube-vulkan -y`, etc.). Switching GPU builds means installing the other package or running the matching `.exe` from Releases — see **[Update Qube](docs/user/update-qube.md)**.
+
+Linux artifact examples: `Qube-<version>-x86_64-vulkan.AppImage`, `qube-vulkan_<version>_amd64.deb`, `qube-vulkan-<version>-1.x86_64.rpm`. Windows direct download: `Qube-<version>-vulkan-Setup.exe`, `Qube-<version>-cuda-Setup.exe`.
+
+Maintainers: [`winget/README.md`](winget/README.md) · [`chocolatey/README.md`](chocolatey/README.md)
 
 > **macOS (custom tap):** DMGs are **unsigned** — on first launch use **System Settings → Privacy & Security → Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Qube.app"`. See [homebrew-qube](https://github.com/dagaza/homebrew-qube).
 
@@ -179,7 +205,7 @@ Qube uses a native **PyQt6** desktop shell — not Electron and not a browser ta
 
 | Audience | Start here |
 |----------|------------|
-| **Users** | [docs/user/](docs/user/README.md) — install (Windows/Linux GPU variants, `.rpm`, Homebrew tap), requirements, workflows |
+| **Users** | [docs/user/](docs/user/README.md) — install (Windows WinGet & Chocolatey GPU packages, Linux `.rpm`, Homebrew tap), requirements, workflows |
 | **In-app** | **Library → Qube** or **`@[tool:help]`** (see [Built-in help](#built-in-help)) |
 | **Contributors** | [docs/architecture/](docs/architecture/README.md) — memory, pipeline, stack |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) — setup, tests, PRs |
