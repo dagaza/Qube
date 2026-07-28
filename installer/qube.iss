@@ -13,6 +13,16 @@
 #ifndef MyAppVersion
   #define MyAppVersion   "1.0.0"
 #endif
+#ifndef MyAppVariant
+  #define MyAppVariant   "cpu"
+#endif
+#if MyAppVariant == "vulkan"
+  #define MyAppVariantSuffix "-vulkan"
+#elif MyAppVariant == "cuda"
+  #define MyAppVariantSuffix "-cuda"
+#else
+  #define MyAppVariantSuffix ""
+#endif
 #define MyAppPublisher "dagaza"
 #define MyAppURL       "https://github.com/dagaza/Qube"
 #define MyAppExeName   "Qube.exe"
@@ -28,7 +38,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}/issues
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputBaseFilename=Qube-{#MyAppVersion}-Setup
+OutputBaseFilename=Qube-{#MyAppVersion}{#MyAppVariantSuffix}-Setup
 OutputDir=..\installer\output
 Compression=lzma2/ultra64
 SolidCompression=yes

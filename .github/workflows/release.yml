@@ -32,6 +32,10 @@ jobs:
 
   build:
     needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [cpu, vulkan, cuda]
     runs-on: windows-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -54,16 +58,19 @@ jobs:
       - name: Sync version into source
         run: python scripts/set_version.py ${{ steps.version.outputs.version }}
 
-      - name: Install build dependencies
+      - name: Install Vulkan SDK
+        if: matrix.variant == 'vulkan'
+        run: choco install vulkan-sdk -y --no-progress
+
+      - name: Build PyInstaller bundle (${{ matrix.variant }})
+        shell: pwsh
+        env:
+          LLAMA_BUILD_JOBS: ${{ matrix.variant == 'vulkan' && '2' || '1' }}
         run: |
-          pip install -r requirements.txt
-          pip install pyinstaller pillow
-
-      - name: Generate application icon
-        run: python scripts/generate_ico.py
-
-      - name: Build executable
-        run: pyinstaller qube.spec --noconfirm
+          if ("${{ matrix.variant }}" -eq "vulkan" -and $env:VULKAN_SDK) {
+            $env:Path = "$env:VULKAN_SDK\Bin;$env:Path"
+          }
+          & "$env:GITHUB_WORKSPACE\scripts\windows\build_windows_variant.ps1" "" "${{ matrix.variant }}"
 
       - name: Sign application binary
         if: vars.ENABLE_CODE_SIGNING == 'true'
@@ -86,14 +93,20 @@ jobs:
             /tr http://timestamp.digicert.com /td SHA256 $exe
 
       - name: Smoke test dist EXE
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: scripts/release/smoke_dist.ps1
+
+      - name: Verify CUDA bundle layout
+        if: matrix.variant == 'cuda'
+        shell: pwsh
+        run: scripts/release/verify_windows_cuda_bundle.ps1
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
       - name: Build installer
-        run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} installer\qube.iss
+        run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} /DMyAppVariant=${{ matrix.variant }} installer\qube.iss
 
       - name: Sign installer
         if: vars.ENABLE_CODE_SIGNING == 'true'
@@ -107,11 +120,21 @@ jobs:
             Select-Object -First 1
           $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
-          $setup = (Resolve-Path "installer\output\Qube-${{ steps.version.outputs.version }}-Setup.exe").Path
+          $setup = Get-ChildItem "installer\output\Qube-*-Setup.exe" |
+            Where-Object {
+              if ("${{ matrix.variant }}" -eq "cpu") {
+                $_.Name -eq "Qube-${{ steps.version.outputs.version }}-Setup.exe"
+              } else {
+                $_.Name -eq "Qube-${{ steps.version.outputs.version }}-${{ matrix.variant }}-Setup.exe"
+              }
+            } |
+            Select-Object -First 1
+          if (-not $setup) { throw "Installer not found for variant ${{ matrix.variant }}" }
           & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
-            /tr http://timestamp.digicert.com /td SHA256 $setup
+            /tr http://timestamp.digicert.com /td SHA256 $setup.FullName
 
       - name: Build prior-version installer for upgrade smoke test
+        if: matrix.variant == 'cpu'
         id: old_installer
         shell: pwsh
         run: |
@@ -134,6 +157,7 @@ jobs:
           iscc /DMyAppVersion=$oldVersion installer\qube.iss
 
       - name: Smoke test installer upgrade
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
@@ -147,53 +171,66 @@ jobs:
             -ExpectedNewVersion $version
 
       - name: Silent install, launch, and uninstall
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: scripts/release/smoke_installed.ps1
 
       - name: Compute SHA256
+        if: matrix.variant == 'cpu'
         id: hash
         shell: pwsh
         run: |
-          $file = Get-Item "installer\output\Qube-*-Setup.exe"
+          $version = "${{ steps.version.outputs.version }}"
+          $file = Get-Item "installer\output\Qube-$version-Setup.exe"
           $hash = (Get-FileHash $file -Algorithm SHA256).Hash
           "sha256=$hash" >> $env:GITHUB_OUTPUT
           "filename=$($file.Name)" >> $env:GITHUB_OUTPUT
 
       - name: Generate WinGet manifests
+        if: matrix.variant == 'cpu'
         run: python scripts/render_winget_manifests.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
 
       - name: Validate WinGet manifests
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: winget validate --manifest "winget/out/${{ steps.version.outputs.version }}"
 
       - name: Render Chocolatey package
+        if: matrix.variant == 'cpu'
         run: python scripts/render_chocolatey_package.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
 
       - name: Pack Chocolatey package
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
           choco pack "chocolatey/out/$version/qube.nuspec" --output-directory "chocolatey/out/$version"
 
       - name: Validate Chocolatey package
+        if: matrix.variant == 'cpu'
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
           choco info qube --source="chocolatey/out/$version" --version="$version"
 
-      - name: Upload installer artifact
+      - name: Upload installer artifact (${{ matrix.variant }})
         uses: actions/upload-artifact@v4
         with:
-          name: installer-${{ steps.version.outputs.version }}
-          path: installer/output/Qube-*-Setup.exe
+          name: installer-${{ matrix.variant }}-${{ steps.version.outputs.version }}
+          path: |
+            installer/output/Qube-${{ steps.version.outputs.version }}-Setup.exe
+            installer/output/Qube-${{ steps.version.outputs.version }}-vulkan-Setup.exe
+            installer/output/Qube-${{ steps.version.outputs.version }}-cuda-Setup.exe
 
       - name: Upload WinGet manifests
+        if: matrix.variant == 'cpu'
         uses: actions/upload-artifact@v4
         with:
           name: winget-manifests-${{ steps.version.outputs.version }}
           path: winget/out/${{ steps.version.outputs.version }}/
 
       - name: Upload Chocolatey package
+        if: matrix.variant == 'cpu'
         uses: actions/upload-artifact@v4
         with:
           name: chocolatey-package-${{ steps.version.outputs.version }}
@@ -350,7 +387,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: installer-${{ needs.build.outputs.version }}
+          pattern: installer-*-${{ needs.build.outputs.version }}
+          merge-multiple: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -378,11 +416,17 @@ jobs:
           body: |
             ## Install
 
-            **Windows**
+            **Windows** (pick the build that matches your GPU)
 
             ```powershell
+            # CPU-only (works everywhere; WinGet/Chocolatey use this build):
             winget install -e --id ${{ env.PACKAGE_ID }}
             choco install qube
+
+            # Direct download from assets below:
+            # Qube-${{ needs.build.outputs.version }}-Setup.exe          — CPU
+            # Qube-${{ needs.build.outputs.version }}-vulkan-Setup.exe   — AMD / Intel (Vulkan)
+            # Qube-${{ needs.build.outputs.version }}-cuda-Setup.exe     — NVIDIA (CUDA)
             ```
 
             **macOS** (download the DMG for your architecture below)
@@ -414,7 +458,7 @@ jobs:
             qube
             ```
 
-            **SHA256 (Windows installer):** `${{ needs.build.outputs.installer_hash }}`
+            **SHA256 (Windows CPU installer):** `${{ needs.build.outputs.installer_hash }}`
 
             **Silent install (Windows):** `${{ needs.build.outputs.installer_name }} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
 

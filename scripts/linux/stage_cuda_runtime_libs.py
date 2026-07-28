@@ -3,43 +3,7 @@
 
 from __future__ import annotations
 
-import shutil
-import sys
+import runpy
 from pathlib import Path
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
-
-from nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs
-
-
-def stage(dest: Path) -> int:
-    dest.mkdir(parents=True, exist_ok=True)
-    try:
-        libs = iter_nvidia_wheel_libs(*CUDA_WHEEL_PACKAGES)
-    except (ImportError, RuntimeError) as exc:
-        print(f"ERROR: could not locate NVIDIA CUDA wheel libraries: {exc}", file=sys.stderr)
-        return 1
-
-    if not libs:
-        print("ERROR: no NVIDIA CUDA wheel libraries found to stage", file=sys.stderr)
-        return 1
-
-    for src in libs:
-        target = dest / src.name
-        shutil.copy2(src, target)
-        print(f"Copied {src.name} -> {target}")
-    return 0
-
-
-def main(argv: list[str] | None = None) -> int:
-    args = argv if argv is not None else sys.argv[1:]
-    if len(args) != 1:
-        print("Usage: stage_cuda_runtime_libs.py <dest-dir>", file=sys.stderr)
-        return 2
-    return stage(Path(args[0]))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+runpy.run_path(str(Path(__file__).resolve().parent / "stage_cuda_runtime_libs.py"), run_name="__main__")
