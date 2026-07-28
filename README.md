@@ -88,11 +88,11 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 
 ### Download (recommended)
 
-Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. For **GPU acceleration** with the built-in engine, pick the installer that matches your hardware (see below). **WinGet**, **Chocolatey**, and **Homebrew** use the **CPU** build by default.
+Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. For **GPU acceleration** with the built-in engine, pick the installer that matches your hardware (see below). **Homebrew** uses the **CPU** build by default; **WinGet** and **Chocolatey** also offer GPU packages.
 
 | Platform | Install |
 |----------|---------|
-| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** `winget install -e --id dagaza.Qube.Vulkan` (AMD/Intel) or `winget install -e --id dagaza.Qube.CUDA` (NVIDIA) · or download from Releases |
+| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** `winget install -e --id dagaza.Qube.Vulkan` / `choco install qube-vulkan` (AMD/Intel) or `dagaza.Qube.CUDA` / `qube-cuda` (NVIDIA) · or download from Releases |
 | **macOS** | **`brew tap dagaza/qube`** then **`brew install --cask qube`** · or download the **`.dmg`** (Apple Silicon or Intel) from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
 | **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, or **`.tar.gz`** (amd64) — [Install on Linux](docs/user/install-linux.md) |
 

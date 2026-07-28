@@ -119,13 +119,17 @@ Follow [`chocolatey/README.md`](../chocolatey/README.md).
 
 Set repository **variable** `CHOCOLATEY_AUTO_PUSH=true` and secret `CHOCOLATEY_API_KEY` (push-only API key from chocolatey.org).
 
-After each tagged release, the workflow pushes `qube.<version>.nupkg` automatically once the GitHub Release is live and the Chocolatey smoke test passes.
+After each tagged release, the workflow pushes `qube`, `qube-vulkan`, and `qube-cuda` packages automatically once the GitHub Release is live and the Chocolatey smoke test passes.
 
 Users install or upgrade with:
 
 ```powershell
-choco install qube
-choco upgrade qube
+choco install qube              # CPU
+choco install qube-vulkan       # AMD/Intel (Vulkan)
+choco install qube-cuda         # NVIDIA (CUDA)
+choco upgrade qube -y
+choco upgrade qube-vulkan -y
+choco upgrade qube-cuda -y
 ```
 
 ## macOS

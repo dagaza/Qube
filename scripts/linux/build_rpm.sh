@@ -78,7 +78,11 @@ python3 scripts/render_linux_packages.py stage-deb "$STAGING" --variant "$VARIAN
 
 rm -f "$REPO_ROOT/$RPM_NAME"
 
+# Match build_deb.sh: xz keeps the CUDA bundle under GitHub Releases' 2 GiB cap.
+export XZ_OPT="-9e"
 fpm -s dir -t rpm \
+  --rpm-compression xz \
+  --rpm-compression-level 9 \
   -n "$PKG_NAME" \
   -v "$VERSION" \
   --iteration 1 \

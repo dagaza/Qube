@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Chocolatey GPU packages: `qube-vulkan` and `qube-cuda` alongside the CPU `qube` package.
+
+### Fixed
+- Linux CUDA `.rpm` packaging uses xz compression so artifacts stay under GitHub Releases' 2 GiB per-asset limit.
+
 ## [1.2.5] - 2026-07-28
 
 ### Added

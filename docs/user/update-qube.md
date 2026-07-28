@@ -26,9 +26,11 @@ winget upgrade -e --id dagaza.Qube
 winget upgrade -e --id dagaza.Qube.Vulkan
 winget upgrade -e --id dagaza.Qube.CUDA
 choco upgrade qube -y
+choco upgrade qube-vulkan -y
+choco upgrade qube-cuda -y
 ```
 
-`choco` ships the CPU build only. To switch GPU variants, install the matching WinGet ID or run the new `.exe` from Releases.
+`choco` and `winget` ship the CPU build by default (`qube` / `dagaza.Qube`). To switch GPU variants, install the matching package ID or run the new `.exe` from Releases.
 
 ---
 

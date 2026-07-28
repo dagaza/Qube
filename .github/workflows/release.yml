@@ -194,24 +194,6 @@ jobs:
           "sha256=$hash" >> $env:GITHUB_OUTPUT
           "filename=$($file.Name)" >> $env:GITHUB_OUTPUT
 
-      - name: Render Chocolatey package
-        if: matrix.variant == 'cpu'
-        run: python scripts/render_chocolatey_package.py --version ${{ steps.version.outputs.version }} --sha256 ${{ steps.hash.outputs.sha256 }}
-
-      - name: Pack Chocolatey package
-        if: matrix.variant == 'cpu'
-        shell: pwsh
-        run: |
-          $version = "${{ steps.version.outputs.version }}"
-          choco pack "chocolatey/out/$version/qube.nuspec" --output-directory "chocolatey/out/$version"
-
-      - name: Validate Chocolatey package
-        if: matrix.variant == 'cpu'
-        shell: pwsh
-        run: |
-          $version = "${{ steps.version.outputs.version }}"
-          choco info qube --source="chocolatey/out/$version" --version="$version"
-
       - name: Upload installer artifact (${{ matrix.variant }})
         uses: actions/upload-artifact@v4
         with:
@@ -221,12 +203,52 @@ jobs:
             installer/output/Qube-${{ steps.version.outputs.version }}-vulkan-Setup.exe
             installer/output/Qube-${{ steps.version.outputs.version }}-cuda-Setup.exe
 
-      - name: Upload Chocolatey package
-        if: matrix.variant == 'cpu'
+  chocolatey-packages:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*-${{ needs.build.outputs.version }}
+          merge-multiple: true
+          path: installers
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Render and pack Chocolatey packages
+        shell: pwsh
+        run: |
+          $version = "${{ needs.build.outputs.version }}"
+          $cpu = (Get-FileHash "installers/Qube-$version-Setup.exe" -Algorithm SHA256).Hash
+          $vulkan = (Get-FileHash "installers/Qube-$version-vulkan-Setup.exe" -Algorithm SHA256).Hash
+          $cuda = (Get-FileHash "installers/Qube-$version-cuda-Setup.exe" -Algorithm SHA256).Hash
+          python scripts/render_chocolatey_package.py `
+            --version $version `
+            --cpu-sha256 $cpu `
+            --vulkan-sha256 $vulkan `
+            --cuda-sha256 $cuda
+          foreach ($pkg in @("qube", "qube-vulkan", "qube-cuda")) {
+            choco pack "chocolatey/out/$version/$pkg/$pkg.nuspec" `
+              --output-directory "chocolatey/out/$version/$pkg"
+          }
+
+      - name: Validate Chocolatey packages
+        shell: pwsh
+        run: |
+          $version = "${{ needs.build.outputs.version }}"
+          foreach ($pkg in @("qube", "qube-vulkan", "qube-cuda")) {
+            choco info $pkg --source="chocolatey/out/$version/$pkg" --version="$version"
+          }
+
+      - name: Upload Chocolatey packages
         uses: actions/upload-artifact@v4
         with:
-          name: chocolatey-package-${{ steps.version.outputs.version }}
-          path: chocolatey/out/${{ steps.version.outputs.version }}/qube.${{ steps.version.outputs.version }}.nupkg
+          name: chocolatey-package-${{ needs.build.outputs.version }}
+          path: chocolatey/out/${{ needs.build.outputs.version }}/**/*.nupkg
 
   macos-build:
     needs: test
@@ -424,13 +446,15 @@ jobs:
             **Windows** (pick the build that matches your GPU)
 
             ```powershell
-            # CPU (works everywhere; Chocolatey uses this build):
+            # CPU (works everywhere):
             winget install -e --id dagaza.Qube
             choco install qube
 
-            # GPU builds (WinGet — install one variant only):
+            # GPU builds (install one variant only):
             winget install -e --id dagaza.Qube.Vulkan   # AMD / Intel
+            choco install qube-vulkan                   # AMD / Intel
             winget install -e --id dagaza.Qube.CUDA     # NVIDIA
+            choco install qube-cuda                     # NVIDIA
 
             # Or direct download from assets below:
             # Qube-${{ needs.build.outputs.version }}-Setup.exe          — CPU
@@ -584,7 +608,7 @@ jobs:
         run: bash scripts/macos/bump_tap.sh "${{ needs.macos-build.outputs.version }}"
 
   chocolatey-test:
-    needs: [build, release]
+    needs: [build, release, chocolatey-packages]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -599,7 +623,7 @@ jobs:
         run: scripts/release/smoke_choco.ps1 -Version ${{ needs.build.outputs.version }} -PackageDir pkg
 
   chocolatey-push:
-    needs: [build, release, chocolatey-test]
+    needs: [build, release, chocolatey-test, chocolatey-packages]
     runs-on: windows-latest
     if: github.repository == 'dagaza/Qube' && vars.CHOCOLATEY_AUTO_PUSH == 'true'
     steps:
@@ -613,5 +637,6 @@ jobs:
         env:
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
         run: |
-          $nupkg = Get-ChildItem pkg\*.nupkg | Select-Object -First 1
-          choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
+          scripts/release/push_chocolatey_packages.ps1 `
+            -Version ${{ needs.build.outputs.version }} `
+            -PackageRoot pkg
