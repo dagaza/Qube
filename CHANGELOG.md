@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-07-28
+
+### Added
+- Cross-platform in-place update support: Settings → Help release checker against GitHub Releases; Windows Inno upgrade messaging; Linux AppImage install cleanup; CI upgrade smoke tests; user and maintainer update docs ([`docs/user/update-qube.md`](docs/user/update-qube.md), [`docs/app_update_roadmap.md`](docs/app_update_roadmap.md)).
+- Windows **Vulkan** and **CUDA** release installers (`Qube-{version}-vulkan-Setup.exe`, `Qube-{version}-cuda-Setup.exe`); WinGet and Chocolatey remain on the CPU `Qube-{version}-Setup.exe`.
+- Linux **`.rpm`** (Fedora/RHEL) and portable **`.tar.gz`** artifacts alongside AppImage and `.deb` for each CPU/Vulkan/CUDA variant.
+- Unsigned **Homebrew** custom tap (`brew tap dagaza/qube` → `brew install --cask qube`) with automated CI submission to [`dagaza/homebrew-qube`](https://github.com/dagaza/homebrew-qube).
+
+### Changed
+- README install guidance: GPU variant table, Linux RPM/tarball formats, and Homebrew tap instructions.
+
 ## [1.2.4] - 2026-07-27
 
 ### Added

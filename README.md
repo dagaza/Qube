@@ -49,7 +49,7 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 - **Transparent** — local **Telemetry**, **INSPECT RETRIEVAL**, and opt-in diagnostic logs (on-device only — not vendor analytics)
 - **Ready after install** — Recommended bootstrap bundles sidecar, **search embeddings**, and an optional main model — not a blank shell
 - **Help inside the app** — **`@help`** and **`?` tours** on every major screen
-- **Your hardware** — built-in GGUF engine or plug in **LM Studio** / **Ollama**
+- **Your hardware** — built-in GGUF engine with **CPU / Vulkan / CUDA** release builds on Windows and Linux, **Metal** on macOS, or plug in **LM Studio** / **Ollama**
 - **Voice & accessibility (optional)** — push-to-talk, wake word, streaming TTS, barge-in, and **Desktop Companion** for hands-free when your setup allows
 
 ---
@@ -88,11 +88,25 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 
 ### Download (recommended)
 
+Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. For **GPU acceleration** with the built-in engine, pick the installer that matches your hardware (see below). **WinGet**, **Chocolatey**, and **Homebrew** use the **CPU** build by default.
+
 | Platform | Install |
 |----------|---------|
-| **Windows** | [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` |
-| **macOS** | Download the `.dmg` for your Mac from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
-| **Linux** | **AppImage** or **`.deb`** (amd64) from [GitHub Releases](https://github.com/dagaza/Qube/releases) — [Install on Linux](docs/user/install-linux.md) |
+| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** download `Qube-*-vulkan-Setup.exe` (AMD/Intel) or `Qube-*-cuda-Setup.exe` (NVIDIA) from Releases |
+| **macOS** | **`brew tap dagaza/qube`** then **`brew install --cask qube`** · or download the **`.dmg`** (Apple Silicon or Intel) from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
+| **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, or **`.tar.gz`** (amd64) — [Install on Linux](docs/user/install-linux.md) |
+
+**GPU build variants (Windows & Linux)** — install **one** variant; all share user data in `~/.qube/` or `%LOCALAPPDATA%\Qube`:
+
+| Variant | Best for |
+|---------|----------|
+| **cpu** | Any PC; slowest chat inference |
+| **vulkan** | AMD / Intel GPU |
+| **cuda** | NVIDIA GPU (recent driver) |
+
+Linux artifact examples: `Qube-<version>-x86_64-vulkan.AppImage`, `qube-vulkan_<version>_amd64.deb`, `qube-vulkan-<version>-1.x86_64.rpm`. Windows: `Qube-<version>-vulkan-Setup.exe`, `Qube-<version>-cuda-Setup.exe`.
+
+> **macOS (custom tap):** DMGs are **unsigned** — on first launch use **System Settings → Privacy & Security → Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Qube.app"`. See [homebrew-qube](https://github.com/dagaza/homebrew-qube).
 
 ### First launch
 
@@ -148,10 +162,10 @@ More workflows: [How to use Qube](docs/user/how-to-use.md).
 | | Minimum | Recommended |
 |---|---------|-------------|
 | **RAM** | 16 GB | 20 GB |
-| **OS** | Windows 10+, macOS 12+ (Apple Silicon or Intel), Linux (AppImage / `.deb` amd64, or source) | Same |
-| **Storage** | ~2 GB for app + optional voice models; plan extra for each chat model | SSD strongly recommended |
+| **OS** | Windows 10+ (x64), macOS 12+ (Apple Silicon or Intel), Linux amd64 (AppImage / `.deb` / `.rpm` / `.tar.gz`, or source) | Same |
+| **Storage** | ~2 GB for app + optional voice models; plan extra for each chat model; CUDA/Linux GPU builds are larger | SSD strongly recommended |
 | **Audio** | Optional — microphone and speakers for voice features | Same |
-| **GPU** | Optional — speeds up the internal engine via GPU offload layers | Discrete GPU or Apple Silicon with enough VRAM for your chosen model |
+| **GPU** | Optional — pick **vulkan** or **cuda** release builds on Windows/Linux, or **Metal** on macOS; CPU builds work everywhere | Discrete GPU or Apple Silicon with enough VRAM for your chosen model |
 
 Full hardware guidance (models, GPU paths, storage): **[System requirements](docs/user/system-requirements.md)**.
 
@@ -165,7 +179,7 @@ Qube uses a native **PyQt6** desktop shell — not Electron and not a browser ta
 
 | Audience | Start here |
 |----------|------------|
-| **Users** | [docs/user/](docs/user/README.md) — install, requirements, workflows |
+| **Users** | [docs/user/](docs/user/README.md) — install (Windows/Linux GPU variants, `.rpm`, Homebrew tap), requirements, workflows |
 | **In-app** | **Library → Qube** or **`@[tool:help]`** (see [Built-in help](#built-in-help)) |
 | **Contributors** | [docs/architecture/](docs/architecture/README.md) — memory, pipeline, stack |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) — setup, tests, PRs |
