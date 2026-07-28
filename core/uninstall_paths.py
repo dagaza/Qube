@@ -88,6 +88,28 @@ def deb_runtime_dependencies(*, variant: str = "cpu") -> list[str]:
     return deps
 
 
+def rpm_runtime_dependencies(*, variant: str = "cpu") -> list[str]:
+    """RPM package dependencies (Fedora/RHEL-compatible names)."""
+    from core.linux_release_variants import normalize_linux_variant
+
+    normalized = normalize_linux_variant(variant)
+    deps = [
+        "portaudio",
+        "mesa-libEGL",
+        "mesa-libGL",
+        "glib2",
+        "dbus-libs",
+        "libxcb",
+        "libxkbcommon",
+        "libX11",
+        "fontconfig",
+        "libgomp",
+    ]
+    if normalized == "vulkan":
+        deps.append("vulkan-loader")
+    return deps
+
+
 def _homebrew_zap_entry(path: Path) -> str:
     """Format a path for Homebrew Cask ``zap trash``."""
     home = Path.home()

@@ -37,7 +37,8 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 |----------|--------------|
 | **Windows** | Installer via [GitHub Releases](https://github.com/dagaza/Qube/releases), WinGet (`dagaza.Qube`), or Chocolatey (`qube`) |
 | **macOS** | Signed/notarized `.dmg` from GitHub Releases when available; Homebrew cask via `dagaza/homebrew-qube` when published |
-| **Linux** | **AppImage** and **`.deb`** (amd64) from GitHub Releases; [install guide](install-linux.md). Source install still supported. |
+| **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, and **`.tar.gz`** (amd64) from GitHub Releases; [install guide](install-linux.md). Source install still supported. |
+| **macOS** | `.dmg` from GitHub Releases, or **`brew tap dagaza/qube && brew install --cask qube`** (custom tap; unsigned builds supported) |
 
 ---
 
@@ -47,9 +48,9 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 
 | Hardware | Notes |
 |----------|-------|
-| **NVIDIA (Windows/Linux)** | CUDA packaged Linux **`cuda`** build, or `./scripts/install_llama_cpp_gpu.sh` / source install |
+| **NVIDIA (Windows/Linux)** | Windows: **`cuda`** Setup.exe from GitHub Releases; Linux: **`cuda`** AppImage/`.deb`; or GPU source install |
 | **Apple Silicon (macOS)** | Metal build in release DMGs |
-| **AMD / Intel (Linux)** | Vulkan packaged Linux **`vulkan`** build, or `install_llama_cpp_gpu.sh` |
+| **AMD / Intel (Windows/Linux)** | Windows: **`vulkan`** Setup.exe; Linux: **`vulkan`** AppImage/`.deb`; or `install_llama_cpp_gpu.sh` |
 | **CPU only** | Supported — STT (faster-whisper) and TTS (Kokoro) run well on CPU; chat will be slower |
 
 **ROCm (AMD HIP on Linux)** is not shipped today. See [ROCm support exploration](../rocm_support_exploration.md) for feasibility and trade-offs vs Vulkan.

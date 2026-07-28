@@ -2,25 +2,29 @@
 Controls listed top-to-bottom for **Settings → Themes**.
 
 
+### General
+
+- **Reset to default**
+- **Revert**
+- **Cancel**
+- **Apply**
+
 ### Theme
 
 - **Use fallback theme**
 
-### Customize
+### Theme colors
 
 - **Auto-adjust text for readable contrast**
-- **Reset customization**
 - **Advanced colors**
 
-### Wallpapers
+### Chat wallpaper
 
-- **Same as Chat**
+- **Assistant message background**
 
-### Preview
+### Library wallpaper
 
-- **Revert**
-- **Cancel**
-- **Apply**
+- **Library transcript background**
 
 ### Share themes
 

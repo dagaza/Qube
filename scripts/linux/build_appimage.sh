@@ -29,7 +29,7 @@ print(appimage_filename(sys.argv[2], sys.argv[3]))
 PY
 )"
 
-python3 scripts/render_linux_packages.py stage-appdir "$APPDIR"
+python3 scripts/render_linux_packages.py stage-appdir "$APPDIR" --variant "$VARIANT"
 
 export ARCH=x86_64
 export VERSION="$VERSION"

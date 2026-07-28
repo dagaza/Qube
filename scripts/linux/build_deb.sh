@@ -46,7 +46,7 @@ STAGING="$(mktemp -d)"
 cleanup() { rm -rf "$STAGING"; }
 trap cleanup EXIT
 
-python3 scripts/render_linux_packages.py stage-deb "$STAGING"
+python3 scripts/render_linux_packages.py stage-deb "$STAGING" --variant "$VARIANT"
 
 rm -f "$REPO_ROOT/$DEB_NAME"
 
