@@ -88,11 +88,25 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 
 ### Download (recommended)
 
+Get builds from **[GitHub Releases](https://github.com/dagaza/Qube/releases)**. For **GPU acceleration** with the built-in engine, pick the installer that matches your hardware (see below). **WinGet**, **Chocolatey**, and **Homebrew** use the **CPU** build by default.
+
 | Platform | Install |
 |----------|---------|
-| **Windows** | [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` |
-| **macOS** | Download the `.dmg` for your Mac from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
-| **Linux** | **AppImage** or **`.deb`** (amd64) from [GitHub Releases](https://github.com/dagaza/Qube/releases) — [Install on Linux](docs/user/install-linux.md) |
+| **Windows** | **CPU:** [`winget install -e --id dagaza.Qube`](https://github.com/dagaza/Qube/releases) or `choco install qube` · **GPU:** `winget install -e --id dagaza.Qube.Vulkan` (AMD/Intel) or `dagaza.Qube.CUDA` (NVIDIA) · or download from Releases |
+| **macOS** | **`brew tap dagaza/qube`** then **`brew install --cask qube`** · or download the **`.dmg`** (Apple Silicon or Intel) from [GitHub Releases](https://github.com/dagaza/Qube/releases) |
+| **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, or **`.tar.gz`** (amd64) — [Install on Linux](docs/user/install-linux.md) |
+
+**GPU build variants (Windows & Linux)** — install **one** variant; all share user data in `~/.qube/` or `%LOCALAPPDATA%\Qube`:
+
+| Variant | Best for |
+|---------|----------|
+| **cpu** | Any PC; slowest chat inference |
+| **vulkan** | AMD / Intel GPU |
+| **cuda** | NVIDIA GPU (recent driver) |
+
+Linux artifact examples: `Qube-<version>-x86_64-vulkan.AppImage`, `qube-vulkan_<version>_amd64.deb`, `qube-vulkan-<version>-1.x86_64.rpm`. Windows: `Qube-<version>-vulkan-Setup.exe`, `Qube-<version>-cuda-Setup.exe`.
+
+> **macOS (custom tap):** DMGs are **unsigned** — on first launch use **System Settings → Privacy & Security → Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Qube.app"`. See [homebrew-qube](https://github.com/dagaza/homebrew-qube).
 
 ### First launch
 

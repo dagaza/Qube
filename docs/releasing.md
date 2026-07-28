@@ -84,7 +84,7 @@ CI does **not** guess the version from files on `main`. It strips the `v` prefix
 
 ### First catalog entry (one-time manual PR)
 
-Follow [`winget/README.md`](../winget/README.md).
+Follow [`winget/README.md`](../winget/README.md). Submit **`dagaza.Qube`** (CPU) first if needed, then add **`dagaza.Qube.Vulkan`** and **`dagaza.Qube.CUDA`** as separate folders in the same or follow-up PR.
 
 ### Automated updates
 
@@ -96,10 +96,14 @@ Users install or upgrade with:
 
 ```powershell
 winget install -e --id dagaza.Qube
+winget install -e --id dagaza.Qube.Vulkan
+winget install -e --id dagaza.Qube.CUDA
 winget upgrade -e --id dagaza.Qube
 ```
 
-Direct download: run the new **`Qube-<version>-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.
+Install **one** Windows variant only (CPU, Vulkan, or CUDA). WinGet uses separate package IDs so GPU builds are opt-in and CPU stays the safe default for `winget upgrade --all`.
+
+Direct download: run the matching **`Qube-<version>-Setup.exe`**, **`-vulkan-Setup.exe`**, or **`-cuda-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.
 
 In-app: **Settings → Help → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
 

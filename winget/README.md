@@ -1,19 +1,51 @@
 # WinGet manifests
 
-CI renders versioned split manifests into `winget/out/<version>/` during release.
+CI renders versioned split manifests into `winget/out/<version>/` during release — one folder per package ID:
+
+| Package ID | Windows installer |
+|------------|-------------------|
+| `dagaza.Qube` | `Qube-<version>-Setup.exe` (CPU) |
+| `dagaza.Qube.Vulkan` | `Qube-<version>-vulkan-Setup.exe` |
+| `dagaza.Qube.CUDA` | `Qube-<version>-cuda-Setup.exe` |
+
+Install **one** variant only; all share user data in `%LOCALAPPDATA%\Qube`.
 
 ## First-time catalog submission (manual)
 
-1. Tag a release (`v1.0.0`) and wait for the GitHub Actions release workflow.
+`dagaza.Qube` (CPU) may already be in [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs). GPU packages are **separate IDs** and need a one-time PR each before automated `wingetcreate update` works.
+
+1. Tag a release (`v1.2.5`) and wait for the GitHub Actions release workflow (or render locally — see below).
 2. Download the `winget-manifests-*` artifact or copy `winget/out/<version>/`.
 3. Fork [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs).
-4. Copy the three YAML files to `manifests/d/dagaza/Qube/<version>/`.
-5. Validate locally: `winget validate --manifest manifests/d/dagaza/Qube/<version>`
+4. For each package folder under `winget/out/<version>/`, copy into winget-pkgs:
+   - `dagaza.Qube/` → `manifests/d/dagaza/Qube/<version>/`
+   - `dagaza.Qube.Vulkan/` → `manifests/d/dagaza/Qube.Vulkan/<version>/`
+   - `dagaza.Qube.CUDA/` → `manifests/d/dagaza/Qube.CUDA/<version>/`
+5. Validate locally, e.g.:
+
+   ```powershell
+   winget validate --manifest manifests/d/dagaza/Qube/1.2.5
+   winget validate --manifest manifests/d/dagaza/Qube.Vulkan/1.2.5
+   winget validate --manifest manifests/d/dagaza/Qube.CUDA/1.2.5
+   ```
+
 6. Open a PR. After merge, users can run:
 
    ```powershell
    winget install -e --id dagaza.Qube
+   winget install -e --id dagaza.Qube.Vulkan
+   winget install -e --id dagaza.Qube.CUDA
    ```
+
+### Render manifests locally
+
+```bash
+python scripts/render_winget_manifests.py \
+  --version 1.2.5 \
+  --cpu-sha256 <sha256> \
+  --vulkan-sha256 <sha256> \
+  --cuda-sha256 <sha256>
+```
 
 ## Automated updates
 
@@ -29,7 +61,15 @@ Set repository secret:
 |--------|---------|
 | `WINGET_SUBMIT_TOKEN` | GitHub PAT with rights to push to your `winget-pkgs` fork and open PRs |
 
-The release workflow runs `wingetcreate update dagaza.Qube --submit` after each tag.
+The release workflow runs `scripts/release/submit_winget_packages.sh` after each tag (CPU + Vulkan + CUDA).
+
+### Catch-up without retagging
+
+```bash
+gh workflow run winget-submit.yml -f version=1.2.5
+```
+
+Requires the GitHub Release to include all three Windows `.exe` assets.
 
 ## Template files
 

@@ -13,15 +13,22 @@ Quit Qube when the installer or replace dialog asks you to close it.
 
 ## Windows
 
-1. Download **`Qube-<version>-Setup.exe`** from GitHub Releases.
+1. Download the installer for your **variant** from GitHub Releases:
+   - **`Qube-<version>-Setup.exe`** — CPU
+   - **`Qube-<version>-vulkan-Setup.exe`** — AMD / Intel (Vulkan)
+   - **`Qube-<version>-cuda-Setup.exe`** — NVIDIA (CUDA)
 2. Run the installer. Setup detects an existing install and **updates in place** at **`%LOCALAPPDATA%\Programs\Qube\`**.
 
-**Package managers:**
+**Package managers** (use the ID that matches your installed variant):
 
 ```powershell
 winget upgrade -e --id dagaza.Qube
+winget upgrade -e --id dagaza.Qube.Vulkan
+winget upgrade -e --id dagaza.Qube.CUDA
 choco upgrade qube -y
 ```
+
+`choco` ships the CPU build only. To switch GPU variants, install the matching WinGet ID or run the new `.exe` from Releases.
 
 ---
 

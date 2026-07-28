@@ -1,0 +1,24 @@
+PackageIdentifier: dagaza.Qube.CUDA
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: dagaza
+PublisherUrl: https://github.com/dagaza
+PackageName: Qube (CUDA)
+Moniker: qube-cuda
+License: MIT
+LicenseUrl: https://github.com/dagaza/Qube/blob/main/LICENSE
+ShortDescription: Local AI desktop assistant (CUDA GPU offload build for NVIDIA)
+Description: >-
+  Qube is a fully local, privacy-first AI desktop assistant. This package is
+  the CUDA GPU offload build for NVIDIA GPUs.
+PackageUrl: https://github.com/dagaza/Qube
+Tags:
+  - ai
+  - assistant
+  - local
+  - privacy
+  - cuda
+  - nvidia
+  - gpu
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
