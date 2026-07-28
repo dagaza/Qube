@@ -17,6 +17,8 @@ from core.__version__ import __version__
 
 _IS_MACOS = sys.platform == "darwin"
 _LINUX_VARIANT = os.environ.get("QUBE_LINUX_VARIANT", "")
+_WINDOWS_VARIANT = os.environ.get("QUBE_WINDOWS_VARIANT", "")
+_BUILD_VARIANT = _LINUX_VARIANT or _WINDOWS_VARIANT
 
 datas = [
     ("assets", "assets"),
@@ -36,10 +38,9 @@ for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
     except Exception:
         pass
 
-if _LINUX_VARIANT == "cuda":
+if _BUILD_VARIANT == "cuda":
     try:
-        sys.path.insert(0, os.path.join(os.getcwd(), "scripts", "linux"))
-        from nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs
+        from core.nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs
 
         for path in iter_nvidia_wheel_libs(*CUDA_WHEEL_PACKAGES):
             binaries.append((str(path), "llama_cpp/lib"))

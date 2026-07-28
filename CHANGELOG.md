@@ -7,10 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-07-27
+
+### Added
+- Commercial platform foundation: capability/licensing infrastructure (offline `.qube-license` verify, pack signing, Settings import).
+- Launch-trust feature slices: composer `@` discoverability, INSPECT routing explainability, router regression baseline, trust/privacy help corpus, web discovery telemetry, SearXNG setup wizard, and Linux AppImage install path.
+- Settings and UI polish: theme preview cards, settings card layout, and faster Conversations/Library loads.
+
 ### Fixed
 - Linux CUDA `.deb` release packaging: prune safe bundle bloat, bundle only required NVIDIA wheel libraries, use maximum xz compression, and fail the build early if the `.deb` still exceeds GitHub's 2 GiB asset limit.
 - Linux release bundle prune: restrict `strip --strip-debug` to llama.cpp libs only; stripping numpy/scipy OpenBLAS wheels broke CPU/Vulkan smoke tests.
 - Linux CUDA `.deb` recompress: fix `ar` repack after xz -9e (do not use empty `mktemp` deb) and skip recompress when fpm output is already under GitHub's 2 GiB cap.
+- Theme preview width test for card-constrained layouts on CI runners.
+- Bump `cryptography` to 48.0.1 (GHSA-537c-gmf6-5ccf).
+
+## [1.2.3] - 2026-07-26
+
+### Added
+- Memory Simple/Advanced mode toggle in Settings.
+- Gradient stops for theme wallpaper customization.
+- Themes area UX: separate preview cards for Conversations, Library, and Settings-style pages; tooltips and updated coach guide.
+
+### Changed
+- Dark mode and Catppuccin Dark are the default on first launch; desktop companion is off by default.
+- Updated minimum system requirements documentation.
+- Faster Conversations and Library page loads; faster theme switching and preview updates.
+
+### Fixed
+- Assistant reply bubbles no longer break when changing themes; transcript bubble rendering and navbar colors corrected.
+- Chat wallpaper preview mock in Settings matches applied appearance.
+- Theme preview width and Themes section polish.
+- Theme persistence: saved light/dark scheme survives app restart when appearance preference was never explicitly set (CI regression fix).
 
 ## [1.2.2] - 2026-07-25
 
