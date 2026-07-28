@@ -64,6 +64,18 @@ switch ($Variant) {
         Test-LlamaCppInstall $false
     }
     "vulkan" {
+        if (-not $env:VULKAN_SDK) {
+            $sdkRoot = Get-ChildItem "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue |
+                Sort-Object Name -Descending |
+                Select-Object -First 1
+            if ($sdkRoot) {
+                $env:VULKAN_SDK = $sdkRoot.FullName
+            }
+        }
+        if (-not $env:VULKAN_SDK) {
+            throw "VULKAN_SDK is not set and no SDK was found under C:\VulkanSDK"
+        }
+        $env:Path = "$env:VULKAN_SDK\Bin;$env:Path"
         $env:CMAKE_ARGS = "-DGGML_VULKAN=on"
         $env:CMAKE_BUILD_PARALLEL_LEVEL = $Jobs
         $env:MAX_JOBS = $Jobs

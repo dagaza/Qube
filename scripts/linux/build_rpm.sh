@@ -17,18 +17,16 @@ if ! command -v fpm >/dev/null 2>&1; then
   exit 1
 fi
 
-read -r RPM_NAME PKG_NAME PKG_DESC PKG_CONFLICTS PKG_DEPENDS < <(
+read -r RPM_NAME PKG_NAME PKG_DESC < <(
   python3 - "$REPO_ROOT" "$VERSION" "$VARIANT" <<'PY'
 import sys
 
 sys.path.insert(0, sys.argv[1])
 from core.linux_release_variants import (
-    rpm_conflicts,
     rpm_description,
     rpm_filename,
     rpm_package_name,
 )
-from core.uninstall_paths import rpm_runtime_dependencies
 
 version = sys.argv[2]
 variant = sys.argv[3]
@@ -36,9 +34,39 @@ print(
     rpm_filename(version, variant),
     rpm_package_name(variant),
     rpm_description(variant),
-    rpm_conflicts(variant),
-    ", ".join(rpm_runtime_dependencies(variant=variant)),
 )
+PY
+)
+
+DEP_FLAGS=()
+while IFS= read -r dep; do
+  DEP_FLAGS+=(--depends "$dep")
+done < <(
+  python3 - "$REPO_ROOT" "$VARIANT" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from core.uninstall_paths import rpm_runtime_dependencies
+
+for dep in rpm_runtime_dependencies(variant=sys.argv[2]):
+    print(dep)
+PY
+)
+
+CONFLICT_FLAGS=()
+while IFS= read -r pkg; do
+  [[ -n "$pkg" ]] && CONFLICT_FLAGS+=(--conflicts "$pkg")
+done < <(
+  python3 - "$REPO_ROOT" "$VARIANT" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from core.linux_release_variants import rpm_conflicts
+
+for name in rpm_conflicts(sys.argv[2]).split(","):
+    name = name.strip()
+    if name:
+        print(name)
 PY
 )
 
@@ -46,7 +74,7 @@ STAGING="$(mktemp -d)"
 cleanup() { rm -rf "$STAGING"; }
 trap cleanup EXIT
 
-python3 scripts/render_linux_packages.py stage-deb "$STAGING"
+python3 scripts/render_linux_packages.py stage-deb "$STAGING" --variant "$VARIANT"
 
 rm -f "$REPO_ROOT/$RPM_NAME"
 
@@ -58,8 +86,8 @@ fpm -s dir -t rpm \
   --maintainer "dagaza <https://github.com/dagaza/Qube>" \
   --url "https://github.com/dagaza/Qube" \
   --description "$PKG_DESC" \
-  --depends "$PKG_DEPENDS" \
-  --conflicts "$PKG_CONFLICTS" \
+  "${DEP_FLAGS[@]}" \
+  "${CONFLICT_FLAGS[@]}" \
   --after-install "$REPO_ROOT/packaging/linux/debian/postinst" \
   --before-remove "$REPO_ROOT/packaging/linux/debian/prerm" \
   --after-remove "$REPO_ROOT/packaging/linux/debian/postrm" \

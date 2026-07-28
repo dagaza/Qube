@@ -67,8 +67,16 @@ jobs:
         env:
           LLAMA_BUILD_JOBS: ${{ matrix.variant == 'vulkan' && '2' || '1' }}
         run: |
-          if ("${{ matrix.variant }}" -eq "vulkan" -and $env:VULKAN_SDK) {
-            $env:Path = "$env:VULKAN_SDK\Bin;$env:Path"
+          if ("${{ matrix.variant }}" -eq "vulkan") {
+            if (-not $env:VULKAN_SDK) {
+              $sdkRoot = Get-ChildItem "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue |
+                Sort-Object Name -Descending |
+                Select-Object -First 1
+              if ($sdkRoot) { $env:VULKAN_SDK = $sdkRoot.FullName }
+            }
+            if ($env:VULKAN_SDK) {
+              $env:Path = "$env:VULKAN_SDK\Bin;$env:Path"
+            }
           }
           & "$env:GITHUB_WORKSPACE\scripts\windows\build_windows_variant.ps1" "" "${{ matrix.variant }}"
 
