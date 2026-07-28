@@ -20,6 +20,7 @@ from core.composer_draft import (
     ComposerDraft,
     routing_chip_icon,
     routing_chip_tooltip,
+    routing_chip_unavailable_message,
     skill_chip_tooltip,
 )
 from core.theme.color_utils import adjust_lightness, with_alpha
@@ -126,12 +127,14 @@ class _ComposerContextChip(QFrame):
         editable: bool,
         is_dark: bool,
         compact: bool,
+        is_unavailable: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("ComposerContextChip")
         self.setProperty("chipRole", chip_role)
         self.setProperty("chipPrimary", "true" if is_primary else "false")
+        self.setProperty("chipUnavailable", "true" if is_unavailable else "false")
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
         self.setToolTip(tooltip)
 
@@ -147,7 +150,11 @@ class _ComposerContextChip(QFrame):
         icon_lbl.setPixmap(
             themed_fa_pixmap(
                 icon_name,
-                self._icon_color(init_theme, chip_role),
+                self._icon_color(
+                    init_theme,
+                    chip_role,
+                    is_unavailable=is_unavailable,
+                ),
                 12,
             )
         )
@@ -179,11 +186,19 @@ class _ComposerContextChip(QFrame):
         self._is_primary = is_primary
         self._compact = compact
         self._is_dark = is_dark
+        self._is_unavailable = is_unavailable
         self._icon_name = icon_name
         self.apply_theme(is_dark)
 
     @staticmethod
-    def _icon_color(theme: ResolvedTheme, chip_role: str) -> str:
+    def _icon_color(
+        theme: ResolvedTheme,
+        chip_role: str,
+        *,
+        is_unavailable: bool = False,
+    ) -> str:
+        if is_unavailable:
+            return adjust_lightness(theme.warning, 0.12 if theme.is_dark else -0.12)
         if chip_role == "skill":
             return theme.accent if theme.is_dark else adjust_lightness(theme.accent, -0.12)
         return adjust_lightness(theme.success, 0.12 if theme.is_dark else 0.0)
@@ -192,8 +207,24 @@ class _ComposerContextChip(QFrame):
     def _muted_fg(theme: ResolvedTheme) -> str:
         return theme.text_muted if theme.is_dark else theme.text_secondary
 
+    def _unavailable_chip_colors(self, theme: ResolvedTheme) -> tuple[str, str, str]:
+        warn = theme.warning
+        if theme.is_dark:
+            return (
+                with_alpha(warn, 0.18),
+                with_alpha(warn, 0.48),
+                adjust_lightness(warn, 0.35),
+            )
+        return (
+            with_alpha(warn, 0.10),
+            with_alpha(warn, 0.42),
+            adjust_lightness(warn, -0.18),
+        )
+
     def _routing_chip_colors(self, theme: ResolvedTheme) -> tuple[str, str, str]:
         """Return (background, border, foreground) for knowledge/routing chips."""
+        if self._is_unavailable:
+            return self._unavailable_chip_colors(theme)
         strong = self._is_primary or (self._compact and self._chip_role == "routing")
         success = theme.success
         if theme.is_dark:
@@ -223,10 +254,16 @@ class _ComposerContextChip(QFrame):
     def apply_theme(self, is_dark: bool) -> None:
         theme = view_resolved_theme(self, is_dark=is_dark)
         self._is_dark = theme.is_dark
-        icon_color = self._icon_color(theme, self._chip_role)
+        icon_color = self._icon_color(
+            theme,
+            self._chip_role,
+            is_unavailable=self._is_unavailable,
+        )
         self._icon.setPixmap(themed_fa_pixmap(self._icon_name, icon_color, 12))
 
-        if self._chip_role == "skill":
+        if self._is_unavailable and self._chip_role == "routing":
+            bg, border, fg = self._unavailable_chip_colors(theme)
+        elif self._chip_role == "skill":
             bg = with_alpha(theme.accent, 0.22 if theme.is_dark else 0.12)
             border = with_alpha(theme.accent, 0.55 if theme.is_dark else 0.45)
             fg = adjust_lightness(theme.accent, 0.35 if theme.is_dark else -0.22)
@@ -349,6 +386,7 @@ class ComposerContextChipStrip(QWidget):
         self._clear_layout(self._skills_flow)
 
         for idx, att in enumerate(self._draft.routing):
+            unavailable_msg = routing_chip_unavailable_message(att)
             chip = _ComposerContextChip(
                 label=_elide_label(att.label, max_len=24 if self._compact else 28),
                 icon_name=routing_chip_icon(att),
@@ -358,6 +396,7 @@ class ComposerContextChipStrip(QWidget):
                 editable=self._editable,
                 is_dark=self._is_dark,
                 compact=self._compact,
+                is_unavailable=bool(unavailable_msg),
             )
             if self._editable:
                 chip.remove_clicked.connect(

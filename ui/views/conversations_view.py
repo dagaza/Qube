@@ -121,6 +121,7 @@ from core.composer_draft import (
     add_routing_attachment,
     add_skill,
     composer_one_source_limit_request,
+    composer_capability_unavailable_request,
     composer_prompt_required_request,
     deep_research_unavailable_request,
     draft_from_text,
@@ -3527,6 +3528,19 @@ class ConversationsView(QWidget):
         clean, attachments, enforced_skills = parse_composer_input(raw)
         routing = resolve_attachment_routing(attachments)
         if routing and routing.get("route") == "capability":
+            from core.integrations.capability_invoke import parse_composer_capability_urn
+            from core.integrations.capability_availability import resolve_capability_availability
+
+            cap_urn = parse_composer_capability_urn(
+                str(routing.get("capability_urn") or "")
+            )
+            if cap_urn is not None:
+                availability = resolve_capability_availability(cap_urn)
+                if not availability.available:
+                    self._notify_composer_toast(
+                        composer_capability_unavailable_request(availability.user_message)
+                    )
+                    return
             session_for_gate = self._ensure_active_session_for_send()
             next_turn_id = str(
                 int(getattr(self.llm, "_routing_debug_turn_seq", 0)) + 1

@@ -13,6 +13,7 @@ from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
 from core.integrations.capabilities.model import CapabilityTier
 from core.integrations.capabilities.persistence import save_descriptor_cache
 from core.integrations.consent_controller import ConsentUIState
+from core.knowledge.configured_sources import ConfiguredSource, save_configured_source
 from core.integrations.search.capability_search import (
     browse_integrations_capabilities,
     format_capability_subtitle,
@@ -46,16 +47,39 @@ class _TmpRootTestCase(unittest.TestCase):
         self._root = Path(self._tmp.name)
         self._orig = P.user_data_root
         P.user_data_root = lambda: self._root  # type: ignore[assignment]
+        import core.knowledge.configured_sources as cs
+
+        self._orig_cs = cs.user_data_root
+        cs.user_data_root = lambda: self._root  # type: ignore[assignment]
 
     def tearDown(self):
         P.user_data_root = self._orig  # type: ignore[assignment]
+        import core.knowledge.configured_sources as cs
+
+        cs.user_data_root = self._orig_cs  # type: ignore[assignment]
         self._tmp.cleanup()
+
+
+def _save_github_mcp_source() -> None:
+    save_configured_source(
+        ConfiguredSource(
+            id="github-mcp",
+            label="GitHub MCP",
+            connector_type="mcp",
+            config={
+                "command": ["github-mcp.cmd"],
+                "namespace": "github",
+                "adapter_id": "github-mcp",
+            },
+        )
+    )
 
 
 class TestCapabilitySearch(_TmpRootTestCase):
     def setUp(self):
         super().setUp()
         self.descs = {d.action: d for d in _descriptors(_TOOLS)}
+        _save_github_mcp_source()
         save_descriptor_cache("mcp", list(self.descs.values()))
 
     def test_list_cached_provider_ids(self):
@@ -110,6 +134,7 @@ class TestCapabilitySearch(_TmpRootTestCase):
 class TestComposerIntegrationsSection(_TmpRootTestCase):
     def setUp(self):
         super().setUp()
+        _save_github_mcp_source()
         save_descriptor_cache("mcp", _descriptors(_TOOLS))
 
     def test_integrations_section_in_global_search(self):

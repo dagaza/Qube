@@ -126,6 +126,7 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "custom_source_connector_selector",
         "custom_source_base_url_input",
         "custom_source_search_path_input",
+        "custom_source_new_btn",
         "custom_source_save_btn",
         "custom_source_test_btn",
         "custom_source_delete_btn",

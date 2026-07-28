@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -153,8 +153,28 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     card_layout.addWidget(scroll)
     layout.addWidget(card)
+    setup_integrations_dir_watcher(host)
     sync_integrations_consent_panel(host, is_dark=is_dark)
     return container
+
+
+def setup_integrations_dir_watcher(host) -> None:
+    """Refresh consent rows when descriptor or consent files change on disk."""
+    from core.integrations.capabilities.persistence import integrations_dir
+
+    timer = QTimer(host)
+    timer.setSingleShot(True)
+    timer.setInterval(400)
+    timer.timeout.connect(lambda: sync_integrations_consent_panel(host))
+    host._integrations_reload_timer = timer
+
+    watcher = QFileSystemWatcher(host)
+    watcher.directoryChanged.connect(lambda _path: timer.start())
+    host._integrations_dir_watcher = watcher
+
+    root = str(integrations_dir("mcp").parent)
+    if root not in watcher.directories():
+        watcher.addPath(root)
 
 
 def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> None:

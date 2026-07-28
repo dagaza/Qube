@@ -89,6 +89,8 @@ KEY_SURFACE_PROFILES_ACTIVE = "qube.ui.surface_profiles.active"
 KEY_SURFACE_PROFILES_DRAFT = "qube.ui.surface_profiles.draft"
 KEY_ASSISTANT_MESSAGE_BACKGROUND = "qube.ui.chat.assistant_message_background"
 KEY_LIBRARY_TRANSCRIPT_BACKGROUND = "qube.ui.library.transcript_background"
+KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE = "qube.ui.settings_section_cards_collapsible"
+KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED = "qube.ui.settings_section_cards_default_expanded"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -1867,6 +1869,26 @@ def get_ui_library_transcript_background() -> bool:
 
 def set_ui_library_transcript_background(enabled: bool) -> None:
     _store().set(KEY_LIBRARY_TRANSCRIPT_BACKGROUND, bool(enabled))
+
+
+def get_settings_section_cards_collapsible() -> bool:
+    return bool(
+        _store().get(KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE, True)
+    )
+
+
+def set_settings_section_cards_collapsible(enabled: bool) -> None:
+    _store().set(KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE, bool(enabled))
+
+
+def get_settings_section_cards_default_expanded() -> bool:
+    return bool(
+        _store().get(KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED, True)
+    )
+
+
+def set_settings_section_cards_default_expanded(expanded: bool) -> None:
+    _store().set(KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED, bool(expanded))
 
 
 def get_companion_cube_style() -> "CompanionCubeStyle":

@@ -65,8 +65,8 @@ class McpConnector:
             ConsentStore,
             InvokeContext,
             evaluate_access,
-            save_descriptor_cache,
         )
+        from core.integrations.descriptor_cache import merge_descriptor_cache_for_namespace
         from core.integrations.providers.mcp import McpCapabilityProvider
         from core.integrations.mcp_configured_source import augment_spawn_env_for_command
 
@@ -86,7 +86,11 @@ class McpConnector:
             if not descriptors:
                 return []
             try:
-                save_descriptor_cache(provider.provider_id, descriptors)
+                merge_descriptor_cache_for_namespace(
+                    provider.provider_id,
+                    namespace,
+                    list(descriptors),
+                )
             except Exception as exc:  # cache is best-effort, never fatal
                 logger.debug("[MCP] descriptor cache skipped: %s", exc)
 
@@ -172,24 +176,9 @@ class McpConnector:
         if not isinstance(command, list) or not command:
             return False, "MCP command not configured"
 
-        from core.integrations.providers.mcp import McpCapabilityProvider
-        from core.integrations.mcp_configured_source import augment_spawn_env_for_command
+        from core.integrations.mcp_discovery import discover_and_cache_mcp_source
 
-        cmd = [str(part) for part in command]
-        spawn_env = augment_spawn_env_for_command(
-            cmd,
-            dict(config.get("env") or {}) if isinstance(config.get("env"), dict) else None,
-        )
-        provider = McpCapabilityProvider(
-            command=cmd,
-            namespace=namespace,
-            env=spawn_env,
-            cwd=str(config.get("cwd") or "").strip() or None,
-        )
-        try:
-            descriptors = _run(provider.discover())
-        except Exception as exc:
-            return False, str(exc)
-        finally:
-            provider.close()
-        return True, f"OK — MCP server responded ({len(descriptors)} capabilities)"
+        count, error = discover_and_cache_mcp_source(config, namespace=namespace)
+        if error:
+            return False, error
+        return True, f"OK — MCP server responded ({count} capabilities registered for Integrations)"

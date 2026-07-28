@@ -105,8 +105,8 @@ def make_settings_section_header_row(
     initial_tour_id: str,
     initial_area_display_name: str | None = None,
     icon_size: int = 20,
-) -> tuple[QLabel, PageTourHelpButton, QLabel, QWidget]:
-    """Right-pane section icon + title + guided tour ? button."""
+) -> tuple[QLabel, PageTourHelpButton, QLabel, QWidget, QPushButton]:
+    """Right-pane section icon + title + guided tour ? + collapse-all control."""
     row_host = QWidget(parent)
     layout = QHBoxLayout(row_host)
     layout.setContentsMargins(0, 0, 12, 0)
@@ -129,9 +129,19 @@ def make_settings_section_header_row(
         parent=parent,
     )
     layout.addWidget(tour_btn, alignment=Qt.AlignmentFlag.AlignTop)
+
+    collapse_all_btn = QPushButton()
+    collapse_all_btn.setObjectName("SettingsSectionCollapseAllButton")
+    collapse_all_btn.setFixedSize(30, 30)
+    collapse_all_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    collapse_all_btn.setStyleSheet("background: transparent; border: none;")
+    collapse_all_btn.setToolTip("Collapse all sections on this page")
+    collapse_all_btn.hide()
+    layout.addWidget(collapse_all_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+
     layout.addStretch(1)
 
-    return title_lbl, tour_btn, icon_lbl, row_host
+    return title_lbl, tour_btn, icon_lbl, row_host, collapse_all_btn
 
 
 def add_section_reset_footer(
@@ -254,8 +264,13 @@ def add_settings_field_row(
 
 def add_settings_card_form(card_layout: QVBoxLayout) -> QFormLayout:
     """Attach a settings form to a section card and return its layout."""
+    from ui.views.settings.settings_card_style import resolve_collapsible_handle_for_layout
+
     form_host, form = make_settings_form()
     card_layout.addWidget(form_host)
+    handle = resolve_collapsible_handle_for_layout(card_layout)
+    if handle is not None:
+        form._settings_collapsible_handle = handle  # type: ignore[attr-defined]
     return form
 
 
@@ -285,6 +300,12 @@ def make_subsection_label(text: str, *, anchor: str | None = None) -> QLabel:
 def add_subsection_to_form(
     form: QFormLayout, text: str, *, anchor: str | None = None
 ) -> QLabel:
+    handle = getattr(form, "_settings_collapsible_handle", None)
+    if handle is not None:
+        handle.title_lbl.setText(text)
+        if anchor:
+            handle.title_lbl.setProperty("settings_anchor", anchor)
+        return handle.title_lbl
     lbl = make_subsection_label(text, anchor=anchor)
     form.addRow(lbl)
     return lbl
@@ -293,6 +314,14 @@ def add_subsection_to_form(
 def add_subsection_to_layout(
     layout: QVBoxLayout, text: str, *, anchor: str | None = None
 ) -> QLabel:
+    from ui.views.settings.settings_card_style import resolve_collapsible_handle_for_layout
+
+    handle = resolve_collapsible_handle_for_layout(layout)
+    if handle is not None:
+        handle.title_lbl.setText(text)
+        if anchor:
+            handle.title_lbl.setProperty("settings_anchor", anchor)
+        return handle.title_lbl
     lbl = make_subsection_label(text, anchor=anchor)
     layout.addWidget(lbl)
     return lbl

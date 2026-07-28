@@ -333,6 +333,9 @@ class SettingsView(
             return
         for lbl in page.findChildren(QLabel):
             if lbl.property("settings_anchor") == anchor:
+                handle = getattr(lbl, "_settings_collapsible_handle", None)
+                if handle is not None:
+                    handle.set_expanded(True)
                 scroll.ensureWidgetVisible(lbl, 0, 80)
                 return
         for wrapper in page.findChildren(QWidget):
@@ -396,6 +399,14 @@ class SettingsView(
             self._sync_bootstrap_download_visibility()
         self._maybe_start_provider_status_refresh()
         self._refresh_knowledge_access_ui(is_dark=is_dark)
+        row = self.settings_section_list.currentRow()
+        if row >= 0:
+            item = self.settings_section_list.item(row)
+            if item is not None:
+                section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+                self._sync_settings_collapse_all_button(
+                    str(section_id) if section_id else None
+                )
 
     def hideEvent(self, event: QHideEvent) -> None:
         super().hideEvent(event)
@@ -419,6 +430,7 @@ class SettingsView(
         self._section_stack_index_by_id: dict[str, int] = {}
         self._settings_search_index: list[dict] = []
         self._theme_buttons: list = []
+        self._settings_collapsible_cards_by_section: dict[str, list] = {}
 
         self._init_settings_layout()
 
@@ -521,7 +533,11 @@ class SettingsView(
         if is_dark is None:
             is_dark = coalesce_settings_is_dark(self)
 
-        content_widget = builder(self, is_dark=is_dark)
+        self._current_settings_section_id = section_id
+        try:
+            content_widget = builder(self, is_dark=is_dark)
+        finally:
+            self._current_settings_section_id = None
         self._mount_settings_section_content(section_id, content_widget)
         self._sections_built.add(section_id)
         self._index_section_for_search(sec_def, content_widget)
@@ -933,10 +949,14 @@ class SettingsView(
             self.settings_section_tour_btn,
             self.settings_section_icon_lbl,
             section_header,
+            self.settings_section_collapse_all_btn,
         ) = make_settings_section_header_row(
             right,
             initial_tour_id="settings.voice_audio",
             initial_area_display_name="Voice & Audio settings",
+        )
+        self.settings_section_collapse_all_btn.clicked.connect(
+            self._on_settings_collapse_all_clicked
         )
         self._settings_section_icon_labels.append(self.settings_section_icon_lbl)
         section_header_row.addWidget(section_header)
@@ -1059,6 +1079,7 @@ class SettingsView(
         self._settings_active_section_id = section_id
         self._ensure_section_data_loaded(section_id)
         self._sync_settings_section_tour_header(section_id)
+        self._sync_settings_collapse_all_button(section_id)
         if section_id == "appearance.themes" and hasattr(self, "_on_themes_section_enter"):
             self._on_themes_section_enter()
         if section_id == "advanced":
@@ -1081,6 +1102,55 @@ class SettingsView(
 
             stop_provider_status_refresh_timer(self)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
+
+    def _sync_settings_collapse_all_button(self, section_id: str | None) -> None:
+        btn = getattr(self, "settings_section_collapse_all_btn", None)
+        if btn is None:
+            return
+        from core.app_settings import get_settings_section_cards_collapsible
+
+        if not get_settings_section_cards_collapsible() or not section_id:
+            btn.hide()
+            return
+        cards = getattr(self, "_settings_collapsible_cards_by_section", {}).get(
+            section_id, ()
+        )
+        if len(cards) < 2:
+            btn.hide()
+            return
+        btn.show()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        color = "#89b4fa" if is_dark else "#64748b"
+        all_expanded = all(handle.expanded for handle in cards)
+        icon_name = "fa5s.chevron-up" if all_expanded else "fa5s.chevron-down"
+        btn.setIcon(qta.icon(icon_name, color=color))
+        btn.setToolTip(
+            "Collapse all sections on this page"
+            if all_expanded
+            else "Expand all sections on this page"
+        )
+        btn.setProperty("_collapse_all_expanded", all_expanded)
+
+    def _on_settings_collapse_all_clicked(self) -> None:
+        row = self.settings_section_list.currentRow()
+        if row < 0:
+            return
+        item = self.settings_section_list.item(row)
+        if item is None:
+            return
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if not section_id:
+            return
+        btn = self.settings_section_collapse_all_btn
+        expand_all = not bool(btn.property("_collapse_all_expanded"))
+        from ui.views.settings.settings_card_style import (
+            set_settings_collapsible_cards_expanded,
+        )
+
+        set_settings_collapsible_cards_expanded(
+            self, str(section_id), expanded=expand_all
+        )
+        self._sync_settings_collapse_all_button(str(section_id))
 
     def _sync_settings_section_tour_header(self, section_id: str | None) -> None:
         if not hasattr(self, "settings_section_tour_btn"):

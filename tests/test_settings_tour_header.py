@@ -28,7 +28,7 @@ class TestSettingsSectionHeaderRow(unittest.TestCase):
         host.resize(640, 120)
         host.show()
 
-        title, btn, icon_lbl, row = make_settings_section_header_row(
+        title, btn, icon_lbl, row, collapse_btn = make_settings_section_header_row(
             host,
             initial_tour_id="settings.voice_audio",
             initial_area_display_name="Voice & Audio settings",
@@ -41,6 +41,7 @@ class TestSettingsSectionHeaderRow(unittest.TestCase):
         self.assertEqual(btn.tour_id, "settings.voice_audio")
         self.assertLess(icon_lbl.geometry().x(), title.geometry().x())
         self.assertLess(title.geometry().x(), btn.geometry().x())
+        self.assertFalse(collapse_btn.isVisible())
 
     def test_every_settings_section_has_registered_tour(self) -> None:
         for sec in SETTINGS_SECTIONS:

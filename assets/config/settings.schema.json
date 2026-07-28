@@ -58,6 +58,16 @@
     "default": false,
     "description": "When enabled, library document preview text uses an elevated background card for readability over wallpapers."
   },
+  "qube.ui.settings_section_cards_collapsible": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, settings pages show per-card collapse controls and a page-level expand/collapse button beside the section title."
+  },
+  "qube.ui.settings_section_cards_default_expanded": {
+    "type": "boolean",
+    "default": true,
+    "description": "When collapsible settings cards are enabled, whether section cards start expanded (true) or collapsed (false) when Settings is opened."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,

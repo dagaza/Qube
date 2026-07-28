@@ -120,6 +120,11 @@ def _source_path(source_id: str) -> Any:
     return sources_dir() / f"{source_id.strip().lower()}.json"
 
 
+def clear_configured_source_search_cache() -> None:
+    """Drop cached search callables after on-disk source changes."""
+    _configured_search_fn.cache_clear()
+
+
 def list_configured_sources() -> list[ConfiguredSource]:
     out: list[ConfiguredSource] = []
     for path in sorted(sources_dir().glob("*.json")):
@@ -131,6 +136,57 @@ def list_configured_sources() -> list[ConfiguredSource]:
         except Exception:
             continue
     return out
+
+
+def _mcp_namespace_from_raw(raw: dict[str, Any], *, source_id: str) -> str:
+    cfg = dict(raw.get("config") or {})
+    return str(cfg.get("namespace") or cfg.get("adapter_id") or source_id).strip().lower()
+
+
+def inspect_configured_mcp_namespace(namespace: str) -> tuple[str, str, str]:
+    """Return ``(state, source_id, detail)`` for an MCP namespace.
+
+    ``state`` is one of ``ok``, ``missing``, or ``invalid``.
+    """
+    want = (namespace or "").strip().lower()
+    if not want:
+        return "missing", "", "namespace is empty"
+
+    for source in list_configured_sources():
+        if source.connector_type != "mcp":
+            continue
+        cfg = dict(source.config or {})
+        src_ns = str(cfg.get("namespace") or cfg.get("adapter_id") or source.id).strip().lower()
+        if src_ns != want:
+            continue
+        command = cfg.get("command")
+        if not isinstance(command, list) or not command:
+            return "invalid", source.id, "MCP command is not configured"
+        return "ok", source.id, ""
+
+    for path in sorted(sources_dir().glob("*.json")):
+        source_id = path.stem.lower()
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            if source_id == want or want in path.name.lower():
+                return "invalid", source_id, f"JSON parse error: {exc}"
+            continue
+        connector = str(raw.get("connector_type") or "").strip().lower()
+        if connector != "mcp":
+            continue
+        src_ns = _mcp_namespace_from_raw(raw, source_id=source_id)
+        if src_ns != want:
+            continue
+        try:
+            source = ConfiguredSource.from_dict(raw)
+            source.validate()
+            command = dict(source.config or {}).get("command")
+            if not isinstance(command, list) or not command:
+                return "invalid", source_id or src_ns, "MCP command is not configured"
+        except Exception as exc:
+            return "invalid", source_id or src_ns, str(exc)
+    return "missing", "", ""
 
 
 def load_configured_source(source_id: str) -> ConfiguredSource | None:
@@ -153,14 +209,14 @@ def save_configured_source(source: ConfiguredSource) -> None:
         json.dumps(source.to_dict(), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    _configured_search_fn.cache_clear()
+    clear_configured_source_search_cache()
 
 
 def delete_configured_source(source_id: str) -> bool:
     path = _source_path(source_id)
     if path.is_file():
         path.unlink()
-        _configured_search_fn.cache_clear()
+        clear_configured_source_search_cache()
         return True
     return False
 

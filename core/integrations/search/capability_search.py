@@ -92,7 +92,13 @@ def capability_palette_tooltip(entry: CapabilityPaletteEntry) -> str:
     hint = format_capability_subtitle(entry.descriptor, ui_state=entry.ui_state)
     parts.append(f"({hint})")
     if entry.locked:
-        parts.append("Grant in Settings → Integrations before invoke.")
+        from core.integrations.capability_availability import resolve_capability_availability
+
+        availability = resolve_capability_availability(entry.descriptor.urn)
+        if availability.user_message:
+            parts.append(availability.user_message)
+        else:
+            parts.append("Grant in Settings → Integrations before invoke.")
     urn_body = str(entry.descriptor.urn)
     if urn_body.startswith("cap:"):
         urn_body = urn_body[4:]
@@ -181,9 +187,15 @@ def _palette_entry(
 
 
 def _iter_cached_capabilities() -> list[tuple[str, CapabilityDescriptor]]:
+    from core.integrations.capability_availability import mcp_namespace_has_configured_source
+
     rows: list[tuple[str, CapabilityDescriptor]] = []
     for provider_id in list_cached_provider_ids():
         for descriptor in load_cached_descriptors(provider_id):
+            if provider_id == "mcp" and not mcp_namespace_has_configured_source(
+                descriptor.urn.namespace
+            ):
+                continue
             rows.append((provider_id, descriptor))
     return rows
 

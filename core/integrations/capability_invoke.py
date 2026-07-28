@@ -111,6 +111,13 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+def _user_facing_invoke_denial(urn: CapabilityURN, *, fallback: str = "") -> str:
+    from core.integrations.capability_availability import resolve_capability_availability
+
+    message = resolve_capability_availability(urn).user_message.strip()
+    return message or fallback
+
+
 def _record_egress(
     *,
     session_id: str | None,
@@ -228,8 +235,9 @@ def invoke_gated_capability(
 
     descriptor = resolve_descriptor_for_urn(urn, live_descriptors=live_descriptors)
     if descriptor is None:
+        reason = _user_facing_invoke_denial(urn, fallback=f"capability not found: {urn}")
         result = CapabilityInvokeResult(
-            False, f"capability not found: {urn}", urn=urn, dry_run=dry_run
+            False, reason, urn=urn, dry_run=dry_run
         )
         if record_egress and session_id and turn_id:
             _record_egress(
@@ -272,9 +280,10 @@ def invoke_gated_capability(
     decision = evaluate_invoke_access(descriptor, store.get(descriptor.urn))
     if not decision.allowed:
         logger.info("[CapabilityInvoke] denied %s: %s", urn, decision.reason)
+        reason = _user_facing_invoke_denial(urn, fallback=decision.reason)
         result = CapabilityInvokeResult(
             False,
-            decision.reason,
+            reason,
             descriptor=descriptor,
             urn=urn,
             dry_run=dry_run,
@@ -376,6 +385,19 @@ def invoke_gated_capability(
         should_discover = live_descriptors is None or mcp_binding is not None
         if should_discover:
             discovered = _run(provider.discover())
+            if discovered and mcp_binding is not None:
+                try:
+                    from core.integrations.descriptor_cache import (
+                        merge_descriptor_cache_for_namespace,
+                    )
+
+                    merge_descriptor_cache_for_namespace(
+                        urn.provider,
+                        urn.namespace,
+                        list(discovered),
+                    )
+                except Exception as exc:
+                    logger.debug("[CapabilityInvoke] descriptor cache skipped: %s", exc)
             refreshed = resolve_descriptor_for_urn(urn, live_descriptors=discovered)
             if refreshed is not None:
                 descriptor = refreshed
@@ -383,9 +405,10 @@ def invoke_gated_capability(
                     descriptor, store.get(descriptor.urn)
                 )
                 if not decision.allowed:
+                    reason = _user_facing_invoke_denial(urn, fallback=decision.reason)
                     result = CapabilityInvokeResult(
                         False,
-                        decision.reason,
+                        reason,
                         descriptor=descriptor,
                         urn=urn,
                         dry_run=dry_run,
@@ -403,9 +426,13 @@ def invoke_gated_capability(
                         )
                     return result
             elif mcp_binding is not None:
+                reason = _user_facing_invoke_denial(
+                    urn,
+                    fallback=f"capability not available on MCP server: {urn}",
+                )
                 result = CapabilityInvokeResult(
                     False,
-                    f"capability not available on MCP server: {urn}",
+                    reason,
                     descriptor=descriptor,
                     urn=urn,
                     dry_run=dry_run,
