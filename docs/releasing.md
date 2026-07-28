@@ -154,12 +154,15 @@ produces:
 |----------|---------|
 | AppImage | `Qube-<version>-x86_64-{cpu,vulkan,cuda}.AppImage` |
 | Debian package | `qube_<version>_amd64.deb`, `qube-vulkan_<version>_amd64.deb`, `qube-cuda_<version>_amd64.deb` |
+| RPM package | `qube-<version>-1.x86_64.rpm`, `qube-vulkan-<version>-1.x86_64.rpm`, `qube-cuda-<version>-1.x86_64.rpm` |
+| Portable tarball | `Qube-<version>-x86_64-{cpu,vulkan,cuda}.tar.gz` |
 
-Both are attached to the GitHub Release alongside the Windows and macOS assets.
+All are attached to the GitHub Release alongside the Windows and macOS assets.
 The build matrix produces **CPU**, **Vulkan**, and **CUDA** `llama-cpp-python` backends.
 Vulkan builds compile from source in CI; CUDA uses the published `cu124` wheel when
-available. Each variant is wrapped with `scripts/linux/build_appimage.sh` (linuxdeploy)
-and `scripts/linux/build_deb.sh` (fpm), then smoke-tested under Xvfb.
+available. Each variant is wrapped with `scripts/linux/build_appimage.sh` (linuxdeploy),
+`scripts/linux/build_deb.sh` / `scripts/linux/build_rpm.sh` (fpm), and
+`scripts/linux/build_tarball.sh`, then smoke-tested under Xvfb where applicable.
 
 User install docs: [`docs/user/install-linux.md`](user/install-linux.md).
 
@@ -179,29 +182,34 @@ Signing, notarization, and the DMG smoke test only run when the repository
 | `MACOS_NOTARY_PASSWORD` | App-specific password (not the Apple ID password) |
 
 Until `ENABLE_MACOS_SIGNING` is set, the job still builds and uploads an
-unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs will be
-blocked by Gatekeeper on end-user machines and are not suitable for a Homebrew
-Cask — enable signing before publishing a cask.
+unsigned DMG so the pipeline can be validated end-to-end. Unsigned DMGs require
+a one-time Gatekeeper approval on end-user Macs (see Homebrew cask `caveats`).
 
-### Homebrew Cask
+### Homebrew Cask (custom tap)
 
-Homebrew Cask distributes the signed, notarized DMGs. See
+Homebrew distributes release DMGs via the **`dagaza/homebrew-qube`** tap. See
 [`homebrew/README.md`](../homebrew/README.md) for full setup.
 
-**Prerequisite:** signing must be enabled (`ENABLE_MACOS_SIGNING=true`) so the
-DMGs are notarized — Gatekeeper and `brew audit` reject unsigned apps. Create a
-tap repo `dagaza/homebrew-qube` with a `Casks/` directory.
+**No Apple Developer account required** for the custom tap — unsigned DMGs are
+supported. The cask includes Gatekeeper instructions; CI runs `brew style` only
+(not strict `brew audit` codesign checks).
+
+**Prerequisite:** create tap repo `dagaza/homebrew-qube` with a `Casks/` directory.
 
 **Automated updates:** set repository variable `HOMEBREW_AUTO_SUBMIT=true` and
 secret `HOMEBREW_TAP_TOKEN` (fine-grained PAT with contents:write on
-`dagaza/homebrew-qube`). After each signed release, the `homebrew` job renders
-the cask via `scripts/render_homebrew_cask.py`, runs `brew audit`/`brew style`,
-and commits the bump to the tap.
+`dagaza/homebrew-qube`). After each release, the `homebrew` job renders the cask
+via `scripts/render_homebrew_cask.py`, validates style, and commits the bump to
+the tap.
+
+Optional: enable `ENABLE_MACOS_SIGNING` for notarized DMGs (recommended before
+submitting to **homebrew/homebrew-cask** core).
 
 Users install or upgrade with:
 
 ```bash
-brew install --cask dagaza/qube/qube
+brew tap dagaza/qube
+brew install --cask qube
 brew upgrade --cask qube
 ```
 

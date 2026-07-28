@@ -45,3 +45,27 @@ def deb_description(variant: str) -> str:
     if variant == "vulkan":
         return f"{base} (Vulkan GPU offload build for AMD/Intel GPUs)"
     return f"{base} (CUDA GPU offload build for NVIDIA GPUs)"
+
+
+def rpm_filename(version: str, variant: str) -> str:
+    """RPM file name produced by fpm (Fedora/RHEL-style, x86_64)."""
+    variant = normalize_linux_variant(variant)
+    pkg = deb_package_name(variant)
+    return f"{pkg}-{version}-1.x86_64.rpm"
+
+
+def rpm_package_name(variant: str) -> str:
+    return deb_package_name(variant)
+
+
+def rpm_conflicts(variant: str) -> str:
+    return deb_conflicts(variant)
+
+
+def rpm_description(variant: str) -> str:
+    return deb_description(variant)
+
+
+def tarball_filename(version: str, variant: str) -> str:
+    variant = normalize_linux_variant(variant)
+    return f"Qube-{version}-x86_64-{variant}.tar.gz"

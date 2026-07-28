@@ -372,14 +372,23 @@ jobs:
       - name: Build .deb (${{ matrix.variant }})
         run: bash scripts/linux/build_deb.sh ${{ steps.version.outputs.version }} ${{ matrix.variant }}
 
+      - name: Build .rpm (${{ matrix.variant }})
+        run: bash scripts/linux/build_rpm.sh ${{ steps.version.outputs.version }} ${{ matrix.variant }}
+
+      - name: Build portable .tar.gz (${{ matrix.variant }})
+        run: bash scripts/linux/build_tarball.sh ${{ steps.version.outputs.version }} ${{ matrix.variant }}
+
       - name: Upload Linux artifacts (${{ matrix.variant }})
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.variant }}-${{ steps.version.outputs.version }}
           path: |
             Qube-*-x86_64-${{ matrix.variant }}.AppImage
+            Qube-*-x86_64-${{ matrix.variant }}.tar.gz
             qube*_${{ steps.version.outputs.version }}_amd64.deb
             qube_*_${{ steps.version.outputs.version }}_amd64.deb
+            qube*.rpm
+            qube-*.rpm
 
   release:
     needs: [build, macos-build, linux-build]
@@ -410,9 +419,13 @@ jobs:
             Qube-*-x86_64-cpu.AppImage
             Qube-*-x86_64-vulkan.AppImage
             Qube-*-x86_64-cuda.AppImage
+            Qube-*-x86_64-cpu.tar.gz
+            Qube-*-x86_64-vulkan.tar.gz
+            Qube-*-x86_64-cuda.tar.gz
             qube_*_amd64.deb
             qube-vulkan_*_amd64.deb
             qube-cuda_*_amd64.deb
+            qube-*.x86_64.rpm
           body: |
             ## Install
 
@@ -429,11 +442,14 @@ jobs:
             # Qube-${{ needs.build.outputs.version }}-cuda-Setup.exe     — NVIDIA (CUDA)
             ```
 
-            **macOS** (download the DMG for your architecture below)
+            **macOS**
 
             ```bash
-            # Apple Silicon: Qube-${{ needs.build.outputs.version }}-arm64.dmg
-            # Intel:         Qube-${{ needs.build.outputs.version }}-x86_64.dmg
+            # Custom tap (unsigned DMG — see Gatekeeper caveats during install):
+            brew tap dagaza/qube
+            brew install --cask qube
+
+            # Or download DMG: arm64 / x86_64 assets below
             ```
 
             **Linux** (x86_64 — pick the build that matches your GPU)
@@ -451,11 +467,21 @@ jobs:
             chmod +x Qube-${{ needs.build.outputs.version }}-x86_64-cuda.AppImage
             ./Qube-${{ needs.build.outputs.version }}-x86_64-cuda.AppImage
 
-            # Debian/Ubuntu packages (install one variant only):
+            # Debian/Ubuntu (.deb — install one variant only):
             sudo apt install ./qube_${{ needs.build.outputs.version }}_amd64.deb
             sudo apt install ./qube-vulkan_${{ needs.build.outputs.version }}_amd64.deb
             sudo apt install ./qube-cuda_${{ needs.build.outputs.version }}_amd64.deb
-            qube
+
+            # Fedora/RHEL (.rpm — install one variant only):
+            sudo dnf install ./qube-${{ needs.build.outputs.version }}-1.x86_64.rpm
+            sudo dnf install ./qube-vulkan-${{ needs.build.outputs.version }}-1.x86_64.rpm
+            sudo dnf install ./qube-cuda-${{ needs.build.outputs.version }}-1.x86_64.rpm
+
+            # Portable tarball (extract and run ./Qube/Qube):
+            tar -xzf Qube-${{ needs.build.outputs.version }}-x86_64-vulkan.tar.gz
+            ./Qube/Qube
+
+            qube   # when installed via .deb or .rpm
             ```
 
             **SHA256 (Windows CPU installer):** `${{ needs.build.outputs.installer_hash }}`
@@ -508,14 +534,13 @@ jobs:
             --sha256-arm64  "$(shasum -a 256 "Qube-$VERSION-arm64.dmg"  | awk '{print $1}')" \
             --sha256-x86_64 "$(shasum -a 256 "Qube-$VERSION-x86_64.dmg" | awk '{print $1}')"
 
-      - name: Audit cask
+      - name: Validate cask (style only; unsigned custom tap)
         run: |
           VERSION="${{ needs.macos-build.outputs.version }}"
           TAP_DIR="$(brew --repository)/Library/Taps/dagaza/homebrew-qube"
           mkdir -p "$TAP_DIR/Casks"
           cp "homebrew/out/$VERSION/qube.rb" "$TAP_DIR/Casks/qube.rb"
           brew style "$TAP_DIR/Casks/qube.rb"
-          brew audit --cask --online "dagaza/qube/qube"
 
       - name: Commit bump to tap
         env:
