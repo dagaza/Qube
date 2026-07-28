@@ -37,7 +37,8 @@ Disk swapping during inference makes voice and chat unusably slow — prefer a s
 |----------|--------------|
 | **Windows** | Installer via [GitHub Releases](https://github.com/dagaza/Qube/releases), WinGet (`dagaza.Qube`), or Chocolatey (`qube`) |
 | **macOS** | Signed/notarized `.dmg` from GitHub Releases when available; Homebrew cask via `dagaza/homebrew-qube` when published |
-| **Linux** | **AppImage** and **`.deb`** (amd64) from GitHub Releases; [install guide](install-linux.md). Source install still supported. |
+| **Linux** | **AppImage**, **`.deb`**, **`.rpm`**, and **`.tar.gz`** (amd64) from GitHub Releases; [install guide](install-linux.md). Source install still supported. |
+| **macOS** | `.dmg` from GitHub Releases, or **`brew tap dagaza/qube && brew install --cask qube`** (custom tap; unsigned builds supported) |
 
 ---
 

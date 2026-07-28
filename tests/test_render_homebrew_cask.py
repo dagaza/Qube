@@ -24,7 +24,8 @@ def test_render_writes_cask(tmp_path, monkeypatch):
         'arm "{{SHA256_ARM64}}"\n'
         'intel "{{SHA256_X86_64}}"\n'
         'url ".../v#{version}/Qube-#{version}-arm64.dmg"\n'
-        "zap trash: [\n{{ZAP_TRASH_LINES}}\n]\n",
+        "zap trash: [\n{{ZAP_TRASH_LINES}}\n]\n"
+        "caveats <<~EOS\nGatekeeper\nEOS\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(mod, "_repo_root", lambda: tmp_path)
@@ -40,3 +41,4 @@ def test_render_writes_cask(tmp_path, monkeypatch):
     # Ruby interpolation is left intact for Homebrew to expand at install time.
     assert "Qube-#{version}-arm64.dmg" in cask
     assert '"~/.qube"' in cask
+    assert "Gatekeeper" in cask
