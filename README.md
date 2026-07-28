@@ -128,11 +128,38 @@ choco install qube-cuda -y
 
 To **upgrade**, use the same ID as your installed variant (`winget upgrade -e --id …` or `choco upgrade qube-vulkan -y`, etc.). Switching GPU builds means installing the other package or running the matching `.exe` from Releases — see **[Update Qube](docs/user/update-qube.md)**.
 
+**macOS (Homebrew custom tap)** — one cask, **Metal** GPU when available (no separate Vulkan/CUDA packages):
+
+| | |
+|--|--|
+| **Tap** | `dagaza/qube` |
+| **Cask** | `qube` |
+| **Releases** | `Qube-<version>-arm64.dmg` (Apple Silicon) · `Qube-<version>-x86_64.dmg` (Intel) |
+
+```bash
+# One-time: add the custom tap
+brew tap dagaza/qube
+
+# Install (Homebrew picks arm64 or x86_64 automatically)
+brew install --cask qube
+
+# Or install without adding the tap permanently:
+brew install --cask dagaza/qube/qube
+```
+
+To **upgrade:** `brew upgrade --cask qube`. Or download the matching **`.dmg`** from [GitHub Releases](https://github.com/dagaza/Qube/releases) and replace **`Qube.app`** in `/Applications`.
+
+> **Gatekeeper (unsigned DMG):** On first launch, use **System Settings → Privacy & Security → Open Anyway**, or run:
+>
+> ```bash
+> xattr -dr com.apple.quarantine "/Applications/Qube.app"
+> ```
+>
+> See [homebrew-qube](https://github.com/dagaza/homebrew-qube).
+
 Linux artifact examples: `Qube-<version>-x86_64-vulkan.AppImage`, `qube-vulkan_<version>_amd64.deb`, `qube-vulkan-<version>-1.x86_64.rpm`. Windows direct download: `Qube-<version>-vulkan-Setup.exe`, `Qube-<version>-cuda-Setup.exe`.
 
-Maintainers: [`winget/README.md`](winget/README.md) · [`chocolatey/README.md`](chocolatey/README.md)
-
-> **macOS (custom tap):** DMGs are **unsigned** — on first launch use **System Settings → Privacy & Security → Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Qube.app"`. See [homebrew-qube](https://github.com/dagaza/homebrew-qube).
+Maintainers: [`winget/README.md`](winget/README.md) · [`chocolatey/README.md`](chocolatey/README.md) · [`homebrew/README.md`](homebrew/README.md)
 
 ### First launch
 
