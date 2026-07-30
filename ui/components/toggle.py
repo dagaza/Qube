@@ -12,6 +12,7 @@ class PrestigeToggle(QAbstractButton):
         super().__init__(parent)
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 
         self._active_color = QColor("#10b981")
         self._bg_color = QColor("#45475a")

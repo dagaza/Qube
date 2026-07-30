@@ -20,12 +20,15 @@ from core.help_corpus_manifest import (
 )
 from core.paths import user_data_root
 from core.help_corpus_text import help_chunk_embed_text
-from core.help_markdown_chunker import chunk_help_markdown
+from core.chunking.chunk_metadata import chunk_record_to_meta_json
+from core.knowledge.document.builders.library_builder import build_document_from_markdown
+from core.chunking.ingest_pipeline import chunk_document_for_ingest
 
 logger = logging.getLogger("Qube.HelpCorpusSeed")
 
 STATE_SCHEMA = "qube.help_corpus_state.v1"
 _MAX_EMBED_CHARS = 2400  # match rag.embed_utils.MAX_EMBED_CHARS
+_DEFAULT_MAX_CHARS = 1500
 
 
 def user_help_corpus_state_path() -> Path:
@@ -178,24 +181,33 @@ def seed_help_corpus(
         except Exception as exc:
             logger.debug("No prior SQLite metadata for %s: %s", source, exc)
 
-        chunks = [c[:_MAX_EMBED_CHARS] for c in chunk_help_markdown(text)]
-        if not chunks:
+        doc_meta = doc_by_source.get(source, {"path": rel, "title": rel})
+        document = build_document_from_markdown(
+            text,
+            title=str(doc_meta.get("title") or rel),
+            source=source,
+        )
+        chunk_records = chunk_document_for_ingest(document, max_chars=_DEFAULT_MAX_CHARS)
+        if not chunk_records:
             logger.warning("No chunks produced for help doc: %s", rel)
             continue
 
-        doc_meta = doc_by_source.get(source, {"path": rel, "title": rel})
+        chunks = [record.body[:_MAX_EMBED_CHARS] for record in chunk_records]
         embed_inputs = [
-            help_chunk_embed_text(doc_meta, chunk)[:_MAX_EMBED_CHARS] for chunk in chunks
+            help_chunk_embed_text(doc_meta, record.body)[:_MAX_EMBED_CHARS]
+            for record in chunk_records
         ]
         vectors = embedder.embed(embed_inputs)
         records = []
-        for idx, (chunk, vector) in enumerate(zip(chunks, vectors)):
+        for idx, (record, vector) in enumerate(zip(chunk_records, vectors)):
+            chunk = record.body[:_MAX_EMBED_CHARS]
             records.append(
                 {
                     "vector": vector.tolist(),
                     "text": chunk,
                     "source": source,
                     "chunk_id": idx,
+                    "meta_json": chunk_record_to_meta_json(record),
                 }
             )
         store.add_chunks(records)

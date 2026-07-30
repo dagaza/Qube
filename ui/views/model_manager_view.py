@@ -67,6 +67,7 @@ from core.model_capability_service import ModelCapabilityService
 from core.publisher_guidance_service import PublisherGuidanceService
 from core.richtext_styles import markdown_document_stylesheet
 from core.theme.accessors import theme_for
+from core.theme.svg_icons import themed_fa_icon
 from core.theme.view_theme import view_resolved_theme
 from core.theme.widget_styles import (
     ACCENT_CHIP,
@@ -884,7 +885,7 @@ class ModelManagerView(QWidget):
         self.detail_info_btn.setFixedSize(24, 24)
         _boot_theme = theme_for(is_dark=True)
         self.detail_info_btn.setIcon(
-            qta.icon("fa5s.info-circle", color=_boot_theme.color(MUTED_STATUS))
+            themed_fa_icon("fa5s.info-circle", _boot_theme.color(MUTED_STATUS), 16)
         )
         self.detail_info_btn.setIconSize(QSize(16, 16))
         self.detail_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1222,6 +1223,10 @@ class ModelManagerView(QWidget):
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self._run_hub_search)
+
+        from ui.components.type_to_search import install_type_to_search
+
+        install_type_to_search(self, self.hub_search_edit)
 
     def _set_hub_load_more_visible(self, visible: bool) -> None:
         if getattr(self, "_tour_load_more_preview_active", False):
@@ -1958,7 +1963,7 @@ class ModelManagerView(QWidget):
             self.hub_list_hint.setStyleSheet(hint_style)
         if hasattr(self, "detail_info_btn"):
             self.detail_info_btn.setIcon(
-                qta.icon("fa5s.info-circle", color=theme.color(MUTED_STATUS))
+                themed_fa_icon("fa5s.info-circle", theme.color(MUTED_STATUS), 16)
             )
         if hasattr(self, "hub_model_list"):
             row_style = theme.style(HUB_MUTED_ROW)

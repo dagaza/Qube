@@ -221,6 +221,7 @@ class DatabaseManager:
                     "ALTER TABLE sessions ADD COLUMN folder_id TEXT REFERENCES conversation_folders(id)",
                     "ALTER TABLE documents ADD COLUMN folder_id TEXT REFERENCES library_folders(id)",
                     "ALTER TABLE documents ADD COLUMN summary_blurb TEXT",
+                    "ALTER TABLE documents ADD COLUMN ingest_mode TEXT NOT NULL DEFAULT 'standard'",
                     "ALTER TABLE library_folders ADD COLUMN folder_key TEXT",
                     "ALTER TABLE library_folders ADD COLUMN allows_user_ingest INTEGER NOT NULL DEFAULT 1",
                 ):
@@ -1028,12 +1029,16 @@ class DatabaseManager:
         chunk_count: int,
         folder_id: str | None = None,
         summary_blurb: str | None = None,
+        ingest_mode: str = "standard",
         *,
         allow_duplicate: bool = False,
     ) -> str | None:
+        from core.library_ingest_modes import normalize_ingest_mode
+
         name = (filename or "").strip()
         if not name:
             return None
+        mode = normalize_ingest_mode(ingest_mode)
         if not allow_duplicate and self.library_document_filename_exists(name):
             with self._get_connection() as conn:
                 row = conn.execute(
@@ -1052,10 +1057,10 @@ class DatabaseManager:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id, summary_blurb)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO documents (id, filename, file_size_kb, chunk_count, folder_id, summary_blurb, ingest_mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (doc_id, name, file_size_kb, chunk_count, fid, summary_blurb),
+                (doc_id, name, file_size_kb, chunk_count, fid, summary_blurb, mode),
             )
             conn.commit()
         return doc_id

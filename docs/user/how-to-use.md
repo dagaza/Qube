@@ -28,6 +28,8 @@ Ask questions grounded in your own files.
 3. Ask your question. Replies include numbered citations (e.g. `[1]`) linking to source chunks.
 4. **Follow-ups** — conversation context carries forward; you often do not need to re-attach Library for the next question on the same topic.
 
+**Pro (optional):** With a **Qube Pro** license, each **Library (+)** import lets you choose **Normal** or **Precision indexing** (gem badge on precision-indexed docs). **Settings → Knowledge → Library Pro depth** offers **Default precision ingest on import** and **Precision retrieval** (rerank on each query). See [library-pro-depth.md](library-pro-depth.md) or in-app **Library → Qube → faq/library-pro-depth.md**.
+
 | Dark | Light |
 | :---: | :---: |
 | ![Library dark](../../assets/screenshots/qube_library_dark_mode.png) | ![Library light](../../assets/screenshots/qube_library_light_mode.png) |

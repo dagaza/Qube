@@ -1,18 +1,21 @@
 # workers/ingestion_worker.py
 from PyQt6.QtCore import QThread, pyqtSignal
 from pathlib import Path
-from rag.parsers import parse_file
 from rag.embedder import EmbeddingModel, MAX_EMBED_CHARS
-from rag.chunker import chunk_text, DEFAULT_CHUNK_SIZE
 from rag.store import DocumentStore
 import logging
 
 from core.app_settings import get_sidecar_ingest_blurb_enabled
+from core.chunking.chunk_metadata import chunk_record_to_meta_json
+from core.chunking.embed_context import library_chunk_embed_text
+from core.chunking.ingest_pipeline import chunk_document_for_ingest
+from core.chunking.semantic_ingest import chunk_document_for_precision_ingest
+from core.knowledge.document.builders.library_builder import build_document_from_path
+from core.library_ingest_modes import is_precision_ingest_mode
+from core.library_pro_features import resolve_import_ingest_mode
 
 logger = logging.getLogger("Qube.RAG")
 
-# Slightly larger overlap than chunker default; still bounded inside chunk_text()
-_INGEST_OVERLAP = 200
 
 class IngestionWorker(QThread):
     progress_update = pyqtSignal(int)       
@@ -28,12 +31,14 @@ class IngestionWorker(QThread):
         db_manager,
         folder_id: str | None = None,
         sidecar_worker=None,
+        ingest_mode: str | None = None,
     ):
         super().__init__()
         self.file_paths = file_paths
         self.embedder = embedder
         self.store = store
         self.db = db_manager
+        self.ingest_mode = resolve_import_ingest_mode(ingest_mode)
         resolved = folder_id or db_manager.get_main_library_folder_id()
         if not db_manager.library_folder_allows_user_ingest(resolved):
             logger.warning(
@@ -63,7 +68,6 @@ class IngestionWorker(QThread):
             try:
                 source = path.name
                 
-                # Retrieve file size in KB
                 file_size_kb = round(path.stat().st_size / 1024, 2)
                 
                 logger.info(f"Processing: {source} ({file_size_kb} KB)")
@@ -74,53 +78,65 @@ class IngestionWorker(QThread):
                     self.progress_update.emit(int((i + 1) / total_files * 100))
                     continue
 
-                raw_sections = parse_file(path)
-                chunks = []
-                
-                for section in raw_sections:
-                    chunks.extend(
-                        chunk_text(
-                            section,
-                            chunk_size=DEFAULT_CHUNK_SIZE,
-                            overlap=_INGEST_OVERLAP,
-                        )
+                document = build_document_from_path(path)
+                if is_precision_ingest_mode(self.ingest_mode):
+                    self.file_done.emit(f"Precision ingest (semantic split): {source}...")
+                    chunk_records = chunk_document_for_precision_ingest(
+                        document,
+                        self.embedder,
                     )
+                else:
+                    chunk_records = chunk_document_for_ingest(document)
 
-                # Last line of defense — never pass oversized strings to llama.cpp
-                chunks = [c[:MAX_EMBED_CHARS] for c in chunks]
-
-                if not chunks:
+                if not chunk_records:
                     self.error_occurred.emit(f"No readable text found in {source}.")
                     self.progress_update.emit(int((i + 1) / total_files * 100))
                     continue
+
+                chunks = [record.body[:MAX_EMBED_CHARS] for record in chunk_records]
 
                 self.file_done.emit(f"Embedding {len(chunks)} chunks from {source}...")
 
                 batch_size = 32
                 records = []
                 
+                embed_inputs = [
+                    library_chunk_embed_text(
+                        source,
+                        record.body,
+                        section_heading=record.heading,
+                        breadcrumb=record.breadcrumb,
+                    )[:MAX_EMBED_CHARS]
+                    for record in chunk_records
+                ]
+
                 for b_start in range(0, len(chunks), batch_size):
-                    batch = chunks[b_start:b_start + batch_size]
-                    vectors = self.embedder.embed(batch)
-                    
-                    for j, (text, vector) in enumerate(zip(batch, vectors)):
+                    batch_chunks = chunks[b_start:b_start + batch_size]
+                    batch_embed = embed_inputs[b_start:b_start + batch_size]
+                    vectors = self.embedder.embed(batch_embed)
+
+                    for j, (record, vector) in enumerate(zip(chunk_records[b_start:b_start + batch_size], vectors)):
+                        text = record.body[:MAX_EMBED_CHARS]
                         records.append({
                             "vector": vector.tolist(),
                             "text": text,
                             "source": source,
                             "chunk_id": b_start + j,
+                            "meta_json": chunk_record_to_meta_json(record),
                         })
                         
                     file_base_progress = (i / total_files) * 100
-                    chunk_progress = ((b_start + len(batch)) / len(chunks)) * (100 / total_files)
+                    chunk_progress = ((b_start + len(batch_chunks)) / len(chunks)) * (100 / total_files)
                     self.progress_update.emit(int(file_base_progress + chunk_progress))
 
-                # Write vectors to LanceDB
                 self.store.add_chunks(records)
                 
-                # Write metadata to SQLite for the UI Library Tab
                 self.db.add_document_metadata(
-                    source, file_size_kb, len(chunks), folder_id=self.folder_id
+                    source,
+                    file_size_kb,
+                    len(chunks),
+                    folder_id=self.folder_id,
+                    ingest_mode=self.ingest_mode,
                 )
 
                 if (

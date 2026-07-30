@@ -14,6 +14,11 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - **Download Fast, Balanced, and Power presets for offline mode switching**
 - **Download all search presets**
 
+### Library Pro depth
+
+- **Default precision ingest on import**
+- **Precision retrieval**
+
 ### Retrieval profile
 
 - **Profile**

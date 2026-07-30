@@ -2,6 +2,10 @@ from rag.store import DocumentStore
 import logging
 import numpy as np
 
+from core.chunking.rag_mmr import apply_mmr_to_rag_hits
+from core.chunking.chunk_metadata import format_rag_source_header
+from core.chunking.precision_rerank import apply_precision_rerank_to_rag_hits
+from core.library_pro_features import precision_rerank_enabled
 from core.retrieval_fusion import fuse_ranked_results
 from core.memory_retrieval_policy import fts_query_token_overlap
 from core.reindex_state import is_reindex_in_progress
@@ -273,10 +277,15 @@ def rag_search(
         # ============================================================
 
         def _rag_doc_id(doc: dict) -> str:
+            source = str(doc.get("source") or doc.get("filename") or "")
+            raw_cid = doc.get("chunk_id")
+            if raw_cid is None:
+                raw_cid = doc.get("id")
+            if source and raw_cid is not None:
+                return f"{source}::{raw_cid}"
             return str(
-                doc.get("chunk_id")
-                or doc.get("id")
-                or doc.get("source")
+                raw_cid
+                or source
                 or (doc.get("text") or "")[:64]
             )
 
@@ -288,6 +297,13 @@ def rag_search(
             doc_id_fn=_rag_doc_id,
         )
         ordered_results = [doc for doc, _channels in fused]
+        ordered_results = apply_mmr_to_rag_hits(ordered_results, top_k=top_k)
+
+        if precision_rerank_enabled():
+            ordered_results = apply_precision_rerank_to_rag_hits(
+                query_vector,
+                ordered_results,
+            )[:top_k]
 
         # ============================================================
         # 3. CONTEXT BUILDER (HARD SAFETY + UI CONTRACT ENFORCEMENT)
@@ -318,9 +334,11 @@ def rag_search(
 
             current_chars += chunk_size
 
+            source_header = format_rag_source_header(source, doc.get("meta_json"))
+
             # LLM context block
             context_blocks.append(
-                f"--- SOURCE {i}: {source} ---\n{text}"
+                f"--- SOURCE {i}: {source_header} ---\n{text}"
             )
 
             # UI CONTRACT (NEVER CHANGE THIS SHAPE)

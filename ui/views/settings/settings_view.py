@@ -436,6 +436,9 @@ class SettingsView(
         self._finalize_settings_layout(is_dark)
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
+        from ui.components.type_to_search import install_type_to_search
+
+        install_type_to_search(self, self.settings_search_input)
     _SETTINGS_STACK_ROLE = int(Qt.ItemDataRole.UserRole)
     _SETTINGS_SECTION_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 1
     def _register_settings_section(self, sec_def) -> None:
@@ -727,13 +730,28 @@ class SettingsView(
     def _make_settings_info_button(self, tooltip_text: str) -> QToolButton:
         theme = resolve_settings_theme(self)
         btn = QToolButton()
+        btn.setObjectName("SettingsInfoButton")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedSize(22, 22)
         btn.setToolTip(tooltip_text)
+        btn.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         btn.setIcon(qta.icon("fa5s.info-circle", color=settings_info_icon_color(theme)))
         btn.setIconSize(QSize(14, 14))
         btn.setAutoRaise(True)
         btn.setStyleSheet(theme.style(SETTINGS_GHOST_TOOL_BUTTON))
+        btn.clicked.connect(
+            lambda _checked=False, anchor=btn, text=tooltip_text: self._show_settings_info_tooltip(
+                anchor, text
+            )
+        )
         return btn
+
+    def _show_settings_info_tooltip(self, anchor: QToolButton, text: str) -> None:
+        """Show help copy on info-button click (hover tips can miss tiny targets)."""
+        from core.qube_tooltip import QubeToolTipController
+
+        gpos = anchor.mapToGlobal(anchor.rect().center())
+        QubeToolTipController.instance().show_tip(anchor, gpos, text)
     def sync_active_native_model_label(self) -> None:
         """Public hook for MainWindow when the toolbar/native load state changes."""
         self._sync_active_native_model_label()
@@ -766,10 +784,12 @@ class SettingsView(
                 self._apply_menu_theme(btn.menu(), is_dark)
 
         info_btn = getattr(self, "advanced_engine_info_btn", None)
-        if info_btn is not None:
-            info_btn.setIcon(
-                qta.icon("fa5s.info-circle", color=settings_info_icon_color(theme))
-            )
+        icon_color = settings_info_icon_color(theme)
+        for btn in self.findChildren(QToolButton):
+            if btn.objectName() == "SettingsInfoButton":
+                btn.setIcon(qta.icon("fa5s.info-circle", color=icon_color))
+        if info_btn is not None and info_btn.objectName() != "SettingsInfoButton":
+            info_btn.setIcon(qta.icon("fa5s.info-circle", color=icon_color))
 
         hint_color = settings_hint_icon_color(theme)
         for hint_btn in (getattr(self, "audio_input_hint_btn", None),):

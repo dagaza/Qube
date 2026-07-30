@@ -45,6 +45,11 @@ class HelpSettingsControlsTests(unittest.TestCase):
         self.assertIn("Enable Local Knowledge Base", labels)
         self.assertIn("Enable NLP Auto-Activator", labels)
 
+    def test_knowledge_includes_library_pro_depth(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("knowledge")]
+        self.assertIn("Default precision ingest on import", labels)
+        self.assertIn("Precision retrieval", labels)
+
     def test_generated_markdown_banner(self) -> None:
         text = generate_settings_controls_markdown("memory")
         self.assertIn("GENERATED CONTROLS", text)

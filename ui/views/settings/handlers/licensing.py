@@ -52,7 +52,7 @@ class LicenseHandlersMixin:
                 self.window(),
                 "License imported",
                 f"Recorded a {tier} license locally. "
-                "Feature gating is not active during the MIT launch period.",
+                "Pro and Team capabilities are now available on this device.",
                 is_dark=is_dark,
             ).exec()
             logger.info("Imported license from %s (tier=%s)", path, result.document.tier.value)
@@ -65,11 +65,15 @@ class LicenseHandlersMixin:
             ).exec()
             logger.warning("License import failed for %s: %s", path, result.error)
         self._refresh_license_status_ui()
+        if hasattr(self, "_sync_library_pro_features"):
+            self._sync_library_pro_features()
 
     def _on_remove_license_clicked(self) -> None:
         summary = license_summary()
         if not summary.get("cached"):
             self._refresh_license_status_ui()
+        if hasattr(self, "_sync_library_pro_features"):
+            self._sync_library_pro_features()
             return
 
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -96,3 +100,5 @@ class LicenseHandlersMixin:
             ).exec()
             logger.info("Removed cached license")
         self._refresh_license_status_ui()
+        if hasattr(self, "_sync_library_pro_features"):
+            self._sync_library_pro_features()

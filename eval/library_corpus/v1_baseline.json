@@ -1,0 +1,145 @@
+{
+  "schema": "qube.library_corpus.v1",
+  "version": 1,
+  "description": "Baseline Library RAG retrieval corpus aligned with eval/fixtures/library/*.md",
+  "cases": [
+    {
+      "id": "lib_001",
+      "query": "What is the revenue figure for Q3?",
+      "expected_sources": ["eval_quarterly_revenue_report.md"],
+      "expect_contains": ["4.2 million"],
+      "category": "finance",
+      "notes": "Executive summary figure"
+    },
+    {
+      "id": "lib_002",
+      "query": "List the main risks in the quarterly report",
+      "expected_sources": ["eval_quarterly_revenue_report.md"],
+      "expect_contains": ["Customer concentration"],
+      "category": "finance",
+      "notes": "Risk section"
+    },
+    {
+      "id": "lib_003",
+      "query": "What is the project deadline for Atlas?",
+      "expected_sources": ["eval_project_notes.md"],
+      "expect_contains": ["March 15, 2026"],
+      "category": "notes",
+      "notes": "Timeline section"
+    },
+    {
+      "id": "lib_004",
+      "query": "Find mentions of confidentiality in my project notes",
+      "expected_sources": ["eval_project_notes.md"],
+      "expect_contains": ["confidentiality"],
+      "category": "notes",
+      "notes": "Confidentiality section"
+    },
+    {
+      "id": "lib_005",
+      "query": "What does the contract say about termination?",
+      "expected_sources": ["eval_contract_and_agreement.md"],
+      "expect_contains": ["ninety (90) days"],
+      "category": "legal",
+      "notes": "Termination clause"
+    },
+    {
+      "id": "lib_006",
+      "query": "Find the indemnification clause in my agreement",
+      "expected_sources": ["eval_contract_and_agreement.md"],
+      "expect_contains": ["Indemnification"],
+      "category": "legal",
+      "notes": "Indemnification section"
+    },
+    {
+      "id": "lib_007",
+      "query": "Quote the safety section from the operations manual",
+      "expected_sources": ["eval_operations_manual.md"],
+      "expect_contains": ["eye protection"],
+      "category": "manual",
+      "notes": "Safety requirements"
+    },
+    {
+      "id": "lib_008",
+      "query": "Who are the authors of the operations manual?",
+      "expected_sources": ["eval_operations_manual.md"],
+      "expect_contains": ["Dr. Evelyn"],
+      "category": "manual",
+      "notes": "Document metadata"
+    },
+    {
+      "id": "lib_009",
+      "query": "Explain Rayleigh scattering from my physics paper",
+      "expected_sources": ["eval_research_physics_paper.md"],
+      "expect_contains": ["shorter wavelength"],
+      "category": "science",
+      "notes": "Scattering explanation"
+    },
+    {
+      "id": "lib_010",
+      "query": "Is Dr. Evelyn mentioned in the physics paper?",
+      "expected_sources": ["eval_research_physics_paper.md"],
+      "expect_contains": ["Dr. Evelyn"],
+      "category": "science",
+      "notes": "Collaboration note"
+    },
+    {
+      "id": "lib_011",
+      "query": "What are the conclusions of the ingested paper?",
+      "expected_sources": ["eval_research_physics_paper.md"],
+      "expect_contains": ["urban haze"],
+      "category": "science",
+      "notes": "Conclusions section"
+    },
+    {
+      "id": "lib_012",
+      "query": "What API retry behavior should clients use?",
+      "expected_sources": ["eval_api_integration_guide.md"],
+      "expect_contains": ["exponential backoff"],
+      "category": "spec",
+      "notes": "Retry section"
+    },
+    {
+      "id": "lib_013",
+      "query": "GDPR retention period for account profile data",
+      "expected_sources": ["eval_gdpr_policy.md"],
+      "expect_contains": ["24 months"],
+      "category": "compliance",
+      "notes": "Retention table"
+    },
+    {
+      "id": "lib_014",
+      "query": "How is ingress TLS configured on the Kubernetes cluster?",
+      "expected_sources": ["eval_kubernetes_notes.md"],
+      "expect_contains": ["cert-manager"],
+      "category": "infra",
+      "notes": "Ingress section"
+    },
+    {
+      "id": "lib_015",
+      "query": "What does chapter three of the book cover?",
+      "expected_sources": ["eval_book_excerpt.md"],
+      "expect_contains": ["Raft"],
+      "category": "book",
+      "notes": "Chapter three excerpt"
+    },
+    {
+      "id": "lib_016",
+      "query": "Maximum payload size for the public REST API",
+      "expected_sources": ["eval_api_integration_guide.md"],
+      "expect_contains": ["256 KB"],
+      "category": "spec",
+      "notes": "Payload limits"
+    },
+    {
+      "id": "lib_neg_001",
+      "query": "What is the capital of France?",
+      "expected_sources": [],
+      "forbidden_sources_prefix": "eval_",
+      "forbidden_in_top_n": 2,
+      "expect_contains": ["Paris"],
+      "category": "negative",
+      "notes": "Unrelated to eval fixtures — primary slots must cite decoy, not eval_* docs"
+    }
+  ]
+}

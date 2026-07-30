@@ -1224,7 +1224,7 @@ class Qube:
         except Exception as exc:
             logger.warning("Help corpus seed failed: %s", exc, exc_info=True)
 
-    def _start_ingestion(self, file_paths: list, folder_id: str):
+    def _start_ingestion(self, file_paths: list, folder_id: str, ingest_mode: str = "standard"):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         if is_reindex_in_progress():
             self.window.ensure_library_view().show_error(
@@ -1243,6 +1243,7 @@ class Qube:
             self.db_manager,
             folder_id=folder_id,
             sidecar_worker=self.sidecar_worker,
+            ingest_mode=ingest_mode,
         )
 
         # Wire the worker's progress signals back to the Library UI

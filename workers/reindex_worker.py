@@ -68,7 +68,14 @@ class ReindexWorker(QThread):
                 chunk_id = int(row.get("chunk_id") or 0)
                 if not text or not source:
                     continue
-                batch_records.append({"text": text, "source": source, "chunk_id": chunk_id})
+                batch_records.append(
+                    {
+                        "text": text,
+                        "source": source,
+                        "chunk_id": chunk_id,
+                        "meta_json": row.get("meta_json") or "",
+                    }
+                )
                 if len(batch_records) >= _BATCH_SIZE:
                     self._flush_batch(batch_records)
                     batch_records = []
@@ -104,8 +111,21 @@ class ReindexWorker(QThread):
             set_reindex_in_progress(False)
 
     def _flush_batch(self, rows: list[dict]) -> None:
-        texts = [r["text"] for r in rows]
-        vectors = self.embedder.embed(texts)
+        from core.chunking.chunk_metadata import parse_meta_json
+        from core.chunking.embed_context import library_chunk_embed_text
+
+        embed_inputs = []
+        for row in rows:
+            meta = parse_meta_json(row.get("meta_json"))
+            embed_inputs.append(
+                library_chunk_embed_text(
+                    row["source"],
+                    row["text"],
+                    section_heading=str(meta.get("heading") or "") or None,
+                    breadcrumb=str(meta.get("breadcrumb") or "") or None,
+                )
+            )
+        vectors = self.embedder.embed(embed_inputs)
         records = []
         for row, vector in zip(rows, vectors):
             records.append(
@@ -114,6 +134,7 @@ class ReindexWorker(QThread):
                     "text": row["text"],
                     "source": row["source"],
                     "chunk_id": row["chunk_id"],
+                    "meta_json": row.get("meta_json") or "",
                 }
             )
         self.store.add_chunks(records, rebuild_fts=False)

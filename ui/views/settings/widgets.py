@@ -23,6 +23,12 @@ from ui.views.settings.settings_theme import resolve_settings_theme, settings_di
 from core.theme.color_utils import theme_qcolor
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
+
+
+def _apply_settings_control_tooltip(widget: QWidget, tooltip: str) -> None:
+    """Ensure QubeApplication tooltip routing receives hover events on ``widget``."""
+    widget.setToolTip(tooltip)
+    widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 SETTINGS_SELECTOR_LABELS_PROP = "settings_selector_labels"
 SETTINGS_SELECTOR_MIN_WIDTH_PROP = "settings_selector_min_width"
 
@@ -365,9 +371,9 @@ def make_disclosure_row(
 ) -> tuple[PrestigeToggle, QLabel, QWidget]:
     """Toggle + label row and an empty panel for progressive disclosure."""
     toggle = PrestigeToggle()
-    toggle.setToolTip(tooltip)
+    _apply_settings_control_tooltip(toggle, tooltip)
     label = QLabel(label_text)
-    label.setToolTip(tooltip)
+    _apply_settings_control_tooltip(label, tooltip)
     info_btn = host._make_settings_info_button(tooltip)
     label_cluster = QWidget()
     label_cluster_layout = QHBoxLayout(label_cluster)
@@ -388,6 +394,53 @@ def make_disclosure_row(
     panel_layout.setContentsMargins(0, 8, 0, 0)
     panel_layout.setSpacing(12)
     return toggle, row, panel
+
+
+def make_pro_feature_toggle_row(
+    host,
+    *,
+    label: str,
+    tooltip: str,
+    feature_id: str,
+    checked: bool,
+    on_toggled,
+    info_attr: str | None = None,
+) -> tuple[QWidget, QLabel]:
+    """Toggle row for a Pro-gated Library feature."""
+    from core.capabilities import has_feature
+
+    toggle = PrestigeToggle()
+    _apply_settings_control_tooltip(toggle, tooltip)
+    label_widget = QLabel(label)
+    _apply_settings_control_tooltip(label_widget, tooltip)
+    info_btn = host._make_settings_info_button(tooltip)
+    if info_attr:
+        setattr(host, info_attr, info_btn)
+    label_cluster = QWidget()
+    _apply_settings_control_tooltip(label_cluster, tooltip)
+    label_cluster_layout = QHBoxLayout(label_cluster)
+    label_cluster_layout.setContentsMargins(0, 0, 0, 0)
+    label_cluster_layout.setSpacing(6)
+    label_cluster_layout.addWidget(label_widget)
+    label_cluster_layout.addWidget(info_btn)
+    row = QWidget()
+    _apply_settings_control_tooltip(row, tooltip)
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(8)
+    row_layout.addWidget(toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addWidget(label_cluster)
+    row_layout.addStretch(1)
+
+    licensed = has_feature(feature_id)
+    effective_checked = bool(checked and licensed)
+    toggle.blockSignals(True)
+    toggle.setChecked(effective_checked)
+    toggle.blockSignals(False)
+    toggle.toggled.connect(on_toggled)
+    toggle.setProperty("pro_feature_id", feature_id)
+    row.setProperty("pro_feature_id", feature_id)
+    return row, label_widget
 
 
 def register_theme_button(host, button) -> None:

@@ -27,6 +27,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Fix empty Library search | [Library search returns nothing](troubleshooting/library-search-returns-nothing.md) |
 | Compare Memory and Library | [Memory vs Library FAQ](faq/memory-vs-library.md) |
 | Tune retrieval orchestration or fetch depth | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
+| Enable Library Pro depth (precision ingest / retrieval) | [Library Pro depth FAQ](faq/library-pro-depth.md) |
 | Install on Linux (AppImage / .deb) | [Install Qube on Linux](faq/install-linux.md) |
 | Update Qube | [Update Qube](workflows/update-qube.md) |
 | Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
@@ -67,6 +68,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Configure companion visibility | [Configure Desktop Companion visibility](workflows/configure-desktop-companion-visibility.md) |
 | Manage long-term memory | [Manage long-term memory](workflows/manage-long-term-memory.md) |
 | Prepare search models | [Prepare search models for Library](workflows/prepare-search-models-for-library.md) |
+| Enable Library Pro depth (Pro license) | [Enable Library Pro depth](workflows/enable-library-pro-depth.md) |
 | Export or import a knowledge pack | [Export or import knowledge pack](workflows/export-or-import-knowledge-pack.md) |
 | Update Qube | [Update Qube](workflows/update-qube.md) |
 | Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
@@ -102,6 +104,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | What do `@` mentions do? | [What do @ mentions do](faq/what-do-at-mentions-do.md) |
 | Live Sources vs Library search | [Live sources vs Library search](faq/live-sources-vs-library-search.md) |
 | Retrieval profile vs search quality | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
+| Library Pro depth (Pro license) | [Library Pro depth](faq/library-pro-depth.md) |
 | Companion vs main window | [Companion vs main window](faq/companion-vs-main-window.md) |
 | Desktop Companion on Linux Wayland | [Companion on Wayland](faq/companion-wayland-linux.md) |
 

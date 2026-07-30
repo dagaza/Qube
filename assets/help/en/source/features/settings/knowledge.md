@@ -9,6 +9,8 @@
 - What's the difference between retrieval profile and search quality?
 - How do I create a knowledge preset?
 - How does web search discovery work?
+- What is Library Pro depth (precision ingest / precision retrieval)?
+- Do I need a Pro license for precision ingest?
 
 ## What it is
 
@@ -16,6 +18,7 @@
 
 - **Library search phrases** — master **Local Knowledge Base** switch, **NLP Auto-Activator**, and custom trigger phrases
 - **Search quality** — **Fast**, **Balanced**, or **Power** embedding/rerank presets for **Library indexing** (download models first)
+- **Library Pro depth** — optional **Default precision ingest on import** and **Precision retrieval** toggles (**Qube Pro** license required)
 - **Retrieval profile** — **global orchestration** for knowledge turns (adapter fan-out, timeouts, cache, web fetch depth)—not Library-only and not ranking
 - **Web search discovery** — privacy tier, DuckDuckGo pacing/limits, optional SearXNG
 - **Live sources** — adapter toggles for structured online catalogs
@@ -44,9 +47,20 @@ It controls **how hard and how fast** Qube searches when any knowledge path runs
 
 Open **Settings → Knowledge → Retrieval profile**. The Conversations tools panel does not include this control.
 
+## Library Pro depth (Pro license)
+
+**Library Pro depth** adds optional accuracy modes for serious Library collections. Both require a **Qube Pro** (or Team) license imported under **Settings → Advanced → License**.
+
+| Toggle | Effect |
+|--------|--------|
+| **Default precision ingest on import** | Pre-selects **Precision indexing** in the Library import dialog (you still choose per upload). Semantic re-segmentation at indexing time. **Re-import documents** to change their mode. |
+| **Precision retrieval** | Second bi-encoder rerank after hybrid search + MMR on each Library query. |
+
+Standard structural chunking, hybrid search, MMR, and **Search quality** presets remain **free**. See [Library Pro depth FAQ](../../faq/library-pro-depth.md) and [Enable Library Pro depth workflow](../../workflows/enable-library-pro-depth.md).
+
 ## Where to find it
 
-Open **Settings → Knowledge** (settings section `knowledge`). Press **?** for the guided tour (`settings.knowledge`). See also the generated [Live sources overview](../../reference/live-sources-overview.md).
+Open **Settings → Knowledge** (settings section `knowledge`). Press **?** for the guided tour (`settings.knowledge`) — including **Library Pro depth** (default precision ingest, precision retrieval). See also the generated [Live sources overview](../../reference/live-sources-overview.md).
 
 ## Also called
 
@@ -62,6 +76,7 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 6. **Enable Live Sources** — Toggle the adapters you need; use **Configure** where API keys are required.
 7. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles.
 8. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
+9. **Enable Library Pro depth (Pro)** — Import a license under **Settings → Advanced → License**, then toggle **Default precision ingest on import** and/or **Precision retrieval** under **Library Pro depth**. On each **Import (+)**, choose **Normal** or **Precision indexing**; precision-indexed docs show a **gem** badge.
 
 ## Controls
 
@@ -78,3 +93,5 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 - [Live sources vs Library search FAQ](../../faq/live-sources-vs-library-search.md) — two retrieval paths
 - [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md) — triggers, vetoes, and route vocabulary
 - [Library search returns nothing troubleshooting](../../troubleshooting/library-search-returns-nothing.md) — empty results
+- [Library Pro depth FAQ](../../faq/library-pro-depth.md) — precision ingest, precision retrieval, licensing
+- [Enable Library Pro depth workflow](../../workflows/enable-library-pro-depth.md) — step-by-step Pro setup

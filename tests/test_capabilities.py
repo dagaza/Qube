@@ -40,20 +40,52 @@ class TestEditionCapabilities(unittest.TestCase):
                 msg=f"feature {feature_id} -> unknown capability {cap_id}",
             )
 
-    def test_mit_launch_grants_all_capabilities(self) -> None:
-        caps = resolve_capabilities()
-        self.assertEqual(caps.tier, EditionTier.HOME)
-        self.assertEqual(caps.source, "mit_launch")
-        self.assertTrue(all(caps.flags.values()))
-        self.assertEqual(len(caps.granted_capability_ids()), len(ALL_CAPABILITY_IDS))
+    def test_mit_launch_grants_all_capabilities_when_flag_enabled(self) -> None:
+        from core import capabilities as mod
+
+        original = mod._MIT_LAUNCH_GRANTS_ALL
+        mod._MIT_LAUNCH_GRANTS_ALL = True
+        invalidate_capabilities_cache()
+        try:
+            caps = resolve_capabilities()
+            self.assertEqual(caps.tier, EditionTier.HOME)
+            self.assertTrue(all(caps.flags.values()))
+            self.assertEqual(len(caps.granted_capability_ids()), len(ALL_CAPABILITY_IDS))
+        finally:
+            mod._MIT_LAUNCH_GRANTS_ALL = original
+            invalidate_capabilities_cache()
+
+    def test_default_home_resolution_denies_pro_without_license(self) -> None:
+        caps = resolve_capabilities(tier=EditionTier.HOME, source="test")
+        self.assertFalse(caps.has("pro.library_high_quality_ingest"))
+        self.assertFalse(caps.has("pro.library_precision_rerank"))
+        self.assertFalse(caps.has("pro.theme_packs"))
 
     def test_require_capability_does_not_raise_under_mit_launch(self) -> None:
-        require_capability("team.policy")
-        require_feature("policy.org_profile_enforce")
+        from core import capabilities as mod
+
+        original = mod._MIT_LAUNCH_GRANTS_ALL
+        mod._MIT_LAUNCH_GRANTS_ALL = True
+        invalidate_capabilities_cache()
+        try:
+            require_capability("team.policy")
+            require_feature("policy.org_profile_enforce")
+        finally:
+            mod._MIT_LAUNCH_GRANTS_ALL = original
+            invalidate_capabilities_cache()
 
     def test_has_helpers_under_mit_launch(self) -> None:
-        self.assertTrue(has_capability("pro.theme_packs"))
-        self.assertTrue(has_feature("theme_pack.import_official"))
+        from core import capabilities as mod
+
+        original = mod._MIT_LAUNCH_GRANTS_ALL
+        mod._MIT_LAUNCH_GRANTS_ALL = True
+        invalidate_capabilities_cache()
+        try:
+            self.assertTrue(has_capability("pro.theme_packs"))
+            self.assertTrue(has_feature("theme_pack.import_official"))
+        finally:
+            mod._MIT_LAUNCH_GRANTS_ALL = original
+            invalidate_capabilities_cache()
 
     def test_unknown_capability_and_feature_ids_raise(self) -> None:
         with self.assertRaises(KeyError):
@@ -89,15 +121,24 @@ class TestEditionCapabilities(unittest.TestCase):
         )
         self.assertTrue(caps.has("pro.theme_packs"))
         self.assertFalse(caps.has("team.policy"))
-        self.assertTrue(caps.has("pro.knowledge_packs_official"))
+        self.assertFalse(caps.has("pro.knowledge_packs_official"))
 
     def test_get_resolved_capabilities_is_cached(self) -> None:
-        first = get_resolved_capabilities()
-        second = get_resolved_capabilities()
-        self.assertIs(first, second)
+        from core import capabilities as mod
+
+        original = mod._MIT_LAUNCH_GRANTS_ALL
+        mod._MIT_LAUNCH_GRANTS_ALL = True
         invalidate_capabilities_cache()
-        third = get_resolved_capabilities()
-        self.assertIsNot(first, third)
+        try:
+            first = get_resolved_capabilities()
+            second = get_resolved_capabilities()
+            self.assertIs(first, second)
+            invalidate_capabilities_cache()
+            third = get_resolved_capabilities()
+            self.assertIsNot(first, third)
+        finally:
+            mod._MIT_LAUNCH_GRANTS_ALL = original
+            invalidate_capabilities_cache()
 
     def test_require_capability_raises_when_denied(self) -> None:
         caps = resolve_capabilities(
