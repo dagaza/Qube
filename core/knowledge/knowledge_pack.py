@@ -16,7 +16,12 @@ from core.paths import user_data_root
 PACK_VERSION = 1
 
 
-def export_knowledge_pack(*, include_sources: bool = True, include_presets: bool = True) -> dict[str, Any]:
+def export_knowledge_pack(
+    *,
+    include_sources: bool = True,
+    include_presets: bool = True,
+    include_consents: bool = True,
+) -> dict[str, Any]:
     """Export knowledge configuration with credentials redacted."""
     pack: dict[str, Any] = {
         "pack_version": PACK_VERSION,
@@ -24,6 +29,7 @@ def export_knowledge_pack(*, include_sources: bool = True, include_presets: bool
         "source_preferences": get_knowledge_source_preferences(),
         "presets": [],
         "sources": [],
+        "integration_consents": {},
     }
 
     if include_presets:
@@ -40,6 +46,11 @@ def export_knowledge_pack(*, include_sources: bool = True, include_presets: bool
                 d["auth"] = {**d["auth"], "credential_ref": d["auth"].get("credential_ref")}
             pack["sources"].append(d)
 
+    if include_consents:
+        from core.integrations.consent_export import export_integration_consents
+
+        pack["integration_consents"] = export_integration_consents()
+
     return pack
 
 
@@ -49,6 +60,7 @@ def import_knowledge_pack(
     import_preferences: bool = True,
     import_presets: bool = True,
     import_sources: bool = True,
+    import_consents: bool = True,
 ) -> dict[str, Any]:
     """Import a knowledge pack. Returns summary of actions taken."""
     if not isinstance(pack, dict):
@@ -58,6 +70,7 @@ def import_knowledge_pack(
         "preferences_imported": False,
         "presets_imported": 0,
         "sources_imported": 0,
+        "consents_imported": 0,
         "errors": [],
     }
 
@@ -92,6 +105,16 @@ def import_knowledge_pack(
                 summary["sources_imported"] += 1
             except Exception as exc:
                 summary["errors"].append(f"source: {exc}")
+
+    if import_consents:
+        from core.integrations.consent_export import import_integration_consents
+
+        consent_payload = pack.get("integration_consents")
+        if isinstance(consent_payload, dict) and consent_payload.get("providers"):
+            consent_summary = import_integration_consents(consent_payload, merge=True)
+            summary["consents_imported"] = int(consent_summary.get("grants_imported") or 0)
+            for err in consent_summary.get("errors") or []:
+                summary["errors"].append(f"consent: {err}")
 
     return summary
 

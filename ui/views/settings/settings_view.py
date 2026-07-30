@@ -187,6 +187,72 @@ _SECTION_BUILDERS = {
 }
 
 
+def _resolve_collapsible_handle_near(widget: QWidget):
+    """Find the collapsible card handle for an anchored subsection wrapper."""
+    from ui.views.settings.settings_card_style import SettingsCollapsibleCardHandle
+
+    node = widget
+    for _ in range(12):
+        if node is None:
+            break
+        handle = getattr(node, "_settings_collapsible_handle", None)
+        if isinstance(handle, SettingsCollapsibleCardHandle):
+            return handle
+        title_lbl = getattr(node, "title_lbl", None)
+        if title_lbl is not None:
+            handle = getattr(title_lbl, "_settings_collapsible_handle", None)
+            if handle is not None:
+                return handle
+        node = node.parentWidget()
+    return None
+
+
+def _find_settings_anchor_target(page: QWidget, anchor: str):
+    """Resolve the best scroll target for a settings anchor (prefer whole card wrapper)."""
+    from ui.views.settings.settings_card_style import SettingsCollapsibleCardHandle
+
+    want = (anchor or "").strip()
+    if not want:
+        return None, None
+
+    for lbl in page.findChildren(QLabel):
+        if lbl.property("settings_anchor") != want:
+            continue
+        handle = getattr(lbl, "_settings_collapsible_handle", None)
+        if isinstance(handle, SettingsCollapsibleCardHandle):
+            return handle.wrapper, handle
+        return lbl, None
+
+    for wrapper in page.findChildren(QWidget):
+        if wrapper.property("settings_anchor") != want:
+            continue
+        handle = _resolve_collapsible_handle_near(wrapper)
+        if handle is not None:
+            return handle.wrapper, handle
+        return wrapper, None
+
+    return None, None
+
+
+def _scroll_settings_target_into_view(
+    scroll: QScrollArea,
+    target: QWidget,
+    *,
+    top_margin: int = 72,
+) -> None:
+    """Scroll a settings page so ``target`` sits near the top of the viewport."""
+    content = scroll.widget()
+    if content is None or target is None:
+        return
+    scroll.ensureWidgetVisible(target, 0, top_margin)
+    pos = target.mapTo(content, target.rect().topLeft())
+    bar = scroll.verticalScrollBar()
+    if bar is not None:
+        y = max(bar.minimum(), min(bar.maximum(), pos.y() - top_margin))
+        bar.setValue(y)
+    scroll.ensureWidgetVisible(target, 0, top_margin)
+
+
 class SettingsView(
     QWidget,
     PrestigeMenuMixin,
@@ -271,12 +337,20 @@ class SettingsView(
         section_id = resolve_section_id(section)
         if section_id is None:
             return
+        previous_section = getattr(self, "_settings_active_section_id", None)
         self._ensure_section_built(section_id)
         row = self._section_row_by_id.get(section_id)
         if row is not None:
             self.settings_section_list.setCurrentRow(row)
         if anchor:
-            QTimer.singleShot(0, lambda: self._scroll_to_settings_anchor(anchor))
+            # Defer slightly when switching sections so stack + layout settle first.
+            delay_ms = 50 if previous_section and previous_section != section_id else 0
+            cross_section = bool(previous_section and previous_section != section_id)
+
+            def _scroll(a=anchor, retry=cross_section) -> None:
+                self._scroll_to_settings_anchor(a, retry=retry)
+
+            QTimer.singleShot(delay_ms, _scroll)
         if configure_provider_id:
             pid = str(configure_provider_id).strip().lower()
 
@@ -324,24 +398,25 @@ class SettingsView(
             if hasattr(self, "_sync_embedding_mode_selector"):
                 self._sync_embedding_mode_selector()
 
-    def _scroll_to_settings_anchor(self, anchor: str) -> None:
+    def _scroll_to_settings_anchor(self, anchor: str, *, retry: bool = False) -> None:
+        self._apply_settings_anchor_scroll(anchor)
+        if retry:
+            QTimer.singleShot(120, lambda: self._apply_settings_anchor_scroll(anchor))
+
+    def _apply_settings_anchor_scroll(self, anchor: str) -> bool:
         scroll = self.settings_section_stack.currentWidget()
         if scroll is None or not isinstance(scroll, QScrollArea):
-            return
+            return False
         page = scroll.widget()
         if page is None:
-            return
-        for lbl in page.findChildren(QLabel):
-            if lbl.property("settings_anchor") == anchor:
-                handle = getattr(lbl, "_settings_collapsible_handle", None)
-                if handle is not None:
-                    handle.set_expanded(True)
-                scroll.ensureWidgetVisible(lbl, 0, 80)
-                return
-        for wrapper in page.findChildren(QWidget):
-            if wrapper.property("settings_anchor") == anchor:
-                scroll.ensureWidgetVisible(wrapper, 0, 80)
-                return
+            return False
+        target, handle = _find_settings_anchor_target(page, anchor)
+        if target is None:
+            return False
+        if handle is not None:
+            handle.set_expanded(True)
+        _scroll_settings_target_into_view(scroll, target)
+        return True
 
     def _maybe_start_provider_status_refresh(self) -> None:
         row = self.settings_section_list.currentRow()

@@ -45,6 +45,7 @@ __all__ = [
     "ConsentStore",
     "AccessDecision",
     "evaluate_access",
+    "prune_consent_for_namespaces",
 ]
 
 _CONSENT_SCHEMA_VERSION = 1
@@ -223,6 +224,37 @@ def _grant_from_dict(record: dict[str, Any]) -> PermissionGrant | None:
     except (KeyError, ValueError, InvalidCapabilityURN) as exc:
         logger.warning("[integrations] skipping malformed grant %r: %s", record, exc)
         return None
+
+
+def prune_consent_for_namespaces(
+    provider_id: str,
+    allowed_namespaces: frozenset[str] | set[str],
+) -> int:
+    """Remove consent grants whose namespace is not in ``allowed_namespaces``."""
+    store = ConsentStore(provider_id)
+    grants = store.load()
+    if not grants:
+        return 0
+    allowed = {(ns or "").strip().lower() for ns in allowed_namespaces}
+    kept: dict[str, PermissionGrant] = {}
+    removed = 0
+    for urn_base, grant in grants.items():
+        try:
+            ns = CapabilityURN.parse(str(urn_base)).namespace.strip().lower()
+        except (ValueError, InvalidCapabilityURN):
+            removed += 1
+            continue
+        if ns in allowed:
+            kept[urn_base] = grant
+        else:
+            removed += 1
+    if not removed:
+        return 0
+    if kept:
+        store.save(kept)
+    elif store.path.exists():
+        store.path.unlink(missing_ok=True)
+    return removed
 
 
 # -- access evaluation (default-deny, drift-aware) ------------------------

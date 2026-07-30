@@ -178,7 +178,7 @@ class McpConnector:
 
         from core.integrations.mcp_discovery import discover_and_cache_mcp_source
 
-        count, error = discover_and_cache_mcp_source(config, namespace=namespace)
-        if error:
-            return False, error
-        return True, f"OK — MCP server responded ({count} capabilities registered for Integrations)"
+        result = discover_and_cache_mcp_source(config, namespace=namespace)
+        if result.error:
+            return False, result.error
+        return True, f"OK — MCP server responded ({result.count} capabilities registered for Integrations)"

@@ -1,4 +1,4 @@
-"""Integrations settings section — capability permission/consent UI."""
+"""Integrations settings section — MCP registry + capability permission/consent UI."""
 
 from __future__ import annotations
 
@@ -6,9 +6,13 @@ from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -18,7 +22,9 @@ from core.integrations.consent_controller import (
     ConsentUIState,
     IntegrationsConsentController,
 )
+from core.integrations.mcp_server_registry import list_mcp_server_summaries
 from core.integrations.registry.provider_registry import list_capability_providers
+from ui.components.brand_buttons import apply_brand_secondary
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 from ui.views.settings.settings_card_style import begin_settings_section_card
@@ -84,6 +90,7 @@ def _make_capability_row(
         else:
             ctrl.deny_capability(descriptor)
         sync_integrations_consent_panel(host, is_dark=is_dark)
+        sync_integrations_mcp_servers_panel(host, is_dark=is_dark)
 
     toggle.toggled.connect(_on_toggled)
 
@@ -118,6 +125,39 @@ def _make_capability_row(
     return outer
 
 
+def _configure_mcp_servers_table(table: QTableWidget, *, is_dark: bool) -> None:
+    table.setObjectName("IntegrationsMcpServersTable")
+    table.setColumnCount(4)
+    table.setHorizontalHeaderLabels(["Server", "Capabilities", "Granted", "Health"])
+    header = table.horizontalHeader()
+    for col in range(4):
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+    table.verticalHeader().setVisible(False)
+    table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    table.setShowGrid(False)
+    table.setFrameShape(QFrame.Shape.NoFrame)
+    table.setMinimumHeight(120)
+    muted = "#6c7086" if is_dark else "#64748b"
+    table.setStyleSheet(
+        f"""
+        QTableWidget#IntegrationsMcpServersTable {{
+            background: transparent;
+            border: none;
+        }}
+        QHeaderView::section {{
+            color: {muted};
+            background: transparent;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 0;
+        }}
+        """
+    )
+
+
 def build_section(host, *, is_dark: bool) -> QWidget:
     container = QWidget()
     container.setObjectName("SettingsFormContainer")
@@ -125,7 +165,43 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     layout.setContentsMargins(15, 0, 15, 10)
     layout.setSpacing(15)
 
-    card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    servers_card, servers_layout = begin_settings_section_card(
+        host,
+        is_dark=is_dark,
+        card_title="MCP servers",
+        card_anchor="integrations_mcp_servers",
+    )
+    add_subsection_to_layout(servers_layout, "MCP servers", anchor="integrations_mcp_servers")
+
+    servers_intro = make_settings_hint(
+        "MCP servers are configured under Knowledge → Custom sources. "
+        "After save or test, Qube discovers capabilities and prompts you to review permissions."
+    )
+    servers_layout.addWidget(servers_intro)
+
+    host.integrations_mcp_servers_table = QTableWidget()
+    _configure_mcp_servers_table(host.integrations_mcp_servers_table, is_dark=is_dark)
+    servers_layout.addWidget(host.integrations_mcp_servers_table)
+
+    manage_row = QHBoxLayout()
+    manage_row.setContentsMargins(0, 0, 0, 0)
+    manage_btn = QPushButton("Manage in Knowledge → Custom sources")
+    apply_brand_secondary(manage_btn)
+    manage_btn.clicked.connect(lambda: _open_knowledge_custom_sources(host))
+    manage_row.addWidget(manage_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+    manage_row.addStretch(1)
+    manage_host = QWidget()
+    manage_host.setLayout(manage_row)
+    servers_layout.addWidget(manage_host)
+
+    layout.addWidget(servers_card)
+
+    consent_card, card_layout = begin_settings_section_card(
+        host,
+        is_dark=is_dark,
+        card_title="Capability permissions",
+        card_anchor="integrations_consent",
+    )
     add_subsection_to_layout(card_layout, "Capability permissions", anchor="integrations_consent")
 
     intro = make_settings_hint(
@@ -152,10 +228,25 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.integrations_consent_layout = scroll_layout
 
     card_layout.addWidget(scroll)
-    layout.addWidget(card)
+    layout.addWidget(consent_card)
     setup_integrations_dir_watcher(host)
+    from core.integrations.descriptor_cache import reconcile_mcp_integration_state
+
+    reconcile_mcp_integration_state()
+    sync_integrations_mcp_servers_panel(host, is_dark=is_dark)
     sync_integrations_consent_panel(host, is_dark=is_dark)
     return container
+
+
+def _open_knowledge_custom_sources(host) -> None:
+    """Navigate to Knowledge → Custom sources and expand that card."""
+    if hasattr(host, "select_settings_section"):
+        host.select_settings_section("knowledge", anchor="knowledge_custom_sources")
+        return
+    window = host.window()
+    settings = getattr(window, "settings_view", None)
+    if settings is not None and hasattr(settings, "select_settings_section"):
+        settings.select_settings_section("knowledge", anchor="knowledge_custom_sources")
 
 
 def setup_integrations_dir_watcher(host) -> None:
@@ -165,7 +256,7 @@ def setup_integrations_dir_watcher(host) -> None:
     timer = QTimer(host)
     timer.setSingleShot(True)
     timer.setInterval(400)
-    timer.timeout.connect(lambda: sync_integrations_consent_panel(host))
+    timer.timeout.connect(lambda: _refresh_integrations_panels(host))
     host._integrations_reload_timer = timer
 
     watcher = QFileSystemWatcher(host)
@@ -175,6 +266,45 @@ def setup_integrations_dir_watcher(host) -> None:
     root = str(integrations_dir("mcp").parent)
     if root not in watcher.directories():
         watcher.addPath(root)
+
+
+def _refresh_integrations_panels(host) -> None:
+    from core.integrations.descriptor_cache import reconcile_mcp_integration_state
+
+    reconcile_mcp_integration_state()
+    sync_integrations_mcp_servers_panel(host)
+    sync_integrations_consent_panel(host)
+
+
+def sync_integrations_mcp_servers_panel(host, *, is_dark: bool | None = None) -> None:
+    table = getattr(host, "integrations_mcp_servers_table", None)
+    if table is None:
+        return
+    if is_dark is None:
+        is_dark = coalesce_settings_is_dark(host)
+
+    summaries = list_mcp_server_summaries()
+    table.setRowCount(len(summaries))
+    for row_idx, summary in enumerate(summaries):
+        table.setItem(row_idx, 0, QTableWidgetItem(summary.label))
+        table.setItem(row_idx, 1, QTableWidgetItem(str(summary.capability_count)))
+        table.setItem(row_idx, 2, QTableWidgetItem(str(summary.granted_count)))
+        health_item = QTableWidgetItem(summary.health_label)
+        if summary.rereview_count:
+            health_item.setForeground(
+                Qt.GlobalColor.yellow if is_dark else Qt.GlobalColor.darkYellow
+            )
+        table.setItem(row_idx, 3, health_item)
+
+    if not summaries:
+        table.setRowCount(1)
+        placeholder = QTableWidgetItem("No MCP servers configured yet.")
+        placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+        table.setItem(0, 0, placeholder)
+        for col in range(1, 4):
+            table.setItem(0, col, QTableWidgetItem(""))
+
+    _configure_mcp_servers_table(table, is_dark=is_dark)
 
 
 def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> None:
@@ -226,8 +356,8 @@ def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> Non
 
     if not any_rows:
         empty = make_settings_hint(
-            "No discovered capabilities yet. Connect a provider and run discovery "
-            "to review permissions here."
+            "No discovered capabilities yet. Connect an MCP server under "
+            "Knowledge → Custom sources and run discovery to review permissions here."
         )
         body_layout.addWidget(empty)
 

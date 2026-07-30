@@ -18,6 +18,8 @@ from core.integrations.consent_controller import (
     load_cached_descriptors,
 )
 
+from core.composer_discoverability import list_recent_capability_urns
+
 __all__ = [
     "CapabilityPaletteEntry",
     "browse_integrations_capabilities",
@@ -141,7 +143,20 @@ def _score_text(q: str, *, text: str, exact: bool = False) -> int:
     return 0
 
 
-def _score_capability(q: str, descriptor: CapabilityDescriptor, provider_id: str) -> int:
+_RECENT_SCORE_BOOST = 200
+
+
+def _recent_capability_boost() -> dict[str, int]:
+    return {urn: _RECENT_SCORE_BOOST for urn in list_recent_capability_urns()}
+
+
+def _score_capability(
+    q: str,
+    descriptor: CapabilityDescriptor,
+    provider_id: str,
+    *,
+    recent_boost: dict[str, int] | None = None,
+) -> int:
     label = format_capability_label(descriptor)
     fields = (
         provider_id,
@@ -155,6 +170,9 @@ def _score_capability(q: str, descriptor: CapabilityDescriptor, provider_id: str
     for field in fields:
         best = max(best, _score_text(q, text=field))
         best = max(best, _score_text(q, text=field, exact=True))
+    if recent_boost is not None:
+        best += recent_boost.get(str(descriptor.urn), 0)
+        best += recent_boost.get(str(descriptor.urn.base), 0)
     return best
 
 
@@ -208,8 +226,15 @@ def browse_integrations_capabilities(
     """Browse or filter cached capabilities (empty query lists all, capped)."""
     q = (query or "").strip().lower()
     entries: list[CapabilityPaletteEntry] = []
+    recent_boost = _recent_capability_boost()
     for provider_id, descriptor in _iter_cached_capabilities():
-        score = _score_capability(q, descriptor, provider_id) if q else 1
+        if q:
+            score = _score_capability(
+                q, descriptor, provider_id, recent_boost=recent_boost
+            )
+        else:
+            score = 1 + recent_boost.get(str(descriptor.urn), 0)
+            score += recent_boost.get(str(descriptor.urn.base), 0)
         if q and score <= 0:
             continue
         entries.append(_palette_entry(provider_id, descriptor, score=score))
@@ -227,8 +252,11 @@ def search_integrations_capabilities(
     if not q:
         return []
     entries: list[CapabilityPaletteEntry] = []
+    recent_boost = _recent_capability_boost()
     for provider_id, descriptor in _iter_cached_capabilities():
-        score = _score_capability(q, descriptor, provider_id)
+        score = _score_capability(
+            q, descriptor, provider_id, recent_boost=recent_boost
+        )
         if score <= 0:
             continue
         entries.append(_palette_entry(provider_id, descriptor, score=score))

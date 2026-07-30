@@ -187,14 +187,42 @@ def _refresh_integrations_consent_if_available(host) -> None:
     sync_integrations_consent_panel(host, is_dark=is_dark)
 
 
-def _discover_mcp_source_if_applicable(source: ConfiguredSource) -> str | None:
+def _discover_mcp_source_if_applicable(host, source: ConfiguredSource) -> str | None:
     if source.connector_type != _MCP_CONNECTOR_ID:
         return None
     from core.integrations.mcp_discovery import discover_and_cache_mcp_source
 
     namespace = _mcp_namespace_for_source(source)
-    _count, error = discover_and_cache_mcp_source(dict(source.config or {}), namespace=namespace)
-    return error
+    result = discover_and_cache_mcp_source(dict(source.config or {}), namespace=namespace)
+    if result.error:
+        return result.error
+    _maybe_open_grant_review_dialog(host, source, result)
+    return None
+
+
+def _maybe_open_grant_review_dialog(host, source: ConfiguredSource, result) -> None:
+    if result.error:
+        return
+    if not result.first_connect and result.drift is None:
+        return
+    from ui.components.capability_grant_review_dialog import (
+        open_capability_grant_review_dialog,
+    )
+
+    parent = host.window() if hasattr(host, "window") else None
+    if parent is None:
+        return
+    is_dark = getattr(parent, "_is_dark_theme", True)
+    namespace = _mcp_namespace_for_source(source)
+    saved = open_capability_grant_review_dialog(
+        parent,
+        server_label=source.label or source.id,
+        namespace=namespace,
+        result=result,
+        is_dark=is_dark,
+    )
+    if saved:
+        _refresh_integrations_consent_if_available(host)
 
 
 def setup_custom_sources_dir_watcher(host) -> None:
@@ -309,7 +337,10 @@ def _on_custom_source_row_selected(host) -> None:
 
 
 def _reload_custom_sources_from_disk(host) -> None:
+    from core.integrations.descriptor_cache import reconcile_mcp_integration_state
+
     clear_configured_source_search_cache()
+    reconcile_mcp_integration_state()
     is_dark = getattr(host.window(), "_is_dark_theme", True)
     selected_id = getattr(host, "_custom_source_selected_id", "")
     _refresh_custom_sources_list(host, is_dark=is_dark, preserve_selection=True)
@@ -357,7 +388,7 @@ def save_custom_source_from_host(host) -> None:
     save_configured_source(source)
     host._custom_source_selected_id = source.id
     host._custom_source_loaded = source
-    discover_error = _discover_mcp_source_if_applicable(source)
+    discover_error = _discover_mcp_source_if_applicable(host, source)
     if discover_error:
         host.custom_source_status_label.setText(
             f"Saved source {source.id}, but MCP discovery failed: {discover_error}"
@@ -371,6 +402,21 @@ def save_custom_source_from_host(host) -> None:
 
 def test_custom_source_from_host(host) -> None:
     source = configured_source_from_host(host)
+    if source.connector_type == _MCP_CONNECTOR_ID:
+        from core.integrations.mcp_discovery import discover_and_cache_mcp_source
+
+        namespace = _mcp_namespace_for_source(source)
+        result = discover_and_cache_mcp_source(dict(source.config or {}), namespace=namespace)
+        if result.error:
+            host.custom_source_status_label.setText(f"Test failed: {result.error}")
+            return
+        host.custom_source_status_label.setText(
+            f"OK — MCP server responded ({result.count} capabilities registered for Integrations)"
+        )
+        _maybe_open_grant_review_dialog(host, source, result)
+        _refresh_integrations_consent_if_available(host)
+        return
+
     ok, message = test_configured_source(source)
     host.custom_source_status_label.setText(message if ok else f"Test failed: {message}")
     if ok:
@@ -384,14 +430,10 @@ def delete_custom_source_from_host(host) -> None:
         return
     deleted = sources[row]
     deleted_id = deleted.id
-    deleted_namespace = (
-        _mcp_namespace_for_source(deleted) if deleted.connector_type == _MCP_CONNECTOR_ID else ""
-    )
     delete_configured_source(deleted_id)
-    if deleted_namespace:
-        from core.integrations.descriptor_cache import remove_descriptor_cache_namespace
+    from core.integrations.descriptor_cache import reconcile_mcp_integration_state
 
-        remove_descriptor_cache_namespace(_MCP_PROVIDER_ID, deleted_namespace)
+    reconcile_mcp_integration_state()
     if getattr(host, "_custom_source_selected_id", "") == deleted_id:
         reset_custom_source_form(host)
     is_dark = getattr(host.window(), "_is_dark_theme", True)

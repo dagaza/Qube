@@ -11,7 +11,7 @@ from core.composer_attachments import ComposerAttachment, composer_tool_by_id
 from core.composer_skills import ComposerSkillMention, skill_mention_from_id
 from core.paths import user_data_root
 
-RecentMentionKind = Literal["tool", "skill", "file", "conversation"]
+RecentMentionKind = Literal["tool", "skill", "file", "conversation", "capability"]
 
 RECENT_TOKENS_FILENAME = "composer_recent_tokens.json"
 MAX_RECENT_MENTION_TOKENS = 8
@@ -48,7 +48,7 @@ class RecentMention:
         kind = str(raw.get("kind") or "").strip().lower()
         mention_id = str(raw.get("id") or "").strip()
         label = str(raw.get("label") or "").strip()
-        if kind not in ("tool", "skill", "file", "conversation") or not mention_id:
+        if kind not in ("tool", "skill", "file", "conversation", "capability") or not mention_id:
             return None
         if not label:
             label = mention_id
@@ -153,6 +153,18 @@ def composer_hint_entries(*, limit: int = 6) -> tuple[list[RecentMention], bool]
     return default_suggestion_mentions()[:limit], True
 
 
+def list_recent_capability_urns(*, limit: int = 8) -> list[str]:
+    """Return recently attached capability URNs (most recent first)."""
+    urns: list[str] = []
+    for mention in list_recent_mentions(limit=limit * 2):
+        if mention.kind != "capability":
+            continue
+        urns.append(mention.id)
+        if len(urns) >= limit:
+            break
+    return urns
+
+
 def resolve_recent_mention(mention: RecentMention) -> ComposerAttachment | ComposerSkillMention | None:
     if mention.kind == "skill":
         resolved = skill_mention_from_id(mention.id)
@@ -165,4 +177,6 @@ def resolve_recent_mention(mention: RecentMention) -> ComposerAttachment | Compo
         return ComposerAttachment(kind="file", id=mention.id, label=mention.label)
     if mention.kind == "conversation":
         return ComposerAttachment(kind="conversation", id=mention.id, label=mention.label)
+    if mention.kind == "capability":
+        return ComposerAttachment(kind="capability", id=mention.id, label=mention.label)
     return None

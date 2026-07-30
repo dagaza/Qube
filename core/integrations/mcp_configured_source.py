@@ -20,6 +20,7 @@ __all__ = [
     "augment_spawn_env_for_command",
     "build_search_invoke_arg_sets",
     "build_tool_call_arguments",
+    "configured_mcp_namespaces",
     "extract_search_names",
     "merge_mcp_factory_kwargs",
     "resolve_configured_mcp_binding",
@@ -69,6 +70,21 @@ def augment_spawn_env_for_command(
         merged["PATH"] = f"{node_dir};{path}" if path else node_dir
         return merged
     return merged
+
+
+def configured_mcp_namespaces() -> frozenset[str]:
+    """Return MCP namespaces that have a configured Knowledge custom source."""
+    from core.knowledge.configured_sources import list_configured_sources
+
+    namespaces: set[str] = set()
+    for source in list_configured_sources():
+        if source.connector_type != "mcp":
+            continue
+        cfg = dict(source.config or {})
+        ns = str(cfg.get("namespace") or cfg.get("adapter_id") or source.id).strip().lower()
+        if ns:
+            namespaces.add(ns)
+    return frozenset(namespaces)
 
 
 def resolve_configured_mcp_binding(namespace: str) -> McpConfiguredBinding | None:
