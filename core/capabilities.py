@@ -118,6 +118,18 @@ CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
         "Optional memory timeline / valid-at views.",
     ),
     CapabilitySpec(
+        "pro.library_high_quality_ingest",
+        "Library — precision ingest",
+        EditionTier.PRO,
+        "Optional semantic/breakpoint chunking at ingest (async; high embed cost).",
+    ),
+    CapabilitySpec(
+        "pro.library_precision_rerank",
+        "Library — precision retrieval",
+        EditionTier.PRO,
+        "Optional cross-encoder rerank after hybrid fusion + MMR.",
+    ),
+    CapabilitySpec(
         "team.enterprise_pack_templates",
         "Enterprise knowledge pack templates",
         EditionTier.TEAM,
@@ -231,6 +243,8 @@ FEATURE_CAPABILITY_REGISTRY: dict[str, str] = {
     "companion.avatar_preset": "pro.companion_avatar",
     "voice.tts_voice_packs": "pro.tts_voice_packs",
     "memory.timeline_view": "pro.memory_timeline",
+    "library.ingest_high_quality": "pro.library_high_quality_ingest",
+    "library.rag_precision_rerank": "pro.library_precision_rerank",
     "knowledge_pack.enterprise_template": "team.enterprise_pack_templates",
     "audit.session_egress_export": "team.audit_export",
     "audit.privacy_report_export": "team.privacy_report",
@@ -245,7 +259,7 @@ FEATURE_CAPABILITY_REGISTRY: dict[str, str] = {
 }
 
 
-_MIT_LAUNCH_GRANTS_ALL = True
+_MIT_LAUNCH_GRANTS_ALL = False
 
 
 def resolve_capabilities(

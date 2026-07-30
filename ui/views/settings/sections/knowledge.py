@@ -15,7 +15,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.app_settings import get_advanced_embedding_unlocked
+from core.app_settings import (
+    get_advanced_embedding_unlocked,
+    get_library_precision_ingest_enabled,
+    get_library_precision_rerank_enabled,
+)
 from core.embedding_models import get_embedding_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
@@ -38,6 +42,7 @@ from ui.views.settings.widgets import (
     wrap_subsection,
     add_settings_full_width_row,
     add_settings_span_row,
+    make_pro_feature_toggle_row,
 )
 
 
@@ -110,6 +115,60 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         ),
     )
     layout.addWidget(search_card)
+
+    # --- Library Pro depth card ---
+    library_pro_card, library_pro_card_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    library_pro_form = add_settings_card_form(library_pro_card_layout)
+    add_subsection_to_form(library_pro_form, "Library Pro depth", anchor="library_pro")
+
+    ingest_tip = (
+        "When enabled, the Library import dialog pre-selects precision ingest "
+        "(semantic breakpoints). You can still choose normal indexing per upload. "
+        "Requires a Qube Pro license."
+    )
+    rerank_tip = (
+        "Precision retrieval reranks Library hits with a second bi-encoder pass after "
+        "hybrid search and MMR. Adds latency on each Library query. "
+        "Requires a Qube Pro license."
+    )
+
+    host.library_precision_ingest_toggle, host.library_precision_ingest_label = (
+        make_pro_feature_toggle_row(
+            host,
+            label="Default precision ingest on import",
+            tooltip=ingest_tip,
+            feature_id="library.ingest_high_quality",
+            checked=get_library_precision_ingest_enabled(),
+            on_toggled=host._on_library_precision_ingest_toggled,
+            info_attr="library_precision_ingest_info_btn",
+        )
+    )
+    add_settings_full_width_row(library_pro_form, host.library_precision_ingest_toggle)
+
+    host.library_precision_rerank_toggle, host.library_precision_rerank_label = (
+        make_pro_feature_toggle_row(
+            host,
+            label="Precision retrieval",
+            tooltip=rerank_tip,
+            feature_id="library.rag_precision_rerank",
+            checked=get_library_precision_rerank_enabled(),
+            on_toggled=host._on_library_precision_rerank_toggled,
+            info_attr="library_precision_rerank_info_btn",
+        )
+    )
+    add_settings_full_width_row(library_pro_form, host.library_precision_rerank_toggle)
+
+    host.library_pro_hint = QLabel(
+        "Standard Library chunking and MMR retrieval remain free. "
+        "Import a Pro license under Settings → Advanced → License."
+    )
+    host.library_pro_hint.setObjectName("SettingsHint")
+    host.library_pro_hint.setWordWrap(True)
+    add_settings_span_row(library_pro_form, host.library_pro_hint)
+    host.library_pro_card = library_pro_card
+    layout.addWidget(library_pro_card)
 
     # --- Retrieval profile card ---
     profile_card, profile_card_layout = begin_settings_section_card(host, is_dark=is_dark)

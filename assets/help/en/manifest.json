@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.23",
+  "corpus_version": "1.0.25",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -216,6 +216,7 @@
         "troubleshooting.library_import_disabled",
         "faq.memory_vs_library",
         "faq.live_sources_vs_library",
+        "faq.library_pro_depth",
         "features.conversations",
         "features.settings.knowledge"
       ]
@@ -467,16 +468,21 @@
         "live sources settings",
         "knowledge presets",
         "privacy tier",
-        "private search tier"
+        "private search tier",
+        "library pro depth",
+        "precision ingest",
+        "precision retrieval"
       ],
       "related": [
         "reference.settings_sections",
         "features.library",
         "features.conversations",
         "faq.retrieval_profile_vs_search_quality",
+        "faq.library_pro_depth",
         "faq.web_discovery_privacy_tiers",
         "faq.cognitive_router",
         "workflows.prepare_search_models",
+        "workflows.enable_library_pro_depth",
         "index"
       ],
       "generated_sections": [
@@ -859,6 +865,31 @@
         "prepare search models"
       ],
       "related": [
+        "index"
+      ]
+    },
+    {
+      "id": "workflows.enable_library_pro_depth",
+      "path": "workflows/enable-library-pro-depth.md",
+      "title": "Enable Library Pro depth",
+      "type": "workflow",
+      "tags": [
+        "library",
+        "pro",
+        "license",
+        "precision-ingest",
+        "precision-retrieval"
+      ],
+      "synonyms": [
+        "enable precision ingest",
+        "enable precision retrieval",
+        "import pro license",
+        "library pro setup"
+      ],
+      "related": [
+        "faq.library_pro_depth",
+        "features.settings.knowledge",
+        "features.settings.advanced",
         "index"
       ]
     },
@@ -1413,6 +1444,38 @@
       "related": [
         "features.settings.knowledge",
         "faq.live_sources_vs_library",
+        "index"
+      ]
+    },
+    {
+      "id": "faq.library_pro_depth",
+      "path": "faq/library-pro-depth.md",
+      "title": "Library Pro depth",
+      "type": "faq",
+      "tags": [
+        "library",
+        "pro",
+        "license",
+        "precision-ingest",
+        "precision-retrieval",
+        "knowledge"
+      ],
+      "synonyms": [
+        "library pro features",
+        "high quality ingest",
+        "precision chunking",
+        "pro license library",
+        "why is precision ingest disabled",
+        "gem badge library",
+        "choose indexing mode",
+        "precision indexing disabled import"
+      ],
+      "related": [
+        "features.settings.knowledge",
+        "features.settings.advanced",
+        "features.library",
+        "workflows.enable_library_pro_depth",
+        "faq.retrieval_profile_vs_search_quality",
         "index"
       ]
     },
@@ -2066,6 +2129,87 @@
       "action_id": "open_settings_knowledge"
     },
     {
+      "id": "faq.library_pro_depth.overview",
+      "question_patterns": [
+        "library pro depth",
+        "what is precision ingest",
+        "what is precision retrieval",
+        "pro library features",
+        "high quality library ingest"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Library Pro depth",
+      "answer": "**Library Pro depth** (Settings \u2192 Knowledge) adds optional **precision ingest** (choose **Precision indexing** on each Library import; gem badge on indexed docs) and **Precision retrieval** (bi-encoder rerank after search). Both require a **Qube Pro** license imported under Settings \u2192 Advanced \u2192 License. Standard chunking and MMR stay free.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.knowledge.precision_ingest",
+      "question_patterns": [
+        "precision ingest",
+        "enable precision ingest",
+        "high quality ingest",
+        "semantic ingest library",
+        "precision ingest disabled"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Precision ingest",
+      "answer": "**Precision ingest** is chosen per import in **Library (+)** \u2192 **Precision indexing (Pro)**. It uses embedding-similarity breakpoints for denser documents and can make indexing **much slower**. Requires a **Pro license** (Settings \u2192 Advanced \u2192 License). Precision-indexed documents show a **gem** badge. **Settings \u2192 Knowledge \u2192 Default precision ingest on import** pre-selects precision in the dialog.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.knowledge.precision_rerank",
+      "question_patterns": [
+        "precision retrieval",
+        "library rerank",
+        "precision rerank library",
+        "enable precision retrieval"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Precision retrieval",
+      "answer": "**Precision retrieval** reranks Library hits with a second bi-encoder pass after hybrid search and MMR. Toggle it under **Settings \u2192 Knowledge \u2192 Library Pro depth** (Pro license required). Adds query latency; no re-import needed.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "features.settings.advanced.import_license",
+      "question_patterns": [
+        "import pro license",
+        "qube pro license",
+        "import license file",
+        "pro license required",
+        "why is library pro disabled"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Import Pro license",
+      "answer": "Import a `.qube-license` file under **Settings \u2192 Advanced \u2192 License \u2192 Import license file**. **Pro** or **Team** tier unlocks **Library Pro depth** toggles in Settings \u2192 Knowledge. Use **Remove cached license** to drop the local copy.",
+      "action_id": "open_settings_advanced"
+    },
+    {
+      "id": "faq.library_pro_depth.gem_badge",
+      "question_patterns": [
+        "gem badge library",
+        "what does the gem mean",
+        "pro gem document",
+        "gem icon library sidebar",
+        "precision ingest badge"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Gem badge (precision ingest)",
+      "answer": "The **gem** icon before a filename in **Library** means the document was indexed with **Precision indexing (Pro)**\u2014semantic breakpoints for denser chunking. Re-import with **Normal indexing** to remove it. Documents indexed before precision ingest was available have no badge until re-imported."
+    },
+    {
+      "id": "faq.library_pro_depth.import_mode",
+      "question_patterns": [
+        "choose indexing mode",
+        "normal vs precision indexing",
+        "precision indexing disabled import",
+        "import dialog precision",
+        "how to pick precision ingest"
+      ],
+      "doc_id": "faq.library_pro_depth",
+      "heading": "Choose indexing mode",
+      "answer": "Click **Library (+)** to open **Choose indexing mode** first (**Normal indexing** or **Precision indexing (Pro)**), then pick files. Without a Pro license, the precision button is disabled (tooltip explains why). **Settings \u2192 Knowledge \u2192 Default precision ingest on import** pre-selects precision when licensed."
+    },
+    {
       "id": "features.conversations.nav",
       "question_patterns": [
         "where is chat",
@@ -2099,7 +2243,7 @@
       ],
       "doc_id": "features.library",
       "heading": "Ingest documents",
-      "answer": "Open **Library**, select **Main** (or a user folder), then click **+** (**Ingest New Document**). Supported types include `.txt`, `.md`, `.pdf`, and `.epub`. If **+** is grayed out, select **Main**—you may have the read-only **Qube** folder selected."
+      "answer": "Open **Library**, select **Main** (or a user folder), click **+** (**Ingest New Document**), choose **Normal indexing** or **Precision indexing (Pro)** in **Choose indexing mode**, then pick files. Supported types: `.txt`, `.md`, `.pdf`, `.epub`. If **+** is grayed out, select **Main**—you may have the read-only **Qube** folder selected."
     },
     {
       "id": "features.library.chat_with_doc",

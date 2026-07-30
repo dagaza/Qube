@@ -2623,6 +2623,18 @@ class ConversationsView(QWidget):
         self.refresh_button_themes(getattr(self.window(), "_is_dark_theme", True))
         self.refresh_think_toggle()
 
+        from ui.components.type_to_search import install_type_to_focus
+
+        install_type_to_focus(
+            self,
+            self.text_input,
+            extra_block=self._composer_type_to_focus_blocked,
+        )
+
+    def _composer_type_to_focus_blocked(self) -> bool:
+        win = self.window()
+        return win is not None and getattr(win, "_composer_at_mention_discovery", None) is not None
+
     # --------------------------------------------------------- #
     #  PANEL BUILDERS                                           #
     # --------------------------------------------------------- #

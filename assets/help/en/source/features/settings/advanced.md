@@ -7,12 +7,16 @@
 - Which log file shows routing vs LLM vs web search?
 - Is it safe to edit settings JSON directly?
 - Where do I import or export a knowledge pack?
+- How do I import a Qube Pro license?
+- What does a Pro license unlock for Library?
 
 ## What it is
 
 **Advanced** settings expose power-user tools: a **JSON settings** editor for direct preference edits and **diagnostic logs** for troubleshooting workers, inference, and ingestion. Changes here can affect stability—prefer regular settings pages unless you know the key names.
 
 **Export knowledge pack** / **Import knowledge pack** live under **Settings → Knowledge → Diagnostics**, not on this page.
+
+**License** imports a signed `.qube-license` file that unlocks paid edition capabilities. For **Library**, this includes **Precision indexing** in the import dialog and **Library Pro depth** toggles under **Settings → Knowledge** (**Default precision ingest on import**, **Precision retrieval**). Use **Remove cached license** to drop the local copy—Pro toggles turn off on next sync and **Precision indexing** is disabled in the import dialog. See [Library Pro depth FAQ](../../faq/library-pro-depth.md).
 
 **Diagnostic logs** are rotating files under `~/.qube/logs/` (Windows: `%LOCALAPPDATA%\Qube\logs\`). They are **not** the same as the live **Telemetry** dashboard — see [Diagnostic logs FAQ](../../faq/diagnostic-logs-advanced-settings.md) for what each file contains, default recording states, privacy, and launch env overrides.
 
@@ -42,6 +46,7 @@ JSON settings, advanced preferences, diagnostic logs, debug logs, JSON SETTINGS,
 4. **Enable a diagnostic log** — Turn on recording for the subsystem you are debugging (application, LLM, routing, web search, skills).
 5. **Reproduce once** — Perform the failing action, then click **View {log name}** and attach excerpts to feedback if needed.
 6. **Clear after testing** — Click **Clear log** between runs so new entries are easy to read.
+7. **Import a Pro license** — Under **License**, click **Import license file** to unlock **Library Pro depth** and other Pro capabilities. See [Enable Library Pro depth workflow](../../workflows/enable-library-pro-depth.md).
 
 ## Controls
 
@@ -53,5 +58,6 @@ JSON settings, advanced preferences, diagnostic logs, debug logs, JSON SETTINGS,
 - [Advanced Telemetry](../../features/telemetry.md) · [Interpreting telemetry](../../faq/advanced-telemetry-interpreting.md) — live dashboard (not log files)
 - [Contact & Feedback settings](contact-feedback.md) — send logs with bug reports
 - [Knowledge settings](knowledge.md) — knowledge pack import/export and retrieval trace under Diagnostics
+- [Library Pro depth FAQ](../../faq/library-pro-depth.md) — what Pro license unlocks for Library
 - [Model won't load troubleshooting](../../troubleshooting/model-wont-load.md) — when logs show VRAM or load errors
 - [Search models not ready troubleshooting](../../troubleshooting/search-models-not-ready.md) — embedding worker issues

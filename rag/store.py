@@ -1,6 +1,7 @@
 # --- rag/store.py ---
 from __future__ import annotations
 
+import json
 import lancedb
 import pyarrow as pa
 import numpy as np
@@ -15,6 +16,7 @@ logger = logging.getLogger("Qube.RAG.Store")
 
 DB_PATH = default_lancedb_dir()
 TABLE_NAME = "documents"
+META_JSON_COLUMN = "meta_json"
 # Back-compat alias for tests and legacy imports (Balanced / jina default dim).
 VECTOR_DIM = get_mode_spec(DEFAULT_MODE).vector_dim
 
@@ -25,7 +27,20 @@ def _schema_for_dim(vector_dim: int) -> pa.Schema:
         pa.field("text", pa.utf8()),
         pa.field("source", pa.utf8()),
         pa.field("chunk_id", pa.int32()),
+        pa.field(META_JSON_COLUMN, pa.utf8()),
     ])
+
+
+def _normalize_chunk_row(chunk: dict) -> dict:
+    row = dict(chunk)
+    meta = row.get(META_JSON_COLUMN)
+    if meta is None:
+        row[META_JSON_COLUMN] = ""
+    elif isinstance(meta, dict):
+        row[META_JSON_COLUMN] = json.dumps(meta, ensure_ascii=False, separators=(",", ":"))
+    else:
+        row[META_JSON_COLUMN] = str(meta)
+    return row
 
 
 class DocumentStore:
@@ -55,6 +70,30 @@ class DocumentStore:
             migrate_legacy_memory_sources(self)
         except Exception as e:
             logger.warning("Legacy memory source migration skipped: %s", e)
+
+        self._ensure_meta_json_column()
+
+    def _ensure_meta_json_column(self) -> None:
+        """Add ``meta_json`` to existing tables when missing (Phase 3 migration)."""
+        try:
+            if META_JSON_COLUMN in self.table.schema.names:
+                return
+        except Exception as exc:
+            logger.debug("Could not inspect LanceDB schema for meta_json: %s", exc)
+            return
+
+        try:
+            if hasattr(self.table, "add_columns"):
+                self.table.add_columns({META_JSON_COLUMN: "''"})
+                logger.info("Added %s column to LanceDB table %s", META_JSON_COLUMN, TABLE_NAME)
+                return
+        except Exception as exc:
+            logger.debug("LanceDB add_columns for meta_json skipped: %s", exc)
+
+        logger.info(
+            "%s will be populated as new rows are ingested (legacy rows remain blank).",
+            META_JSON_COLUMN,
+        )
 
     def _open_or_create_table(self) -> None:
         if TABLE_NAME in self.db.table_names():
@@ -92,10 +131,16 @@ class DocumentStore:
 
     def export_all_rows(self) -> list[dict]:
         """Export indexed rows before a wipe/reindex."""
+        columns = ["text", "source", "chunk_id"]
+        try:
+            if META_JSON_COLUMN in self.table.schema.names:
+                columns.append(META_JSON_COLUMN)
+        except Exception:
+            pass
         try:
             return (
                 self.table.search()
-                .select(["text", "source", "chunk_id"])
+                .select(columns)
                 .limit(1_000_000)
                 .to_list()
             )
@@ -161,13 +206,14 @@ class DocumentStore:
         return matched
 
     def add_chunks(self, chunks: list[dict], *, rebuild_fts: bool = True):
-        for chunk in chunks:
+        normalized = [_normalize_chunk_row(chunk) for chunk in chunks]
+        for chunk in normalized:
             vec = chunk.get("vector")
             if vec is not None and len(vec) != self.vector_dim:
                 raise ValueError(
                     f"Vector dim mismatch: got {len(vec)}, expected {self.vector_dim}"
                 )
-        self.table.add(chunks)
+        self.table.add(normalized)
         if rebuild_fts:
             self.rebuild_fts_index()
 
@@ -251,23 +297,45 @@ class DocumentStore:
                 )
                 return False
 
+    def _fetch_document_chunks(self, source: str) -> list[dict]:
+        results = (
+            self.table.search([0.0] * self.vector_dim)
+            .limit(10000)
+            .where(f"source = '{source}'")
+            .to_list()
+        )
+        results.sort(key=lambda x: x["chunk_id"])
+        return results
+
     def reconstruct_document(self, source: str) -> str:
-        import re
+        from core.chunking.library_preview import build_library_preview_plain
 
         try:
-            results = (
-                self.table.search([0.0] * self.vector_dim)
-                .limit(10000)
-                .where(f"source = '{source}'")
-                .to_list()
-            )
-            if not results:
-                return "Document contents not found in vector store."
-            results.sort(key=lambda x: x["chunk_id"])
-            reconstructed_text = "\n\n".join([r["text"] for r in results])
-            reconstructed_text = re.sub(r"(?<!\n)\n(?!\n)", " ", reconstructed_text)
-            reconstructed_text = re.sub(r" +", " ", reconstructed_text)
-            return reconstructed_text
+            results = self._fetch_document_chunks(source)
+            return build_library_preview_plain(results)
         except Exception as e:
             logger.error(f"Failed to reconstruct {source}: {e}")
             return f"Error loading document: {str(e)}"
+
+    def reconstruct_document_for_preview(
+        self,
+        source: str,
+        *,
+        breadcrumb_color: str,
+        body_color: str,
+        font_pt: float = 12.0,
+    ) -> tuple[str, bool]:
+        """Return stitched preview content and whether it is HTML (structured metadata)."""
+        from core.chunking.library_preview import build_library_preview
+
+        try:
+            results = self._fetch_document_chunks(source)
+            return build_library_preview(
+                results,
+                breadcrumb_color=breadcrumb_color,
+                body_color=body_color,
+                font_pt=font_pt,
+            )
+        except Exception as e:
+            logger.error(f"Failed to reconstruct preview for {source}: {e}")
+            return f"Error loading document: {str(e)}", False

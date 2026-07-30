@@ -11,6 +11,7 @@
 - How do I rename or move a document?
 - Why does preview say “Reconstructing document from vector space…”?
 - Can I set a background behind the document preview?
+- What is precision ingest and do I need Pro?
 
 ## What it is
 
@@ -20,7 +21,7 @@ Folders organize documents. **Main** is the default user folder for your uploads
 
 The sidebar lists folders and documents. The preview pane shows reconstructed text, metadata, and reading controls. Optional **library wallpaper** can sit behind the preview area—configure it under **Settings → Themes → Wallpapers**. A floating **Chat with document** button appears when a file is open.
 
-Press **?** in the sidebar header for the guided tour (`library`). This page summarizes controls for retrieval; the tour walks the layout spatially.
+Press **?** in the sidebar header for the guided tour (`library`). The tour walks ingest, **Choose indexing mode** (Normal vs Precision), the **gem** badge on Pro-indexed documents, preview controls, and **Chat with document**.
 
 ## Where to find it
 
@@ -34,7 +35,7 @@ document library, knowledge base files, uploaded documents, file manager, ingest
 
 ## How to…
 
-1. **Ingest a document** — Select **Main** or a user folder (active folder highlight). Click **+** (**Ingest New Document**) and choose files. Supported types in the file picker: **`.txt`**, **`.md`**, **`.pdf`**, **`.epub`**. A progress row appears while indexing runs. If search models are not ready, Qube prompts you to prepare them first (see [Prepare search models workflow](../workflows/prepare-search-models-for-library.md)).
+1. **Ingest a document** — Select **Main** or a user folder. Click **+** (**Ingest New Document**). Qube opens **Choose indexing mode** (**Normal indexing** vs **Precision indexing (Pro)**), then the file picker. Supported types: **`.txt`**, **`.md`**, **`.pdf`**, **`.epub`**. If search models are not ready, Qube prompts you to prepare them first (see [Prepare search models workflow](../workflows/prepare-search-models-for-library.md)). A progress row appears while indexing runs. Precision-indexed documents show a **gem** badge in the sidebar list.
 2. **Replace an existing file** — Importing a duplicate filename prompts **Overwrite Files?**; confirming removes the old index before re-ingesting.
 3. **Find a file** — Type in **Search titles or indexed text…** to match titles or indexed body text (flat results, up to 200 hits). Clear search to return to folder browse mode.
 4. **Preview a document** — Single-click a row. The header shows size and **Chunks Indexed**; body text is reconstructed from the vector index. Use the preview toolbar for font, spacing, and layout.
@@ -61,7 +62,7 @@ Grouped like the Library layout. Preview readability settings apply to the **cur
 | Ingest progress row | Spinner / bar while files are indexing |
 | Folder row | Click to set active ingest folder; chevron or double-click toggles expand/collapse |
 | Folder **⋮** | **Rename Folder**, **Delete Folder** (user folders only) |
-| Document row | Single-click to preview; shows filename and size; summary blurb in tooltip when available |
+| Document row | Single-click to preview; **gem badge** before filename when indexed with precision ingest (Pro); filename and size; summary blurb in tooltip when available |
 | Document **⋮** | **Rename Document**, **Move to folder**, **Delete Document** |
 | **Main** | Default user upload folder |
 | **Qube** | App-managed docs; ingest blocked; collapsed by default |
@@ -82,7 +83,7 @@ Grouped like the Library layout. Preview readability settings apply to the **cur
 | Area | What it shows |
 |------|----------------|
 | Document title | Selected filename (wraps long names) |
-| Stats line | **Size**, **Chunks Indexed**, optional summary blurb |
+| Stats line | **Size**, **Chunks Indexed**, optional **Precision ingest** (Pro), optional summary blurb |
 | Body | Reconstructed text from the vector store, or placeholder when none selected |
 | **Chat with document** (FAB) | Starts a grounded chat in **Conversations** with `@[file:…]` prefilled |
 
@@ -98,4 +99,5 @@ Empty selection placeholder: **Select a document from the left to view its conte
 - [Memory vs Library FAQ](../faq/memory-vs-library.md) — documents vs remembered facts
 - [Live sources vs Library search FAQ](../faq/live-sources-vs-library.md) — Library vs online sources
 - [Knowledge settings](settings/knowledge.md) — search quality and automatic triggers
+- [Library Pro depth FAQ](../faq/library-pro-depth.md) — per-import precision indexing, gem badge, Pro retrieval
 - [Conversations](../conversations.md) — composer, `@[tool:library]`, and citations

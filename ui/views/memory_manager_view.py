@@ -943,6 +943,10 @@ class MemoryManagerView(QWidget):
 
         self.refresh_theme(is_dark)
 
+        from ui.components.type_to_search import install_type_to_search
+
+        install_type_to_search(self, self.search_input)
+
     def _category_menu_items(self) -> list[tuple[str, str]]:
         items: list[tuple[str, str]] = []
         for cat in MEMORY_CATEGORIES:

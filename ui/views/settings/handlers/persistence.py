@@ -477,6 +477,9 @@ class PersistenceHandlersMixin:
             if hasattr(self, "advanced_embedding_panel"):
                 self.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
 
+        if hasattr(self, "_sync_library_pro_features"):
+            self._sync_library_pro_features()
+
         if hasattr(self, "advanced_discovery_toggle"):
             self.advanced_discovery_toggle.blockSignals(True)
             self.advanced_discovery_toggle.setChecked(get_advanced_discovery_unlocked())

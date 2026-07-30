@@ -178,6 +178,16 @@
     "default": false,
     "description": "When true, shows advanced Knowledge settings including optional embedding model swap."
   },
+  "qube.library.precision_ingest_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Pro: semantic breakpoint chunking during Library ingest."
+  },
+  "qube.library.precision_rerank_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Pro: bi-encoder rerank pass after Library hybrid retrieval."
+  },
   "qube.settings.advanced_discovery_unlocked": {
     "type": "boolean",
     "default": false,

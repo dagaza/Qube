@@ -21,7 +21,12 @@ def _reset_reindex_flag():
 def test_reindex_worker_reembeds_exported_rows_and_resets_router():
     store = MagicMock()
     store.export_all_rows.return_value = [
-        {"text": "hello world", "source": "doc.txt", "chunk_id": 0},
+        {
+            "text": "hello world",
+            "source": "doc.txt",
+            "chunk_id": 0,
+            "meta_json": '{"breadcrumb":"Intro"}',
+        },
         {"text": "memory fact", "source": "qube_memory::pref::1", "chunk_id": 0},
     ]
 
@@ -55,6 +60,8 @@ def test_reindex_worker_reembeds_exported_rows_and_resets_router():
     store.recreate_for_dim.assert_called_once_with(512)
     store.rebuild_fts_index.assert_called_once()
     assert store.add_chunks.call_count >= 1
+    first_batch = store.add_chunks.call_args_list[0].args[0]
+    assert first_batch[0].get("meta_json") == '{"breadcrumb":"Intro"}'
     clear_mock.assert_called_once_with(router)
     install_mock.assert_called_once()
     assert is_reindex_in_progress() is False

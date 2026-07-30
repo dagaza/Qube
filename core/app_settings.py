@@ -40,6 +40,8 @@ KEY_SIDECAR_TITLE_CONTEXT_MODE = "qube.sidecar.title_context_mode"
 KEY_ADVANCED_ENGINE_UNLOCKED = "qube.settings.advanced_engine_unlocked"
 KEY_ADVANCED_ENGINE_ACKNOWLEDGED = "qube.settings.advanced_engine_acknowledged"
 KEY_ADVANCED_EMBEDDING_UNLOCKED = "qube.settings.advanced_embedding_unlocked"
+KEY_LIBRARY_PRECISION_INGEST = "qube.library.precision_ingest_enabled"
+KEY_LIBRARY_PRECISION_RERANK = "qube.library.precision_rerank_enabled"
 KEY_ADVANCED_DISCOVERY_UNLOCKED = "qube.settings.advanced_discovery_unlocked"
 KEY_ADVANCED_SPEECH_MODELS_UNLOCKED = "qube.settings.advanced_speech_models_unlocked"
 KEY_ADVANCED_STT_UNLOCKED = "qube.settings.advanced_stt_unlocked"
@@ -681,6 +683,22 @@ def get_advanced_embedding_unlocked() -> bool:
 
 def set_advanced_embedding_unlocked(unlocked: bool) -> None:
     _store().set(KEY_ADVANCED_EMBEDDING_UNLOCKED, bool(unlocked))
+
+
+def get_library_precision_ingest_enabled() -> bool:
+    return bool(_store().get(KEY_LIBRARY_PRECISION_INGEST, False))
+
+
+def set_library_precision_ingest_enabled(enabled: bool) -> None:
+    _store().set(KEY_LIBRARY_PRECISION_INGEST, bool(enabled))
+
+
+def get_library_precision_rerank_enabled() -> bool:
+    return bool(_store().get(KEY_LIBRARY_PRECISION_RERANK, False))
+
+
+def set_library_precision_rerank_enabled(enabled: bool) -> None:
+    _store().set(KEY_LIBRARY_PRECISION_RERANK, bool(enabled))
 
 
 def get_advanced_discovery_unlocked() -> bool:

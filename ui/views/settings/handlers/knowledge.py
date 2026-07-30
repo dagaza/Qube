@@ -34,6 +34,16 @@ from core.app_settings import (
     set_embedding_model_path,
     set_embedding_mode,
     set_knowledge_source_preferences,
+    get_library_precision_ingest_enabled,
+    get_library_precision_rerank_enabled,
+    set_library_precision_ingest_enabled,
+    set_library_precision_rerank_enabled,
+)
+from core.capabilities import has_feature
+from core.library_pro_features import (
+    LICENSE_REQUIRED_MESSAGE,
+    PRO_INGEST_FEATURE,
+    PRO_RERANK_FEATURE,
 )
 from core.knowledge.connectors.base import list_connector_types
 from core.knowledge.credentials import (
@@ -71,6 +81,7 @@ from core.embedding_models import (
 )
 from ui.views.settings.handlers.bootstrap_downloads import EmbeddingWarmupWorker
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.toggle import PrestigeToggle
 
 logger = logging.getLogger("Qube.UI.Settings")
 
@@ -467,6 +478,78 @@ class KnowledgeHandlersMixin:
                 return
         set_advanced_embedding_unlocked(bool(checked))
         self._apply_advanced_embedding_panel_visibility()
+
+    def _show_pro_license_required_dialog(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            LICENSE_REQUIRED_MESSAGE,
+            is_dark=is_dark,
+        ).exec()
+
+    def _on_library_precision_ingest_toggled(self, checked: bool) -> None:
+        if checked and not has_feature(PRO_INGEST_FEATURE):
+            self._show_pro_license_required_dialog()
+            self._sync_library_pro_features()
+            return
+        if checked:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self.window(),
+                "Enable default precision ingest?",
+                "When on, the Library import dialog pre-selects precision ingest "
+                "(semantic breakpoints). You can still choose normal indexing for "
+                "each upload.\n\n"
+                "Precision ingest can significantly increase indexing time.\n\nContinue?",
+                is_dark=is_dark,
+                tone="danger",
+                dialog_width=460,
+            )
+            if not dlg.exec():
+                self._sync_library_pro_features()
+                return
+        set_library_precision_ingest_enabled(bool(checked and has_feature(PRO_INGEST_FEATURE)))
+        self._sync_library_pro_features()
+
+    def _on_library_precision_rerank_toggled(self, checked: bool) -> None:
+        if checked and not has_feature(PRO_RERANK_FEATURE):
+            self._show_pro_license_required_dialog()
+            self._sync_library_pro_features()
+            return
+        set_library_precision_rerank_enabled(bool(checked and has_feature(PRO_RERANK_FEATURE)))
+        self._sync_library_pro_features()
+
+    def _sync_library_pro_features(self) -> None:
+        ingest_toggle = getattr(self, "library_precision_ingest_toggle", None)
+        rerank_toggle = getattr(self, "library_precision_rerank_toggle", None)
+        if ingest_toggle is None and rerank_toggle is None:
+            return
+
+        ingest_licensed = has_feature(PRO_INGEST_FEATURE)
+        rerank_licensed = has_feature(PRO_RERANK_FEATURE)
+        ingest_on = get_library_precision_ingest_enabled() and ingest_licensed
+        rerank_on = get_library_precision_rerank_enabled() and rerank_licensed
+
+        for row, enabled in (
+            (ingest_toggle, ingest_on),
+            (rerank_toggle, rerank_on),
+        ):
+            if row is None:
+                continue
+            toggle = row.findChild(PrestigeToggle)
+            if toggle is None:
+                continue
+            toggle.blockSignals(True)
+            toggle.setChecked(enabled)
+            # Keep clickable when unlicensed so each ON attempt shows the license dialog.
+            toggle.setEnabled(True)
+            toggle.blockSignals(False)
+
+        if not ingest_licensed and get_library_precision_ingest_enabled():
+            set_library_precision_ingest_enabled(False)
+        if not rerank_licensed and get_library_precision_rerank_enabled():
+            set_library_precision_rerank_enabled(False)
 
     def _apply_advanced_embedding_panel_visibility(self) -> None:
         unlocked = get_advanced_embedding_unlocked()

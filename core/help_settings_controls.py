@@ -67,6 +67,11 @@ _KNOWLEDGE_LIBRARY_SEARCH_LABELS = (
     "Enable NLP Auto-Activator",
 )
 
+_KNOWLEDGE_LIBRARY_PRO_DEPTH_LABELS = (
+    "Default precision ingest on import",
+    "Precision retrieval",
+)
+
 _HELP_UNINSTALL_KEEP_VARIANTS = frozenset(
     {
         "Remove Qube package only…",
@@ -265,6 +270,22 @@ def _scan_source_text(text: str, blocks: list[_ControlBlock]) -> None:
         _append_unique(blocks, current_subsection, label)
 
 
+def _inject_knowledge_library_pro_depth(blocks: list[_ControlBlock]) -> None:
+    target = _ControlBlock(subsection="Library Pro depth", items=[])
+    for label in _KNOWLEDGE_LIBRARY_PRO_DEPTH_LABELS:
+        if label not in target.items:
+            target.items.append(label)
+    insert_at = len(blocks)
+    for idx, block in enumerate(blocks):
+        if block.subsection == "Library Pro depth":
+            blocks[idx] = target
+            return
+        if block.subsection == "Retrieval profile":
+            insert_at = idx
+            break
+    blocks.insert(insert_at, target)
+
+
 def _inject_knowledge_library_search_phrases(blocks: list[_ControlBlock]) -> None:
     target = _ControlBlock(subsection="Library search phrases", items=[])
     for label in _KNOWLEDGE_LIBRARY_SEARCH_LABELS:
@@ -339,6 +360,7 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
             if label in _KNOWLEDGE_LIBRARY_SEARCH_LABELS:
                 continue
         _inject_knowledge_library_search_phrases(blocks)
+        _inject_knowledge_library_pro_depth(blocks)
         _reassign_knowledge_web_discovery(blocks)
 
     if section_id == "help":

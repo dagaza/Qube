@@ -46,6 +46,12 @@ from ui.components.sidebar_folder_list import (
     create_sidebar_header_actions_row,
 )
 from ui.components.ingest_progress_row import IngestProgressRow
+from ui.components.library_ingest_mode_dialog import LibraryIngestModeDialog
+from ui.components.pro_gem_badge import (
+    apply_pro_gem_badge_theme,
+    make_pro_gem_badge,
+)
+from core.library_ingest_modes import is_precision_ingest_mode
 from core.app_settings import get_ui_library_transcript_background
 from core.theme.view_theme import view_resolved_theme
 from core.theme.svg_icons import tinted_svg_icon, themed_fa_icon, themed_fa_pixmap
@@ -155,7 +161,7 @@ class _LibraryTranscriptWidthHost(QWidget):
 
 
 class LibraryView(QWidget):
-    ingest_requested = pyqtSignal(list, str)
+    ingest_requested = pyqtSignal(list, str, str)
 
     def __init__(self, workers: dict, db_manager):
         super().__init__()
@@ -209,6 +215,10 @@ class LibraryView(QWidget):
         self.preview_stage.installEventFilter(self)
 
         self.refresh_button_themes(self._theme().is_dark)
+
+        from ui.components.type_to_search import install_type_to_search
+
+        install_type_to_search(self, self.search_bar)
 
     def _build_list_pane(self) -> QFrame:
         frame = QFrame()
@@ -1026,11 +1036,22 @@ class LibraryView(QWidget):
         lay.setSpacing(10)
 
         item_text = f"{doc['filename']} ({doc['file_size_kb']} KB)"
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(6)
+
+        if is_precision_ingest_mode(doc.get("ingest_mode")):
+            title_row.addWidget(make_pro_gem_badge(row))
+
         lbl = QLabel(item_text)
         lbl.setObjectName("HistoryRowTitle")
         blurb = (doc.get("summary_blurb") or "").strip()
         if blurb:
             lbl.setToolTip(blurb)
+        title_row.addWidget(lbl, stretch=1)
+
+        title_host = QWidget()
+        title_host.setLayout(title_row)
 
         btn = QPushButton()
         btn.setObjectName("HistoryOptionsBtn")
@@ -1078,7 +1099,7 @@ class LibraryView(QWidget):
 
         btn.setMenu(menu)
 
-        lay.addWidget(lbl)
+        lay.addWidget(title_host)
         lay.addStretch()
         lay.addWidget(btn)
 
@@ -1104,6 +1125,10 @@ class LibraryView(QWidget):
             theme=theme,
             active_folder_id=active_folder_id,
         )
+        if target_list is not None:
+            for badge in target_list.findChildren(QLabel):
+                if badge.objectName() == "ProGemBadge":
+                    apply_pro_gem_badge_theme(badge, parent=target_list)
 
     def _trigger_rename_document(self, old_filename):
         is_dark = getattr(self.window(), '_is_dark_theme', True)
@@ -1164,6 +1189,8 @@ class LibraryView(QWidget):
             f"Size: {doc_data['file_size_kb']} KB | "
             f"Chunks Indexed: {doc_data['chunk_count']}"
         )
+        if is_precision_ingest_mode(doc_data.get("ingest_mode")):
+            stats = f"{stats} | Precision ingest"
         blurb = (doc_data.get("summary_blurb") or "").strip()
         if blurb:
             stats = f"{stats} | {blurb}"
@@ -1172,17 +1199,30 @@ class LibraryView(QWidget):
         self.text_preview.setHtml("<center><h3>Reconstructing document from vector space...</h3></center>")
         self._apply_library_preview_readability()
 
-        # Pull chunks from LanceDB and stitch them together
-        if self.store:
-            content = self.store.reconstruct_document(self.active_filename)
-            self.text_preview.setPlainText(content)
-        else:
-            self.text_preview.setPlainText("Error: Vector store not connected.")
+        self._render_document_preview(self.active_filename)
         self._apply_library_preview_readability()
         self._sync_chat_with_doc_fab_visibility()
 
+    def _render_document_preview(self, filename: str) -> None:
+        """Load stitched preview from LanceDB (HTML when chunk metadata has breadcrumbs)."""
+        if not self.store:
+            self.text_preview.setPlainText("Error: Vector store not connected.")
+            return
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = self._theme(is_dark)
+        content, is_html = self.store.reconstruct_document_for_preview(
+            filename,
+            breadcrumb_color=theme.text_secondary,
+            body_color=self._preview_body_color(is_dark),
+            font_pt=self._scaled_preview_font_pt(),
+        )
+        if is_html:
+            self.text_preview.setHtml(content)
+        else:
+            self.text_preview.setPlainText(content)
+
     def _browse_for_document(self):
-        """Opens a file dialog, checks for duplicates, and handles overwrites."""
+        """Choose indexing mode, open file dialog, check duplicates, and ingest."""
         folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
         if not self.db.library_folder_allows_user_ingest(folder_id):
             is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -1201,6 +1241,18 @@ class LibraryView(QWidget):
             self.window(),
             feature_label="Library document upload",
         ):
+            return
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        mode_dialog = LibraryIngestModeDialog(
+            self,
+            is_dark=is_dark,
+        )
+        if not mode_dialog.exec():
+            logger.info("Ingestion cancelled at indexing mode chooser.")
+            return
+        ingest_mode = mode_dialog.selected_mode()
+        if not ingest_mode:
             return
 
         files, _ = QFileDialog.getOpenFileNames(
@@ -1244,12 +1296,15 @@ class LibraryView(QWidget):
         # 3. Proceed with the standard ingestion UI updates
         self.begin_ingest_progress_ui()
         self.add_btn.setEnabled(False)
-        # REMOVED: self.add_btn.setText(...)
         
-        logger.info(f"Emitting {len(paths)} files to main pipeline for ingestion.")
+        logger.info(
+            "Emitting %d files to main pipeline for ingestion (mode=%s).",
+            len(paths),
+            ingest_mode,
+        )
         self._had_ingestion_error = False
         folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
-        self.ingest_requested.emit(paths, folder_id)
+        self.ingest_requested.emit(paths, folder_id, ingest_mode)
 
     # --- UI Receivers for Worker Progress ---
     def begin_ingest_progress_ui(self, *, detail: str = "") -> None:
@@ -1350,6 +1405,8 @@ class LibraryView(QWidget):
             self.font_plus_btn.setStyleSheet(font_btn_style)
 
         if hasattr(self, "text_preview"):
+            if self.active_filename and self.store:
+                self._render_document_preview(self.active_filename)
             self._apply_library_preview_readability()
 
         self._apply_library_list_surface(is_dark)

@@ -49,6 +49,11 @@ def _open_retrieval_profile(host) -> None:
     _open_anchor(host, "retrieval_profile")
 
 
+def _open_library_pro(host) -> None:
+    _sv(host).end_knowledge_bootstrap_tutorial_preview()
+    _open_anchor(host, "library_pro")
+
+
 def _open_presets(host) -> None:
     _sv(host).end_knowledge_preset_fields_tutorial_preview()
     _open_anchor(host, "knowledge_presets")
@@ -99,10 +104,10 @@ def _open_embedding_panel(host) -> None:
 
 def expected_knowledge_settings_tour_steps() -> int:
     """Step count for smoke tests — keep in sync with build_settings_knowledge_tour."""
-    # welcome + triggers(5) + search(3) + retrieval(1) + web discovery(14)
+    # welcome + triggers(5) + search(3) + library pro(3) + retrieval(1) + web discovery(14)
     # + live sources(1) + provider status(1) + custom(10) + presets(11)
     # + diagnostics(4) + advanced embedding(8) + finish
-    return 1 + 5 + 3 + 1 + 14 + 1 + 1 + 10 + 11 + 4 + 8 + 1
+    return 1 + 5 + 3 + 3 + 1 + 14 + 1 + 1 + 10 + 11 + 4 + 8 + 1  # 63
 
 
 def _enter_provider_status(host) -> None:
@@ -119,9 +124,9 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="Knowledge settings",
             body=(
-                "This page walks top to bottom: library search, embeddings, retrieval, "
-                "web discovery, live sources, custom tools, diagnostics, and advanced "
-                "embedding overrides."
+                "This page walks top to bottom: library search, embeddings, Library Pro "
+                "depth, retrieval, web discovery, live sources, custom tools, diagnostics, "
+                "and advanced embedding overrides."
             ),
             on_enter=_open,
         ),
@@ -207,6 +212,41 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
             ),
             target_getter=lambda h: _sv(h).download_all_search_presets_btn,
             on_enter=_open_search_bootstrap,
+        ),
+        # --- Library Pro depth ---
+        OnboardingStep(
+            step_id="library_pro_depth",
+            title="Library Pro depth",
+            body=(
+                "Optional **Qube Pro** accuracy modes for serious Library collections. "
+                "Standard chunking, hybrid search, and MMR stay free — Pro adds "
+                "precision indexing at import time and optional precision retrieval "
+                "on each query."
+            ),
+            target_getter=lambda h: _sv(h).library_pro_card,
+            on_enter=_open_library_pro,
+        ),
+        OnboardingStep(
+            step_id="library_precision_ingest_default",
+            title="Default precision ingest on import",
+            body=(
+                "When enabled (Pro license required), the Library **Choose indexing mode** "
+                "dialog pre-selects **Precision indexing** on each upload. You can still "
+                "pick **Normal indexing** per file. Precision mode uses semantic breakpoints "
+                "and can take much longer to index."
+            ),
+            target_getter=lambda h: _sv(h).library_precision_ingest_toggle,
+            on_enter=_open_library_pro,
+        ),
+        OnboardingStep(
+            step_id="library_precision_rerank",
+            title="Precision retrieval",
+            body=(
+                "Reranks Library hits with a second bi-encoder pass after hybrid search "
+                "and MMR. Adds query latency; no re-import needed. Requires a Pro license."
+            ),
+            target_getter=lambda h: _sv(h).library_precision_rerank_toggle,
+            on_enter=_open_library_pro,
         ),
         # --- Retrieval profile ---
         OnboardingStep(

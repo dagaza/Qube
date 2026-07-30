@@ -39,8 +39,8 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="Library tour",
             body=(
-                "This walkthrough covers the document sidebar, preview reading controls, "
-                "and how to open a chat grounded on a file."
+                "This walkthrough covers the document sidebar, import indexing modes, "
+                "preview reading controls, and how to open a chat grounded on a file."
             ),
             on_enter=_open,
         ),
@@ -69,10 +69,23 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="sidebar_ingest",
             title="Ingest New Document",
             body=(
-                "Add `.txt`, `.md`, `.pdf`, or `.epub` files to your library for "
-                "indexing and RAG search."
+                "Click here to import `.txt`, `.md`, `.pdf`, or `.epub` files. Qube first "
+                "opens **Choose indexing mode** (**Normal indexing** vs "
+                "**Precision indexing (Pro)**), then the system file picker."
             ),
             target_getter=lambda h: _lv(h).add_btn,
+            on_enter=_open,
+        ),
+        OnboardingStep(
+            step_id="sidebar_indexing_mode",
+            title="Choose indexing mode",
+            body=(
+                "**Normal indexing** uses fast structural chunking (free). "
+                "**Precision indexing (Pro)** uses semantic breakpoints for denser "
+                "documents — much slower, requires a Pro license. Without a license, "
+                "the precision button is disabled with a tooltip. Pick a mode, then "
+                "select files in the OS picker. **Cancel** aborts the import."
+            ),
             on_enter=_open,
         ),
         OnboardingStep(
@@ -88,9 +101,10 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="sidebar_doc_list",
             title="Document list",
             body=(
-                "Click a row to preview the file on the right. Use the floating "
-                "**Chat with document** button to start a grounded conversation. "
-                "Double-click a folder row to expand or collapse it."
+                "Click a row to preview the file on the right. Documents indexed with "
+                "**Precision indexing (Pro)** show a **gem** badge before the filename. "
+                "Use the floating **Chat with document** button to start a grounded "
+                "conversation. Double-click a folder row to expand or collapse it."
             ),
             target_getter=lambda h: _lv(h).doc_list,
             on_enter=_open,
@@ -158,8 +172,9 @@ def build_library_tour(host) -> OnboardingTour:
             step_id="preview_header",
             title="Document metadata",
             body=(
-                "The selected file name and ingest stats appear here — page count, "
-                "token estimates, and similar details when available."
+                "The selected file name and ingest stats appear here — size, "
+                "**Chunks Indexed**, and **Precision ingest** when that document was "
+                "indexed in Pro precision mode."
             ),
             target_getter=lambda h: _lv(h)._preview_header_width_host,
             on_enter=_open,

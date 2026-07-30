@@ -232,6 +232,32 @@ class RagRelevanceGateTests(unittest.TestCase):
         self.assertEqual(len(result["sources"]), 1)
 
 
+class RagMmrTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.query = "installation steps"
+        self.qvec = np.zeros(4, dtype=np.float32)
+
+    def test_mmr_deduplicates_near_duplicate_chunks(self) -> None:
+        duplicate_body = "Install the package with apt install qube."
+        store = _FakeStore(
+            vector_rows=[
+                _chunk("guide.md", duplicate_body, 0.1) | {"chunk_id": 0},
+                _chunk("guide.md", duplicate_body + " ", 0.12) | {"chunk_id": 1},
+                _chunk(
+                    "guide.md",
+                    "Configure the database connection string.",
+                    0.3,
+                )
+                | {"chunk_id": 2},
+            ]
+        )
+        result = rag_tool.rag_search(self.query, self.qvec, store, top_k=2)
+        bodies = [s["content"] for s in result["sources"]]
+        self.assertEqual(len(bodies), 2)
+        self.assertEqual(len(set(bodies)), 2)
+        self.assertIn("Configure the database connection string.", bodies)
+
+
 class LLMWorkerDowngradeContractTests(unittest.TestCase):
     """Static contract check: the llm_worker source must contain the
     T4.1 post-retrieval route downgrade block, and it must sit

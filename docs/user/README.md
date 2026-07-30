@@ -13,6 +13,7 @@ Web-readable guides that complement the in-app help corpus (**Library → Qube**
 | Uninstall Qube | [uninstall.md](uninstall.md) |
 | System requirements & hardware | [system-requirements.md](system-requirements.md) |
 | Workflows (voice, Library, memory) | [how-to-use.md](how-to-use.md) |
+| Library Pro depth (Pro license) | [library-pro-depth.md](library-pro-depth.md) |
 | Release history | [CHANGELOG.md](../../CHANGELOG.md) |
 | Landing page | [index.html](../index.html) (GitHub Pages) · [setup](../pages.md) |
 | **Before official launch** | [Launch documentation guidelines](../launch_documentation_guidelines.md) |

@@ -22,11 +22,14 @@ add documents, ingest files, upload to library, import PDF, build document colle
 ## How to…
 
 1. Open **Library** and click the **Main** folder row (or another user folder—not **Qube**).
-2. Click **+** (**Ingest New Document**) in the sidebar header and choose one or more supported files (`.txt`, `.md`, `.pdf`, `.epub`).
-3. If **+** is disabled, click **Main** even if you were previewing help docs in **Qube**; see [Library Import button disabled troubleshooting](../troubleshooting/library-import-button-disabled.md).
-4. Wait for ingestion to finish—progress appears under the Library header and in notifications.
-5. Verify documents appear in the sidebar and the preview shows **Chunks Indexed** with a non-zero count before searching them in chat.
-6. Optionally move items into subfolders to keep searches organized.
+2. Click **+** (**Ingest New Document**) in the sidebar header.
+3. In **Choose indexing mode**, pick **Normal indexing** (free, fast) or **Precision indexing (Pro)** (slower, finer chunking; requires Pro license—button disabled with tooltip if unlicensed). See [Library Pro depth FAQ](../faq/library-pro-depth.md).
+4. Select one or more supported files (`.txt`, `.md`, `.pdf`, `.epub`) in the system file picker.
+5. If a filename already exists, confirm **Overwrite Files?** when prompted.
+5. If **+** is disabled, click **Main** even if you were previewing help docs in **Qube**; see [Library Import button disabled troubleshooting](../troubleshooting/library-import-button-disabled.md).
+6. Wait for ingestion to finish—progress appears under the Library header and in notifications. Precision-indexed documents show a **gem badge** in the sidebar.
+7. Verify documents appear in the sidebar and the preview shows **Chunks Indexed** with a non-zero count before searching them in chat.
+8. Optionally move items into subfolders to keep searches organized.
 
 **Can I ingest a whole folder?** No—use **+** and select one or more files at a time.
 

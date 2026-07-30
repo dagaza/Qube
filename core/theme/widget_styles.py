@@ -61,6 +61,7 @@ PRESTIGE_DIALOG_MESSAGE = "prestige_dialog_message"
 PRESTIGE_DIALOG_INPUT = "prestige_dialog_input"
 PRESTIGE_DIALOG_CANCEL = "prestige_dialog_cancel"
 PRESTIGE_DIALOG_CONFIRM = "prestige_dialog_confirm"
+PRESTIGE_DIALOG_MODE_OPTION = "prestige_dialog_mode_option"
 PRESTIGE_GHOST_BUTTON = "prestige_ghost_button"
 PRESTIGE_SOURCE_CONTAINER = "prestige_source_container"
 PRESTIGE_TEXT_VIEW = "prestige_text_view"
@@ -658,6 +659,50 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 background: transparent;
             }}
             QPushButton:hover {{
+                background: {resolved.surface_pressed};
+            }}
+            QPushButton:disabled {{
+                color: {resolved.text_muted};
+                border: 1px solid {with_alpha(border, 0.45)};
+                background: {with_alpha(resolved.text_muted, 0.10 if resolved.is_dark else 0.06)};
+            }}
+        """
+        )
+    if role == PRESTIGE_DIALOG_MODE_OPTION:
+        btn_base = kwargs.get("btn_base", "")
+        inactive = bool(kwargs.get("inactive", False))
+        border = resolved.border_subtle if resolved.is_dark else resolved.border
+        if inactive:
+            bg = with_alpha(resolved.text_muted, 0.20 if resolved.is_dark else 0.12)
+            fg = resolved.text_muted
+            border_color = with_alpha(resolved.text_muted, 0.32 if resolved.is_dark else 0.24)
+            return (
+                btn_base
+                + f"""
+            QPushButton {{
+                color: {fg};
+                border: 1px solid {border_color};
+                background: {bg};
+            }}
+            QPushButton:disabled {{
+                color: {fg};
+                border: 1px solid {border_color};
+                background: {bg};
+            }}
+        """
+            )
+        return (
+            btn_base
+            + f"""
+            QPushButton {{
+                color: {resolved.text_primary};
+                border: 1px solid {border};
+                background: {resolved.surface_elevated};
+            }}
+            QPushButton:hover {{
+                background: {resolved.surface_pressed};
+            }}
+            QPushButton:pressed {{
                 background: {resolved.surface_pressed};
             }}
         """
