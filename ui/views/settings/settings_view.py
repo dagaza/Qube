@@ -110,7 +110,12 @@ from ui.views.settings.controls import (
 )
 from ui.onboarding.settings_tour_header import sync_settings_section_tour_header
 from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id, get_section, resolve_settings_navigation
-from ui.views.settings.widgets import collect_theme_buttons, make_settings_section_header_row
+from ui.views.settings.widgets import (
+    collect_theme_buttons,
+    make_settings_section_header_row,
+    SettingsSectionHeaderBar,
+    SettingsSectionPane,
+)
 from ui.views.settings.settings_card_style import refresh_settings_section_cards
 from ui.views.settings.settings_theme import (
     resolve_settings_theme,
@@ -511,6 +516,7 @@ class SettingsView(
         self._section_index_by_id: dict[str, int] = {}
         self._section_row_by_id: dict[str, int] = {}
         self._section_stack_index_by_id: dict[str, int] = {}
+        self._section_scroll_by_id: dict[str, QScrollArea] = {}
         self._settings_search_index: list[dict] = []
         self._theme_buttons: list = []
         self._settings_collapsible_cards_by_section: dict[str, list] = {}
@@ -569,10 +575,14 @@ class SettingsView(
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setWidget(page_content)
 
+        pane = SettingsSectionPane()
+        pane.set_scroll_area(scroll)
+
         stack_idx = self.settings_section_stack.count()
-        self.settings_section_stack.addWidget(scroll)
+        self.settings_section_stack.addWidget(pane)
         self._section_stack_index_by_id[sec_def.id] = stack_idx
         self._section_content_hosts[sec_def.id] = content_host
+        self._section_scroll_by_id[sec_def.id] = scroll
 
         item = QListWidgetItem()
         item.setSizeHint(QSize(0, 44))
@@ -1055,11 +1065,9 @@ class SettingsView(
         right_l.setContentsMargins(8, 75, 8, 40)
         right_l.setSpacing(10)
 
-        section_header_row = QHBoxLayout()
-        section_header_row.setContentsMargins(0, 0, 0, 0)
-        section_header_row.setSpacing(0)
         self._settings_nav_icon_labels: list[QLabel] = []
         self._settings_section_icon_labels: list[QLabel] = []
+        self.settings_section_header_bar = SettingsSectionHeaderBar(right)
         (
             self.settings_section_title_lbl,
             self.settings_section_tour_btn,
@@ -1067,7 +1075,7 @@ class SettingsView(
             section_header,
             self.settings_section_collapse_all_btn,
         ) = make_settings_section_header_row(
-            right,
+            self.settings_section_header_bar,
             initial_tour_id="settings.voice_audio",
             initial_area_display_name="Voice & Audio settings",
         )
@@ -1078,8 +1086,8 @@ class SettingsView(
             self._on_settings_collapse_all_clicked
         )
         self._settings_section_icon_labels.append(self.settings_section_icon_lbl)
-        section_header_row.addWidget(section_header)
-        right_l.addLayout(section_header_row)
+        self.settings_section_header_bar.set_header_content(section_header)
+        right_l.addWidget(self.settings_section_header_bar)
 
         self.settings_section_stack = QStackedWidget()
         self.settings_section_stack.setObjectName("SettingsSectionStack")

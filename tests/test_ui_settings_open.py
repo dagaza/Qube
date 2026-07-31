@@ -118,6 +118,31 @@ def test_all_settings_section_tour_targets_on_real_view(main_window, qtbot):
 
 
 @pytest.mark.ui
+def test_settings_section_header_stays_visible_when_scrolled(main_window, qtbot):
+    qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
+    settings = main_window.peek_settings_view()
+    assert settings is not None
+
+    settings.select_settings_section("knowledge")
+    scroll = settings._section_scroll_by_id.get("knowledge")
+    assert scroll is not None
+
+    bar = settings.settings_section_header_bar
+    title = settings.settings_section_title_lbl
+    assert bar.isVisible()
+    assert title.text() == "Knowledge"
+
+    vbar = scroll.verticalScrollBar()
+    assert vbar.maximum() > 0
+    vbar.setValue(vbar.maximum())
+    qtbot.wait(10)
+
+    assert bar.isVisible()
+    assert title.isVisible()
+    assert title.text() == "Knowledge"
+
+
+@pytest.mark.ui
 def test_conversations_view_is_default_stack_page(main_window, qtbot):
     qtbot.mouseClick(main_window.nav_chat, Qt.MouseButton.LeftButton)
     assert main_window.main_stage.currentWidget() is main_window.conversations_view

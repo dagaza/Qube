@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPainter
+from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -24,6 +26,7 @@ from ui.views.settings.settings_card_style import (
 )
 from ui.views.settings.settings_theme import resolve_settings_theme, settings_divider_color
 from core.theme.color_utils import theme_qcolor
+from core.theme.widget_styles import SETTINGS_DIVIDER, STAGE_SURFACE
 
 SETTINGS_SECTION_RESET_BUTTON_TEXT = "Reset to default configuration"
 
@@ -151,6 +154,77 @@ def make_settings_section_header_row(
     layout.addStretch(1)
 
     return title_lbl, tour_btn, icon_lbl, row_host, collapse_all_btn
+
+
+class SettingsSectionHeaderBar(QWidget):
+    """Pinned right-pane section title row (opaque, stays above scroll content)."""
+
+    _BOTTOM_PADDING = 8
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("SettingsSectionHeaderBar")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setAutoFillBackground(True)
+        policy = self.sizePolicy()
+        policy.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+        policy.setVerticalPolicy(QSizePolicy.Policy.Fixed)
+        self.setSizePolicy(policy)
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, self._BOTTOM_PADDING)
+        self._layout.setSpacing(0)
+
+    def set_header_content(self, widget: QWidget) -> None:
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            child = item.widget()
+            if child is not None:
+                child.setParent(None)
+        self._layout.addWidget(widget)
+
+
+def apply_settings_section_header_bar_theme(bar: QWidget, *, is_dark: bool) -> None:
+    """Opaque stage background + divider so cards do not show through while scrolling."""
+    theme = resolve_settings_theme(is_dark=is_dark)
+    bg_hex = theme.color(STAGE_SURFACE)
+    border_hex = theme.color(SETTINGS_DIVIDER)
+    bar.setStyleSheet(
+        f"#SettingsSectionHeaderBar {{"
+        f" background-color: {bg_hex};"
+        f" border: none;"
+        f" border-bottom: 1px solid {border_hex};"
+        f" }}"
+    )
+    palette = bar.palette()
+    palette.setColor(QPalette.ColorRole.Window, QColor(bg_hex))
+    bar.setPalette(palette)
+
+
+class SettingsSectionPane(QWidget):
+    """Stack page host: scrollable section body constrained to remaining height."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("SettingsSectionPane")
+        self.setMinimumHeight(0)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+    def set_scroll_area(self, scroll: QScrollArea) -> None:
+        scroll.setMinimumHeight(0)
+        scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            child = item.widget()
+            if child is not None:
+                child.setParent(None)
+        self._layout.addWidget(scroll, stretch=1)
 
 
 def add_section_reset_footer(

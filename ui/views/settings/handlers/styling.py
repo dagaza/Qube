@@ -338,3 +338,11 @@ class StylingMixin:
             sidebar_frame=getattr(self, "settings_sidebar", None),
             list_widget=getattr(self, "settings_section_list", None),
         )
+        self._apply_settings_section_header_bar(is_dark)
+
+    def _apply_settings_section_header_bar(self, is_dark: bool) -> None:
+        from ui.views.settings.widgets import apply_settings_section_header_bar_theme
+
+        bar = getattr(self, "settings_section_header_bar", None)
+        if bar is not None:
+            apply_settings_section_header_bar_theme(bar, is_dark=is_dark)
