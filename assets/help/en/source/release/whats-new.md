@@ -1,4 +1,4 @@
-# What's new in Qube Help (v1.0.25)
+# What's new in Qube Help (v1.0.26)
 
 ## Common questions
 
@@ -9,6 +9,8 @@
 ## What it is
 
 This page summarizes the **v English help corpus** shipped with Qube. The corpus lives in **Library → Qube** and powers **`@[tool:help]`** in **Conversations**.
+
+**v1.0.26** documents the **Settings → Advanced split** — **Privacy & data**, **Diagnostics**, **License**, and slim **Advanced** (JSON only) — plus updated `@help` navigation answers.
 
 **v1.0.25** documents **per-import precision indexing** — the **Choose indexing mode** dialog on Library upload, the sidebar **gem badge** for precision-indexed documents, and updated `@help` answers.
 
@@ -21,6 +23,14 @@ Open **Library → Qube → release/whats-new.md**, or attach **`@[tool:help]`**
 ## Also called
 
 help release notes, documentation changelog, in-app help v1, Qube documentation update
+
+## Highlights (v1.0.26 Settings split)
+
+1. **[Privacy & data settings](../features/settings/privacy-data.md)** — privacy tier, Hybrid Internet Mode, session audit shortcuts, audit logs, **What leaves your device**.
+2. **[Diagnostics settings](../features/settings/diagnostics.md)** · **[License settings](../features/settings/license.md)** · **[Advanced settings](../features/settings/advanced.md)** — technical logs, license import, JSON editor.
+3. **[Diagnostic logs FAQ](../faq/diagnostic-logs-advanced-settings.md)** — updated paths for all five log files.
+4. **Canonical `@help` answers** — privacy tier, log location, routing debug log, Pro license import, log redaction.
+5. **[Migration guide](migration-guide.md)** — Settings split table and legacy redirect note.
 
 ## Highlights (v1.0.25 per-import precision indexing)
 

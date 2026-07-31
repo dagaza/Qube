@@ -12,7 +12,7 @@ Model load failures happen when a `.gguf` is incompatible, incomplete, exceeds a
 
 ## Where to find it
 
-Use **Model Manager** to download/load the selected quant and **Settings → AI & Models** for **GPU offload layers** and **Chat template (internal)**. Diagnostic detail may appear under **Settings → Advanced** logs.
+Use **Model Manager** to download/load the selected quant and **Settings → AI & Models** for **GPU offload layers** and **Chat template (internal)**. Diagnostic detail may appear under **Settings → Diagnostics** logs.
 
 ## Also called
 
@@ -25,7 +25,7 @@ GGUF load error, LLM won't start, native engine crash, out of memory model load,
 3. Open **Settings → AI & Models**, turn on **Show advanced hardware settings**, and **lower GPU offload layers** toward zero. See [Hardware tuning FAQ](../faq/hardware-tuning-internal-engine.md).
 4. Restart Qube after a crash before reloading the same large model.
 5. Turn on **Show advanced chat template settings** and match **Chat template (internal)** to the model family listed in Model Manager metadata.
-6. Check Advanced diagnostic logs for llama load errors and attach them to feedback if needed.
+6. Check **Settings → Diagnostics → Application log** for llama load errors and attach excerpts to feedback if needed.
 
 ## Related
 

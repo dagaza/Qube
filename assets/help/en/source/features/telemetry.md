@@ -34,9 +34,10 @@ telemetry dashboard, performance monitor, routing diagnostics, hardware graphs, 
 3. **Confirm model capabilities** — Inspect **Native LLM — Model capability** for the loaded Internal Engine model: identity, reasoning support, execution mode, detection confidence, and publisher guidance when available.
 4. **Understand routing** — Use **Router Intelligence** for route mix, average retrieval phase latency, memory/RAG route shares, adaptive tuner weights, and rule-based health flags. For what each route means (and **HYBRID** vs **● HYBRID**), see [Cognitive Router — how routing works](../faq/cognitive-router-how-routing-works.md).
 5. **Monitor the sidecar** — Check **Sidecar Cognition** for runtime status, queue depth, success rate, foreground p95 latency, query-rewrite effectiveness, and health summary.
-6. **Review web discovery** — Check **Web discovery** for privacy tier, DDG budgets, pacing, and discovery health (mirrors **Settings → Knowledge → Web search discovery**).
-7. **See compute paths** — Open **Inference stack** for llama.cpp build info, hardware profile heuristics, and which compute path native chat, embeddings, and sidecar use (configuration transparency, not live VRAM or timing).
-8. **Correlate with chat** — Compare dashboard stats with per-message **STT** / **TTFT** / **TTS** / **TPS** on assistant replies in **Conversations** (**TPS** only on bubbles). Follow [Advanced Telemetry — interpreting the dashboard](../faq/advanced-telemetry-interpreting.md) for a slow-reply workflow. For grounded answers, open **Sources** on the reply, then **INSPECT RETRIEVAL** when that button appears (per-turn retrieval trace — not the router summary card).
+6. **Review web discovery** — Check **Web discovery** for privacy tier, DDG budgets, pacing, and discovery health (mirrors **Settings → Privacy & data** and **Settings → Knowledge → Web search discovery**).
+7. **Review session integrations** — Check **Session integrations** for MCP/integration capability calls on the **current conversation** (open the chat first). See [Integrations settings](../features/settings/integrations.md).
+8. **See compute paths** — Open **Inference stack** for llama.cpp build info, hardware profile heuristics, and which compute path native chat, embeddings, and sidecar use (configuration transparency, not live VRAM or timing).
+9. **Correlate with chat** — Compare dashboard stats with per-message **STT** / **TTFT** / **TTS** / **TPS** on assistant replies in **Conversations** (**TPS** only on bubbles). Follow [Advanced Telemetry — interpreting the dashboard](../faq/advanced-telemetry-interpreting.md) for a slow-reply workflow. For grounded answers, open **Sources** on the reply, then **INSPECT RETRIEVAL** when that button appears (per-turn retrieval trace — not the router summary card).
 
 ## Controls
 
@@ -116,6 +117,18 @@ Live web search discovery policy (R10). Refreshes about once per second while Te
 
 For session privacy review without JSONL, see [Audit session privacy](../faq/audit-session-privacy.md).
 
+### Session integrations
+
+Lists **integration capability** calls recorded for the **active Conversations session** (MCP and other capability providers). Refreshes when you open Telemetry with a chat selected.
+
+| Element | What it shows |
+|---------|----------------|
+| **Session integrations** | Section title |
+| Summary lines | Provider/namespace, capability group, tier, allowed/denied status |
+| Raw tool id | Shown when **Advanced** settings are unlocked (same rule as integration egress formatting) |
+
+Configure servers under **Settings → Knowledge → Custom sources**; grant permissions under **Settings → Integrations**. See [Connect an MCP server](../workflows/connect-mcp-server.md).
+
 ### Inference stack
 
 Does not measure VRAM usage or timing — shows compile-time backend and configured compute paths.
@@ -140,5 +153,6 @@ When the environment variable **`QUBE_LLM_LOG_UI=1`** is set before launch, an *
 - [Knowledge settings](../features/settings/knowledge.md) — retrieval pipeline options
 - [Conversations](../features/conversations.md) — per-message timing, **Sources**, and **INSPECT RETRIEVAL**
 - [Audit session privacy](../faq/audit-session-privacy.md) — Telemetry + INSPECT session review
+- [Integrations settings](../features/settings/integrations.md) — MCP capability permissions
 - [Web discovery privacy tiers](../faq/web-discovery-privacy-tiers.md) — tier egress table
 - [Model won't load troubleshooting](../troubleshooting/model-wont-load.md) — native engine load failures

@@ -109,7 +109,7 @@ from ui.views.settings.controls import (
     NoScrollSpinBox,
 )
 from ui.onboarding.settings_tour_header import sync_settings_section_tour_header
-from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id, get_section
+from ui.views.settings.registry import SETTINGS_SECTIONS, resolve_section_id, get_section, resolve_settings_navigation
 from ui.views.settings.widgets import collect_theme_buttons, make_settings_section_header_row
 from ui.views.settings.settings_card_style import refresh_settings_section_cards
 from ui.views.settings.settings_theme import (
@@ -133,12 +133,15 @@ from ui.views.settings.sections import (
     appearance_themes,
     contact_feedback,
     desktop_companion,
+    diagnostics,
     general,
     help,
     integrations,
     knowledge,
+    license_section,
     memory,
     notifications,
+    privacy_data,
     voice_audio,
 )
 
@@ -154,6 +157,7 @@ from ui.views.settings.handlers import (
     MemoryHandlersMixin,
     PersistenceHandlersMixin,
     PrestigeMenuMixin,
+    PrivacyDataHandlersMixin,
     StylingMixin,
     SupportHandlersMixin,
     ThemesHandlersMixin,
@@ -183,6 +187,9 @@ _SECTION_BUILDERS = {
     "notifications": notifications.build_section,
     "help": help.build_section,
     "contact.feedback": contact_feedback.build_section,
+    "privacy.data": privacy_data.build_section,
+    "diagnostics": diagnostics.build_section,
+    "license": license_section.build_section,
     "advanced": advanced.build_section,
 }
 
@@ -266,6 +273,7 @@ class SettingsView(
     LicenseHandlersMixin,
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
+    PrivacyDataHandlersMixin,
     PersistenceHandlersMixin,
     SupportHandlersMixin,
     UpdateHandlersMixin,
@@ -334,7 +342,7 @@ class SettingsView(
         configure_provider_id: str | None = None,
     ) -> None:
         """Show a settings section by stable id, title, or legacy title."""
-        section_id = resolve_section_id(section)
+        section_id, anchor = resolve_settings_navigation(section, anchor=anchor)
         if section_id is None:
             return
         previous_section = getattr(self, "_settings_active_section_id", None)
@@ -572,12 +580,14 @@ class SettingsView(
         item.setData(self._SETTINGS_SECTION_ID_ROLE, sec_def.id)
         row = self.settings_section_list.count()
         self.settings_section_list.addItem(item)
-        self.settings_section_list.setItemWidget(
-            item,
-            self._build_settings_section_nav_row(
-                sec_def.icon, sec_def.title, svg_icon=sec_def.svg_icon
-            ),
+        nav_row = self._build_settings_section_nav_row(
+            sec_def.icon, sec_def.title, svg_icon=sec_def.svg_icon
         )
+        if sec_def.id == "license":
+            from ui.views.settings.license_status_ui import attach_nav_edition_chip
+
+            self.license_nav_edition_chip = attach_nav_edition_chip(nav_row, host=self)
+        self.settings_section_list.setItemWidget(item, nav_row)
         self._section_row_by_id[sec_def.id] = row
         self._index_section_search_base(sec_def)
 
@@ -1061,6 +1071,9 @@ class SettingsView(
             initial_tour_id="settings.voice_audio",
             initial_area_display_name="Voice & Audio settings",
         )
+        from ui.views.settings.license_status_ui import attach_settings_edition_chip
+
+        self.settings_edition_chip = attach_settings_edition_chip(section_header, host=self)
         self.settings_section_collapse_all_btn.clicked.connect(
             self._on_settings_collapse_all_clicked
         )
@@ -1095,6 +1108,8 @@ class SettingsView(
         self._apply_settings_sidebar_surface(is_dark)
         self._update_settings_section_nav_colors()
         self._refresh_knowledge_access_ui(is_dark=is_dark)
+        if hasattr(self, "_refresh_license_status_ui"):
+            self._refresh_license_status_ui()
 
     def _settings_section_icon_pixmap(
         self,
@@ -1188,11 +1203,14 @@ class SettingsView(
         self._sync_settings_collapse_all_button(section_id)
         if section_id == "appearance.themes" and hasattr(self, "_on_themes_section_enter"):
             self._on_themes_section_enter()
-        if section_id == "advanced":
-            if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
-                self._sync_all_diagnostic_log_recording_toggles()
-            if hasattr(self, "_refresh_license_status_ui"):
-                self._refresh_license_status_ui()
+        if section_id in ("privacy.data", "diagnostics") and hasattr(
+            self, "_sync_all_diagnostic_log_recording_toggles"
+        ):
+            self._sync_all_diagnostic_log_recording_toggles()
+        if section_id == "privacy.data" and hasattr(self, "_sync_privacy_data_section_ui"):
+            self._sync_privacy_data_section_ui()
+        if section_id == "license" and hasattr(self, "_refresh_license_status_ui"):
+            self._refresh_license_status_ui()
         if section_id == "knowledge":
             from ui.views.settings.sections.knowledge_provider_status import (
                 start_provider_status_refresh_timer,

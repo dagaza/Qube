@@ -28,7 +28,12 @@ from ui.components.brand_buttons import apply_brand_secondary
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
 from ui.views.settings.settings_card_style import begin_settings_section_card
-from ui.views.settings.widgets import add_subsection_to_layout, make_settings_hint
+from ui.views.settings.widgets import (
+    add_settings_card_form,
+    add_settings_span_row,
+    add_subsection_to_form,
+    make_settings_hint,
+)
 
 _TIER_LABELS = {
     "read": "Read",
@@ -171,28 +176,30 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         card_title="MCP servers",
         card_anchor="integrations_mcp_servers",
     )
-    add_subsection_to_layout(servers_layout, "MCP servers", anchor="integrations_mcp_servers")
+    servers_form = add_settings_card_form(servers_layout)
+    add_subsection_to_form(servers_form, "MCP servers", anchor="integrations_mcp_servers")
 
     servers_intro = make_settings_hint(
         "MCP servers are configured under Knowledge → Custom sources. "
         "After save or test, Qube discovers capabilities and prompts you to review permissions."
     )
-    servers_layout.addWidget(servers_intro)
+    add_settings_span_row(servers_form, servers_intro)
 
     host.integrations_mcp_servers_table = QTableWidget()
     _configure_mcp_servers_table(host.integrations_mcp_servers_table, is_dark=is_dark)
-    servers_layout.addWidget(host.integrations_mcp_servers_table)
+    add_settings_span_row(servers_form, host.integrations_mcp_servers_table)
 
     manage_row = QHBoxLayout()
     manage_row.setContentsMargins(0, 0, 0, 0)
     manage_btn = QPushButton("Manage in Knowledge → Custom sources")
     apply_brand_secondary(manage_btn)
+    host.integrations_manage_sources_btn = manage_btn
     manage_btn.clicked.connect(lambda: _open_knowledge_custom_sources(host))
     manage_row.addWidget(manage_btn, alignment=Qt.AlignmentFlag.AlignLeft)
     manage_row.addStretch(1)
     manage_host = QWidget()
     manage_host.setLayout(manage_row)
-    servers_layout.addWidget(manage_host)
+    add_settings_span_row(servers_form, manage_host)
 
     layout.addWidget(servers_card)
 
@@ -202,14 +209,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         card_title="Capability permissions",
         card_anchor="integrations_consent",
     )
-    add_subsection_to_layout(card_layout, "Capability permissions", anchor="integrations_consent")
+    consent_form = add_settings_card_form(card_layout)
+    add_subsection_to_form(
+        consent_form, "Capability permissions", anchor="integrations_consent"
+    )
 
     intro = make_settings_hint(
         "Review and grant capabilities discovered from integration providers. "
         "Write and destructive capabilities stay off until you explicitly allow them. "
         "Capabilities flagged for review cannot be granted here."
     )
-    card_layout.addWidget(intro)
+    add_settings_span_row(consent_form, intro)
 
     scroll_host = QWidget()
     scroll_layout = QVBoxLayout(scroll_host)
@@ -227,7 +237,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.integrations_consent_body = scroll_host
     host.integrations_consent_layout = scroll_layout
 
-    card_layout.addWidget(scroll)
+    add_settings_span_row(consent_form, scroll)
     layout.addWidget(consent_card)
     setup_integrations_dir_watcher(host)
     from core.integrations.descriptor_cache import reconcile_mcp_integration_state
@@ -240,13 +250,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
 def _open_knowledge_custom_sources(host) -> None:
     """Navigate to Knowledge → Custom sources and expand that card."""
-    if hasattr(host, "select_settings_section"):
-        host.select_settings_section("knowledge", anchor="knowledge_custom_sources")
-        return
-    window = host.window()
-    settings = getattr(window, "settings_view", None)
-    if settings is not None and hasattr(settings, "select_settings_section"):
-        settings.select_settings_section("knowledge", anchor="knowledge_custom_sources")
+    host.select_settings_section("knowledge", anchor="knowledge_custom_sources")
 
 
 def setup_integrations_dir_watcher(host) -> None:

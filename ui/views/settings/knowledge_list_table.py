@@ -1,4 +1,4 @@
-"""Borderless list tables for Knowledge → Custom sources / My knowledge."""
+"""Bordered list tables for Knowledge → Custom sources / My knowledge."""
 
 from __future__ import annotations
 
@@ -12,10 +12,12 @@ from PyQt6.QtWidgets import (
 )
 
 from core.theme.accessors import theme_for
-from core.theme.widget_styles import SETTINGS_BORDERLESS_TABLE
+from core.theme.widget_styles import SETTINGS_BORDERED_TABLE
 
 _ROW_HEIGHT_PX = 34
 _HEADER_HEIGHT_PX = 32
+_MIN_PLACEHOLDER_BODY_HEIGHT_PX = 72
+_FRAME_INSET_PX = 4
 
 
 def configure_borderless_list_table(
@@ -50,12 +52,14 @@ def configure_borderless_list_table(
     table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     table.setMinimumWidth(0)
     table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
 
 def apply_borderless_list_table_theme(table: QTableWidget, *, is_dark: bool) -> None:
+    """Apply bordered panel chrome so empty lists read as table containers."""
     theme = theme_for(is_dark=is_dark)
     table.setStyleSheet(
-        theme.style(SETTINGS_BORDERLESS_TABLE, object_name=table.objectName())
+        theme.style(SETTINGS_BORDERED_TABLE, object_name=table.objectName())
     )
 
 
@@ -71,17 +75,22 @@ def set_table_placeholder_row(
     item = QTableWidgetItem(text)
     item.setFlags(Qt.ItemFlag.NoItemFlags)
     item.setForeground(theme.qcolor(theme.text_muted))
+    item.setTextAlignment(
+        Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+    )
     table.setItem(0, 0, item)
     if table.columnCount() > 1:
         table.setSpan(0, 0, 1, table.columnCount())
-    _sync_table_height(table)
+    _sync_table_height(table, placeholder=True)
 
 
-def _sync_table_height(table: QTableWidget) -> None:
+def _sync_table_height(table: QTableWidget, *, placeholder: bool = False) -> None:
     row_count = max(1, table.rowCount())
     table.resizeRowsToContents()
     content_height = sum(table.rowHeight(row) for row in range(row_count))
-    table.setMinimumHeight(_HEADER_HEIGHT_PX + content_height + 4)
+    if placeholder:
+        content_height = max(content_height, _MIN_PLACEHOLDER_BODY_HEIGHT_PX)
+    table.setMinimumHeight(_HEADER_HEIGHT_PX + content_height + _FRAME_INSET_PX)
 
 
 def populate_table_rows(
@@ -91,6 +100,7 @@ def populate_table_rows(
     placeholder: str,
     is_dark: bool,
 ) -> None:
+    apply_borderless_list_table_theme(table, is_dark=is_dark)
     table.clearSpans()
     if not rows:
         set_table_placeholder_row(table, text=placeholder, is_dark=is_dark)
@@ -100,7 +110,7 @@ def populate_table_rows(
     for row_idx, cells in enumerate(rows):
         for col_idx, value in enumerate(cells):
             table.setItem(row_idx, col_idx, QTableWidgetItem(value))
-    _sync_table_height(table)
+    _sync_table_height(table, placeholder=False)
 
 
 def selected_data_row(table: QTableWidget) -> int | None:

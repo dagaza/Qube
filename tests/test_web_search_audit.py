@@ -282,5 +282,21 @@ class TestWebSearchAuditRecording(unittest.TestCase):
             self.assertFalse(web_search_audit_log_enabled())
 
 
+class WebSearchAuditRedactSettingsTests(unittest.TestCase):
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("core.app_settings.get_web_search_audit_redact_enabled", return_value=True)
+    def test_redact_settings_toggle_when_env_unset(self, _getter) -> None:
+        from core.web_search_audit import web_search_audit_redact_enabled
+
+        self.assertTrue(web_search_audit_redact_enabled())
+
+    @patch.dict(os.environ, {"QUBE_WEB_SEARCH_AUDIT_REDACT": "0"}, clear=True)
+    @patch("core.app_settings.get_web_search_audit_redact_enabled", return_value=True)
+    def test_redact_env_override_wins_over_settings(self, _getter) -> None:
+        from core.web_search_audit import web_search_audit_redact_enabled
+
+        self.assertFalse(web_search_audit_redact_enabled())
+
+
 if __name__ == "__main__":
     unittest.main()

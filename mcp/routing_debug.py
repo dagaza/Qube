@@ -77,13 +77,21 @@ def routing_debug_log_verbose() -> bool:
     }
 
 
+def routing_debug_log_redact_query_env_override() -> bool | None:
+    """When set at launch, overrides the in-app Settings redaction toggle."""
+    return _env_truthy_flag("QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY")
+
+
 def routing_debug_log_redact_query() -> bool:
-    return str(os.getenv("QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY", "0")).strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    env = routing_debug_log_redact_query_env_override()
+    if env is not None:
+        return env
+    try:
+        from core.app_settings import get_routing_debug_redact_query_enabled
+
+        return get_routing_debug_redact_query_enabled()
+    except Exception:
+        return False
 
 
 def _safe_list(v: Any) -> list[Any]:

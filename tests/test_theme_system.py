@@ -885,6 +885,7 @@ def test_resolved_theme_style_helpers():
         PRESTIGE_SOURCE_CONTAINER,
         RETRIEVAL_INDICATOR_ACTIVE,
         RETRIEVAL_INDICATOR_OFF,
+        SETTINGS_BORDERED_TABLE,
         SETTINGS_BORDERLESS_TABLE,
         SETTINGS_CHECKBOX,
         SETTINGS_DIVIDER,
@@ -920,6 +921,9 @@ def test_resolved_theme_style_helpers():
     assert theme.border_subtle == theme.color(SETTINGS_DIVIDER)
     assert theme.warning in theme.style(SETTINGS_WARNING_LABEL)
     assert "background: transparent" in theme.style(SETTINGS_BORDERLESS_TABLE, object_name="TestTable")
+    bordered_table = theme.style(SETTINGS_BORDERED_TABLE, object_name="KnowledgePresetsTable")
+    assert theme.background in bordered_table
+    assert theme.border_subtle in bordered_table
     assert theme.text_muted == theme.color(PLACEHOLDER_MUTED)
     assert theme.link == theme.color(ONBOARDING_SPOTLIGHT_RING)
     assert theme.background in theme.style(ONBOARDING_COACH_PANEL)

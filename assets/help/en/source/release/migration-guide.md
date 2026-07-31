@@ -45,6 +45,24 @@ Use these stable navigation strings in docs and canonical answers:
 | Microphone | **Settings → Voice & Audio** → **Audio input device** |
 | Help corpus browser | **Library → Qube** or **Settings → Help → Open Qube documentation** |
 | Chat help search | **`@[tool:help]`** in **Conversations** |
+| Privacy tier / Hybrid Internet / audit logs | **Settings → Privacy & data** |
+| Application & skills debug logs | **Settings → Diagnostics** |
+| LLM / routing / web search audit logs | **Settings → Privacy & data** |
+| Pro license import | **Settings → License** |
+| Raw JSON settings | **Settings → Advanced** |
+
+## Settings split (formerly Advanced)
+
+The old **Settings → Advanced** page was split into four **System** pages:
+
+| Page | Contents |
+|------|----------|
+| **Privacy & data** | Web discovery privacy tier, Hybrid Internet Mode, session audit shortcuts, audit logs |
+| **Diagnostics** | Application log, skills debug log, **Open logs folder** |
+| **License** | Import / remove `.qube-license` |
+| **Advanced** | JSON settings editor only |
+
+Legacy deep links (for example **Advanced → License** or **Advanced → Diagnostic logs**) redirect automatically in the app.
 
 ## How to refresh locally
 

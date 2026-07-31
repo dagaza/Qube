@@ -179,9 +179,30 @@ class KnowledgeHandlersMixin:
             parent=self.window(),
         )
 
-    def _build_discovery_privacy_tier_menu(self) -> None:
-        if not hasattr(self, "discovery_privacy_tier_selector"):
-            return
+    def _privacy_tier_selector_attrs(self) -> tuple[tuple[str, str], ...]:
+        return (
+            ("discovery_privacy_tier_selector", "discovery_privacy_tier_description"),
+            ("privacy_data_privacy_tier_selector", "privacy_data_privacy_tier_description"),
+        )
+
+    def _iter_privacy_tier_selectors(self):
+        for selector_attr, _description_attr in self._privacy_tier_selector_attrs():
+            selector = getattr(self, selector_attr, None)
+            if selector is not None:
+                yield selector_attr, selector
+
+    def _sync_privacy_tier_descriptions(self, tier: str | None = None) -> None:
+        from core.app_settings import get_discovery_privacy_tier
+        from core.knowledge.discovery.privacy_policy import privacy_tier_description
+
+        active_tier = tier if tier is not None else get_discovery_privacy_tier()
+        text = privacy_tier_description(active_tier)
+        for _selector_attr, description_attr in self._privacy_tier_selector_attrs():
+            desc = getattr(self, description_attr, None)
+            if desc is not None:
+                desc.setText(text)
+
+    def _build_privacy_tier_menus(self) -> None:
         from core.knowledge.discovery.privacy_policy import (
             TIER_BALANCED,
             TIER_ENHANCED,
@@ -198,33 +219,58 @@ class KnowledgeHandlersMixin:
             )
             for tier in (TIER_PRIVATE, TIER_BALANCED, TIER_ENHANCED, TIER_SEARXNG)
         ]
-        self._build_prestige_menu(
-            self.discovery_privacy_tier_selector,
-            items,
-            self._on_discovery_privacy_tier_selected,
-        )
+        for selector_attr, _description_attr in self._iter_privacy_tier_selectors():
+            selector = getattr(self, selector_attr)
+            self._build_prestige_menu(
+                selector,
+                items,
+                self._on_discovery_privacy_tier_selected,
+            )
         self._sync_discovery_privacy_tier_selector()
+
+    def _build_discovery_privacy_tier_menu(self) -> None:
+        self._build_privacy_tier_menus()
 
     def _on_discovery_privacy_tier_selected(self, tier: str) -> None:
         if not tier:
             return
         set_discovery_privacy_tier(str(tier))
         sync_web_discovery_policy_section(self)
+        self._sync_privacy_tier_descriptions(str(tier))
         self._emit_external_settings_changed(
             KEY_DISCOVERY_PRIVACY_TIER,
             KEY_DISCOVERY_API_FALLBACK_ENABLED,
         )
 
     def _sync_discovery_privacy_tier_selector(self) -> None:
-        if not hasattr(self, "discovery_privacy_tier_selector"):
-            return
         from core.app_settings import get_discovery_privacy_tier
         from core.knowledge.discovery.privacy_policy import privacy_tier_label
         from ui.views.settings.widgets import refit_settings_selector_width
 
         tier = get_discovery_privacy_tier()
-        self.discovery_privacy_tier_selector.setText(privacy_tier_label(tier))
-        refit_settings_selector_width(self.discovery_privacy_tier_selector)
+        label = privacy_tier_label(tier)
+        for _selector_attr, selector in self._iter_privacy_tier_selectors():
+            selector.setText(label)
+            refit_settings_selector_width(selector)
+        self._sync_privacy_tier_descriptions(tier)
+
+    def _sync_privacy_data_section_ui(self) -> None:
+        self._sync_discovery_privacy_tier_selector()
+        if hasattr(self, "_sync_privacy_data_internet_hybrid_toggle"):
+            self._sync_privacy_data_internet_hybrid_toggle()
+        if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
+            self._sync_all_diagnostic_log_recording_toggles()
+        if hasattr(self, "_sync_all_diagnostic_log_redaction_toggles"):
+            self._sync_all_diagnostic_log_redaction_toggles()
+        from ui.views.settings.sections.knowledge_web_discovery import (
+            sync_what_leaves_device_info_card,
+        )
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        sync_what_leaves_device_info_card(
+            getattr(self, "privacy_data_what_leaves_card", None),
+            is_dark=is_dark,
+        )
 
     def _on_discovery_pacing_toggled(self, checked: bool) -> None:
         # Defer persistence until after the toggle animation/layout pass completes.
@@ -550,6 +596,13 @@ class KnowledgeHandlersMixin:
             set_library_precision_ingest_enabled(False)
         if not rerank_licensed and get_library_precision_rerank_enabled():
             set_library_precision_rerank_enabled(False)
+
+        hint = getattr(self, "library_pro_hint", None)
+        if hint is not None:
+            from core.licensing.display import library_pro_depth_hint_text
+
+            licensed = ingest_licensed or rerank_licensed
+            hint.setText(library_pro_depth_hint_text(licensed=licensed))
 
     def _apply_advanced_embedding_panel_visibility(self) -> None:
         unlocked = get_advanced_embedding_unlocked()

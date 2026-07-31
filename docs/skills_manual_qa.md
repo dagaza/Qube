@@ -30,7 +30,7 @@ python3 -m unittest tests.test_skills_registry tests.test_skills_activation test
 
 1. Use a **local GGUF model** (4B–14B is ideal — skills target small-model scaffolding).
 2. Enable skills (see Section 1).
-3. Enable **routing debug log** recording (Settings → Advanced → Diagnostics) for per-turn JSON.
+3. Enable **routing debug log** recording (**Settings → Privacy & data**) for per-turn JSON.
 4. Optional: enable **skills debug log** in `~/.qube/settings.json` (Section 2).
 5. Use a **fresh chat** per major test block to avoid history bleed.
 6. Prefer **text chat** first; repeat 1–2 cases via **voice** if voice pipeline is in scope.
@@ -65,7 +65,7 @@ python3 -m unittest tests.test_skills_registry tests.test_skills_activation test
 ### Routing debug log
 
 - **Path:** `~/.qube/logs/routing_debug.log`
-- **Enable recording:** Settings → Advanced → Diagnostics → Routing debug log
+- **Enable recording:** **Settings → Privacy & data → Routing debug log**
 - **Per-turn fields (skills):**
   - `skills_active` — list of `{ id, score, signals, forced }`
   - `skills_forced` — IDs from `@[skill:…]` tokens

@@ -12,22 +12,23 @@
 
 Qube diagnostic logs are **local files on your machine**. When you attach excerpts to feedback or post them in a forum, **review or redact first** — several logs can contain **full user queries**, **retrieved context markers**, or **completion traces**.
 
-This page is the **default redaction guide** for **Settings → Advanced → Diagnostic logs**. It complements [Diagnostic logs — Advanced settings](diagnostic-logs-advanced-settings.md) (what each log records) and [Web discovery privacy tiers](web-discovery-privacy-tiers.md) (what leaves the device during normal use).
+This page is the **default redaction guide** for **Settings → Diagnostics** and **Settings → Privacy & data** audit logs. It complements [Diagnostic logs](diagnostic-logs-advanced-settings.md) (what each log records) and [Web discovery privacy tiers](web-discovery-privacy-tiers.md) (what leaves the device during normal use).
 
 ## Where to find controls
 
 | Surface | Path |
 |---------|------|
-| **Recording toggles** | **Settings → Advanced → Diagnostic logs** |
+| **Recording toggles** | **Settings → Diagnostics** · **Settings → Privacy & data** |
+| **Redaction toggles** | **Settings → Privacy & data** on **Web search log** and **Routing debug log** cards |
 | **Launch overrides** | Set env vars **before** starting Qube (toggle shows “launch setting”) |
-| **Logs folder** | **Open logs folder** on the same page |
+| **Logs folder** | **Open logs folder** on Diagnostics |
 
 ## Logs that may contain sensitive text
 
 | Log | Risk | Redaction option |
 |-----|------|------------------|
-| **Web search log** | Full query text, result URLs, snippets | Launch with `QUBE_WEB_SEARCH_AUDIT_REDACT=1` |
-| **Routing debug log** | User query in JSONL per turn | Launch with `QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY=1` |
+| **Web search log** | Full query text, result URLs, snippets | **Hash queries and omit snippet bodies** toggle, or `QUBE_WEB_SEARCH_AUDIT_REDACT=1` at launch |
+| **Routing debug log** | User query in JSONL per turn | **Hash user queries in this log** toggle, or `QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY=1` at launch |
 | **LLM debug log** | Prompt excerpts, completion traces | Disable recording; avoid `QUBE_LOG_RAW_COMPLETION=1` unless needed |
 | **Application log** | General runtime; usually less query detail | Lower verbosity; clear before repro |
 | **Skills debug log** | Skill scores tied to turn context | Enable only for skill debugging |
@@ -61,8 +62,9 @@ Enforced org-wide redaction presets are planned for **Team policy profiles** (Ph
 
 ## Related
 
-- [Diagnostic logs — Advanced settings](diagnostic-logs-advanced-settings.md) — all five logs and env overrides
+- [Diagnostic logs](diagnostic-logs-advanced-settings.md) — all five logs and env overrides
 - [Audit session privacy](audit-session-privacy.md) — what to check before a session review
 - [Web discovery privacy tiers](web-discovery-privacy-tiers.md) — SERP egress by tier
-- [Advanced settings](../features/settings/advanced.md) — JSON editor and log controls
+- [Diagnostics settings](../features/settings/diagnostics.md) · [Privacy & data settings](../features/settings/privacy-data.md) — log recording and redaction toggles
+- [Advanced settings](../features/settings/advanced.md) — JSON settings editor
 - [Contact & Feedback settings](../features/settings/contact-feedback.md) — where to send excerpts

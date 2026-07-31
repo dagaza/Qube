@@ -2527,6 +2527,9 @@ class MainWindow(QMainWindow):
                 self._llm_worker.set_mcp_internet_hybrid(checked)
                 self._web_indicator_hybrid = bool(checked)
                 self._apply_web_indicator()
+                sv = getattr(self, "_settings_view", None)
+                if sv is not None and hasattr(sv, "_sync_privacy_data_internet_hybrid_toggle"):
+                    sv._sync_privacy_data_internet_hybrid_toggle()
 
             self.tool_internet_hybrid_toggle.toggled.connect(on_hybrid_toggled)
             # Seed worker state from the current toggle value.
@@ -2689,7 +2692,9 @@ class MainWindow(QMainWindow):
                 self._sync_toolbar_privacy_tier_selector()
 
             sv._on_discovery_privacy_tier_selected = wrapped_privacy
-            if hasattr(sv, "_build_discovery_privacy_tier_menu"):
+            if hasattr(sv, "_build_privacy_tier_menus"):
+                sv._build_privacy_tier_menus()
+            elif hasattr(sv, "_build_discovery_privacy_tier_menu"):
                 sv._build_discovery_privacy_tier_menu()
 
     def acquire_modal_backdrop(self) -> None:
@@ -3314,6 +3319,26 @@ class MainWindow(QMainWindow):
 
     def ensure_telemetry_view(self) -> TelemetryView:
         return self._ensure_main_stage_view(MAIN_STAGE_TELEMETRY)
+
+    def open_telemetry_focus(self, focus: str) -> None:
+        """Navigate to Telemetry and scroll to a dashboard section."""
+        from PyQt6.QtCore import QTimer
+
+        tv = self.ensure_telemetry_view()
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None:
+            session_id = getattr(cv, "active_session_id", None)
+            if session_id is not None:
+                tv.set_active_session_id(str(session_id))
+        self._route_view(MAIN_STAGE_TELEMETRY, self.nav_telemetry)
+
+        target = None
+        if focus == "web_discovery":
+            target = getattr(tv, "discovery_card", None)
+        elif focus == "session_integrations":
+            target = getattr(tv, "session_egress_panel", None)
+        if target is not None:
+            QTimer.singleShot(120, lambda widget=target: tv.scroll_to_widget(widget))
 
     def ensure_model_manager_view(self) -> ModelManagerView:
         return self._ensure_main_stage_view(MAIN_STAGE_MODEL_MANAGER)

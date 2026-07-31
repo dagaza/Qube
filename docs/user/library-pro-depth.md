@@ -29,7 +29,7 @@ Every upload: **Library → +** → **Choose indexing mode** → system file pic
 
 ## Setup
 
-1. **Import a license** — Obtain a `.qube-license` file (Pro, Team, or Enterprise). Open **Settings → Advanced → License → Import license file**.
+1. **Import a license** — Obtain a `.qube-license` file (Pro, Team, or Enterprise). Open **Settings → License → Import license file**.
 2. **Import with precision** — Click **+** in **Library**, pick files, then choose **Precision indexing (Pro)** in the dialog. Without a license, that button is disabled with a tooltip explaining the requirement.
 3. **Optional default** — Turn on **Default precision ingest on import** under **Library Pro depth** to pre-select precision each time.
 4. **Optional retrieval** — Turn on **Precision retrieval** for reranked query results (no re-import needed).
@@ -39,7 +39,7 @@ Every upload: **Library → +** → **Choose indexing mode** → system file pic
 
 | Symptom | Fix |
 |---------|-----|
-| Toggle disabled or snaps off | Import a valid Pro/Team license under **Settings → Advanced → License** |
+| Toggle disabled or snaps off | Import a valid Pro/Team license under **Settings → License** |
 | **Pro license required** dialog | Same—no paid license is cached locally |
 | Precision indexing button disabled in import dialog | Import a Pro license; precision ingest requires Pro |
 | Precision ingest seems unchanged | Re-import documents and choose **Precision indexing**; mode applies per import job |

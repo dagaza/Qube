@@ -40,11 +40,11 @@ class TestEditionCapabilities(unittest.TestCase):
                 msg=f"feature {feature_id} -> unknown capability {cap_id}",
             )
 
-    def test_mit_launch_grants_all_capabilities_when_flag_enabled(self) -> None:
+    def test_grant_all_override_grants_every_capability(self) -> None:
         from core import capabilities as mod
 
-        original = mod._MIT_LAUNCH_GRANTS_ALL
-        mod._MIT_LAUNCH_GRANTS_ALL = True
+        original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
         invalidate_capabilities_cache()
         try:
             caps = resolve_capabilities()
@@ -52,7 +52,7 @@ class TestEditionCapabilities(unittest.TestCase):
             self.assertTrue(all(caps.flags.values()))
             self.assertEqual(len(caps.granted_capability_ids()), len(ALL_CAPABILITY_IDS))
         finally:
-            mod._MIT_LAUNCH_GRANTS_ALL = original
+            mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
     def test_default_home_resolution_denies_pro_without_license(self) -> None:
@@ -61,30 +61,30 @@ class TestEditionCapabilities(unittest.TestCase):
         self.assertFalse(caps.has("pro.library_precision_rerank"))
         self.assertFalse(caps.has("pro.theme_packs"))
 
-    def test_require_capability_does_not_raise_under_mit_launch(self) -> None:
+    def test_require_capability_does_not_raise_when_override_enabled(self) -> None:
         from core import capabilities as mod
 
-        original = mod._MIT_LAUNCH_GRANTS_ALL
-        mod._MIT_LAUNCH_GRANTS_ALL = True
+        original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
         invalidate_capabilities_cache()
         try:
             require_capability("team.policy")
             require_feature("policy.org_profile_enforce")
         finally:
-            mod._MIT_LAUNCH_GRANTS_ALL = original
+            mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
-    def test_has_helpers_under_mit_launch(self) -> None:
+    def test_has_helpers_when_override_enabled(self) -> None:
         from core import capabilities as mod
 
-        original = mod._MIT_LAUNCH_GRANTS_ALL
-        mod._MIT_LAUNCH_GRANTS_ALL = True
+        original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
         invalidate_capabilities_cache()
         try:
             self.assertTrue(has_capability("pro.theme_packs"))
             self.assertTrue(has_feature("theme_pack.import_official"))
         finally:
-            mod._MIT_LAUNCH_GRANTS_ALL = original
+            mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
     def test_unknown_capability_and_feature_ids_raise(self) -> None:
@@ -126,8 +126,8 @@ class TestEditionCapabilities(unittest.TestCase):
     def test_get_resolved_capabilities_is_cached(self) -> None:
         from core import capabilities as mod
 
-        original = mod._MIT_LAUNCH_GRANTS_ALL
-        mod._MIT_LAUNCH_GRANTS_ALL = True
+        original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
         invalidate_capabilities_cache()
         try:
             first = get_resolved_capabilities()
@@ -137,7 +137,7 @@ class TestEditionCapabilities(unittest.TestCase):
             third = get_resolved_capabilities()
             self.assertIsNot(first, third)
         finally:
-            mod._MIT_LAUNCH_GRANTS_ALL = original
+            mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
     def test_require_capability_raises_when_denied(self) -> None:
@@ -149,8 +149,8 @@ class TestEditionCapabilities(unittest.TestCase):
         invalidate_capabilities_cache()
         from core import capabilities as mod
 
-        original = mod._MIT_LAUNCH_GRANTS_ALL
-        mod._MIT_LAUNCH_GRANTS_ALL = False
+        original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = False
         mod._resolved_cache = caps
         try:
             with self.assertRaises(CapabilityRequiredError) as ctx:
@@ -158,7 +158,7 @@ class TestEditionCapabilities(unittest.TestCase):
             self.assertEqual(ctx.exception.capability_id, "team.policy")
             self.assertEqual(ctx.exception.feature_id, "policy.org_profile_enforce")
         finally:
-            mod._MIT_LAUNCH_GRANTS_ALL = original
+            mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
 

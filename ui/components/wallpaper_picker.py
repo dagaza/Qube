@@ -402,7 +402,13 @@ class WallpaperEditorWidget(QWidget):
     profileChanged = pyqtSignal()
     importImageRequested = pyqtSignal()
 
-    def __init__(self, title: str, *, parent=None) -> None:
+    def __init__(
+        self,
+        title: str,
+        *,
+        parent=None,
+        show_section_title: bool = True,
+    ) -> None:
         super().__init__(parent)
         self._title = title
         self._is_dark = True
@@ -423,9 +429,10 @@ class WallpaperEditorWidget(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
-        title_label = QLabel(title)
-        title_label.setObjectName("SettingsSubsectionLabel")
-        root.addWidget(title_label)
+        if show_section_title:
+            title_label = QLabel(title)
+            title_label.setObjectName("SettingsSubsectionLabel")
+            root.addWidget(title_label)
 
         mode_row = QGridLayout()
         mode_row.setHorizontalSpacing(12)

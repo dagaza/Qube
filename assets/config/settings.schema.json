@@ -264,6 +264,16 @@
     "default": false,
     "description": "When true, append one JSON line per web search attempt to web_search.log (queries, triggers, result URLs)."
   },
+  "qube.diagnostics.web_search_audit_redact_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, hash web search queries and omit SERP snippet bodies in web_search.log."
+  },
+  "qube.diagnostics.routing_debug_redact_query_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, hash user query text in routing_debug.log JSONL entries."
+  },
   "qube.knowledge.retrieval_profile": {
     "type": "string",
     "default": "balanced",

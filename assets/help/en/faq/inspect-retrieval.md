@@ -10,9 +10,9 @@
 
 ## What it is
 
-**INSPECT RETRIEVAL** opens the **Retrieval Inspector** for **one assistant message** — a read-only view of how Qube retrieved evidence for that reply: adapters, preset, pipeline graph, fetch provenance, and (when available) **routing** for the turn.
+**INSPECT RETRIEVAL** opens the **Retrieval Inspector** for **one assistant message** — a read-only view of how Qube retrieved evidence for that reply: adapters, preset, pipeline graph, fetch provenance, **integration capability steps** (when `@[cap:mcp:…]` ran), and (when available) **routing** for the turn.
 
-It complements session-wide **Telemetry → Router Intelligence** and the **Routing debug log** (Settings → Advanced).
+It complements session-wide **Telemetry → Router Intelligence** and the **Routing debug log** (Settings → Privacy & data).
 
 ## Where to find it
 
@@ -33,7 +33,17 @@ retrieval inspector, inspect retrieval button, per-turn retrieval trace, retriev
 | **Summary** | Service, strategy, adapters, coverage, latency, search outcome, **routing (this turn)** when the routing buffer has data |
 | **Graph** | Pipeline graph for adapter phases |
 | **Compare** | Replay compare when a stored retrieval record and database are available |
-| **Explain** | Fetch provenance, discovery policy, preset explain view, or search-outcome detail |
+| **Explain** | Fetch provenance, discovery policy, preset explain view, search-outcome detail, or **integration invoke** steps |
+
+## Integration capabilities (MCP)
+
+When you attach **`@[cap:mcp:namespace/action]`** (or a My knowledge preset that bundles capability URNs), INSPECT can show a linear trace such as:
+
+1. **Attachment** — which capability the user attached
+2. **MCP invoke** — permitted tool call (denied calls may still appear in the trace when blocked)
+3. **Rank / cite** — how hits entered **Sources**
+
+For setup and permissions, see [Integrations settings](../features/settings/integrations.md) and [Connect an MCP server](../workflows/connect-mcp-server.md).
 
 ## Routing explainability (Summary)
 
@@ -43,7 +53,7 @@ When Qube still has the latest turn in the in-memory routing buffer, **Summary**
 - Memory / Library / web hit counts
 - Empty-source downgrade notice when retrieval ran but nothing survived relevance gates
 
-For the full JSONL record (intent scores, policy trace, sidecar flags), enable **Routing debug log** under **Settings → Advanced**, send one message, then **View Routing debug log**. See [Diagnostic logs — Advanced settings](diagnostic-logs-advanced-settings.md).
+For the full JSONL record (intent scores, policy trace, sidecar flags), enable **Routing debug log** under **Settings → Privacy & data**, send one message, then **View Routing debug log**. See [Diagnostic logs](diagnostic-logs-advanced-settings.md).
 
 ## When the button is missing
 
@@ -60,5 +70,5 @@ See [Cognitive Router — how routing works](cognitive-router-how-routing-works.
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — NONE / MEMORY / RAG / WEB / HYBRID
 - [Advanced Telemetry — interpreting](advanced-telemetry-interpreting.md) — session router card vs per-reply INSPECT
 - [Retrieval profile vs search quality](retrieval-profile-vs-search-quality.md) — profile names in traces
-- [Diagnostic logs — Advanced settings](diagnostic-logs-advanced-settings.md) — routing JSONL and web search audit
+- [Diagnostic logs](diagnostic-logs-advanced-settings.md) — routing JSONL and web search audit
 - [Conversations](../features/conversations.md) — Sources panel and timing labels

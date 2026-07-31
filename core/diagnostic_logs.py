@@ -1,4 +1,4 @@
-"""Diagnostic log locations and helpers for Settings → Advanced."""
+"""Diagnostic log locations and helpers for Settings → Diagnostics / Privacy."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Literal
+
+DiagnosticLogCategory = Literal["audit", "technical"]
 
 from core.app_log_sink import default_app_log_path
 from core.llm_debug_sink import default_llm_debug_log_path
@@ -39,9 +41,12 @@ class DiagnosticLogSpec:
     title: str
     description: str
     path_fn: PathFn
+    category: DiagnosticLogCategory = "technical"
     note: str = ""
     supports_recording_toggle: bool = False
     recording_toggle_label: str = ""
+    supports_redaction_toggle: bool = False
+    redaction_toggle_label: str = ""
 
 
 DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
@@ -68,6 +73,7 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "discourse events, and optional token/causality JSON."
         ),
         path_fn=default_llm_debug_log_path,
+        category="audit",
         note=(
             "This toggle controls file recording only. Heavy native introspection may "
             "still run when QUBE_LLM_DEBUG is enabled at launch."
@@ -83,8 +89,11 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "to capture new chat turns; existing lines stay in the log file."
         ),
         path_fn=default_routing_debug_log_path,
+        category="audit",
         supports_recording_toggle=True,
         recording_toggle_label="Record routing decisions to this log",
+        supports_redaction_toggle=True,
+        redaction_toggle_label="Hash user queries in this log",
     ),
     DiagnosticLogSpec(
         id="web_search_audit",
@@ -95,12 +104,16 @@ DIAGNOSTIC_LOGS: tuple[DiagnosticLogSpec, ...] = (
             "only — individual result pages are not fetched."
         ),
         path_fn=default_web_search_audit_log_path,
+        category="audit",
         note=(
-            "Privacy: set QUBE_WEB_SEARCH_AUDIT_REDACT=1 at launch to hash queries and "
-            "omit snippet bodies in the log file."
+            "Privacy: enable **Hash queries and omit snippet bodies** below, or set "
+            "QUBE_WEB_SEARCH_AUDIT_REDACT=1 at launch to hash queries and omit snippet "
+            "bodies in the log file."
         ),
         supports_recording_toggle=True,
         recording_toggle_label="Record web searches to this log",
+        supports_redaction_toggle=True,
+        redaction_toggle_label="Hash queries and omit snippet bodies in this log",
     ),
     DiagnosticLogSpec(
         id="skills_debug",
@@ -128,6 +141,12 @@ def get_diagnostic_log(log_id: str) -> DiagnosticLogSpec | None:
 
 def iter_diagnostic_logs() -> Iterable[DiagnosticLogSpec]:
     return DIAGNOSTIC_LOGS
+
+
+def iter_diagnostic_logs_by_category(
+    category: DiagnosticLogCategory,
+) -> Iterable[DiagnosticLogSpec]:
+    return (spec for spec in DIAGNOSTIC_LOGS if spec.category == category)
 
 
 def read_log_tail(path: Path, *, max_lines: int = 500) -> str:

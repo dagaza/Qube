@@ -49,11 +49,15 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Custom sources
 
+- **Base URL**
+- **Search path**
+- **Command**
+- **Namespace**
+- **Tool name**
 - **Source id**
 - **Label**
 - **Connector**
-- **Base URL**
-- **Search path**
+- **New source**
 - **Save source**
 - **Test**
 - **Delete selected**
@@ -66,6 +70,7 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Source status
 
+- **Open Knowledge → Web search discovery**
 
 ### Web search discovery
 
@@ -76,5 +81,6 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - **Session limit override**
 - **SearXNG base URL**
 - **Reset discovery health**
+- **Open Privacy & data**
 
 - **Reset to default configuration** — restores all settings on this page

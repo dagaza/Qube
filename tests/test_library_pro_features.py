@@ -105,15 +105,15 @@ class ProFeatureGatingTests(unittest.TestCase):
     def test_precision_rerank_enabled_with_license(self, *_mocks) -> None:
         self.assertTrue(pro_features.precision_rerank_enabled())
 
-    def test_mit_launch_override_still_grants_all_when_enabled(self) -> None:
-        original = capabilities_mod._MIT_LAUNCH_GRANTS_ALL
-        capabilities_mod._MIT_LAUNCH_GRANTS_ALL = True
+    def test_grant_all_override_still_grants_all_when_enabled(self) -> None:
+        original = capabilities_mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+        capabilities_mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
         invalidate_capabilities_cache()
         try:
             caps = resolve_capabilities()
             self.assertTrue(caps.has(pro_features.PRO_INGEST_CAPABILITY))
         finally:
-            capabilities_mod._MIT_LAUNCH_GRANTS_ALL = original
+            capabilities_mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
             invalidate_capabilities_cache()
 
 

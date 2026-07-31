@@ -23,12 +23,16 @@ TOUR_DISPLAY_NAMES: dict[str, str] = {
     "settings.ai_models": "AI & Models settings",
     "settings.memory": "Memory settings",
     "settings.knowledge": "Knowledge settings",
+    "settings.integrations": "Integrations settings",
     "settings.general": "General settings",
     "settings.appearance_themes": "Themes settings",
     "settings.companion_desktop": "Desktop Companion settings",
     "settings.notifications": "Notifications settings",
     "settings.help": "Help settings",
     "settings.contact_feedback": "Contact & Feedback settings",
+    "settings.privacy_data": "Privacy & data settings",
+    "settings.diagnostics": "Diagnostics settings",
+    "settings.license": "License settings",
     "settings.advanced": "Advanced settings",
 }
 
@@ -68,6 +72,9 @@ def _register_all_tours() -> None:
     from ui.onboarding.tours.model_manager import build_model_manager_tour
     from ui.onboarding.tours.telemetry import build_telemetry_tour
     from ui.onboarding.tours.settings.advanced import build_settings_advanced_tour
+    from ui.onboarding.tours.settings.diagnostics import build_settings_diagnostics_tour
+    from ui.onboarding.tours.settings.license import build_settings_license_tour
+    from ui.onboarding.tours.settings.privacy_data import build_settings_privacy_data_tour
     from ui.onboarding.tours.settings.appearance_themes import (
         build_settings_appearance_themes_tour,
     )
@@ -80,6 +87,7 @@ def _register_all_tours() -> None:
     )
     from ui.onboarding.tours.settings.general import build_settings_general_tour
     from ui.onboarding.tours.settings.help import build_settings_help_tour
+    from ui.onboarding.tours.settings.integrations import build_settings_integrations_tour
     from ui.onboarding.tours.settings.knowledge import build_settings_knowledge_tour
     from ui.onboarding.tours.settings.memory import build_settings_memory_tour
     from ui.onboarding.tours.settings.notifications import (
@@ -96,12 +104,16 @@ def _register_all_tours() -> None:
     register_tour("settings.ai_models", build_settings_ai_models_tour)
     register_tour("settings.memory", build_settings_memory_tour)
     register_tour("settings.knowledge", build_settings_knowledge_tour)
+    register_tour("settings.integrations", build_settings_integrations_tour)
     register_tour("settings.general", build_settings_general_tour)
     register_tour("settings.appearance_themes", build_settings_appearance_themes_tour)
     register_tour("settings.companion_desktop", build_settings_companion_desktop_tour)
     register_tour("settings.notifications", build_settings_notifications_tour)
     register_tour("settings.help", build_settings_help_tour)
     register_tour("settings.contact_feedback", build_settings_contact_feedback_tour)
+    register_tour("settings.privacy_data", build_settings_privacy_data_tour)
+    register_tour("settings.diagnostics", build_settings_diagnostics_tour)
+    register_tour("settings.license", build_settings_license_tour)
     register_tour("settings.advanced", build_settings_advanced_tour)
 
 

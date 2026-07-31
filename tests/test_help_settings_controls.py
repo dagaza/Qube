@@ -77,6 +77,33 @@ class HelpSettingsControlsTests(unittest.TestCase):
         self.assertIn("Remove Qube app only… (macOS)", labels)
         self.assertNotIn("Remove Qube package only…", labels)
 
+    def test_privacy_data_includes_audit_controls(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("privacy.data")]
+        joined = "\n".join(labels)
+        self.assertIn("Privacy tier", joined)
+        self.assertIn("Hybrid Internet Mode", joined)
+        self.assertIn("Open Telemetry → Web discovery", joined)
+        self.assertIn("What leaves your device", joined)
+
+    def test_diagnostics_source_includes_open_logs_folder(self) -> None:
+        from core.help_settings_controls import _read_section_sources
+
+        text = _read_section_sources("diagnostics")
+        self.assertIn("Open logs folder", text)
+
+    def test_license_includes_import_and_remove(self) -> None:
+        labels = [entry.label for entry in extract_settings_controls("license")]
+        self.assertIn("Import license file", labels)
+        self.assertIn("Remove cached license", labels)
+
+    def test_advanced_source_is_json_editor_only(self) -> None:
+        from core.help_settings_controls import _read_section_sources
+
+        text = _read_section_sources("advanced")
+        self.assertIn("Edit settings.json", text)
+        self.assertNotIn("open_logs_folder_btn", text)
+        self.assertNotIn("import_license_btn", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -99,15 +99,9 @@ Controls listed top-to-bottom for **Settings → AI & Models**.
 ### Reasoning skills
 
 - **Enable compositional reasoning skills**
-
-### Hardware tuning
-
 - **Show advanced hardware settings**
 - **GPU offload layers**
 - **CPU thread pool**
-
-### Chat template
-
 - **Show advanced chat template settings**
 - **Reset**
 - **Chat template (internal)**

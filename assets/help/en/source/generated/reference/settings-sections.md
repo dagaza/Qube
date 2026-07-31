@@ -19,12 +19,16 @@ Open **Settings** from the main navigation, then choose a section in the left si
 | AI & Models | `ai.models` | Intelligence |
 | Memory | `memory` | Intelligence |
 | Knowledge | `knowledge` | Intelligence |
+| Integrations | `integrations` | Intelligence |
 | General | `general` | Interface |
 | Themes | `appearance.themes` | Interface |
 | Desktop Companion | `companion.desktop` | Interface |
 | Notifications | `notifications` | Interface |
 | Help | `help` | Support |
 | Contact & Feedback | `contact.feedback` | Support |
+| Privacy & data | `privacy.data` | System |
+| Diagnostics | `diagnostics` | System |
+| License | `license` | System |
 | Advanced | `advanced` | System |
 
 
@@ -56,6 +60,12 @@ Also called: MEMORY & PERFORMANCE, Memory & Knowledge
 Open **Settings → Knowledge**.
 
 Also called: NLP RAG TRIGGERS
+
+### Integrations (`integrations`)
+
+Open **Settings → Integrations**.
+
+Also called: INTEGRATIONS
 
 
 ## Interface
@@ -99,6 +109,24 @@ Also called: CONTACT & FEEDBACK
 
 
 ## System
+
+### Privacy & data (`privacy.data`)
+
+Open **Settings → Privacy & data**.
+
+Also called: PRIVACY & DATA
+
+### Diagnostics (`diagnostics`)
+
+Open **Settings → Diagnostics**.
+
+Also called: DIAGNOSTIC LOGS
+
+### License (`license`)
+
+Open **Settings → License**.
+
+Also called: LICENSE
 
 ### Advanced (`advanced`)
 

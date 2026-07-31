@@ -84,6 +84,9 @@ class SettingsCollapsibleCardHandle:
 SETTINGS_SECTION_CARD_CONTENT_MARGINS = (16, 14, 16, 14)
 # Inner form inset: matches the old empty-label + field-column rhythm (~12px).
 SETTINGS_CARD_FORM_HORIZONTAL_INSET = 12
+# Vertical gap between form rows; also used as bottom inset to balance the hidden
+# label-column ruler row + spacing above the first visible row.
+SETTINGS_CARD_FORM_ROW_SPACING = 15
 
 
 def settings_card_content_horizontal_inset() -> tuple[int, int]:

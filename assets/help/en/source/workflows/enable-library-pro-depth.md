@@ -13,7 +13,7 @@ This workflow enables **Library Pro depth** — optional **precision ingest** an
 
 ## Where to find it
 
-**Settings → Knowledge → Library Pro depth** (after importing a license under **Settings → Advanced → License**).
+**Settings → Knowledge → Library Pro depth** (after importing a license under **Settings → License**).
 
 ## Also called
 
@@ -22,7 +22,7 @@ enable pro library, turn on precision ingest, turn on precision retrieval, libra
 ## Steps
 
 1. **Obtain a license file** — You need a `.qube-license` issued for **Pro**, **Team**, or **Enterprise** tier.
-2. **Import the license** — Open **Settings → Advanced → License → Import license file** and select the file. Qube validates and caches the license locally.
+2. **Import the license** — Open **Settings → License → Import license file** and select the file. Qube validates and caches the license locally.
 3. **Open Library Pro depth** — Go to **Settings → Knowledge** and scroll to **Library Pro depth**. Both toggles should be enabled (clickable). If not, confirm the license tier includes Pro capabilities.
 4. **Optional: default precision on import** — Turn on **Default precision ingest on import** to pre-select precision in the import dialog. Read the confirmation dialog (indexing can take much longer). Click continue to save the preference.
 5. **Import with precision** — Click **+** in **Library**, pick files, then in **Choose indexing mode** select **Precision indexing (Pro)**. Precision-indexed documents show a **gem** badge in the sidebar. To change mode later, re-import (overwrite when prompted).
@@ -40,4 +40,4 @@ enable pro library, turn on precision ingest, turn on precision retrieval, libra
 - [Library Pro depth FAQ](../faq/library-pro-depth.md) — what each toggle does and licensing
 - [Knowledge settings](../features/settings/knowledge.md) — Library Pro depth card location
 - [Import documents to Library](import-documents-to-library.md) — upload steps and indexing mode chooser
-- [Advanced settings](../features/settings/advanced.md) — license import and removal
+- [License settings](../features/settings/license.md) — license import and removal

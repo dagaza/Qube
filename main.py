@@ -54,6 +54,8 @@ from core.app_settings import (
     KEY_NATIVE_MODEL_PATH,
     KEY_WAKEWORD_ACTIVE_ID,
     KEY_WAKEWORD_THRESHOLDS,
+    KEY_MCP_INTERNET_HYBRID,
+    get_mcp_internet_hybrid_enabled,
 )
 from core.notification_types import (
     deep_research_complete_event,
@@ -1337,6 +1339,23 @@ class Qube:
             sv = self.window._settings_view
             if sv is not None and hasattr(sv, "_sync_wakeword_catalog"):
                 sv._sync_wakeword_catalog(trigger="external settings")
+        if KEY_MCP_INTERNET_HYBRID in changed:
+            enabled = get_mcp_internet_hybrid_enabled()
+            if hasattr(self, "llm_worker"):
+                self.llm_worker.set_mcp_internet_hybrid(enabled)
+            win = self.window
+            toolbar_toggle = getattr(win, "tool_internet_hybrid_toggle", None)
+            if toolbar_toggle is not None and toolbar_toggle.isChecked() != enabled:
+                toolbar_toggle.blockSignals(True)
+                toolbar_toggle.setChecked(enabled)
+                toolbar_toggle.blockSignals(False)
+            if hasattr(win, "_web_indicator_hybrid"):
+                win._web_indicator_hybrid = bool(enabled)
+            if hasattr(win, "_apply_web_indicator"):
+                win._apply_web_indicator()
+        sv = getattr(self.window, "_settings_view", None)
+        if sv is not None and hasattr(sv, "_apply_external_privacy_settings_changed"):
+            sv._apply_external_privacy_settings_changed(changed)
 
     def _on_native_model_load_finished(self, ok: bool, message: str) -> None:
         """Update Think toggle when internal GGUF load completes."""

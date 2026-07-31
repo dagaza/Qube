@@ -79,6 +79,7 @@ from ui.views.settings.knowledge_access_badge import (
     style_access_badge,
     style_configure_button,
 )
+from ui.views.settings.sections.privacy_tier_controls import add_open_privacy_data_button
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
@@ -87,6 +88,7 @@ from ui.views.settings.widgets import (
     register_settings_selector_width,
     wrap_subsection,
     add_settings_full_width_row,
+    add_settings_span_row,
 )
 
 _POLICY_KV_KEYS = frozenset(
@@ -612,8 +614,9 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     layout.setSpacing(10)
 
     intro = make_settings_hint(
+        "Privacy tier and Hybrid Internet Mode live on Settings → Privacy & data. "
+        "This page holds advanced discovery limits, provider setup, DDG usage, and SearXNG. "
         "Privacy-first web search: DuckDuckGo is the default primary provider. "
-        "Choose a tier below to balance privacy vs optional API fallbacks. "
         "Live DDG queries are paced and limited by rolling burst/session windows "
         "(heuristic defaults — not official DuckDuckGo quotas)."
     )
@@ -646,6 +649,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.discovery_privacy_tier_description.setWordWrap(True)
     host.discovery_privacy_tier_description.setObjectName("SettingsLogDescription")
     add_settings_full_width_row(controls_form, host.discovery_privacy_tier_description)
+    add_open_privacy_data_button(host, controls_form)
 
     _pacing_tip = (
         "Adds a short gap between DDG HTTP requests to reduce bot challenges."
@@ -858,5 +862,34 @@ def build_knowledge_web_discovery_section(host, *, is_dark: bool) -> QWidget:
     card, card_layout = begin_settings_section_card(host, is_dark=is_dark)
     card_form = add_settings_card_form(card_layout)
     add_subsection_to_form(card_form, "Web search discovery", anchor="web_discovery")
-    add_settings_full_width_row(card_form, build_web_discovery_policy_section(host, is_dark=is_dark))
+    add_settings_span_row(
+        card_form,
+        wrap_subsection(
+            build_web_discovery_policy_section(host, is_dark=is_dark),
+            anchor="web_discovery",
+        ),
+    )
     return card
+
+
+def build_what_leaves_device_info_card(*, is_dark: bool) -> _DiscoveryInfoCard:
+    """Shared 'What leaves your device' card for Privacy & data and Knowledge."""
+    card = _DiscoveryInfoCard(
+        title="What leaves your device",
+        variant="privacy",
+        is_dark=is_dark,
+    )
+    card.set_privacy_lines(what_leaves_device_lines())
+    return card
+
+
+def sync_what_leaves_device_info_card(
+    card: _DiscoveryInfoCard | None,
+    *,
+    is_dark: bool | None = None,
+) -> None:
+    if card is None:
+        return
+    if is_dark is not None:
+        card.refresh_theme(is_dark)
+    card.set_privacy_lines(what_leaves_device_lines())

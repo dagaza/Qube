@@ -70,6 +70,7 @@ class TelemetryView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         root_layout.addWidget(scroll)
+        self._scroll_area = scroll
 
         content = QWidget()
         scroll.setWidget(content)
@@ -675,6 +676,14 @@ class TelemetryView(QWidget):
     def set_active_session_id(self, session_id: str | None) -> None:
         if hasattr(self, "session_egress_panel"):
             self.session_egress_panel.set_session_id(session_id)
+
+    def scroll_to_widget(self, target: QWidget) -> None:
+        """Scroll the telemetry dashboard so ``target`` is visible."""
+        if target is None:
+            return
+        scroll = getattr(self, "_scroll_area", None)
+        if scroll is not None:
+            scroll.ensureWidgetVisible(target, 0, 32)
 
     def _refresh_session_egress_panel(self) -> None:
         if hasattr(self, "session_egress_panel"):

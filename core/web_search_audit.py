@@ -39,13 +39,23 @@ def web_search_audit_log_env_override() -> bool | None:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def web_search_audit_redact_env_override() -> bool | None:
+    raw = os.getenv("QUBE_WEB_SEARCH_AUDIT_REDACT")
+    if raw is None:
+        return None
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def web_search_audit_redact_enabled() -> bool:
-    return str(os.getenv("QUBE_WEB_SEARCH_AUDIT_REDACT", "0")).strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    override = web_search_audit_redact_env_override()
+    if override is not None:
+        return override
+    try:
+        from core.app_settings import get_web_search_audit_redact_enabled
+
+        return get_web_search_audit_redact_enabled()
+    except Exception:
+        return False
 
 
 def web_search_audit_log_enabled() -> bool:

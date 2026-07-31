@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.25",
+  "corpus_version": "1.0.26",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -29,6 +29,8 @@
         "features.conversations",
         "features.library",
         "features.settings.knowledge",
+        "features.settings.integrations",
+        "workflows.connect_mcp_server",
         "workflows.uninstall_qube",
         "workflows.update_qube",
         "faq.install_linux",
@@ -483,6 +485,8 @@
         "faq.cognitive_router",
         "workflows.prepare_search_models",
         "workflows.enable_library_pro_depth",
+        "features.settings.integrations",
+        "workflows.connect_mcp_server",
         "index"
       ],
       "generated_sections": [
@@ -494,6 +498,49 @@
           "label": "Open Knowledge",
           "kind": "open_settings_section",
           "settings_section": "knowledge"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.integrations",
+      "path": "features/settings/integrations.md",
+      "title": "Integrations and MCP capabilities",
+      "type": "feature",
+      "settings_section": "integrations",
+      "tags": [
+        "integrations",
+        "mcp",
+        "capabilities",
+        "permissions"
+      ],
+      "synonyms": [
+        "MCP server",
+        "connect MCP",
+        "MCP capabilities",
+        "cap token",
+        "capability permissions",
+        "filesystem MCP",
+        "integration settings",
+        "MCP integrations"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "reference.composer_attachments",
+        "workflows.connect_mcp_server",
+        "features.settings.knowledge",
+        "workflows.knowledge_pack",
+        "workflows.create_knowledge_preset",
+        "faq.inspect_retrieval",
+        "faq.audit_session_privacy",
+        "features.telemetry",
+        "index"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_integrations",
+          "label": "Open Integrations",
+          "kind": "open_settings_section",
+          "settings_section": "integrations"
         }
       ]
     },
@@ -712,6 +759,110 @@
       ]
     },
     {
+      "id": "features.settings.privacy_data",
+      "path": "features/settings/privacy-data.md",
+      "title": "Privacy & data settings",
+      "type": "feature",
+      "settings_section": "privacy.data",
+      "tour_id": "settings.privacy_data",
+      "tags": [
+        "privacy",
+        "audit logs",
+        "data egress"
+      ],
+      "synonyms": [
+        "privacy settings",
+        "audit logs",
+        "sensitive logs"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "faq.audit_session_privacy",
+        "faq.diagnostic_logs_advanced",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_privacy_data",
+          "label": "Open Privacy & data",
+          "kind": "open_settings_section",
+          "settings_section": "privacy.data"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.diagnostics",
+      "path": "features/settings/diagnostics.md",
+      "title": "Diagnostics settings",
+      "type": "feature",
+      "settings_section": "diagnostics",
+      "tour_id": "settings.diagnostics",
+      "tags": [
+        "diagnostics",
+        "debug logs",
+        "application log"
+      ],
+      "synonyms": [
+        "diagnostic logs",
+        "debug logs",
+        "troubleshooting logs"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "faq.diagnostic_logs_advanced",
+        "features.settings.privacy_data",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_diagnostics",
+          "label": "Open Diagnostics",
+          "kind": "open_settings_section",
+          "settings_section": "diagnostics"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.license",
+      "path": "features/settings/license.md",
+      "title": "License settings",
+      "type": "feature",
+      "settings_section": "license",
+      "tour_id": "settings.license",
+      "tags": [
+        "license",
+        "pro",
+        "qube-license"
+      ],
+      "synonyms": [
+        "import license",
+        "pro license"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "faq.library_pro_depth",
+        "workflows.enable_library_pro_depth",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_license",
+          "label": "Open License",
+          "kind": "open_settings_section",
+          "settings_section": "license"
+        }
+      ]
+    },
+    {
       "id": "features.settings.advanced",
       "path": "features/settings/advanced.md",
       "title": "Advanced settings",
@@ -720,16 +871,16 @@
       "tour_id": "settings.advanced",
       "tags": [
         "advanced",
-        "json",
-        "logs"
+        "json"
       ],
       "synonyms": [
         "settings json",
-        "diagnostic logs"
+        "json settings editor"
       ],
       "related": [
         "reference.settings_sections",
-        "faq.diagnostic_logs_advanced",
+        "features.settings.diagnostics",
+        "features.settings.privacy_data",
         "index"
       ],
       "generated_sections": [
@@ -906,7 +1057,35 @@
         "export knowledge pack"
       ],
       "related": [
-        "index"
+        "index",
+        "features.settings.integrations",
+        "workflows.connect_mcp_server"
+      ]
+    },
+    {
+      "id": "workflows.connect_mcp_server",
+      "path": "workflows/connect-mcp-server.md",
+      "title": "Connect an MCP server",
+      "type": "workflow",
+      "tags": [
+        "mcp",
+        "integrations",
+        "filesystem",
+        "capabilities"
+      ],
+      "synonyms": [
+        "connect MCP server",
+        "set up MCP",
+        "filesystem MCP setup",
+        "MCP custom source"
+      ],
+      "related": [
+        "index",
+        "features.settings.integrations",
+        "features.settings.knowledge",
+        "reference.composer_attachments",
+        "workflows.create_knowledge_preset",
+        "faq.inspect_retrieval"
       ]
     },
     {
@@ -1243,7 +1422,7 @@
     {
       "id": "faq.diagnostic_logs_advanced",
       "path": "faq/diagnostic-logs-advanced-settings.md",
-      "title": "Diagnostic logs — Settings → Advanced",
+      "title": "Diagnostic logs — Settings",
       "type": "faq",
       "tags": [
         "logs",
@@ -1264,7 +1443,8 @@
       ],
       "related": [
         "index",
-        "features.settings.advanced",
+        "features.settings.diagnostics",
+        "features.settings.privacy_data",
         "features.telemetry",
         "faq.advanced_telemetry_interpreting",
         "features.settings.knowledge",
@@ -1297,7 +1477,8 @@
       ],
       "related": [
         "index",
-        "features.settings.advanced",
+        "features.settings.diagnostics",
+        "features.settings.privacy_data",
         "faq.diagnostic_logs_advanced",
         "faq.audit_session_privacy",
         "faq.web_discovery_privacy_tiers",
@@ -1472,7 +1653,7 @@
       ],
       "related": [
         "features.settings.knowledge",
-        "features.settings.advanced",
+        "features.settings.license",
         "features.library",
         "workflows.enable_library_pro_depth",
         "faq.retrieval_profile_vs_search_quality",
@@ -1880,7 +2061,7 @@
       ],
       "doc_id": "faq.log_redaction_sharing",
       "heading": "Redaction workflow",
-      "answer": "Launch with **QUBE_WEB_SEARCH_AUDIT_REDACT=1** and **QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY=1** before enabling web search or routing logs. Clear logs, reproduce once, and share only the tail — see **Settings \u2192 Advanced \u2192 Diagnostic logs**."
+      "answer": "Launch with **QUBE_WEB_SEARCH_AUDIT_REDACT=1** and **QUBE_ROUTING_DEBUG_LOG_REDACT_QUERY=1** before enabling web search or routing logs. Clear logs, reproduce once, and share only the tail — redaction toggles live on **Settings \u2192 Privacy & data**; **Open logs folder** is on **Settings \u2192 Diagnostics**."
     },
     {
       "id": "faq.audit_session_privacy.telemetry",
@@ -1893,7 +2074,7 @@
       ],
       "doc_id": "faq.audit_session_privacy",
       "heading": "Audit today",
-      "answer": "Open **Telemetry \u2192 Web discovery** for tier and DDG budgets, **Router Intelligence** for route mix, and **INSPECT RETRIEVAL** on replies for per-turn adapters. Full session egress export is planned for Team."
+      "answer": "Open **Settings \u2192 Privacy & data \u2192 Session audit** for Telemetry shortcuts, **Telemetry \u2192 Web discovery** for tier and DDG budgets, **Telemetry \u2192 Session integrations** for MCP/integration calls on the active chat, **Router Intelligence** for route mix, and **INSPECT RETRIEVAL** on replies for per-turn adapters and capability steps. Full exportable privacy reports are planned for Team."
     },
     {
       "id": "faq.install_linux.variant",
@@ -1919,8 +2100,8 @@
       ],
       "doc_id": "faq.web_discovery_privacy_tiers",
       "heading": "Privacy tier",
-      "answer": "Open **Settings \u2192 Knowledge \u2192 Web search discovery \u2192 Privacy tier**, or use the **Privacy** selector in the Conversations tools panel. Default **Private search** uses DuckDuckGo and Wikipedia only.",
-      "action_id": "open_settings_knowledge"
+      "answer": "Open **Settings \u2192 Privacy & data \u2192 Privacy tier** (canonical home), or **Settings \u2192 Knowledge \u2192 Web search discovery** for advanced discovery limits. The **Privacy** selector in the Conversations tools panel mirrors the same setting. Default **Private search** uses DuckDuckGo and Wikipedia only.",
+      "action_id": "open_settings_privacy_data"
     },
     {
       "id": "faq.delete_memory_entries.how",
@@ -2080,13 +2261,12 @@
       "id": "features.settings.advanced.json",
       "question_patterns": [
         "json settings editor",
-        "diagnostic logs",
         "advanced settings json",
-        "view debug logs"
+        "edit settings.json"
       ],
       "doc_id": "features.settings.advanced",
-      "heading": "Advanced JSON & logs",
-      "answer": "Open **Settings \u2192 Advanced** for the **JSON settings** editor and five subsystem **diagnostic logs** (`qube.log`, `llm_debug.log`, routing, web search, skills). See **Diagnostic logs \u2014 Settings \u2192 Advanced** for what each records.",
+      "heading": "Advanced JSON settings",
+      "answer": "Open **Settings \u2192 Advanced** for the **JSON settings** editor (`settings.json`). Diagnostic logs moved to **Settings \u2192 Diagnostics** and **Settings \u2192 Privacy & data**.",
       "action_id": "open_settings_advanced"
     },
     {
@@ -2139,7 +2319,7 @@
       ],
       "doc_id": "faq.library_pro_depth",
       "heading": "Library Pro depth",
-      "answer": "**Library Pro depth** (Settings \u2192 Knowledge) adds optional **precision ingest** (choose **Precision indexing** on each Library import; gem badge on indexed docs) and **Precision retrieval** (bi-encoder rerank after search). Both require a **Qube Pro** license imported under Settings \u2192 Advanced \u2192 License. Standard chunking and MMR stay free.",
+      "answer": "**Library Pro depth** (Settings \u2192 Knowledge) adds optional **precision ingest** (choose **Precision indexing** on each Library import; gem badge on indexed docs) and **Precision retrieval** (bi-encoder rerank after search). Both require a **Qube Pro** license imported under **Settings \u2192 License**. Standard chunking and MMR stay free.",
       "action_id": "open_settings_knowledge"
     },
     {
@@ -2153,7 +2333,7 @@
       ],
       "doc_id": "faq.library_pro_depth",
       "heading": "Precision ingest",
-      "answer": "**Precision ingest** is chosen per import in **Library (+)** \u2192 **Precision indexing (Pro)**. It uses embedding-similarity breakpoints for denser documents and can make indexing **much slower**. Requires a **Pro license** (Settings \u2192 Advanced \u2192 License). Precision-indexed documents show a **gem** badge. **Settings \u2192 Knowledge \u2192 Default precision ingest on import** pre-selects precision in the dialog.",
+      "answer": "**Precision ingest** is chosen per import in **Library (+)** \u2192 **Precision indexing (Pro)**. It uses embedding-similarity breakpoints for denser documents and can make indexing **much slower**. Requires a **Pro license** (**Settings \u2192 License**). Precision-indexed documents show a **gem** badge. **Settings \u2192 Knowledge \u2192 Default precision ingest on import** pre-selects precision in the dialog.",
       "action_id": "open_settings_knowledge"
     },
     {
@@ -2180,8 +2360,8 @@
       ],
       "doc_id": "faq.library_pro_depth",
       "heading": "Import Pro license",
-      "answer": "Import a `.qube-license` file under **Settings \u2192 Advanced \u2192 License \u2192 Import license file**. **Pro** or **Team** tier unlocks **Library Pro depth** toggles in Settings \u2192 Knowledge. Use **Remove cached license** to drop the local copy.",
-      "action_id": "open_settings_advanced"
+      "answer": "Import a `.qube-license` file under **Settings \u2192 License \u2192 Import license file**. **Pro** or **Team** tier unlocks **Library Pro depth** toggles in Settings \u2192 Knowledge. Use **Remove cached license** to drop the local copy.",
+      "action_id": "open_settings_license"
     },
     {
       "id": "faq.library_pro_depth.gem_badge",
@@ -2375,7 +2555,8 @@
       ],
       "doc_id": "faq.diagnostic_logs_advanced",
       "heading": "Log file location",
-      "answer": "Open **Settings \u2192 Advanced** \u2192 **Open logs folder** (or `~/.qube/logs/`). Use **View {log name}** for a 500-line in-app tail with optional live refresh."
+      "answer": "Open **Settings \u2192 Diagnostics** \u2192 **Open logs folder** (or `~/.qube/logs/`). Audit logs (LLM, routing, web search) are under **Settings \u2192 Privacy & data**. Use **View {log name}** for a 500-line in-app tail with optional live refresh.",
+      "action_id": "open_settings_diagnostics"
     },
     {
       "id": "faq.diagnostic_logs_advanced.routing",
@@ -2387,7 +2568,8 @@
       ],
       "doc_id": "faq.diagnostic_logs_advanced",
       "heading": "Routing debug log",
-      "answer": "Enable **Routing debug log** under **Settings \u2192 Advanced**, send a chat message, then **View Routing debug log** (`routing_debug.log`). One JSONL line per turn with route, strategy, and retrieval outcome."
+      "answer": "Enable **Routing debug log** under **Settings \u2192 Privacy & data**, send a chat message, then **View Routing debug log** (`routing_debug.log`). One JSONL line per turn with route, strategy, and retrieval outcome.",
+      "action_id": "open_settings_privacy_data"
     },
     {
       "id": "faq.diagnostic_logs_advanced.llm",
@@ -2483,6 +2665,44 @@
       "doc_id": "faq.at_mentions",
       "heading": "@ mentions",
       "answer": "Attach `@[tool:help]` for built-in docs, `@[tool:library]` for your uploads, or pick tools from **Attach (@)**. Only the **first routing attachment** in a message controls routing. See **Settings \u2192 Help \u2192 Open @ Composer Guide**."
+    },
+    {
+      "id": "features.settings.integrations.nav",
+      "question_patterns": [
+        "where are integrations settings",
+        "MCP permissions settings",
+        "open integrations settings",
+        "capability permissions qube"
+      ],
+      "doc_id": "features.settings.integrations",
+      "heading": "Integrations settings",
+      "answer": "Open **Settings \u2192 Integrations** for MCP server status and **Capability permissions**. Configure MCP servers under **Settings \u2192 Knowledge \u2192 Custom sources** (connector **mcp**).",
+      "action_id": "open_settings_integrations"
+    },
+    {
+      "id": "workflows.connect_mcp_server.summary",
+      "question_patterns": [
+        "how do i connect an mcp server",
+        "connect MCP to qube",
+        "filesystem MCP setup",
+        "set up model context protocol"
+      ],
+      "doc_id": "workflows.connect_mcp_server",
+      "heading": "Connect an MCP server",
+      "answer": "Install your MCP server (for example `@modelcontextprotocol/server-filesystem`), add a **Custom sources** row with connector **mcp**, **Test/Save**, grant capabilities under **Settings \u2192 Integrations**, then attach **`@[cap:mcp:namespace/action]`** in chat. See **Connect an MCP server** in Library \u2192 Qube.",
+      "action_id": "open_settings_knowledge"
+    },
+    {
+      "id": "reference.composer_attachments.cap",
+      "question_patterns": [
+        "what is @[cap:mcp",
+        "cap token composer",
+        "attach MCP capability",
+        "integrations section composer"
+      ],
+      "doc_id": "features.settings.integrations",
+      "heading": "@[cap:mcp:\u2026] tokens",
+      "answer": "Attach integration capabilities with **`@[cap:mcp:namespace/action]`** from the composer `@` **Integrations** section. Grant permissions first under **Settings \u2192 Integrations**. Unlike **`@[tool:\u2026]`**, cap tokens invoke configured MCP capabilities you explicitly allowed."
     },
     {
       "id": "troubleshooting.library_import_disabled.summary",

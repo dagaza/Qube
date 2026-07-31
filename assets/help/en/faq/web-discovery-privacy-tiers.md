@@ -20,10 +20,11 @@ Tiers affect **SERP discovery** (finding links and snippets). After a URL is cho
 
 | Surface | Path |
 |---------|------|
-| **Settings (persistent)** | **Settings → Knowledge → Web search discovery → Privacy tier** |
+| **Settings (canonical)** | **Settings → Privacy & data** — privacy tier, Hybrid Internet Mode, audit logs, **What leaves your device** |
+| **Settings (advanced discovery)** | **Settings → Knowledge → Web search discovery** — DDG limits, provider setup, SearXNG |
 | **Conversations (quick switch)** | Tools panel → **Privacy** → tier selector (same setting; label shows the active tier) |
 
-The Knowledge page also shows **What leaves this device** bullets that update with your tier. Review **Live DDG usage** counters before relying on automatic web routing.
+The **What leaves your device** summary appears on **Privacy & data** and on Knowledge → Web search discovery. Review **Live DDG usage** on Knowledge before relying on automatic web routing.
 
 ## Also called
 
@@ -51,7 +52,7 @@ privacy tier, web search privacy, discovery privacy, private search tier, searxn
 | Page fetch after URL pick | Direct to destination site | Direct to destination site | Direct to destination site |
 | Qube cloud logging of queries | **No** | **No** | **No** |
 
-Enable **Web search log** under **Settings → Advanced** only when debugging — it can record query text locally unless you launch with redact flags (see [Diagnostic logs](diagnostic-logs-advanced-settings.md)).
+Enable **Web search log** under **Settings → Privacy & data** only when debugging — it can record query text locally unless you launch with redact flags (see [Diagnostic logs](diagnostic-logs-advanced-settings.md)).
 
 ## How to choose a tier
 
@@ -63,9 +64,10 @@ Enable **Web search log** under **Settings → Advanced** only when debugging �
 
 ## Related
 
-- [Knowledge settings](../features/settings/knowledge.md) — privacy tier, DDG pacing, SearXNG URL, retrieval profile
+- [Privacy & data settings](../features/settings/privacy-data.md) — canonical home for tier, Hybrid Internet Mode, and audit logs
+- [Knowledge settings](../features/settings/knowledge.md) — advanced discovery limits, DDG pacing, SearXNG URL, retrieval profile
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — Web vs Hybrid Internet Mode
 - [Live sources vs Library search](live-sources-vs-library-search.md) — web discovery vs Library RAG
-- [Diagnostic logs — Advanced settings](diagnostic-logs-advanced-settings.md) — web search audit log and redaction
+- [Diagnostic logs](diagnostic-logs-advanced-settings.md) — web search audit log and redaction
 - [Audit session privacy](audit-session-privacy.md) — session privacy review
 - [Log redaction before sharing logs](log-redaction-sharing-logs.md) — redaction before sharing logs

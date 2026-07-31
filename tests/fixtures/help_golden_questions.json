@@ -149,7 +149,7 @@
     "category": "navigation",
     "question": "JSON settings editor and diagnostic logs",
     "expected_doc_ids": ["features.settings.advanced"],
-    "must_mention": ["Settings", "Advanced", "JSON"]
+    "must_mention": ["Settings", "Advanced", "JSON", "Diagnostics"]
   },
   {
     "category": "navigation",
@@ -418,7 +418,7 @@
     "category": "faq",
     "question": "Where are Qube diagnostic log files stored",
     "expected_doc_ids": ["faq.diagnostic_logs_advanced"],
-    "must_mention": ["logs", "Advanced"]
+    "must_mention": ["logs", "Diagnostics"]
   },
   {
     "category": "faq",
@@ -435,7 +435,7 @@
   {
     "category": "faq",
     "question": "Web discovery privacy tier settings",
-    "expected_doc_ids": ["faq.web_discovery_privacy_tiers", "features.settings.knowledge"],
+    "expected_doc_ids": ["faq.web_discovery_privacy_tiers", "features.settings.privacy_data"],
     "must_mention": ["Privacy", "tier"],
     "expected_canonical_id": "faq.web_discovery_privacy_tiers.choose"
   },
@@ -559,5 +559,27 @@
     "expected_doc_ids": ["workflows.uninstall_qube"],
     "must_mention": ["Settings", "Help", "uninstall"],
     "expect_canonical_match": true
+  },
+  {
+    "category": "workflow",
+    "question": "How do I connect an MCP server to Qube?",
+    "expected_doc_ids": ["workflows.connect_mcp_server", "features.settings.integrations"],
+    "must_mention": ["Custom sources", "Integrations"],
+    "expected_canonical_id": "workflows.connect_mcp_server.summary"
+  },
+  {
+    "category": "navigation",
+    "question": "Where are MCP capability permissions in settings?",
+    "expected_doc_ids": ["features.settings.integrations"],
+    "must_mention": ["Integrations", "Capability permissions"],
+    "expect_canonical_match": true,
+    "expect_settings_path": true
+  },
+  {
+    "category": "reference",
+    "question": "What is @[cap:mcp:filesystem/search-files]?",
+    "expected_doc_ids": ["features.settings.integrations", "reference.composer_attachments"],
+    "must_mention": ["cap:mcp", "Integrations"],
+    "expected_canonical_id": "reference.composer_attachments.cap"
   }
 ]

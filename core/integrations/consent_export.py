@@ -7,8 +7,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from core.integrations.capabilities import persistence as persistence_mod
 from core.integrations.capabilities.persistence import ConsentStore, integrations_dir
-from core.paths import user_data_root
 
 logger = logging.getLogger("Qube.Integrations.ConsentExport")
 
@@ -20,7 +20,7 @@ __all__ = [
 
 
 def list_providers_with_consent() -> list[str]:
-    root = user_data_root() / "integrations"
+    root = persistence_mod.user_data_root() / "integrations"
     if not root.is_dir():
         return []
     providers: list[str] = []

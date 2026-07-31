@@ -158,6 +158,20 @@ class DiagnosticLogsTests(unittest.TestCase):
             self.assertTrue(result.success)
             self.assertEqual(path.read_text(encoding="utf-8"), "")
 
+    def test_iter_diagnostic_logs_by_category_audit(self) -> None:
+        from core.diagnostic_logs import iter_diagnostic_logs_by_category
+
+        audit_ids = {spec.id for spec in iter_diagnostic_logs_by_category("audit")}
+        self.assertEqual(audit_ids, {"llm_debug", "routing_debug", "web_search_audit"})
+
+    def test_iter_diagnostic_logs_by_category_technical(self) -> None:
+        from core.diagnostic_logs import iter_diagnostic_logs_by_category
+
+        technical_ids = {
+            spec.id for spec in iter_diagnostic_logs_by_category("technical")
+        }
+        self.assertEqual(technical_ids, {"app_log", "skills_debug"})
+
 
 if __name__ == "__main__":
     unittest.main()

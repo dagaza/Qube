@@ -25,7 +25,7 @@ embeddings not loaded, RAG models downloading, search quality unavailable, index
 3. Switch temporarily to **Fast** if only the base preset is available.
 4. Wait until Knowledge settings show models ready before retrying **`@[tool:library]`**.
 5. Restart Qube if embedding warmup appears stuck after a failed download.
-6. Review **Settings → Advanced** diagnostic logs for embedding errors if preparation keeps failing.
+6. Review **Settings → Diagnostics** diagnostic logs for embedding errors if preparation keeps failing.
 
 ## Related
 

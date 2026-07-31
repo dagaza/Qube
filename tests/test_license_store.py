@@ -161,7 +161,7 @@ def test_remove_license_clears_cache(license_env):
 
     caps = get_resolved_capabilities()
     assert caps.tier == EditionTier.HOME
-    assert caps.source == "mit_launch"
+    assert caps.source == "tier:home"
 
 
 def test_team_license_requires_org_id(license_env):
@@ -170,7 +170,7 @@ def test_team_license_requires_org_id(license_env):
         parse_license_document(raw)
 
 
-def test_resolve_capabilities_without_mit_launch_uses_tier(license_env, monkeypatch):
+def test_resolve_capabilities_uses_imported_license_tier(license_env, monkeypatch):
     from core import capabilities as mod
 
     source = license_env["cache_path"].parent / "team.qube-license"
@@ -200,8 +200,8 @@ def test_resolve_capabilities_without_mit_launch_uses_tier(license_env, monkeypa
     source.write_text(json.dumps(raw))
     import_license_from_path(source)
 
-    original = mod._MIT_LAUNCH_GRANTS_ALL
-    mod._MIT_LAUNCH_GRANTS_ALL = False
+    original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+    mod._GRANT_ALL_CAPABILITIES_OVERRIDE = False
     invalidate_capabilities_cache()
     try:
         caps = resolve_capabilities()
@@ -210,5 +210,5 @@ def test_resolve_capabilities_without_mit_launch_uses_tier(license_env, monkeypa
         assert caps.has("pro.theme_packs")
         assert not caps.has("enterprise.sso")
     finally:
-        mod._MIT_LAUNCH_GRANTS_ALL = original
+        mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
         invalidate_capabilities_cache()

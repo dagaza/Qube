@@ -64,9 +64,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Search quality card ---
     search_card, search_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    search_form = add_settings_card_form(search_card_layout)
+    search_form_host, search_form = prepare_settings_card_form(search_card_layout)
     add_subsection_to_form(search_form, "Search quality", anchor="embedding_mode")
-    mode_form_host, mode_form = prepare_settings_card_form(search_card_layout)
 
     host.embedding_mode_selector = SelectorButton("Balanced", is_dark=is_dark)
     host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
@@ -83,9 +82,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
     )
 
-    mode_form.addRow("Mode", host.embedding_mode_selector)
-    add_settings_span_row(mode_form, host.embedding_mode_description)
-    add_settings_span_row(search_form, wrap_subsection(mode_form_host, anchor="embedding_mode"))
+    search_form.addRow("Mode", host.embedding_mode_selector)
+    add_settings_span_row(search_form, host.embedding_mode_description)
 
     add_settings_full_width_row(search_form, make_bootstrap_download_row(
             host,
@@ -114,6 +112,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
             button_text="Download all search presets",
         ),
     )
+    search_card_layout.addWidget(search_form_host)
     layout.addWidget(search_card)
 
     # --- Library Pro depth card ---
@@ -162,7 +161,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     host.library_pro_hint = QLabel(
         "Standard Library chunking and MMR retrieval remain free. "
-        "Import a Pro license under Settings → Advanced → License."
+        "Import a Pro license under Settings → License."
     )
     host.library_pro_hint.setObjectName("SettingsHint")
     host.library_pro_hint.setWordWrap(True)
@@ -172,9 +171,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Retrieval profile card ---
     profile_card, profile_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    profile_card_form = add_settings_card_form(profile_card_layout)
-    add_subsection_to_form(profile_card_form, "Retrieval profile", anchor="retrieval_profile")
     profile_form_host, profile_form = prepare_settings_card_form(profile_card_layout)
+    add_subsection_to_form(profile_form, "Retrieval profile", anchor="retrieval_profile")
 
     host.retrieval_profile_selector = SelectorButton("Balanced", is_dark=is_dark)
     host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
@@ -193,7 +191,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     profile_form.addRow("Profile", host.retrieval_profile_selector)
     add_settings_span_row(profile_form, host.retrieval_profile_description)
-    add_settings_span_row(profile_card_form, wrap_subsection(profile_form_host, anchor="retrieval_profile"))
+    profile_card_layout.addWidget(profile_form_host)
     layout.addWidget(profile_card)
 
     layout.addWidget(build_knowledge_web_discovery_section(host, is_dark=is_dark))

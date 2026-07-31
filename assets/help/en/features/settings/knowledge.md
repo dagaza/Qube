@@ -22,7 +22,7 @@
 - **Retrieval profile** — **global orchestration** for knowledge turns (adapter fan-out, timeouts, cache, web fetch depth)—not Library-only and not ranking
 - **Web search discovery** — privacy tier, DuckDuckGo pacing/limits, optional SearXNG
 - **Live sources** — adapter toggles for structured online catalogs
-- **Custom sources** and **My knowledge** — REST connectors and bundled presets (`@[tool:…]` workflows)
+- **Custom sources** and **My knowledge** — REST/GraphQL/MCP connectors and bundled presets (`@[tool:…]` or capability bundles)
 - **Diagnostics** — retrieval trace, knowledge pack import/export
 - **Advanced embedding** — optional custom embedder override
 
@@ -49,7 +49,7 @@ Open **Settings → Knowledge → Retrieval profile**. The Conversations tools p
 
 ## Library Pro depth (Pro license)
 
-**Library Pro depth** adds optional accuracy modes for serious Library collections. Both require a **Qube Pro** (or Team) license imported under **Settings → Advanced → License**.
+**Library Pro depth** adds optional accuracy modes for serious Library collections. Both require a **Qube Pro** (or Team) license imported under **Settings → License**.
 
 | Toggle | Effect |
 |--------|--------|
@@ -72,11 +72,12 @@ knowledge base settings, RAG settings, library search, document search, NLP RAG 
 2. **Enable library search** — Turn on **Enable Local Knowledge Base** under **Library search phrases**. Add custom phrases and/or enable **Enable NLP Auto-Activator** for one-turn searches even when the master switch is off.
 3. **Set search quality** — Pick **Mode**: **Fast**, **Balanced**, or **Power** to match latency vs depth for **Library embeddings**.
 4. **Set retrieval profile** — Pick **Fast**, **Balanced**, **Thorough**, or a hint profile to tune orchestration and web fetch depth for **all knowledge turns** (Library, Live Sources, presets, `@internet`).
-5. **Configure web discovery** — Under **Web search discovery**, choose a **Privacy tier** and review **Live DDG usage** before relying on `@internet` or Hybrid Internet Mode. Use **Set up SearXNG…** for self-hosted search. See [Web discovery privacy tiers FAQ](../../faq/web-discovery-privacy-tiers.md).
+5. **Configure web discovery** — **Privacy tier** and **Hybrid Internet Mode** live on **Settings → Privacy & data**; this page holds DDG limits, provider setup, and SearXNG. Choose a tier, review **Live DDG usage**, and use **Open Privacy & data** for audit logs. See [Web discovery privacy tiers FAQ](../../faq/web-discovery-privacy-tiers.md).
 6. **Enable Live Sources** — Toggle the adapters you need; use **Configure** where API keys are required.
-7. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles.
-8. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
-9. **Enable Library Pro depth (Pro)** — Import a license under **Settings → Advanced → License**, then toggle **Default precision ingest on import** and/or **Precision retrieval** under **Library Pro depth**. On each **Import (+)**, choose **Normal** or **Precision indexing**; precision-indexed docs show a **gem** badge.
+7. **Create a preset** — In **My knowledge**, choose **API adapters (scientific, finance, legal)** or **Web fetch (source profile)**, then **Save preset** for repeatable `@[tool:…]` bundles. Presets can also bundle **integration capability URNs** saved from MCP grant review.
+8. **Connect MCP (optional)** — Under **Custom sources**, add connector **mcp** (command JSON + **namespace**), **Test/Save**, then grant capabilities under **Settings → Integrations**. See [Connect an MCP server](../../workflows/connect-mcp-server.md).
+9. **Chat with documents** — Attach `@[tool:library]` in **Conversations**, enable **Local Knowledge Base** in the tools panel, and/or rely on custom trigger phrases. Routing behaviour is explained in [Cognitive Router — how routing works](../../faq/cognitive-router-how-routing-works.md).
+10. **Enable Library Pro depth (Pro)** — Import a license under **Settings → License**, then toggle **Default precision ingest on import** and/or **Precision retrieval** under **Library Pro depth**. On each **Import (+)**, choose **Normal** or **Precision indexing**; precision-indexed docs show a **gem** badge.
 
 ## Controls
 
@@ -131,11 +132,15 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Custom sources
 
+- **Base URL**
+- **Search path**
+- **Command**
+- **Namespace**
+- **Tool name**
 - **Source id**
 - **Label**
 - **Connector**
-- **Base URL**
-- **Search path**
+- **New source**
 - **Save source**
 - **Test**
 - **Delete selected**
@@ -148,6 +153,7 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Source status
 
+- **Open Knowledge → Web search discovery**
 
 ### Web search discovery
 
@@ -158,6 +164,7 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - **Session limit override**
 - **SearXNG base URL**
 - **Reset discovery health**
+- **Open Privacy & data**
 
 - **Reset to default configuration** — restores all settings on this page
 
@@ -174,3 +181,5 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - [Library search returns nothing troubleshooting](../../troubleshooting/library-search-returns-nothing.md) — empty results
 - [Library Pro depth FAQ](../../faq/library-pro-depth.md) — precision ingest, precision retrieval, licensing
 - [Enable Library Pro depth workflow](../../workflows/enable-library-pro-depth.md) — step-by-step Pro setup
+- [Integrations settings](integrations.md) — MCP capability permissions after Custom sources setup
+- [Connect an MCP server workflow](../../workflows/connect-mcp-server.md) — filesystem MCP example

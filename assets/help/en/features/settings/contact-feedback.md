@@ -24,7 +24,7 @@ feedback, bug report, support contact, CONTACT & FEEDBACK, send feedback, Qube w
 
 1. **Report a bug** — Click **Report a bug** to open the website bug form. Include steps to reproduce and your Qube version when prompted.
 2. **Request a feature** — Click **Request a feature** to share improvement ideas on the website.
-3. **Attach diagnostics when asked** — For technical issues, copy relevant excerpts from **Settings → Advanced** diagnostic logs into your website submission.
+3. **Attach diagnostics when asked** — For technical issues, copy relevant excerpts from **Settings → Diagnostics** or **Settings → Privacy & data** logs into your website submission.
 
 ## Controls
 
@@ -42,5 +42,5 @@ Controls listed top-to-bottom for **Settings → Contact & Feedback**.
 
 ## Related
 
-- [Advanced settings](advanced.md) — diagnostic logs you may reference in reports
+- [Diagnostics settings](diagnostics.md) · [Privacy & data settings](privacy-data.md) — diagnostic logs you may reference in reports
 - [Help settings](help.md) — tours and documentation entry points

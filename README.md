@@ -66,7 +66,7 @@ Optional **voice input**, text-to-speech, and a **Desktop Companion** orb are av
 
 **Live Sources** — Institutional adapters beyond generic web search: trusted/Wikipedia, scientific literature, SEC EDGAR, U.S. case law, page **fetch**, and multi-step **`@research`** reports (async, non-blocking). **58+ adapters** with per-source toggles; build your own via **My knowledge** presets and **Custom sources** (REST, GraphQL, MCP, …).
 
-**Transparency** — **Advanced Telemetry** (local hardware + routing stats), per-reply **INSPECT RETRIEVAL**, and **Settings → Advanced** diagnostic logs with redaction options. Web discovery defaults to **private** search (DuckDuckGo + Wikipedia); point at **your SearXNG** when you want self-hosted SERP.
+**Transparency** — **Advanced Telemetry** (local hardware + routing stats), per-reply **INSPECT RETRIEVAL**, and **Settings → Diagnostics** / **Settings → Privacy & data** diagnostic logs with redaction options. Web discovery defaults to **private** search (DuckDuckGo + Wikipedia); point at **your SearXNG** when you want self-hosted SERP.
 
 **Model Manager** — Search Hugging Face, browse curated picks, read model READMEs in-app, and download **.gguf** quantizations with disk-space guardrails. Run natively or point at an external server.
 

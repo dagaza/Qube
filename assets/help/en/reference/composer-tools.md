@@ -12,7 +12,7 @@
 
 Composer **tools** route a chat turn to a specific capability. Insert a token like `@[tool:library]` in your message, or pick one from the `@` palette under **Tools**.
 
-Only the **first routing attachment** in your message controls behaviour — the first token among `@[file:…]`, `@[chat:…]`, or `@[tool:…]` in left-to-right order. See [Composer attachments](composer-attachments.md) for files, chats, and mixing rules.
+Only the **first routing attachment** in your message controls behaviour — the first token among `@[file:…]`, `@[chat:…]`, `@[tool:…]`, or `@[cap:…]` in left-to-right order. See [Composer attachments](composer-attachments.md) for files, chats, capabilities, and mixing rules.
 
 ## Built-in tools
 
@@ -114,9 +114,15 @@ Type the id (for example `pubmed`) or pick the token once it appears.
 
 ## My knowledge presets (dynamic)
 
-Presets you create under **Settings → Knowledge → My knowledge** appear in the `@` palette as **`@[tool:user:…]`** tokens (for example `@[tool:user:biology]`). They bundle selected Live Source adapters or web-fetch domains — not Library folders.
+Presets you create under **Settings → Knowledge → My knowledge** appear in the `@` palette as **`@[tool:user:…]`** tokens (for example `@[tool:user:biology]`). They bundle selected Live Source adapters, web-fetch domains, and/or **integration capability URNs** — not Library folders.
 
 Preset tokens are not listed here because they depend on your configuration. See [Create a knowledge preset](../workflows/create-knowledge-preset.md).
+
+## Integration capabilities (dynamic)
+
+MCP servers configured under **Settings → Knowledge → Custom sources** expose **Integrations** palette entries as **`@[cap:mcp:namespace/action]`**. Permissions are managed under **Settings → Integrations**. Entries appear after **Test/Save** and grant review — they are not hard-coded in this reference.
+
+See [Integrations settings](../features/settings/integrations.md) and [Connect an MCP server](../workflows/connect-mcp-server.md).
 
 ## Single-adapter pins (`@[tool:source:…]`)
 
@@ -128,14 +134,17 @@ Pin one Live Source adapter manually with `@[tool:source:adapter_id]` (for examp
 - **Web / evidence tools** (`@[tool:internet]`, `@[tool:evidence]`, `@[tool:trusted]`, etc.) — configure **Live Sources** and optional API keys in **Settings → Knowledge**. See [Live sources overview](live-sources-overview.md).
 - **Help** (`@[tool:help]`) — searches the **Qube Documentation** collection only. Help docs are excluded from normal Library search unless you attach `@help`.
 - **Memory** (`@[tool:memory]`) — requires Memory features enabled in **Settings → Memory**.
+- **Integrations** (`@[cap:mcp:…]`) — configure MCP under **Settings → Knowledge → Custom sources**, grant under **Settings → Integrations**.
 
 ## Also called
 
-composer attachments, @ mentions, tool tokens, routing tools
+composer attachments, @ mentions, tool tokens, routing tools, cap tokens
 
 ## Related
 
-- [Composer attachments](composer-attachments.md) — files, chats, routing order
+- [Composer attachments](composer-attachments.md) — files, chats, capabilities, routing order
+- [Integrations settings](../features/settings/integrations.md) — MCP permissions
+- [Connect an MCP server](../workflows/connect-mcp-server.md) — setup workflow
 - [Composer commands](composer-commands.md) — immediate app actions
 - [Composer skills](composer-skills.md) — reasoning frameworks (not routing)
 - [Knowledge settings](../features/settings/knowledge.md) — Live Sources and My knowledge

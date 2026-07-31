@@ -7,7 +7,7 @@ INGEST_MODE_PRECISION = "precision"
 
 _PRECISION_REQUIRES_LICENSE_MESSAGE = (
     "Precision ingest requires a Qube Pro (or Team) license.\n\n"
-    "Import your license under Settings → Advanced → License."
+    "Import your license under Settings → License."
 )
 
 

@@ -582,7 +582,7 @@ No LanceDB schema change required; `ReindexWorker` behavior unchanged unless use
 
 ## 14. Pro Library depth (commercial — shipped)
 
-Aligns with the monetization roadmap: **Pro sells depth and opt-in power; Library RAG moats stay free.** Capability ids are registered in `core/capabilities.py`; user-facing gates are wired via `has_feature()` with `_MIT_LAUNCH_GRANTS_ALL = False`.
+Aligns with the product model: **Pro sells depth and opt-in power; core Library RAG stays free.** Capability ids are registered in `core/capabilities.py`; user-facing gates are wired via `has_feature()` using the active license tier.
 
 ### 14.1 Free tier (Home — always on)
 
@@ -632,7 +632,7 @@ Copy: *“Maximum citation accuracy for dense PDFs, contracts, and papers — sl
 - `ui/components/pro_gem_badge.py` — reusable Pro gem badge for sidebar and dialog
 - `ui/views/library_view.py` — dialog wiring, gem in `_append_library_doc_row`, preview stats
 - Settings → Knowledge → **Default precision ingest on import** + **Precision retrieval** toggles (license required)
-- Gated via `has_feature("library.ingest_high_quality")`; `_MIT_LAUNCH_GRANTS_ALL = False`
+- Gated via `has_feature("library.ingest_high_quality")` when no Pro (or Team) license is imported
 - Tests: `tests/test_library_pro_features.py`, `tests/test_library_ingest_modes.py`
 
 **Intentionally not persisted:** `ingest_mode` is stored on the SQLite `documents` row only — not duplicated in LanceDB chunk `meta_json` (minimal scope).

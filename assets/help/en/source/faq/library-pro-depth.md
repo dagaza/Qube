@@ -26,7 +26,7 @@
 
 **What stays free:** Standard structural chunking, hybrid vector + text search, MMR diversity, breadcrumb citations, and **Search quality** embedding presets (**Fast**, **Balanced**, **Power**). Pro depth is an optional second layer—not “making Library work.”
 
-**License required:** Precision indexing and the Settings toggles require a valid **Qube Pro** or **Team** license imported under **Settings → Advanced → License**. Without a license:
+**License required:** Precision indexing and the Settings toggles require a valid **Qube Pro** or **Team** license imported under **Settings → License**. Without a license:
 
 - **Precision indexing** in the import dialog is **disabled** with a tooltip explaining the Pro requirement.
 - Settings toggles show **Pro license required** if you try to enable them.
@@ -52,7 +52,7 @@ Documents indexed before this feature was available default to normal indexing (
 - **Import mode chooser** — **Library → +** after file picker (and optional overwrite prompt)
 - **Gem badge** — Library sidebar document list (precision-indexed docs only)
 - **Library Pro depth toggles** — **Settings → Knowledge → Library Pro depth**
-- **Import license** — **Settings → Advanced → License → Import license file**
+- **Import license** — **Settings → License → Import license file**
 - **Browse this guide** — **Library → Qube → faq/library-pro-depth.md**, or ask with **`@[tool:help]`**
 
 ## Also called
@@ -61,7 +61,7 @@ library pro features, high quality ingest, precision chunking, semantic ingest, 
 
 ## How to…
 
-1. **Import a Pro license** — Obtain a `.qube-license` file from your purchase or administrator. Open **Settings → Advanced → License → Import license file**. Team and Enterprise licenses include Pro Library depth.
+1. **Import a Pro license** — Obtain a `.qube-license` file from your purchase or administrator. Open **Settings → License → Import license file**. Team and Enterprise licenses include Pro Library depth.
 2. **Index with precision** — **Library → +**, pick files, choose **Precision indexing (Pro)** in the dialog. Wait for indexing to finish; confirm the **gem** badge appears on the document row.
 3. **Optional: default precision on import** — **Settings → Knowledge → Library Pro depth → Default precision ingest on import** pre-selects precision in the import dialog. Read the cost warning before saving.
 4. **Enable precision retrieval** — Toggle **Precision retrieval** on the same card. Takes effect on the **next** Library query (`@[tool:library]`, Local Knowledge Base, or automatic triggers)—no re-import needed.
@@ -74,6 +74,6 @@ library pro features, high quality ingest, precision chunking, semantic ingest, 
 - [Enable Library Pro depth workflow](../workflows/enable-library-pro-depth.md) — license + Settings setup
 - [Knowledge settings](../features/settings/knowledge.md) — all Knowledge controls including Library Pro depth
 - [Library feature](../features/library.md) — ingest, preview, gem badge, and chat with documents
-- [Advanced settings](../features/settings/advanced.md) — import and remove license
+- [License settings](../features/settings/license.md) — import and remove license
 - [Retrieval profile vs search quality](retrieval-profile-vs-search-quality.md) — disambiguate Fast/Balanced naming
 - [Prepare search models workflow](../workflows/prepare-search-models-for-library.md) — Search quality presets (required before any Library search)

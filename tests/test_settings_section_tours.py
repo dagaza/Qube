@@ -9,14 +9,31 @@ from ui.onboarding.tour_registry import build_tour, settings_section_tour_id
 from ui.views.settings.registry import SETTINGS_SECTIONS
 
 
-def _expected_advanced_tour_steps() -> int:
-    from core.diagnostic_logs import iter_diagnostic_logs
+def _expected_diagnostic_log_steps(category: str) -> int:
+    from core.diagnostic_logs import iter_diagnostic_logs_by_category
 
     log_steps = 0
-    for spec in iter_diagnostic_logs():
+    for spec in iter_diagnostic_logs_by_category(category):  # type: ignore[arg-type]
         log_steps += 1 if spec.supports_recording_toggle else 0
+        log_steps += 1 if spec.supports_redaction_toggle else 0
         log_steps += 2  # view + clear
-    return 1 + 2 + log_steps + 1  # welcome + json + logs folder + finish
+    return log_steps
+
+
+def _expected_advanced_tour_steps() -> int:
+    return 1 + 1 + 1  # welcome + json + finish
+
+
+def _expected_privacy_data_tour_steps() -> int:
+    return 6 + _expected_diagnostic_log_steps("audit") + 1
+
+
+def _expected_diagnostics_tour_steps() -> int:
+    return 1 + 1 + _expected_diagnostic_log_steps("technical") + 1
+
+
+def _expected_license_tour_steps() -> int:
+    return 1 + 2 + 1  # welcome + import + remove + finish
 
 
 def _expected_knowledge_tour_steps() -> int:
@@ -30,12 +47,16 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.ai_models", "ai.models", 14),
     ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
+    ("settings.integrations", "integrations", 5),
     ("settings.general", "general", 4),
     ("settings.appearance_themes", "appearance.themes", 14),
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
     ("settings.help", "help", 5),
     ("settings.contact_feedback", "contact.feedback", 4),
+    ("settings.privacy_data", "privacy.data", _expected_privacy_data_tour_steps()),
+    ("settings.diagnostics", "diagnostics", _expected_diagnostics_tour_steps()),
+    ("settings.license", "license", _expected_license_tour_steps()),
     ("settings.advanced", "advanced", _expected_advanced_tour_steps()),
 )
 
@@ -162,6 +183,11 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "advanced_embedding_panel",
         "advanced_discovery_panel",
     ),
+    "settings.integrations": (
+        "integrations_mcp_servers_table",
+        "integrations_manage_sources_btn",
+        "integrations_consent_scroll",
+    ),
     "settings.general": (
         "general_language_card",
         "profile_units_selector",
@@ -218,12 +244,16 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "model_manager_hardware_suggestions_cb",
     ),
     "settings.contact_feedback": ("report_bug_btn", "request_feature_btn"),
-    "settings.advanced": (
-        "import_license_btn",
-        "remove_license_btn",
-        "open_settings_json_btn",
-        "open_logs_folder_btn",
+    "settings.privacy_data": (
+        "privacy_data_overview_hint",
+        "privacy_data_session_audit_hint",
+        "privacy_data_privacy_tier_selector",
+        "privacy_data_internet_hybrid_toggle",
+        "privacy_data_what_leaves_card",
     ),
+    "settings.diagnostics": ("open_logs_folder_btn",),
+    "settings.license": ("import_license_btn", "remove_license_btn"),
+    "settings.advanced": ("open_settings_json_btn",),
 }
 
 
@@ -385,13 +415,15 @@ class TestSettingsSectionTours(unittest.TestCase):
             ):
                 cb.show()
 
-        if tour_id == "settings.advanced":
-            from core.diagnostic_logs import iter_diagnostic_logs
+        if tour_id in ("settings.privacy_data", "settings.diagnostics"):
+            from core.diagnostic_logs import iter_diagnostic_logs_by_category
 
+            category = "audit" if tour_id == "settings.privacy_data" else "technical"
             sv.diagnostic_log_recording_toggles = {}
             sv.diagnostic_log_view_buttons = {}
             sv.diagnostic_log_clear_buttons = {}
-            for spec in iter_diagnostic_logs():
+            sv.diagnostic_log_redaction_toggles = {}
+            for spec in iter_diagnostic_logs_by_category(category):  # type: ignore[arg-type]
                 toggle = PrestigeToggle(sv)
                 view_btn = QPushButton(sv)
                 clear_btn = QPushButton(sv)
@@ -401,6 +433,10 @@ class TestSettingsSectionTours(unittest.TestCase):
                 sv.diagnostic_log_recording_toggles[spec.id] = toggle
                 sv.diagnostic_log_view_buttons[spec.id] = view_btn
                 sv.diagnostic_log_clear_buttons[spec.id] = clear_btn
+                if spec.supports_redaction_toggle:
+                    redaction_toggle = PrestigeToggle(sv)
+                    redaction_toggle.show()
+                    sv.diagnostic_log_redaction_toggles[spec.id] = redaction_toggle
 
         return host
 

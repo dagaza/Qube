@@ -26,10 +26,12 @@ knowledge backup, preset export, transfer RAG settings, import knowledge configu
 2. Copy **`knowledge-pack.json`** to **`~/.qube/`** on the target machine (or keep a backup copy elsewhere).
 3. Click **Import knowledge pack** on the target machine. If the file is missing, Qube reports **No pack found at …**
 4. Review the import summary dialog (presets/sources imported and any errors).
-5. Re-enter API keys locally for Live Sources or custom connectors that need them.
+5. Re-enter API keys locally for Live Sources or custom connectors that need them. Re-test MCP Custom sources if commands differ between machines.
 
 ## Related
 
 - [Create knowledge preset](create-knowledge-preset.md) — build presets before export
+- [Integrations settings](../features/settings/integrations.md) — what consent grants mean
+- [Connect an MCP server](connect-mcp-server.md) — MCP setup before export
 - [Knowledge settings](../features/settings/knowledge.md) — Live Sources and My knowledge
-- [Advanced settings](../features/settings/advanced.md) — diagnostic logs if import fails
+- [Diagnostics settings](../features/settings/diagnostics.md) · [Privacy & data settings](../features/settings/privacy-data.md) — diagnostic logs if import fails

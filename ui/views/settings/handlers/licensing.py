@@ -8,11 +8,11 @@ from pathlib import Path
 from PyQt6.QtWidgets import QFileDialog
 
 from core.licensing.store import (
-    format_license_status_text,
     import_license_from_path,
     license_summary,
     remove_license,
 )
+from ui.views.settings.license_status_ui import sync_license_status_presentation
 from ui.components.prestige_dialog import PrestigeDialog
 
 logger = logging.getLogger("Qube.UI.SettingsLicense")
@@ -24,12 +24,37 @@ _LICENSE_FILE_FILTER = (
 
 
 class LicenseHandlersMixin:
-    def _refresh_license_status_ui(self) -> None:
-        status_lbl = getattr(self, "license_status_lbl", None)
-        if status_lbl is None:
+    def _play_license_import_celebration(self) -> None:
+        """Border fireworks around the License card (same effect as composer @ discovery)."""
+        from PyQt6.QtCore import QTimer
+
+        from ui.components.celebration_burst import show_border_fireworks
+
+        anchor = getattr(self, "license_section_card", None)
+        if anchor is None:
+            anchor = getattr(self, "import_license_btn", None)
+        if anchor is None or not anchor.isVisible():
             return
+
+        stack = getattr(self, "settings_section_stack", None)
+        overlay_parent = stack.currentWidget() if stack is not None else None
+        if overlay_parent is None:
+            win = self.window()
+            overlay_parent = win if win is not None else self
+
+        def _start() -> None:
+            show_border_fireworks(
+                anchor,
+                overlay_parent=overlay_parent,
+                duration_ms=3200,
+            )
+
+        QTimer.singleShot(80, _start)
+
+    def _refresh_license_status_ui(self) -> None:
         summary = license_summary()
-        status_lbl.setText(format_license_status_text(summary))
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        sync_license_status_presentation(self, summary, is_dark=is_dark)
         cached = bool(summary.get("cached"))
         remove_btn = getattr(self, "remove_license_btn", None)
         if remove_btn is not None:
@@ -56,6 +81,7 @@ class LicenseHandlersMixin:
                 is_dark=is_dark,
             ).exec()
             logger.info("Imported license from %s (tier=%s)", path, result.document.tier.value)
+            self._play_license_import_celebration()
         else:
             PrestigeDialog(
                 self.window(),

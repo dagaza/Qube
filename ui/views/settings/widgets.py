@@ -18,7 +18,10 @@ from ui.components.brand_buttons import apply_brand_caution
 from ui.components.page_tour_help_button import PageTourHelpButton
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
-from ui.views.settings.settings_card_style import SETTINGS_CARD_FORM_HORIZONTAL_INSET
+from ui.views.settings.settings_card_style import (
+    SETTINGS_CARD_FORM_HORIZONTAL_INSET,
+    SETTINGS_CARD_FORM_ROW_SPACING,
+)
 from ui.views.settings.settings_theme import resolve_settings_theme, settings_divider_color
 from core.theme.color_utils import theme_qcolor
 
@@ -234,11 +237,16 @@ def make_settings_form() -> tuple[QWidget, QFormLayout]:
     form_host.setMinimumWidth(0)
     form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     form = QFormLayout(form_host)
-    form.setSpacing(15)
+    form.setSpacing(SETTINGS_CARD_FORM_ROW_SPACING)
     form.setHorizontalSpacing(12)
     form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     inset = SETTINGS_CARD_FORM_HORIZONTAL_INSET
-    form.setContentsMargins(inset, 0, inset, 0)
+    form.setContentsMargins(
+        inset,
+        0,
+        inset,
+        SETTINGS_CARD_FORM_ROW_SPACING,
+    )
     form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
     _install_form_label_column_ruler(form)
     return form_host, form

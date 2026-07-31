@@ -93,24 +93,14 @@ def test_all_settings_section_tour_targets_on_real_view(main_window, qtbot):
     from PyQt6.QtCore import Qt
     from PyQt6.QtWidgets import QApplication
 
-    from ui.onboarding.tour_registry import build_tour
+    from ui.onboarding.tour_registry import build_tour, settings_section_tour_id
+    from ui.views.settings.registry import SETTINGS_SECTIONS
 
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
 
-    tour_ids = [
-        "settings.voice_audio",
-        "settings.ai_models",
-        "settings.memory",
-        "settings.knowledge",
-        "settings.general",
-        "settings.companion_desktop",
-        "settings.notifications",
-        "settings.help",
-        "settings.contact_feedback",
-        "settings.advanced",
-    ]
+    tour_ids = [settings_section_tour_id(sec.id) for sec in SETTINGS_SECTIONS]
     for tour_id in tour_ids:
         tour = build_tour(tour_id, main_window)
         assert tour is not None

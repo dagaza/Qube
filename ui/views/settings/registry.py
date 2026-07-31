@@ -99,9 +99,30 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Support",
     ),
     SettingsSectionDef(
+        id="privacy.data",
+        title="Privacy & data",
+        icon="fa5s.shield-alt",
+        legacy_titles=("PRIVACY & DATA",),
+        group="System",
+    ),
+    SettingsSectionDef(
+        id="diagnostics",
+        title="Diagnostics",
+        icon="fa5s.stethoscope",
+        legacy_titles=("DIAGNOSTIC LOGS",),
+        group="System",
+    ),
+    SettingsSectionDef(
+        id="license",
+        title="License",
+        icon="fa5s.key",
+        legacy_titles=("LICENSE",),
+        group="System",
+    ),
+    SettingsSectionDef(
         id="advanced",
         title="Advanced",
-        icon="fa5s.cog",
+        icon="fa5s.code",
         legacy_titles=("JSON SETTINGS",),
         group="System",
     ),
@@ -127,3 +148,32 @@ def resolve_section_id(section: str) -> str | None:
 
 def get_section(section_id: str) -> SettingsSectionDef | None:
     return _SECTION_BY_ID.get(section_id)
+
+
+# Legacy Settings → Advanced anchors → (section_id, anchor)
+_LEGACY_ADVANCED_ANCHOR_REDIRECTS: dict[str, tuple[str, str]] = {
+    "logs": ("diagnostics", "logs"),
+    "license": ("license", "license"),
+    "json": ("advanced", "json"),
+    "app_log": ("diagnostics", "app_log"),
+    "skills_debug": ("diagnostics", "skills_debug"),
+    "web_search_audit": ("privacy.data", "web_search_audit"),
+    "routing_debug": ("privacy.data", "routing_debug"),
+    "llm_debug": ("privacy.data", "llm_debug"),
+}
+
+
+def resolve_settings_navigation(
+    section: str,
+    *,
+    anchor: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Map section id/title and optional anchor, including legacy Advanced redirects."""
+    section_id = resolve_section_id(section)
+    if section_id is None:
+        return None, None
+    if section_id == "advanced" and anchor:
+        redirect = _LEGACY_ADVANCED_ANCHOR_REDIRECTS.get(anchor)
+        if redirect is not None:
+            return redirect
+    return section_id, anchor

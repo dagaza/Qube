@@ -11,6 +11,8 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | See `@` skills | [Composer skills](reference/composer-skills.md) |
 | Reset tours or guidance | [Composer commands](reference/composer-commands.md) |
 | Find a Settings page | [Settings sections](reference/settings-sections.md) |
+| Connect an MCP server (filesystem example) | [Connect an MCP server](workflows/connect-mcp-server.md) |
+| Review MCP capability permissions | [Integrations settings](features/settings/integrations.md) |
 | Understand Live Sources adapters | [Live sources overview](reference/live-sources-overview.md) |
 | Use the chat screen | [Conversations](features/conversations.md) |
 | Upload or search documents | [Library](features/library.md) |
@@ -18,8 +20,8 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Download a local model | [Model Manager](features/model-manager.md) |
 | Monitor performance | [Advanced Telemetry](features/telemetry.md) · [Interpreting telemetry](faq/advanced-telemetry-interpreting.md) |
 | Inspect one reply's retrieval | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
-| View or share diagnostic logs | [Diagnostic logs (Advanced settings)](faq/diagnostic-logs-advanced-settings.md) |
-| Choose web search privacy tier | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) |
+| View or share diagnostic logs | [Diagnostic logs](faq/diagnostic-logs-advanced-settings.md) |
+| Choose web search privacy tier | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) · [Privacy & data settings](features/settings/privacy-data.md) |
 | Delete something Qube remembered | [Delete memory entries](faq/delete-memory-entries.md) |
 | Understand chat routing (Memory / Library / web) | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
 | Set up a local LLM | [Set up local models](workflows/set-up-local-models.md) |
@@ -50,11 +52,15 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | AI & Models | [AI & Models settings](features/settings/ai-models.md) |
 | Memory | [Memory settings](features/settings/memory.md) |
 | Knowledge | [Knowledge settings](features/settings/knowledge.md) |
+| Integrations | [Integrations settings](features/settings/integrations.md) |
 | General | [General settings](features/settings/general.md) |
 | Desktop Companion | [Desktop Companion settings](features/settings/desktop-companion.md) |
 | Notifications | [Notifications settings](features/settings/notifications.md) |
 | Help | [Help settings](features/settings/help.md) |
 | Contact & Feedback | [Contact & Feedback settings](features/settings/contact-feedback.md) |
+| Privacy & data | [Privacy & data settings](features/settings/privacy-data.md) |
+| Diagnostics | [Diagnostics settings](features/settings/diagnostics.md) |
+| License | [License settings](features/settings/license.md) |
 | Advanced | [Advanced settings](features/settings/advanced.md) |
 
 ## Workflows
@@ -65,6 +71,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Import documents to Library | [Import documents to Library](workflows/import-documents-to-library.md) |
 | Chat with a library document | [Chat with a library document](workflows/chat-with-a-library-document.md) |
 | Create a knowledge preset | [Create a knowledge preset](workflows/create-knowledge-preset.md) |
+| Connect an MCP server | [Connect an MCP server](workflows/connect-mcp-server.md) |
 | Configure companion visibility | [Configure Desktop Companion visibility](workflows/configure-desktop-companion-visibility.md) |
 | Manage long-term memory | [Manage long-term memory](workflows/manage-long-term-memory.md) |
 | Prepare search models | [Prepare search models for Library](workflows/prepare-search-models-for-library.md) |
@@ -97,7 +104,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | GPU layers & hardware tuning | [Hardware tuning (Internal Engine)](faq/hardware-tuning-internal-engine.md) |
 | Interpreting Telemetry / TTFT | [Advanced Telemetry — interpreting](faq/advanced-telemetry-interpreting.md) |
 | INSPECT RETRIEVAL (per-reply) | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
-| Diagnostic logs (Advanced settings) | [Diagnostic logs — Advanced](faq/diagnostic-logs-advanced-settings.md) |
+| Diagnostic logs | [Diagnostic logs](faq/diagnostic-logs-advanced-settings.md) |
 | Cognitive Router / chat routing | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
 | Web discovery privacy tiers | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) |
 | Delete memory entries | [Delete memory entries](faq/delete-memory-entries.md) |

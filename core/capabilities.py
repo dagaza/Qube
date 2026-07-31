@@ -1,7 +1,8 @@
 """Edition capability model for Pro / Team / Enterprise entitlements.
 
-Phase 1.1–1.2 commercial platform foundation. Under MIT launch every capability
-is granted (no user-facing gates). License merge lands in Phase 1.6.
+Qube is MIT-licensed open source. Optional signed ``.qube-license`` files
+unlock paid edition capabilities on a device; ``has_feature()`` enforces
+tier gates at module boundaries.
 
 See docs/private/capability_registry.md for the feature → capability map.
 """
@@ -57,7 +58,7 @@ class EditionCapabilities:
 
     tier: EditionTier
     flags: Mapping[str, bool]
-    source: str = "mit_launch"
+    source: str = "home"
 
     def has(self, capability_id: str) -> bool:
         return bool(self.flags.get(capability_id, False))
@@ -259,7 +260,8 @@ FEATURE_CAPABILITY_REGISTRY: dict[str, str] = {
 }
 
 
-_MIT_LAUNCH_GRANTS_ALL = False
+# When True, bypass tier gates and grant every capability (tests/dev only).
+_GRANT_ALL_CAPABILITIES_OVERRIDE = False
 
 
 def resolve_capabilities(
@@ -271,22 +273,23 @@ def resolve_capabilities(
     """Resolve effective capabilities for the running app.
 
     When no explicit tier/overrides are passed, merges a cached signed license
-    from ``core.licensing.store`` (Phase 1.6). MIT launch still grants every
-    capability until ``_MIT_LAUNCH_GRANTS_ALL`` is disabled for commercial gating.
+    from ``core.licensing.store``. Pro/Team/Enterprise capabilities require a
+    valid imported license unless ``_GRANT_ALL_CAPABILITIES_OVERRIDE`` is
+    enabled (test harness only).
     """
     license_doc = None
     if tier is None and entitlement_overrides is None:
         license_doc = _load_active_license_document()
 
     effective_tier = tier or (license_doc.tier if license_doc else EditionTier.HOME)
-    if _MIT_LAUNCH_GRANTS_ALL:
+    if _GRANT_ALL_CAPABILITIES_OVERRIDE:
         flags = {cap_id: True for cap_id in ALL_CAPABILITY_IDS}
         if source is not None:
             resolved_source = source
         elif license_doc is not None:
             resolved_source = f"license:{effective_tier.value}"
         else:
-            resolved_source = "mit_launch"
+            resolved_source = "override:all_capabilities"
     else:
         flags = capabilities_for_tier(effective_tier)
         if license_doc is not None:
@@ -306,7 +309,7 @@ def resolve_capabilities(
                 raise KeyError(f"Unknown capability id in overrides: {cap_id!r}")
             merged[cap_id] = bool(granted)
         flags = merged
-        if source is None and not _MIT_LAUNCH_GRANTS_ALL:
+        if source is None and not _GRANT_ALL_CAPABILITIES_OVERRIDE:
             resolved_source = "tier_with_overrides"
 
     return EditionCapabilities(

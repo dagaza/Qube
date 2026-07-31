@@ -1,4 +1,4 @@
-# Diagnostic logs — Settings → Advanced
+# Diagnostic logs — Settings
 
 ## Common questions
 
@@ -12,7 +12,7 @@
 
 ## What diagnostic logs are
 
-**Settings → Advanced → Diagnostic logs** exposes **five rotating log files** under your Qube data directory. Each log has:
+**Settings → Diagnostics** and **Settings → Privacy & data** expose **five rotating log files** under your Qube data directory. Each log has:
 
 - A **recording toggle** (when Qube appends new lines to disk)
 - **View {log name}** — in-app viewer (last **500 lines**, optional **Live tail** every 2s, **Open externally**)
@@ -36,7 +36,7 @@ All paths below are relative to that folder.
 | Surface | Where | What it is | Persistence |
 |---------|-------|------------|-------------|
 | **Advanced Telemetry** | Left nav **Telemetry** | Live CPU/RAM/GPU chart, **Pipeline Latency**, router/sidecar cards | In-memory rolling windows; cleared when Qube exits |
-| **Diagnostic log files** | **Settings → Advanced** | Subsystem trace files you enable, view, and clear | Rotating files on disk |
+| **Diagnostic log files** | **Settings → Diagnostics** (application, skills) · **Settings → Privacy & data** (LLM, routing, web search) | Subsystem trace files you enable, view, and clear | Rotating files on disk |
 | **Last retrieval trace** | **Settings → Knowledge → Diagnostics** | Summary panel fed from `web_search.log` **`retrieval_trace`** JSONL events | Requires **Web search log** recording (same file) |
 | **LLM debug log panel** | **Telemetry** (developer only) | Live tail when launched with `QUBE_LLM_LOG_UI=1` | Same underlying `llm_debug.log` |
 
@@ -48,11 +48,11 @@ Default **recording** states reflect fresh installs (Settings toggle unless a la
 
 | Log | File | Default recording | Logger / purpose |
 |-----|------|-------------------|------------------|
-| **Application log** | `qube.log` | **On** | General `Qube.*` runtime: boot, workers, voice, model load, ingestion errors (**INFO** in file; use `QUBE_APP_LOG_LEVEL=DEBUG` for verbose capture). **Excludes** the four dedicated debug loggers below so they are not duplicated here. |
-| **LLM debug log** | `llm_debug.log` | **On** | `Qube.NativeLLM.Debug` — structured JSON events (discourse, validation, completion traces, router one-liners, etc.). **Heavy native prompt reconstruction** additionally requires `QUBE_LLM_DEBUG=1` at launch (observer-only; does not change inference). The Settings toggle controls **file recording only** — introspection may still run when `QUBE_LLM_DEBUG` is on. |
-| **Routing debug log** | `routing_debug.log` | **Off** | `Qube.RoutingDebug` — one compact **JSONL line per chat turn**: route, strategy, intent scores, retrieval outcome blocks, policy trace. Enable recording, send a message, then **View** or grep the file. |
-| **Web search log** | `web_search.log` | **Off** | `Qube.WebSearchAudit` — DuckDuckGo SERP audit: trigger reason, query text, result URLs, relevance-gate outcomes, and optional **`retrieval_trace`** events (powers **Knowledge → Diagnostics** refresh). Snippets only — result pages are not fetched. |
-| **Skills debug log** | `skills_debug.log` | **Off** | `Qube.SkillsDebug` — per-turn skill activation scores and prompt injection telemetry. Requires **Skills** enabled under **Settings → AI & Models**; with Skills off, no activation telemetry is produced regardless of this toggle. |
+| **Application log** | `qube.log` | **On** | **Settings → Diagnostics** — general `Qube.*` runtime: boot, workers, voice, model load, ingestion errors (**INFO** in file; use `QUBE_APP_LOG_LEVEL=DEBUG` for verbose capture). **Excludes** the four dedicated debug loggers below so they are not duplicated here. |
+| **LLM debug log** | `llm_debug.log` | **On** | **Settings → Privacy & data** — `Qube.NativeLLM.Debug` — structured JSON events (discourse, validation, completion traces, router one-liners, etc.). **Heavy native prompt reconstruction** additionally requires `QUBE_LLM_DEBUG=1` at launch (observer-only; does not change inference). The Settings toggle controls **file recording only** — introspection may still run when `QUBE_LLM_DEBUG` is on. |
+| **Routing debug log** | `routing_debug.log` | **Off** | **Settings → Privacy & data** — `Qube.RoutingDebug` — one compact **JSONL line per chat turn**: route, strategy, intent scores, retrieval outcome blocks, policy trace. Enable recording, send a message, then **View** or grep the file. |
+| **Web search log** | `web_search.log` | **Off** | **Settings → Privacy & data** — `Qube.WebSearchAudit` — DuckDuckGo SERP audit: trigger reason, query text, result URLs, relevance-gate outcomes, and optional **`retrieval_trace`** events (powers **Knowledge → Diagnostics** refresh). Snippets only — result pages are not fetched. |
+| **Skills debug log** | `skills_debug.log` | **Off** | **Settings → Diagnostics** — `Qube.SkillsDebug` — per-turn skill activation scores and prompt injection telemetry. Requires **Skills** enabled under **Settings → AI & Models**; with Skills off, no activation telemetry is produced regardless of this toggle. |
 
 Rotating limits (approximate): **Application**, **LLM**, and **Routing** logs — 10 MB × 5 backups; **Web search** and **Skills** — 5 MB × 3 backups.
 
@@ -112,7 +112,8 @@ See [Log redaction before sharing logs](log-redaction-sharing-logs.md) for the f
 
 ## Related
 
-- [Advanced settings](../features/settings/advanced.md) — JSON editor and log controls
+- [Advanced settings](../features/settings/advanced.md) — JSON editor
+- [Diagnostics settings](../features/settings/diagnostics.md) · [Privacy & data settings](../features/settings/privacy-data.md) — log controls
 - [Delete memory entries](delete-memory-entries.md) — local data you control vs logs you may share
 - [Web discovery privacy tiers](web-discovery-privacy-tiers.md) — what web discovery sends off-device
 - [Log redaction before sharing logs](log-redaction-sharing-logs.md) — redaction env vars and excerpt workflow

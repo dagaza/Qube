@@ -123,9 +123,9 @@ Check **Sources** on the reply; if empty, the final route was treated as non-gro
 |-------|-------|----------|
 | **Session aggregate** | **Telemetry → Router Intelligence** | Route mix, avg retrieval phase, tuner weights, health flags over ~200 recent turns |
 | **Per-reply retrieval** | **Sources → INSPECT RETRIEVAL** (when shown) | Adapters, preset, pipeline detail for **that assistant message** |
-| **Per-turn router JSONL** | **Settings → Advanced → Routing debug log** | Full route, strategy, intent scores, policy trace — enable recording, send one message, **View** log |
+| **Per-turn router JSONL** | **Settings → Privacy & data → Routing debug log** | Full route, strategy, intent scores, policy trace — enable recording, send one message, **View** log |
 
-See [Advanced Telemetry — interpreting](advanced-telemetry-interpreting.md) and [Diagnostic logs — Advanced](diagnostic-logs-advanced-settings.md).
+See [Advanced Telemetry — interpreting](advanced-telemetry-interpreting.md) and [Diagnostic logs](diagnostic-logs-advanced-settings.md).
 
 ## Related
 

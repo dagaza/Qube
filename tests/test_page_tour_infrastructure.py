@@ -12,34 +12,34 @@ from ui.onboarding.tour_registry import (
     settings_section_tour_id,
     tour_display_name,
 )
+from ui.views.settings.registry import SETTINGS_SECTIONS
+
+_PAGE_TOUR_IDS = frozenset(
+    {
+        "conversations",
+        "library",
+        "memory_manager",
+        "model_manager",
+        "telemetry",
+    }
+)
+_SETTINGS_TOUR_IDS = frozenset(
+    settings_section_tour_id(sec.id) for sec in SETTINGS_SECTIONS
+)
 
 
 class TestPageTourRegistry(unittest.TestCase):
     def test_all_page_tours_registered(self) -> None:
-        ids = list_registered_tour_ids()
-        expected = {
-            "conversations",
-            "library",
-            "memory_manager",
-            "model_manager",
-            "telemetry",
-            "settings.voice_audio",
-            "settings.ai_models",
-            "settings.memory",
-            "settings.knowledge",
-            "settings.general",
-            "settings.appearance_themes",
-            "settings.companion_desktop",
-            "settings.notifications",
-            "settings.help",
-            "settings.contact_feedback",
-            "settings.advanced",
-        }
-        self.assertEqual(set(ids), expected)
+        ids = set(list_registered_tour_ids())
+        expected = _PAGE_TOUR_IDS | _SETTINGS_TOUR_IDS
+        self.assertEqual(ids, expected)
 
     def test_settings_section_tour_id_mapping(self) -> None:
         self.assertEqual(settings_section_tour_id("voice.audio"), "settings.voice_audio")
         self.assertEqual(settings_section_tour_id("ai.models"), "settings.ai_models")
+        self.assertEqual(settings_section_tour_id("privacy.data"), "settings.privacy_data")
+        self.assertEqual(settings_section_tour_id("diagnostics"), "settings.diagnostics")
+        self.assertEqual(settings_section_tour_id("license"), "settings.license")
         self.assertEqual(
             settings_section_tour_id("companion.desktop"),
             "settings.companion_desktop",

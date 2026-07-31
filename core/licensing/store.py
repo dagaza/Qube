@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from core.capabilities import CAPABILITY_SPECS_BY_ID, invalidate_capabilities_cache
+from core.capabilities import invalidate_capabilities_cache
 from core.licensing.license_schema import (
     LICENSE_SCHEMA_VERSION,
     LicenseDocument,
@@ -221,59 +221,7 @@ def license_summary() -> dict[str, Any]:
 
 
 def format_license_status_text(summary: Mapping[str, Any]) -> str:
-    """Human-readable license status for Settings → Advanced."""
-    if not summary.get("cached"):
-        return (
-            "No license imported. Qube runs with full access during the MIT launch "
-            "period. Import a signed .qube-license file here when you receive one — "
-            "nothing prompts you on startup."
-        )
+    """Human-readable license status for Settings → License."""
+    from core.licensing.display import format_license_status_text as _format
 
-    if summary.get("error"):
-        return (
-            "A cached license file is present but could not be verified.\n\n"
-            f"Error: {summary['error']}"
-        )
-
-    if not summary.get("active"):
-        return (
-            "The cached license has expired. Import a renewed .qube-license file to "
-            "restore your entitlements."
-        )
-
-    tier = str(summary.get("tier") or "unknown").replace("_", " ").title()
-    lines = [
-        f"Tier: {tier}",
-        f"Seats: {summary.get('seats', 1)}",
-    ]
-    org_id = summary.get("org_id")
-    if org_id:
-        lines.append(f"Organization: {org_id}")
-
-    issued = summary.get("issued")
-    if issued:
-        lines.append(f"Issued: {issued}")
-    expires = summary.get("expires")
-    lines.append(f"Expires: {expires}" if expires else "Expires: never")
-
-    entitlements = summary.get("entitlements") or []
-    if entitlements:
-        labels: list[str] = []
-        for cap_id in entitlements:
-            spec = CAPABILITY_SPECS_BY_ID.get(str(cap_id))
-            labels.append(spec.label if spec else str(cap_id))
-        lines.append("")
-        lines.append("Extra entitlements:")
-        lines.extend(f"• {label}" for label in labels)
-
-    source_file = summary.get("source_file")
-    if source_file:
-        lines.append("")
-        lines.append(f"Imported from: {source_file}")
-
-    lines.append("")
-    lines.append(
-        "Feature gating is not active during the MIT launch period. This license is "
-        "stored locally for support and future entitlement checks."
-    )
-    return "\n".join(lines)
+    return _format(summary)

@@ -65,6 +65,6 @@ def format_routing_inspect_text(
         lines.append(f"  Policy trace: {policy}")
 
     lines.append(
-        "  Tip: enable **Routing debug log** (Settings → Advanced) for full JSONL per turn."
+        "  Tip: enable **Routing debug log** (Settings → Privacy & data) for full JSONL per turn."
     )
     return "\n".join(lines)

@@ -68,7 +68,7 @@ grep -i "voice capture" ~/.qube/logs/qube.log
 grep -i "Manual voice" ~/.qube/logs/qube.log
 ```
 
-Also available in **Settings → Advanced → Diagnostic logs** (“Application log”).
+Also available in **Settings → Diagnostics** (“Application log”) and **Settings → Privacy & data** (audit logs).
 
 ### View LLM debug log
 

@@ -31,6 +31,7 @@ from ui.views.settings.widgets import (
     add_settings_card_form,
     add_settings_field_column_row,
     add_settings_full_width_row,
+    add_settings_span_row,
     add_subsection_to_form,
     make_disclosure_row,
     make_settings_hint,
@@ -53,6 +54,20 @@ def _initial_swatch_color(host, token_key: str) -> str:
     except (AttributeError, RuntimeError, TypeError, ValueError):
         return UNRESOLVED_TOKEN_COLOR
     return values.get(token_key, UNRESOLVED_TOKEN_COLOR)
+
+
+def _add_settings_card_intro(form: QFormLayout, *widgets: QWidget) -> None:
+    """Intro copy spanning the card body (one form row, no extra label-column gutter)."""
+    if len(widgets) == 1:
+        add_settings_span_row(form, widgets[0])
+        return
+    host = QWidget()
+    layout = QVBoxLayout(host)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(4)
+    for widget in widgets:
+        layout.addWidget(widget)
+    add_settings_span_row(form, host)
 
 
 def _style_themes_action_button(btn: QPushButton) -> None:
@@ -214,7 +229,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_theme_card = theme_card
     theme_form = add_settings_card_form(theme_layout)
     add_subsection_to_form(theme_form, "Appearance")
-    add_settings_full_width_row(theme_form, make_settings_hint(
+    add_settings_span_row(theme_form, make_settings_hint(
             "Choose whether Qube stays dark, stays light, or follows your "
             "operating system. Follow system remembers the last theme you "
             "used for each polarity."
@@ -246,7 +261,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_settings_full_width_row(theme_form, host.themes_appearance_row)
 
     add_subsection_to_form(theme_form, "Theme")
-    add_settings_full_width_row(theme_form, make_settings_hint(
+    add_settings_span_row(theme_form, make_settings_hint(
             "Choose a built-in preset or a custom theme from ~/.qube/themes/. "
             "The nav moon/sun button switches light/dark within the same family "
             "when a matching variant exists. Changes here preview until you press Apply."
@@ -294,11 +309,13 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_identity_label = QLabel("")
     host.themes_identity_label.setObjectName("SettingsHint")
     host.themes_identity_label.setWordWrap(True)
-    add_settings_full_width_row(customize_form, host.themes_identity_label)
-    add_settings_full_width_row(customize_form, make_settings_hint(
+    _add_settings_card_intro(
+        customize_form,
+        host.themes_identity_label,
+        make_settings_hint(
             "Adjust core colors for the draft preview. Changes apply globally only "
             "after you press Apply below, or persist when you Save as a custom theme."
-        )
+        ),
     )
     host.themes_color_swatches: dict[str, ThemeColorSwatch] = {}
     color_label_width = _theme_color_label_width()
@@ -341,7 +358,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(customize_form, host.themes_advanced_panel)
 
-    add_settings_full_width_row(customize_form, make_settings_hint(
+    add_settings_span_row(customize_form, make_settings_hint(
             "Miniature Settings page with app nav, settings sidebar, mainstage "
             "canvas, section cards, and form controls using your draft colors."
         )
@@ -400,12 +417,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_wallpapers_card = chat_wallpaper_card
     chat_wallpaper_form = add_settings_card_form(chat_wallpaper_layout)
     add_subsection_to_form(chat_wallpaper_form, "Chat wallpaper")
-    add_settings_full_width_row(chat_wallpaper_form, make_settings_hint(
+    add_settings_span_row(chat_wallpaper_form, make_settings_hint(
             "Decorate the Conversations transcript background. Wallpapers preview "
             "here until you press Apply; they never change core theme tokens."
         )
     )
-    host.themes_chat_wallpaper = WallpaperEditorWidget("Chat wallpaper", parent=host)
+    host.themes_chat_wallpaper = WallpaperEditorWidget(
+        "Chat wallpaper", parent=host, show_section_title=False
+    )
     host.themes_chat_wallpaper.setSizePolicy(
         QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
     )
@@ -427,7 +446,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(chat_wallpaper_form, host.themes_assistant_message_background_cb)
 
-    add_settings_full_width_row(chat_wallpaper_form, make_settings_hint(
+    add_settings_span_row(chat_wallpaper_form, make_settings_hint(
             "Miniature Conversations page shell with the tools pane open."
         )
     )
@@ -485,12 +504,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_library_wallpaper_card = library_wallpaper_card
     library_wallpaper_form = add_settings_card_form(library_wallpaper_layout)
     add_subsection_to_form(library_wallpaper_form, "Library wallpaper")
-    add_settings_full_width_row(library_wallpaper_form, make_settings_hint(
+    add_settings_span_row(library_wallpaper_form, make_settings_hint(
             "Decorate the library document preview background. Wallpapers preview "
             "here until you press Apply; they never change core theme tokens."
         )
     )
-    host.themes_library_wallpaper = WallpaperEditorWidget("Library wallpaper", parent=host)
+    host.themes_library_wallpaper = WallpaperEditorWidget(
+        "Library wallpaper", parent=host, show_section_title=False
+    )
     host.themes_library_wallpaper.setSizePolicy(
         QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
     )
@@ -514,7 +535,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(library_wallpaper_form, host.themes_library_transcript_background_cb)
 
-    add_settings_full_width_row(library_wallpaper_form, make_settings_hint(
+    add_settings_span_row(library_wallpaper_form, make_settings_hint(
             "Miniature Library page shell with document list sidebar, readability "
             "toolbar, and sample transcript text."
         )
@@ -569,7 +590,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.themes_share_card = share_card
     share_form = add_settings_card_form(share_layout)
     add_subsection_to_form(share_form, "Share themes")
-    add_settings_full_width_row(share_form, make_settings_hint(
+    add_settings_span_row(share_form, make_settings_hint(
             "Export a theme as JSON, import one from another machine, save "
             "the current draft as a custom preset, or share a theme pack "
             "(colors, wallpapers, and images) as a zip file."

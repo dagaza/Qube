@@ -54,6 +54,8 @@ KEY_ROUTER_INTEGRATION_SUGGESTIONS = "qube.integrations.router_suggestions_enabl
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
+KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED = "qube.diagnostics.web_search_audit_redact_enabled"
+KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED = "qube.diagnostics.routing_debug_redact_query_enabled"
 KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"  # legacy; ignored
 KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"  # legacy; ignored
 KEY_RETRIEVAL_PROFILE = "qube.knowledge.retrieval_profile"
@@ -346,6 +348,24 @@ def get_web_search_audit_log_enabled() -> bool:
 
 def set_web_search_audit_log_enabled(enabled: bool) -> None:
     _store().set(KEY_WEB_SEARCH_AUDIT_LOG_ENABLED, enabled)
+
+
+def get_web_search_audit_redact_enabled() -> bool:
+    """When True, hash web search queries and omit snippet bodies in web_search.log."""
+    return bool(_store().get(KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED, False))
+
+
+def set_web_search_audit_redact_enabled(enabled: bool) -> None:
+    _store().set(KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED, enabled)
+
+
+def get_routing_debug_redact_query_enabled() -> bool:
+    """When True, hash user queries in routing_debug.log JSONL entries."""
+    return bool(_store().get(KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED, False))
+
+
+def set_routing_debug_redact_query_enabled(enabled: bool) -> None:
+    _store().set(KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED, enabled)
 
 
 # Internal corpus, research map, and deep research are always enabled (Settings

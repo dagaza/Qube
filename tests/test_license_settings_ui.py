@@ -1,4 +1,4 @@
-"""Tests for license status text used in Settings → Advanced."""
+"""Tests for license status text used in Settings → License."""
 
 from __future__ import annotations
 
@@ -7,9 +7,8 @@ from core.licensing.store import format_license_status_text
 
 def test_format_license_status_no_cache():
     text = format_license_status_text({"active": False, "cached": False})
-    assert "No license imported" in text
-    assert "MIT launch" in text
-    assert "nothing prompts you on startup" in text.lower() or "Nothing prompts" in text
+    assert "Home edition" in text
+    assert "MIT launch" not in text
 
 
 def test_format_license_status_active_pro():
@@ -26,9 +25,10 @@ def test_format_license_status_active_pro():
             "source_file": "/tmp/customer.qube-license",
         }
     )
-    assert "Tier: Pro" in text
+    assert "Qube Pro active" in text
+    assert "Edition tier: Pro" in text
     assert "Premium theme packs" in text
-    assert "MIT launch" in text
+    assert "MIT launch" not in text
 
 
 def test_format_license_status_invalid_cache():
@@ -39,5 +39,5 @@ def test_format_license_status_invalid_cache():
             "error": "Pack signature verification failed",
         }
     )
-    assert "could not be verified" in text
-    assert "verification failed" in text
+    assert "verification failed" in text.lower() or "License verification failed" in text
+    assert "verification failed" in text.lower()

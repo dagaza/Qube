@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from core.diagnostic_logs import iter_diagnostic_logs
+from core.diagnostic_logs import iter_diagnostic_logs, iter_diagnostic_logs_by_category
 from core.ui_language import UI_LANGUAGE_LABELS
 from ui.views.settings.registry import SETTINGS_SECTIONS, get_section
 
@@ -25,13 +25,18 @@ SECTION_SOURCE_FILES: dict[str, tuple[str, ...]] = {
         "knowledge_custom_sources.py",
         "knowledge_diagnostics.py",
         "knowledge_provider_status.py",
+        "privacy_tier_controls.py",
     ),
+    "integrations": ("integrations.py",),
     "general": ("general.py",),
     "appearance.themes": ("appearance_themes.py",),
     "companion.desktop": ("desktop_companion.py",),
     "notifications": ("notifications.py",),
     "help": ("help.py",),
     "contact.feedback": ("contact_feedback.py",),
+    "privacy.data": ("privacy_data.py",),
+    "diagnostics": ("diagnostics.py", "diagnostic_log_ui.py"),
+    "license": ("license_section.py",),
     "advanced": ("advanced.py",),
 }
 
@@ -40,12 +45,16 @@ SECTION_SLUGS: dict[str, str] = {
     "ai.models": "ai-models",
     "memory": "memory",
     "knowledge": "knowledge",
+    "integrations": "integrations",
     "general": "general",
     "appearance.themes": "themes",
     "companion.desktop": "desktop-companion",
     "notifications": "notifications",
     "help": "help",
     "contact.feedback": "contact-feedback",
+    "privacy.data": "privacy-data",
+    "diagnostics": "diagnostics",
+    "license": "license",
     "advanced": "advanced",
 }
 
@@ -95,6 +104,7 @@ _KNOWLEDGE_WEB_DISCOVERY_LABELS = frozenset(
         "Slow down live DuckDuckGo searches slightly (recommended)",
         "Show advanced discovery limits",
         "Reset discovery health",
+        "Open Privacy & data",
     }
 )
 
@@ -366,14 +376,37 @@ def extract_settings_controls(section_id: str) -> list[SettingsControlEntry]:
     if section_id == "help":
         _stabilize_help_uninstall_labels(blocks)
 
-    if section_id == "advanced":
-        for spec in iter_diagnostic_logs():
+    if section_id in ("privacy.data", "diagnostics"):
+        specs = (
+            iter_diagnostic_logs_by_category("audit")
+            if section_id == "privacy.data"
+            else iter_diagnostic_logs_by_category("technical")
+        )
+        for spec in specs:
             blocks.append(_ControlBlock(subsection=spec.title, items=[]))
             if spec.supports_recording_toggle:
                 toggle_label = spec.recording_toggle_label or "Record entries to this log"
                 _append_unique(blocks, spec.title, toggle_label)
+            if spec.supports_redaction_toggle:
+                redaction_label = (
+                    spec.redaction_toggle_label or "Redact sensitive fields in new log entries"
+                )
+                _append_unique(blocks, spec.title, redaction_label)
             _append_unique(blocks, spec.title, f"View {spec.title}")
             _append_unique(blocks, spec.title, "Clear log")
+
+    if section_id == "privacy.data":
+        _append_unique(blocks, "Web discovery privacy", "Privacy tier")
+        _append_unique(
+            blocks,
+            "Web discovery privacy",
+            "Open Knowledge → Web search discovery",
+        )
+        _append_unique(blocks, "Web discovery privacy", "Hybrid Internet Mode")
+        _append_unique(blocks, "Web discovery privacy", "What leaves your device")
+
+    if section_id == "advanced":
+        pass  # JSON editor action buttons are intentionally omitted from generated lists
 
     entries: list[SettingsControlEntry] = []
     for block in blocks:

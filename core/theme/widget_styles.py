@@ -86,6 +86,7 @@ SETTINGS_WARNING_LABEL = "settings_warning_label"
 SETTINGS_HINT = "settings_hint"
 SETTINGS_GHOST_TOOL_BUTTON = "settings_ghost_tool_button"
 SETTINGS_BORDERLESS_TABLE = "settings_borderless_table"
+SETTINGS_BORDERED_TABLE = "settings_bordered_table"
 KNOWLEDGE_ACCESS_BADGE = "knowledge_access_badge"
 KNOWLEDGE_ACCESS_HINT = "knowledge_access_hint"
 KNOWLEDGE_ACTION_BUTTON = "knowledge_action_button"
@@ -93,6 +94,12 @@ KNOWLEDGE_SETUP_CALLOUT = "knowledge_setup_callout"
 KNOWLEDGE_SETUP_CALLOUT_TITLE = "knowledge_setup_callout_title"
 KNOWLEDGE_SETUP_CALLOUT_BODY = "knowledge_setup_callout_body"
 KNOWLEDGE_SETUP_CALLOUT_DISMISS = "knowledge_setup_callout_dismiss"
+LICENSE_STATUS_BANNER = "license_status_banner"
+LICENSE_STATUS_BANNER_TITLE = "license_status_banner_title"
+LICENSE_STATUS_BANNER_BODY = "license_status_banner_body"
+LICENSE_EDITION_CHIP = "license_edition_chip"
+LICENSE_EDITION_CHIP_MUTED = "license_edition_chip_muted"
+LICENSE_EDITION_CHIP_WARNING = "license_edition_chip_warning"
 DISCOVERY_PROVIDER_CARD = "discovery_provider_card"
 DISCOVERY_ROLE_CHIP = "discovery_role_chip"
 DISCOVERY_PROVIDER_NAME = "discovery_provider_name"
@@ -193,6 +200,23 @@ def _knowledge_access_colors(resolved: ResolvedTheme, access: str) -> tuple[str,
         "coming_soon": (resolved.text_muted, surface, resolved.border),
     }
     return mapping.get(access, mapping["coming_soon"])
+
+
+def _license_banner_colors(
+    resolved: ResolvedTheme, state: str
+) -> tuple[str, str, str]:
+    """Return ``(foreground, background, border)`` for license status banners."""
+    surface = resolved.surface_elevated if resolved.is_dark else resolved.background
+    mapping = {
+        "active": _knowledge_access_colors(resolved, "connected"),
+        "home": _knowledge_access_colors(resolved, "free"),
+        "warning": _knowledge_access_colors(resolved, "optional_key"),
+        "error": _knowledge_access_colors(resolved, "key_required"),
+    }
+    fg, bg, border = mapping.get(state, mapping["home"])
+    if state == "active":
+        bg = with_alpha(resolved.success, 0.10 if resolved.is_dark else 0.07)
+    return fg, bg, border
 
 
 def theme_color(resolved: ResolvedTheme, role: str) -> str:
@@ -1073,6 +1097,31 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 font-weight: 600;
             }}
         """
+    if role == SETTINGS_BORDERED_TABLE:
+        border = resolved.border_subtle if resolved.is_dark else resolved.border
+        bg = resolved.background
+        header_bg = resolved.surface_elevated
+        object_name = kwargs.get("object_name", "KnowledgeListTable")
+        return f"""
+            QTableWidget#{object_name} {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 8px;
+            }}
+            QTableWidget#{object_name}::item {{
+                padding: 6px 8px;
+                border: none;
+            }}
+            QTableWidget#{object_name} QHeaderView::section {{
+                background-color: {header_bg};
+                color: {resolved.text_muted};
+                border: none;
+                border-bottom: 1px solid {border};
+                padding: 6px 8px;
+                font-weight: 600;
+                font-size: 11px;
+            }}
+        """
     if role == KNOWLEDGE_ACCESS_BADGE:
         access = str(kwargs.get("access", "coming_soon"))
         fg, bg, border = _knowledge_access_colors(resolved, access)
@@ -1127,6 +1176,65 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 background-color: {surface} !important;
             }}
         """
+    if role == LICENSE_STATUS_BANNER:
+        state = str(kwargs.get("state") or "home")
+        _, bg, border = _license_banner_colors(resolved, state)
+        return f"""
+            QWidget#LicenseStatusBanner {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 10px;
+            }}
+        """
+    if role == LICENSE_STATUS_BANNER_TITLE:
+        state = str(kwargs.get("state") or "home")
+        fg, _, _ = _license_banner_colors(resolved, state)
+        return f"""
+            QLabel#LicenseStatusBannerTitle {{
+                color: {fg};
+                font-size: 13px;
+                font-weight: 700;
+                background: transparent;
+                border: none;
+                padding: 0;
+            }}
+        """
+    if role == LICENSE_STATUS_BANNER_BODY:
+        return f"""
+            QLabel#LicenseStatusBannerBody {{
+                color: {resolved.text_secondary};
+                font-size: 12px;
+                font-weight: 400;
+                background: transparent;
+                border: none;
+                padding: 0;
+            }}
+        """
+    if role == LICENSE_EDITION_CHIP:
+        bg = with_alpha(resolved.accent, 0.28 if resolved.is_dark else 0.16)
+        fg = adjust_lightness(resolved.accent, 0.22 if resolved.is_dark else -0.35)
+        border = with_alpha(resolved.accent, 0.55)
+        return (
+            f"QLabel#LicenseEditionChip {{ background-color: {bg}; color: {fg};"
+            f" border: 1px solid {border}; border-radius: 9px; padding: 3px 10px;"
+            f" font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }}"
+        )
+    if role == LICENSE_EDITION_CHIP_MUTED:
+        bg = with_alpha(resolved.text_muted, 0.16 if resolved.is_dark else 0.10)
+        fg = resolved.text_secondary
+        border = with_alpha(resolved.text_muted, 0.28)
+        return (
+            f"QLabel#LicenseEditionChip {{ background-color: {bg}; color: {fg};"
+            f" border: 1px solid {border}; border-radius: 9px; padding: 3px 10px;"
+            f" font-size: 11px; font-weight: 600; }}"
+        )
+    if role == LICENSE_EDITION_CHIP_WARNING:
+        fg, bg, border = _license_banner_colors(resolved, "warning")
+        return (
+            f"QLabel#LicenseEditionChip {{ background-color: {bg}; color: {fg};"
+            f" border: 1px solid {border}; border-radius: 9px; padding: 3px 10px;"
+            f" font-size: 11px; font-weight: 700; }}"
+        )
     if role == KNOWLEDGE_SETUP_CALLOUT:
         fg, _, border = _knowledge_access_colors(resolved, "optional_key")
         surface = resolved.surface_elevated if resolved.is_dark else resolved.background
