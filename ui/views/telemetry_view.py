@@ -134,10 +134,15 @@ class TelemetryView(QWidget):
 
         self.inference_transparency_card = self._build_inference_transparency_card()
 
+        from ui.components.session_egress_panel import SessionEgressPanel
+
+        self.session_egress_panel = SessionEgressPanel()
+
         dashboard_layout.addLayout(top_row_layout)
         dashboard_layout.addLayout(bottom_row_layout)
         dashboard_layout.addLayout(discovery_row_layout)
         dashboard_layout.addWidget(self.inference_transparency_card)
+        dashboard_layout.addWidget(self.session_egress_panel)
         layout.addLayout(dashboard_layout)
         if os.environ.get("QUBE_LLM_LOG_UI", "").strip().lower() in (
             "1",
@@ -667,6 +672,14 @@ class TelemetryView(QWidget):
         layout.addWidget(lbl)
         return container, lbl, pill
 
+    def set_active_session_id(self, session_id: str | None) -> None:
+        if hasattr(self, "session_egress_panel"):
+            self.session_egress_panel.set_session_id(session_id)
+
+    def _refresh_session_egress_panel(self) -> None:
+        if hasattr(self, "session_egress_panel"):
+            self.session_egress_panel.refresh()
+
     # ============================================================
     # HARDWARE MONITOR
     # ============================================================
@@ -682,6 +695,7 @@ class TelemetryView(QWidget):
         self._refresh_model_capability_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
+        self._refresh_session_egress_panel()
         self._refresh_web_discovery_snapshot()
 
     def refresh_after_theme_toggle(self) -> None:
@@ -737,6 +751,7 @@ class TelemetryView(QWidget):
         self._refresh_inference_transparency_labels()
         self._refresh_router_from_worker_snapshot()
         self._refresh_sidecar_from_worker_snapshot()
+        self._refresh_session_egress_panel()
         self._refresh_web_discovery_snapshot()
 
         try:

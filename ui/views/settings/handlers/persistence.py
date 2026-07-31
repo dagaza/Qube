@@ -126,6 +126,7 @@ from ui.views.settings.sections import (
     desktop_companion,
     general,
     help,
+    integrations,
     knowledge,
     memory,
     notifications,
@@ -144,6 +145,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "integrations": integrations.build_section,
     "general": general.build_section,
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
@@ -818,3 +820,7 @@ class PersistenceHandlersMixin:
             win._companion_controller.on_settings_changed()
         if win is not None and hasattr(win, "tray_controller") and win.tray_controller is not None:
             win.tray_controller.sync_companion_toggle()
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+        from ui.views.settings.settings_card_style import sync_settings_collapsible_cards
+
+        sync_settings_collapsible_cards(self, is_dark=coalesce_settings_is_dark(self))

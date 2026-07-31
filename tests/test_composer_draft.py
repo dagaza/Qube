@@ -10,6 +10,8 @@ from core.composer_draft import (
     add_skill,
     composer_one_source_limit_request,
     composer_prompt_required_request,
+    routing_chip_unavailable_message,
+    routing_chip_tooltip,
     draft_from_text,
     merge_drafts,
     remove_routing_at,
@@ -167,6 +169,34 @@ class TestComposerDraft(unittest.TestCase):
     def test_composer_prompt_required_request(self) -> None:
         req = composer_prompt_required_request()
         self.assertEqual(req.dedupe_key, "composer_prompt_required")
+
+    def test_routing_chip_unavailable_for_missing_mcp_source(self) -> None:
+        import core.integrations.capabilities.persistence as P
+        import core.knowledge.configured_sources as cs
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        tmp = TemporaryDirectory()
+        root = Path(tmp.name)
+        orig_p = P.user_data_root
+        orig_cs = cs.user_data_root
+        P.user_data_root = lambda: root  # type: ignore[assignment]
+        cs.user_data_root = lambda: root  # type: ignore[assignment]
+        try:
+            att = ComposerAttachment(
+                kind="capability",
+                id="cap:mcp:filesystem/search-files",
+                label="filesystem/search-files",
+            )
+            message = routing_chip_unavailable_message(att)
+            self.assertIsNotNone(message)
+            self.assertIn("Custom sources", message or "")
+            tip = routing_chip_tooltip(att, is_primary=True)
+            self.assertEqual(tip, message)
+        finally:
+            P.user_data_root = orig_p  # type: ignore[assignment]
+            cs.user_data_root = orig_cs  # type: ignore[assignment]
+            tmp.cleanup()
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ def presets_dir() -> Path:
 
 PRESET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{1,31}$")
 MAX_PRESET_ADAPTERS = 8
+MAX_PRESET_CAPABILITIES = 8
 
 RESERVED_PRESET_IDS = frozenset(
     {
@@ -93,6 +94,7 @@ class KnowledgePreset:
     description: str = ""
     base_service: str = SERVICE_SCIENTIFIC_EVIDENCE
     adapters: list[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     site_bias: list[str] = field(default_factory=list)
     fetch_url_count: int | None = None
     adapter_policy: str = "fixed_order"
@@ -110,6 +112,9 @@ class KnowledgePreset:
         self.ranking_profile = (self.ranking_profile or "generic").strip().lower()
         self.query_planner = (self.query_planner or "passthrough").strip().lower()
         self.adapters = [str(a).strip().lower() for a in (self.adapters or []) if str(a).strip()]
+        self.capabilities = [
+            str(c).strip() for c in (self.capabilities or []) if str(c).strip()
+        ]
         self.site_bias = normalize_site_bias(self.site_bias)
         if self.fetch_url_count is not None:
             self.fetch_url_count = max(0, int(self.fetch_url_count))
@@ -124,6 +129,7 @@ class KnowledgePreset:
             description=str(raw.get("description") or ""),
             base_service=str(raw.get("base_service") or SERVICE_SCIENTIFIC_EVIDENCE),
             adapters=list(raw.get("adapters") or []),
+            capabilities=list(raw.get("capabilities") or []),
             site_bias=list(raw.get("site_bias") or []),
             fetch_url_count=(
                 int(raw["fetch_url_count"])
@@ -145,6 +151,7 @@ class KnowledgePreset:
             "description": self.description,
             "base_service": self.base_service,
             "adapters": list(self.adapters),
+            "capabilities": list(self.capabilities),
             "site_bias": list(self.site_bias),
             "fetch_url_count": self.fetch_url_count,
             "adapter_policy": self.adapter_policy,
@@ -156,6 +163,8 @@ class KnowledgePreset:
         }
 
     def validate(self) -> None:
+        from core.integrations.capabilities.urn import CapabilityURN, InvalidCapabilityURN
+
         if not PRESET_ID_RE.match(self.id):
             raise ValueError(f"Invalid preset id: {self.id!r}")
         if self.id in RESERVED_PRESET_IDS:
@@ -164,6 +173,20 @@ class KnowledgePreset:
             raise ValueError("Preset label is required")
         if self.base_service not in ALLOWED_BASE_SERVICES:
             raise ValueError(f"Unsupported base service: {self.base_service}")
+        if len(self.capabilities) > MAX_PRESET_CAPABILITIES:
+            raise ValueError(
+                f"Preset may include at most {MAX_PRESET_CAPABILITIES} capabilities"
+            )
+        seen_caps: set[str] = set()
+        for raw_cap in self.capabilities:
+            try:
+                urn = CapabilityURN.parse(raw_cap)
+            except InvalidCapabilityURN as exc:
+                raise ValueError(f"Invalid capability URN in preset: {raw_cap!r}") from exc
+            canonical = str(urn)
+            if canonical in seen_caps:
+                raise ValueError(f"Duplicate capability in preset: {canonical}")
+            seen_caps.add(canonical)
         if self.base_service == SERVICE_GENERAL_WEB:
             if self.adapters:
                 raise ValueError(
@@ -184,8 +207,10 @@ class KnowledgePreset:
                 raise ValueError(
                     "fetch_url_count is only supported on general_web source profiles."
                 )
-            if not self.adapters:
-                raise ValueError("Preset must include at least one adapter")
+            if not self.adapters and not self.capabilities:
+                raise ValueError(
+                    "Preset must include at least one adapter or capability"
+                )
             if len(self.adapters) > MAX_PRESET_ADAPTERS:
                 raise ValueError(
                     f"Preset may include at most {MAX_PRESET_ADAPTERS} adapters"

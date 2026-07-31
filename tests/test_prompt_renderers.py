@@ -150,6 +150,32 @@ class TestPromptRenderers(unittest.TestCase):
             resolve_retrieval_wrapper_mode("RAG", True, memory_only_sources=True),
             "grounded",
         )
+        self.assertEqual(
+            resolve_retrieval_wrapper_mode("CAPABILITY", True),
+            "grounded",
+        )
+
+    def test_capability_denial_context_wraps_last_user(self) -> None:
+        blocks = build_prompt_blocks(
+            execution_route="CAPABILITY",
+            explicit_remember_active=False,
+            has_retrieval_sources=True,
+            retrieval_context=(
+                "[CAPABILITY: The attached capability was not permitted "
+                "(no grant on record). Tell the user briefly.]"
+            ),
+            conversation_history=[
+                {
+                    "role": "user",
+                    "content": "@[cap:mcp:filesystem/search-files] find Alpha",
+                }
+            ],
+        )
+        messages = render_system_ok_messages(blocks)
+        last = messages[-1]["content"]
+        self.assertIn("SYSTEM RETRIEVED CONTEXT", last)
+        self.assertIn("no grant on record", last)
+        self.assertIn("USER QUERY:", last)
 
     def test_flatten_web_includes_citation_exemplar(self) -> None:
         blocks = build_prompt_blocks(

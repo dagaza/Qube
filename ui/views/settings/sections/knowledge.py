@@ -38,7 +38,7 @@ from ui.views.settings.widgets import (
     add_subsection_to_form,
     add_settings_card_form,
     add_section_reset_footer,
-    make_settings_form,
+    prepare_settings_card_form,
     wrap_subsection,
     add_settings_full_width_row,
     add_settings_span_row,
@@ -66,7 +66,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     search_card, search_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     search_form = add_settings_card_form(search_card_layout)
     add_subsection_to_form(search_form, "Search quality", anchor="embedding_mode")
-    mode_form_host, mode_form = make_settings_form()
+    mode_form_host, mode_form = prepare_settings_card_form(search_card_layout)
 
     host.embedding_mode_selector = SelectorButton("Balanced", is_dark=is_dark)
     host.embedding_mode_selector.setMenu(QMenu(host.embedding_mode_selector))
@@ -174,7 +174,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     profile_card, profile_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     profile_card_form = add_settings_card_form(profile_card_layout)
     add_subsection_to_form(profile_card_form, "Retrieval profile", anchor="retrieval_profile")
-    profile_form_host, profile_form = make_settings_form()
+    profile_form_host, profile_form = prepare_settings_card_form(profile_card_layout)
 
     host.retrieval_profile_selector = SelectorButton("Balanced", is_dark=is_dark)
     host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))

@@ -341,7 +341,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(customize_form, host.themes_advanced_panel)
 
-    add_subsection_to_form(customize_form, "Preview")
     add_settings_full_width_row(customize_form, make_settings_hint(
             "Miniature Settings page with app nav, settings sidebar, mainstage "
             "canvas, section cards, and form controls using your draft colors."
@@ -428,7 +427,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(chat_wallpaper_form, host.themes_assistant_message_background_cb)
 
-    add_subsection_to_form(chat_wallpaper_form, "Preview")
     add_settings_full_width_row(chat_wallpaper_form, make_settings_hint(
             "Miniature Conversations page shell with the tools pane open."
         )
@@ -516,7 +514,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(library_wallpaper_form, host.themes_library_transcript_background_cb)
 
-    add_subsection_to_form(library_wallpaper_form, "Preview")
     add_settings_full_width_row(library_wallpaper_form, make_settings_hint(
             "Miniature Library page shell with document list sidebar, readability "
             "toolbar, and sample transcript text."

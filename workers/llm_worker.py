@@ -725,6 +725,7 @@ class LLMWorker(QThread):
             final_text,
             all_ui_sources,
         )
+        self._maybe_finalize_capability_cited_trace(final_text, all_ui_sources)
         self._sync_turn_citation_sources(all_ui_sources)
         if (
             (final_text or "").strip() != (before_text or "").strip()
@@ -733,6 +734,36 @@ class LLMWorker(QThread):
         ):
             self.stream_replaced.emit(self.session_id or "", final_text)
         return final_text, all_ui_sources, retry_replaced
+
+    def _maybe_finalize_capability_cited_trace(
+        self,
+        final_text: str,
+        all_ui_sources: list,
+    ) -> None:
+        ctx = getattr(self, "_turn_capability_trace_ctx", None)
+        if ctx is None:
+            return
+        try:
+            from core.app_settings import get_retrieval_profile
+            from core.integrations.capability_trace import finalize_capability_cited_trace
+
+            updated = finalize_capability_cited_trace(
+                ctx,
+                final_text=final_text,
+                all_ui_sources=all_ui_sources,
+                db=self.db,
+                retrieval_profile=get_retrieval_profile(),
+            )
+            if updated:
+                logger.debug(
+                    "[LLM Worker] Capability cited step appended (%d steps)",
+                    len(updated),
+                )
+        except Exception:
+            logger.debug(
+                "[LLM Worker] Capability cited trace finalize failed",
+                exc_info=True,
+            )
 
     def _maybe_retry_missing_web_citations(
         self,
@@ -1423,6 +1454,7 @@ class LLMWorker(QThread):
         self._turn_context: TurnContext | None = None
         self._turn_conversation_health: ConversationHealthState | None = None
         self._turn_stream_degeneration_cancelled = False
+        self._turn_capability_trace_ctx = None
 
     def _remember_turn_engine_request(self, request: dict) -> None:
         self._turn_engine_request = copy.deepcopy(request or {})
@@ -2244,6 +2276,17 @@ class LLMWorker(QThread):
                 "[LLM Worker] Composer attachments: %s",
                 attachment_summary(turn_attachments),
             )
+            if self.session_id:
+                from core.integrations.agent_scope import (
+                    agent_scope_store,
+                    build_agent_scope_from_attachments,
+                )
+
+                agent_scope_store.set_scope(
+                    build_agent_scope_from_attachments(
+                        str(self.session_id), turn_attachments
+                    )
+                )
         attachment_patch = None
         if not explicit_remember_active and turn_attachments:
             attachment_patch = resolve_attachment_routing(turn_attachments)
@@ -2548,7 +2591,15 @@ class LLMWorker(QThread):
             auto_web = getattr(self, "USE_COGNITIVE_ROUTER_INTERNET", False) and decision.get("internet_enabled", False)
 
             # Final execution decision for WEB
-            if force_web or manual_web or auto_web or (live_web and not hard_web):
+            if (
+                execution_route != "CAPABILITY"
+                and (
+                    force_web
+                    or manual_web
+                    or auto_web
+                    or (live_web and not hard_web)
+                )
+            ):
                 execution_route = "WEB"
 
             # ------------------------------------------------------------
@@ -2925,6 +2976,215 @@ class LLMWorker(QThread):
                 if cid and cid not in self._turn_rag_chunk_ids:
                     self._turn_rag_chunk_ids.append(str(cid))
 
+        # ---- CAPABILITY (composer @[cap:…]) ----
+        if execution_route == "CAPABILITY":
+            import time as _cap_time
+
+            from core.app_settings import get_retrieval_profile
+            from core.integrations.capability_inspect import build_capability_inspect_trace
+            from core.integrations.capability_invoke import invoke_gated_capability
+            from core.integrations.capability_trace import (
+                CapabilityTraceContext,
+                record_capability_retrieval_trace,
+            )
+            from core.knowledge.bundle_builder import build_generic_bundle
+            from core.knowledge.retrieval_records import RetrievalContextFingerprint
+            from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
+
+            cap_urn = ""
+            cap_preset_id = ""
+            if isinstance(decision, dict):
+                cap_urn = str(decision.get("capability_urn") or "")
+                cap_preset_id = str(decision.get("capability_preset_id") or "").strip()
+            cap_t0 = _cap_time.time()
+            cap_turn_id = getattr(self, "_routing_debug_turn_seq", None)
+            cap_session_id = str(self.session_id) if self.session_id else None
+            from core.integrations.agent_scope import agent_scope_store
+
+            cap_agent_scope = (
+                agent_scope_store.get_scope(cap_session_id) if cap_session_id else None
+            )
+            per_cap_results = ()
+            preset_label = cap_preset_id
+            if cap_preset_id:
+                from core.integrations.preset_capability_alias import (
+                    build_preset_capability_inspect_trace,
+                    format_preset_bundle_deny_summary,
+                    invoke_preset_capability_bundle,
+                )
+                from core.knowledge.presets import load_preset
+
+                invoke_result, per_cap_results = invoke_preset_capability_bundle(
+                    cap_preset_id,
+                    original_query or self.prompt,
+                    max_results=5,
+                    session_id=cap_session_id,
+                    turn_id=str(cap_turn_id) if cap_turn_id is not None else None,
+                    agent_scope=cap_agent_scope,
+                )
+                preset = load_preset(cap_preset_id)
+                if preset is not None:
+                    preset_label = preset.label
+                cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+                cap_steps = build_preset_capability_inspect_trace(
+                    preset_id=cap_preset_id,
+                    preset_label=preset_label,
+                    query=original_query or self.prompt,
+                    per_cap_results=per_cap_results,
+                    bundle_result=invoke_result,
+                    latency_ms=cap_latency_ms,
+                )
+            else:
+                invoke_result = invoke_gated_capability(
+                    cap_urn,
+                    original_query or self.prompt,
+                    max_results=5,
+                    session_id=cap_session_id,
+                    turn_id=str(cap_turn_id) if cap_turn_id is not None else None,
+                    agent_scope=cap_agent_scope,
+                )
+                cap_latency_ms = (_cap_time.time() - cap_t0) * 1000.0
+                cap_steps = build_capability_inspect_trace(
+                    urn=cap_urn,
+                    query=original_query or self.prompt,
+                    allowed=invoke_result.allowed,
+                    reason=invoke_result.reason,
+                    rows=invoke_result.rows,
+                    bundle_source_count=len(invoke_result.rows) if invoke_result.allowed else 0,
+                    rejected_count=0,
+                    latency_ms=cap_latency_ms,
+                    descriptor=invoke_result.descriptor,
+                )
+            if isinstance(decision, dict):
+                decision["capability_invoke_allowed"] = invoke_result.allowed
+                decision["capability_invoke_reason"] = invoke_result.reason
+                decision["capability_steps"] = cap_steps
+
+            cap_trace_ctx = CapabilityTraceContext(
+                cap_steps=list(cap_steps),
+                query_raw=self.prompt,
+                query_resolved=original_query or self.prompt,
+                latency_ms=cap_latency_ms,
+                preset_id=cap_preset_id,
+                cap_urn=cap_urn,
+                session_id=self.session_id,
+                turn_id=cap_turn_id,
+                kept_rows=[],
+            )
+            self._turn_capability_trace_ctx = cap_trace_ctx
+
+            if per_cap_results:
+                deny_summary = format_preset_bundle_deny_summary(
+                    per_cap_results,
+                    preset_label=preset_label,
+                )
+                if deny_summary:
+                    tool_context += deny_summary
+
+            if invoke_result.allowed and invoke_result.rows:
+                kept_rows = list(invoke_result.rows)
+                self._turn_evidence_bundle = build_generic_bundle(
+                    query_raw=self.prompt,
+                    query_resolved=original_query or self.prompt,
+                    kept_rows=kept_rows,
+                    rejected_count=0,
+                    latency_ms=cap_latency_ms,
+                    knowledge_service="capability",
+                    retrieval_strategy="attachment_capability",
+                    preset_id=cap_preset_id or None,
+                    adapter_calls=tuple(
+                        sorted(
+                            {
+                                str(row.get("_adapter") or "")
+                                for row in kept_rows
+                                if row.get("_adapter")
+                            }
+                        )
+                    ),
+                )
+                append_turn_evidence_bundle_sources(
+                    all_ui_sources, self._turn_evidence_bundle
+                )
+                context_parts: list[str] = []
+                for row in kept_rows:
+                    title = str(row.get("title") or "").strip()
+                    snippet = str(row.get("snippet") or "").strip()
+                    if title or snippet:
+                        context_parts.append(
+                            f"{title}\n{snippet}".strip()
+                            if title and snippet
+                            else (title or snippet)
+                        )
+                cap_context = "\n\n".join(context_parts)[: self.RAG_BUDGET]
+                if cap_context:
+                    hdr = "CAPABILITY RESULTS"
+                    if tool_context:
+                        tool_context = f"{tool_context}\n\n{hdr}:\n{cap_context}"
+                    else:
+                        tool_context = f"{hdr}:\n{cap_context}"
+                logger.info(
+                    "[LLM Worker] Capability invoke integrated (%d sources, %d chars)",
+                    len(kept_rows),
+                    len(cap_context),
+                )
+                cap_trace_ctx.kept_rows = kept_rows
+                cap_trace_ctx.bundle = self._turn_evidence_bundle
+                cap_trace_ctx.fingerprint = RetrievalContextFingerprint(
+                    query_raw=self.prompt,
+                    query_resolved=clean_prompt or self.prompt,
+                    knowledge_service="capability",
+                    preset_id=cap_preset_id or None,
+                    adapter_filter=tuple(
+                        sorted(
+                            {
+                                str(row.get("_adapter") or "")
+                                for row in kept_rows
+                                if row.get("_adapter")
+                            }
+                        )
+                    ),
+                    retrieval_profile=get_retrieval_profile(),
+                    connector_config_hashes=(),
+                )
+                record_capability_retrieval_trace(
+                    cap_trace_ctx,
+                    db=self.db,
+                    retrieval_profile=get_retrieval_profile(),
+                )
+            elif not invoke_result.allowed:
+                logger.warning(
+                    "[LLM Worker] Capability invoke denied: %s",
+                    invoke_result.reason,
+                )
+                tool_context += (
+                    "\n[CAPABILITY: The attached capability was not permitted "
+                    f"({invoke_result.reason}). Tell the user briefly that the "
+                    "capability could not run. Do NOT invent results or emit "
+                    "citation tokens without sources.]\n"
+                )
+                record_capability_retrieval_trace(
+                    cap_trace_ctx,
+                    db=self.db,
+                    retrieval_profile=get_retrieval_profile(),
+                )
+                self._mark_skip_enrichment("capability_invoke_denied")
+            else:
+                logger.warning(
+                    "[LLM Worker] Capability invoke returned no sources for %s",
+                    cap_urn,
+                )
+                tool_context += (
+                    "\n[CAPABILITY: The attached capability returned no results. "
+                    "Tell the user briefly that nothing was retrieved. Do NOT "
+                    "invent facts or emit citation tokens without sources.]\n"
+                )
+                record_capability_retrieval_trace(
+                    cap_trace_ctx,
+                    db=self.db,
+                    retrieval_profile=get_retrieval_profile(),
+                )
+                self._mark_skip_enrichment("capability_invoke_empty")
+
         # ---- WEB + HYBRID ----
         web_search_attempted = False
         _web_audit_common = {
@@ -3284,18 +3544,26 @@ class LLMWorker(QThread):
                         )
                 web_context = "\n\n".join(web_context_parts)[: self.RAG_BUDGET]
 
-                for idx, item in enumerate(web_items, start=1):
-                    title = str(item.get("title") or "").strip() or f"Web result {idx}"
-                    snippet = str(item.get("snippet") or "").strip()
-                    src: dict = {
-                        "filename": title,
-                        "content": snippet,
-                        "type": "web",
-                    }
-                    url = str(item.get("url") or "").strip()
-                    if url.startswith(("http://", "https://")):
-                        src["url"] = url
-                    all_ui_sources.append(src)
+                _turn_bundle = getattr(self, "_turn_evidence_bundle", None)
+                if _turn_bundle is not None and _turn_bundle.sources:
+                    from core.knowledge.ui_adapter import append_turn_evidence_bundle_sources
+
+                    append_turn_evidence_bundle_sources(all_ui_sources, _turn_bundle)
+                else:
+                    for idx, item in enumerate(web_items, start=1):
+                        title = (
+                            str(item.get("title") or "").strip() or f"Web result {idx}"
+                        )
+                        snippet = str(item.get("snippet") or "").strip()
+                        src: dict = {
+                            "filename": title,
+                            "content": snippet,
+                            "type": "web",
+                        }
+                        url = str(item.get("url") or "").strip()
+                        if url.startswith(("http://", "https://")):
+                            src["url"] = url
+                        all_ui_sources.append(src)
 
                 web_hdr = (
                     "QUBE HELP DOCUMENTATION"
@@ -3665,6 +3933,29 @@ class LLMWorker(QThread):
                 "not_legal_advice" in warnings and not legal_sources_empty
             )
         self._turn_execution_route = execution_route
+        if (
+            isinstance(decision, dict)
+            and execution_route != "CAPABILITY"
+            and not str(decision.get("capability_urn") or "").strip()
+            and not str(decision.get("capability_preset_id") or "").strip()
+        ):
+            try:
+                from core.app_settings import get_router_integration_suggestions_enabled
+                from core.integrations.router_capability_suggestions import (
+                    suggest_integration_capabilities,
+                )
+
+                if get_router_integration_suggestions_enabled():
+                    suggestions = suggest_integration_capabilities(
+                        clean_prompt or self.prompt
+                    )
+                    if suggestions:
+                        decision["integration_capability_suggestions"] = suggestions
+            except Exception:
+                logger.debug(
+                    "[Router] integration capability suggestions failed",
+                    exc_info=True,
+                )
         if self.session_id:
             self._prior_execution_route_by_session[str(self.session_id)] = execution_route
             self._prior_web_empty_by_session[str(self.session_id)] = (
@@ -3839,18 +4130,29 @@ class LLMWorker(QThread):
                 "[LLM Worker] Injected composer attachment context (%d chars)",
                 len(attachment_ctx),
             )
-        if (
-            getattr(self, "_composer_knowledge_tool", None)
-            and not all_ui_sources
-            and tool_context.strip()
+        if tool_context.strip() and (
+            execution_route == "CAPABILITY"
+            or (
+                getattr(self, "_composer_knowledge_tool", None)
+                and not all_ui_sources
+            )
         ):
-            retrieval_prompt_body = tool_context.strip()
+            if retrieval_prompt_body:
+                retrieval_prompt_body = (
+                    f"{tool_context.strip()}\n\n{retrieval_prompt_body}"
+                )
+            else:
+                retrieval_prompt_body = tool_context.strip()
             logger.info(
-                "[LLM Worker] Composer web tool: injected web guidance (%d chars)",
-                len(retrieval_prompt_body),
+                "[LLM Worker] Injected capability/tool context (%d chars, route=%s)",
+                len(tool_context.strip()),
+                execution_route,
             )
         if retrieval_prompt_body:
             retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
+
+        has_retrieval_prompt = bool((retrieval_prompt_body or "").strip())
+        effective_has_retrieval = bool(all_ui_sources) or has_retrieval_prompt
 
         # Conversation @-ref: do not send unrelated prior turns from *this* session.
         # Otherwise the model answers from current-thread noise instead of the transcript.
@@ -3893,7 +4195,7 @@ class LLMWorker(QThread):
         )
         retrieval_wrapper_mode = resolve_retrieval_wrapper_mode(
             execution_route,
-            bool(all_ui_sources),
+            effective_has_retrieval,
             memory_only_sources=memory_only_sources,
         )
         self._stamp_discourse_on_decision(
@@ -3951,7 +4253,7 @@ class LLMWorker(QThread):
             execution_route=execution_route,
             follow_up=follow_up,
             prior_turn_unreliable=bool(prior_turn_unreliable),
-            has_retrieval_sources=bool(all_ui_sources),
+            has_retrieval_sources=effective_has_retrieval,
             history_turn_count=len(prompt_history),
             conversation_health=conversation_health,
         )
@@ -4026,7 +4328,7 @@ class LLMWorker(QThread):
             explicit_remember_body=explicit_remember_body or "",
             file_search_active=file_search_active,
             narrative_active=narrative_active,
-            has_retrieval_sources=bool(all_ui_sources),
+            has_retrieval_sources=effective_has_retrieval,
             engine_mode=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE),
             internal_nvidia_family=self._is_internal_nvidia_family(),
             retrieval_context=retrieval_prompt_body,

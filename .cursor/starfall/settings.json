@@ -1,0 +1,4 @@
+{
+  "diagnostics": false,
+  "_comment": "diagnostics: true writes .cursor/starfall/hook-debug.log (version-stamped hook breadcrumbs). Set to false for near-zero overhead once the runtime is confirmed healthy. Override at runtime with the STARFALL_DIAGNOSTICS env var (1/true/yes/on)."
+}

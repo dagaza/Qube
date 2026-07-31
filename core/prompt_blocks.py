@@ -69,6 +69,13 @@ _WEB_MULTI_SOURCE_SUFFIX = (
     "do NOT use [W] on this turn."
 )
 
+_CAPABILITY_GROUNDED_SUFFIX = (
+    " Attached integration capability results are in the retrieved context below. "
+    "When those results list files or data, you MUST answer from them. "
+    "Do NOT claim you lack filesystem, tool, or host access — Qube already ran "
+    "the integration for this turn. Cite with [1], [2], etc."
+)
+
 _INTERNAL_ALIGN_NVIDIA = (
     " Start directly with the answer content in natural language. "
     "Do not narrate instructions, planning notes, request analysis, or hidden reasoning. "
@@ -116,7 +123,7 @@ def resolve_retrieval_wrapper_mode(
     route = str(execution_route or "").upper()
     if route == "NONE" and memory_only_sources:
         return "background"
-    if route in ("RAG", "HYBRID", "MEMORY", "WEB", "INTERNET"):
+    if route in ("RAG", "HYBRID", "MEMORY", "CAPABILITY"):
         return "grounded"
     if route == "NONE":
         return "background"
@@ -241,6 +248,16 @@ def build_prompt_blocks(
                 suffixes.append(NARRATIVE_RECALL_SYSTEM_SUFFIX)
             if strict_isolation_enabled:
                 suffixes.append(STRICT_ISOLATION_SYSTEM_SUFFIX)
+    elif route == "CAPABILITY":
+        if has_retrieval_sources or (retrieval_context or "").strip():
+            suffixes.append(_CAPABILITY_GROUNDED_SUFFIX)
+            suffixes.append(_RETRIEVAL_CITE_MUST)
+            suffixes.append(CITATION_DISCIPLINE_SUFFIX)
+            suffixes.append(GROUNDED_ANSWER_SYSTEM_SUFFIX)
+        else:
+            no_sources = True
+            persona = _BASE_PERSONA
+            suffixes.append(NO_SOURCES_SYSTEM_SUFFIX)
     elif route in ("WEB", "INTERNET"):
         if composer_help_attached:
             if not has_retrieval_sources:

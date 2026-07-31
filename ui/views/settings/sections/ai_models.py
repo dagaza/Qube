@@ -57,7 +57,8 @@ from ui.views.settings.widgets import (
     add_settings_card_form,
     make_disclosure_row,
     make_external_engine_hint,
-    make_settings_form,
+    make_subsection_label,
+    prepare_settings_card_form,
     track_internal_ai_label,
     wrap_subsection,
     add_settings_full_width_row,
@@ -73,7 +74,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Engine & routing card ---
     engine_card, engine_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    engine_form_host, engine_form = make_settings_form()
+    engine_form_host, engine_form = prepare_settings_card_form(engine_card_layout)
     add_subsection_to_form(engine_form, "Engine & routing", anchor="engine")
 
     host.engine_selector = SelectorButton("Select engine...", is_dark=is_dark)
@@ -102,7 +103,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     host._ai_local_startup_card = local_startup_card
 
-    local_startup_form_host, local_startup_form = make_settings_form()
+    local_startup_form_host, local_startup_form = prepare_settings_card_form(local_startup_card_layout)
 
     track_internal_ai_label(
         host,
@@ -185,7 +186,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Generation card ---
     generation_card, generation_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    generation_form_host, generation_form = make_settings_form()
+    generation_form_host, generation_form = prepare_settings_card_form(generation_card_layout)
     add_subsection_to_form(generation_form, "Generation", anchor="generation")
 
     host._generation_spinboxes: list = []
@@ -372,7 +373,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Chat style & Reasoning skills card ---
     chat_card, chat_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    chat_form_host, chat_form = make_settings_form()
+    chat_form_host, chat_form = prepare_settings_card_form(chat_card_layout)
 
     add_subsection_to_form(chat_form, "Chat style", anchor="chat_style")
 
@@ -431,14 +432,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Hardware, inference & chat template card ---
     internal_tuning_card, internal_tuning_card_layout = begin_settings_section_card(
-        host, is_dark=is_dark
+        host,
+        is_dark=is_dark,
+        card_title="Hardware & inference",
+        card_anchor="hardware",
     )
+    host._ai_internal_tuning_card = internal_tuning_card
     tuning_form = add_settings_card_form(internal_tuning_card_layout)
 
-    track_internal_ai_label(
-        host,
-        add_subsection_to_form(tuning_form, "Hardware tuning", anchor="hardware"),
-    )
+    hardware_tuning_lbl = make_subsection_label("Hardware tuning", anchor="hardware")
+    add_settings_full_width_row(tuning_form, hardware_tuning_lbl)
+    track_internal_ai_label(host, hardware_tuning_lbl)
 
     _hardware_adv_tip = (
         "Advanced hardware controls are not for everyday use.\n\n"
@@ -548,12 +552,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_hardware_panel.setVisible(get_advanced_hardware_unlocked())
     add_settings_full_width_row(tuning_form, host.advanced_hardware_panel)
 
-    track_internal_ai_label(
-        host,
-        add_subsection_to_form(
-            tuning_form, "Inference stack", anchor="inference_stack"
-        ),
-    )
+    inference_stack_lbl = make_subsection_label("Inference stack", anchor="inference_stack")
+    add_settings_full_width_row(tuning_form, inference_stack_lbl)
+    track_internal_ai_label(host, inference_stack_lbl)
     host.inference_transparency_lbl = QLabel("Loading inference stack details…")
     host.inference_transparency_lbl.setWordWrap(True)
     host.inference_transparency_lbl.setProperty("class", "ToolsPaneControl")
@@ -563,10 +564,9 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_full_width_row(tuning_form, host.inference_transparency_lbl)
 
-    track_internal_ai_label(
-        host,
-        add_subsection_to_form(tuning_form, "Chat template", anchor="chat_template"),
-    )
+    chat_template_lbl = make_subsection_label("Chat template", anchor="chat_template")
+    add_settings_full_width_row(tuning_form, chat_template_lbl)
+    track_internal_ai_label(host, chat_template_lbl)
 
     _chat_template_adv_tip = (
         "Advanced chat template controls are not for everyday use.\n\n"
@@ -645,7 +645,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Auxiliary cognition card ---
     cognition_card, cognition_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    cognition_form_host, cognition_form = make_settings_form()
+    cognition_form_host, cognition_form = prepare_settings_card_form(cognition_card_layout)
 
     add_subsection_to_form(cognition_form, "Auxiliary cognition", anchor="cognition")
 

@@ -22,6 +22,11 @@ from core.knowledge.search_outcome import (
 from core.knowledge.pipeline_graph import format_pipeline_graph_text
 from core.knowledge.retrieval_replay import compare_traces, replay_from_record
 from core.knowledge.retrieval_trace_reader import format_retrieval_trace_summary
+from core.integrations.capability_inspect import (
+    capability_steps_from_trace,
+    format_capability_steps_summary_line,
+    format_capability_steps_text,
+)
 
 
 class RetrievalInspector(QWidget):
@@ -151,8 +156,15 @@ class RetrievalInspector(QWidget):
             for key in ("retrieval_profile", "ranking_profile", "preset_id", "scientific_cache_hit"):
                 if key in diag:
                     diag_bits.append(f"{key}={diag[key]}")
-            if diag_bits:
-                lines.append("Diagnostics: " + ", ".join(diag_bits))
+        if diag_bits:
+            lines.append("Diagnostics: " + ", ".join(diag_bits))
+        cap_steps = capability_steps_from_trace(trace)
+        cap_summary = format_capability_steps_summary_line(cap_steps)
+        if cap_summary:
+            lines.append(cap_summary)
+        cap_text = format_capability_steps_text(cap_steps)
+        if cap_text:
+            lines.extend(["", cap_text])
         from core.knowledge.routing_inspect_explain import format_routing_inspect_text
 
         routing_text = format_routing_inspect_text(routing_record)
@@ -183,6 +195,12 @@ class RetrievalInspector(QWidget):
             if sections:
                 sections.append("")
             sections.append(format_fetch_provenance_text(provenance))
+        cap_steps = capability_steps_from_trace(trace)
+        cap_text = format_capability_steps_text(cap_steps)
+        if cap_text:
+            if sections:
+                sections.append("")
+            sections.append(cap_text)
         if sections:
             return "\n".join(sections)
         if preset_id:

@@ -25,10 +25,11 @@ from ui.views.settings.widgets import (
     add_subsection_to_form,
     add_section_reset_footer,
     add_settings_card_form,
+    add_settings_full_width_row,
     make_settings_form,
+    prepare_settings_card_form,
     register_settings_selector_width,
     schedule_settings_selector_refit,
-    add_settings_full_width_row,
 )
 
 
@@ -41,7 +42,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     # --- Memory pipeline (simple / everyday) ---
     pipeline_card, pipeline_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    pipeline_form_host, pipeline_form = make_settings_form()
+    pipeline_form_host, pipeline_form = prepare_settings_card_form(pipeline_card_layout)
     add_subsection_to_form(pipeline_form, "Memory pipeline", anchor="memory")
 
     host.memory_enrichment_toggle = PrestigeToggle()

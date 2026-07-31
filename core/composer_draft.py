@@ -169,7 +169,27 @@ def _add_skill(
     return skills
 
 
+def routing_chip_unavailable_message(attachment: ComposerAttachment) -> str | None:
+    """User-facing denial when a capability chip can no longer be used, else ``None``."""
+    if attachment.kind != "capability":
+        return None
+    from core.integrations.capability_invoke import parse_composer_capability_urn
+    from core.integrations.capability_availability import resolve_capability_availability
+
+    urn = parse_composer_capability_urn(attachment.id)
+    if urn is None:
+        return "This capability attachment is invalid."
+    availability = resolve_capability_availability(urn)
+    if availability.available:
+        return None
+    return availability.user_message
+
+
 def routing_chip_icon(attachment: ComposerAttachment) -> str:
+    if attachment.kind == "capability":
+        if routing_chip_unavailable_message(attachment):
+            return "fa5s.exclamation-triangle"
+        return "fa5s.plug"
     if attachment.kind == "file":
         return "fa5s.file-alt"
     if attachment.kind == "conversation":
@@ -192,12 +212,17 @@ def routing_chip_icon(attachment: ComposerAttachment) -> str:
 
 def routing_chip_tooltip(attachment: ComposerAttachment, *, is_primary: bool) -> str:
     _ = is_primary
+    unavailable = routing_chip_unavailable_message(attachment)
+    if unavailable:
+        return unavailable
     if attachment.kind == "file":
         return f"Search scoped to {attachment.label} for this message."
     if attachment.kind == "conversation":
         return (
             f"Inject transcript from “{attachment.label}” for this turn only."
         )
+    if attachment.kind == "capability":
+        return f"Integration capability {attachment.label} for this message."
     tool = next((t for t in COMPOSER_TOOLS if t["id"] == attachment.id), None)
     desc = tool["description"] if tool else attachment.label
     return f"{desc} for this message."
@@ -232,6 +257,25 @@ def composer_prompt_required_request():
         severity="info",
         category="system",
         dedupe_key="composer_prompt_required",
+    )
+
+
+def composer_capability_unavailable_request(message: str):
+    """In-app toast when a capability chip can no longer be invoked."""
+    from core.app_notification_types import AppNotificationRequest
+
+    body = (message or "").strip() or (
+        "This integration is no longer available. Remove the chip or fix it under Settings."
+    )
+    return AppNotificationRequest(
+        title="Integration unavailable",
+        body=body,
+        auto_dismiss_ms=COMPOSER_ONE_SOURCE_DISMISS_MS,
+        show_countdown=True,
+        icon_name="fa5s.exclamation-triangle",
+        severity="warning",
+        category="system",
+        dedupe_key="composer_capability_unavailable",
     )
 
 

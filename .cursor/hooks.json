@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "python .cursor/hooks/starfall_prep.py"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "python .cursor/hooks/block_main_commit.py"
+      },
+      {
+        "command": "python .cursor/hooks/verify_commit.py"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "python .cursor/hooks/starfall_subagent.py",
+        "loop_limit": null
+      }
+    ],
+    "stop": [
+      {
+        "command": "python .cursor/hooks/starfall.py",
+        "loop_limit": 10
+      }
+    ]
+  }
+}

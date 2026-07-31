@@ -102,6 +102,13 @@ def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
         lines.append(f"Preset id: {trace.get('preset_id')}")
     if trace.get("retrieval_profile"):
         lines.append(f"Retrieval profile: {trace.get('retrieval_profile')}")
+    cap_steps = trace.get("capability_steps") or []
+    if cap_steps:
+        from core.integrations.capability_inspect import format_capability_steps_summary_line
+
+        summary = format_capability_steps_summary_line(cap_steps)
+        if summary:
+            lines.append(summary)
     search_line = format_search_outcome_summary_line(
         search_outcome_from_relevance_diag(trace.get("relevance_diag") or {})
     )

@@ -4,7 +4,55 @@ from __future__ import annotations
 
 import re
 
+from core.integrations.capabilities.urn import CapabilityURN
 from core.knowledge.types import EvidenceBundle, EvidenceObject
+
+
+def _capability_urn_from_source_row(src: dict) -> str:
+    """Resolve a cap: URN string from UI source row metadata (P8)."""
+    cap = str(src.get("source_capability") or "").strip()
+    if cap:
+        return cap
+    adapter = str(src.get("source_adapter") or "").strip()
+    if adapter.startswith("cap:"):
+        return adapter
+    return ""
+
+
+def source_type_label_for_row(src: dict) -> str:
+    """Type line for CitationSourcesDialog — capability label when provenance exists."""
+    cap = _capability_urn_from_source_row(src)
+    if cap:
+        urn = CapabilityURN.try_parse(cap)
+        if urn is not None:
+            return urn.display_label
+        return cap
+    adapter = str(src.get("source_adapter") or "").strip()
+    if adapter:
+        return adapter.replace("_", " ").title()
+    st = str(src.get("type") or "").strip().lower()
+    if st == "web":
+        return "Web"
+    if st == "memory":
+        return "Memory"
+    if st == "rag":
+        return "Document"
+    return st.title() if st else "Source"
+
+
+def source_provenance_metadata_parts(src: dict) -> list[str]:
+    """Extra metadata fragments when a row carries cap: provenance."""
+    cap = _capability_urn_from_source_row(src)
+    if not cap:
+        return []
+    parts: list[str] = []
+    method = str(src.get("retrieval_method") or "").strip()
+    if method:
+        parts.append(method.replace("_", " "))
+    body = cap[4:] if cap.startswith("cap:") else cap
+    if body:
+        parts.append(body)
+    return parts
 
 
 def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
@@ -38,6 +86,12 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["preprint"] = True
     if obj.peer_reviewed is not None:
         row["peer_reviewed"] = bool(obj.peer_reviewed)
+    # Capability provenance (cap: URN) for INSPECT / Sources, when the hit came
+    # from a capability provider (e.g. MCP). Preserved end-to-end (P8, KI1).
+    capability = (obj.raw_metadata or {}).get("capability")
+    if capability:
+        row["source_capability"] = str(capability)
+        row["retrieval_method"] = obj.retrieval_method
     return row
 
 
@@ -48,11 +102,18 @@ def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
     ]
 
 
-def bundle_to_ui_sources(bundle: EvidenceBundle) -> list[dict]:
-    return [
-        evidence_to_ui_source(obj, ui_id=i)
-        for i, obj in enumerate(bundle.sources, start=1)
-    ]
+def append_turn_evidence_bundle_sources(
+    all_ui_sources: list[dict],
+    bundle: EvidenceBundle | None,
+) -> None:
+    """Append UI rows from a turn :class:`EvidenceBundle` (P8 / KI1 main path).
+
+    Citation ``id`` values are provisional; :meth:`LLMWorker._apply_sequential_source_ids`
+    renumbers the merged list so memory, RAG, and web/capability rows stay unique.
+    """
+    if bundle is None or not bundle.sources:
+        return
+    all_ui_sources.extend(bundle_to_ui_sources(bundle))
 
 
 def _truncate_at_boundary(text: str, char_budget: int) -> str:

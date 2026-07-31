@@ -22,6 +22,7 @@ _MENTION_ROOT_CATEGORIES: tuple[tuple[str, str, str], ...] = (
 _SECTION_ORDER = (
     "categories",
     "tools",
+    "integrations",
     "files",
     "conversations",
     "skills",
@@ -31,6 +32,7 @@ _SECTION_ORDER = (
 _SECTION_LABELS = {
     "categories": "Categories",
     "tools": "Tools",
+    "integrations": "Integrations",
     "files": "Files",
     "conversations": "Conversations",
     "skills": "Skills",
@@ -169,8 +171,9 @@ def search_composer_mentions(
     conversation_limit: int = 12,
     skill_limit: int = 8,
     command_limit: int = 8,
+    integration_limit: int = 12,
 ) -> list[MentionSearchHit]:
-    """Global grouped search across categories, tools, files, chats, skills, commands."""
+    """Global grouped search across categories, tools, integrations, files, chats, skills, commands."""
     q = (query or "").strip().lower()
     if not q:
         return []
@@ -210,6 +213,26 @@ def search_composer_mentions(
                 payload=ComposerAttachment(kind="tool", id=tool["id"], label=label),
             )
         )
+
+    from core.integrations.search import search_integrations_capabilities
+
+    integration_count = 0
+    for entry in search_integrations_capabilities(q, limit=integration_limit * 2):
+        if entry.score <= 0:
+            continue
+        prefix = "[lock] " if entry.locked else ""
+        hits.append(
+            MentionSearchHit(
+                section="integrations",
+                score=entry.score,
+                label=f"{prefix}{entry.label}",
+                subtitle=entry.subtitle,
+                payload=entry,
+            )
+        )
+        integration_count += 1
+        if integration_count >= integration_limit:
+            break
 
     if db is not None:
         try:

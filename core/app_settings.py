@@ -50,6 +50,7 @@ KEY_ADVANCED_HARDWARE_UNLOCKED = "qube.settings.advanced_hardware_unlocked"
 KEY_ADVANCED_CHAT_TEMPLATE_UNLOCKED = "qube.settings.advanced_chat_template_unlocked"
 KEY_ADVANCED_MEMORY_UNLOCKED = "qube.settings.advanced_memory_unlocked"
 KEY_ROUTING_DEBUG_LOG_ENABLED = "qube.diagnostics.routing_debug_log_enabled"
+KEY_ROUTER_INTEGRATION_SUGGESTIONS = "qube.integrations.router_suggestions_enabled"
 KEY_APP_LOG_FILE_ENABLED = "qube.diagnostics.app_log_file_enabled"
 KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
@@ -90,6 +91,8 @@ KEY_SURFACE_PROFILES_ACTIVE = "qube.ui.surface_profiles.active"
 KEY_SURFACE_PROFILES_DRAFT = "qube.ui.surface_profiles.draft"
 KEY_ASSISTANT_MESSAGE_BACKGROUND = "qube.ui.chat.assistant_message_background"
 KEY_LIBRARY_TRANSCRIPT_BACKGROUND = "qube.ui.library.transcript_background"
+KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE = "qube.ui.settings_section_cards_collapsible"
+KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED = "qube.ui.settings_section_cards_default_expanded"
 KEY_PROFILE_UNITS = "qube.profile.units"
 KEY_PROFILE_LOCALE = "qube.profile.locale"
 KEY_PROFILE_DISPLAY_NAME = "qube.profile.displayName"
@@ -307,6 +310,15 @@ def get_routing_debug_log_enabled() -> bool:
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_LOG_ENABLED, enabled)
+
+
+def get_router_integration_suggestions_enabled() -> bool:
+    """When True, routing debug may list read-only integration cap suggestions (default off)."""
+    return bool(_store().get(KEY_ROUTER_INTEGRATION_SUGGESTIONS, False))
+
+
+def set_router_integration_suggestions_enabled(enabled: bool) -> None:
+    _store().set(KEY_ROUTER_INTEGRATION_SUGGESTIONS, enabled)
 
 
 def get_app_log_file_enabled() -> bool:
@@ -1875,6 +1887,26 @@ def get_ui_library_transcript_background() -> bool:
 
 def set_ui_library_transcript_background(enabled: bool) -> None:
     _store().set(KEY_LIBRARY_TRANSCRIPT_BACKGROUND, bool(enabled))
+
+
+def get_settings_section_cards_collapsible() -> bool:
+    return bool(
+        _store().get(KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE, True)
+    )
+
+
+def set_settings_section_cards_collapsible(enabled: bool) -> None:
+    _store().set(KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE, bool(enabled))
+
+
+def get_settings_section_cards_default_expanded() -> bool:
+    return bool(
+        _store().get(KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED, True)
+    )
+
+
+def set_settings_section_cards_default_expanded(expanded: bool) -> None:
+    _store().set(KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED, bool(expanded))
 
 
 def get_companion_cube_style() -> "CompanionCubeStyle":

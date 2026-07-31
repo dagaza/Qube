@@ -149,6 +149,23 @@ This is not required for typos or small fixes. It is good practice for behaviora
 - **Cognitive router:** [`docs/cognitive_router.md`](docs/cognitive_router.md)
 - **Logging & diagnostics:** [`docs/logging_and_diagnostics.md`](docs/logging_and_diagnostics.md)
 
+### Capability Plane vs internal `mcp/` package
+
+Qube has two unrelated uses of the name **MCP**:
+
+| Path | Meaning |
+|------|---------|
+| `core/integrations/providers/mcp/` | **Model Context Protocol** — external tool servers as `CapabilityProvider` peers (Theme C). |
+| `mcp/` (e.g. `cognitive_router.py`) | **Internal cognitive routing** — memory/RAG/WEB lanes, unrelated to the protocol. |
+
+**Rules for contributors:**
+
+- External protocol code lives only under `core/integrations/providers/mcp/`.
+- Provider-agnostic layers (`core/integrations/`, UI, router, INSPECT) must not `import mcp` or branch on `provider == "mcp"` (principle P6).
+- When adding routing or retrieval features, integrate with the existing Capability Plane (`core/integrations/capabilities/`) — do not create a parallel `core/mcp/` subsystem.
+
+See [`docs/mcp_capability_architecture_review.md`](docs/mcp_capability_architecture_review.md) (P1–P8, §12 PR checklist).
+
 ---
 
 ## Maintainer notes

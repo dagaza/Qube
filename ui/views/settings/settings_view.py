@@ -135,6 +135,7 @@ from ui.views.settings.sections import (
     desktop_companion,
     general,
     help,
+    integrations,
     knowledge,
     memory,
     notifications,
@@ -175,6 +176,7 @@ _SECTION_BUILDERS = {
     "ai.models": ai_models.build_section,
     "memory": memory.build_section,
     "knowledge": knowledge.build_section,
+    "integrations": integrations.build_section,
     "general": general.build_section,
     "appearance.themes": appearance_themes.build_section,
     "companion.desktop": desktop_companion.build_section,
@@ -183,6 +185,72 @@ _SECTION_BUILDERS = {
     "contact.feedback": contact_feedback.build_section,
     "advanced": advanced.build_section,
 }
+
+
+def _resolve_collapsible_handle_near(widget: QWidget):
+    """Find the collapsible card handle for an anchored subsection wrapper."""
+    from ui.views.settings.settings_card_style import SettingsCollapsibleCardHandle
+
+    node = widget
+    for _ in range(12):
+        if node is None:
+            break
+        handle = getattr(node, "_settings_collapsible_handle", None)
+        if isinstance(handle, SettingsCollapsibleCardHandle):
+            return handle
+        title_lbl = getattr(node, "title_lbl", None)
+        if title_lbl is not None:
+            handle = getattr(title_lbl, "_settings_collapsible_handle", None)
+            if handle is not None:
+                return handle
+        node = node.parentWidget()
+    return None
+
+
+def _find_settings_anchor_target(page: QWidget, anchor: str):
+    """Resolve the best scroll target for a settings anchor (prefer whole card wrapper)."""
+    from ui.views.settings.settings_card_style import SettingsCollapsibleCardHandle
+
+    want = (anchor or "").strip()
+    if not want:
+        return None, None
+
+    for lbl in page.findChildren(QLabel):
+        if lbl.property("settings_anchor") != want:
+            continue
+        handle = getattr(lbl, "_settings_collapsible_handle", None)
+        if isinstance(handle, SettingsCollapsibleCardHandle):
+            return handle.wrapper, handle
+        return lbl, None
+
+    for wrapper in page.findChildren(QWidget):
+        if wrapper.property("settings_anchor") != want:
+            continue
+        handle = _resolve_collapsible_handle_near(wrapper)
+        if handle is not None:
+            return handle.wrapper, handle
+        return wrapper, None
+
+    return None, None
+
+
+def _scroll_settings_target_into_view(
+    scroll: QScrollArea,
+    target: QWidget,
+    *,
+    top_margin: int = 72,
+) -> None:
+    """Scroll a settings page so ``target`` sits near the top of the viewport."""
+    content = scroll.widget()
+    if content is None or target is None:
+        return
+    scroll.ensureWidgetVisible(target, 0, top_margin)
+    pos = target.mapTo(content, target.rect().topLeft())
+    bar = scroll.verticalScrollBar()
+    if bar is not None:
+        y = max(bar.minimum(), min(bar.maximum(), pos.y() - top_margin))
+        bar.setValue(y)
+    scroll.ensureWidgetVisible(target, 0, top_margin)
 
 
 class SettingsView(
@@ -269,12 +337,20 @@ class SettingsView(
         section_id = resolve_section_id(section)
         if section_id is None:
             return
+        previous_section = getattr(self, "_settings_active_section_id", None)
         self._ensure_section_built(section_id)
         row = self._section_row_by_id.get(section_id)
         if row is not None:
             self.settings_section_list.setCurrentRow(row)
         if anchor:
-            QTimer.singleShot(0, lambda: self._scroll_to_settings_anchor(anchor))
+            # Defer slightly when switching sections so stack + layout settle first.
+            delay_ms = 50 if previous_section and previous_section != section_id else 0
+            cross_section = bool(previous_section and previous_section != section_id)
+
+            def _scroll(a=anchor, retry=cross_section) -> None:
+                self._scroll_to_settings_anchor(a, retry=retry)
+
+            QTimer.singleShot(delay_ms, _scroll)
         if configure_provider_id:
             pid = str(configure_provider_id).strip().lower()
 
@@ -322,21 +398,25 @@ class SettingsView(
             if hasattr(self, "_sync_embedding_mode_selector"):
                 self._sync_embedding_mode_selector()
 
-    def _scroll_to_settings_anchor(self, anchor: str) -> None:
+    def _scroll_to_settings_anchor(self, anchor: str, *, retry: bool = False) -> None:
+        self._apply_settings_anchor_scroll(anchor)
+        if retry:
+            QTimer.singleShot(120, lambda: self._apply_settings_anchor_scroll(anchor))
+
+    def _apply_settings_anchor_scroll(self, anchor: str) -> bool:
         scroll = self.settings_section_stack.currentWidget()
         if scroll is None or not isinstance(scroll, QScrollArea):
-            return
+            return False
         page = scroll.widget()
         if page is None:
-            return
-        for lbl in page.findChildren(QLabel):
-            if lbl.property("settings_anchor") == anchor:
-                scroll.ensureWidgetVisible(lbl, 0, 80)
-                return
-        for wrapper in page.findChildren(QWidget):
-            if wrapper.property("settings_anchor") == anchor:
-                scroll.ensureWidgetVisible(wrapper, 0, 80)
-                return
+            return False
+        target, handle = _find_settings_anchor_target(page, anchor)
+        if target is None:
+            return False
+        if handle is not None:
+            handle.set_expanded(True)
+        _scroll_settings_target_into_view(scroll, target)
+        return True
 
     def _maybe_start_provider_status_refresh(self) -> None:
         row = self.settings_section_list.currentRow()
@@ -394,6 +474,14 @@ class SettingsView(
             self._sync_bootstrap_download_visibility()
         self._maybe_start_provider_status_refresh()
         self._refresh_knowledge_access_ui(is_dark=is_dark)
+        row = self.settings_section_list.currentRow()
+        if row >= 0:
+            item = self.settings_section_list.item(row)
+            if item is not None:
+                section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+                self._sync_settings_collapse_all_button(
+                    str(section_id) if section_id else None
+                )
 
     def hideEvent(self, event: QHideEvent) -> None:
         super().hideEvent(event)
@@ -417,6 +505,7 @@ class SettingsView(
         self._section_stack_index_by_id: dict[str, int] = {}
         self._settings_search_index: list[dict] = []
         self._theme_buttons: list = []
+        self._settings_collapsible_cards_by_section: dict[str, list] = {}
 
         self._init_settings_layout()
 
@@ -522,7 +611,11 @@ class SettingsView(
         if is_dark is None:
             is_dark = coalesce_settings_is_dark(self)
 
-        content_widget = builder(self, is_dark=is_dark)
+        self._current_settings_section_id = section_id
+        try:
+            content_widget = builder(self, is_dark=is_dark)
+        finally:
+            self._current_settings_section_id = None
         self._mount_settings_section_content(section_id, content_widget)
         self._sections_built.add(section_id)
         self._index_section_for_search(sec_def, content_widget)
@@ -547,6 +640,9 @@ class SettingsView(
         if hasattr(self, "_sync_bootstrap_download_visibility"):
             self._sync_bootstrap_download_visibility()
         self._apply_settings_section_control_styles(content_widget, is_dark=is_dark)
+        from ui.views.settings.settings_card_style import sync_settings_collapsible_cards
+
+        sync_settings_collapsible_cards(self, is_dark=is_dark)
         return True
 
     def _mount_settings_section_content(
@@ -660,12 +756,20 @@ class SettingsView(
             if wrapper is not None:
                 wrapper.setVisible(internal)
         for lbl in getattr(self, "_ai_internal_subsection_labels", []):
-            lbl.setVisible(internal)
+            if lbl is not None:
+                lbl.setVisible(internal)
+        internal_tuning_card = getattr(self, "_ai_internal_tuning_card", None)
+        if internal_tuning_card is not None:
+            internal_tuning_card.setVisible(internal)
         hint = getattr(self, "_ai_external_engine_hint", None)
         if hint is not None:
             hint.setVisible(not internal)
         if hasattr(self, "_sync_hardware_chat_template_panels"):
             self._sync_hardware_chat_template_panels()
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+        from ui.views.settings.settings_card_style import sync_settings_collapsible_cards
+
+        sync_settings_collapsible_cards(self, is_dark=coalesce_settings_is_dark(self))
     def _on_settings_search_changed(self, text: str) -> None:
         query = text.strip().lower()
         first_match_row: int | None = None
@@ -951,10 +1055,14 @@ class SettingsView(
             self.settings_section_tour_btn,
             self.settings_section_icon_lbl,
             section_header,
+            self.settings_section_collapse_all_btn,
         ) = make_settings_section_header_row(
             right,
             initial_tour_id="settings.voice_audio",
             initial_area_display_name="Voice & Audio settings",
+        )
+        self.settings_section_collapse_all_btn.clicked.connect(
+            self._on_settings_collapse_all_clicked
         )
         self._settings_section_icon_labels.append(self.settings_section_icon_lbl)
         section_header_row.addWidget(section_header)
@@ -1077,6 +1185,7 @@ class SettingsView(
         self._settings_active_section_id = section_id
         self._ensure_section_data_loaded(section_id)
         self._sync_settings_section_tour_header(section_id)
+        self._sync_settings_collapse_all_button(section_id)
         if section_id == "appearance.themes" and hasattr(self, "_on_themes_section_enter"):
             self._on_themes_section_enter()
         if section_id == "advanced":
@@ -1099,6 +1208,62 @@ class SettingsView(
 
             stop_provider_status_refresh_timer(self)
         QTimer.singleShot(0, self._relayout_trigger_list_rows)
+
+    def _sync_settings_collapse_all_button(self, section_id: str | None) -> None:
+        btn = getattr(self, "settings_section_collapse_all_btn", None)
+        if btn is None:
+            return
+        from core.app_settings import get_settings_section_cards_collapsible
+
+        if not get_settings_section_cards_collapsible() or not section_id:
+            btn.hide()
+            return
+        cards = getattr(self, "_settings_collapsible_cards_by_section", {}).get(
+            section_id, ()
+        )
+        from ui.views.settings.settings_card_style import collapsible_card_has_title
+
+        titled_cards = [
+            handle
+            for handle in cards
+            if collapsible_card_has_title(handle)
+        ]
+        if len(titled_cards) < 2:
+            btn.hide()
+            return
+        btn.show()
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        color = "#89b4fa" if is_dark else "#64748b"
+        all_expanded = all(handle.expanded for handle in titled_cards)
+        icon_name = "fa5s.chevron-up" if all_expanded else "fa5s.chevron-down"
+        btn.setIcon(qta.icon(icon_name, color=color))
+        btn.setToolTip(
+            "Collapse all sections on this page"
+            if all_expanded
+            else "Expand all sections on this page"
+        )
+        btn.setProperty("_collapse_all_expanded", all_expanded)
+
+    def _on_settings_collapse_all_clicked(self) -> None:
+        row = self.settings_section_list.currentRow()
+        if row < 0:
+            return
+        item = self.settings_section_list.item(row)
+        if item is None:
+            return
+        section_id = item.data(self._SETTINGS_SECTION_ID_ROLE)
+        if not section_id:
+            return
+        btn = self.settings_section_collapse_all_btn
+        expand_all = not bool(btn.property("_collapse_all_expanded"))
+        from ui.views.settings.settings_card_style import (
+            set_settings_collapsible_cards_expanded,
+        )
+
+        set_settings_collapsible_cards_expanded(
+            self, str(section_id), expanded=expand_all
+        )
+        self._sync_settings_collapse_all_button(str(section_id))
 
     def _sync_settings_section_tour_header(self, section_id: str | None) -> None:
         if not hasattr(self, "settings_section_tour_btn"):

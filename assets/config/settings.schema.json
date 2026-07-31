@@ -58,6 +58,16 @@
     "default": false,
     "description": "When enabled, library document preview text uses an elevated background card for readability over wallpapers."
   },
+  "qube.ui.settings_section_cards_collapsible": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, settings pages show per-card collapse controls and a page-level expand/collapse button beside the section title."
+  },
+  "qube.ui.settings_section_cards_default_expanded": {
+    "type": "boolean",
+    "default": true,
+    "description": "When collapsible settings cards are enabled, whether section cards start expanded (true) or collapsed (false) when Settings is opened."
+  },
   "qube.memory.enrichment": {
     "type": "boolean",
     "default": false,
@@ -233,6 +243,11 @@
     "type": "boolean",
     "default": false,
     "description": "When true, append one JSON line per chat turn to routing_debug.log for troubleshooting."
+  },
+  "qube.integrations.router_suggestions_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, routing debug may list read-only integration capability suggestions (never auto-invokes)."
   },
   "qube.diagnostics.app_log_file_enabled": {
     "type": "boolean",

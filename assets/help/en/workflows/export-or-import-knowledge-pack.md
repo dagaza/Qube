@@ -10,7 +10,7 @@
 
 A **knowledge pack** exports Knowledge configuration—presets, custom sources, and related settings—for backup or transfer to another Qube install. Import applies the pack immediately and shows a summary dialog (counts imported, errors).
 
-The export **redacts credentials**; re-enter API keys on the target machine when sources reference credential refs.
+The export **redacts credentials**; re-enter API keys on the target machine when sources reference credential refs. When integration capabilities are configured, the pack also includes **consent grants** (permission decisions — not secrets).
 
 ## Where to find it
 

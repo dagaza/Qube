@@ -25,6 +25,7 @@ from core.composer_attachments import (
     composer_tool_tooltip,
     composer_tools_for_palette,
 )
+from core.integrations.search import CapabilityPaletteEntry, capability_palette_tooltip
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 from core.composer_mention_search import (
     ComposerPaletteView,
@@ -932,6 +933,10 @@ class ComposerMentionPopup(QWidget):
                 else:
                     tip = f"Attach {att.label}."
                 self._apply_row_tooltip(row, tip)
+            elif isinstance(hit.payload, CapabilityPaletteEntry):
+                entry = hit.payload
+                row.setData(Qt.ItemDataRole.UserRole, entry.to_attachment())
+                self._apply_row_tooltip(row, capability_palette_tooltip(entry))
             self._list.addItem(row)
         self._list.setFixedHeight(_DRILL_LIST_HEIGHT)
 

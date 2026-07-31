@@ -728,6 +728,11 @@ class KnowledgeHandlersMixin:
 
     def _on_custom_source_connector_selected(self, connector_id: str) -> None:
         self._custom_source_connector_id = str(connector_id or "rest_json")
+        from ui.views.settings.sections.knowledge_custom_sources import (
+            sync_custom_source_connector_fields,
+        )
+
+        sync_custom_source_connector_fields(self)
 
     def _sync_custom_source_connector_selector(self) -> None:
         if not hasattr(self, "custom_source_connector_selector"):
@@ -1085,6 +1090,11 @@ class KnowledgeHandlersMixin:
         from ui.views.settings.sections.knowledge_custom_sources import test_custom_source_from_host
 
         test_custom_source_from_host(self)
+
+    def _new_custom_source(self) -> None:
+        from ui.views.settings.sections.knowledge_custom_sources import new_custom_source_from_host
+
+        new_custom_source_from_host(self)
 
     def _delete_custom_source(self) -> None:
         from ui.views.settings.sections.knowledge_custom_sources import delete_custom_source_from_host

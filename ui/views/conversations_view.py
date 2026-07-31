@@ -121,6 +121,7 @@ from core.composer_draft import (
     add_routing_attachment,
     add_skill,
     composer_one_source_limit_request,
+    composer_capability_unavailable_request,
     composer_prompt_required_request,
     deep_research_unavailable_request,
     draft_from_text,
@@ -3510,6 +3511,14 @@ class ConversationsView(QWidget):
         self.text_input.open_mention_palette(pos)
         self.text_input.setFocus()
 
+    def _sync_telemetry_session_egress(self, session_id: str | None) -> None:
+        win = self.window()
+        if win is None or not hasattr(win, "peek_telemetry_view"):
+            return
+        tv = win.peek_telemetry_view()
+        if tv is not None:
+            tv.set_active_session_id(session_id)
+
     def _handle_text_submit(self):
         if self._is_stop_mode():
             self._request_stop()
@@ -3530,6 +3539,52 @@ class ConversationsView(QWidget):
         raw = serialize_draft(self._composer_draft)
         clean, attachments, enforced_skills = parse_composer_input(raw)
         routing = resolve_attachment_routing(attachments)
+        if routing and routing.get("route") == "capability":
+            from core.integrations.capability_invoke import parse_composer_capability_urn
+            from core.integrations.capability_availability import resolve_capability_availability
+
+            cap_urn = parse_composer_capability_urn(
+                str(routing.get("capability_urn") or "")
+            )
+            if cap_urn is not None:
+                availability = resolve_capability_availability(cap_urn)
+                if not availability.available:
+                    self._notify_composer_toast(
+                        composer_capability_unavailable_request(availability.user_message)
+                    )
+                    return
+            session_for_gate = self._ensure_active_session_for_send()
+            next_turn_id = str(
+                int(getattr(self.llm, "_routing_debug_turn_seq", 0)) + 1
+            )
+            from core.integrations.composer_capability_gate import (
+                format_step_approval_message,
+                pending_step_approvals,
+            )
+            from core.integrations.step_approval import step_approval_store
+
+            pending_caps = pending_step_approvals(
+                session_for_gate, next_turn_id, attachments
+            )
+            if pending_caps:
+                win = self.window()
+                is_dark = getattr(win, "_is_dark_theme", True)
+                confirmed = PrestigeDialog(
+                    win,
+                    "Approve integration actions",
+                    format_step_approval_message(pending_caps),
+                    is_dark=is_dark,
+                    confirm_text="Run for this message",
+                    cancel_text="Cancel",
+                ).exec()
+                if not confirmed:
+                    self.setFocus()
+                    return
+                step_approval_store.grant_many(
+                    session_for_gate,
+                    next_turn_id,
+                    [item.urn for item in pending_caps],
+                )
         if routing and routing.get("route") == "deep_research":
             self._reset_composer_draft()
             self._submit_deep_research(
@@ -3569,6 +3624,7 @@ class ConversationsView(QWidget):
                 persist_content=raw,
                 input_source=INPUT_SOURCE_TEXT,
             )
+            self._sync_telemetry_session_egress(str(self.active_session_id))
 
     def _ensure_active_session_for_send(self) -> str:
         if not hasattr(self, "active_session_id") or not self.active_session_id:
@@ -4065,6 +4121,7 @@ class ConversationsView(QWidget):
         from PyQt6.QtCore import Qt
         session_id = item.data(Qt.ItemDataRole.UserRole)
         self.active_session_id = session_id
+        self._sync_telemetry_session_egress(str(session_id))
         self._reset_composer_draft()
         self._notify_llm_active_session_changed()
         if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
