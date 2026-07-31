@@ -140,11 +140,15 @@ def main_window_dark(main_window):
 
 
 @pytest.fixture
-def fresh_main_window(_qube_app, mock_workers):
+def fresh_main_window(_qube_app, mock_workers, main_window):
     """
     Function-scoped MainWindow for tests that require pristine lazy-load /
     navigation state.  The session-scoped ``main_window`` accumulates side
     effects when ~2,700 tests share one instance.
+
+    Reuse the session theme manager so each fresh window does not call
+    ``ThemeManager.apply()`` again — that full-app stylesheet pass can hang
+    on Windows CI once many MainWindow instances have subscribed.
     """
     from ui.main_window import MainWindow
 
@@ -155,6 +159,7 @@ def fresh_main_window(_qube_app, mock_workers):
         workers=mock_workers,
         gpu_monitor=gpu_monitor,
         native_engine=native_engine,
+        theme_manager=main_window.theme_manager,
     )
     yield win
     timer = getattr(win, "telemetry_timer", None)

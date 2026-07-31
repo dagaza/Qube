@@ -14,6 +14,31 @@ def _stop_settings_section_prefetch(settings) -> None:
         queue.clear()
 
 
+def _reset_settings_lazy_state(main_window, qtbot) -> None:
+    """Drop a built Settings stage so tests can exercise first-open wiring."""
+    from PyQt6.QtWidgets import QWidget
+
+    from ui.main_window import MAIN_STAGE_SETTINGS
+
+    main_window._settings_view_wired = False
+    if MAIN_STAGE_SETTINGS not in main_window._main_stage_built:
+        main_window._settings_view = None
+        return
+
+    widget = main_window.main_stage.widget(MAIN_STAGE_SETTINGS)
+    if widget is not None:
+        main_window.main_stage.removeWidget(widget)
+        widget.deleteLater()
+    main_window._settings_view = None
+    main_window._main_stage_built.discard(MAIN_STAGE_SETTINGS)
+    main_window._main_stage_app_wired.discard(MAIN_STAGE_SETTINGS)
+
+    placeholder = QWidget()
+    placeholder.setObjectName(f"MainStagePlaceholder_{MAIN_STAGE_SETTINGS}")
+    main_window.main_stage.insertWidget(MAIN_STAGE_SETTINGS, placeholder)
+    qtbot.wait(10)
+
+
 @pytest.fixture(autouse=True)
 def _stub_tts_bootstrap_prompt(monkeypatch):
     """Prevent the TTS enable toggle from opening a blocking download modal.
@@ -49,8 +74,8 @@ def _prestige_menu_item_labels(menu) -> list[str]:
 
 
 @pytest.mark.ui
-def test_settings_voice_selector_syncs_after_lazy_load(fresh_main_window, qtbot):
-    main_window = fresh_main_window
+def test_settings_voice_selector_syncs_after_lazy_load(main_window, qtbot):
+    _reset_settings_lazy_state(main_window, qtbot)
     voices = ["af_heart", "af_bella", "am_adam"]
     main_window._tts_worker = MagicMock(active_voice_name="af_bella")
 
