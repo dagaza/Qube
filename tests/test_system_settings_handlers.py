@@ -158,12 +158,11 @@ if _PYQT_AVAILABLE:
             )
 
         @patch(
-            "mcp.routing_debug.routing_debug_log_redact_query_env_override",
+            f"{_privacy_mod.__name__}.routing_debug_log_redact_query_env_override",
             return_value=True,
         )
         def test_redaction_toggle_respects_launch_env_override(self, _env_mock) -> None:
             host = _PrivacyHost()
-            host._window.show()
             toggle = host.diagnostic_log_redaction_toggles["routing_debug"]
             toggle.setEnabled(True)
             host._sync_diagnostic_log_redaction_toggle("routing_debug")

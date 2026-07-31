@@ -8,6 +8,12 @@ import pytest
 from PyQt6.QtCore import Qt
 
 
+def _stop_settings_section_prefetch(settings) -> None:
+    queue = getattr(settings, "_settings_prefetch_queue", None)
+    if queue is not None:
+        queue.clear()
+
+
 @pytest.fixture(autouse=True)
 def _stub_tts_bootstrap_prompt(monkeypatch):
     """Prevent the TTS enable toggle from opening a blocking download modal.
@@ -56,6 +62,7 @@ def test_settings_voice_selector_syncs_after_lazy_load(fresh_main_window, qtbot)
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    _stop_settings_section_prefetch(settings)
 
     settings_labels = _prestige_menu_item_labels(settings.voice_selector.menu())
     assert settings_labels == voices
@@ -67,6 +74,7 @@ def test_settings_tts_voice_enable_toggle_syncs_with_toolbar(main_window, qtbot)
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    _stop_settings_section_prefetch(settings)
 
     toolbar_toggle = main_window.voice_bypass_toggle
     settings_toggle = settings.tts_voice_enabled_toggle
