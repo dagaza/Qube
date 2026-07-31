@@ -165,6 +165,14 @@ class PersistenceHandlersMixin:
         self._settings_watcher = QFileSystemWatcher(self)
         self._settings_watcher.fileChanged.connect(self._on_settings_file_changed)
 
+    def _teardown_settings_file_watcher(self) -> None:
+        timer = getattr(self, "_settings_reload_timer", None)
+        if timer is not None:
+            timer.stop()
+        watcher = getattr(self, "_settings_watcher", None)
+        if watcher is not None:
+            watcher.blockSignals(True)
+
     def _ensure_settings_file_watched(self) -> None:
         path = str(default_user_settings_path())
         watched = set(self._settings_watcher.files())
@@ -321,13 +329,15 @@ class PersistenceHandlersMixin:
         ]
         em = get_engine_mode()
         engine_label = next((lbl for lbl, m in engine_modes if m == em), engine_modes[0][0])
-        self.engine_selector.blockSignals(True)
-        self.engine_selector.setText(engine_label)
-        self.engine_selector.blockSignals(False)
+        if hasattr(self, "engine_selector"):
+            self.engine_selector.blockSignals(True)
+            self.engine_selector.setText(engine_label)
+            self.engine_selector.blockSignals(False)
 
-        self.memory_enrichment_toggle.blockSignals(True)
-        self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
-        self.memory_enrichment_toggle.blockSignals(False)
+        if hasattr(self, "memory_enrichment_toggle"):
+            self.memory_enrichment_toggle.blockSignals(True)
+            self.memory_enrichment_toggle.setChecked(get_enable_memory_enrichment())
+            self.memory_enrichment_toggle.blockSignals(False)
         if hasattr(self, "chat_personality_toggle"):
             self.chat_personality_toggle.blockSignals(True)
             self.chat_personality_toggle.setChecked(get_enable_chat_personality_nudge())

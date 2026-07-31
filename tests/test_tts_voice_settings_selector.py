@@ -27,6 +27,12 @@ def _reset_settings_lazy_state(main_window, qtbot) -> None:
 
     widget = main_window.main_stage.widget(MAIN_STAGE_SETTINGS)
     if widget is not None:
+        release = getattr(widget, "_release_themes_manager_subscription", None)
+        if callable(release):
+            release()
+        stop_watcher = getattr(widget, "_teardown_settings_file_watcher", None)
+        if callable(stop_watcher):
+            stop_watcher()
         main_window.main_stage.removeWidget(widget)
         widget.deleteLater()
     main_window._settings_view = None

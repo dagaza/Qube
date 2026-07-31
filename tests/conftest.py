@@ -118,6 +118,16 @@ def main_window(_qube_app, mock_workers):
     _qube_app.processEvents()
 
 
+def teardown_settings_view_runtime_hooks(settings) -> None:
+    """Stop timers/subscriptions before destroying a SettingsView in tests."""
+    release = getattr(settings, "_release_themes_manager_subscription", None)
+    if callable(release):
+        release()
+    stop_watcher = getattr(settings, "_teardown_settings_file_watcher", None)
+    if callable(stop_watcher):
+        stop_watcher()
+
+
 def reset_main_window_theme_dark(main_window) -> None:
     """Reset a (usually session-scoped) MainWindow to the default dark scheme.
 
@@ -165,5 +175,8 @@ def fresh_main_window(_qube_app, mock_workers, main_window):
     timer = getattr(win, "telemetry_timer", None)
     if timer is not None:
         timer.stop()
+    settings = getattr(win, "_settings_view", None)
+    if settings is not None:
+        teardown_settings_view_runtime_hooks(settings)
     win.close()
     _qube_app.processEvents()

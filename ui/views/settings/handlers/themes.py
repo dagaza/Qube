@@ -248,6 +248,14 @@ class ThemesHandlersMixin:
         manager.subscribe(self._on_global_theme_applied_from_nav)
         self._themes_manager_subscribed = True
 
+    def _release_themes_manager_subscription(self) -> None:
+        if not getattr(self, "_themes_manager_subscribed", False):
+            return
+        manager = self._settings_theme_manager()
+        if manager is not None:
+            manager.unsubscribe(self._on_global_theme_applied_from_nav)
+        self._themes_manager_subscribed = False
+
     def _themes_applied_scheme_id(self) -> str:
         manager = self._settings_theme_manager()
         if manager is None:

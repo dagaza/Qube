@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QHideEvent, QPainter, QColor, QPixmap
+from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent, QHideEvent, QCloseEvent, QPainter, QColor, QPixmap
 
 from core.paths import resource_path
 
@@ -339,6 +339,12 @@ class SettingsView(
         self._setup_settings_file_watcher()
         self._skip_next_menu_theme_refresh = True
         self._schedule_settings_section_prefetch()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self._release_themes_manager_subscription()
+        self._teardown_settings_file_watcher()
+        super().closeEvent(event)
+
     def select_settings_section(
         self,
         section: str,

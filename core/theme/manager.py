@@ -138,6 +138,12 @@ class ThemeManager:
     def subscribe(self, callback: Callable[[ResolvedTheme], None]) -> None:
         self._subscribers.append(callback)
 
+    def unsubscribe(self, callback: Callable[[ResolvedTheme], None]) -> None:
+        try:
+            self._subscribers.remove(callback)
+        except ValueError:
+            pass
+
     def register_surface_refresh(self, callback: Callable[[], None]) -> None:
         """Register a host/widget refresh hook (Phase 1+ compositor)."""
         self._surface_refresh_callbacks.append(callback)
@@ -506,8 +512,14 @@ class ThemeManager:
         )
 
     def _notify(self, resolved: ResolvedTheme) -> None:
+        stale: list[Callable[[ResolvedTheme], None]] = []
         for callback in list(self._subscribers):
-            callback(resolved)
+            try:
+                callback(resolved)
+            except RuntimeError:
+                stale.append(callback)
+        for callback in stale:
+            self.unsubscribe(callback)
 
     def _notify_surface_refresh(self) -> None:
         for callback in list(self._surface_refresh_callbacks):
