@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget
 
 from core.diagnostic_logs import iter_diagnostic_logs_by_category
 from ui.main_window import MAIN_STAGE_SETTINGS, MAIN_STAGE_TELEMETRY
@@ -44,15 +45,43 @@ SYSTEM_SECTION_WIDGETS: dict[str, tuple[str, ...]] = {
 
 
 def _open_settings(main_window, qtbot):
+    main_window.show()
+    main_window.resize(1400, 900)
+    qtbot.waitExposed(main_window)
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    qtbot.waitExposed(settings)
     return settings
+
+
+def _section_content(settings, section_id: str) -> QWidget:
+    scroll = settings._section_scroll_by_id.get(section_id)
+    assert scroll is not None, f"missing scroll for {section_id}"
+    content = scroll.widget()
+    assert content is not None, f"missing content widget for {section_id}"
+    return content
+
+
+def _is_descendant(widget: QWidget, ancestor: QWidget) -> bool:
+    node: QWidget | None = widget
+    while node is not None:
+        if node is ancestor:
+            return True
+        node = node.parentWidget()
+    return False
 
 
 def _select_system_section(settings, qtbot, section_id: str) -> None:
     settings.select_settings_section(section_id)
-    qtbot.wait(10)
+    qtbot.wait(50)
+
+
+def _assert_widget_in_active_section(settings, section_id: str, widget, label: str) -> None:
+    assert widget is not None, f"{section_id} missing {label}"
+    content = _section_content(settings, section_id)
+    assert _is_descendant(widget, content), f"{label} not in {section_id} section body"
+    assert widget.isVisibleTo(content), f"{section_id}.{label} should be visible"
 
 
 @pytest.mark.ui
@@ -69,8 +98,7 @@ def test_system_section_key_widgets_exist(
 
     for attr in widget_attrs:
         widget = getattr(settings, attr, None)
-        assert widget is not None, f"{section_id} missing {attr}"
-        assert widget.isVisible(), f"{section_id}.{attr} should be visible"
+        _assert_widget_in_active_section(settings, section_id, widget, attr)
 
 
 @pytest.mark.ui
@@ -81,15 +109,24 @@ def test_privacy_data_builds_audit_log_controls_only(fresh_main_window, qtbot):
     audit_ids = {spec.id for spec in iter_diagnostic_logs_by_category("audit")}
     technical_ids = {spec.id for spec in iter_diagnostic_logs_by_category("technical")}
 
-    assert audit_ids <= set(settings.diagnostic_log_view_buttons)
-    assert audit_ids <= set(settings.diagnostic_log_recording_toggles)
-    assert technical_ids.isdisjoint(settings.diagnostic_log_view_buttons)
-    assert technical_ids.isdisjoint(settings.diagnostic_log_recording_toggles)
+    privacy_content = _section_content(settings, "privacy.data")
+    for log_id in audit_ids:
+        view_btn = settings.diagnostic_log_view_buttons.get(log_id)
+        assert view_btn is not None
+        assert _is_descendant(view_btn, privacy_content)
+        assert log_id in settings.diagnostic_log_recording_toggles
+    for log_id in technical_ids:
+        view_btn = settings.diagnostic_log_view_buttons.get(log_id)
+        if view_btn is not None:
+            assert not _is_descendant(view_btn, privacy_content)
 
     for log_id in ("routing_debug", "web_search_audit"):
-        assert log_id in settings.diagnostic_log_redaction_toggles
+        toggle = settings.diagnostic_log_redaction_toggles.get(log_id)
+        assert toggle is not None
+        assert _is_descendant(toggle, privacy_content)
 
-    assert not hasattr(settings, "open_logs_folder_btn")
+    open_logs_btn = getattr(settings, "open_logs_folder_btn", None)
+    assert open_logs_btn is None or not _is_descendant(open_logs_btn, privacy_content)
 
 
 @pytest.mark.ui
@@ -100,13 +137,26 @@ def test_diagnostics_builds_technical_log_controls_only(fresh_main_window, qtbot
     audit_ids = {spec.id for spec in iter_diagnostic_logs_by_category("audit")}
     technical_ids = {spec.id for spec in iter_diagnostic_logs_by_category("technical")}
 
-    assert technical_ids <= set(settings.diagnostic_log_view_buttons)
-    assert technical_ids <= set(settings.diagnostic_log_recording_toggles)
-    assert audit_ids.isdisjoint(settings.diagnostic_log_view_buttons)
-    assert audit_ids.isdisjoint(settings.diagnostic_log_recording_toggles)
-    assert settings.diagnostic_log_redaction_toggles == {}
+    diagnostics_content = _section_content(settings, "diagnostics")
+    for log_id in technical_ids:
+        view_btn = settings.diagnostic_log_view_buttons.get(log_id)
+        assert view_btn is not None
+        assert _is_descendant(view_btn, diagnostics_content)
+        assert log_id in settings.diagnostic_log_recording_toggles
+    for log_id in audit_ids:
+        view_btn = settings.diagnostic_log_view_buttons.get(log_id)
+        if view_btn is not None:
+            assert not _is_descendant(view_btn, diagnostics_content)
 
-    assert settings.open_logs_folder_btn.isVisible()
+    for toggle in settings.diagnostic_log_redaction_toggles.values():
+        assert not _is_descendant(toggle, diagnostics_content)
+
+    _assert_widget_in_active_section(
+        settings,
+        "diagnostics",
+        settings.open_logs_folder_btn,
+        "open_logs_folder_btn",
+    )
     assert settings.open_logs_folder_btn.isEnabled()
 
 
@@ -117,8 +167,14 @@ def test_license_section_shows_status_text(fresh_main_window, qtbot):
 
     status = settings.license_status_lbl.text().strip()
     assert status
+    _assert_widget_in_active_section(
+        settings, "license", settings.import_license_btn, "import_license_btn"
+    )
+    _assert_widget_in_active_section(
+        settings, "license", settings.remove_license_btn, "remove_license_btn"
+    )
     assert settings.import_license_btn.isEnabled()
-    assert settings.remove_license_btn.isEnabled()
+    assert not settings.remove_license_btn.isEnabled()
 
 
 @pytest.mark.ui

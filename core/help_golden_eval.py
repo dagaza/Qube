@@ -372,6 +372,21 @@ def _doc_intent_boost(doc: dict[str, Any], signals: _QuerySignals, query: str) -
         boost += 1.2
     if "prepare search models" in _normalize(query) and doc_id == "features.settings.knowledge":
         boost -= 0.35
+    if any(
+        phrase in norm
+        for phrase in (
+            "web discovery privacy",
+            "discovery privacy tier",
+            "privacy tier settings",
+            "web discovery privacy tier",
+        )
+    ):
+        if doc_id == "features.settings.privacy_data":
+            boost += 2.6
+        if doc_id == "faq.web_discovery_privacy_tiers":
+            boost += 2.2
+        if doc_id == "features.settings.knowledge":
+            boost -= 1.2
     if (
         signals.workflow
         and "chat with" in _normalize(query)

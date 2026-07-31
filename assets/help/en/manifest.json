@@ -773,7 +773,12 @@
       "synonyms": [
         "privacy settings",
         "audit logs",
-        "sensitive logs"
+        "sensitive logs",
+        "web discovery privacy",
+        "web discovery privacy tier",
+        "web discovery privacy tier settings",
+        "privacy tier settings",
+        "data egress"
       ],
       "related": [
         "reference.settings_sections",

@@ -31,9 +31,11 @@ _HANDLERS_DIR = (
 def _load_handler_module(name: str):
     """Load a handler module without importing ui.views.settings.handlers package."""
     path = _HANDLERS_DIR / f"{name}.py"
-    spec = importlib.util.spec_from_file_location(f"_handlers_{name}", path)
+    mod_name = f"_handlers_{name}"
+    spec = importlib.util.spec_from_file_location(mod_name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -117,9 +119,9 @@ if _PYQT_AVAILABLE:
         def __init__(self) -> None:
             from PyQt6.QtWidgets import QLabel, QPushButton, QWidget
 
-            self._window = _WindowHost()
-            self.license_status_lbl = QLabel(parent=QWidget())
-            self.remove_license_btn = QPushButton(parent=QWidget())
+            self._window = QWidget()
+            self.license_status_lbl = QLabel(parent=self._window)
+            self.remove_license_btn = QPushButton(parent=self._window)
             self.library_pro_sync_calls = 0
 
         def window(self):

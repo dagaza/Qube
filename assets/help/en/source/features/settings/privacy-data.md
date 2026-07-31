@@ -28,7 +28,7 @@ Open **Settings → Privacy & data** (settings section `privacy.data`). Press **
 
 ## Also called
 
-privacy settings, audit logs, sensitive logs, data egress, web discovery privacy, session egress
+privacy settings, audit logs, sensitive logs, data egress, web discovery privacy, web discovery privacy tier, web discovery privacy tier settings, privacy tier settings, session egress
 
 ## How to…
 

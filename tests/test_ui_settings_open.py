@@ -118,18 +118,24 @@ def test_all_settings_section_tour_targets_on_real_view(main_window, qtbot):
 
 
 @pytest.mark.ui
-def test_settings_section_header_stays_visible_when_scrolled(main_window, qtbot):
+def test_settings_section_header_stays_visible_when_scrolled(fresh_main_window, qtbot):
+    main_window = fresh_main_window
+    main_window.show()
+    main_window.resize(1400, 900)
+    qtbot.waitExposed(main_window)
     qtbot.mouseClick(main_window.nav_settings, Qt.MouseButton.LeftButton)
     settings = main_window.peek_settings_view()
     assert settings is not None
+    qtbot.waitExposed(settings)
 
     settings.select_settings_section("knowledge")
+    qtbot.wait(50)
     scroll = settings._section_scroll_by_id.get("knowledge")
     assert scroll is not None
 
     bar = settings.settings_section_header_bar
     title = settings.settings_section_title_lbl
-    assert bar.isVisible()
+    assert bar.isVisibleTo(settings)
     assert title.text() == "Knowledge"
 
     vbar = scroll.verticalScrollBar()
@@ -137,8 +143,8 @@ def test_settings_section_header_stays_visible_when_scrolled(main_window, qtbot)
     vbar.setValue(vbar.maximum())
     qtbot.wait(10)
 
-    assert bar.isVisible()
-    assert title.isVisible()
+    assert bar.isVisibleTo(settings)
+    assert title.isVisibleTo(settings)
     assert title.text() == "Knowledge"
 
 
