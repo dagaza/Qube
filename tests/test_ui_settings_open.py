@@ -127,6 +127,9 @@ def test_settings_section_header_stays_visible_when_scrolled(fresh_main_window, 
     settings = main_window.peek_settings_view()
     assert settings is not None
     qtbot.waitExposed(settings)
+    queue = getattr(settings, "_settings_prefetch_queue", None)
+    if queue is not None:
+        queue.clear()
 
     settings.select_settings_section("knowledge")
     qtbot.wait(50)

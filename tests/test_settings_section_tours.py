@@ -101,7 +101,7 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "advanced_hardware_toggle",
         "gpu_layers_slider",
         "cpu_threads_slider",
-        "inference_transparency_lbl",
+        "inference_transparency_table",
         "advanced_chat_template_toggle",
         "native_chat_format_selector",
         "native_chat_format_reset_btn",

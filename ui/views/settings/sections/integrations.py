@@ -6,13 +6,11 @@ from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QScrollArea,
     QSizePolicy,
     QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -27,6 +25,12 @@ from core.integrations.registry.provider_registry import list_capability_provide
 from ui.components.brand_buttons import apply_brand_secondary
 from ui.components.toggle import PrestigeToggle
 from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+from ui.views.settings.knowledge_list_table import (
+    apply_borderless_list_table_theme,
+    apply_settings_bordered_panel_theme,
+    configure_borderless_list_table,
+    populate_table_rows,
+)
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
@@ -47,6 +51,14 @@ _STATE_HINTS = {
     ConsentUIState.DENIED: "Not granted (default-deny)",
     ConsentUIState.ALLOWED: "Granted",
 }
+
+_MCP_SERVERS_PLACEHOLDER = "No MCP servers configured yet."
+_CONSENT_EMPTY_PROVIDERS = "No integration providers are registered yet."
+_CONSENT_EMPTY_CAPABILITIES = (
+    "No discovered capabilities yet. Connect an MCP server under "
+    "Knowledge → Custom sources and run discovery to review permissions here."
+)
+_EMPTY_PANEL_BODY_HEIGHT_PX = 72
 
 
 def _tier_badge(tier_value: str, *, is_dark: bool) -> QLabel:
@@ -130,37 +142,19 @@ def _make_capability_row(
     return outer
 
 
-def _configure_mcp_servers_table(table: QTableWidget, *, is_dark: bool) -> None:
-    table.setObjectName("IntegrationsMcpServersTable")
-    table.setColumnCount(4)
-    table.setHorizontalHeaderLabels(["Server", "Capabilities", "Granted", "Health"])
-    header = table.horizontalHeader()
-    for col in range(4):
-        header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
-    table.verticalHeader().setVisible(False)
-    table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-    table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-    table.setShowGrid(False)
-    table.setFrameShape(QFrame.Shape.NoFrame)
-    table.setMinimumHeight(120)
-    muted = "#6c7086" if is_dark else "#64748b"
-    table.setStyleSheet(
-        f"""
-        QTableWidget#IntegrationsMcpServersTable {{
-            background: transparent;
-            border: none;
-        }}
-        QHeaderView::section {{
-            color: {muted};
-            background: transparent;
-            border: none;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 4px 0;
-        }}
-        """
+def _make_consent_empty_placeholder(text: str, *, is_dark: bool) -> QLabel:
+    from core.theme.accessors import theme_for
+
+    theme = theme_for(is_dark=is_dark)
+    label = QLabel(text)
+    label.setWordWrap(True)
+    label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+    label.setMinimumHeight(_EMPTY_PANEL_BODY_HEIGHT_PX)
+    label.setStyleSheet(
+        f"color: {theme.text_muted}; font-size: 12px; "
+        "background: transparent; border: none; padding: 24px 16px;"
     )
+    return label
 
 
 def build_section(host, *, is_dark: bool) -> QWidget:
@@ -186,7 +180,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_settings_span_row(servers_form, servers_intro)
 
     host.integrations_mcp_servers_table = QTableWidget()
-    _configure_mcp_servers_table(host.integrations_mcp_servers_table, is_dark=is_dark)
+    configure_borderless_list_table(
+        host.integrations_mcp_servers_table,
+        columns=("Server", "Capabilities", "Granted", "Health"),
+        object_name="IntegrationsMcpServersTable",
+    )
+    host.integrations_mcp_servers_table.setSelectionMode(
+        QTableWidget.SelectionMode.NoSelection
+    )
+    host.integrations_mcp_servers_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    apply_borderless_list_table_theme(host.integrations_mcp_servers_table, is_dark=is_dark)
     add_settings_span_row(servers_form, host.integrations_mcp_servers_table)
 
     manage_row = QHBoxLayout()
@@ -221,6 +224,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     add_settings_span_row(consent_form, intro)
 
+    consent_panel = QFrame()
+    consent_panel.setObjectName("IntegrationsConsentPanel")
+    consent_panel.setMinimumHeight(240)
+    apply_settings_bordered_panel_theme(
+        consent_panel, is_dark=is_dark, object_name="IntegrationsConsentPanel"
+    )
+    panel_layout = QVBoxLayout(consent_panel)
+    panel_layout.setContentsMargins(8, 8, 8, 8)
+    panel_layout.setSpacing(0)
+
     scroll_host = QWidget()
     scroll_layout = QVBoxLayout(scroll_host)
     scroll_layout.setContentsMargins(0, 0, 0, 0)
@@ -231,13 +244,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     scroll.setFrameShape(QFrame.Shape.NoFrame)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     scroll.setWidget(scroll_host)
-    scroll.setMinimumHeight(240)
+    scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
+    panel_layout.addWidget(scroll)
+
+    host.integrations_consent_panel = consent_panel
     host.integrations_consent_scroll = scroll
     host.integrations_consent_body = scroll_host
     host.integrations_consent_layout = scroll_layout
 
-    add_settings_span_row(consent_form, scroll)
+    add_settings_span_row(consent_form, consent_panel)
     layout.addWidget(consent_card)
     setup_integrations_dir_watcher(host)
     from core.integrations.descriptor_cache import reconcile_mcp_integration_state
@@ -288,27 +304,29 @@ def sync_integrations_mcp_servers_panel(host, *, is_dark: bool | None = None) ->
         is_dark = coalesce_settings_is_dark(host)
 
     summaries = list_mcp_server_summaries()
-    table.setRowCount(len(summaries))
+    rows = [
+        (
+            summary.label,
+            str(summary.capability_count),
+            str(summary.granted_count),
+            summary.health_label,
+        )
+        for summary in summaries
+    ]
+    populate_table_rows(
+        table,
+        rows=rows,
+        placeholder=_MCP_SERVERS_PLACEHOLDER,
+        is_dark=is_dark,
+    )
     for row_idx, summary in enumerate(summaries):
-        table.setItem(row_idx, 0, QTableWidgetItem(summary.label))
-        table.setItem(row_idx, 1, QTableWidgetItem(str(summary.capability_count)))
-        table.setItem(row_idx, 2, QTableWidgetItem(str(summary.granted_count)))
-        health_item = QTableWidgetItem(summary.health_label)
-        if summary.rereview_count:
+        if not summary.rereview_count:
+            continue
+        health_item = table.item(row_idx, 3)
+        if health_item is not None:
             health_item.setForeground(
                 Qt.GlobalColor.yellow if is_dark else Qt.GlobalColor.darkYellow
             )
-        table.setItem(row_idx, 3, health_item)
-
-    if not summaries:
-        table.setRowCount(1)
-        placeholder = QTableWidgetItem("No MCP servers configured yet.")
-        placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
-        table.setItem(0, 0, placeholder)
-        for col in range(1, 4):
-            table.setItem(0, col, QTableWidgetItem(""))
-
-    _configure_mcp_servers_table(table, is_dark=is_dark)
 
 
 def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> None:
@@ -320,6 +338,12 @@ def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> Non
     if is_dark is None:
         is_dark = coalesce_settings_is_dark(host)
 
+    panel = getattr(host, "integrations_consent_panel", None)
+    if panel is not None:
+        apply_settings_bordered_panel_theme(
+            panel, is_dark=is_dark, object_name="IntegrationsConsentPanel"
+        )
+
     while body_layout.count():
         item = body_layout.takeAt(0)
         widget = item.widget()
@@ -328,8 +352,9 @@ def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> Non
 
     provider_ids = list_capability_providers()
     if not provider_ids:
-        empty = make_settings_hint("No integration providers are registered yet.")
-        body_layout.addWidget(empty)
+        body_layout.addWidget(
+            _make_consent_empty_placeholder(_CONSENT_EMPTY_PROVIDERS, is_dark=is_dark)
+        )
         body_layout.addStretch(1)
         return
 
@@ -359,10 +384,8 @@ def sync_integrations_consent_panel(host, *, is_dark: bool | None = None) -> Non
             )
 
     if not any_rows:
-        empty = make_settings_hint(
-            "No discovered capabilities yet. Connect an MCP server under "
-            "Knowledge → Custom sources and run discovery to review permissions here."
+        body_layout.addWidget(
+            _make_consent_empty_placeholder(_CONSENT_EMPTY_CAPABILITIES, is_dark=is_dark)
         )
-        body_layout.addWidget(empty)
 
     body_layout.addStretch(1)

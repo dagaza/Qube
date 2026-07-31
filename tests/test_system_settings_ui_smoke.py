@@ -44,6 +44,13 @@ SYSTEM_SECTION_WIDGETS: dict[str, tuple[str, ...]] = {
 }
 
 
+def _stop_settings_section_prefetch(settings) -> None:
+    """Prevent background section builds from racing UI smoke tests."""
+    queue = getattr(settings, "_settings_prefetch_queue", None)
+    if queue is not None:
+        queue.clear()
+
+
 def _open_settings(main_window, qtbot):
     main_window.show()
     main_window.resize(1400, 900)
@@ -52,6 +59,7 @@ def _open_settings(main_window, qtbot):
     settings = main_window.peek_settings_view()
     assert settings is not None
     qtbot.waitExposed(settings)
+    _stop_settings_section_prefetch(settings)
     return settings
 
 

@@ -158,18 +158,19 @@ if _PYQT_AVAILABLE:
             )
 
         @patch(
-            f"{_privacy_mod.__name__}.routing_debug_log_redact_query_env_override",
+            "mcp.routing_debug.routing_debug_log_redact_query_env_override",
             return_value=True,
         )
         def test_redaction_toggle_respects_launch_env_override(self, _env_mock) -> None:
             host = _PrivacyHost()
+            host._window.show()
             toggle = host.diagnostic_log_redaction_toggles["routing_debug"]
             toggle.setEnabled(True)
             host._sync_diagnostic_log_redaction_toggle("routing_debug")
             self.assertFalse(toggle.isEnabled())
             self.assertTrue(toggle.isChecked())
             note = host.diagnostic_log_redaction_env_notes["routing_debug"]
-            self.assertTrue(note.isVisible())
+            self.assertFalse(note.isHidden())
 
         def test_open_telemetry_discovery_delegates_to_main_window(self) -> None:
             host = _PrivacyHost()
@@ -327,10 +328,13 @@ if _PYQT_AVAILABLE:
             from PyQt6.QtWidgets import QWidget
 
             host = _LicenseHost()
+            host._window.show()
+            host._window.resize(480, 320)
             host.license_section_card = QWidget(host._window)
             host.license_section_card.show()
             host.settings_section_stack = MagicMock()
             host.settings_section_stack.currentWidget.return_value = host._window
+            self._app.processEvents()
 
             host._play_license_import_celebration()
 

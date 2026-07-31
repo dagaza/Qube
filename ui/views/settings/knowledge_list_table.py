@@ -1,4 +1,4 @@
-"""Bordered list tables for Knowledge → Custom sources / My knowledge."""
+"""Bordered list tables and empty-state panels for Settings list containers."""
 
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
+    QWidget,
 )
 
 from core.theme.accessors import theme_for
-from core.theme.widget_styles import SETTINGS_BORDERED_TABLE
+from core.theme.widget_styles import SETTINGS_BORDERED_PANEL, SETTINGS_BORDERED_TABLE
 
 _ROW_HEIGHT_PX = 34
 _HEADER_HEIGHT_PX = 32
@@ -60,6 +61,25 @@ def apply_borderless_list_table_theme(table: QTableWidget, *, is_dark: bool) -> 
     theme = theme_for(is_dark=is_dark)
     table.setStyleSheet(
         theme.style(SETTINGS_BORDERED_TABLE, object_name=table.objectName())
+    )
+
+
+def apply_settings_bordered_panel_theme(
+    panel: QWidget,
+    *,
+    is_dark: bool,
+    object_name: str = "SettingsBorderedPanel",
+) -> None:
+    """Apply bordered panel chrome so empty scroll/list hosts read as containers."""
+    theme = theme_for(is_dark=is_dark)
+    panel.setObjectName(object_name)
+    panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    panel.setStyleSheet(
+        theme.style(
+            SETTINGS_BORDERED_PANEL,
+            object_name=object_name,
+            widget_type=panel.__class__.__name__,
+        )
     )
 
 

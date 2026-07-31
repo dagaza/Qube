@@ -496,14 +496,40 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     font-weight: bold;
 }
 
+/* L2 — card section title (above or in collapsible card header) */
 #SettingsSubsectionLabel {
-    color: #a6adc8;
-    font-size: 11px;
+    color: #cdd6f4;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-top: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+/* L3 — in-card group header (domain blocks, control clusters) */
+#SettingsGroupLabel {
+    color: #a6adc8;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-top: 8px;
     margin-bottom: 4px;
+}
+
+#SettingsFormContainer QLabel#SettingsSubsectionLabel,
+#SettingsCollapsibleCardHeader QLabel#SettingsSubsectionLabel {
+    color: #cdd6f4;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#SettingsFormContainer QLabel#SettingsGroupLabel,
+#SettingsSectionCard QLabel#SettingsGroupLabel {
+    color: #a6adc8;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 #ThemeColorTokenLabel {
@@ -545,6 +571,7 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     padding: 4px 0 8px 0;
 }
 
+/* L5 — explanatory body copy under a section title or field */
 QLabel[class="SettingsHint"] {
     color: #6c7086;
     font-size: 12px;
@@ -552,7 +579,15 @@ QLabel[class="SettingsHint"] {
 }
 
 #SettingsHint {
-    color: #a6adc8;
+    color: #6c7086;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+#SettingsFormContainer QLabel#SettingsHint,
+#SettingsFormContainer QLabel[class="SettingsHint"],
+#SettingsSectionCard QLabel#SettingsHint {
+    color: #6c7086;
     font-size: 12px;
     font-weight: normal;
 }
@@ -609,12 +644,6 @@ QLabel[class="SettingsHint"] {
 #SettingsFormContainer QLabel#KnowledgeAccessBadge,
 #SettingsFormContainer QLabel#KnowledgeAccessHint {
     font-weight: 600;
-}
-
-#KnowledgeSourceGroupLabel {
-    color: #cdd6f4;
-    font-weight: 600;
-    margin-top: 4px;
 }
 
 #KnowledgeProviderStatusTable {

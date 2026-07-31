@@ -255,8 +255,8 @@ def log_inference_transparency(
     log.info("[%s] inference_transparency %s", role, payload)
 
 
-def format_transparency_lines(snapshot: Mapping[str, Any]) -> list[str]:
-    """Compact multi-line summary for Settings / Telemetry labels."""
+def format_transparency_rows(snapshot: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Structured component/value rows for Settings tables and Telemetry labels."""
     build = dict(snapshot.get("build") or {})
     hardware = dict(snapshot.get("hardware") or {})
     settings = dict(snapshot.get("settings") or {})
@@ -264,13 +264,15 @@ def format_transparency_lines(snapshot: Mapping[str, Any]) -> list[str]:
     embedder = dict(snapshot.get("embedder") or {})
     sidecar = dict(snapshot.get("sidecar") or {})
 
-    lines: list[str] = []
+    rows: list[tuple[str, str]] = []
 
     backend = str(build.get("backend_hint") or "unknown")
     ver = build.get("llama_cpp_python_version") or "?"
     gpu_build = build.get("supports_gpu_offload")
     gpu_build_txt = "yes" if gpu_build else "no"
-    lines.append(f"llama.cpp build: {backend} (offload={gpu_build_txt}, pkg={ver})")
+    rows.append(
+        ("llama.cpp build", f"{backend} (offload={gpu_build_txt}, v{ver})")
+    )
 
     hw_label = hardware.get("gpu_memory_kind_label") or hardware.get("gpu_memory_kind") or "unknown"
     vram_gb = hardware.get("vram_budget_gb")
@@ -280,43 +282,63 @@ def format_transparency_lines(snapshot: Mapping[str, Any]) -> list[str]:
     if vram_gb:
         hw_bits.append(f"budget≈{vram_gb} GB")
     if cap is not None:
-        hw_bits.append(f"safe cap={cap} layers")
+        hw_bits.append(f"cap={cap}")
     if unified:
-        hw_bits.append("unified memory")
-    lines.append(f"Hardware: {', '.join(hw_bits)}")
+        hw_bits.append("APU/unified")
+    rows.append(("Hardware profile", ", ".join(hw_bits)))
 
     mode = settings.get("engine_mode") or "?"
     sett_layers = settings.get("n_gpu_layers")
     sett_threads = settings.get("n_threads")
-    lines.append(f"Settings: mode={mode}, GPU layers={sett_layers}, threads={sett_threads}")
+    rows.append(
+        (
+            "Engine settings",
+            f"mode={mode}, GPU layers={sett_layers}, threads={sett_threads}",
+        )
+    )
 
     if native.get("loaded"):
         name = native.get("model_basename") or "model"
         params = native.get("model_n_params_label") or "?"
         layers = native.get("model_n_layers")
         layer_cfg = native.get("layer_configuration") or "?"
-        lines.append(f"Native chat: {name} ({params} params, {layers} layers)")
-        lines.append(f"Native offload: {layer_cfg}")
+        rows.append(
+            ("Native chat", f"{name} ({params}, {layers}L) — {layer_cfg}")
+        )
     else:
-        lines.append("Native chat: not loaded")
+        from core.app_settings import get_engine_mode
+
+        engine_mode = settings.get("engine_mode") or get_engine_mode()
+        if engine_mode != "internal":
+            rows.append(("Native chat", "External engine (no native model)"))
+        else:
+            rows.append(("Native chat", "Not loaded"))
 
     emb_backend = embedder.get("backend")
-    if emb_backend:
+    if emb_backend and emb_backend != "unknown":
         emb_name = embedder.get("model_basename") or "embedder"
-        lines.append(f"Embeddings: {emb_name} on {emb_backend.upper()}")
+        rows.append(("Embeddings", f"{emb_name} on {str(emb_backend).upper()}"))
     elif embedder.get("loaded") is False:
-        lines.append("Embeddings: not loaded")
+        rows.append(("Embeddings", "Not loaded"))
+    else:
+        rows.append(("Embeddings", "—"))
 
-    if sidecar:
-        sc_loaded = sidecar.get("loaded")
+    if sidecar.get("loaded"):
         sc_name = sidecar.get("model_basename") or "sidecar"
-        sc_mode = sidecar.get("compute_mode") or sidecar.get("backend") or "cpu"
-        if sc_loaded:
-            lines.append(f"Sidecar: {sc_name} on {str(sc_mode).upper()} (n_gpu_layers=0)")
-        elif sidecar.get("degraded_reason"):
-            lines.append(f"Sidecar: unavailable ({sidecar.get('degraded_reason')})")
+        rows.append(("Sidecar", f"{sc_name} on CPU (n_gpu_layers=0)"))
+    elif sidecar.get("degraded_reason"):
+        rows.append(
+            ("Sidecar", f"Unavailable ({sidecar.get('degraded_reason')})")
+        )
+    else:
+        rows.append(("Sidecar", "Not loaded"))
 
-    return lines
+    return rows
+
+
+def format_transparency_lines(snapshot: Mapping[str, Any]) -> list[str]:
+    """Compact multi-line summary for Settings / Telemetry labels."""
+    return [f"{label}: {value}" for label, value in format_transparency_rows(snapshot)]
 
 
 def aggregate_app_transparency(

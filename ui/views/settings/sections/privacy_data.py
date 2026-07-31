@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QFormLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -32,7 +32,9 @@ from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
     add_settings_full_width_row,
+    add_settings_span_row,
     add_subsection_to_form,
+    make_settings_action_row,
     make_settings_hint,
 )
 
@@ -40,6 +42,8 @@ from ui.views.settings.widgets import (
 def build_section(host, *, is_dark: bool) -> QWidget:
     widget = QWidget()
     widget.setObjectName("SettingsFormContainer")
+    widget.setMinimumWidth(0)
+    widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     layout = QVBoxLayout(widget)
     layout.setContentsMargins(15, 0, 15, 10)
     layout.setSpacing(15)
@@ -66,11 +70,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "summaries."
     )
     add_settings_full_width_row(session_form, host.privacy_data_session_audit_hint)
-
-    session_btn_row = QWidget()
-    session_btn_layout = QHBoxLayout(session_btn_row)
-    session_btn_layout.setContentsMargins(0, 0, 0, 0)
-    session_btn_layout.setSpacing(10)
 
     host.privacy_data_open_telemetry_discovery_btn = QPushButton(
         "Open Telemetry → Web discovery"
@@ -100,29 +99,28 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host._on_privacy_data_open_telemetry_integrations_clicked
     )
 
-    session_btn_layout.addWidget(host.privacy_data_open_telemetry_discovery_btn)
-    session_btn_layout.addWidget(host.privacy_data_open_telemetry_integrations_btn)
-    session_btn_layout.addStretch(1)
-    add_settings_full_width_row(session_form, session_btn_row)
+    add_settings_full_width_row(
+        session_form,
+        make_settings_action_row(host.privacy_data_open_telemetry_discovery_btn),
+    )
+    add_settings_full_width_row(
+        session_form,
+        make_settings_action_row(host.privacy_data_open_telemetry_integrations_btn),
+    )
     layout.addWidget(session_card)
 
     web_card, web_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     web_form = add_settings_card_form(web_card_layout)
     add_subsection_to_form(web_form, "Web discovery privacy", anchor="web_discovery_privacy")
 
-    web_controls = QWidget()
-    web_controls_form = QFormLayout(web_controls)
-    web_controls_form.setContentsMargins(0, 0, 0, 0)
-    web_controls_form.setSpacing(8)
     add_privacy_tier_selector_row(
         host,
-        web_controls_form,
+        web_form,
         is_dark=is_dark,
         selector_attr="privacy_data_privacy_tier_selector",
         description_attr="privacy_data_privacy_tier_description",
     )
-    add_open_knowledge_discovery_button(host, web_controls_form)
-    add_settings_full_width_row(web_form, web_controls)
+    add_open_knowledge_discovery_button(host, web_form)
 
     hybrid_row = QWidget()
     hybrid_layout = QHBoxLayout(hybrid_row)
@@ -153,7 +151,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.privacy_data_what_leaves_card = build_what_leaves_device_info_card(
         is_dark=is_dark,
     )
-    add_settings_full_width_row(web_form, host.privacy_data_what_leaves_card)
+    add_settings_span_row(web_form, host.privacy_data_what_leaves_card)
     layout.addWidget(web_card)
 
     ensure_diagnostic_log_host_attrs(host)

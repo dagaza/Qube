@@ -95,7 +95,6 @@ from core.auxiliary_cognition import (
 )
 from core.cpu_threads import max_cpu_threads_for_ui
 from core.gpu_layers_cap import max_safe_n_gpu_layers
-from core.inference_transparency import aggregate_app_transparency
 from ui.components.brand_buttons import (
     apply_brand_primary,
     apply_brand_danger,
@@ -193,10 +192,19 @@ class AiModelsHandlersMixin:
             else:
                 self.active_native_model_lbl.setText("(none)")
 
-    def _refresh_inference_transparency_panel(self) -> None:
-        lbl = getattr(self, "inference_transparency_lbl", None)
-        if lbl is None:
+    def _refresh_inference_transparency_panel(self, *, is_dark: bool | None = None) -> None:
+        table = getattr(self, "inference_transparency_table", None)
+        if table is None:
             return
+        from core.inference_transparency import (
+            aggregate_app_transparency,
+            format_transparency_rows,
+        )
+        from ui.views.settings.knowledge_access_badge import coalesce_settings_is_dark
+        from ui.views.settings.knowledge_list_table import populate_table_rows
+
+        if is_dark is None:
+            is_dark = coalesce_settings_is_dark(self)
         mw = self.window()
         ne = getattr(mw, "_native_engine", None) if mw else self.workers.get("native_engine")
         try:
@@ -205,11 +213,21 @@ class AiModelsHandlersMixin:
                 embedder=self.workers.get("embedder") if getattr(self, "workers", None) else None,
                 sidecar_worker=self.workers.get("sidecar_worker") if getattr(self, "workers", None) else None,
             )
-            lines = snap.get("summary_lines") or []
-            lbl.setText("\n".join(lines) if lines else "Inference stack details unavailable.")
+            rows = format_transparency_rows(snap)
+            populate_table_rows(
+                table,
+                rows=rows,
+                placeholder="Inference stack details unavailable.",
+                is_dark=is_dark,
+            )
         except Exception as e:
             logger.debug("Inference transparency panel refresh failed: %s", e)
-            lbl.setText("Inference stack details unavailable.")
+            populate_table_rows(
+                table,
+                rows=[],
+                placeholder="Inference stack details unavailable.",
+                is_dark=is_dark,
+            )
 
     def _on_gpu_layers_slider_changed(self, v: int) -> None:
         self.gpu_layers_value_lbl.setText(str(int(v)))

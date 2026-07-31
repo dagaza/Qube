@@ -304,6 +304,8 @@ def _wrap_collapsible_card(
 ) -> tuple[QWidget, SettingsCollapsibleCardHandle | None]:
     wrapper = QWidget()
     wrapper.setObjectName("SettingsCollapsibleCard")
+    wrapper.setMinimumWidth(0)
+    wrapper.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     wrapper_layout = QVBoxLayout(wrapper)
     wrapper_layout.setContentsMargins(0, 0, 0, 0)
     wrapper_layout.setSpacing(4)

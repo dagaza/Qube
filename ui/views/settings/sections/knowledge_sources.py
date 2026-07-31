@@ -25,24 +25,26 @@ from core.knowledge.adapters.catalog import (
 from core.knowledge.provider_credentials import adapter_credentials_hint
 from core.knowledge.source_access_summary import SourceAccessSummary, summarize_source_access
 from core.knowledge.source_preferences import is_adapter_enabled
-from ui.views.settings.knowledge_access_badge import (
+from ui.views.settings.primitives import (
     ACTION_COLUMN_WIDTH_PX,
     STATUS_COLUMN_WIDTH_PX,
-    apply_setup_callout_theme,
+    SettingsCallout,
+    apply_settings_callout_theme,
     coalesce_settings_is_dark,
-    style_access_badge,
-    style_access_hint,
-    style_configure_button,
-    style_free_action_button,
+    make_settings_group_header,
+    make_settings_hint,
+    style_settings_access_hint,
+    style_settings_configure_button,
+    style_settings_free_button,
+    style_settings_status_chip,
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
     add_subsection_to_form,
-    make_settings_hint,
-    wrap_subsection,
     add_settings_full_width_row,
     add_settings_span_row,
+    wrap_subsection,
 )
 
 
@@ -222,7 +224,7 @@ class KnowledgeSourceRow(QWidget):
 
         if show_status_badge:
             self.badge.setText(summary.badge_label)
-            style_access_badge(self.badge, summary.badge, is_dark=is_dark)
+            style_settings_status_chip(self.badge, summary.badge, is_dark=is_dark)
             self.badge.setVisible(True)
         else:
             self.badge.clear()
@@ -230,7 +232,7 @@ class KnowledgeSourceRow(QWidget):
 
         if summary.hint:
             self.hint_label.setText(summary.hint)
-            style_access_hint(self.hint_label, is_dark=is_dark)
+            style_settings_access_hint(self.hint_label, is_dark=is_dark)
             self.hint_label.setVisible(True)
         else:
             self.hint_label.clear()
@@ -238,13 +240,13 @@ class KnowledgeSourceRow(QWidget):
 
         if summary.badge == "free":
             self.action_btn.setText("Free")
-            style_free_action_button(self.action_btn, is_dark=is_dark)
+            style_settings_free_button(self.action_btn, is_dark=is_dark)
             self.action_btn.setEnabled(False)
             self.action_btn.setToolTip("Works without API key setup.")
             self.action_btn.setVisible(True)
         elif summary.configure_available:
             self.action_btn.setText("Configure")
-            style_configure_button(self.action_btn, is_dark=is_dark)
+            style_settings_configure_button(self.action_btn, is_dark=is_dark)
             self.action_btn.setVisible(True)
             self.action_btn.setEnabled(self._entry.implemented)
             if not self._entry.implemented:
@@ -310,7 +312,7 @@ def refresh_live_source_access_badges(host, *, is_dark: bool | None = None) -> N
         )
     callout = getattr(host, "knowledge_setup_callout", None)
     if callout is not None:
-        apply_setup_callout_theme(callout, is_dark=is_dark)
+        apply_settings_callout_theme(callout, is_dark=is_dark)
     _refresh_setup_callout(host)
 
 
@@ -347,34 +349,9 @@ def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
     callout_shell_layout.setContentsMargins(0, 2, 0, 2)
     callout_shell_layout.setSpacing(0)
 
-    callout = QWidget()
-    callout.setMinimumWidth(0)
-    callout_layout = QHBoxLayout(callout)
-    callout_layout.setContentsMargins(14, 12, 14, 12)
-    callout_layout.setSpacing(12)
-
-    content_col = QWidget()
-    content_col.setMinimumWidth(0)
-    content_col.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-    content_layout = QVBoxLayout(content_col)
-    content_layout.setContentsMargins(0, 0, 0, 0)
-    content_layout.setSpacing(4)
-
-    callout.title_label = QLabel("Recommended setup")
-    callout.body_label = QLabel()
-    callout.body_label.setWordWrap(True)
-    content_layout.addWidget(callout.title_label)
-    content_layout.addWidget(callout.body_label)
-    callout_layout.addWidget(content_col, stretch=1)
-
-    callout.dismiss_btn = QPushButton("Dismiss")
+    callout = SettingsCallout(title="Recommended setup")
     callout.dismiss_btn.clicked.connect(host._on_knowledge_setup_callout_dismiss)
-    callout_layout.addWidget(
-        callout.dismiss_btn,
-        alignment=Qt.AlignmentFlag.AlignVCenter,
-    )
-
-    apply_setup_callout_theme(callout, is_dark=is_dark)
+    apply_settings_callout_theme(callout, is_dark=is_dark)
     callout_shell_layout.addWidget(callout)
     host.knowledge_setup_callout = callout
     host.knowledge_setup_callout_shell = callout_shell
@@ -388,8 +365,7 @@ def build_knowledge_live_sources_section(host, *, is_dark: bool) -> QWidget:
         inner_layout.setSpacing(4)
 
         for group in ui_groups_for_service(service_id):
-            group_lbl = QLabel(group)
-            group_lbl.setObjectName("KnowledgeSourceGroupLabel")
+            group_lbl = make_settings_group_header(group)
             inner_layout.addWidget(group_lbl)
 
             for entry in catalog_entries_for_ui_group(service_id, group):

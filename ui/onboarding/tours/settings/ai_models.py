@@ -157,7 +157,7 @@ def build_settings_ai_models_tour(host) -> OnboardingTour:
                 "Read-only summary of the llama.cpp backend, detected hardware profile, "
                 "requested GPU layers, and embedder/sidecar compute paths."
             ),
-            target_getter=lambda h: _sv(h).inference_transparency_lbl,
+            target_getter=lambda h: _sv(h).inference_transparency_table,
             on_enter=_open_hardware,
         ),
         OnboardingStep(

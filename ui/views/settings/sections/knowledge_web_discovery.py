@@ -53,53 +53,33 @@ from core.knowledge.discovery.session_budget import (
     get_ddg_burst_budget_status,
     get_ddg_session_budget_status,
 )
-from core.theme.accessors import theme_for
-from core.theme.widget_styles import DISCOVERY_DIVIDER
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
-from ui.views.settings.discovery_card_style import (
-    apply_discovery_info_card_theme,
-    apply_discovery_provider_card_theme,
-    build_discovery_divider,
-    style_discovery_body_text,
-    style_discovery_info_bullet,
-    style_discovery_info_highlight,
-    style_discovery_info_kv_key,
-    style_discovery_info_kv_value,
-    style_discovery_info_status,
-    style_discovery_info_title,
-    style_discovery_privacy_chip,
-    style_discovery_provider_name,
-    style_discovery_role_chip,
-)
-from ui.views.settings.knowledge_access_badge import (
+from ui.views.settings.primitives import (
+    SettingsInfoCard,
+    apply_settings_nested_card_theme,
+    build_settings_divider,
     coalesce_settings_is_dark,
-    make_knowledge_configure_action_row,
+    make_settings_action_row,
+    make_settings_hint,
     resolve_settings_is_dark,
-    style_access_badge,
-    style_configure_button,
+    refresh_settings_divider,
+    style_settings_configure_button,
+    style_settings_nested_card_body,
+    style_settings_nested_card_title,
+    style_settings_role_chip,
+    style_settings_status_chip,
+    style_settings_tag_chip,
 )
 from ui.views.settings.sections.privacy_tier_controls import add_open_privacy_data_button
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
     add_subsection_to_form,
-    make_settings_hint,
     register_settings_selector_width,
     wrap_subsection,
     add_settings_full_width_row,
     add_settings_span_row,
-)
-
-_POLICY_KV_KEYS = frozenset(
-    {
-        "Privacy tier",
-        "Primary",
-        "Burst",
-        "Session",
-        "Pacing",
-        "On primary failure",
-    }
 )
 
 
@@ -195,7 +175,7 @@ def _build_discovery_provider_card(
     """Discovery provider card with role chip, accent shell, and footer actions."""
 
     card = QWidget()
-    apply_discovery_provider_card_theme(card, role_label=role_label, is_dark=is_dark)
+    apply_settings_nested_card_theme(card, accent_role=role_label, is_dark=is_dark)
     card_layout = QVBoxLayout(card)
     bottom_margin = 14 if show_configure else 12
     card_layout.setContentsMargins(14, 12, 14, bottom_margin)
@@ -206,8 +186,8 @@ def _build_discovery_provider_card(
     header_layout.setContentsMargins(0, 0, 0, 0)
     header_layout.setSpacing(10)
 
-    role_chip = QLabel(role_label.upper())
-    style_discovery_role_chip(role_chip, role_label=role_label, is_dark=is_dark)
+    role_chip = QLabel(role_label)
+    style_settings_role_chip(role_chip, role_label, is_dark=is_dark)
     header_layout.addWidget(role_chip, alignment=Qt.AlignmentFlag.AlignTop)
 
     name_col = QWidget()
@@ -217,7 +197,7 @@ def _build_discovery_provider_card(
 
     provider_name = QLabel(discovery_provider_label(provider_id))
     provider_name.setWordWrap(True)
-    style_discovery_provider_name(provider_name, is_dark=is_dark)
+    style_settings_nested_card_title(provider_name, is_dark=is_dark)
     name_layout.addWidget(provider_name)
 
     privacy_chips: list[QLabel] = []
@@ -229,7 +209,7 @@ def _build_discovery_provider_card(
         chips_layout.setSpacing(6)
         for segment in _split_privacy_note(privacy_note):
             chip = QLabel(segment)
-            style_discovery_privacy_chip(chip, is_dark=is_dark)
+            style_settings_tag_chip(chip, is_dark=is_dark)
             chips_layout.addWidget(chip, alignment=Qt.AlignmentFlag.AlignLeft)
             privacy_chips.append(chip)
         chips_layout.addStretch(1)
@@ -239,27 +219,27 @@ def _build_discovery_provider_card(
 
     badge_text, badge_kind = _status_badge_text(provider_id)
     badge = QLabel(badge_text)
-    style_access_badge(badge, badge_kind, is_dark=is_dark)
+    style_settings_status_chip(badge, badge_kind, is_dark=is_dark)
     header_layout.addWidget(badge, alignment=Qt.AlignmentFlag.AlignTop)
 
     card_layout.addWidget(header)
 
     desc = QLabel(description)
     desc.setWordWrap(True)
-    style_discovery_body_text(desc, is_dark=is_dark)
+    style_settings_nested_card_body(desc, is_dark=is_dark)
     card_layout.addWidget(desc)
 
     configure_btn: QPushButton | None = None
     divider: QWidget | None = None
     if show_configure:
-        divider = build_discovery_divider(is_dark=is_dark)
+        divider = build_settings_divider(is_dark=is_dark)
         card_layout.addWidget(divider)
         configure_btn = QPushButton("Configure")
-        style_configure_button(configure_btn, is_dark=is_dark)
+        style_settings_configure_button(configure_btn, is_dark=is_dark)
         configure_btn.setToolTip(configure_tooltip or "Configure provider")
         handler = configure_handler or host._on_brave_search_configure_clicked
         configure_btn.clicked.connect(handler)
-        card_layout.addWidget(make_knowledge_configure_action_row(configure_btn))
+        card_layout.addWidget(make_settings_action_row(configure_btn))
 
     return _ProviderCardParts(
         card=card,
@@ -271,187 +251,6 @@ def _build_discovery_provider_card(
         privacy_chips=tuple(privacy_chips),
         divider=divider,
     )
-
-
-class _DiscoveryInfoCard(QWidget):
-    """Structured info card with title, highlight, and bullet / key-value rows."""
-
-    def __init__(
-        self,
-        *,
-        title: str,
-        variant: str,
-        is_dark: bool,
-        parent=None,
-    ) -> None:
-        super().__init__(parent)
-        self._variant = variant
-        self._is_dark = is_dark
-        self._title_text = title
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(10)
-
-        self._title_label = QLabel(title.upper())
-        self._title_label.setWordWrap(True)
-        layout.addWidget(self._title_label)
-
-        self._content = QWidget()
-        self._content_layout = QVBoxLayout(self._content)
-        self._content_layout.setContentsMargins(0, 0, 0, 0)
-        self._content_layout.setSpacing(6)
-        layout.addWidget(self._content)
-        self._last_privacy_lines: list[str] | None = None
-        self._last_policy_lines: list[str] | None = None
-        self._policy_structure: tuple[str, ...] | None = None
-        self._policy_value_labels: list[QLabel] = []
-
-        self.refresh_theme(is_dark)
-
-    def refresh_theme(self, is_dark: bool) -> None:
-        if is_dark != self._is_dark:
-            self._last_privacy_lines = None
-            self._last_policy_lines = None
-            self._policy_structure = None
-            self._policy_value_labels = []
-        self._is_dark = is_dark
-        apply_discovery_info_card_theme(self, variant=self._variant, is_dark=is_dark)
-        style_discovery_info_title(
-            self._title_label, variant=self._variant, is_dark=is_dark
-        )
-
-    @staticmethod
-    def _policy_line_structure(lines: list[str]) -> tuple[str, ...]:
-        structure: list[str] = []
-        for line in lines:
-            if ": " in line:
-                key, _value = line.split(": ", 1)
-                if key in _POLICY_KV_KEYS:
-                    structure.append(f"kv:{key}")
-                    continue
-            lower = line.lower()
-            if lower.startswith(("brave ", "conservative", "paused")):
-                structure.append("status")
-                continue
-            structure.append("bullet")
-        return tuple(structure)
-
-    @staticmethod
-    def _policy_line_value_text(line: str) -> str:
-        if ": " in line:
-            key, value = line.split(": ", 1)
-            if key in _POLICY_KV_KEYS:
-                return value
-        return line if line.startswith("•  ") else f"•  {line}"
-
-    def _swap_content(self, populate) -> None:
-        """Replace card body in one layout step to avoid collapse/expand flicker."""
-        self.setUpdatesEnabled(False)
-        try:
-            new_content = QWidget()
-            new_layout = QVBoxLayout(new_content)
-            new_layout.setContentsMargins(0, 0, 0, 0)
-            new_layout.setSpacing(6)
-            populate(new_layout)
-
-            root = self.layout()
-            if root is None:
-                return
-            root.removeWidget(self._content)
-            self._content.deleteLater()
-            self._content = new_content
-            self._content_layout = new_layout
-            root.addWidget(new_content)
-        finally:
-            self.setUpdatesEnabled(True)
-            self.updateGeometry()
-
-    def set_privacy_lines(self, lines: list[str]) -> None:
-        normalized = list(lines)
-        if normalized == self._last_privacy_lines:
-            return
-        self._last_privacy_lines = normalized
-        is_dark = self._is_dark
-
-        def _populate(content_layout: QVBoxLayout) -> None:
-            if not normalized:
-                return
-            highlight = QLabel(normalized[0])
-            highlight.setWordWrap(True)
-            style_discovery_info_highlight(highlight, is_dark=is_dark)
-            content_layout.addWidget(highlight)
-
-            for line in normalized[1:]:
-                bullet = QLabel(f"•  {line}")
-                bullet.setWordWrap(True)
-                style_discovery_info_bullet(bullet, is_dark=is_dark)
-                content_layout.addWidget(bullet)
-
-        self._swap_content(_populate)
-
-    def set_policy_lines(self, lines: list[str]) -> None:
-        normalized = list(lines)
-        if normalized == self._last_policy_lines:
-            return
-
-        structure = self._policy_line_structure(normalized)
-        if (
-            structure == self._policy_structure
-            and self._policy_value_labels
-            and len(self._policy_value_labels) == len(normalized)
-        ):
-            for label, line in zip(self._policy_value_labels, normalized):
-                label.setText(self._policy_line_value_text(line))
-            self._last_policy_lines = normalized
-            return
-
-        self._last_policy_lines = normalized
-        self._policy_structure = structure
-        value_labels: list[QLabel] = []
-        is_dark = self._is_dark
-
-        def _populate(content_layout: QVBoxLayout) -> None:
-            if not normalized:
-                return
-            for line in normalized:
-                if ": " in line:
-                    key, value = line.split(": ", 1)
-                    if key in _POLICY_KV_KEYS:
-                        row = QWidget()
-                        row_layout = QHBoxLayout(row)
-                        row_layout.setContentsMargins(0, 0, 0, 0)
-                        row_layout.setSpacing(10)
-
-                        key_lbl = QLabel(key.upper())
-                        key_lbl.setMinimumWidth(108)
-                        style_discovery_info_kv_key(key_lbl, is_dark=is_dark)
-                        row_layout.addWidget(key_lbl)
-
-                        value_lbl = QLabel(value)
-                        value_lbl.setWordWrap(True)
-                        style_discovery_info_kv_value(value_lbl, is_dark=is_dark)
-                        row_layout.addWidget(value_lbl, stretch=1)
-                        content_layout.addWidget(row)
-                        value_labels.append(value_lbl)
-                        continue
-
-                if line.lower().startswith(("brave ", "conservative", "paused")):
-                    status = QLabel(line)
-                    status.setWordWrap(True)
-                    style_discovery_info_status(status, is_dark=is_dark)
-                    content_layout.addWidget(status)
-                    value_labels.append(status)
-                    continue
-
-                bullet = QLabel(f"•  {line}")
-                bullet.setWordWrap(True)
-                style_discovery_info_bullet(bullet, is_dark=is_dark)
-                content_layout.addWidget(bullet)
-                value_labels.append(bullet)
-
-        self._swap_content(_populate)
-        self._policy_value_labels = value_labels
 
 
 class _DiscoveryPolicyRow(QWidget):
@@ -497,25 +296,23 @@ class _DiscoveryPolicyRow(QWidget):
     def refresh_theme(self, host, *, is_dark: bool | None = None) -> None:
         is_dark = coalesce_settings_is_dark(host, is_dark=is_dark)
         parts = self._parts
-        apply_discovery_provider_card_theme(
-            parts.card, role_label=self._role_label, is_dark=is_dark
+        apply_settings_nested_card_theme(
+            parts.card, accent_role=self._role_label, is_dark=is_dark
         )
-        style_discovery_role_chip(
-            parts.role_chip, role_label=self._role_label, is_dark=is_dark
+        style_settings_role_chip(
+            parts.role_chip, self._role_label, is_dark=is_dark
         )
-        style_discovery_provider_name(parts.provider_name, is_dark=is_dark)
+        style_settings_nested_card_title(parts.provider_name, is_dark=is_dark)
         for chip in parts.privacy_chips:
-            style_discovery_privacy_chip(chip, is_dark=is_dark)
-        style_discovery_body_text(parts.description, is_dark=is_dark)
+            style_settings_tag_chip(chip, is_dark=is_dark)
+        style_settings_nested_card_body(parts.description, is_dark=is_dark)
         badge_text, badge_kind = _status_badge_text(self._provider_id)
         parts.badge.setText(badge_text)
-        style_access_badge(parts.badge, badge_kind, is_dark=is_dark)
+        style_settings_status_chip(parts.badge, badge_kind, is_dark=is_dark)
         if parts.divider is not None:
-            parts.divider.setStyleSheet(
-                theme_for(is_dark=is_dark).style(DISCOVERY_DIVIDER)
-            )
+            refresh_settings_divider(parts.divider, is_dark=is_dark)
         if parts.configure_btn is not None:
-            style_configure_button(parts.configure_btn, is_dark=is_dark)
+            style_settings_configure_button(parts.configure_btn, is_dark=is_dark)
 
 
 def sync_web_discovery_policy_section(host, *, is_dark: bool | None = None) -> None:
@@ -771,9 +568,9 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
 
     layout.addWidget(controls)
 
-    host.discovery_privacy_help_card = _DiscoveryInfoCard(
+    host.discovery_privacy_help_card = SettingsInfoCard(
         title="What leaves your device",
-        variant="privacy",
+        tone="privacy",
         is_dark=is_dark,
     )
     layout.addWidget(host.discovery_privacy_help_card)
@@ -842,9 +639,9 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.discovery_wikipedia_provider_card = wiki_row._card
     providers_layout.addWidget(wiki_row)
 
-    host.discovery_policy_summary_card = _DiscoveryInfoCard(
+    host.discovery_policy_summary_card = SettingsInfoCard(
         title="Active discovery route",
-        variant="policy",
+        tone="policy",
         is_dark=is_dark,
     )
     providers_layout.addWidget(host.discovery_policy_summary_card)
@@ -872,11 +669,11 @@ def build_knowledge_web_discovery_section(host, *, is_dark: bool) -> QWidget:
     return card
 
 
-def build_what_leaves_device_info_card(*, is_dark: bool) -> _DiscoveryInfoCard:
+def build_what_leaves_device_info_card(*, is_dark: bool) -> SettingsInfoCard:
     """Shared 'What leaves your device' card for Privacy & data and Knowledge."""
-    card = _DiscoveryInfoCard(
+    card = SettingsInfoCard(
         title="What leaves your device",
-        variant="privacy",
+        tone="privacy",
         is_dark=is_dark,
     )
     card.set_privacy_lines(what_leaves_device_lines())
@@ -884,7 +681,7 @@ def build_what_leaves_device_info_card(*, is_dark: bool) -> _DiscoveryInfoCard:
 
 
 def sync_what_leaves_device_info_card(
-    card: _DiscoveryInfoCard | None,
+    card: SettingsInfoCard | None,
     *,
     is_dark: bool | None = None,
 ) -> None:

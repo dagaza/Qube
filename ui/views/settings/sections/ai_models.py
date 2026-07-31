@@ -7,11 +7,13 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QListWidget,
     QMenu,
     QPushButton,
     QSizePolicy,
+    QTableWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -49,6 +51,10 @@ from ui.views.settings.controls import (
     NoScrollSlider,
     NoScrollSpinBox,
     SettingsScrollListWidget,
+)
+from ui.views.settings.knowledge_list_table import (
+    apply_borderless_list_table_theme,
+    configure_borderless_list_table,
 )
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
@@ -555,14 +561,27 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     inference_stack_lbl = make_subsection_label("Inference stack", anchor="inference_stack")
     add_settings_full_width_row(tuning_form, inference_stack_lbl)
     track_internal_ai_label(host, inference_stack_lbl)
-    host.inference_transparency_lbl = QLabel("Loading inference stack details…")
-    host.inference_transparency_lbl.setWordWrap(True)
-    host.inference_transparency_lbl.setProperty("class", "ToolsPaneControl")
-    host.inference_transparency_lbl.setToolTip(
+    host.inference_transparency_table = QTableWidget()
+    configure_borderless_list_table(
+        host.inference_transparency_table,
+        columns=("Component", "Details"),
+        object_name="InferenceTransparencyTable",
+    )
+    header = host.inference_transparency_table.horizontalHeader()
+    header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+    header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+    host.inference_transparency_table.setSelectionMode(
+        QTableWidget.SelectionMode.NoSelection
+    )
+    host.inference_transparency_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    host.inference_transparency_table.setToolTip(
         "Read-only summary of llama.cpp build backend, hardware detection (including AMD APU "
         "unified memory), requested GPU layer configuration, and embedder/sidecar compute paths."
     )
-    add_settings_full_width_row(tuning_form, host.inference_transparency_lbl)
+    apply_borderless_list_table_theme(host.inference_transparency_table, is_dark=is_dark)
+    add_settings_full_width_row(tuning_form, host.inference_transparency_table)
+    if hasattr(host, "_refresh_inference_transparency_panel"):
+        host._refresh_inference_transparency_panel(is_dark=is_dark)
 
     chat_template_lbl = make_subsection_label("Chat template", anchor="chat_template")
     add_settings_full_width_row(tuning_form, chat_template_lbl)

@@ -25,6 +25,11 @@ from ui.views.settings.settings_card_style import (
     SETTINGS_CARD_FORM_ROW_SPACING,
 )
 from ui.views.settings.settings_theme import resolve_settings_theme, settings_divider_color
+from ui.views.settings.primitives.typography import (
+    make_settings_card_title as make_subsection_label,
+    make_settings_group_header as make_settings_group_label,
+    make_settings_hint,
+)
 from core.theme.color_utils import theme_qcolor
 from core.theme.widget_styles import SETTINGS_DIVIDER, STAGE_SURFACE
 
@@ -295,7 +300,7 @@ def _prepare_settings_form_row_widget(widget: QWidget) -> None:
 
 def _install_form_label_column_ruler(form: QFormLayout) -> None:
     """Reserve label-column width on hint-only forms (matches labeled settings cards)."""
-    ruler = QLabel("Context limit")
+    ruler = QLabel("Chat template (internal)")
     ruler.setObjectName("SettingsFormLabelColumnRuler")
     ruler.setFixedHeight(0)
     ruler.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
@@ -385,13 +390,6 @@ def settings_layout_row(layout: QHBoxLayout | QVBoxLayout) -> QWidget:
     return host
 
 
-def make_subsection_label(text: str, *, anchor: str | None = None) -> QLabel:
-    lbl = QLabel(text)
-    lbl.setObjectName("SettingsSubsectionLabel")
-    if anchor:
-        lbl.setProperty("settings_anchor", anchor)
-    return lbl
-
 
 def add_subsection_to_form(
     form: QFormLayout, text: str, *, anchor: str | None = None
@@ -439,16 +437,6 @@ def add_section_divider_to_layout(
     divider = SettingsSectionDivider(is_dark=is_dark)
     layout.addWidget(divider)
     return divider
-
-
-def make_settings_hint(text: str) -> QLabel:
-    """Muted body copy for settings sections (avoids bold #SettingsFormContainer QLabel)."""
-    hint = QLabel(text)
-    hint.setWordWrap(True)
-    hint.setObjectName("SettingsHint")
-    hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    hint.setMinimumWidth(0)
-    return hint
 
 
 def make_settings_action_status_label() -> QLabel:

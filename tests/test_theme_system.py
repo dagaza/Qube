@@ -907,8 +907,8 @@ def test_resolved_theme_style_helpers():
     assert theme.sidebar_surface in theme.style(SETTINGS_SECTION_CARD)
     checkbox_style = theme.style(SETTINGS_CHECKBOX)
     assert theme.accent in checkbox_style
-    assert "background-color: transparent" in checkbox_style
     assert theme.surface_pressed in checkbox_style
+    assert "indicator:unchecked:hover" in checkbox_style
     assert "image: none" in checkbox_style
     assert "indicator:unchecked:disabled" in checkbox_style
     assert theme.surface_elevated in theme.style(SETTINGS_FORM_CONTROLS)

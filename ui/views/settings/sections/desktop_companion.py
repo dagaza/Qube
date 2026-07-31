@@ -27,6 +27,7 @@ from ui.views.settings.widgets import (
     schedule_settings_selector_refit,
     settings_layout_row,
     add_settings_full_width_row,
+    make_settings_group_label,
 )
 
 _COMPANION_GATED_TOOLTIP_PREFIX = "Requires Desktop Companion to be enabled."
@@ -416,8 +417,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     from ui.companion.companion_preview import CompanionPreviewWidget
 
-    appearance_lbl = QLabel("Companion shape")
-    appearance_lbl.setObjectName("SettingsSubsectionLabel")
+    appearance_lbl = make_settings_group_label("Companion shape")
     appearance_lbl.setToolTip(_companion_appearance_tip)
     add_settings_full_width_row(appearance_form, appearance_lbl)
 
@@ -445,8 +445,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         CUBE_STYLE_LABELS,
     )
 
-    cube_style_lbl = QLabel("Qube cube style")
-    cube_style_lbl.setObjectName("SettingsSubsectionLabel")
+    cube_style_lbl = make_settings_group_label("Qube cube style")
     cube_style_lbl.setToolTip(
         "When the Qube cube persona is selected, choose the holographic classic "
         "look or the experimental splash wireframe cube."
@@ -477,8 +476,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Accent colour for the companion glow while idle. "
         "Does not change colours during listening, thinking, or speaking states."
     )
-    idle_color_lbl = QLabel(tr("Companion idle glow colour"))
-    idle_color_lbl.setObjectName("SettingsSubsectionLabel")
+    idle_color_lbl = make_settings_group_label(tr("Companion idle glow colour"))
     idle_color_lbl.setToolTip(_companion_idle_color_tip)
     add_settings_full_width_row(appearance_form, idle_color_lbl)
 

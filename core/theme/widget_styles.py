@@ -87,6 +87,7 @@ SETTINGS_HINT = "settings_hint"
 SETTINGS_GHOST_TOOL_BUTTON = "settings_ghost_tool_button"
 SETTINGS_BORDERLESS_TABLE = "settings_borderless_table"
 SETTINGS_BORDERED_TABLE = "settings_bordered_table"
+SETTINGS_BORDERED_PANEL = "settings_bordered_panel"
 KNOWLEDGE_ACCESS_BADGE = "knowledge_access_badge"
 KNOWLEDGE_ACCESS_HINT = "knowledge_access_hint"
 KNOWLEDGE_ACTION_BUTTON = "knowledge_action_button"
@@ -143,6 +144,41 @@ TELEMETRY_RAM = "telemetry_ram"
 TELEMETRY_GPU = "telemetry_gpu"
 THEME_TOGGLE_MOON = "theme_toggle_moon"
 THEME_TOGGLE_SUN = "theme_toggle_sun"
+
+
+def _settings_accent_ring_border(resolved: "ResolvedTheme") -> str:
+    """Default ring for unchecked settings toggles/checkboxes (accent in dark mode)."""
+    return (
+        resolved.accent if resolved.is_dark else adjust_lightness(resolved.border, -0.15)
+    )
+
+
+def prestige_toggle_palette(resolved: "ResolvedTheme") -> dict[str, str]:
+    """Paint colors for ``PrestigeToggle`` — border tokens aligned with ``SETTINGS_CHECKBOX``."""
+    field_border = resolved.border_subtle if resolved.is_dark else resolved.border
+    ring_border = _settings_accent_ring_border(resolved)
+    unchecked_fill = (
+        with_alpha(resolved.surface_pressed, 0.45)
+        if resolved.is_dark
+        else with_alpha(resolved.border, 0.1)
+    )
+    return {
+        "track_unchecked_fill": unchecked_fill,
+        "track_unchecked_border": ring_border,
+        "track_unchecked_border_focused": (
+            resolved.accent_pressed if resolved.is_dark else resolved.accent
+        ),
+        "track_unchecked_border_hover": (
+            resolved.accent_hover if resolved.is_dark else ring_border
+        ),
+        "track_checked_fill": resolved.success,
+        "track_checked_border": adjust_lightness(resolved.success, -0.1),
+        "track_checked_border_focused": ring_border,
+        "knob": resolved.text_on_accent,
+        "knob_disabled": with_alpha(resolved.text_muted, 0.85),
+        "track_disabled_fill": with_alpha(resolved.surface_pressed, 0.35),
+        "track_disabled_border": with_alpha(field_border, 0.65),
+    }
 
 
 def settings_prestige_menu_palette(resolved: "ResolvedTheme") -> dict[str, str]:
@@ -878,21 +914,34 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
             }}
         """
     if role == SETTINGS_CHECKBOX:
-        border = resolved.border_subtle if resolved.is_dark else resolved.border
+        ring_border = _settings_accent_ring_border(resolved)
+        ring_border_focused = (
+            resolved.accent_pressed if resolved.is_dark else resolved.accent
+        )
+        ring_border_hover = (
+            resolved.accent_hover if resolved.is_dark else ring_border
+        )
         disabled_text = resolved.text_muted
         disabled_border = with_alpha(resolved.border, 0.5)
         disabled_indicator_bg = resolved.surface_pressed
-        focus_border = resolved.accent if resolved.is_dark else adjust_lightness(resolved.border, -0.15)
+        unchecked_fill = (
+            with_alpha(resolved.surface_pressed, 0.45)
+            if resolved.is_dark
+            else with_alpha(resolved.border, 0.1)
+        )
         return f"""
             QCheckBox {{ color: {resolved.text_primary}; font-size: 13px; spacing: 8px; }}
             QCheckBox:disabled {{ color: {disabled_text}; }}
             QCheckBox::indicator {{
                 width: 18px;
                 height: 18px;
-                border: 1px solid {border};
+                border: 1px solid {ring_border};
                 border-radius: 4px;
-                background-color: transparent;
+                background-color: {unchecked_fill};
                 image: none;
+            }}
+            QCheckBox::indicator:unchecked:hover {{
+                border: 1px solid {ring_border_hover};
             }}
             QCheckBox::indicator:unchecked:disabled {{
                 background-color: {disabled_indicator_bg};
@@ -909,8 +958,8 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 border: 1px solid {disabled_border};
                 image: url(assets/icons/check_mark.png);
             }}
-            QCheckBox::indicator:focus {{
-                border: 1px solid {focus_border};
+            QCheckBox::indicator:unchecked:focus {{
+                border: 1px solid {ring_border_focused};
             }}
             QCheckBox::indicator:checked:focus {{
                 border: 1px solid {resolved.accent_pressed};
@@ -1120,6 +1169,18 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 padding: 6px 8px;
                 font-weight: 600;
                 font-size: 11px;
+            }}
+        """
+    if role == SETTINGS_BORDERED_PANEL:
+        border = resolved.border_subtle if resolved.is_dark else resolved.border
+        bg = resolved.background
+        object_name = kwargs.get("object_name", "SettingsBorderedPanel")
+        widget_type = kwargs.get("widget_type", "QWidget")
+        return f"""
+            {widget_type}#{object_name} {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 8px;
             }}
         """
     if role == KNOWLEDGE_ACCESS_BADGE:

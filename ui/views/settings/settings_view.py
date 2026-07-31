@@ -634,6 +634,9 @@ class SettingsView(
         self._current_settings_section_id = section_id
         try:
             content_widget = builder(self, is_dark=is_dark)
+        except Exception:
+            logger.exception("Failed to build settings section %s", section_id)
+            return False
         finally:
             self._current_settings_section_id = None
         self._mount_settings_section_content(section_id, content_widget)
@@ -958,6 +961,18 @@ class SettingsView(
             from ui.views.settings.sections.knowledge_presets import _refresh_presets_list
 
             _refresh_presets_list(self, is_dark=is_dark)
+        if hasattr(self, "integrations_mcp_servers_table"):
+            from ui.views.settings.sections.integrations import (
+                sync_integrations_consent_panel,
+                sync_integrations_mcp_servers_panel,
+            )
+
+            sync_integrations_mcp_servers_panel(self, is_dark=is_dark)
+            sync_integrations_consent_panel(self, is_dark=is_dark)
+        if hasattr(self, "inference_transparency_table") and hasattr(
+            self, "_refresh_inference_transparency_panel"
+        ):
+            self._refresh_inference_transparency_panel(is_dark=is_dark)
 
         refresh_settings_section_cards(self, is_dark=is_dark)
 

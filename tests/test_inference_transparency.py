@@ -8,6 +8,7 @@ from unittest import mock
 from core.inference_transparency import (
     describe_layer_configuration,
     format_transparency_lines,
+    format_transparency_rows,
     merge_native_telemetry_snapshot,
     normalize_requested_layers,
     parse_backend_hint,
@@ -110,36 +111,55 @@ class TestMergeNativeTelemetrySnapshot(unittest.TestCase):
         self.assertTrue(merged["settings_match_loaded_layers"])
 
 
+class TestFormatTransparencyRows(unittest.TestCase):
+    _SAMPLE_SNAPSHOT = {
+        "build": {
+            "backend_hint": "vulkan",
+            "supports_gpu_offload": True,
+            "llama_cpp_python_version": "0.3.29",
+        },
+        "hardware": {
+            "gpu_memory_kind_label": "AMD APU (unified system memory)",
+            "vram_budget_gb": 16.0,
+            "max_safe_n_gpu_layers": 70,
+            "is_unified_gpu_memory": True,
+        },
+        "settings": {
+            "engine_mode": "internal",
+            "n_gpu_layers": 33,
+            "n_threads": 8,
+        },
+        "native": {
+            "loaded": True,
+            "model_basename": "chat.gguf",
+            "model_n_params_label": "7.00B",
+            "model_n_layers": 32,
+            "layer_configuration": "33 of 32 model layers requested (GPU build)",
+        },
+        "embedder": {"backend": "gpu", "model_basename": "embed.gguf"},
+        "sidecar": {"loaded": True, "model_basename": "side.gguf"},
+    }
+
+    def test_returns_component_value_pairs(self) -> None:
+        rows = format_transparency_rows(self._SAMPLE_SNAPSHOT)
+        self.assertGreaterEqual(len(rows), 5)
+        labels = [label for label, _value in rows]
+        self.assertIn("llama.cpp build", labels)
+        self.assertIn("Hardware profile", labels)
+        self.assertIn("Native chat", labels)
+        self.assertIn("Embeddings", labels)
+        self.assertIn("Sidecar", labels)
+
+    def test_lines_derive_from_rows(self) -> None:
+        rows = format_transparency_rows(self._SAMPLE_SNAPSHOT)
+        lines = format_transparency_lines(self._SAMPLE_SNAPSHOT)
+        self.assertEqual(lines, [f"{label}: {value}" for label, value in rows])
+
+
 class TestFormatTransparencyLines(unittest.TestCase):
     def test_includes_apu_and_sidecar(self) -> None:
         lines = format_transparency_lines(
-            {
-                "build": {
-                    "backend_hint": "vulkan",
-                    "supports_gpu_offload": True,
-                    "llama_cpp_python_version": "0.3.29",
-                },
-                "hardware": {
-                    "gpu_memory_kind_label": "AMD APU (unified system memory)",
-                    "vram_budget_gb": 16.0,
-                    "max_safe_n_gpu_layers": 70,
-                    "is_unified_gpu_memory": True,
-                },
-                "settings": {
-                    "engine_mode": "internal",
-                    "n_gpu_layers": 33,
-                    "n_threads": 8,
-                },
-                "native": {
-                    "loaded": True,
-                    "model_basename": "chat.gguf",
-                    "model_n_params_label": "7.00B",
-                    "model_n_layers": 32,
-                    "layer_configuration": "33 of 32 model layers requested (GPU build)",
-                },
-                "embedder": {"backend": "gpu", "model_basename": "embed.gguf"},
-                "sidecar": {"loaded": True, "model_basename": "side.gguf"},
-            }
+            TestFormatTransparencyRows._SAMPLE_SNAPSHOT
         )
         joined = "\n".join(lines)
         self.assertIn("vulkan", joined)
