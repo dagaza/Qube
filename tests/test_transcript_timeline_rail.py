@@ -40,7 +40,9 @@ class TestTranscriptTimelineRailHelpers(unittest.TestCase):
     def test_compute_active_waypoint_index(self) -> None:
         ys = [0, 200, 400, 600]
         self.assertEqual(compute_active_waypoint_index(0, ys), 0)
-        self.assertEqual(compute_active_waypoint_index(180, ys), 0)
+        # Default viewport_margin=24: a turn activates once scroll_top + margin reaches its y.
+        self.assertEqual(compute_active_waypoint_index(175, ys), 0)
+        self.assertEqual(compute_active_waypoint_index(176, ys), 1)
         self.assertEqual(compute_active_waypoint_index(220, ys), 1)
         self.assertEqual(compute_active_waypoint_index(900, ys), 3)
 
