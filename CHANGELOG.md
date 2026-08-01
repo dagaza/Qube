@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-08-01
+
 ### Added
-- Chocolatey GPU packages: `qube-vulkan` and `qube-cuda` alongside the CPU `qube` package.
+- **MCP / capability integration** (Phases 0–4): configured MCP servers, capability registry and invoke path, consent and session egress review, composer capability tokens, and **Settings → Integrations**.
+- **Library Pro depth**: structural chunking, per-import precision indexing, precision retrieval, Pro license gating, PDF text normalization, and evaluation tooling.
+- **Settings redesign**: split **Privacy & data**, **Diagnostics**, **License**, and slim **Advanced** (JSON editor); sticky section titles; collapsible cards and updated visual hierarchy.
+- In-app help updates for the Settings split, MCP workflows, Library Pro depth, and related `@help` canonical answers.
+
+### Changed
+- README install guidance: WinGet and Chocolatey GPU commands; macOS Homebrew tap install and upgrade section.
 
 ### Fixed
-- Linux CUDA `.rpm` packaging uses xz compression so artifacts stay under GitHub Releases' 2 GiB per-asset limit.
+- Settings lazy-load and shared theme-manager subscription cleanup for stable Windows CI.
+- UI test reliability for system settings handlers, TTS voice selector sync, and nav sidebar theme toggle.
 
 ## [1.2.5] - 2026-07-28
 
