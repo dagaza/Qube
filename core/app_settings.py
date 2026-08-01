@@ -307,7 +307,7 @@ def set_enable_chat_personality_nudge(enabled: bool) -> None:
 
 def get_routing_debug_log_enabled() -> bool:
     """When True, append per-turn routing JSONL to ~/.qube/logs/routing_debug.log."""
-    return bool(_store().get(KEY_ROUTING_DEBUG_LOG_ENABLED, False))
+    return bool(_store().get(KEY_ROUTING_DEBUG_LOG_ENABLED, True))
 
 
 def set_routing_debug_log_enabled(enabled: bool) -> None:

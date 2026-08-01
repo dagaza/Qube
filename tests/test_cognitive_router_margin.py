@@ -80,6 +80,57 @@ def _install_both_centroids(router: CognitiveRouterV4) -> None:
 _NEUTRAL_QUERY = "the quick brown fox jumps over the lazy dog"
 
 
+_MEMORY_AXIS = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+_RAG_AXIS = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+
+
+def _intent_with_retrieval_cosines(
+    memory_cos: float,
+    chat_cos: float,
+    rag_cos: float,
+) -> np.ndarray:
+    """Unit vector with controlled cosines against memory/chat/rag axes."""
+    rsq = memory_cos * memory_cos + chat_cos * chat_cos + rag_cos * rag_cos
+    if rsq > 1.0:
+        raise ValueError(
+            f"Incompatible cosine targets: memory={memory_cos}, chat={chat_cos}, "
+            f"rag={rag_cos} (sum of squares {rsq:.4f} > 1.0)."
+        )
+    v = np.array([memory_cos, chat_cos, rag_cos], dtype=np.float32)
+    n = float(np.linalg.norm(v))
+    if n > 0:
+        v = v / n
+    return v
+
+
+def _install_memory_rag_chat_centroids(router: CognitiveRouterV4) -> None:
+    router.set_memory_centroid(_MEMORY_AXIS.copy())
+    router.set_rag_centroid(_RAG_AXIS.copy())
+    router.set_chat_centroid(_CHAT_AXIS.copy())
+
+
+class CognitiveRouterMemoryRagMarginTests(unittest.TestCase):
+    def test_margin_rule_blocks_hybrid_for_ambiguous_test_query(self) -> None:
+        """Regression: bare 'Test' must not route to HYBRID when chat wins."""
+        router = CognitiveRouterV4()
+        _install_memory_rag_chat_centroids(router)
+        intent = _intent_with_retrieval_cosines(0.52, 0.53, 0.52)
+        decision = router.route("Test", intent_vector=intent)
+        self.assertEqual(decision["route"], "none", str(decision))
+        self.assertFalse(decision.get("recall_active"))
+
+    def test_substring_rag_bypasses_memory_rag_margin(self) -> None:
+        router = CognitiveRouterV4()
+        _install_memory_rag_chat_centroids(router)
+        decision = router.route("according to my notes", intent_vector=None)
+        self.assertIn(decision["route"], ("rag", "hybrid"), str(decision))
+
+    def test_memory_rag_margin_constants_are_0_05(self) -> None:
+        router = CognitiveRouterV4()
+        self.assertAlmostEqual(router.memory_margin_over_chat, 0.05, places=6)
+        self.assertAlmostEqual(router.rag_margin_over_chat, 0.05, places=6)
+
+
 class CognitiveRouterMarginTests(unittest.TestCase):
     # ----------------------------------------------------------
     # Constant guards — the thresholds are the whole point of

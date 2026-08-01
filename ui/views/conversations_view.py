@@ -55,6 +55,7 @@ import copy
 import unicodedata
 import weakref
 import re
+from dataclasses import dataclass
 import re as _re_cite
 from pathlib import Path
 
@@ -115,6 +116,7 @@ from core.composer_discoverability import (
     record_recent_skill,
     resolve_recent_mention,
 )
+from core.composer_attachments import resolve_attachment_routing, validate_file_token
 from core.composer_draft import (
     ComposerDraft,
     ROUTING_REJECT_ONE_SOURCE,
@@ -190,6 +192,14 @@ from ui.components.composer_recent_mentions import ComposerRecentMentionsRow
 from ui.components.hidden_feature_discovery import present_composer_at_mention_discovery
 from ui.components.ingest_progress_row import IngestProgressRow
 from ui.components.typing_indicator import TypingIndicatorWidget, TypingIndicatorMode
+from ui.components.transcript_timeline_rail import (
+    TRANSCRIPT_TIMELINE_RAIL_WIDTH_PX,
+    TranscriptTimelineRail,
+    TranscriptWaypointEntry,
+    compute_active_waypoint_index,
+    transcript_timeline_should_show,
+    truncate_waypoint_label,
+)
 
 logger = logging.getLogger("Qube.UI.Conversations")
 
@@ -1078,6 +1088,12 @@ class AgentMessageContainer(QFrame):
             bar.setFixedWidth(w)
 
 
+@dataclass
+class _TranscriptWaypointRecord:
+    wrapper: "MessageWrapper"
+    label: str
+
+
 class MessageWrapper(QWidget):
     """An autonomous layout row that takes full width and safely manages bubble expansion."""
     def __init__(self, bubble: QWidget, is_user: bool, parent=None):
@@ -1134,11 +1150,84 @@ class _ComposerRowHost(QWidget):
         layout.addWidget(inner, 0)
         layout.addStretch(1)
 
+    def set_column_max_width(self, max_w: int) -> None:
+        self._max_w = max(1, int(max_w))
+        w = min(self._max_w, max(1, self.width()))
+        if self._inner.width() != w:
+            self._inner.setFixedWidth(w)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         w = min(self._max_w, max(1, self.width()))
         if self._inner.width() != w:
             self._inner.setFixedWidth(w)
+
+
+class _TranscriptColumnHost(QWidget):
+    """Centers the capped transcript column with the turn-index rail flush to its right."""
+
+    _RAIL_GAP_PX = 6
+
+    def __init__(
+        self,
+        scroll_area: QScrollArea,
+        rail: TranscriptTimelineRail,
+        *,
+        nominal_cap_provider,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.setObjectName("ChatTranscriptColumnHost")
+        self._scroll_area = scroll_area
+        self._rail = rail
+        self._nominal_cap_provider = nominal_cap_provider
+
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addStretch(1)
+
+        self._block = QWidget()
+        self._block.setObjectName("ChatTranscriptColumnBlock")
+        block_layout = QHBoxLayout(self._block)
+        block_layout.setContentsMargins(0, 0, 0, 0)
+        block_layout.setSpacing(self._RAIL_GAP_PX)
+        block_layout.addWidget(scroll_area, 1)
+        self._rail.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Expanding,
+        )
+        block_layout.addWidget(rail, 0)
+
+        outer.addWidget(self._block, 0)
+        outer.addStretch(1)
+
+    def sync_geometry(self) -> None:
+        nominal = int(self._nominal_cap_provider())
+        bar = self._scroll_area.verticalScrollBar()
+        scrollbar_w = 0
+        if bar is not None:
+            if bar.isVisible():
+                scrollbar_w = int(bar.width())
+            elif self._rail.isVisible():
+                scrollbar_w = int(bar.sizeHint().width())
+
+        rail_w = TRANSCRIPT_TIMELINE_RAIL_WIDTH_PX if self._rail.isVisible() else 0
+        gap = self._RAIL_GAP_PX if rail_w else 0
+        block_w = nominal + scrollbar_w + gap + rail_w
+        available = max(1, int(self.width()))
+        block_w = min(block_w, available)
+
+        if self._block.width() != block_w:
+            self._block.setFixedWidth(block_w)
+
+        scroll_w = max(1, block_w - gap - rail_w)
+        if self._scroll_area.width() != scroll_w:
+            self._scroll_area.setFixedWidth(scroll_w)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.sync_geometry()
 
 
 _MENTION_QUERY_RE = re.compile(r"@([^\s@\[]*)$")
@@ -1706,6 +1795,12 @@ class ConversationsView(QWidget):
         self._agent_md_coalesce_timer = QTimer(self)
         self._agent_md_coalesce_timer.setSingleShot(True)
         self._agent_md_coalesce_timer.timeout.connect(self._flush_coalesced_agent_markdown)
+        self._transcript_waypoints: list[_TranscriptWaypointRecord] = []
+        self._transcript_timeline_refresh_timer = QTimer(self)
+        self._transcript_timeline_refresh_timer.setSingleShot(True)
+        self._transcript_timeline_refresh_timer.timeout.connect(
+            self._refresh_transcript_timeline_rail
+        )
 
         self._active_folder_id: str | None = None
         self._folder_controller: SidebarFolderListController | None = None
@@ -1746,17 +1841,17 @@ class ConversationsView(QWidget):
     def layout_mode(self) -> str:
         return self._layout_mode
 
-    def transcript_column_max_width(self) -> int:
-        """Effective transcript column cap: 800 or 1200 per mode, never wider than the scroll viewport.
-
-        The scroll viewport is the chat stage reading area only (global right tools pane is outside
-        this widget); clamping prevents bubbles from laying out wider than visible space.
-        """
-        nominal = (
+    def transcript_column_nominal_width(self) -> int:
+        """Layout-mode column cap (800 narrow / 1200 wide), independent of current viewport size."""
+        return (
             _FULL_WIDTH_COLUMN_MAX_WIDTH
             if self._layout_mode == LAYOUT_FULL_WIDTH
             else _CENTERED_COLUMN_MAX_WIDTH
         )
+
+    def transcript_column_max_width(self) -> int:
+        """Effective transcript column cap: nominal mode width, clamped to the scroll viewport."""
+        nominal = self.transcript_column_nominal_width()
         if hasattr(self, "scroll_area"):
             vp = self.scroll_area.viewport()
             if vp is not None:
@@ -1785,39 +1880,35 @@ class ConversationsView(QWidget):
 
     def _apply_layout_mode(self) -> None:
         self._sync_transcript_column_width_cap()
+        composer_host = getattr(self, "_composer_row_host", None)
+        if composer_host is not None:
+            composer_host.set_column_max_width(self.transcript_column_nominal_width())
         self.transcript_layout.invalidate()
         self.transcript_container.updateGeometry()
         self._refresh_layout_mode_button()
+        self._schedule_transcript_timeline_refresh()
 
     def _sync_transcript_scroll_alignment(self) -> None:
-        """Center the column only when the viewport is wider than the cap; otherwise pin left."""
+        """Pin transcript content to the left edge of the capped scroll column."""
         if not hasattr(self, "scroll_area"):
             return
-        cap = self.transcript_column_max_width()
-        vw = 0
-        vp = self.scroll_area.viewport()
-        if vp is not None:
-            vw = int(vp.width())
-        h_align = (
-            Qt.AlignmentFlag.AlignHCenter
-            if vw > cap
-            else Qt.AlignmentFlag.AlignLeft
+        self.scroll_area.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
-        self.scroll_area.setAlignment(h_align | Qt.AlignmentFlag.AlignTop)
 
     def _sync_transcript_column_width_cap(self) -> None:
         if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
             return
+        self._sync_transcript_scroll_alignment()
+        column_host = getattr(self, "_transcript_column_host", None)
+        if column_host is not None:
+            column_host.sync_geometry()
         cap = self.transcript_column_max_width()
-        changed = False
         if self.transcript_container.maximumWidth() != cap:
             self.transcript_container.setMaximumWidth(cap)
-            changed = True
-        self._sync_transcript_scroll_alignment()
-        if changed:
-            self.transcript_layout.invalidate()
-            self.transcript_container.updateGeometry()
-            self._sync_agent_actions_bar_widths()
+        self.transcript_layout.invalidate()
+        self.transcript_container.updateGeometry()
+        self._sync_agent_actions_bar_widths()
 
     def _theme(self, is_dark: bool | None = None):
         return view_resolved_theme(self, is_dark=is_dark)
@@ -2855,7 +2946,7 @@ class ConversationsView(QWidget):
         )
         layout.addWidget(utility_toolbar)
 
-        # 1. The New Architecture: A Scroll Area containing a vertical list of message widgets
+        # Transcript column: scroll area + turn-index rail appended to the right of the bubbles.
         self.scroll_area = QScrollArea()
         self.scroll_area.setObjectName("ChatScrollArea")
         self.scroll_area.setWidgetResizable(True)
@@ -2864,6 +2955,18 @@ class ConversationsView(QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.installEventFilter(self)
         self.scroll_area.viewport().installEventFilter(self)
+        self.scroll_area.verticalScrollBar().valueChanged.connect(
+            self._on_transcript_scroll_changed
+        )
+
+        def _on_transcript_scrollbar_geometry_changed(*_args) -> None:
+            column_host = getattr(self, "_transcript_column_host", None)
+            if column_host is not None:
+                column_host.sync_geometry()
+
+        self.scroll_area.verticalScrollBar().rangeChanged.connect(
+            _on_transcript_scrollbar_geometry_changed
+        )
 
         # Container widget
         self.transcript_container = QWidget()
@@ -2888,7 +2991,25 @@ class ConversationsView(QWidget):
         self.scroll_area.setStyleSheet(
             "QScrollArea#ChatScrollArea { background: transparent; border: none; }"
         )
-        layout.addWidget(self.scroll_area, stretch=1)
+
+        self._transcript_timeline_rail = TranscriptTimelineRail()
+        self._transcript_timeline_rail.waypoint_clicked.connect(
+            self._on_transcript_timeline_waypoint_clicked
+        )
+        self._transcript_timeline_rail.hide()
+        self._transcript_timeline_rail.apply_theme(self._theme().is_dark)
+
+        self._transcript_column_host = _TranscriptColumnHost(
+            self.scroll_area,
+            self._transcript_timeline_rail,
+            nominal_cap_provider=self.transcript_column_nominal_width,
+        )
+        self._transcript_column_host.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+
+        layout.addWidget(self._transcript_column_host, stretch=1)
 
         # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
         self.chat_bottom_container = QWidget()
@@ -3083,6 +3204,13 @@ class ConversationsView(QWidget):
         wrapper = MessageWrapper(bubble, is_user=True)
         self._register_reader_focus_tracking(wrapper)
         self.transcript_layout.addWidget(wrapper)
+        self._transcript_waypoints.append(
+            _TranscriptWaypointRecord(
+                wrapper=wrapper,
+                label=truncate_waypoint_label(display_body or text),
+            )
+        )
+        self._schedule_transcript_timeline_refresh()
         
         self._is_agent_typing = False
         self._scroll_to_bottom()
@@ -3210,6 +3338,7 @@ class ConversationsView(QWidget):
             parent._sync_actions_bar_width()
         if follow_stream_tail:
             self._scroll_to_bottom()
+        self._schedule_transcript_timeline_refresh()
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
 
@@ -3315,6 +3444,7 @@ class ConversationsView(QWidget):
         self._pending_citation_sources = None
         self._agent_text_buffer = ""
         self._hide_agent_typing_row()
+        self._transcript_waypoints.clear()
 
         while self.transcript_layout.count():
             item = self.transcript_layout.takeAt(0)
@@ -3330,6 +3460,7 @@ class ConversationsView(QWidget):
                 QCoreApplication.sendPostedEvents(None, int(etype))
             except RuntimeError:
                 pass
+        self._schedule_transcript_timeline_refresh()
         self._refresh_conversation_action_buttons()
 
     # --------------------------------------------------------- #
@@ -4159,6 +4290,7 @@ class ConversationsView(QWidget):
 
         self._refresh_all_readability()
         self._scroll_to_bottom()
+        self._schedule_transcript_timeline_refresh()
         self._refresh_conversation_action_buttons()
 
     def _apply_menu_theme(self, menu, is_dark: bool):
@@ -4332,6 +4464,9 @@ class ConversationsView(QWidget):
             apply_ghost_icon_button_style(self.send_btn, theme, fixed_size=None)
         self._refresh_readability_toolbar(is_dark=is_dark)
         self._refresh_layout_mode_button(is_dark=is_dark)
+        if hasattr(self, "_transcript_timeline_rail"):
+            self._transcript_timeline_rail.apply_theme(is_dark)
+            self._schedule_transcript_timeline_refresh()
         if hasattr(self, "font_minus_btn"):
             font_btn_style = readability_font_pair_stylesheet(
                 is_dark=is_dark, theme=theme, button_px=_CHAT_UTILITY_BTN
@@ -4386,12 +4521,14 @@ class ConversationsView(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._sync_transcript_column_width_cap()
+        self._schedule_transcript_timeline_refresh()
 
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
         if hasattr(self, "scroll_area") and event.type() == QEvent.Type.Resize:
             if obj is self.scroll_area or obj is self.scroll_area.viewport():
                 self._sync_transcript_column_width_cap()
+                self._schedule_transcript_timeline_refresh()
         if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
             et = event.type()
             if et == QEvent.Type.HoverEnter:
@@ -4426,6 +4563,96 @@ class ConversationsView(QWidget):
         from PyQt6.QtCore import QTimer
         # Wait for geometry calculation, THEN wait for layout application
         QTimer.singleShot(0, lambda: QTimer.singleShot(0, _execute_scroll))
+
+    def _schedule_transcript_timeline_refresh(self) -> None:
+        timer = getattr(self, "_transcript_timeline_refresh_timer", None)
+        if timer is None:
+            return
+        timer.start(0)
+
+    def _transcript_container_height(self) -> int:
+        container = getattr(self, "transcript_container", None)
+        if container is None:
+            return 0
+        height = int(container.sizeHint().height())
+        if height <= 0:
+            height = int(container.height())
+        return max(0, height)
+
+    def _collect_transcript_timeline_entries(self) -> tuple[list[TranscriptWaypointEntry], list[int]]:
+        container = getattr(self, "transcript_container", None)
+        if container is None:
+            return [], []
+        entries: list[TranscriptWaypointEntry] = []
+        waypoint_ys: list[int] = []
+        for record in getattr(self, "_transcript_waypoints", ()):
+            wrapper = record.wrapper
+            if wrapper is None:
+                continue
+            try:
+                y = wrapper.mapTo(container, wrapper.rect().topLeft()).y()
+            except RuntimeError:
+                continue
+            entries.append(TranscriptWaypointEntry(y=int(y), label=record.label))
+            waypoint_ys.append(int(y))
+        return entries, waypoint_ys
+
+    def _refresh_transcript_timeline_rail(self) -> None:
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        scroll = getattr(self, "scroll_area", None)
+        if rail is None or scroll is None:
+            return
+
+        container_h = self._transcript_container_height()
+        viewport = scroll.viewport()
+        viewport_h = int(viewport.height()) if viewport is not None else 0
+        entries, waypoint_ys = self._collect_transcript_timeline_entries()
+        show = transcript_timeline_should_show(
+            container_h,
+            viewport_h,
+            waypoint_count=len(entries),
+        )
+        scroll_top = scroll.verticalScrollBar().value()
+        active = compute_active_waypoint_index(scroll_top, waypoint_ys)
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        rail.apply_theme(is_dark)
+        rail.set_geometry_from_container(
+            entries,
+            container_height=container_h,
+            show=show,
+        )
+        rail.set_active_index(active)
+        column_host = getattr(self, "_transcript_column_host", None)
+        if column_host is not None:
+            column_host.sync_geometry()
+
+    def _on_transcript_scroll_changed(self, _value: int) -> None:
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        scroll = getattr(self, "scroll_area", None)
+        if rail is None or scroll is None or not rail.isVisible():
+            return
+        _entries, waypoint_ys = self._collect_transcript_timeline_entries()
+        if not waypoint_ys:
+            return
+        active = compute_active_waypoint_index(
+            scroll.verticalScrollBar().value(),
+            waypoint_ys,
+        )
+        rail.set_active_index(active)
+
+    def _on_transcript_timeline_waypoint_clicked(self, index: int) -> None:
+        records = getattr(self, "_transcript_waypoints", [])
+        if index < 0 or index >= len(records):
+            return
+        wrapper = records[index].wrapper
+        scroll = getattr(self, "scroll_area", None)
+        if wrapper is None or scroll is None:
+            return
+        scroll.ensureWidgetVisible(wrapper, 0, 24)
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        if rail is not None:
+            rail.set_active_index(index)
 
     def _attach_pending_citation_sources(self, label: AgentMessageLabel) -> None:
         """Apply sources from the tool phase to this bubble (or [] if none pending)."""

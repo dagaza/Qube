@@ -48,7 +48,7 @@ def routing_debug_log_enabled() -> bool:
 
         return get_routing_debug_log_enabled()
     except Exception:
-        return False
+        return True
 
 
 def routing_debug_log_env_override() -> bool | None:

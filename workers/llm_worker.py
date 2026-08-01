@@ -145,6 +145,7 @@ from core.memory_filters import (
     query_explicitly_requests_library_search,
     query_has_lexical_library_signal,
     should_downgrade_embedding_rag_on_continuation,
+    should_downgrade_short_vague_retrieval_on_first_turn,
     library_lane_allowed,
     should_run_internet_search_for_route,
 )
@@ -2533,6 +2534,26 @@ class LLMWorker(QThread):
             execution_route = "NONE"
             if isinstance(decision, dict):
                 decision["embedding_rag_continuation_suppressed"] = True
+
+        if (
+            not explicit_remember_active
+            and not scoped_library_active
+            and should_downgrade_short_vague_retrieval_on_first_turn(
+                self.prompt,
+                decision=decision if isinstance(decision, dict) else None,
+                execution_route=execution_route,
+                has_chat_history=has_prior_chat,
+                scoped_library_active=scoped_library_active,
+            )
+        ):
+            logger.info(
+                "[LLM Worker] Short vague first-turn retrieval suppressed; "
+                "execution_route %s -> NONE",
+                execution_route,
+            )
+            execution_route = "NONE"
+            if isinstance(decision, dict):
+                decision["short_vague_first_turn_suppressed"] = True
 
         force_rag_via_trigger = False
         # Custom NLP triggers: upgrade retrieval without clobbering HYBRID.

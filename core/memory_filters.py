@@ -809,6 +809,82 @@ def should_downgrade_embedding_rag_on_continuation(
         return False
     return True
 
+
+SHORT_VAGUE_RETRIEVAL_MAX_TOKENS = 2
+SHORT_VAGUE_RETRIEVAL_MARGIN_OVER_CHAT = 0.05
+
+
+def _embedding_lane_beats_chat(
+    decision: dict,
+    lane: str,
+    *,
+    margin_over_chat: float = SHORT_VAGUE_RETRIEVAL_MARGIN_OVER_CHAT,
+) -> bool:
+    """True when a lane's substring signal fired or embedding beats chat by margin."""
+    source = str(decision.get(f"{lane}_score_source") or "").lower()
+    if source == "substring":
+        return True
+    try:
+        lane_score = float(decision.get(f"{lane}_score_final") or 0.0)
+    except (TypeError, ValueError):
+        lane_score = 0.0
+    try:
+        chat_score = float(decision.get("chat_score") or 0.0)
+    except (TypeError, ValueError):
+        chat_score = 0.0
+    return (lane_score - chat_score) >= margin_over_chat
+
+
+def should_downgrade_short_vague_retrieval_on_first_turn(
+    query: str,
+    *,
+    decision: dict | None,
+    execution_route: str,
+    has_chat_history: bool,
+    scoped_library_active: bool = False,
+    short_token_max: int = SHORT_VAGUE_RETRIEVAL_MAX_TOKENS,
+    margin_over_chat: float = SHORT_VAGUE_RETRIEVAL_MARGIN_OVER_CHAT,
+) -> bool:
+    """Downgrade embedding-only retrieval on ultra-short first-turn queries."""
+    if scoped_library_active:
+        return False
+    if has_chat_history:
+        return False
+    if query_explicitly_requests_library_search(
+        query, decision=decision if isinstance(decision, dict) else None
+    ):
+        return False
+    route = str(execution_route or "").upper()
+    if route not in ("RAG", "MEMORY", "HYBRID"):
+        return False
+    if not isinstance(decision, dict):
+        return False
+    if decision.get("recall_fusion") or decision.get("recall_active"):
+        return False
+
+    q = (query or "").strip()
+    if not q or len(q.split()) > short_token_max:
+        return False
+
+    memory_substring = str(decision.get("memory_score_source") or "").lower() == "substring"
+    rag_substring = str(decision.get("rag_score_source") or "").lower() == "substring"
+    if memory_substring or rag_substring:
+        return False
+
+    memory_ok = _embedding_lane_beats_chat(
+        decision, "memory", margin_over_chat=margin_over_chat
+    )
+    rag_ok = _embedding_lane_beats_chat(
+        decision, "rag", margin_over_chat=margin_over_chat
+    )
+
+    if route == "MEMORY":
+        return not memory_ok
+    if route == "RAG":
+        return not rag_ok
+    return not (memory_ok or rag_ok)
+
+
 _HARD_EXPLICIT_WEB_TRIGGERS: tuple[str, ...] = (
     "look online",
     "search online",
@@ -1196,6 +1272,7 @@ __all__ = [
     "query_implies_library_intent",
     "is_conversational_continuation_turn",
     "should_downgrade_embedding_rag_on_continuation",
+    "should_downgrade_short_vague_retrieval_on_first_turn",
     "should_run_internet_search_for_route",
     "PREFERENCE_APPLICATION_SUFFIX",
     "CHAT_PERSONALITY_SUFFIX",

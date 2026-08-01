@@ -156,6 +156,11 @@ class CognitiveRouterV4:
         # (negative) class by this margin, mirroring recall. Substring
         # web triggers bypass the gate (high-precision keywords).
         self.web_margin_over_chat = 0.05
+        # T4.3: memory/rag gates mirror web/recall — embedding-only
+        # retrieval lanes must beat the chat (negative) class by this
+        # margin. Substring triggers bypass (high-precision keywords).
+        self.memory_margin_over_chat = 0.05
+        self.rag_margin_over_chat = 0.05
 
         # Tier 2: per-lane embedding centroids (memory / rag / web).
         # Each is L2-normalized and built externally by LLMWorker via
@@ -357,8 +362,18 @@ class CognitiveRouterV4:
 
         # Apply dynamic thresholds against the FUSED score so semantic
         # recall can light up a lane that the substring triggers miss.
-        memory_enabled = memory_score_final > self.dynamic_memory_threshold
-        rag_enabled = rag_score_final > (self.dynamic_rag_threshold + rag_penalty)
+        memory_lane_active = memory_score_final > self.dynamic_memory_threshold
+        rag_lane_active = rag_score_final > (self.dynamic_rag_threshold + rag_penalty)
+        memory_routing_allowed = (
+            memory_score_source == "substring"
+            or (memory_score_final - chat_score) >= self.memory_margin_over_chat
+        )
+        rag_routing_allowed = (
+            rag_score_source == "substring"
+            or (rag_score_final - chat_score) >= self.rag_margin_over_chat
+        )
+        memory_enabled = memory_lane_active and memory_routing_allowed
+        rag_enabled = rag_lane_active and rag_routing_allowed
         web_lane_active = web_score_final > self.dynamic_internet_threshold
         web_routing_allowed = (
             web_score_source == "substring"
@@ -366,6 +381,26 @@ class CognitiveRouterV4:
         )
         internet_enabled = web_lane_active and web_routing_allowed
 
+        if memory_lane_active and not memory_routing_allowed:
+            logger.info(
+                "[RouterV4] memory blocked by chat-class margin "
+                "(memory=%.3f, chat=%.3f, margin=%.3f, required=%.3f, source=%s)",
+                memory_score_final,
+                chat_score,
+                memory_score_final - chat_score,
+                self.memory_margin_over_chat,
+                memory_score_source,
+            )
+        if rag_lane_active and not rag_routing_allowed:
+            logger.info(
+                "[RouterV4] rag blocked by chat-class margin "
+                "(rag=%.3f, chat=%.3f, margin=%.3f, required=%.3f, source=%s)",
+                rag_score_final,
+                chat_score,
+                rag_score_final - chat_score,
+                self.rag_margin_over_chat,
+                rag_score_source,
+            )
         if web_lane_active and not web_routing_allowed:
             logger.info(
                 "[RouterV4] web blocked by chat-class margin "
@@ -662,6 +697,7 @@ class CognitiveRouterV4:
             rag_score_final=rag_score_final,
             web_score_final=web_score_final,
             recall_score=recall_score,
+            chat_score=chat_score,
             memory_score_source=memory_score_source,
             rag_score_source=rag_score_source,
             web_score_source=web_score_source,
@@ -696,6 +732,9 @@ class CognitiveRouterV4:
             "recall_active": recall_active,
             "chat_score": chat_score,
             "recall_margin_over_chat": self.recall_margin_over_chat,
+            "memory_margin_over_chat": self.memory_margin_over_chat,
+            "rag_margin_over_chat": self.rag_margin_over_chat,
+            "web_margin_over_chat": self.web_margin_over_chat,
             "rag_threshold": self.dynamic_rag_threshold,
             "memory_threshold": self.dynamic_memory_threshold,
             "internet_threshold": self.dynamic_internet_threshold,  # NEW
@@ -1112,6 +1151,7 @@ class CognitiveRouterV4:
         rag_score_final: float,
         web_score_final: float,
         recall_score: float,
+        chat_score: float,
         memory_score_source: str,
         rag_score_source: str,
         web_score_source: str,
@@ -1290,23 +1330,59 @@ class CognitiveRouterV4:
             lane_score = lane_scores_final[lane]
             lane_threshold = lane_thresholds[lane]
 
-            # Recall has its own below-threshold vs blocked-by-margin
-            # distinction.
-            if lane == "recall":
-                if recall_score >= self.recall_threshold and not recall_active:
-                    reason = "blocked_by_chat_margin"
-                else:
-                    reason = "below_threshold"
-            elif lane in hybrid_fused_lanes:
+            if lane in hybrid_fused_lanes:
                 reason = "hybrid_fused"
             elif floor_applied and lane == top_intent:
                 reason = "confidence_floor_downgraded_winner"
             elif drift and lane in ("memory", "rag", "web"):
                 reason = "drift_suppressed"
+            elif lane == "recall":
+                if recall_score >= self.recall_threshold and not recall_active:
+                    reason = "blocked_by_chat_margin"
+                else:
+                    reason = "below_threshold"
+            elif lane == "memory":
+                score_above = lane_scores_final["memory"] > lane_thresholds["memory"]
+                margin_ok = (
+                    lane_sources["memory"] == "substring"
+                    or (lane_scores_final["memory"] - chat_score)
+                    >= self.memory_margin_over_chat
+                )
+                if score_above and not margin_ok:
+                    reason = "blocked_by_chat_margin"
+                elif not lane_enabled[lane]:
+                    reason = "below_threshold"
+                else:
+                    reason = "lower_score_than_winner"
+            elif lane == "rag":
+                score_above = lane_scores_final["rag"] > lane_thresholds["rag"]
+                margin_ok = (
+                    lane_sources["rag"] == "substring"
+                    or (lane_scores_final["rag"] - chat_score)
+                    >= self.rag_margin_over_chat
+                )
+                if score_above and not margin_ok:
+                    reason = "blocked_by_chat_margin"
+                elif not lane_enabled[lane]:
+                    reason = "below_threshold"
+                else:
+                    reason = "lower_score_than_winner"
+            elif lane == "web":
+                score_above = lane_scores_final["web"] > lane_thresholds["web"]
+                margin_ok = (
+                    lane_sources["web"] == "substring"
+                    or (lane_scores_final["web"] - chat_score)
+                    >= self.web_margin_over_chat
+                )
+                if score_above and not margin_ok:
+                    reason = "blocked_by_chat_margin"
+                elif not lane_enabled[lane]:
+                    reason = "below_threshold"
+                else:
+                    reason = "lower_score_than_winner"
             elif not lane_enabled[lane]:
                 reason = "below_threshold"
             else:
-                # Lane cleared its threshold but another lane was picked.
                 reason = "lower_score_than_winner"
 
             losing_candidates.append({

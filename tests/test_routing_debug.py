@@ -354,8 +354,9 @@ class RoutingDebugSerializeForLogTests(unittest.TestCase):
 
 class RoutingDebugEnvFlagsTests(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=True)
-    def test_flags_default_off(self) -> None:
-        self.assertFalse(routing_debug_log_enabled())
+    @patch("core.app_settings.get_routing_debug_log_enabled", return_value=True)
+    def test_flags_default_on_from_settings(self, _getter) -> None:
+        self.assertTrue(routing_debug_log_enabled())
         self.assertFalse(routing_debug_log_verbose())
         self.assertFalse(routing_debug_log_redact_query())
 

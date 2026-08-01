@@ -20,6 +20,7 @@ from core.memory_filters import (
     query_implies_library_intent,
     should_apply_recall_fusion,
     should_downgrade_embedding_rag_on_continuation,
+    should_downgrade_short_vague_retrieval_on_first_turn,
     is_conversational_continuation_turn,
     _router_embedding_implies_library_intent,
 )
@@ -234,6 +235,58 @@ class ContinuationRoutingTests(unittest.TestCase):
                 execution_route="HYBRID",
                 prior_execution_route="NONE",
                 follow_up_active=False,
+                has_chat_history=True,
+            )
+        )
+
+
+class ShortVagueFirstTurnRetrievalTests(unittest.TestCase):
+    def test_downgrades_embedding_hybrid_on_test(self) -> None:
+        decision = {
+            "memory_score_source": "embedding",
+            "rag_score_source": "embedding",
+            "memory_score_final": 0.841,
+            "rag_score_final": 0.839,
+            "chat_score": 0.857,
+        }
+        self.assertTrue(
+            should_downgrade_short_vague_retrieval_on_first_turn(
+                "Test",
+                decision=decision,
+                execution_route="HYBRID",
+                has_chat_history=False,
+            )
+        )
+
+    def test_no_downgrade_when_substring_library_signal(self) -> None:
+        decision = {
+            "memory_score_source": "embedding",
+            "rag_score_source": "substring",
+            "rag_score_final": 0.40,
+            "chat_score": 0.50,
+        }
+        self.assertFalse(
+            should_downgrade_short_vague_retrieval_on_first_turn(
+                "according to my notes",
+                decision=decision,
+                execution_route="RAG",
+                has_chat_history=False,
+            )
+        )
+
+    def test_no_downgrade_on_follow_up_turn(self) -> None:
+        decision = {
+            "memory_score_source": "embedding",
+            "rag_score_source": "embedding",
+            "memory_score_final": 0.841,
+            "rag_score_final": 0.839,
+            "chat_score": 0.857,
+        }
+        self.assertFalse(
+            should_downgrade_short_vague_retrieval_on_first_turn(
+                "Test",
+                decision=decision,
+                execution_route="HYBRID",
                 has_chat_history=True,
             )
         )
