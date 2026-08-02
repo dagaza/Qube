@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-08-02
+
+### Added
+- **Pro license gating** for custom STT/TTS/embedding model paths, alternate wakeword libraries (and Test Lab), and MCP Filesystem integrations — runtime enforcement, Settings UI, and license sync on import/remove.
+- **Deep Research** research profiles, PDF report export, and Pro-gated advanced features.
+- **Assistant message export** from Conversations (Markdown/PDF) with related composer and settings updates.
+
+### Fixed
+- Settings lazy-load CI hang when wakeword catalog sync runs against mocked audio workers in tests.
+
 ## [1.2.7] - 2026-08-02
 
 ### Added
