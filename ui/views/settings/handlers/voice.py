@@ -199,6 +199,11 @@ class VoiceHandlersMixin:
         _ = trigger
         if not self.audio_worker:
             return
+        from core.wakeword_manager import WakewordManager
+
+        manager = getattr(self.audio_worker, "wakeword_manager", None)
+        if not isinstance(manager, WakewordManager):
+            return
         try:
             self.audio_worker.refresh_wakewords(include_remote=False)
             revoke_unlicensed_wakeword_selection(self.audio_worker)
@@ -228,13 +233,10 @@ class VoiceHandlersMixin:
             self.wakeword_selector.setText(matching_label)
         except Exception as exc:
             logger.exception("Wakeword catalog sync failed: %s", exc)
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
-            PrestigeDialog(
-                self.window(),
-                "Wakeword load failed",
-                f"{exc}",
-                is_dark=is_dark,
-            ).exec()
+            if hasattr(self, "wakeword_selector"):
+                self.wakeword_selector.setEnabled(False)
+                self.wakeword_selector.setText("No model available")
+                self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
 
     def _on_wakeword_selector_pressed(self) -> None:
         if not user_has_pro_wakeword_library():
