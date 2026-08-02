@@ -33,6 +33,8 @@ from PyQt6.QtGui import (
     QPainter,
     QFont,
     QKeyEvent,
+    QKeySequence,
+    QShortcut,
 )
 from PyQt6.QtCore import (
     Qt,
@@ -197,6 +199,7 @@ from ui.components.transcript_timeline_rail import (
     TranscriptTimelineRail,
     TranscriptWaypointEntry,
     compute_active_waypoint_index,
+    compute_scroll_target_for_waypoint_y,
     transcript_timeline_should_show,
     truncate_waypoint_label,
 )
@@ -213,6 +216,7 @@ _UNSET_SOURCES = object()
 # --------------- Chat layout modes --------------- #
 LAYOUT_FULL_WIDTH = "full_width"
 LAYOUT_CENTERED_COLUMN = "centered_column"
+_TRANSCRIPT_TIMELINE_SCROLL_MS = 220
 _CENTERED_COLUMN_MAX_WIDTH = 800
 _FULL_WIDTH_COLUMN_MAX_WIDTH = 1200
 _QWIDGETSIZE_MAX = (1 << 24) - 1
@@ -1801,6 +1805,9 @@ class ConversationsView(QWidget):
         self._transcript_timeline_refresh_timer.timeout.connect(
             self._refresh_transcript_timeline_rail
         )
+        self._transcript_timeline_scroll_anim: QPropertyAnimation | None = None
+        self._transcript_timeline_prev_sc: QShortcut | None = None
+        self._transcript_timeline_next_sc: QShortcut | None = None
 
         self._active_folder_id: str | None = None
         self._folder_controller: SidebarFolderListController | None = None
@@ -3010,6 +3017,7 @@ class ConversationsView(QWidget):
         )
 
         layout.addWidget(self._transcript_column_host, stretch=1)
+        self._setup_transcript_timeline_shortcuts()
 
         # Bottom stack: composer stays at 800px max (independent of transcript layout toggle).
         self.chat_bottom_container = QWidget()
@@ -4626,6 +4634,125 @@ class ConversationsView(QWidget):
         column_host = getattr(self, "_transcript_column_host", None)
         if column_host is not None:
             column_host.sync_geometry()
+        self._sync_transcript_timeline_shortcuts_enabled()
+
+    def _setup_transcript_timeline_shortcuts(self) -> None:
+        ctx = Qt.ShortcutContext.WidgetWithChildrenShortcut
+        prev_sc = QShortcut(QKeySequence("Ctrl+Up"), self)
+        prev_sc.setContext(ctx)
+        prev_sc.setAutoRepeat(False)
+        prev_sc.activated.connect(lambda: self._jump_transcript_waypoint(-1))
+        next_sc = QShortcut(QKeySequence("Ctrl+Down"), self)
+        next_sc.setContext(ctx)
+        next_sc.setAutoRepeat(False)
+        next_sc.activated.connect(lambda: self._jump_transcript_waypoint(1))
+        self._transcript_timeline_prev_sc = prev_sc
+        self._transcript_timeline_next_sc = next_sc
+        self._sync_transcript_timeline_shortcuts_enabled()
+
+    def _sync_transcript_timeline_shortcuts_enabled(self) -> None:
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        enabled = rail is not None and rail.isVisible() and bool(
+            getattr(self, "_transcript_waypoints", ())
+        )
+        for sc in (
+            getattr(self, "_transcript_timeline_prev_sc", None),
+            getattr(self, "_transcript_timeline_next_sc", None),
+        ):
+            if sc is not None:
+                sc.setEnabled(enabled)
+
+    def _active_transcript_waypoint_index(self) -> int:
+        records = getattr(self, "_transcript_waypoints", [])
+        if not records:
+            return 0
+        scroll = getattr(self, "scroll_area", None)
+        if scroll is None:
+            return 0
+        _entries, waypoint_ys = self._collect_transcript_timeline_entries()
+        if not waypoint_ys:
+            return 0
+        return compute_active_waypoint_index(
+            scroll.verticalScrollBar().value(),
+            waypoint_ys,
+        )
+
+    def _jump_transcript_waypoint(self, delta: int) -> None:
+        records = getattr(self, "_transcript_waypoints", [])
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        if not records or rail is None or not rail.isVisible() or delta == 0:
+            return
+        current = self._active_transcript_waypoint_index()
+        target = max(0, min(len(records) - 1, current + int(delta)))
+        self._scroll_to_transcript_waypoint_index(target, animated=True)
+
+    def _scroll_target_for_waypoint_index(self, index: int) -> int | None:
+        records = getattr(self, "_transcript_waypoints", [])
+        scroll = getattr(self, "scroll_area", None)
+        container = getattr(self, "transcript_container", None)
+        if (
+            index < 0
+            or index >= len(records)
+            or scroll is None
+            or container is None
+        ):
+            return None
+        wrapper = records[index].wrapper
+        if wrapper is None:
+            return None
+        try:
+            y = wrapper.mapTo(container, wrapper.rect().topLeft()).y()
+        except RuntimeError:
+            return None
+        bar = scroll.verticalScrollBar()
+        return compute_scroll_target_for_waypoint_y(
+            int(y),
+            margin=24,
+            scroll_min=bar.minimum(),
+            scroll_max=bar.maximum(),
+        )
+
+    def _scroll_to_transcript_waypoint_index(
+        self,
+        index: int,
+        *,
+        animated: bool = True,
+    ) -> None:
+        scroll = getattr(self, "scroll_area", None)
+        if scroll is None:
+            return
+        target = self._scroll_target_for_waypoint_index(index)
+        if target is None:
+            return
+        bar = scroll.verticalScrollBar()
+        if not animated or bar.value() == target:
+            self._stop_transcript_timeline_scroll_anim()
+            bar.setValue(target)
+        else:
+            self._animate_transcript_scroll_to(target)
+        rail = getattr(self, "_transcript_timeline_rail", None)
+        if rail is not None:
+            rail.set_active_index(index)
+
+    def _stop_transcript_timeline_scroll_anim(self) -> None:
+        anim = getattr(self, "_transcript_timeline_scroll_anim", None)
+        if anim is not None:
+            anim.stop()
+            self._transcript_timeline_scroll_anim = None
+
+    def _animate_transcript_scroll_to(self, target: int) -> None:
+        scroll = getattr(self, "scroll_area", None)
+        if scroll is None:
+            return
+        bar = scroll.verticalScrollBar()
+        self._stop_transcript_timeline_scroll_anim()
+        anim = QPropertyAnimation(bar, b"value", self)
+        anim.setDuration(_TRANSCRIPT_TIMELINE_SCROLL_MS)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.setStartValue(bar.value())
+        anim.setEndValue(int(target))
+        self._transcript_timeline_scroll_anim = anim
+        anim.start()
 
     def _on_transcript_scroll_changed(self, _value: int) -> None:
         rail = getattr(self, "_transcript_timeline_rail", None)
@@ -4642,17 +4769,7 @@ class ConversationsView(QWidget):
         rail.set_active_index(active)
 
     def _on_transcript_timeline_waypoint_clicked(self, index: int) -> None:
-        records = getattr(self, "_transcript_waypoints", [])
-        if index < 0 or index >= len(records):
-            return
-        wrapper = records[index].wrapper
-        scroll = getattr(self, "scroll_area", None)
-        if wrapper is None or scroll is None:
-            return
-        scroll.ensureWidgetVisible(wrapper, 0, 24)
-        rail = getattr(self, "_transcript_timeline_rail", None)
-        if rail is not None:
-            rail.set_active_index(index)
+        self._scroll_to_transcript_waypoint_index(index, animated=True)
 
     def _attach_pending_citation_sources(self, label: AgentMessageLabel) -> None:
         """Apply sources from the tool phase to this bubble (or [] if none pending)."""

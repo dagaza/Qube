@@ -6,7 +6,9 @@ import unittest
 
 from ui.components.transcript_timeline_rail import (
     compute_active_waypoint_index,
+    compute_scroll_target_for_waypoint_y,
     compute_stacked_marker_centers,
+    format_waypoint_tooltip,
     nearest_waypoint_index_for_y,
     transcript_timeline_should_show,
     truncate_waypoint_label,
@@ -25,6 +27,33 @@ class TestTranscriptTimelineRailHelpers(unittest.TestCase):
         result = truncate_waypoint_label(long_text, max_len=20)
         self.assertTrue(result.endswith("…"))
         self.assertLessEqual(len(result), 20)
+
+    def test_format_waypoint_tooltip(self) -> None:
+        self.assertEqual(
+            format_waypoint_tooltip(2, 5, "Explain quantum tunneling"),
+            "Turn 3 of 5\nExplain quantum tunneling",
+        )
+        self.assertEqual(format_waypoint_tooltip(0, 3, ""), "Turn 1 of 3")
+
+    def test_compute_scroll_target_for_waypoint_y(self) -> None:
+        self.assertEqual(
+            compute_scroll_target_for_waypoint_y(
+                200, margin=24, scroll_min=0, scroll_max=1000
+            ),
+            176,
+        )
+        self.assertEqual(
+            compute_scroll_target_for_waypoint_y(
+                10, margin=24, scroll_min=0, scroll_max=1000
+            ),
+            0,
+        )
+        self.assertEqual(
+            compute_scroll_target_for_waypoint_y(
+                2000, margin=24, scroll_min=0, scroll_max=500
+            ),
+            500,
+        )
 
     def test_transcript_timeline_should_show_requires_overflow(self) -> None:
         self.assertFalse(

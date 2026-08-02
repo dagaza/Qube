@@ -33,6 +33,27 @@ def truncate_waypoint_label(text: str, *, max_len: int = _LABEL_MAX_LEN) -> str:
     return collapsed[: max_len - 1].rstrip() + "…"
 
 
+def format_waypoint_tooltip(index: int, total: int, label: str) -> str:
+    """Plain-text tooltip for a turn marker (shown via setToolTip)."""
+    turn_line = f"Turn {int(index) + 1} of {max(1, int(total))}"
+    preview = str(label or "").strip()
+    if preview:
+        return f"{turn_line}\n{preview}"
+    return turn_line
+
+
+def compute_scroll_target_for_waypoint_y(
+    waypoint_y: int,
+    *,
+    margin: int = 24,
+    scroll_min: int = 0,
+    scroll_max: int = 0,
+) -> int:
+    """Scroll-bar value that places a waypoint near the top of the viewport."""
+    target = int(waypoint_y) - int(margin)
+    return max(int(scroll_min), min(int(scroll_max), target))
+
+
 def transcript_timeline_should_show(
     container_height: int,
     viewport_height: int,
@@ -253,6 +274,15 @@ class TranscriptTimelineRail(QWidget):
         )
         if idx != self._hover_index:
             self._hover_index = idx if idx >= 0 else None
+            if self._hover_index is not None and self._entries:
+                tip = format_waypoint_tooltip(
+                    self._hover_index,
+                    len(self._entries),
+                    self._entries[self._hover_index].label,
+                )
+                self.setToolTip(tip)
+            else:
+                self.setToolTip("")
             self.setCursor(
                 Qt.CursorShape.PointingHandCursor
                 if idx >= 0
@@ -264,6 +294,7 @@ class TranscriptTimelineRail(QWidget):
     def leaveEvent(self, event) -> None:  # noqa: N802 — Qt API
         if self._hover_index is not None:
             self._hover_index = None
+            self.setToolTip("")
             self.setCursor(Qt.CursorShape.ArrowCursor)
             self.update()
         super().leaveEvent(event)
