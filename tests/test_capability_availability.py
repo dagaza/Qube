@@ -6,6 +6,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from core.integrations.capabilities import persistence as P
 from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
@@ -41,8 +42,14 @@ class TestCapabilityAvailability(unittest.TestCase):
 
         self._orig_cs = cs.user_data_root
         cs.user_data_root = lambda: self._root  # type: ignore[assignment]
+        self._pro_mcp_patch = patch(
+            "core.mcp_filesystem_pro_features.user_has_pro_mcp_filesystem",
+            return_value=True,
+        )
+        self._pro_mcp_patch.start()
 
     def tearDown(self):
+        self._pro_mcp_patch.stop()
         P.user_data_root = self._orig  # type: ignore[assignment]
         import core.knowledge.configured_sources as cs
 
@@ -113,6 +120,31 @@ class TestCapabilityAvailability(unittest.TestCase):
         urn = CapabilityURN.build("mcp", "filesystem", "search-files")
         availability = resolve_capability_availability(urn)
         self.assertEqual(availability.reason, CapabilityBlockReason.SOURCE_INVALID)
+
+    def test_license_required_for_filesystem_without_pro(self):
+        save_configured_source(
+            ConfiguredSource(
+                id="fs-mcp",
+                label="Filesystem",
+                connector_type="mcp",
+                config={
+                    "command": ["tool.cmd", "/data"],
+                    "namespace": "filesystem",
+                    "adapter_id": "fs-mcp",
+                },
+            )
+        )
+        desc = _descriptor("search_files")
+        save_descriptor_cache("mcp", [desc])
+        urn = CapabilityURN.build("mcp", "filesystem", "search-files")
+        self._pro_mcp_patch.stop()
+        with patch(
+            "core.mcp_filesystem_pro_features.user_has_pro_mcp_filesystem",
+            return_value=False,
+        ):
+            availability = resolve_capability_availability(urn)
+        self.assertFalse(availability.available)
+        self.assertEqual(availability.reason, CapabilityBlockReason.LICENSE_REQUIRED)
 
     def test_merge_and_remove_namespace(self):
         a = _descriptor("search_files", namespace="filesystem")

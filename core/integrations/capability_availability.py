@@ -32,6 +32,7 @@ class CapabilityBlockReason(str, Enum):
     NOT_GRANTED = "not_granted"
     NEEDS_REVIEW = "needs_review"
     REREVIEW_REQUIRED = "rereview_required"
+    LICENSE_REQUIRED = "license_required"
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +90,10 @@ def user_message_for_availability(availability: CapabilityAvailability) -> str:
                 f"Cannot use {urn_label}: the MCP server or capability changed since "
                 f"you last granted it. Re-review under Settings → Integrations."
             )
+        case CapabilityBlockReason.LICENSE_REQUIRED:
+            from core.mcp_filesystem_pro_features import LICENSE_REQUIRED_MESSAGE
+
+            return LICENSE_REQUIRED_MESSAGE
     return f"Cannot use {urn_label}."
 
 
@@ -105,6 +110,14 @@ def resolve_capability_availability(urn: CapabilityURN) -> CapabilityAvailabilit
         return _availability_from_descriptor(urn, descriptor)
 
     ns_state, source_id, detail = inspect_configured_mcp_namespace(urn.namespace)
+    if ns_state == "ok" and not _mcp_filesystem_license_allows_namespace(urn.namespace):
+        return CapabilityAvailability(
+            urn=urn,
+            available=False,
+            reason=CapabilityBlockReason.LICENSE_REQUIRED,
+            source_id=source_id,
+            detail=detail,
+        )
     if ns_state == "missing":
         return CapabilityAvailability(
             urn=urn,
@@ -184,6 +197,27 @@ def _availability_from_descriptor(
 
 
 def mcp_namespace_has_configured_source(namespace: str) -> bool:
-    """True when a valid MCP Knowledge source exists for ``namespace``."""
+    """True when a Knowledge MCP source exists and is licensed for use."""
     state, _, _ = inspect_configured_mcp_namespace(namespace)
-    return state == "ok"
+    if state != "ok":
+        return False
+    return _mcp_filesystem_license_allows_namespace(namespace)
+
+
+def _mcp_filesystem_license_allows_namespace(namespace: str) -> bool:
+    from core.knowledge.configured_sources import load_configured_source
+    from core.mcp_filesystem_pro_features import (
+        is_mcp_filesystem_namespace,
+        mcp_filesystem_integration_allowed,
+        user_has_pro_mcp_filesystem,
+    )
+
+    state, source_id, _ = inspect_configured_mcp_namespace(namespace)
+    if state != "ok" or not source_id:
+        if is_mcp_filesystem_namespace(namespace):
+            return user_has_pro_mcp_filesystem()
+        return True
+    source = load_configured_source(source_id)
+    if source is None:
+        return True
+    return mcp_filesystem_integration_allowed(source=source)

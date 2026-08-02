@@ -18,6 +18,11 @@ from PyQt6.QtWidgets import (
 )
 
 from core.app_settings import get_advanced_stt_unlocked, get_advanced_tts_unlocked
+from core.model_paths_pro_features import (
+    PRO_CUSTOM_MODEL_PATHS_FEATURE,
+    effective_advanced_stt_unlocked,
+    effective_advanced_tts_unlocked,
+)
 from core.stt_models import get_stt_models_dir
 from core.tts_models import get_tts_models_dir
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
@@ -39,6 +44,7 @@ from ui.views.settings.widgets import (
     SETTINGS_SELECTOR_MIN_WIDTH_PROP,
     wrap_subsection,
     add_settings_full_width_row,
+    make_pro_feature_toggle_row,
 )
 
 _DEVICE_SELECTOR_WIDTH = 350
@@ -180,45 +186,6 @@ def _tts_voice_settings_column(host) -> QWidget:
     return column
 
 
-def _advanced_toggle_row(
-    host,
-    *,
-    label_text: str,
-    tooltip: str,
-    toggle_attr: str,
-    label_attr: str,
-    info_attr: str,
-    handler_name: str,
-    initially_unlocked: bool,
-) -> QWidget:
-    toggle = PrestigeToggle()
-    toggle.setToolTip(tooltip)
-    label = QLabel(label_text)
-    label.setToolTip(tooltip)
-    info_btn = host._make_settings_info_button(tooltip)
-    label_cluster = QWidget()
-    label_layout = QHBoxLayout(label_cluster)
-    label_layout.setContentsMargins(0, 0, 0, 0)
-    label_layout.setSpacing(6)
-    label_layout.addWidget(label)
-    label_layout.addWidget(info_btn)
-    row = QWidget()
-    row_layout = QHBoxLayout(row)
-    row_layout.setContentsMargins(0, 0, 0, 0)
-    row_layout.setSpacing(8)
-    row_layout.addWidget(toggle, alignment=Qt.AlignmentFlag.AlignLeft)
-    row_layout.addWidget(label_cluster)
-    row_layout.addStretch(1)
-    toggle.blockSignals(True)
-    toggle.setChecked(initially_unlocked)
-    toggle.blockSignals(False)
-    toggle.toggled.connect(getattr(host, handler_name))
-    setattr(host, toggle_attr, toggle)
-    setattr(host, label_attr, label)
-    setattr(host, info_attr, info_btn)
-    return row
-
-
 def _add_stt_advanced_options(host, form: QFormLayout) -> None:
     add_subsection_to_form(form, "Speech-to-text (STT)", anchor="stt_models")
 
@@ -237,19 +204,20 @@ def _add_stt_advanced_options(host, form: QFormLayout) -> None:
         "Advanced STT controls are not for everyday use.\n\n"
         "Unlocks optional speech-to-text model selection. Place CTranslate2 Whisper "
         "folders (each must contain model.bin) under models/stt/, then select one here.\n\n"
-        "The bundled Whisper small default cannot be deleted."
+        "The bundled Whisper small default cannot be deleted.\n\n"
+        "Requires a Qube Pro license."
     )
-    add_settings_full_width_row(form, _advanced_toggle_row(
-            host,
-            label_text="Show advanced STT settings",
-            tooltip=_stt_adv_tip,
-            toggle_attr="advanced_stt_toggle",
-            label_attr="advanced_stt_label",
-            info_attr="advanced_stt_info_btn",
-            handler_name="_on_advanced_stt_toggled",
-            initially_unlocked=get_advanced_stt_unlocked(),
-        ),
+    host.advanced_stt_toggle_row, host.advanced_stt_label = make_pro_feature_toggle_row(
+        host,
+        label="Show advanced STT settings",
+        tooltip=_stt_adv_tip,
+        feature_id=PRO_CUSTOM_MODEL_PATHS_FEATURE,
+        checked=get_advanced_stt_unlocked(),
+        on_toggled=host._on_advanced_stt_toggled,
+        info_attr="advanced_stt_info_btn",
     )
+    host.advanced_stt_toggle = host.advanced_stt_toggle_row.findChild(PrestigeToggle)
+    add_settings_full_width_row(form, host.advanced_stt_toggle_row)
 
     host.advanced_stt_panel = QWidget()
     stt_panel_layout = QVBoxLayout(host.advanced_stt_panel)
@@ -303,7 +271,7 @@ def _add_stt_advanced_options(host, form: QFormLayout) -> None:
     stt_form.addRow("Active model", host.active_stt_model_lbl)
 
     stt_panel_layout.addWidget(wrap_subsection(stt_inner, anchor="stt_models"))
-    host.advanced_stt_panel.setVisible(get_advanced_stt_unlocked())
+    host.advanced_stt_panel.setVisible(effective_advanced_stt_unlocked())
     add_settings_full_width_row(form, host.advanced_stt_panel)
 
 
@@ -329,19 +297,20 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
         ".onnx.json config (or \"piper\" in the filename). Other ONNX engines are "
         "not supported.\n\n"
         "Use Reset to default if speech stops working. The bundled Kokoro v1.0 "
-        "default cannot be deleted."
+        "default cannot be deleted.\n\n"
+        "Requires a Qube Pro license."
     )
-    add_settings_full_width_row(form, _advanced_toggle_row(
-            host,
-            label_text="Show advanced TTS settings",
-            tooltip=_tts_adv_tip,
-            toggle_attr="advanced_tts_toggle",
-            label_attr="advanced_tts_label",
-            info_attr="advanced_tts_info_btn",
-            handler_name="_on_advanced_tts_toggled",
-            initially_unlocked=get_advanced_tts_unlocked(),
-        ),
+    host.advanced_tts_toggle_row, host.advanced_tts_label = make_pro_feature_toggle_row(
+        host,
+        label="Show advanced TTS settings",
+        tooltip=_tts_adv_tip,
+        feature_id=PRO_CUSTOM_MODEL_PATHS_FEATURE,
+        checked=get_advanced_tts_unlocked(),
+        on_toggled=host._on_advanced_tts_toggled,
+        info_attr="advanced_tts_info_btn",
     )
+    host.advanced_tts_toggle = host.advanced_tts_toggle_row.findChild(PrestigeToggle)
+    add_settings_full_width_row(form, host.advanced_tts_toggle_row)
 
     host.advanced_tts_panel = QWidget()
     tts_panel_layout = QVBoxLayout(host.advanced_tts_panel)
@@ -399,7 +368,7 @@ def _add_tts_advanced_options(host, form: QFormLayout) -> None:
     tts_form.addRow("Active model", host.active_tts_model_lbl)
 
     tts_panel_layout.addWidget(wrap_subsection(tts_inner, anchor="tts_models"))
-    host.advanced_tts_panel.setVisible(get_advanced_tts_unlocked())
+    host.advanced_tts_panel.setVisible(effective_advanced_tts_unlocked())
     add_settings_full_width_row(form, host.advanced_tts_panel)
 
 
@@ -484,10 +453,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.wakeword_selector.setMenu(QMenu(host.wakeword_selector))
     host.wakeword_selector.setFixedWidth(300)
     host.wakeword_selector.setToolTip(
-        "Always run Wakeword Testbed after selecting a wakeword. "
-        "Both Community and Recommended wakewords can perform differently "
-        "depending on your voice, mic setup, room noise, and sensitivity."
-        "You can always download your own wakewords and place them in the wakewords folder."
+        "Choose the active wake phrase. The bundled default is included; alternate "
+        "wakewords, model downloads, and the Test Lab require a Qube Pro license."
     )
 
     wakeword_row = QWidget()
@@ -514,14 +481,16 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     apply_brand_primary(host.wakeword_download_open_btn)
     _apply_wakeword_action_button_width(host.wakeword_download_open_btn)
     host.wakeword_download_open_btn.setToolTip(
-        "Downloads OpenWakeWord wakeword models (built-in set) and the required feature assets."
+        "Downloads OpenWakeWord wakeword models (built-in set) and the required feature "
+        "assets. Requires a Qube Pro license."
     )
 
     host.wakeword_download_community_btn = QPushButton("Download Community models")
     apply_brand_primary(host.wakeword_download_community_btn)
     _apply_wakeword_action_button_width(host.wakeword_download_community_btn)
     host.wakeword_download_community_btn.setToolTip(
-        "Downloads the community wakeword pack into your local wakeword folder."
+        "Downloads the community wakeword pack into your local wakeword folder. "
+        "Requires a Qube Pro license."
     )
 
     wakeword_download_col = QWidget()
@@ -546,7 +515,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     apply_brand_primary(host.wakeword_test_lab_btn)
     _apply_wakeword_action_button_width(host.wakeword_test_lab_btn)
     host.wakeword_test_lab_btn.setToolTip(
-        "Test wakeword detection with your microphone before relying on it in conversation."
+        "Test wakeword detection with your microphone before relying on it in conversation. "
+        "Requires a Qube Pro license."
     )
     host.wakeword_test_lab_btn.clicked.connect(host._open_wakeword_test_lab)
 

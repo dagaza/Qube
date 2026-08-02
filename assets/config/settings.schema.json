@@ -198,6 +198,12 @@
     "default": false,
     "description": "Pro: bi-encoder rerank pass after Library hybrid retrieval."
   },
+  "qube.knowledge.deep_research_profile": {
+    "type": "string",
+    "enum": ["standard", "thorough"],
+    "default": "standard",
+    "description": "Deep research depth profile for @research (thorough requires Pro license)."
+  },
   "qube.settings.advanced_discovery_unlocked": {
     "type": "boolean",
     "default": false,
@@ -546,6 +552,11 @@
     "type": "boolean",
     "default": false,
     "description": "User has seen the first-run @ mention shortcut discovery toast in the chat composer."
+  },
+  "qube.composer.bareMentionRouting": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, typed @tool shorthands at the start of a composer message (e.g. @research) route like palette chips."
   },
   "qube.wakeword.activeId": {
     "type": "string",

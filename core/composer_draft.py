@@ -297,6 +297,27 @@ def deep_research_unavailable_request():
     )
 
 
+def deep_research_pro_downgrade_request():
+    """Toast when @proresearch runs on the standard profile without a Pro license."""
+    from core.app_notification_types import AppNotificationRequest
+
+    body = (
+        "Thorough deep research requires a Qube Pro license. "
+        "Running the standard profile instead."
+    )
+
+    return AppNotificationRequest(
+        title="Pro license required",
+        body=body,
+        auto_dismiss_ms=COMPOSER_ONE_SOURCE_DISMISS_MS,
+        show_countdown=True,
+        icon_name="fa5s.exclamation-triangle",
+        severity="warning",
+        category="system",
+        dedupe_key="deep_research_pro_downgrade",
+    )
+
+
 def skill_chip_tooltip(mention: ComposerSkillMention) -> str:
     from core.skills.registry import get_skill
 

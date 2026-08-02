@@ -21,7 +21,7 @@ Press **?** in the Hub sidebar header for the guided tour (`model_manager`).
 
 Click **Model Manager** in the left navigation (microchip icon). Press **?** in the Hub sidebar header for the guided tour.
 
-Enable **Suggest models for my hardware in Model Manager** under **Settings → Help** to rank verified models and show **Good fit** badges from detected RAM and VRAM.
+Enable **Suggest models for my hardware in Model Manager** under **Settings → General → Discovery** to rank verified models and show **Good fit** badges from detected RAM and VRAM.
 
 ## Also called
 
@@ -98,7 +98,7 @@ Hub sidebar (left) and detail pane (right). Layout matches the guided tour order
 
 - [Set up local models workflow](../workflows/set-up-local-models.md) — end-to-end Internal Engine setup
 - [AI & Models settings](settings/ai-models.md) — GPU layers, context limits, models directory, engine mode
-- [Help settings](settings/help.md) — **Suggest models for my hardware in Model Manager**
+- [General settings](settings/general.md) — **Suggest models for my hardware in Model Manager**
 - [Model won't load troubleshooting](../troubleshooting/model-wont-load.md) — load failures and missing shards
 - [Internal engine vs external server FAQ](../faq/internal-engine-vs-external-server.md) — engine choices
 - [Conversations](../conversations.md) — tools panel model selector and eject

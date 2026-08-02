@@ -23,6 +23,10 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 - **Profile**
 
+### Deep research depth
+
+- **Profile**
+
 ### Advanced embedding
 
 - **Show advanced embedding settings**
@@ -36,8 +40,6 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Live sources
 
-- **Recommended setup**
-- **Dismiss**
 - **Configure**
 - **Set up SearXNG…**
 

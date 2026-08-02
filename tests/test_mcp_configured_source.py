@@ -7,6 +7,7 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from core.integrations.capabilities import persistence as P
 from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
@@ -46,8 +47,14 @@ class _TmpRootTestCase(unittest.TestCase):
         self._orig_cs_root = cs.user_data_root
         cs.user_data_root = lambda: self._root  # type: ignore[assignment]
         reset_registry_for_tests()
+        self._pro_mcp_patch = patch(
+            "core.mcp_filesystem_pro_features.user_has_pro_mcp_filesystem",
+            return_value=True,
+        )
+        self._pro_mcp_patch.start()
 
     def tearDown(self):
+        self._pro_mcp_patch.stop()
         P.user_data_root = self._orig  # type: ignore[assignment]
         import core.knowledge.configured_sources as cs
 
@@ -91,9 +98,12 @@ class TestMcpConfiguredBinding(_TmpRootTestCase):
         kwargs, binding = merge_mcp_factory_kwargs("mcp", "filesystem", {})
         self.assertIn("command", kwargs)
         self.assertIsNotNone(binding)
-        self.assertIn("nodejs", kwargs["env"].get("PATH", "").lower())
+        self.assertIn("env", kwargs)
+        self.assertTrue(kwargs["env"].get("PATH", ""))
 
-    def test_augment_spawn_env_adds_nodejs_on_windows_cmd(self):
+    @patch("core.integrations.mcp_configured_source.os.path.isdir", return_value=True)
+    @patch("core.integrations.mcp_configured_source.sys.platform", "win32")
+    def test_augment_spawn_env_adds_nodejs_on_windows_cmd(self, _mock_isdir):
         env = augment_spawn_env_for_command(
             [r"C:\Program Files\nodejs\mcp-server-filesystem.cmd"],
             {"PATH": r"C:\Windows\System32"},

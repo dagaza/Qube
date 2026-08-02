@@ -67,6 +67,7 @@ KEY_DISCOVERY_SEARXNG_BASE_URL = "qube.knowledge.discovery_searxng_base_url"
 KEY_ENTITY_RESOLUTION_ENABLED = "qube.knowledge.entity_resolution_enabled"
 KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"  # legacy; ignored
+KEY_DEEP_RESEARCH_PROFILE = "qube.knowledge.deep_research_profile"
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
@@ -109,6 +110,7 @@ KEY_NATIVE_PROMPT_LAYOUT = "qube.native.promptLayout"
 KEY_NATIVE_AUTO_LOAD_ON_STARTUP = "qube.native.autoLoadOnStartup"
 KEY_ONBOARDING_LOCAL_LLM_TOUR = "qube.onboarding.localLlmTourCompleted"
 KEY_COMPOSER_AT_MENTION_DISCOVERED = "qube.composer.atMentionDiscovered"
+KEY_COMPOSER_BARE_MENTION_ROUTING = "qube.composer.bareMentionRouting"
 KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "qube.modelManager.hardwareSuggestions"
 KEY_MODELS_DIRECTORY = "qube.models.directory"
 KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
@@ -508,6 +510,23 @@ def set_deep_research_enabled(enabled: bool) -> None:
     _ = enabled  # no-op; retained for a possible Enterprise kill switch later
 
 
+def get_deep_research_profile() -> str:
+    from core.knowledge.deep_research_profiles import (
+        DEFAULT_DEEP_RESEARCH_PROFILE,
+        normalize_profile_id,
+    )
+
+    return normalize_profile_id(
+        str(_store().get(KEY_DEEP_RESEARCH_PROFILE, DEFAULT_DEEP_RESEARCH_PROFILE) or "")
+    )
+
+
+def set_deep_research_profile(profile: str) -> None:
+    from core.knowledge.deep_research_profiles import normalize_profile_id
+
+    _store().set(KEY_DEEP_RESEARCH_PROFILE, normalize_profile_id(profile))
+
+
 def get_knowledge_source_preferences() -> dict[str, list[str]]:
     """Per-service enabled adapter ids (user-configured knowledge sources)."""
     from core.knowledge.source_preferences import normalize_preferences
@@ -753,6 +772,10 @@ def set_embedding_model_path(path: str) -> None:
         _store().set(KEY_EMBEDDING_MODEL_PATH, "")
         clear_embedding_availability_cache()
         return
+    from core.model_paths_pro_features import custom_embedding_override_allowed
+
+    if not custom_embedding_override_allowed():
+        return
     ok, _msg = validate_embedding_model_path(cleaned)
     if ok:
         try:
@@ -847,6 +870,11 @@ def set_stt_model_path(path: str) -> None:
     if not cleaned:
         _store().set(KEY_STT_MODEL_PATH, "")
         return
+    if not is_protected_stt_model(cleaned):
+        from core.model_paths_pro_features import custom_stt_override_allowed
+
+        if not custom_stt_override_allowed():
+            return
     ok, _msg = validate_stt_model_path(cleaned)
     if ok:
         if is_protected_stt_model(cleaned):
@@ -866,12 +894,17 @@ def get_tts_model_path() -> str:
 
 
 def set_tts_model_path(path: str) -> None:
-    from core.tts_models import validate_tts_model_path
+    from core.tts_models import is_protected_tts_model, validate_tts_model_path
 
     cleaned = str(path or "").strip()
     if not cleaned:
         _store().set(KEY_TTS_MODEL_PATH, "")
         return
+    if not is_protected_tts_model(cleaned):
+        from core.model_paths_pro_features import custom_tts_override_allowed
+
+        if not custom_tts_override_allowed():
+            return
     ok, _msg = validate_tts_model_path(cleaned)
     if ok:
         try:
@@ -1410,6 +1443,15 @@ def get_composer_at_mention_discovered() -> bool:
 
 def set_composer_at_mention_discovered(discovered: bool) -> None:
     _store().set(KEY_COMPOSER_AT_MENTION_DISCOVERED, bool(discovered))
+
+
+def get_composer_bare_mention_routing_enabled() -> bool:
+    """When True, typed @tool shorthands (e.g. @research) route like palette chips."""
+    return bool(_store().get(KEY_COMPOSER_BARE_MENTION_ROUTING, False))
+
+
+def set_composer_bare_mention_routing_enabled(enabled: bool) -> None:
+    _store().set(KEY_COMPOSER_BARE_MENTION_ROUTING, bool(enabled))
 
 
 def get_model_manager_hardware_suggestions() -> bool:

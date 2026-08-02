@@ -167,7 +167,7 @@ Maintainers: [`winget/README.md`](winget/README.md) · [`chocolatey/README.md`](
 2. **Or use an external backend** — Point Qube at **LM Studio** or **Ollama** under **Settings → AI & Models**; add more weights anytime in **Model Manager**.
 3. **Start in Conversations** — Type a question, attach **`@library`** or **`@evidence`** when you want grounding, or press **?** for a guided tour. Enable voice under **Settings → Voice & Audio** when you want hands-free input.
 
-> **Tip:** At 16 GB RAM, start with a small model (for example Nemotron 3 Nano 4B). See **Settings → Help** to enable hardware-fit suggestions in Model Manager.
+> **Tip:** At 16 GB RAM, start with a small model (for example Nemotron 3 Nano 4B). See **Settings → General → Discovery** to enable hardware-fit suggestions in Model Manager.
 
 ### From source (developers)
 

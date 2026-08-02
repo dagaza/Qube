@@ -63,6 +63,10 @@ def resolve_active_gguf_path() -> str:
     """Return a validated GGUF override path, or empty when using mode presets."""
     override = (get_embedding_model_path() or "").strip()
     if override and _path_allowed_for_embedding(override):
+        from core.model_paths_pro_features import custom_embedding_override_allowed
+
+        if not custom_embedding_override_allowed():
+            return ""
         return _normalize_path(override)
     return ""
 

@@ -135,6 +135,15 @@ def _path_allowed_for_tts(path: str) -> bool:
 def resolve_active_tts_path() -> str:
     override = (get_tts_model_path() or "").strip()
     if override and _path_allowed_for_tts(override):
+        if is_protected_tts_model(override):
+            return _normalize_path(override)
+        from core.model_paths_pro_features import custom_tts_override_allowed
+
+        if not custom_tts_override_allowed():
+            default = bundled_default_path()
+            if os.path.isfile(default):
+                return _normalize_path(default)
+            return default
         return _normalize_path(override)
     default = bundled_default_path()
     if os.path.isfile(default):

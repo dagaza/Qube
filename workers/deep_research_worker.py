@@ -19,7 +19,6 @@ from core.knowledge.deep_research import (
     run_deep_research,
 )
 from core.knowledge.deep_research_synthesis import (
-    DEEP_RESEARCH_SYNTHESIS_MAX_TOKENS,
     compose_deep_research_report,
     synthesize_deep_research_findings,
 )
@@ -172,7 +171,13 @@ class DeepResearchWorker(QThread):
         except Exception:
             return None, None
 
-    def _synthesis_generate(self, *, system: str, user: str) -> str:
+    def _synthesis_generate(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int,
+    ) -> str:
         llm = self._synthesis_llm
         if llm is None or not hasattr(llm, "generate"):
             return ""
@@ -183,7 +188,7 @@ class DeepResearchWorker(QThread):
                     system=system,
                     user=user,
                     temperature=0.2,
-                    max_tokens=DEEP_RESEARCH_SYNTHESIS_MAX_TOKENS,
+                    max_tokens=max_tokens,
                     debug_caller="deep_research_synthesis",
                 )
                 or ""
@@ -199,6 +204,7 @@ class DeepResearchWorker(QThread):
         *,
         request_id: str,
         session_id: str,
+        profile_spec,
     ) -> tuple[str, list[dict], dict[str, Any], dict[str, Any]]:
         if self._is_cancelled(request_id):
             raise DeepResearchCancelled()
@@ -220,12 +226,20 @@ class DeepResearchWorker(QThread):
                 ),
                 request_id=request_id,
             )
-            generate_fn = self._synthesis_generate
+            max_tokens = profile_spec.synthesis_max_tokens
+
+            def generate_fn(system: str, user: str) -> str:
+                return self._synthesis_generate(
+                    system=system,
+                    user=user,
+                    max_tokens=max_tokens,
+                )
 
         synthesis = synthesize_deep_research_findings(
             result.query,
             bundle,
             generate_fn=generate_fn,
+            profile=profile_spec,
         )
 
         if self._is_cancelled(request_id):
@@ -265,6 +279,15 @@ class DeepResearchWorker(QThread):
             knowledge_service = str(
                 payload.get("knowledge_service") or SERVICE_SCIENTIFIC_EVIDENCE
             )
+            profile_id = payload.get("deep_research_profile")
+            force_thorough = bool(payload.get("deep_research_force_thorough"))
+            from core.deep_research_pro_features import resolve_deep_research_profile
+
+            resolved_profile = resolve_deep_research_profile(
+                profile_id=str(profile_id) if profile_id else None,
+                force_thorough=force_thorough,
+            )
+            profile_spec = resolved_profile.spec
 
             if self._is_cancelled(request_id):
                 self._clear_cancelled(request_id)
@@ -272,9 +295,10 @@ class DeepResearchWorker(QThread):
 
             self._active_request_id = request_id
             logger.info(
-                "[DeepResearch] start request_id=%s session_id=%s query=%r",
+                "[DeepResearch] start request_id=%s session_id=%s profile=%s query=%r",
                 request_id,
                 session_id,
+                profile_spec.id,
                 query[:120],
             )
 
@@ -295,12 +319,16 @@ class DeepResearchWorker(QThread):
                     embed_fn=embed_fn,
                     query_vector=query_vector,
                     decompose_generate_fn=decompose_fn,
+                    profile=profile_spec,
+                    profile_id=str(profile_id) if profile_id else None,
+                    force_thorough=force_thorough,
                 )
                 report, sources, diagnostics, transparency, bundle_dict = self._finalize_report(
                     result,
                     payload,
                     request_id=request_id,
                     session_id=session_id,
+                    profile_spec=profile_spec,
                 )
                 finished = self._result_payload(result, payload)
                 finished["report_markdown"] = report
@@ -309,6 +337,8 @@ class DeepResearchWorker(QThread):
                 finished["evidence_transparency"] = transparency
                 finished["bundle_dict"] = bundle_dict
                 finished["synthesis_applied"] = diagnostics.get("synthesis_applied", False)
+                finished["deep_research_profile"] = profile_spec.id
+                finished["deep_research_profile_downgraded"] = resolved_profile.downgraded
                 self.finished.emit(finished)
             except DeepResearchCancelled:
                 logger.info("[DeepResearch] cancelled request_id=%s", request_id)

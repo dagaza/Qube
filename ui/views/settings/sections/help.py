@@ -1,12 +1,11 @@
-"""Help settings section — guided tours and discovery options."""
+"""Help settings section — guided tours and reference guides."""
 
 from __future__ import annotations
 
 import sys
 
-from PyQt6.QtWidgets import QCheckBox, QFormLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFormLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
-from core.app_settings import get_model_manager_hardware_suggestions
 from core.uninstall_help_text import uninstall_help_paragraphs
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.views.settings.handlers.uninstall import is_uninstall_available
@@ -220,27 +219,6 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host.open_my_knowledge_settings_btn,
     )
     layout.addWidget(composer_tools_card)
-
-    # --- Discovery card ---
-    discovery_card, discovery_card_layout = begin_settings_section_card(host, is_dark=is_dark)
-    discovery_form = add_settings_card_form(discovery_card_layout)
-    add_subsection_to_form(discovery_form, "Discovery", anchor="discovery")
-
-    host.model_manager_hardware_suggestions_cb = QCheckBox(
-        "Suggest models for my hardware in Model Manager"
-    )
-    host.model_manager_hardware_suggestions_cb.setToolTip(
-        "When enabled, Model Manager ranks Qube Verified models and shows Good fit badges "
-        "based on detected RAM and VRAM. May not work well with integrated GPUs or APUs."
-    )
-    host.model_manager_hardware_suggestions_cb.setChecked(
-        get_model_manager_hardware_suggestions()
-    )
-    host.model_manager_hardware_suggestions_cb.toggled.connect(
-        host._on_model_manager_hardware_suggestions_toggled
-    )
-    add_settings_full_width_row(discovery_form, host.model_manager_hardware_suggestions_cb)
-    layout.addWidget(discovery_card)
 
     # --- Text-to-speech models card ---
     tts_card, tts_card_layout = begin_settings_section_card(host, is_dark=is_dark)

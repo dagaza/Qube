@@ -45,6 +45,15 @@ from core.library_pro_features import (
     PRO_INGEST_FEATURE,
     PRO_RERANK_FEATURE,
 )
+from core.deep_research_pro_features import (
+    LICENSE_REQUIRED_MESSAGE as DEEP_RESEARCH_LICENSE_REQUIRED_MESSAGE,
+    PRO_THOROUGH_FEATURE,
+)
+from core.model_paths_pro_features import (
+    LICENSE_REQUIRED_MESSAGE as CUSTOM_MODEL_PATHS_LICENSE_MESSAGE,
+    effective_advanced_embedding_unlocked,
+    user_has_pro_custom_model_paths,
+)
 from core.knowledge.connectors.base import list_connector_types
 from core.knowledge.credentials import (
     clear_provider_api_key,
@@ -504,7 +513,25 @@ class KnowledgeHandlersMixin:
         worker.finished.connect(_finish)
         worker.start()
 
+    def _show_custom_model_paths_license_dialog(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            CUSTOM_MODEL_PATHS_LICENSE_MESSAGE,
+            is_dark=is_dark,
+        ).exec()
+
     def _on_advanced_embedding_toggled(self, checked: bool) -> None:
+        if checked and not user_has_pro_custom_model_paths():
+            self._show_custom_model_paths_license_dialog()
+            if hasattr(self, "_sync_custom_model_paths_pro_features"):
+                self._sync_custom_model_paths_pro_features()
+            else:
+                from core.model_paths_pro_features import sync_custom_model_paths_pro_features
+
+                sync_custom_model_paths_pro_features(self)
+            return
         if checked:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             dlg = PrestigeDialog(
@@ -522,7 +549,7 @@ class KnowledgeHandlersMixin:
                 self.advanced_embedding_toggle.setChecked(False)
                 self.advanced_embedding_toggle.blockSignals(False)
                 return
-        set_advanced_embedding_unlocked(bool(checked))
+        set_advanced_embedding_unlocked(bool(checked and user_has_pro_custom_model_paths()))
         self._apply_advanced_embedding_panel_visibility()
 
     def _show_pro_license_required_dialog(self) -> None:
@@ -605,7 +632,7 @@ class KnowledgeHandlersMixin:
             hint.setText(library_pro_depth_hint_text(licensed=licensed))
 
     def _apply_advanced_embedding_panel_visibility(self) -> None:
-        unlocked = get_advanced_embedding_unlocked()
+        unlocked = effective_advanced_embedding_unlocked()
         tour_row = getattr(self, "_tour_embedding_row_preview_active", False)
         tour_panel = getattr(self, "_tour_embedding_preview_active", False)
         visible = unlocked or tour_panel
@@ -961,6 +988,9 @@ class KnowledgeHandlersMixin:
             ).exec()
             return
         path = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if not user_has_pro_custom_model_paths():
+            self._show_custom_model_paths_license_dialog()
+            return
         ok, msg = validate_embedding_model_path(path)
         if not ok:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -1087,6 +1117,79 @@ class KnowledgeHandlersMixin:
             dialog_width=520,
         ).exec()
 
+    def _build_deep_research_profile_menu(self) -> None:
+        if not hasattr(self, "deep_research_profile_selector"):
+            return
+        from core.knowledge.deep_research_profiles import list_profile_specs
+        from ui.views.settings.widgets import register_settings_selector_width
+
+        specs = list_profile_specs()
+        items = [(spec.label, spec.id) for spec in specs]
+        register_settings_selector_width(
+            self.deep_research_profile_selector,
+            *(spec.label for spec in specs),
+        )
+        self._build_prestige_menu(
+            self.deep_research_profile_selector,
+            items,
+            self._on_deep_research_profile_selected,
+        )
+        self._sync_deep_research_profile_selector()
+
+    def _on_deep_research_profile_selected(self, profile_id: str) -> None:
+        from core.app_settings import set_deep_research_profile
+        from core.capabilities import has_feature
+        from core.knowledge.deep_research_profiles import PROFILE_THOROUGH
+
+        selected = str(profile_id)
+        if selected == PROFILE_THOROUGH and not has_feature(PRO_THOROUGH_FEATURE):
+            self._show_deep_research_pro_license_dialog()
+            self._sync_deep_research_profile_selector()
+            return
+        set_deep_research_profile(selected)
+        self._sync_deep_research_profile_selector()
+
+    def _show_deep_research_pro_license_dialog(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            DEEP_RESEARCH_LICENSE_REQUIRED_MESSAGE,
+            is_dark=is_dark,
+        ).exec()
+
+    def _sync_deep_research_profile_selector(self) -> None:
+        if not hasattr(self, "deep_research_profile_selector"):
+            return
+        from core.app_settings import get_deep_research_profile, set_deep_research_profile
+        from core.capabilities import has_feature
+        from core.deep_research_pro_features import resolve_deep_research_profile
+        from core.knowledge.deep_research_profiles import PROFILE_THOROUGH, get_profile_spec
+        from ui.views.settings.widgets import refit_settings_selector_width
+
+        licensed = has_feature(PRO_THOROUGH_FEATURE)
+        stored = get_deep_research_profile()
+        if stored == PROFILE_THOROUGH and not licensed:
+            set_deep_research_profile("standard")
+
+        resolved = resolve_deep_research_profile()
+        spec = get_profile_spec(resolved.effective_id)
+        self.deep_research_profile_selector.setText(spec.label)
+        if hasattr(self, "deep_research_profile_description"):
+            self.deep_research_profile_description.setText(spec.short_description)
+        if hasattr(self, "deep_research_pro_hint"):
+            if licensed:
+                self.deep_research_pro_hint.setText(
+                    "Pro license active — Thorough deep research is available for @research "
+                    "and in Settings. Use @proresearch to force thorough for one message."
+                )
+            else:
+                self.deep_research_pro_hint.setText(
+                    "Standard @research stays free. Import a Pro license under "
+                    "Settings → License to unlock Thorough."
+                )
+        refit_settings_selector_width(self.deep_research_profile_selector)
+
     def _build_retrieval_profile_menu(self) -> None:
         if not hasattr(self, "retrieval_profile_selector"):
             return
@@ -1153,6 +1256,11 @@ class KnowledgeHandlersMixin:
         from ui.views.settings.sections.knowledge_custom_sources import delete_custom_source_from_host
 
         delete_custom_source_from_host(self)
+
+    def _sync_mcp_filesystem_pro_features(self) -> None:
+        from core.mcp_filesystem_pro_features import sync_mcp_filesystem_pro_features
+
+        sync_mcp_filesystem_pro_features(self)
 
     def _on_open_custom_sources_settings_clicked(self) -> None:
         self.select_settings_section("knowledge", anchor="knowledge_custom_sources")

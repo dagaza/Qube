@@ -21,10 +21,8 @@ def build_settings_general_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="General settings",
             body=(
-                "Application-wide preferences such as on-screen language. In Settings → "
-                "Themes you can choose Dark, Light, or Follow system appearance; the "
-                "moon/sun icon in the left navigation rail switches variants within "
-                "your theme family when a matching option exists."
+                "Application-wide preferences: language, personalization, composer "
+                "behavior, and Model Manager discovery hints."
             ),
             on_enter=_open,
         ),
@@ -47,6 +45,26 @@ def build_settings_general_tour(host) -> OnboardingTour:
             ),
             target_getter=lambda h: _sv(h).profile_units_selector,
             on_enter=_open,
+        ),
+        OnboardingStep(
+            step_id="composer",
+            title="Composer @ mentions",
+            body=(
+                "Optionally treat typed @tool shorthands (e.g. @research) as routing, "
+                "or keep using the @ picker and chips above the composer."
+            ),
+            target_getter=lambda h: _sv(h).composer_bare_mention_routing_cb,
+            on_enter=lambda h: open_settings_section(h, "general", anchor="composer"),
+        ),
+        OnboardingStep(
+            step_id="hardware_hints",
+            title="Hardware-aware Model Manager",
+            body=(
+                "When enabled, Model Manager ranks verified models and shows Good fit "
+                "badges from detected RAM and VRAM."
+            ),
+            target_getter=lambda h: _sv(h).model_manager_hardware_suggestions_cb,
+            on_enter=lambda h: open_settings_section(h, "general", anchor="discovery"),
         ),
         make_settings_tour_finish_step("General settings", _open),
     ]

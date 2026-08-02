@@ -21,8 +21,7 @@ def build_settings_help_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="Help & guidance",
             body=(
-                "Replay onboarding tours, open reference guides, and tune discovery "
-                "options from this section."
+                "Replay onboarding tours and open reference guides from this section."
             ),
             on_enter=_open,
         ),
@@ -45,16 +44,6 @@ def build_settings_help_tour(host) -> OnboardingTour:
             ),
             target_getter=lambda h: _sv(h).open_composer_mention_guide_btn,
             on_enter=lambda h: open_settings_section(h, "help", anchor="composer-mentions"),
-        ),
-        OnboardingStep(
-            step_id="hardware_hints",
-            title="Hardware-aware Model Manager",
-            body=(
-                "When enabled, Model Manager ranks verified models and shows Good fit "
-                "badges from detected RAM and VRAM."
-            ),
-            target_getter=lambda h: _sv(h).model_manager_hardware_suggestions_cb,
-            on_enter=lambda h: open_settings_section(h, "help", anchor="discovery"),
         ),
         make_settings_tour_finish_step("Help settings", _open),
     ]

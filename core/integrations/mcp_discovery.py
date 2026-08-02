@@ -55,6 +55,13 @@ def discover_mcp_capabilities(
     if not ns:
         return [], "MCP namespace is not configured"
 
+    from core.mcp_filesystem_pro_features import require_pro_mcp_filesystem_for_config
+
+    try:
+        require_pro_mcp_filesystem_for_config(dict(config or {}), namespace=ns)
+    except ValueError as exc:
+        return [], str(exc)
+
     from core.integrations.providers.mcp import McpCapabilityProvider
 
     cmd = [str(part) for part in command]

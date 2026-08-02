@@ -75,10 +75,16 @@ def augment_spawn_env_for_command(
 def configured_mcp_namespaces() -> frozenset[str]:
     """Return MCP namespaces that have a configured Knowledge custom source."""
     from core.knowledge.configured_sources import list_configured_sources
+    from core.mcp_filesystem_pro_features import (
+        is_mcp_filesystem_source,
+        user_has_pro_mcp_filesystem,
+    )
 
     namespaces: set[str] = set()
     for source in list_configured_sources():
         if source.connector_type != "mcp":
+            continue
+        if is_mcp_filesystem_source(source) and not user_has_pro_mcp_filesystem():
             continue
         cfg = dict(source.config or {})
         ns = str(cfg.get("namespace") or cfg.get("adapter_id") or source.id).strip().lower()
@@ -108,7 +114,7 @@ def resolve_configured_mcp_binding(namespace: str) -> McpConfiguredBinding | Non
         env_raw = cfg.get("env")
         env = dict(env_raw) if isinstance(env_raw, dict) else None
         cwd = str(cfg.get("cwd") or "").strip() or None
-        return McpConfiguredBinding(
+        binding = McpConfiguredBinding(
             command=[str(part) for part in command],
             namespace=src_ns,
             adapter_id=str(cfg.get("adapter_id") or source.id),
@@ -116,6 +122,11 @@ def resolve_configured_mcp_binding(namespace: str) -> McpConfiguredBinding | Non
             env=env,
             cwd=cwd,
         )
+        from core.mcp_filesystem_pro_features import mcp_filesystem_integration_allowed
+
+        if not mcp_filesystem_integration_allowed(binding=binding):
+            continue
+        return binding
     return None
 
 

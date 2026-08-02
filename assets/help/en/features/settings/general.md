@@ -8,9 +8,11 @@
 
 ## What it is
 
-**General** settings cover application-wide interface preferences. Under **Application language**, choose **British English** or **American English** to switch visible copy (spelling and phrasing such as *colour* vs *color*).
+**General** settings cover application-wide interface preferences: **Language**, **Personalization** (default units), **Composer** @-mention routing, and **Discovery** hints for Model Manager.
 
 These choices affect labels and system messages across Settings, Conversations, and Library—they do not change the language model’s reply language unless you ask it separately in chat.
+
+Under **Language**, choose **British English** or **American English** to switch visible copy (spelling and phrasing such as *colour* vs *color*).
 
 ## Where to find it
 
@@ -24,7 +26,10 @@ general preferences, UI language, application language, British English, America
 
 1. **Open General settings** — Navigate from the main **Settings** sidebar under **Interface**.
 2. **Choose application language** — Under **Language**, select **British English** or **American English**.
-3. **Confirm across the app** — Browse a few pages; labels update immediately without restarting in most cases.
+3. **Set default units** — Under **Personalization**, choose metric, imperial, or inferred units.
+4. **Composer routing** — Under **Composer**, optionally enable typed `@tool` shorthands (e.g. `@research`).
+5. **Model Manager hints** — Under **Discovery**, enable **Suggest models for my hardware in Model Manager**.
+6. **Confirm across the app** — Browse a few pages; labels update immediately without restarting in most cases.
 
 ## Controls
 
@@ -40,6 +45,14 @@ Controls listed top-to-bottom for **Settings → General**.
 ### Personalization
 
 - **Default units**
+
+### Composer
+
+- **Treat typed @tool shorthands as routing (e.g. @research)**
+
+### Discovery
+
+- **Suggest models for my hardware in Model Manager**
 
 - **Reset to default configuration** — restores all settings on this page
 
