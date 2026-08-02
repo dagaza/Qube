@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-08-02
+
+### Added
+- **Conversation turn index** for long chats: compact tick rail beside the transcript column; click or **Ctrl+↑/↓** to jump between user prompts; hover tooltips with turn number and prompt preview; smooth scroll animation.
+
+### Changed
+- Routing debug logging enabled by default for easier diagnosis of RAG and memory routing.
+- Hardened routing for RAG and memory capability calls.
+
+### Fixed
+- Prompt hang when opening or using the prompts UI.
+- Transcript turn-index layout: column width and layout-mode (800px / 1200px) behavior preserved alongside the new rail.
+
 ## [1.2.6] - 2026-08-01
 
 ### Added
