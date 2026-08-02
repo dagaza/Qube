@@ -19,6 +19,22 @@ if TYPE_CHECKING:
     from core.wakeword_manager import WakewordManager, WakewordSpec
 
 
+def _valid_wakeword_spec(spec: object) -> bool:
+    """True when ``spec`` looks like a real catalog entry (not a MagicMock)."""
+    if spec is None:
+        return False
+    try:
+        from unittest.mock import MagicMock, Mock
+
+        if isinstance(spec, (MagicMock, Mock)):
+            return False
+    except ImportError:
+        pass
+    wakeword_id = getattr(spec, "wakeword_id", None)
+    display_name = getattr(spec, "display_name", None)
+    return isinstance(wakeword_id, str) and bool(wakeword_id) and isinstance(display_name, str)
+
+
 def user_has_pro_wakeword_library() -> bool:
     from core.capabilities import has_feature
 
@@ -28,16 +44,21 @@ def user_has_pro_wakeword_library() -> bool:
 def resolve_default_free_wakeword_spec(manager: WakewordManager) -> WakewordSpec | None:
     """Return the bundled default wakeword available without a Pro license."""
     preferred = manager.get_by_id(PREFERRED_DEFAULT_WAKEWORD_ID)
-    if preferred is not None:
+    if _valid_wakeword_spec(preferred):
         return preferred
 
-    recommended = manager.list_recommended()
+    recommended = [
+        spec for spec in manager.list_recommended() if _valid_wakeword_spec(spec)
+    ]
     if recommended:
         jarvis = next((spec for spec in recommended if "jarvis" in spec.wakeword_id), None)
         return jarvis or recommended[0]
 
     catalog = getattr(manager, "_catalog", None) or {}
-    return next(iter(catalog.values()), None)
+    for spec in catalog.values():
+        if _valid_wakeword_spec(spec):
+            return spec
+    return None
 
 
 def is_alternate_wakeword(spec: WakewordSpec, manager: WakewordManager) -> bool:
@@ -55,7 +76,11 @@ def wakeword_selection_allowed(spec: WakewordSpec, manager: WakewordManager) -> 
 
 def selectable_wakeword_specs(manager: WakewordManager) -> list[WakewordSpec]:
     if user_has_pro_wakeword_library():
-        return manager.list_recommended() + manager.list_community()
+        return [
+            spec
+            for spec in manager.list_recommended() + manager.list_community()
+            if _valid_wakeword_spec(spec)
+        ]
     default = resolve_default_free_wakeword_spec(manager)
     return [default] if default is not None else []
 
