@@ -23,17 +23,17 @@ from core.knowledge.types import (
     RetrievalBudget,
     SERVICE_SCIENTIFIC_EVIDENCE,
 )
-from core.knowledge.deep_research_decompose import (
-    MAX_SUB_QUERIES,
-    decompose_query,
-    normalize_deep_research_query,
-)
+from core.knowledge.deep_research_decompose import decompose_query, normalize_deep_research_query
 from core.knowledge.deep_research_merge import filter_merged_sources_for_query
+from core.knowledge.deep_research_profiles import (
+    DEEP_BUDGET,
+    DeepResearchProfileSpec,
+    get_profile_spec,
+)
 from core.knowledge.web_retrieval import run_v2_web_retrieval
 
-DEEP_RESEARCH_PROFILE_VERSION = "0.1.0"
+DEEP_RESEARCH_PROFILE_VERSION = "0.2.0"
 DEEP_RESEARCH_STRATEGY = "deep_research_merged"
-DEEP_BUDGET = RetrievalBudget(max_results=5, max_adapter_calls=3, max_latency_ms=15000)
 
 
 class DeepResearchCancelled(Exception):
@@ -115,6 +115,8 @@ def merge_evidence_bundles(
     query: str,
     bundles: tuple[EvidenceBundle, ...],
     knowledge_service: str = SERVICE_SCIENTIFIC_EVIDENCE,
+    merged_source_cap: int | None = None,
+    profile: DeepResearchProfileSpec | None = None,
 ) -> EvidenceBundle | None:
     """Merge sub-query bundles into one ranked evidence bundle."""
     nonempty = [b for b in bundles if b.sources]
@@ -134,7 +136,10 @@ def merge_evidence_bundles(
         key=lambda s: (s.relevance_score, s.authority_score),
         reverse=True,
     )
-    capped = tuple(merged_sources[: DEEP_BUDGET.max_results * 2])
+    if merged_source_cap is None:
+        spec = profile or get_profile_spec(None)
+        merged_source_cap = spec.merged_source_cap
+    capped = tuple(merged_sources[: max(1, merged_source_cap)])
 
     abstract_count = sum(1 for s in capped if s.fetch_status == "abstract")
     adapters = {s.adapter for s in capped}
@@ -379,8 +384,18 @@ def run_deep_research(
     query_vector: np.ndarray | None = None,
     decompose_generate_fn: Callable[[str, str], str] | None = None,
     decompose_mode: str | None = None,
+    profile: DeepResearchProfileSpec | None = None,
+    profile_id: str | None = None,
+    force_thorough: bool = False,
 ) -> DeepResearchResult:
     """Sync deep-research pipeline: decompose → retrieve → merge → report."""
+    from core.deep_research_pro_features import resolve_deep_research_profile
+
+    resolved_profile = resolve_deep_research_profile(
+        profile_id=profile_id,
+        force_thorough=force_thorough,
+    )
+    profile_spec = profile or resolved_profile.spec
     t0 = time.time()
     normalized_query = normalize_deep_research_query(query)
     resolved_embed_fn, resolved_query_vector = _resolve_deep_research_embed_context(
@@ -426,6 +441,7 @@ def run_deep_research(
         normalized_query,
         generate_fn=decompose_generate_fn,
         mode=mode,
+        max_sub_queries=profile_spec.max_sub_queries,
     )
     decompose_method = mode
     if not sub_queries:
@@ -453,7 +469,7 @@ def run_deep_research(
             query=sub_q,
             semantic_query=sub_q,
             knowledge_service=knowledge_service,
-            budget=DEEP_BUDGET,
+            budget=profile_spec.budget,
         )
         if outcome.bundle is not None:
             sub_bundles.append(outcome.bundle)
@@ -473,6 +489,7 @@ def run_deep_research(
         query=normalized_query,
         bundles=tuple(sub_bundles),
         knowledge_service=knowledge_service,
+        profile=profile_spec,
     )
     pre_filter_count = len(merged.sources) if merged else 0
     merged, dropped, filter_diag = apply_merged_relevance_gate(
@@ -502,6 +519,9 @@ def run_deep_research(
             "sub_bundle_count": len(sub_bundles),
             "decompose_method": decompose_method,
             "decompose_mode": mode,
+            "deep_research_profile": profile_spec.id,
+            "deep_research_profile_requested": resolved_profile.requested_id,
+            "deep_research_profile_downgraded": resolved_profile.downgraded,
             "merged_source_count": post_filter_count,
             "merged_sources_pre_filter": pre_filter_count,
             "merged_sources_post_filter": post_filter_count,

@@ -145,6 +145,15 @@ class AudioListenerWorker(QThread):
                 logger.error(f"Wakeword '{ui_name}' not found in the mapping dictionary.")
                 return
 
+            from core.wakeword_pro_features import wakeword_selection_allowed
+
+            if not wakeword_selection_allowed(spec, self.wakeword_manager):
+                logger.warning(
+                    "Blocked alternate wakeword '%s' — Pro license required.",
+                    ui_name,
+                )
+                return
+
             target_path = self.wakeword_manager.ensure_model_available(spec)
             self.active_wakeword_name = ui_name
             self.active_wakeword_id = spec.wakeword_id

@@ -21,6 +21,10 @@ from core.app_settings import (
     get_library_precision_rerank_enabled,
 )
 from core.embedding_models import get_embedding_models_dir
+from core.model_paths_pro_features import (
+    PRO_CUSTOM_MODEL_PATHS_FEATURE,
+    effective_advanced_embedding_unlocked,
+)
 from ui.components.brand_buttons import apply_brand_danger, apply_brand_primary
 from ui.components.selector_button import SelectorButton
 from ui.components.toggle import PrestigeToggle
@@ -194,6 +198,48 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     profile_card_layout.addWidget(profile_form_host)
     layout.addWidget(profile_card)
 
+    # --- Deep research depth card ---
+    deep_research_card, deep_research_card_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    deep_research_form_host, deep_research_form = prepare_settings_card_form(
+        deep_research_card_layout
+    )
+    add_subsection_to_form(
+        deep_research_form, "Deep research depth", anchor="deep_research_profile"
+    )
+
+    host.deep_research_profile_selector = SelectorButton("Standard", is_dark=is_dark)
+    host.deep_research_profile_selector.setMenu(
+        QMenu(host.deep_research_profile_selector)
+    )
+    host.deep_research_profile_selector.setToolTip(
+        "Local orchestration limits for @research — sub-query count, adapter budgets, "
+        "and synthesis length. Thorough requires a Qube Pro license. "
+        "Use @proresearch in chat to force thorough for one message."
+    )
+    host.deep_research_profile_description = QLabel()
+    host.deep_research_profile_description.setObjectName("SettingsHint")
+    host.deep_research_profile_description.setWordWrap(True)
+    host.deep_research_profile_description.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+    )
+
+    deep_research_form.addRow("Profile", host.deep_research_profile_selector)
+    add_settings_span_row(deep_research_form, host.deep_research_profile_description)
+
+    host.deep_research_pro_hint = QLabel(
+        "Standard @research stays free. Import a Pro license under Settings → License "
+        "to unlock Thorough."
+    )
+    host.deep_research_pro_hint.setObjectName("SettingsHint")
+    host.deep_research_pro_hint.setWordWrap(True)
+    add_settings_span_row(deep_research_form, host.deep_research_pro_hint)
+    host.deep_research_pro_card = deep_research_card
+
+    deep_research_card_layout.addWidget(deep_research_form_host)
+    layout.addWidget(deep_research_card)
+
     layout.addWidget(build_knowledge_web_discovery_section(host, is_dark=is_dark))
     layout.addWidget(build_knowledge_live_sources_section(host, is_dark=is_dark))
     layout.addWidget(build_knowledge_provider_status_section(host, is_dark=is_dark))
@@ -212,33 +258,20 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Advanced embedding controls are not for everyday use.\n\n"
         "Unlocks optional custom .gguf embedding models for RAG and memory search. "
         "Place files in the embedding folder, then select one here.\n\n"
-        "Using a custom model reprocesses your library and memories."
+        "Using a custom model reprocesses your library and memories.\n\n"
+        "Requires a Qube Pro license."
     )
-    host.advanced_embedding_toggle = PrestigeToggle()
-    host.advanced_embedding_label = QLabel("Show advanced embedding settings")
-    host.advanced_embedding_toggle.setToolTip(_adv_tip)
-    host.advanced_embedding_label.setToolTip(_adv_tip)
-    host.advanced_embedding_info_btn = host._make_settings_info_button(_adv_tip)
-    label_cluster = QWidget()
-    label_cluster_layout = QHBoxLayout(label_cluster)
-    label_cluster_layout.setContentsMargins(0, 0, 0, 0)
-    label_cluster_layout.setSpacing(6)
-    label_cluster_layout.addWidget(host.advanced_embedding_label)
-    label_cluster_layout.addWidget(host.advanced_embedding_info_btn)
-    advanced_row = QWidget()
-    advanced_row_layout = QHBoxLayout(advanced_row)
-    advanced_row_layout.setContentsMargins(0, 0, 0, 0)
-    advanced_row_layout.setSpacing(8)
-    advanced_row_layout.addWidget(
-        host.advanced_embedding_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    host.advanced_embedding_toggle_row, host.advanced_embedding_label = make_pro_feature_toggle_row(
+        host,
+        label="Show advanced embedding settings",
+        tooltip=_adv_tip,
+        feature_id=PRO_CUSTOM_MODEL_PATHS_FEATURE,
+        checked=get_advanced_embedding_unlocked(),
+        on_toggled=host._on_advanced_embedding_toggled,
+        info_attr="advanced_embedding_info_btn",
     )
-    advanced_row_layout.addWidget(label_cluster)
-    advanced_row_layout.addStretch(1)
-    host.advanced_embedding_toggle.blockSignals(True)
-    host.advanced_embedding_toggle.setChecked(get_advanced_embedding_unlocked())
-    host.advanced_embedding_toggle.blockSignals(False)
-    host.advanced_embedding_toggle.toggled.connect(host._on_advanced_embedding_toggled)
-    add_settings_full_width_row(embedding_card_form, advanced_row)
+    host.advanced_embedding_toggle = host.advanced_embedding_toggle_row.findChild(PrestigeToggle)
+    add_settings_full_width_row(embedding_card_form, host.advanced_embedding_toggle_row)
 
     host.advanced_embedding_panel = QWidget()
     adv_panel_layout = QVBoxLayout(host.advanced_embedding_panel)
@@ -298,7 +331,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     embedding_form.addRow("Custom override", host.active_embedding_model_lbl)
 
     adv_panel_layout.addWidget(wrap_subsection(embedding_inner, anchor="embedding_model"))
-    host.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
+    host.advanced_embedding_panel.setVisible(effective_advanced_embedding_unlocked())
     add_settings_full_width_row(embedding_card_form, host.advanced_embedding_panel)
     layout.addWidget(embedding_card)
 
@@ -306,6 +339,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
 
     if hasattr(host, "_build_retrieval_profile_menu"):
         host._build_retrieval_profile_menu()
+    if hasattr(host, "_build_deep_research_profile_menu"):
+        host._build_deep_research_profile_menu()
 
     add_section_reset_footer(layout, host, "knowledge", is_dark=is_dark)
 

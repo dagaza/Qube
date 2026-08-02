@@ -22,10 +22,6 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Open My knowledge**
 
-### Discovery
-
-- **Suggest models for my hardware in Model Manager**
-
 ### Software updates
 
 - **Check for updates**

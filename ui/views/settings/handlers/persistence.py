@@ -62,6 +62,7 @@ from core.app_settings import (
     set_auto_load_last_model_on_startup,
     get_model_manager_hardware_suggestions,
     set_model_manager_hardware_suggestions,
+    get_composer_bare_mention_routing_enabled,
     get_audio_input_device_index,
     set_audio_input_device_index,
     get_audio_output_device_index,
@@ -482,15 +483,14 @@ class PersistenceHandlersMixin:
             if hasattr(self, "advanced_engine_panel"):
                 self.advanced_engine_panel.setVisible(get_advanced_engine_unlocked())
 
-        if hasattr(self, "advanced_embedding_toggle"):
-            self.advanced_embedding_toggle.blockSignals(True)
-            self.advanced_embedding_toggle.setChecked(get_advanced_embedding_unlocked())
-            self.advanced_embedding_toggle.blockSignals(False)
-            if hasattr(self, "advanced_embedding_panel"):
-                self.advanced_embedding_panel.setVisible(get_advanced_embedding_unlocked())
-
         if hasattr(self, "_sync_library_pro_features"):
             self._sync_library_pro_features()
+        if hasattr(self, "_sync_custom_model_paths_pro_features"):
+            self._sync_custom_model_paths_pro_features()
+        if hasattr(self, "_sync_wakeword_pro_features"):
+            self._sync_wakeword_pro_features()
+        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
+            self._sync_mcp_filesystem_pro_features()
 
         if hasattr(self, "advanced_discovery_toggle"):
             self.advanced_discovery_toggle.blockSignals(True)
@@ -506,18 +506,23 @@ class PersistenceHandlersMixin:
             self._sync_embedding_mode_selector()
         if hasattr(self, "_sync_retrieval_profile_selector"):
             self._sync_retrieval_profile_selector()
+        if hasattr(self, "_sync_deep_research_profile_selector"):
+            self._sync_deep_research_profile_selector()
 
-        if hasattr(self, "advanced_stt_toggle"):
-            self.advanced_stt_toggle.blockSignals(True)
-            self.advanced_stt_toggle.setChecked(get_advanced_stt_unlocked())
-            self.advanced_stt_toggle.blockSignals(False)
-            self._apply_advanced_stt_panel_visibility()
+        if hasattr(self, "_sync_custom_model_paths_pro_features"):
+            self._sync_custom_model_paths_pro_features()
+        else:
+            if hasattr(self, "advanced_stt_toggle"):
+                self.advanced_stt_toggle.blockSignals(True)
+                self.advanced_stt_toggle.setChecked(get_advanced_stt_unlocked())
+                self.advanced_stt_toggle.blockSignals(False)
+                self._apply_advanced_stt_panel_visibility()
 
-        if hasattr(self, "advanced_tts_toggle"):
-            self.advanced_tts_toggle.blockSignals(True)
-            self.advanced_tts_toggle.setChecked(get_advanced_tts_unlocked())
-            self.advanced_tts_toggle.blockSignals(False)
-            self._apply_advanced_tts_panel_visibility()
+            if hasattr(self, "advanced_tts_toggle"):
+                self.advanced_tts_toggle.blockSignals(True)
+                self.advanced_tts_toggle.setChecked(get_advanced_tts_unlocked())
+                self.advanced_tts_toggle.blockSignals(False)
+                self._apply_advanced_tts_panel_visibility()
 
         if hasattr(self, "advanced_hardware_toggle"):
             self.advanced_hardware_toggle.blockSignals(True)
@@ -552,6 +557,13 @@ class PersistenceHandlersMixin:
             get_model_manager_hardware_suggestions()
         )
         self.model_manager_hardware_suggestions_cb.blockSignals(False)
+
+        if hasattr(self, "composer_bare_mention_routing_cb"):
+            self.composer_bare_mention_routing_cb.blockSignals(True)
+            self.composer_bare_mention_routing_cb.setChecked(
+                get_composer_bare_mention_routing_enabled()
+            )
+            self.composer_bare_mention_routing_cb.blockSignals(False)
 
         gpu_val = get_internal_n_gpu_layers()
         self.gpu_layers_slider.blockSignals(True)

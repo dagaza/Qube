@@ -103,6 +103,48 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host._sync_profile_units_selector()
     schedule_settings_selector_refit(host.profile_units_selector)
 
+    composer_card, composer_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    composer_form = add_settings_card_form(composer_card_layout)
+    add_subsection_to_form(composer_form, "Composer", anchor="composer")
+
+    host.composer_bare_mention_routing_cb = QCheckBox(
+        "Treat typed @tool shorthands as routing (e.g. @research)"
+    )
+    host.composer_bare_mention_routing_cb.setToolTip(
+        "When enabled, typing @research, @internet, @library, and other built-in tool "
+        "names at the start of a message routes like picking the tool from the @ palette. "
+        "When off, use the @ picker or recent chips so a routing chip appears above the "
+        "composer (recommended)."
+    )
+    host.composer_bare_mention_routing_cb.setChecked(
+        _general_settings.get_composer_bare_mention_routing_enabled()
+    )
+    host.composer_bare_mention_routing_cb.toggled.connect(
+        host._on_composer_bare_mention_routing_toggled
+    )
+    add_settings_full_width_row(composer_form, host.composer_bare_mention_routing_cb)
+    general_layout.addWidget(composer_card)
+
+    discovery_card, discovery_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    discovery_form = add_settings_card_form(discovery_card_layout)
+    add_subsection_to_form(discovery_form, "Discovery", anchor="discovery")
+
+    host.model_manager_hardware_suggestions_cb = QCheckBox(
+        "Suggest models for my hardware in Model Manager"
+    )
+    host.model_manager_hardware_suggestions_cb.setToolTip(
+        "When enabled, Model Manager ranks Qube Verified models and shows Good fit badges "
+        "based on detected RAM and VRAM. May not work well with integrated GPUs or APUs."
+    )
+    host.model_manager_hardware_suggestions_cb.setChecked(
+        _general_settings.get_model_manager_hardware_suggestions()
+    )
+    host.model_manager_hardware_suggestions_cb.toggled.connect(
+        host._on_model_manager_hardware_suggestions_toggled
+    )
+    add_settings_full_width_row(discovery_form, host.model_manager_hardware_suggestions_cb)
+    general_layout.addWidget(discovery_card)
+
     add_section_reset_footer(general_layout, host, "general", is_dark=is_dark)
 
     return general_widget

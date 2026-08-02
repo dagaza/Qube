@@ -23,7 +23,7 @@ Qube is designed around a **strict on-device memory budget** (roughly **10–15 
 
 | RAM | Guidance |
 |-----|----------|
-| **16 GB** | Use a small SLM (e.g. **Nemotron 3 Nano 4B**). Lower GPU offload layers if load fails. Enable **Settings → Help → Suggest models for my hardware** in Model Manager. |
+| **16 GB** | Use a small SLM (e.g. **Nemotron 3 Nano 4B**). Lower GPU offload layers if load fails. Enable **Settings → General → Suggest models for my hardware** in Model Manager. |
 | **20 GB+** | More headroom for larger quants and longer context. |
 | **32 GB+** | Comfortable for mid-size models; still match quant to VRAM when using GPU offload. |
 

@@ -46,6 +46,9 @@ def test_stt_custom_folder_allowed():
         with patch(
             "core.stt_models.get_stt_model_path",
             return_value=str(custom.resolve()),
+        ), patch(
+            "core.model_paths_pro_features.custom_stt_override_allowed",
+            return_value=True,
         ):
             assert sm.resolve_active_stt_model_spec() == str(custom.resolve())
 

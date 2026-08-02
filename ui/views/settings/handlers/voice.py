@@ -86,6 +86,21 @@ from core.app_settings import (
     set_stt_model_path,
     set_tts_model_path,
 )
+from core.model_paths_pro_features import (
+    LICENSE_REQUIRED_MESSAGE as CUSTOM_MODEL_PATHS_LICENSE_MESSAGE,
+    effective_advanced_stt_unlocked,
+    effective_advanced_tts_unlocked,
+    sync_custom_model_paths_pro_features,
+    user_has_pro_custom_model_paths,
+)
+from core.wakeword_pro_features import (
+    LICENSE_REQUIRED_MESSAGE as WAKEWORD_LIBRARY_LICENSE_MESSAGE,
+    build_wakeword_menu_items,
+    revoke_unlicensed_wakeword_selection,
+    sync_wakeword_pro_features,
+    user_has_pro_wakeword_library,
+    wakeword_selection_allowed,
+)
 from core.tts_voice_preview import next_tts_voice_preview_phrase
 from core.stt_models import (
     BUNDLED_STT_MODEL_ID,
@@ -168,35 +183,48 @@ _SECTION_BUILDERS = {
 class VoiceHandlersMixin:
     """Behavior extracted from SettingsView."""
 
+    def _show_wakeword_library_license_dialog(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            WAKEWORD_LIBRARY_LICENSE_MESSAGE,
+            is_dark=is_dark,
+        ).exec()
+
+    def _sync_wakeword_pro_features(self) -> None:
+        sync_wakeword_pro_features(self)
+
     def _sync_wakeword_catalog(self, trigger: str = "manual") -> None:
         _ = trigger
         if not self.audio_worker:
             return
         try:
             self.audio_worker.refresh_wakewords(include_remote=False)
-            recommended = [
-                ("Recommended - " + spec.display_name, spec.display_name)
-                for spec in self.audio_worker.wakeword_manager.list_recommended()
-            ]
-            community = [
-                ("Community - " + spec.display_name, spec.display_name)
-                for spec in self.audio_worker.wakeword_manager.list_community()
-            ]
-            wakeword_items = recommended + community
+            revoke_unlicensed_wakeword_selection(self.audio_worker)
+            wakeword_items = build_wakeword_menu_items(self.audio_worker.wakeword_manager)
             if not wakeword_items:
                 self.wakeword_selector.setEnabled(False)
                 self.wakeword_selector.setText("No model available")
                 self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
                 return
 
+            licensed = user_has_pro_wakeword_library()
             self.wakeword_selector.setEnabled(True)
-            self._build_prestige_menu(
-                self.wakeword_selector,
-                wakeword_items,
-                self._on_wakeword_selection_changed,
-            )
+            if licensed and len(wakeword_items) > 1:
+                self._build_prestige_menu(
+                    self.wakeword_selector,
+                    wakeword_items,
+                    self._on_wakeword_selection_changed,
+                )
+            else:
+                self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
+
             active_name = getattr(self.audio_worker, "active_wakeword_name", "") or wakeword_items[0][1]
-            matching_label = next((label for label, data in wakeword_items if data == active_name), wakeword_items[0][0])
+            matching_label = next(
+                (label for label, data in wakeword_items if data == active_name),
+                wakeword_items[0][0],
+            )
             self.wakeword_selector.setText(matching_label)
         except Exception as exc:
             logger.exception("Wakeword catalog sync failed: %s", exc)
@@ -209,6 +237,10 @@ class VoiceHandlersMixin:
             ).exec()
 
     def _on_wakeword_selector_pressed(self) -> None:
+        if not user_has_pro_wakeword_library():
+            self._show_wakeword_library_license_dialog()
+            self._sync_wakeword_catalog(trigger="dropdown")
+            return
         self._sync_wakeword_catalog(trigger="dropdown")
 
     def _set_wakeword_download_buttons_enabled(self, enabled: bool) -> None:
@@ -218,6 +250,9 @@ class VoiceHandlersMixin:
                 btn.setEnabled(bool(enabled))
 
     def _start_wakeword_download(self, kind: str) -> None:
+        if not user_has_pro_wakeword_library():
+            self._show_wakeword_library_license_dialog()
+            return
         if getattr(self, "_wakeword_download_worker", None) is not None and self._wakeword_download_worker.isRunning():
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             PrestigeDialog(
@@ -319,6 +354,9 @@ class VoiceHandlersMixin:
         worker.start()
 
     def _open_wakeword_test_lab(self) -> None:
+        if not user_has_pro_wakeword_library():
+            self._show_wakeword_library_license_dialog()
+            return
         if not self.audio_worker:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             PrestigeDialog(
@@ -343,6 +381,13 @@ class VoiceHandlersMixin:
 
     def _on_wakeword_selection_changed(self, display_name: str) -> None:
         if not self.audio_worker:
+            return
+        spec = self.audio_worker.catalog_by_ui_name.get(display_name)
+        if spec is not None and not wakeword_selection_allowed(
+            spec, self.audio_worker.wakeword_manager
+        ):
+            self._show_wakeword_library_license_dialog()
+            self._sync_wakeword_catalog(trigger="selection blocked")
             return
         self._wakeword_selected_label = str(display_name)
         self.audio_worker.set_wakeword(display_name)
@@ -479,7 +524,31 @@ class VoiceHandlersMixin:
         self._tts_voice_preview_phrase_index = next_index
         self.tts_worker.queue_voice_preview(phrase)
 
+    def _show_custom_model_paths_license_dialog(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            CUSTOM_MODEL_PATHS_LICENSE_MESSAGE,
+            is_dark=is_dark,
+        ).exec()
+
+    def _sync_custom_model_paths_pro_features(self) -> None:
+        changed = sync_custom_model_paths_pro_features(self)
+        if not changed:
+            return
+        if hasattr(self, "_reload_stt_from_settings"):
+            self._reload_stt_from_settings()
+        if hasattr(self, "_reload_tts_from_settings"):
+            self._reload_tts_from_settings()
+        if hasattr(self, "_reload_embedder_from_settings"):
+            self._reload_embedder_from_settings()
+
     def _on_advanced_stt_toggled(self, checked: bool) -> None:
+        if checked and not user_has_pro_custom_model_paths():
+            self._show_custom_model_paths_license_dialog()
+            self._sync_custom_model_paths_pro_features()
+            return
         if checked:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             dlg = PrestigeDialog(
@@ -497,10 +566,14 @@ class VoiceHandlersMixin:
                 self.advanced_stt_toggle.setChecked(False)
                 self.advanced_stt_toggle.blockSignals(False)
                 return
-        set_advanced_stt_unlocked(bool(checked))
+        set_advanced_stt_unlocked(bool(checked and user_has_pro_custom_model_paths()))
         self._apply_advanced_stt_panel_visibility()
 
     def _on_advanced_tts_toggled(self, checked: bool) -> None:
+        if checked and not user_has_pro_custom_model_paths():
+            self._show_custom_model_paths_license_dialog()
+            self._sync_custom_model_paths_pro_features()
+            return
         if checked:
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             dlg = PrestigeDialog(
@@ -521,11 +594,11 @@ class VoiceHandlersMixin:
                 self.advanced_tts_toggle.setChecked(False)
                 self.advanced_tts_toggle.blockSignals(False)
                 return
-        set_advanced_tts_unlocked(bool(checked))
+        set_advanced_tts_unlocked(bool(checked and user_has_pro_custom_model_paths()))
         self._apply_advanced_tts_panel_visibility()
 
     def _apply_advanced_stt_panel_visibility(self) -> None:
-        unlocked = get_advanced_stt_unlocked()
+        unlocked = effective_advanced_stt_unlocked()
         visible = unlocked or getattr(self, "_tour_stt_preview_active", False)
         if hasattr(self, "advanced_stt_panel"):
             self.advanced_stt_panel.setVisible(visible)
@@ -537,7 +610,7 @@ class VoiceHandlersMixin:
             self.advanced_stt_toggle.blockSignals(False)
 
     def _apply_advanced_tts_panel_visibility(self) -> None:
-        unlocked = get_advanced_tts_unlocked()
+        unlocked = effective_advanced_tts_unlocked()
         visible = unlocked or getattr(self, "_tour_tts_preview_active", False)
         if hasattr(self, "advanced_tts_panel"):
             self.advanced_tts_panel.setVisible(visible)
@@ -671,6 +744,9 @@ class VoiceHandlersMixin:
         if is_protected_stt_model(spec):
             set_stt_model_path("")
         else:
+            if not user_has_pro_custom_model_paths():
+                self._show_custom_model_paths_license_dialog()
+                return
             ok, msg = validate_stt_model_path(spec)
             if not ok:
                 is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -799,6 +875,9 @@ class VoiceHandlersMixin:
         load_path = bundled_default_path() if is_default else path
 
         if not is_default:
+            if not user_has_pro_custom_model_paths():
+                self._show_custom_model_paths_license_dialog()
+                return
             ok, msg = validate_tts_model_path(path)
             if not ok:
                 is_dark = getattr(self.window(), "_is_dark_theme", True)

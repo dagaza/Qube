@@ -93,13 +93,29 @@ class LicenseHandlersMixin:
         self._refresh_license_status_ui()
         if hasattr(self, "_sync_library_pro_features"):
             self._sync_library_pro_features()
+        if hasattr(self, "_sync_custom_model_paths_pro_features"):
+            self._sync_custom_model_paths_pro_features()
+        if hasattr(self, "_sync_wakeword_pro_features"):
+            self._sync_wakeword_pro_features()
+        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
+            self._sync_mcp_filesystem_pro_features()
+        if hasattr(self, "_sync_deep_research_profile_selector"):
+            self._sync_deep_research_profile_selector()
 
     def _on_remove_license_clicked(self) -> None:
         summary = license_summary()
         if not summary.get("cached"):
             self._refresh_license_status_ui()
-        if hasattr(self, "_sync_library_pro_features"):
-            self._sync_library_pro_features()
+            if hasattr(self, "_sync_library_pro_features"):
+                self._sync_library_pro_features()
+            if hasattr(self, "_sync_custom_model_paths_pro_features"):
+                self._sync_custom_model_paths_pro_features()
+            if hasattr(self, "_sync_wakeword_pro_features"):
+                self._sync_wakeword_pro_features()
+            if hasattr(self, "_sync_mcp_filesystem_pro_features"):
+                self._sync_mcp_filesystem_pro_features()
+            if hasattr(self, "_sync_deep_research_profile_selector"):
+                self._sync_deep_research_profile_selector()
             return
 
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -128,3 +144,11 @@ class LicenseHandlersMixin:
         self._refresh_license_status_ui()
         if hasattr(self, "_sync_library_pro_features"):
             self._sync_library_pro_features()
+        if hasattr(self, "_sync_custom_model_paths_pro_features"):
+            self._sync_custom_model_paths_pro_features()
+        if hasattr(self, "_sync_wakeword_pro_features"):
+            self._sync_wakeword_pro_features()
+        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
+            self._sync_mcp_filesystem_pro_features()
+        if hasattr(self, "_sync_deep_research_profile_selector"):
+            self._sync_deep_research_profile_selector()

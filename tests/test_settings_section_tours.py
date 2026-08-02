@@ -48,11 +48,11 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.memory", "memory", 7),
     ("settings.knowledge", "knowledge", _expected_knowledge_tour_steps()),
     ("settings.integrations", "integrations", 5),
-    ("settings.general", "general", 4),
+    ("settings.general", "general", 6),
     ("settings.appearance_themes", "appearance.themes", 14),
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
-    ("settings.help", "help", 5),
+    ("settings.help", "help", 4),
     ("settings.contact_feedback", "contact.feedback", 4),
     ("settings.privacy_data", "privacy.data", _expected_privacy_data_tour_steps()),
     ("settings.diagnostics", "diagnostics", _expected_diagnostics_tour_steps()),
@@ -191,6 +191,8 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     "settings.general": (
         "general_language_card",
         "profile_units_selector",
+        "composer_bare_mention_routing_cb",
+        "model_manager_hardware_suggestions_cb",
     ),
     "settings.appearance_themes": (
         "themes_appearance_row",
@@ -241,7 +243,6 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
     "settings.help": (
         "replay_local_llm_tour_btn",
         "open_composer_mention_guide_btn",
-        "model_manager_hardware_suggestions_cb",
     ),
     "settings.contact_feedback": ("report_bug_btn", "request_feature_btn"),
     "settings.privacy_data": (

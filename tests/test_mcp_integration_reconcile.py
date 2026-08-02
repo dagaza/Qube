@@ -6,6 +6,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from core.integrations.capabilities import persistence as P
 from core.integrations.capabilities.mapper import CapabilityMapper, RawTool
@@ -34,8 +35,14 @@ class TestMcpIntegrationReconcile(unittest.TestCase):
 
         self._orig_cs = cs.user_data_root
         cs.user_data_root = lambda: self._root  # type: ignore[assignment]
+        self._pro_mcp_patch = patch(
+            "core.mcp_filesystem_pro_features.user_has_pro_mcp_filesystem",
+            return_value=True,
+        )
+        self._pro_mcp_patch.start()
 
     def tearDown(self):
+        self._pro_mcp_patch.stop()
         P.user_data_root = self._orig  # type: ignore[assignment]
         import core.knowledge.configured_sources as cs
 

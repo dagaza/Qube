@@ -110,6 +110,10 @@ def resolve_active_stt_model_spec() -> str:
     if override and _path_allowed_for_stt(override):
         if is_protected_stt_model(override):
             return BUNDLED_STT_MODEL_ID
+        from core.model_paths_pro_features import custom_stt_override_allowed
+
+        if not custom_stt_override_allowed():
+            return BUNDLED_STT_MODEL_ID
         return _normalize_path(override)
     return BUNDLED_STT_MODEL_ID
 

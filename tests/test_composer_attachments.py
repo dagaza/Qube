@@ -97,6 +97,68 @@ class TestComposerAttachments(unittest.TestCase):
         assert patch is not None
         self.assertEqual(patch["route"], "deep_research")
         self.assertEqual(patch["strategy"], "attachment_tool_research")
+        self.assertFalse(patch.get("deep_research_force_thorough"))
+
+    def test_resolve_tool_proresearch(self):
+        att = ComposerAttachment(kind="tool", id="proresearch", label="Pro deep research")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "deep_research")
+        self.assertEqual(patch["strategy"], "attachment_tool_proresearch")
+        self.assertTrue(patch.get("deep_research_force_thorough"))
+
+    def test_palette_hides_proresearch_by_default(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("")]
+        self.assertIn("research", ids)
+        self.assertNotIn("proresearch", ids)
+
+    def test_palette_shows_proresearch_when_id_matches(self):
+        ids = [str(t["id"]) for t in composer_tools_for_palette("proresearch")]
+        self.assertEqual(ids, ["proresearch"])
+
+    def test_bare_research_not_lifted_by_default(self):
+        from core.composer_skills import parse_composer_input
+
+        clean, attachments, _skills = parse_composer_input(
+            "@research ACE inhibitors evidence",
+            lift_bare_mentions=False,
+        )
+        self.assertEqual(clean, "@research ACE inhibitors evidence")
+        self.assertEqual(attachments, [])
+
+    def test_bare_research_lifted_when_enabled(self):
+        from core.composer_skills import parse_composer_input
+
+        clean, attachments, _skills = parse_composer_input(
+            "@research ACE inhibitors evidence",
+            lift_bare_mentions=True,
+        )
+        self.assertEqual(clean, "ACE inhibitors evidence")
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0].id, "research")
+
+    def test_bare_proresearch_routes_force_thorough(self):
+        from core.composer_attachments import resolve_attachment_routing
+        from core.composer_skills import parse_composer_input
+
+        _clean, attachments, _skills = parse_composer_input(
+            "@proresearch glucose monitoring accuracy",
+            lift_bare_mentions=True,
+        )
+        patch = resolve_attachment_routing(attachments)
+        assert patch is not None
+        self.assertEqual(patch["route"], "deep_research")
+        self.assertTrue(patch.get("deep_research_force_thorough"))
+
+    def test_formal_token_takes_precedence_over_bare_lift(self):
+        from core.composer_skills import parse_composer_input
+
+        clean, attachments, _skills = parse_composer_input(
+            "@[tool:research] glucose monitoring accuracy",
+            lift_bare_mentions=True,
+        )
+        self.assertEqual(clean, "glucose monitoring accuracy")
+        self.assertEqual(attachments[0].id, "research")
 
     def test_resolve_tool_fetch_routes_web(self):
         att = ComposerAttachment(kind="tool", id="fetch", label="Fetch")

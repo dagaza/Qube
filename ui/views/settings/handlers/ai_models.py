@@ -839,6 +839,11 @@ class AiModelsHandlersMixin:
         if mm is not None and hasattr(mm, "refresh_hardware_suggestions"):
             mm.refresh_hardware_suggestions()
 
+    def _on_composer_bare_mention_routing_toggled(self, enabled: bool) -> None:
+        from core.app_settings import set_composer_bare_mention_routing_enabled
+
+        set_composer_bare_mention_routing_enabled(enabled)
+
     def _on_chat_personality_toggled(self, checked: bool) -> None:
         set_enable_chat_personality_nudge(checked)
 

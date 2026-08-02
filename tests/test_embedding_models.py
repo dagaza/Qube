@@ -34,6 +34,9 @@ def test_embedding_dir_model_allowed():
         with patch(
             "core.embedding_models.get_embedding_model_path",
             return_value=str(custom.resolve()),
+        ), patch(
+            "core.model_paths_pro_features.custom_embedding_override_allowed",
+            return_value=True,
         ):
             assert em.resolve_active_gguf_path() == str(custom.resolve())
 
@@ -73,6 +76,9 @@ def test_embedding_model_available_with_gguf_override():
         with patch(
             "core.embedding_models.get_embedding_model_path",
             return_value=str(custom.resolve()),
+        ), patch(
+            "core.model_paths_pro_features.custom_embedding_override_allowed",
+            return_value=True,
         ):
             assert em.gguf_override_available() is True
             assert em.embedding_model_available() is True

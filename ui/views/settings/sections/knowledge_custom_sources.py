@@ -115,6 +115,15 @@ def build_knowledge_custom_sources_section(host, *, is_dark: bool) -> QWidget:
     )
     host.custom_source_mcp_namespace_input = QLineEdit()
     host.custom_source_mcp_namespace_input.setPlaceholderText("filesystem")
+    host.custom_source_mcp_namespace_input.setToolTip(
+        "Use namespace `filesystem` for the official MCP Filesystem server. "
+        "Requires a Qube Pro license."
+    )
+    host.custom_source_mcp_command_input.setToolTip(
+        "JSON array launching the MCP server, e.g. "
+        '["mcp-server-filesystem", "/path/to/folder"]. '
+        "Filesystem MCP requires a Qube Pro license."
+    )
     host.custom_source_mcp_tool_input = QLineEdit()
     host.custom_source_mcp_tool_input.setPlaceholderText("search_files")
     mcp_form.addRow("Command", host.custom_source_mcp_command_input)
@@ -385,6 +394,9 @@ def _refresh_custom_sources_list(
 
 def save_custom_source_from_host(host) -> None:
     source = configured_source_from_host(host)
+    from core.mcp_filesystem_pro_features import require_pro_mcp_filesystem_for_source
+
+    require_pro_mcp_filesystem_for_source(source)
     save_configured_source(source)
     host._custom_source_selected_id = source.id
     host._custom_source_loaded = source
@@ -402,6 +414,9 @@ def save_custom_source_from_host(host) -> None:
 
 def test_custom_source_from_host(host) -> None:
     source = configured_source_from_host(host)
+    from core.mcp_filesystem_pro_features import require_pro_mcp_filesystem_for_source
+
+    require_pro_mcp_filesystem_for_source(source)
     if source.connector_type == _MCP_CONNECTOR_ID:
         from core.integrations.mcp_discovery import discover_and_cache_mcp_source
 

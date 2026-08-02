@@ -128,6 +128,7 @@ from core.composer_draft import (
     composer_capability_unavailable_request,
     composer_prompt_required_request,
     deep_research_unavailable_request,
+    deep_research_pro_downgrade_request,
     draft_from_text,
     merge_drafts,
     remove_routing_at,
@@ -142,6 +143,13 @@ from core.conversation_export import (
     format_conversation_markdown,
     sanitize_export_filename,
 )
+from core.assistant_message_export import (
+    format_assistant_message_for_export,
+    has_exportable_assistant_content,
+    suggested_assistant_export_stem,
+    write_assistant_message_markdown,
+)
+from ui.export.research_report_pdf import write_markdown_pdf
 from core.composer_commands import execute_composer_command
 from core.composer_mention_search import ComposerPaletteView
 from core.composer_mention_trigger import (
@@ -2107,6 +2115,92 @@ class ConversationsView(QWidget):
         btn.setIconSize(QSize(14, 14))
         btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
 
+    def _style_agent_sources_button(self, btn: QPushButton, is_dark: bool) -> None:
+        theme = self._theme(is_dark)
+        btn.setIcon(themed_fa_icon("fa5s.globe", theme.color(MUTED_ICON), 16))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
+
+    def _style_agent_export_button(self, btn: QPushButton, is_dark: bool) -> None:
+        theme = self._theme(is_dark)
+        btn.setIcon(themed_fa_icon("fa5s.file-export", theme.color(MUTED_ICON), 16))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
+
+    def _sync_agent_export_button(
+        self, agent: AgentMessageLabel, btn: QPushButton | None = None
+    ) -> None:
+        btn = btn or getattr(agent, "_export_action_btn", None)
+        if btn is None:
+            return
+        markdown = (getattr(agent, "_md_layout_source", None) or "").strip()
+        if not markdown:
+            markdown = agent.markdown_for_clipboard()
+        visible = has_exportable_assistant_content(markdown)
+        btn.setVisible(visible)
+        btn.setEnabled(visible)
+        if visible:
+            btn.setToolTip("Export answer as Markdown or PDF")
+
+    def _export_agent_message(
+        self,
+        agent: AgentMessageLabel,
+        *,
+        as_pdf: bool = False,
+    ) -> None:
+        markdown = agent.markdown_for_clipboard()
+        if not has_exportable_assistant_content(markdown):
+            return
+        body = format_assistant_message_for_export(markdown)
+        stem = suggested_assistant_export_stem(markdown)
+        if as_pdf:
+            default_name = f"{stem}.pdf"
+            file_filter = "PDF (*.pdf)"
+        else:
+            default_name = f"{stem}.md"
+            file_filter = "Markdown (*.md)"
+        dest, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Answer",
+            default_name,
+            file_filter,
+        )
+        if not dest:
+            return
+        try:
+            if as_pdf:
+                is_dark = getattr(self.window(), "_is_dark_theme", True)
+                write_markdown_pdf(
+                    body,
+                    Path(dest),
+                    document_stylesheet=self._agent_markdown_stylesheet(is_dark),
+                )
+            else:
+                write_assistant_message_markdown(markdown, Path(dest))
+            logger.info("Exported assistant answer to %s", dest)
+        except OSError as exc:
+            logger.exception("Failed to export assistant answer: %s", exc)
+
+    def _build_agent_export_menu(
+        self, agent: AgentMessageLabel, is_dark: bool
+    ) -> QMenu:
+        menu = QMenu()
+        menu.setObjectName("PrestigeMenu")
+        self._apply_menu_theme(menu, is_dark)
+        md_act = menu.addAction("Save as Markdown")
+        md_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._export_agent_message(
+                lbl, as_pdf=False
+            )
+        )
+        pdf_act = menu.addAction("Save as PDF")
+        pdf_act.triggered.connect(
+            lambda _checked=False, lbl=agent: self._export_agent_message(
+                lbl, as_pdf=True
+            )
+        )
+        return menu
+
     def _sync_agent_sources_button(
         self, agent: AgentMessageLabel, btn: QPushButton | None = None
     ) -> None:
@@ -2305,11 +2399,22 @@ class ConversationsView(QWidget):
         agent._sources_action_btn = sources_btn
         self._sync_agent_sources_button(agent, sources_btn)
 
+        export_btn = QPushButton()
+        export_btn.setObjectName("AgentMessageExportBtn")
+        export_btn.setFixedSize(28, 28)
+        export_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._style_agent_export_button(export_btn, is_dark)
+        export_btn.setMenu(self._build_agent_export_menu(agent, is_dark))
+        agent._export_action_btn = export_btn
+        self._sync_agent_export_button(agent, export_btn)
+
         agent._telemetry_labels = self._default_agent_telemetry_labels(is_dark)
         agent._telemetry_values = {}
 
         copy_row.addWidget(copy_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addWidget(sources_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        copy_row.addWidget(export_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addStretch(1)
         copy_row.addSpacing(12)
         for key in ("stt", "ttft", "tts", "tps"):
@@ -2358,7 +2463,7 @@ class ConversationsView(QWidget):
             return
 
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        insert_at = 2  # after copy + sources buttons
+        insert_at = 3  # after copy, sources, and export buttons
         for chip in chips:
             btn = QPushButton(chip.label)
             btn.setObjectName("HelpActionChipBtn")
@@ -2389,8 +2494,15 @@ class ConversationsView(QWidget):
             sources_btn = w.findChild(QPushButton, "AgentMessageSourcesBtn")
             if sources_btn is not None:
                 self._style_agent_sources_button(sources_btn, is_dark)
+            export_btn = w.findChild(QPushButton, "AgentMessageExportBtn")
+            if export_btn is not None:
+                self._style_agent_export_button(export_btn, is_dark)
+                menu = export_btn.menu()
+                if menu is not None:
+                    self._apply_menu_theme(menu, is_dark)
             for agent in w.findChildren(AgentMessageLabel):
                 self._sync_agent_sources_button(agent, sources_btn)
+                self._sync_agent_export_button(agent, export_btn)
                 labels = getattr(agent, "_telemetry_labels", None)
                 if labels:
                     for lbl in labels.values():
@@ -3347,6 +3459,8 @@ class ConversationsView(QWidget):
         if follow_stream_tail:
             self._scroll_to_bottom()
         self._schedule_transcript_timeline_refresh()
+        if finalize:
+            self._sync_agent_export_button(cur)
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
 
@@ -3730,6 +3844,7 @@ class ConversationsView(QWidget):
                 raw=raw,
                 query=clean,
                 enforced_skills=enforced_skills,
+                routing=routing,
             )
             return
         self._reset_composer_draft()
@@ -3783,8 +3898,10 @@ class ConversationsView(QWidget):
         raw: str,
         query: str,
         enforced_skills: tuple[str, ...],
+        routing: dict | None = None,
     ) -> None:
         _ = enforced_skills
+        routing = routing or {}
         session_id = self._ensure_active_session_for_send()
         self.db.add_message(session_id, "user", raw)
         self.log_user_message(raw, pending_assistant=False)
@@ -3794,11 +3911,23 @@ class ConversationsView(QWidget):
             self._notify_composer_toast(deep_research_unavailable_request())
             return
 
+        force_thorough = bool(routing.get("deep_research_force_thorough"))
+        if force_thorough:
+            from core.deep_research_pro_features import user_has_pro_thorough
+
+            if not user_has_pro_thorough():
+                self._notify_composer_toast(deep_research_pro_downgrade_request())
+
+        from core.deep_research_pro_features import resolve_deep_research_profile
+
+        resolved_profile = resolve_deep_research_profile(force_thorough=force_thorough)
+        profile_label = resolved_profile.spec.label
+
         request_id = str(uuid.uuid4())
         self._active_deep_research_request_id = request_id
         self._deep_research_session_id = session_id
         self._deep_research_in_progress = True
-        self._begin_deep_research_progress("Starting deep research…")
+        self._begin_deep_research_progress(f"Starting {profile_label.lower()} deep research…")
         self._refresh_send_stop_button()
         worker.enqueue(
             {
@@ -3806,6 +3935,7 @@ class ConversationsView(QWidget):
                 "session_id": session_id,
                 "query": query,
                 "knowledge_service": SERVICE_SCIENTIFIC_EVIDENCE,
+                "deep_research_force_thorough": force_thorough,
             }
         )
 

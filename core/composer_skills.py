@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from core.composer_attachments import ComposerAttachment, parse_attachments, strip_tokens_for_display
+from core.composer_attachments import (
+    ComposerAttachment,
+    lift_bare_tool_mentions,
+    parse_attachments,
+    strip_tokens_for_display,
+)
 from core.skills.registry import get_skill
 
 _SKILL_TOKEN_RE = re.compile(r"@\[skill:([^\]]+)\]", re.IGNORECASE)
@@ -42,14 +47,29 @@ def strip_skill_tokens(text: str) -> tuple[tuple[str, ...], str]:
 
 def parse_composer_input(
     text: str,
+    *,
+    lift_bare_mentions: bool | None = None,
 ) -> tuple[str, list[ComposerAttachment], tuple[str, ...]]:
     """
     Parse composer text into clean prompt, routing attachments, and enforced skills.
 
     Skill tokens are stripped before attachment parsing and never affect routing.
+    When bare-mention routing is enabled, a leading @tool shorthand (e.g. @research)
+    is lifted into a routing attachment before formal `@[tool:…]` tokens are parsed.
     """
+    if lift_bare_mentions is None:
+        from core.app_settings import get_composer_bare_mention_routing_enabled
+
+        lift_bare_mentions = get_composer_bare_mention_routing_enabled()
+
     enforced, without_skills = strip_skill_tokens(text)
-    clean, attachments = parse_attachments(without_skills)
+    bare_attachments: list[ComposerAttachment] = []
+    working = without_skills
+    if lift_bare_mentions and "@[" not in working:
+        working, bare_attachments = lift_bare_tool_mentions(working)
+
+    clean, token_attachments = parse_attachments(working)
+    attachments = bare_attachments + token_attachments
     return clean, attachments, enforced
 
 

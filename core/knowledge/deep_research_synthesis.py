@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from core.citation_renumber import renumber_citations_by_appearance
 from core.knowledge.deep_research import build_bibliography_report
+from core.knowledge.deep_research_profiles import DeepResearchProfileSpec, get_profile_spec
 from core.knowledge.types import EvidenceBundle
 from core.knowledge.ui_adapter import bundle_to_ui_sources
 from core.skills.builtin.scientific_research import SCIENTIFIC_RESEARCH
@@ -115,16 +116,21 @@ def synthesize_deep_research_findings(
     bundle: EvidenceBundle | None,
     *,
     generate_fn: Callable[..., str] | None = None,
+    profile: DeepResearchProfileSpec | None = None,
 ) -> DeepResearchSynthesisResult:
     """Return cited findings markdown and cited-only UI sources."""
     if bundle is None or not bundle.sources:
         return DeepResearchSynthesisResult("", [], synthesized=False)
 
+    profile_spec = profile or get_profile_spec(None)
     ui_sources = bundle_to_ui_sources(bundle)
     for i, src in enumerate(ui_sources, start=1):
         src["id"] = i
 
-    retrieval_context = build_numbered_retrieval_context(ui_sources)
+    retrieval_context = build_numbered_retrieval_context(
+        ui_sources,
+        char_budget=profile_spec.context_char_budget,
+    )
     if not retrieval_context.strip() or generate_fn is None:
         return DeepResearchSynthesisResult("", ui_sources, synthesized=False)
 

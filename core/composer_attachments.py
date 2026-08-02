@@ -46,6 +46,12 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
         "label": "Deep research",
         "description": "Multi-step evidence report (async, non-blocking)",
     },
+    {
+        "id": "proresearch",
+        "label": "Pro deep research",
+        "description": "Thorough @research with higher local orchestration limits (Pro)",
+        "advanced": True,
+    },
     {"id": "internet", "label": "Internet", "description": "Live web search"},
     {
         "id": "fetch",
@@ -155,6 +161,7 @@ _TOOL_USAGE_HINTS: dict[str, str] = {
     "finance": "Use for SEC filings, company financials, and regulatory disclosures.",
     "legal": "Use for U.S. court opinions and case law.",
     "research": "Use for a multi-step async literature review report.",
+    "proresearch": "Use for thorough deep research with higher local limits (Pro).",
     "internet": "Use for timely web information beyond your library.",
     "fetch": "Use when you need full page content, not just search snippets.",
     "recipe": "Use for structured recipe ingredients and steps from recipe sites.",
@@ -205,6 +212,36 @@ def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
         if tool["id"] == tool_id:
             return tool
     return None
+
+
+_BARE_MENTION_TOOL_IDS: tuple[str, ...] = tuple(
+    sorted((str(tool["id"]) for tool in COMPOSER_TOOLS), key=len, reverse=True)
+)
+
+
+def lift_bare_tool_mentions(text: str) -> tuple[str, list[ComposerAttachment]]:
+    """When enabled via settings, treat a leading @tool shorthand as a routing attachment."""
+    raw = text or ""
+    leading = len(raw) - len(raw.lstrip())
+    stripped = raw.lstrip()
+    if not stripped.startswith("@"):
+        return raw, []
+
+    lower = stripped.lower()
+    for tool_id in _BARE_MENTION_TOOL_IDS:
+        prefix = f"@{tool_id}"
+        if not lower.startswith(prefix.lower()):
+            continue
+        suffix = stripped[len(prefix) :]
+        if suffix and not suffix[0].isspace():
+            continue
+        body = suffix.lstrip()
+        tool = composer_tool_by_id(tool_id)
+        label = str(tool["label"]) if tool else tool_id
+        attachment = ComposerAttachment(kind="tool", id=tool_id, label=label)
+        clean = f"{raw[:leading]}{body}".strip()
+        return clean, [attachment]
+    return raw, []
 
 
 def composer_tool_tooltip(tool: dict[str, str | bool]) -> str:
@@ -380,11 +417,16 @@ def resolve_attachment_routing(
             "attachment_tool": tool_id,
             "composer_attachments": _attachments_telemetry(attachments),
         }
-    if tool_id == "research":
+    if tool_id in ("research", "proresearch"):
         return {
             "route": "deep_research",
-            "strategy": "attachment_tool_research",
+            "strategy": (
+                "attachment_tool_proresearch"
+                if tool_id == "proresearch"
+                else "attachment_tool_research"
+            ),
             "attachment_tool": tool_id,
+            "deep_research_force_thorough": tool_id == "proresearch",
             "composer_attachments": _attachments_telemetry(attachments),
         }
     if tool_id == "library":

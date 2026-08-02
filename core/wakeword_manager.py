@@ -70,13 +70,17 @@ class WakewordManager:
         )
 
     def get_active_or_default(self) -> WakewordSpec | None:
+        from core.wakeword_pro_features import (
+            resolve_default_free_wakeword_spec,
+            wakeword_selection_allowed,
+        )
+
         active_id = get_active_wakeword_id()
         if active_id and active_id in self._catalog:
-            return self._catalog[active_id]
-        recommended = self.list_recommended()
-        if recommended:
-            return next((w for w in recommended if "jarvis" in w.wakeword_id), recommended[0])
-        return next(iter(self._catalog.values()), None)
+            spec = self._catalog[active_id]
+            if wakeword_selection_allowed(spec, self):
+                return spec
+        return resolve_default_free_wakeword_spec(self)
 
     def get_by_id(self, wakeword_id: str) -> WakewordSpec | None:
         return self._catalog.get(str(wakeword_id or "").strip())

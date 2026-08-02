@@ -58,6 +58,14 @@ class McpConnector:
         if not isinstance(command, list) or not command:
             return []
 
+        from core.mcp_filesystem_pro_features import require_pro_mcp_filesystem_for_config
+
+        try:
+            require_pro_mcp_filesystem_for_config(config, namespace=namespace)
+        except ValueError as exc:
+            logger.warning("[MCP] filesystem integration blocked: %s", exc)
+            return []
+
         # Imported lazily and locally: this is the one place the configured-source
         # spine reaches into the MCP provider package (P6 stays inside providers/mcp/).
         from core.integrations.capabilities import (
@@ -175,6 +183,13 @@ class McpConnector:
         namespace = str(config.get("namespace") or config.get("adapter_id") or "configured_mcp")
         if not isinstance(command, list) or not command:
             return False, "MCP command not configured"
+
+        from core.mcp_filesystem_pro_features import require_pro_mcp_filesystem_for_config
+
+        try:
+            require_pro_mcp_filesystem_for_config(config, namespace=namespace)
+        except ValueError as exc:
+            return False, str(exc)
 
         from core.integrations.mcp_discovery import discover_and_cache_mcp_source
 

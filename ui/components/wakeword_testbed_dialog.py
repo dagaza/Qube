@@ -20,6 +20,11 @@ from PyQt6.QtWidgets import (
 )
 
 from core.wakeword_testbed import WakewordTestbedState
+from core.wakeword_pro_features import (
+    build_wakeword_menu_items,
+    user_has_pro_wakeword_library,
+    wakeword_selection_allowed,
+)
 from ui.components.modal_backdrop import resolve_modal_backdrop_host
 from ui.components.selector_button import SelectorButton
 from ui.components.wakeword_testbed_theme import wakeword_testbed_stylesheet
@@ -29,6 +34,7 @@ from ui.components.brand_buttons import (
     apply_brand_success,
     apply_brand_danger,
 )
+from ui.components.prestige_dialog import PrestigeDialog
 
 logger = logging.getLogger("Qube.UI.WakewordTestbed")
 
@@ -394,15 +400,7 @@ class WakewordTestbedDialog(QDialog):
     def _sync_wakeword_catalog(self) -> None:
         if not self.audio_worker:
             return
-        recommended = [
-            ("Recommended - " + spec.display_name, spec.display_name)
-            for spec in self.audio_worker.wakeword_manager.list_recommended()
-        ]
-        community = [
-            ("Community - " + spec.display_name, spec.display_name)
-            for spec in self.audio_worker.wakeword_manager.list_community()
-        ]
-        wakeword_items = recommended + community
+        wakeword_items = build_wakeword_menu_items(self.audio_worker.wakeword_manager)
         if not wakeword_items:
             self.wakeword_selector.setEnabled(False)
             self.wakeword_selector.setText("No model available")
@@ -410,12 +408,17 @@ class WakewordTestbedDialog(QDialog):
             self._apply_settings_menu_button_chevron_state(self.wakeword_selector)
             return
 
+        licensed = user_has_pro_wakeword_library()
         self.wakeword_selector.setEnabled(True)
-        self._build_prestige_menu(
-            self.wakeword_selector,
-            wakeword_items,
-            self._on_wakeword_selector_changed,
-        )
+        if licensed and len(wakeword_items) > 1:
+            self._build_prestige_menu(
+                self.wakeword_selector,
+                wakeword_items,
+                self._on_wakeword_selector_changed,
+            )
+        else:
+            self.wakeword_selector.setMenu(QMenu(self.wakeword_selector))
+
         active_name = getattr(self.audio_worker, "active_wakeword_name", "") or wakeword_items[0][1]
         matching_label = next(
             (label for label, data in wakeword_items if data == active_name),
@@ -474,6 +477,20 @@ class WakewordTestbedDialog(QDialog):
 
     def _on_wakeword_selector_changed(self, display_name: str) -> None:
         if not self.audio_worker:
+            return
+        spec = self.audio_worker.catalog_by_ui_name.get(display_name)
+        if spec is not None and not wakeword_selection_allowed(
+            spec, self.audio_worker.wakeword_manager
+        ):
+            from core.wakeword_pro_features import LICENSE_REQUIRED_MESSAGE
+
+            PrestigeDialog(
+                self,
+                "Pro license required",
+                LICENSE_REQUIRED_MESSAGE,
+                is_dark=self._is_dark,
+            ).exec()
+            self._sync_wakeword_catalog()
             return
         self.audio_worker.set_wakeword(display_name)
         self.on_wakeword_selection_changed(sync_catalog=False)
