@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.9] - 2026-08-03
+
+### Added
+- **Reading font** setting in Settings → Themes: bundled OFL fonts (Inter, Source Sans 3, IBM Plex Sans, Literata) plus a searchable system-font browser for Conversations and Library previews.
+- **Themes UX polish**: Pro+ gate for save/import/export theme actions; expanded wallpaper preset catalog; improved swatch borders and preset grid layout.
+
+### Changed
+- General settings help, tour, and @mentions cross-links (composer default, Discovery GPU caveats, unit labels).
+
+### Fixed
+- System font picker excludes Font Awesome and other icon-font families on Windows.
+
 ## [1.2.8] - 2026-08-02
 
 ### Added
