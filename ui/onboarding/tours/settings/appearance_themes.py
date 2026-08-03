@@ -21,9 +21,9 @@ def build_settings_appearance_themes_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="Themes settings",
             body=(
-                "Customize appearance, theme colors, and chat or library wallpapers. "
-                "Each card has its own preview and action row — changes stay in draft "
-                "until you press Apply on that card."
+                "Customize appearance, theme colors, reading font, and chat or library "
+                "wallpapers. Each card has its own preview and action row — changes stay "
+                "in draft until you press Apply on that card."
             ),
             on_enter=_open,
         ),
@@ -79,6 +79,29 @@ def build_settings_appearance_themes_tour(host) -> OnboardingTour:
                 "Cancel matches Revert. Apply commits the color draft globally."
             ),
             target_getter=lambda h: _sv(h).themes_colors_apply_btn,
+            on_enter=_open,
+        ),
+        OnboardingStep(
+            step_id="reading_font",
+            title="Reading font",
+            body=(
+                "Pick a bundled font (Inter, Source Sans 3, IBM Plex Sans, Literata) or "
+                "Browse system fonts… for a face installed on this computer. Chat and "
+                "library previews use this typeface; interface chrome keeps the default "
+                "app font. Preview the sample text, then Apply to commit."
+            ),
+            target_getter=lambda h: _sv(h).themes_reading_font_selector,
+            on_enter=_open,
+        ),
+        OnboardingStep(
+            step_id="reading_font_actions",
+            title="Reading font actions",
+            body=(
+                "Reset to default restores Inter in the draft. Revert and Cancel restore "
+                "the draft to the font currently applied. Apply updates Conversations "
+                "and Library transcript text."
+            ),
+            target_getter=lambda h: _sv(h).themes_reading_font_apply_btn,
             on_enter=_open,
         ),
         OnboardingStep(

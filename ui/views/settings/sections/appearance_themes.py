@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
@@ -22,6 +23,7 @@ from ui.components.brand_buttons import (
     apply_brand_primary,
     apply_brand_secondary,
 )
+from ui.components.selector_button import SelectorButton
 from ui.components.theme_color_swatch import ThemeColorSwatch, theme_color_label_column_width
 from ui.components.theme_picker_button import ThemePickerButton
 from ui.components.wallpaper_picker import WallpaperEditorWidget
@@ -35,6 +37,7 @@ from ui.views.settings.widgets import (
     add_subsection_to_form,
     make_disclosure_row,
     make_settings_hint,
+    register_settings_selector_width,
     settings_layout_row,
 )
 
@@ -408,6 +411,71 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
 
     layout.addWidget(customize_card)
+
+    reading_font_card, reading_font_layout = begin_settings_section_card(
+        host, is_dark=is_dark
+    )
+    host.themes_reading_font_card = reading_font_card
+    reading_font_form = add_settings_card_form(reading_font_layout)
+    add_subsection_to_form(reading_font_form, "Reading font")
+    _add_settings_card_intro(
+        reading_font_form,
+        make_settings_hint(
+            "Choose the typeface for chat messages and library document previews. "
+            "Pick a bundled font or browse fonts installed on this computer. "
+            "Interface chrome keeps the default app font. Changes preview below "
+            "until you press Apply."
+        ),
+    )
+    host.themes_reading_font_selector = SelectorButton("Inter", is_dark=is_dark)
+    host.themes_reading_font_selector.setMaximumWidth(280)
+    register_settings_selector_width(
+        host.themes_reading_font_selector,
+        "Inter",
+        "Source Sans 3",
+        "IBM Plex Sans",
+        "Literata",
+        "Browse system fonts…",
+    )
+    host.themes_reading_font_selector.setMenu(QMenu(host.themes_reading_font_selector))
+    add_settings_full_width_row(reading_font_form, host.themes_reading_font_selector)
+
+    host.themes_reading_font_sample = QLabel(
+        "User: Can you summarize this document?\n"
+        "Assistant: Here is a concise overview of the key points from your library file."
+    )
+    host.themes_reading_font_sample.setObjectName("SettingsHint")
+    host.themes_reading_font_sample.setWordWrap(True)
+    add_settings_full_width_row(reading_font_form, host.themes_reading_font_sample)
+
+    _add_themes_action_row(
+        reading_font_form,
+        host,
+        reset_attr="themes_reading_font_reset_btn",
+        revert_attr="themes_reading_font_revert_btn",
+        cancel_attr="themes_reading_font_cancel_btn",
+        apply_attr="themes_reading_font_apply_btn",
+        reset_object_name="ThemesReadingFontResetButton",
+        revert_object_name="ThemesReadingFontRevertButton",
+        cancel_object_name="ThemesReadingFontCancelButton",
+        apply_object_name="ThemesReadingFontApplyButton",
+        reset_handler=host._on_themes_reading_font_reset_clicked,
+        revert_handler=host._on_themes_reading_font_revert_clicked,
+        cancel_handler=host._on_themes_reading_font_cancel_clicked,
+        apply_handler=host._on_themes_reading_font_apply_clicked,
+        reset_tooltip=(
+            "Reset the reading font draft to Inter. "
+            "The running app is unchanged until you press Apply."
+        ),
+        revert_tooltip=(
+            "Restore the reading font draft to the font currently applied in the app."
+        ),
+        cancel_tooltip="Discard unstaged reading font changes (same as Revert).",
+        apply_tooltip="Apply the reading font draft to Conversations and Library.",
+        is_dark=is_dark,
+    )
+
+    layout.addWidget(reading_font_card)
 
     chat_wallpaper_card, chat_wallpaper_layout = begin_settings_section_card(
         host, is_dark=is_dark

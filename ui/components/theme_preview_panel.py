@@ -47,7 +47,9 @@ from ui.components.selector_button import SelectorButton
 from core.app_settings import (
     get_ui_assistant_message_background,
     get_ui_library_transcript_background,
+    get_ui_reading_font,
 )
+from core.reading_fonts import reading_font_qt_family
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
 from ui.sidebar_dimensions import LEFT_NAV_LIST_SIDEBAR_WIDTH
 from ui.views.settings.settings_card_style import settings_card_content_horizontal_padding_total
@@ -149,6 +151,19 @@ def _preview_shell_colors(resolved: ResolvedTheme) -> dict[str, str]:
         "top_bar": top_bg,
         "border": border,
     }
+
+
+def _resolved_reading_font_family(reading_font_family: str | None) -> str:
+    if reading_font_family:
+        return reading_font_family
+    return reading_font_qt_family(get_ui_reading_font())
+
+
+def _apply_reading_font_label(label: QLabel, family: str, *, font_pt: float) -> None:
+    font = label.font()
+    font.setFamily(family)
+    font.setPointSizeF(font_pt)
+    label.setFont(font)
 
 
 def _memory_edit_button_style(resolved: ResolvedTheme) -> str:
@@ -461,7 +476,9 @@ class ThemeConversationsPreviewScene(QFrame):
         *,
         chat_profile: SurfaceProfile | None = None,
         chat_resolved_wallpaper=None,
+        reading_font_family: str | None = None,
     ) -> None:
+        content_family = _resolved_reading_font_family(reading_font_family)
         colors = _preview_shell_colors(resolved)
         shell_border = resolved.border
         self.setStyleSheet(
@@ -565,16 +582,23 @@ class ThemeConversationsPreviewScene(QFrame):
             f" letter-spacing: 1px; background: transparent; border: none; margin: 0px;"
         )
         self._agent_message.setStyleSheet(
-            f"{resolved.style(AGENT_MESSAGE_SHELL, font_pt=10.0)}"
+            f"{resolved.style(AGENT_MESSAGE_SHELL, font_pt=10.0, font_family=content_family)}"
             f" color: {resolved.chat_agent_text};"
         )
+        _apply_reading_font_label(self._agent_message, content_family, font_pt=10.0)
         self._user_bubble_frame.setStyleSheet(
             resolved.style(USER_BUBBLE_FRAME, high_contrast=False)
             + " border-radius: 12px;"
         )
         self._user_bubble_label.setStyleSheet(
-            resolved.style(USER_BUBBLE_LABEL, high_contrast=False, font_pt=10.0)
+            resolved.style(
+                USER_BUBBLE_LABEL,
+                high_contrast=False,
+                font_pt=10.0,
+                font_family=content_family,
+            )
         )
+        _apply_reading_font_label(self._user_bubble_label, content_family, font_pt=10.0)
 
         self._web_toggle.setChecked(True)
         self._think_toggle.setChecked(False)
@@ -1262,7 +1286,9 @@ class ThemeLibraryPreviewScene(QFrame):
         *,
         library_profile: SurfaceProfile | None = None,
         library_resolved_wallpaper=None,
+        reading_font_family: str | None = None,
     ) -> None:
+        content_family = _resolved_reading_font_family(reading_font_family)
         colors = _preview_shell_colors(resolved)
         shell_border = resolved.border
         self.setStyleSheet(
@@ -1436,8 +1462,14 @@ class ThemeLibraryPreviewScene(QFrame):
             card_layout.setContentsMargins(*margins)
 
         self._body_text.setStyleSheet(
-            resolved.style(TRANSPARENT_TEXT_PREVIEW, color=resolved.text_primary, font_pt=9.0)
+            resolved.style(
+                TRANSPARENT_TEXT_PREVIEW,
+                color=resolved.text_primary,
+                font_pt=9.0,
+                font_family=content_family,
+            )
         )
+        _apply_reading_font_label(self._body_text, content_family, font_pt=9.0)
 
         tools_bg = colors["tools_pane"]
         tools_border = colors["border"]
@@ -1648,13 +1680,14 @@ class ThemePreviewPanel(_ThemePreviewPanelBase):
         pending = self._pending_conversations
         if pending is None:
             return
-        resolved, chat_profile, chat_resolved_wallpaper = pending
+        resolved, chat_profile, chat_resolved_wallpaper, reading_font_family = pending
         width = _preview_snapshot_width(self)
         self._conversations_live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
         self._conversations_live.apply_theme(
             resolved,
             chat_profile=chat_profile,
             chat_resolved_wallpaper=chat_resolved_wallpaper,
+            reading_font_family=reading_font_family,
         )
         height = max(_PREVIEW_SNAPSHOT_HEIGHT, self._conversations_live.height())
         self.setFixedSize(width, height)
@@ -1667,6 +1700,7 @@ class ThemePreviewPanel(_ThemePreviewPanelBase):
         *,
         chat_profile: SurfaceProfile | None = None,
         chat_resolved_wallpaper=None,
+        reading_font_family: str | None = None,
     ) -> None:
         """Repaint preview chrome from ``resolved`` only — never touches the app."""
         self.setStyleSheet(
@@ -1676,6 +1710,7 @@ class ThemePreviewPanel(_ThemePreviewPanelBase):
             resolved,
             chat_profile,
             chat_resolved_wallpaper,
+            reading_font_family,
         )
         self._last_preview_width = 0
         QTimer.singleShot(0, self._repaint_preview)
@@ -1782,13 +1817,14 @@ class ThemeLibraryPreviewPanel(_ThemePreviewPanelBase):
         pending = self._pending_library
         if pending is None:
             return
-        resolved, library_profile, library_resolved_wallpaper = pending
+        resolved, library_profile, library_resolved_wallpaper, reading_font_family = pending
         width = _preview_snapshot_width(self)
         self._live.setFixedSize(width, _PREVIEW_SNAPSHOT_HEIGHT)
         self._live.apply_theme(
             resolved,
             library_profile=library_profile,
             library_resolved_wallpaper=library_resolved_wallpaper,
+            reading_font_family=reading_font_family,
         )
         height = max(_PREVIEW_SNAPSHOT_HEIGHT, self._live.height())
         self.setFixedSize(width, height)
@@ -1801,6 +1837,7 @@ class ThemeLibraryPreviewPanel(_ThemePreviewPanelBase):
         *,
         library_profile: SurfaceProfile | None = None,
         library_resolved_wallpaper=None,
+        reading_font_family: str | None = None,
     ) -> None:
         """Repaint library preview from draft theme and wallpaper only."""
         self.setStyleSheet(
@@ -1810,6 +1847,7 @@ class ThemeLibraryPreviewPanel(_ThemePreviewPanelBase):
             resolved,
             library_profile,
             library_resolved_wallpaper,
+            reading_font_family,
         )
         self._last_preview_width = 0
         QTimer.singleShot(0, self._repaint_preview)

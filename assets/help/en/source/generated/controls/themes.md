@@ -18,6 +18,13 @@ Controls listed top-to-bottom for **Settings → Themes**.
 - **Auto-adjust text for readable contrast**
 - **Advanced colors**
 
+### Reading font
+
+- **Reset to default**
+- **Revert**
+- **Cancel**
+- **Apply**
+
 ### Chat wallpaper
 
 - **Assistant message background**

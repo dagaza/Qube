@@ -1969,6 +1969,15 @@ class ConversationsView(QWidget):
     def _scaled_chat_font_pt(self) -> float:
         return max(8.0, min(28.0, _BASE_CHAT_FONT_PT * self._font_scale))
 
+    def _reading_font_family(self) -> str:
+        from core.app_settings import get_ui_reading_font
+        from core.reading_fonts import reading_font_qt_family
+
+        return reading_font_qt_family(get_ui_reading_font())
+
+    def refresh_reading_font(self) -> None:
+        self._refresh_all_readability()
+
     def _line_height_css_value(self) -> str:
         return _LINE_HEIGHT_CSS.get(
             self._line_height_mode, _LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]
@@ -2039,8 +2048,10 @@ class ConversationsView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         theme = self._theme(is_dark)
         pt = self._scaled_chat_font_pt()
+        family = self._reading_font_family()
         f = lbl.font()
         f.setPointSizeF(pt)
+        f.setFamily(family)
         lbl.setFont(f)
         lbl.document().setDefaultFont(f)
         opt = QTextOption()
@@ -2052,6 +2063,7 @@ class ConversationsView(QWidget):
                 USER_BUBBLE_LABEL,
                 high_contrast=self._high_contrast_enabled,
                 font_pt=pt,
+                font_family=family,
             )
         )
         bubble.setStyleSheet(
@@ -2063,11 +2075,15 @@ class ConversationsView(QWidget):
 
     def _style_agent_message_shell(self, agent: AgentMessageLabel) -> None:
         pt = self._scaled_chat_font_pt()
+        family = self._reading_font_family()
         f = agent.font()
         f.setPointSizeF(pt)
+        f.setFamily(family)
         agent.setFont(f)
         theme = self._theme(getattr(self.window(), "_is_dark_theme", True))
-        agent.setStyleSheet(theme.style(AGENT_MESSAGE_SHELL, font_pt=pt))
+        agent.setStyleSheet(
+            theme.style(AGENT_MESSAGE_SHELL, font_pt=pt, font_family=family)
+        )
         fg = theme.qcolor(theme.text_primary)
         palette = agent.palette()
         palette.setColor(QPalette.ColorRole.Text, fg)

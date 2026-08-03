@@ -143,6 +143,12 @@ _SECTION_BUILDERS = {
 }
 
 
+def is_prestige_menu_action(data: object) -> bool:
+    """Return True when a menu row opens a sub-picker instead of setting the label."""
+    token = str(data)
+    return token.startswith("__") and token.endswith("__") and len(token) > 4
+
+
 class PrestigeMenuMixin:
     """Behavior extracted from SettingsView."""
 
@@ -213,10 +219,18 @@ class PrestigeMenuMixin:
     def _handle_selection(self, button, label, data, callback):
         from ui.views.settings.widgets import (
             SETTINGS_SELECTOR_LABELS_PROP,
+            fit_settings_selector_width,
             refit_settings_selector_width,
         )
 
         callback(data)
+        if is_prestige_menu_action(data):
+            if button.text():
+                fit_settings_selector_width(button, button.text())
+            if hasattr(button, "update"):
+                button.update()
+            return
+
         stored = button.property(SETTINGS_SELECTOR_LABELS_PROP)
         if isinstance(stored, list) and stored:
             if label in stored:

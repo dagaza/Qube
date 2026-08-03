@@ -665,6 +665,15 @@ class LibraryView(QWidget):
     def _scaled_preview_font_pt(self) -> float:
         return max(8.0, min(28.0, _BASE_PREVIEW_FONT_PT * self._font_scale))
 
+    def _reading_font_family(self) -> str:
+        from core.app_settings import get_ui_reading_font
+        from core.reading_fonts import reading_font_qt_family
+
+        return reading_font_qt_family(get_ui_reading_font())
+
+    def refresh_reading_font(self) -> None:
+        self._apply_library_preview_readability()
+
     def _line_height_css_value(self) -> str:
         return _LINE_HEIGHT_CSS.get(
             self._line_height_mode, _LINE_HEIGHT_CSS[_LINE_HEIGHT_COMFORTABLE]
@@ -736,15 +745,22 @@ class LibraryView(QWidget):
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         theme = self._theme(is_dark)
         pt = self._scaled_preview_font_pt()
+        family = self._reading_font_family()
         f = self.text_preview.font()
         f.setPointSizeF(pt)
+        f.setFamily(family)
         self.text_preview.setFont(f)
         doc = self.text_preview.document()
         doc.setDefaultFont(f)
         self._apply_preview_paragraph_formats(doc)
         fg = self._preview_body_color(is_dark)
         self.text_preview.setStyleSheet(
-            theme.style(TRANSPARENT_TEXT_PREVIEW, color=fg, font_pt=pt)
+            theme.style(
+                TRANSPARENT_TEXT_PREVIEW,
+                color=fg,
+                font_pt=pt,
+                font_family=family,
+            )
         )
         self._style_library_transcript_card()
         self._apply_preview_reader_focus_opacity()

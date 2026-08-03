@@ -295,3 +295,71 @@ def test_themes_chat_revert_preserves_library_wallpaper_draft(main_window):
 
     assert settings._surface_profile_dirty(SURFACE_LIBRARY_PREVIEW)
     assert not settings._surface_profile_dirty(SURFACE_CHAT_TRANSCRIPT)
+
+
+def test_themes_reading_font_apply_persists_and_enables_buttons(main_window):
+    from core.app_settings import get_ui_reading_font
+    from core.reading_fonts import READING_FONT_LITERATA
+
+    settings = main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._sync_themes_draft_from_applied()
+
+    assert not settings.themes_reading_font_apply_btn.isEnabled()
+
+    settings._on_themes_reading_font_selected(READING_FONT_LITERATA)
+    assert settings.themes_reading_font_apply_btn.isEnabled()
+
+    settings._on_themes_reading_font_apply_clicked()
+    assert get_ui_reading_font() == READING_FONT_LITERATA
+    assert not settings.themes_reading_font_apply_btn.isEnabled()
+
+    settings._on_themes_reading_font_selected(READING_FONT_LITERATA)
+    settings._on_themes_reading_font_revert_clicked()
+    assert not settings.themes_reading_font_apply_btn.isEnabled()
+
+
+def test_themes_reading_font_browse_keeps_selected_family_label(main_window, monkeypatch):
+    from core.reading_fonts import (
+        READING_FONT_BROWSE_SYSTEM,
+        READING_FONT_BROWSE_SYSTEM_LABEL,
+        reset_reading_font_cache_for_tests,
+    )
+
+    reset_reading_font_cache_for_tests()
+    monkeypatch.setattr(
+        "core.reading_fonts.QFontDatabase.families",
+        lambda: ["Courier New"],
+    )
+
+    class _FakeDialog:
+        DialogCode = type("DialogCode", (), {"Accepted": 1})
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def exec(self):
+            return self.DialogCode.Accepted
+
+        def selected_family(self):
+            return "Courier New"
+
+    monkeypatch.setattr(
+        "ui.components.reading_font_picker_dialog.ReadingFontPickerDialog",
+        _FakeDialog,
+    )
+
+    settings = main_window.ensure_settings_view()
+    settings.select_settings_section("appearance.themes")
+    settings._sync_themes_draft_from_applied()
+    selector = settings.themes_reading_font_selector
+
+    settings._handle_selection(
+        selector,
+        READING_FONT_BROWSE_SYSTEM_LABEL,
+        READING_FONT_BROWSE_SYSTEM,
+        settings._on_themes_reading_font_selected,
+    )
+
+    assert selector.text() == "Courier New (system)"
+    assert settings._draft_reading_font_id() == "system:Courier New"

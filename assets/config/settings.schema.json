@@ -58,6 +58,11 @@
     "default": false,
     "description": "When enabled, library document preview text uses an elevated background card for readability over wallpapers."
   },
+  "qube.ui.reading_font": {
+    "type": "string",
+    "default": "inter",
+    "description": "Reading font for Conversations and Library previews: bundled id (inter, source_sans_3, ibm_plex_sans, literata) or system:<Qt family name> for an OS-installed font."
+  },
   "qube.ui.settings_section_cards_collapsible": {
     "type": "boolean",
     "default": true,

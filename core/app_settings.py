@@ -94,6 +94,8 @@ KEY_SURFACE_PROFILES_ACTIVE = "qube.ui.surface_profiles.active"
 KEY_SURFACE_PROFILES_DRAFT = "qube.ui.surface_profiles.draft"
 KEY_ASSISTANT_MESSAGE_BACKGROUND = "qube.ui.chat.assistant_message_background"
 KEY_LIBRARY_TRANSCRIPT_BACKGROUND = "qube.ui.library.transcript_background"
+KEY_UI_READING_FONT = "qube.ui.reading_font"
+DEFAULT_UI_READING_FONT = "inter"
 KEY_UI_SETTINGS_SECTION_CARDS_COLLAPSIBLE = "qube.ui.settings_section_cards_collapsible"
 KEY_UI_SETTINGS_SECTION_CARDS_DEFAULT_EXPANDED = "qube.ui.settings_section_cards_default_expanded"
 KEY_PROFILE_UNITS = "qube.profile.units"
@@ -1949,6 +1951,19 @@ def get_ui_library_transcript_background() -> bool:
 
 def set_ui_library_transcript_background(enabled: bool) -> None:
     _store().set(KEY_LIBRARY_TRANSCRIPT_BACKGROUND, bool(enabled))
+
+
+def get_ui_reading_font() -> str:
+    from core.reading_fonts import DEFAULT_READING_FONT_ID, normalize_reading_font_id
+
+    raw = _store().get(KEY_UI_READING_FONT, DEFAULT_READING_FONT_ID)
+    return normalize_reading_font_id(str(raw) if raw is not None else None)
+
+
+def set_ui_reading_font(font_id: str) -> None:
+    from core.reading_fonts import normalize_reading_font_id
+
+    _store().set(KEY_UI_READING_FONT, normalize_reading_font_id(font_id))
 
 
 def get_settings_section_cards_collapsible() -> bool:
