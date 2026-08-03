@@ -10,9 +10,9 @@
 
 **General** settings cover application-wide interface preferences: **Language**, **Personalization** (default units), **Composer** @-mention routing, and **Discovery** hints for Model Manager.
 
-These choices affect labels and system messages across Settings, Conversations, and Library—they do not change the language model’s reply language unless you ask it separately in chat.
-
 Under **Language**, choose **British English** or **American English** to switch visible copy (spelling and phrasing such as *colour* vs *color*).
+
+These choices affect labels and system messages across Settings, Conversations, and Library—they do not change the language model’s reply language unless you ask it separately in chat.
 
 ## Where to find it
 
