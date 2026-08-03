@@ -24,6 +24,7 @@ DEFAULT_READING_FONT_ID = READING_FONT_INTER
 _FALLBACK_QT_FAMILY = "Inter"
 
 _SYSTEM_FAMILY_SKIP_FRAGMENTS = (
+    "awesome",  # Font Awesome icon families
     "icon",
     "emoji",
     "symbol",
