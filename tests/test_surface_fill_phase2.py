@@ -35,6 +35,10 @@ def test_picker_lists_all_builtin_presets():
     assert "builtin.nebula" in ids
     assert "builtin.catppuccin-gradient" in ids
     assert "builtin.catppuccin-latte-gradient" in ids
+    assert "builtin.qube-signature" in ids
+    assert "builtin.midnight-ember" in ids
+    assert "builtin.peach-sorbet" in ids
+    assert "builtin.morning-glow" in ids
 
 
 def test_import_wallpaper_copies_to_user_dir(tmp_path, monkeypatch):

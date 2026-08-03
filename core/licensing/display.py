@@ -61,7 +61,7 @@ def license_banner_body(summary: Mapping[str, Any]) -> str:
     if state == "home":
         return (
             "Import a signed .qube-license file to unlock Pro and Team capabilities "
-            "such as Library Pro depth, theme packs, and precision indexing."
+            "such as Library Pro depth, Share themes, and precision indexing."
         )
     if state == "invalid":
         return (
@@ -155,6 +155,18 @@ def library_pro_depth_hint_text(*, licensed: bool) -> str:
             "Use Normal indexing per upload when you want faster imports."
         )
     return "Import a Pro license under Settings → License to unlock these toggles."
+
+
+def share_themes_hint_text(*, licensed: bool) -> str:
+    if licensed:
+        return (
+            "Pro license active — share themes with the community using JSON files "
+            "or zip theme packs (colors, wallpapers, and bundled images)."
+        )
+    return (
+        "Import a Pro license under Settings → License to unlock Save as custom theme, "
+        "theme JSON import/export, and theme pack import/export."
+    )
 
 
 def format_license_status_text(summary: Mapping[str, Any]) -> str:

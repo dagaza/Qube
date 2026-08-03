@@ -123,12 +123,16 @@ if _PYQT_AVAILABLE:
             self.license_status_lbl = QLabel(parent=self._window)
             self.remove_license_btn = QPushButton(parent=self._window)
             self.library_pro_sync_calls = 0
+            self.share_themes_sync_calls = 0
 
         def window(self):
             return self._window
 
         def _sync_library_pro_features(self) -> None:
             self.library_pro_sync_calls += 1
+
+        def _sync_share_themes_pro_features(self) -> None:
+            self.share_themes_sync_calls += 1
 
     class TestPrivacyDataHandlers(unittest.TestCase):
         @classmethod
@@ -318,6 +322,7 @@ if _PYQT_AVAILABLE:
                     refresh_mock.assert_called_once()
                     celebrate_mock.assert_called_once()
                     self.assertEqual(host.library_pro_sync_calls, 1)
+                    self.assertEqual(host.share_themes_sync_calls, 1)
 
         @patch("ui.components.celebration_burst.show_border_fireworks")
         @patch("PyQt6.QtCore.QTimer.singleShot", side_effect=lambda _ms, fn: fn())
@@ -355,6 +360,7 @@ if _PYQT_AVAILABLE:
                 host._on_remove_license_clicked()
                 refresh_mock.assert_called_once()
                 self.assertEqual(host.library_pro_sync_calls, 1)
+                self.assertEqual(host.share_themes_sync_calls, 1)
 
 
 if __name__ == "__main__":

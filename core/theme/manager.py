@@ -383,6 +383,9 @@ class ThemeManager:
         surface_profiles: SurfaceProfileSet,
         overrides: Mapping[str, str] | None = None,
     ) -> None:
+        from core.theme_pro_features import require_pro_share_themes
+
+        require_pro_share_themes()
         scheme_payload = self.export_scheme_payload_for_pack(scheme_id, overrides)
         export_theme_pack_to_path(
             path,
@@ -391,6 +394,9 @@ class ThemeManager:
         )
 
     def import_theme_pack_from_path(self, path: Path) -> ThemePackAppliedResult:
+        from core.theme_pro_features import require_pro_share_themes
+
+        require_pro_share_themes()
         parsed = read_theme_pack_from_path(path)
         definition = self.import_scheme_payload(parsed.scheme)
         return ThemePackAppliedResult(
@@ -400,10 +406,16 @@ class ThemeManager:
         )
 
     def export_scheme_to_path(self, scheme_id: str, path: Path) -> None:
+        from core.theme_pro_features import require_pro_share_themes
+
+        require_pro_share_themes()
         payload = self.export_scheme_payload(scheme_id)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     def import_scheme_from_path(self, path: Path) -> ColorSchemeDefinition:
+        from core.theme_pro_features import require_pro_share_themes
+
+        require_pro_share_themes()
         payload = json.loads(path.read_text(encoding="utf-8"))
         return self.import_scheme_payload(payload)
 
@@ -436,6 +448,9 @@ class ThemeManager:
         scheme_id: str,
         overrides: Mapping[str, str] | None = None,
     ) -> ColorSchemeDefinition:
+        from core.theme_pro_features import require_pro_share_themes
+
+        require_pro_share_themes()
         cleaned = name.strip()
         if not cleaned:
             raise ValueError("Scheme name is required")

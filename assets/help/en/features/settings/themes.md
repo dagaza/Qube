@@ -78,7 +78,7 @@ Controls listed top-to-bottom for **Settings → Themes**.
 
 - **Library transcript background**
 
-### Share themes
+### Share themes (Pro+)
 
 - **Save as custom theme…**
 - **Import theme…**

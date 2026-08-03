@@ -118,7 +118,7 @@ def test_export_includes_family_metadata():
     assert payload["variant"] == "mocha"
 
 
-def test_save_draft_persists_family(tmp_path, monkeypatch):
+def test_save_draft_persists_family(tmp_path, monkeypatch, grant_pro_share_themes):
     monkeypatch.setattr("core.theme.storage.themes_directory", lambda: tmp_path)
     storage = ThemeStorage()
 

@@ -93,7 +93,7 @@ _PRESET_TILE_WIDTH = 108
 _PRESET_THUMB_WIDTH = 96
 _PRESET_THUMB_HEIGHT = 56
 _PRESET_LABEL_MIN_HEIGHT = 34
-_PRESET_GRID_COLUMNS = 3
+_PRESET_GRID_COLUMNS = 5
 _WALLPAPER_SOLID_PANEL_MARGINS = (4, 8, 4, 8)
 
 
@@ -177,6 +177,9 @@ class _GradientStopRow(QWidget):
 
     def apply_theme(self, theme: ResolvedTheme) -> None:
         _style_wallpaper_gradient_remove_button(self._remove_btn, theme)
+
+    def apply_swatch_background(self, color: str) -> None:
+        self._swatch.set_background_color(color)
 
     def color(self) -> str:
         return self._swatch.color()
@@ -604,9 +607,16 @@ class WallpaperEditorWidget(QWidget):
 
     def _style_gradient_controls(self, theme: ResolvedTheme) -> None:
         _style_wallpaper_gradient_add_stop_button(self._gradient_add_stop_btn, theme)
+        self._refresh_color_swatch_backgrounds(theme)
         for row in self._gradient_stop_rows:
             row.apply_theme(theme)
         self._update_gradient_add_stop_button_state(len(self._gradient_stop_rows))
+
+    def _refresh_color_swatch_backgrounds(self, theme: ResolvedTheme) -> None:
+        background = theme.surface_elevated
+        self._solid_swatch.set_background_color(background)
+        for row in self._gradient_stop_rows:
+            row.apply_swatch_background(background)
 
     def _update_gradient_add_stop_button_state(self, stop_count: int) -> None:
         can_add = stop_count < GRADIENT_MAX_STOPS
@@ -668,6 +678,7 @@ class WallpaperEditorWidget(QWidget):
         theme = self._active_resolved_theme()
         for row in self._gradient_stop_rows:
             row.apply_theme(theme)
+        self._refresh_color_swatch_backgrounds(theme)
         self._update_gradient_add_stop_button_state(count)
 
     def _sync_gradient_from_wallpaper(self, wallpaper: WallpaperGradient) -> None:

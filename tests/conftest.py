@@ -34,6 +34,20 @@ def pytest_sessionfinish(session, exitstatus):
         os._exit(0)
 
 
+@pytest.fixture
+def grant_pro_share_themes():
+    """Enable Share themes manager methods in tests (Pro license gate)."""
+    from core import capabilities as mod
+    from core.capabilities import invalidate_capabilities_cache
+
+    original = mod._GRANT_ALL_CAPABILITIES_OVERRIDE
+    mod._GRANT_ALL_CAPABILITIES_OVERRIDE = True
+    invalidate_capabilities_cache()
+    yield
+    mod._GRANT_ALL_CAPABILITIES_OVERRIDE = original
+    invalidate_capabilities_cache()
+
+
 @pytest.fixture(scope="session")
 def qapp_cls():
     """Use the real QubeApplication so QSS / tooltip routing is exercised."""

@@ -589,13 +589,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     share_card, share_layout = begin_settings_section_card(host, is_dark=is_dark)
     host.themes_share_card = share_card
     share_form = add_settings_card_form(share_layout)
-    add_subsection_to_form(share_form, "Share themes")
+    add_subsection_to_form(share_form, "Share Themes (Pro+)")
     add_settings_span_row(share_form, make_settings_hint(
             "Export a theme as JSON, import one from another machine, save "
             "the current draft as a custom preset, or share a theme pack "
             "(colors, wallpapers, and images) as a zip file."
         )
     )
+    host.themes_share_hint = QLabel("")
+    host.themes_share_hint.setObjectName("SettingsHint")
+    host.themes_share_hint.setWordWrap(True)
+    add_settings_span_row(share_form, host.themes_share_hint)
     share_host = QWidget()
     share_host.setMinimumWidth(0)
     share_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)

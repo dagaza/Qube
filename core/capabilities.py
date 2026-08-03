@@ -72,9 +72,9 @@ class EditionCapabilities:
 CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
     CapabilitySpec(
         "pro.theme_packs",
-        "Premium theme packs",
+        "Share themes (Pro+ community)",
         EditionTier.PRO,
-        "Import signed official theme/appearance packs.",
+        "Settings → Themes Share themes card: JSON + zip import/export, save-as-custom.",
     ),
     CapabilitySpec(
         "pro.knowledge_packs_official",

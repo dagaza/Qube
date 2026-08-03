@@ -170,7 +170,9 @@ def test_read_theme_pack_rejects_unsafe_paths(tmp_path):
         read_theme_pack_from_path(pack_path)
 
 
-def test_theme_manager_export_import_roundtrip(wallpapers_dir, tmp_path, monkeypatch):
+def test_theme_manager_export_import_roundtrip(
+    wallpapers_dir, tmp_path, monkeypatch, grant_pro_share_themes
+):
     image_path = wallpapers_dir / "draft-bg.png"
     _make_test_png(image_path)
 
