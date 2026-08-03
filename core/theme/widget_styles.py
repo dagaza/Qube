@@ -341,6 +341,14 @@ def _agent_message_frame_bg(resolved: ResolvedTheme, *, high_contrast: bool) -> 
     return resolved.surface_elevated
 
 
+def _optional_font_family_css(kwargs: dict) -> str:
+    family = kwargs.get("font_family")
+    if not family:
+        return ""
+    escaped = str(family).replace("\\", "\\\\").replace('"', '\\"')
+    return f'font-family: "{escaped}"; '
+
+
 def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
     if role == GHOST_ICON_BUTTON:
         padding = kwargs.get("padding", "6px")
@@ -429,11 +437,13 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         fg = _user_bubble_text(resolved, high_contrast=high_contrast)
         return (
             f"background: transparent; border: none; padding: 0px; "
+            f"{_optional_font_family_css(kwargs)}"
             f"font-size: {float(font_pt):.1f}pt; color: {fg};"
         )
     if role == AGENT_MESSAGE_SHELL:
         font_pt = kwargs.get("font_pt", 12.0)
         return (
+            f"{_optional_font_family_css(kwargs)}"
             f"font-size: {float(font_pt):.1f}pt; background: transparent; "
             f"border: none; padding: 0px;"
         )
@@ -546,6 +556,7 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
         font_pt = float(kwargs.get("font_pt", 12.0))
         return (
             f"background: transparent; border: none; color: {fg}; "
+            f"{_optional_font_family_css(kwargs)}"
             f"font-size: {font_pt:.1f}pt;"
         )
     if role == CONNECTIVITY_ERROR_BANNER:

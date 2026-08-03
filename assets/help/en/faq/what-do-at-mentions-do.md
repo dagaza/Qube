@@ -27,8 +27,11 @@ at mentions, composer attachments, @ tools, @ skills, @ commands, tool tokens
 3. Add a **skill** alongside a tool when you want a structured reasoning frame (research synthesis, etc.).
 4. Use **commands** for app actions—not for model prompts.
 5. Consult generated reference pages in **Library → Qube** for the authoritative token list on your version.
+6. **Typed shorthands** — To route by typing `@research` or `@internet` without the palette, enable **Settings → General → Composer → Treat typed @tool shorthands as routing**. Off by default; the `@` picker and chips are recommended.
 
 ## Related
+
+- [General settings](../features/settings/general.md) — Composer routing toggle and other app-wide preferences
 
 - [Composer attachments reference](../reference/composer-attachments.md) — `@[file:…]`, `@[chat:…]`, routing order
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — pre/post overrides and route vocabulary

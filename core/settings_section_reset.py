@@ -120,6 +120,7 @@ SECTION_SETTING_KEYS: dict[str, tuple[str, ...]] = {
         app.KEY_SURFACE_PROFILES_DRAFT,
         app.KEY_ASSISTANT_MESSAGE_BACKGROUND,
         app.KEY_LIBRARY_TRANSCRIPT_BACKGROUND,
+        app.KEY_UI_READING_FONT,
     ),
 }
 

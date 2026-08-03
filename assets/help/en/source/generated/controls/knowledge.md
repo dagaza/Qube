@@ -29,7 +29,6 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 
 ### Advanced embedding
 
-- **Show advanced embedding settings**
 - **Use selected**
 - **Refresh**
 - **Delete**

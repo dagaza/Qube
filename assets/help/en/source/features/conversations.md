@@ -12,6 +12,7 @@
 - How do I open sources or citations in a reply?
 - Can I regenerate or edit a message?
 - How do I change the chat background wallpaper?
+- How do I change the chat reading font or typeface?
 
 ## What it is
 
@@ -67,7 +68,7 @@ Grouped top-to-bottom like the Conversations layout. Readability choices apply t
 
 | Control | What it does |
 |---------|----------------|
-| **A−** / **A+** | Decrease / increase chat font (Shift+click: larger step) |
+| **A−** / **A+** | Decrease / increase chat **font size** for this session only (Shift+click: larger step). To change the **typeface**, use **Settings → Themes → Reading font**. |
 | Line spacing icon | Cycles **Compact**, **Comfortable**, **Relaxed** line spacing |
 | Text alignment icon | Toggles **Left** and **Justified** alignment |
 | Reader focus | Dims other messages; hover a message to focus it |

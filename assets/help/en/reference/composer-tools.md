@@ -46,6 +46,12 @@ Multi-step evidence report (async, non-blocking)
 
 Use for a multi-step async literature review report.
 
+### Pro deep research — `@[tool:proresearch]` (advanced palette)
+
+Thorough @research with higher local orchestration limits (Pro)
+
+Use for thorough deep research with higher local limits (Pro).
+
 ### Internet — `@[tool:internet]`
 
 Live web search
@@ -108,7 +114,7 @@ Use for CS, physics, and math preprints.
 
 ## Advanced palette tools
 
-These built-in tools are hidden from the default **Tools** browse list until you type `@` and search for the tool id: `recipe`, `science`, `wikipedia`, `pubmed`, `arxiv`.
+These built-in tools are hidden from the default **Tools** browse list until you type `@` and search for the tool id: `proresearch`, `recipe`, `science`, `wikipedia`, `pubmed`, `arxiv`.
 
 Type the id (for example `pubmed`) or pick the token once it appears.
 

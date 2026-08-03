@@ -321,6 +321,10 @@ class StylingMixin:
             if callable(apply_theme):
                 apply_theme(is_dark)
 
+        sync_reading_font = getattr(self, "_sync_themes_reading_font_controls", None)
+        if callable(sync_reading_font):
+            sync_reading_font()
+
         update_themes_actions = getattr(self, "_update_themes_action_buttons", None)
         if callable(update_themes_actions):
             update_themes_actions()

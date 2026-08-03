@@ -1645,6 +1645,10 @@ if __name__ == "__main__":
         app_font.setStyleHint(QFont.StyleHint.SansSerif)
         app.setFont(app_font)
 
+    from core.reading_fonts import ensure_reading_fonts_loaded
+
+    ensure_reading_fonts_loaded()
+
     from core.theme.applicator import ThemeApplicator
     from core.theme.feature_flags import is_generated_theme_enabled
     from core.theme.manager import ThemeManager

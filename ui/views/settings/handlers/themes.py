@@ -13,8 +13,10 @@ from PyQt6.QtCore import QTimer
 from core.app_settings import (
     get_ui_assistant_message_background,
     get_ui_library_transcript_background,
+    get_ui_reading_font,
     set_ui_assistant_message_background,
     set_ui_library_transcript_background,
+    set_ui_reading_font,
 )
 from core.surface_fill.constants import (
     SURFACE_CHAT_TRANSCRIPT,
@@ -47,6 +49,17 @@ from core.theme_pro_features import (
     sync_share_themes_pro_features,
     user_has_pro_share_themes,
 )
+from core.reading_fonts import (
+    DEFAULT_READING_FONT_ID,
+    READING_FONT_BROWSE_SYSTEM,
+    READING_FONT_BROWSE_SYSTEM_LABEL,
+    READING_FONT_CHOICES,
+    make_system_reading_font_id,
+    normalize_reading_font_id,
+    parse_system_reading_font_family,
+    reading_font_display_label,
+    reading_font_qt_family,
+)
 from ui.components.brand_buttons import (
     apply_brand_caution,
     apply_brand_danger,
@@ -54,6 +67,7 @@ from ui.components.brand_buttons import (
     apply_brand_secondary,
 )
 from ui.components.prestige_dialog import PrestigeDialog
+from ui.components.selector_button import SelectorButton
 from ui.components.theme_color_swatch import ThemeColorSwatch
 from ui.components.theme_picker_button import ThemePickerButton
 from ui.components.wallpaper_picker import WallpaperEditorWidget
@@ -97,6 +111,7 @@ class ThemesHandlersMixin:
         self._themes_draft_overrides = {}
         self._themes_draft_appearance = None
         self._themes_draft_surface_profiles = default_surface_profile_set()
+        self._themes_draft_reading_font = get_ui_reading_font()
         self._themes_pending_fallback_scheme_id = None
         self._ensure_themes_manager_subscription()
         self._sync_themes_draft_from_applied(defer_preview=defer_preview)
@@ -115,6 +130,10 @@ class ThemesHandlersMixin:
             apply_theme = getattr(editor, "apply_theme", None)
             if callable(apply_theme):
                 apply_theme(is_dark)
+        reading_selector = getattr(self, "themes_reading_font_selector", None)
+        if isinstance(reading_selector, SelectorButton):
+            reading_selector.apply_theme(is_dark)
+        self._build_themes_reading_font_menu()
         self._apply_themes_action_button_styles(is_dark)
         self._sync_share_themes_pro_features()
         self._ensure_themes_manager_subscription()
@@ -364,6 +383,139 @@ class ThemesHandlersMixin:
     def _themes_library_card_is_dirty(self) -> bool:
         return self._surface_profile_dirty(SURFACE_LIBRARY_PREVIEW)
 
+    def _draft_reading_font_id(self) -> str:
+        return normalize_reading_font_id(
+            getattr(self, "_themes_draft_reading_font", DEFAULT_READING_FONT_ID)
+        )
+
+    def _themes_reading_font_draft_is_dirty(self) -> bool:
+        return self._draft_reading_font_id() != get_ui_reading_font()
+
+    def _draft_reading_font_qt_family(self) -> str:
+        return reading_font_qt_family(self._draft_reading_font_id())
+
+    def _build_themes_reading_font_menu(self) -> None:
+        selector = getattr(self, "themes_reading_font_selector", None)
+        if not isinstance(selector, SelectorButton):
+            return
+        items = [(choice.label, choice.font_id) for choice in READING_FONT_CHOICES]
+        items.append((READING_FONT_BROWSE_SYSTEM_LABEL, READING_FONT_BROWSE_SYSTEM))
+        self._build_prestige_menu(
+            selector,
+            items,
+            self._on_themes_reading_font_selected,
+        )
+        self._sync_themes_reading_font_controls()
+
+    def _open_system_reading_font_picker(self) -> None:
+        from ui.components.reading_font_picker_dialog import ReadingFontPickerDialog
+
+        draft_id = self._draft_reading_font_id()
+        initial_family = parse_system_reading_font_family(draft_id)
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dialog = ReadingFontPickerDialog(
+            self.window(),
+            initial_family=initial_family,
+            is_dark=is_dark,
+        )
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            self._sync_themes_reading_font_controls()
+            return
+        family = dialog.selected_family()
+        font_id = make_system_reading_font_id(family)
+        if font_id is None:
+            return
+        self._themes_draft_reading_font = font_id
+        self._sync_themes_reading_font_controls()
+        self._refresh_themes_draft_previews()
+        self._update_themes_action_buttons()
+
+    def _style_themes_reading_font_sample(self) -> None:
+        sample = getattr(self, "themes_reading_font_sample", None)
+        if sample is None:
+            return
+        from ui.views.settings.settings_theme import resolve_settings_theme
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        theme = resolve_settings_theme(self, is_dark=is_dark)
+        family = self._draft_reading_font_qt_family()
+        escaped = str(family).replace("\\", "\\\\").replace('"', '\\"')
+        sample.setStyleSheet(
+            f"color: {theme.text_muted}; "
+            f"font-size: 12px; font-weight: normal; "
+            f'font-family: "{escaped}"; '
+            f"background: transparent; border: none;"
+        )
+        font = sample.font()
+        font.setFamily(family)
+        font.setPointSizeF(12.0)
+        sample.setFont(font)
+
+    def _sync_themes_reading_font_controls(self) -> None:
+        selector = getattr(self, "themes_reading_font_selector", None)
+        if not isinstance(selector, SelectorButton):
+            return
+        font_id = self._draft_reading_font_id()
+        selector.setText(reading_font_display_label(font_id))
+        self._style_themes_reading_font_sample()
+        from ui.views.settings.widgets import fit_settings_selector_width
+
+        label_pool = [choice.label for choice in READING_FONT_CHOICES]
+        label_pool.append(READING_FONT_BROWSE_SYSTEM_LABEL)
+        label_pool.append(reading_font_display_label(font_id))
+        fit_settings_selector_width(selector, *label_pool)
+
+    def _sync_reading_font_draft_from_applied(self) -> None:
+        self._themes_draft_reading_font = get_ui_reading_font()
+        self._sync_themes_reading_font_controls()
+
+    def _notify_reading_font_applied(self) -> None:
+        win = self.window()
+        conversations = getattr(win, "conversations_view", None)
+        if conversations is not None and hasattr(conversations, "refresh_reading_font"):
+            conversations.refresh_reading_font()
+        peek = getattr(win, "peek_library_view", None)
+        library = peek() if callable(peek) else getattr(win, "_library_view", None)
+        if library is not None and hasattr(library, "refresh_reading_font"):
+            library.refresh_reading_font()
+
+    def _on_themes_reading_font_selected(self, font_id: str) -> None:
+        if font_id == READING_FONT_BROWSE_SYSTEM:
+            self._open_system_reading_font_picker()
+            return
+        self._themes_draft_reading_font = normalize_reading_font_id(font_id)
+        self._sync_themes_reading_font_controls()
+        self._refresh_themes_draft_previews()
+        self._update_themes_action_buttons()
+
+    def _on_themes_reading_font_reset_clicked(self) -> None:
+        if self._draft_reading_font_id() == DEFAULT_READING_FONT_ID:
+            return
+        self._themes_draft_reading_font = DEFAULT_READING_FONT_ID
+        self._sync_themes_reading_font_controls()
+        self._refresh_themes_draft_previews()
+        self._update_themes_action_buttons()
+
+    def _on_themes_reading_font_revert_clicked(self) -> None:
+        if not self._themes_reading_font_draft_is_dirty():
+            return
+        self._sync_reading_font_draft_from_applied()
+        self._refresh_themes_draft_previews()
+        self._update_themes_action_buttons()
+
+    def _on_themes_reading_font_cancel_clicked(self) -> None:
+        self._on_themes_reading_font_revert_clicked()
+
+    def _on_themes_reading_font_apply_clicked(self) -> None:
+        if not self._themes_reading_font_draft_is_dirty():
+            return
+        set_ui_reading_font(self._draft_reading_font_id())
+        self._sync_reading_font_draft_from_applied()
+        self._notify_reading_font_applied()
+        self._refresh_themes_draft_previews()
+        self._update_themes_action_buttons()
+        logger.info("Applied reading font draft from Settings → Themes")
+
     def _apply_active_surface_profile(self, surface_id: str, *, persist: bool = True) -> None:
         manager = self._settings_theme_manager()
         if manager is None:
@@ -541,6 +693,7 @@ class ThemesHandlersMixin:
             self._themes_chat_card_is_dirty()
             or self._themes_library_card_is_dirty()
             or self._themes_colors_draft_is_dirty()
+            or self._themes_reading_font_draft_is_dirty()
         )
 
     def _effective_draft_overrides(self) -> dict[str, str] | None:
@@ -559,6 +712,7 @@ class ThemesHandlersMixin:
     def _sync_themes_draft_from_applied(self, *, defer_preview: bool = False) -> None:
         self._sync_chat_card_draft_from_applied(defer_preview=defer_preview)
         self._sync_surface_draft_from_applied(SURFACE_LIBRARY_PREVIEW)
+        self._sync_reading_font_draft_from_applied()
         self._update_themes_wallpaper_controls()
         self._update_themes_action_buttons()
 
@@ -710,6 +864,7 @@ class ThemesHandlersMixin:
             "themes_reset",
             "themes_colors_reset",
             "themes_library_reset",
+            "themes_reading_font_reset",
         ):
             btn = getattr(self, f"{prefix}_btn", None)
             if btn is not None:
@@ -734,6 +889,9 @@ class ThemesHandlersMixin:
             ("themes_library_revert", True),
             ("themes_library_cancel", False),
             ("themes_library_apply", False),
+            ("themes_reading_font_revert", True),
+            ("themes_reading_font_cancel", False),
+            ("themes_reading_font_apply", False),
         ):
             if prefix.endswith("_revert"):
                 btn = getattr(self, f"{prefix}_btn", None)
@@ -830,6 +988,7 @@ class ThemesHandlersMixin:
             library_bg_cb.blockSignals(True)
             library_bg_cb.setChecked(get_ui_library_transcript_background())
             library_bg_cb.blockSignals(False)
+        self._sync_themes_reading_font_controls()
 
     def _on_themes_assistant_message_background_toggled(self, checked: bool) -> None:
         set_ui_assistant_message_background(bool(checked))
@@ -860,6 +1019,7 @@ class ThemesHandlersMixin:
             resolved,
             chat_profile=chat_profile,
             chat_resolved_wallpaper=chat_wallpaper,
+            reading_font_family=self._draft_reading_font_qt_family(),
         )
 
     def _refresh_themes_components_preview(self) -> None:
@@ -890,6 +1050,7 @@ class ThemesHandlersMixin:
             resolved,
             library_profile=library_profile,
             library_resolved_wallpaper=library_wallpaper,
+            reading_font_family=self._draft_reading_font_qt_family(),
         )
 
     def _on_themes_library_transcript_background_toggled(self, checked: bool) -> None:
@@ -1016,6 +1177,28 @@ class ThemesHandlersMixin:
             else:
                 library_apply.setToolTip(
                     "Change library wallpaper settings to enable Apply."
+                )
+        reading_font_dirty = self._themes_reading_font_draft_is_dirty()
+        reading_font_at_default = self._draft_reading_font_id() == DEFAULT_READING_FONT_ID
+        reading_font_reset = getattr(self, "themes_reading_font_reset_btn", None)
+        if reading_font_reset is not None:
+            reading_font_reset.setEnabled(not reading_font_at_default)
+        reading_font_revert = getattr(self, "themes_reading_font_revert_btn", None)
+        reading_font_cancel = getattr(self, "themes_reading_font_cancel_btn", None)
+        reading_font_apply = getattr(self, "themes_reading_font_apply_btn", None)
+        if reading_font_revert is not None:
+            reading_font_revert.setEnabled(reading_font_dirty)
+        if reading_font_cancel is not None:
+            reading_font_cancel.setEnabled(reading_font_dirty)
+        if reading_font_apply is not None:
+            reading_font_apply.setEnabled(reading_font_dirty)
+            if reading_font_dirty:
+                reading_font_apply.setToolTip(
+                    "Apply the reading font draft to Conversations and Library."
+                )
+            else:
+                reading_font_apply.setToolTip(
+                    "Choose a different reading font to enable Apply."
                 )
         save_btn = getattr(self, "themes_save_as_btn", None)
         if save_btn is not None:
@@ -1218,6 +1401,10 @@ class ThemesHandlersMixin:
         QTimer.singleShot(0, lambda: self._apply_themes_action_button_styles(is_dark))
         # Sync swatches before the next paint; preview refresh runs after lazy init.
         self._ensure_themes_draft_controls_synced(defer_preview=True)
+        self._build_themes_reading_font_menu()
+        reading_selector = getattr(self, "themes_reading_font_selector", None)
+        if isinstance(reading_selector, SelectorButton):
+            reading_selector.apply_theme(is_dark)
         QTimer.singleShot(0, self._finish_themes_section_enter)
 
     def _on_themes_section_leave(self) -> None:
@@ -1281,6 +1468,11 @@ class ThemesHandlersMixin:
             adv_toggle.blockSignals(False)
         if adv_panel is not None:
             adv_panel.setVisible(False)
+
+        set_ui_reading_font(DEFAULT_READING_FONT_ID)
+        self._themes_draft_reading_font = DEFAULT_READING_FONT_ID
+        self._sync_themes_reading_font_controls()
+        self._notify_reading_font_applied()
 
         self._sync_themes_draft_from_applied()
 

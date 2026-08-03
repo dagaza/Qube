@@ -40,8 +40,8 @@ def build_settings_general_tour(host) -> OnboardingTour:
             step_id="units",
             title="Personalization",
             body=(
-                "Choose default measurement units for weather and other numeric answers, "
-                "or let Qube infer units from conversation."
+                "Pick **Use inferred units** (default), **Metric**, or **Imperial** for weather "
+                "and other numeric answers."
             ),
             target_getter=lambda h: _sv(h).profile_units_selector,
             on_enter=_open,
@@ -50,8 +50,8 @@ def build_settings_general_tour(host) -> OnboardingTour:
             step_id="composer",
             title="Composer @ mentions",
             body=(
-                "Optionally treat typed @tool shorthands (e.g. @research) as routing, "
-                "or keep using the @ picker and chips above the composer."
+                "Optional: typed @tool shorthands (e.g. @research) route like the @ palette. "
+                "Off by default—recommended to use Attach (@) or chips above the composer."
             ),
             target_getter=lambda h: _sv(h).composer_bare_mention_routing_cb,
             on_enter=lambda h: open_settings_section(h, "general", anchor="composer"),
@@ -60,8 +60,8 @@ def build_settings_general_tour(host) -> OnboardingTour:
             step_id="hardware_hints",
             title="Hardware-aware Model Manager",
             body=(
-                "When enabled, Model Manager ranks verified models and shows Good fit "
-                "badges from detected RAM and VRAM."
+                "Rank verified models and show Good fit badges from detected RAM and VRAM. "
+                "May be less reliable on integrated GPUs or APUs."
             ),
             target_getter=lambda h: _sv(h).model_manager_hardware_suggestions_cb,
             on_enter=lambda h: open_settings_section(h, "general", anchor="discovery"),

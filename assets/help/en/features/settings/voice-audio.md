@@ -65,7 +65,6 @@ Controls listed top-to-bottom for **Settings → Voice & Audio**.
 ### Speech-to-text (STT)
 
 - **Download base STT model**
-- **Show advanced STT settings**
 - **Use selected**
 - **Reset to default**
 - **Refresh**
@@ -77,7 +76,6 @@ Controls listed top-to-bottom for **Settings → Voice & Audio**.
 ### Text-to-speech (TTS)
 
 - **Download base TTS model**
-- **Show advanced TTS settings**
 - **Use selected**
 - **Reset to default**
 - **Refresh**

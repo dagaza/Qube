@@ -11,6 +11,7 @@
 - How do I rename or move a document?
 - Why does preview say “Reconstructing document from vector space…”?
 - Can I set a background behind the document preview?
+- How do I change the preview reading font or typeface?
 - What is precision ingest and do I need Pro?
 
 ## What it is
@@ -71,7 +72,7 @@ Grouped like the Library layout. Preview readability settings apply to the **cur
 
 | Control | What it does |
 |---------|----------------|
-| **A−** / **A+** | **Decrease preview font** / **Increase preview font** (Shift+click: larger step) |
+| **A−** / **A+** | **Decrease** / **Increase preview font size** for this session only (Shift+click: larger step). To change the **typeface**, use **Settings → Themes → Reading font**. |
 | Line spacing icon | Cycles **Compact**, **Comfortable**, **Relaxed** spacing |
 | Text alignment icon | Toggles **Left** and **Justified** alignment |
 | Reader focus | **Reader focus: dim document header** — dims title/metadata |
