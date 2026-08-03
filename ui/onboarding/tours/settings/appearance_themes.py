@@ -144,7 +144,7 @@ def build_settings_appearance_themes_tour(host) -> OnboardingTour:
         ),
         OnboardingStep(
             step_id="share",
-            title="Share themes",
+            title="Share Themes (Pro+)",
             body=(
                 "Save the current draft as a custom theme, or import, export, and "
                 "share theme packs. The footer Reset to default configuration restores "

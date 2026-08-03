@@ -187,6 +187,18 @@ def contrasting_label_color(
     return light
 
 
+def contrasting_swatch_border(
+    swatch_color: str,
+    background: str,
+    *,
+    blend_threshold: float = 1.65,
+) -> str:
+    """Border color for color swatch buttons — stays visible when fill matches the UI."""
+    if contrast_ratio(swatch_color, background) < blend_threshold:
+        return with_alpha(contrasting_label_color(background), 0.9)
+    return with_alpha(contrasting_label_color(swatch_color), 0.32)
+
+
 def qtawesome_color(value: str) -> str | tuple[str, int]:
     """Normalize a theme token for ``qtawesome`` (hex or ``(hex, alpha)``)."""
     rgba = parse_color(value)

@@ -42,6 +42,11 @@ from core.theme.follow_system import ThemeAppearancePreference
 from core.theme.schemes import DEFAULT_SCHEME_ID_DARK, BUILTIN_SCHEMES
 from core.theme.tokens import CORE_TOKEN_KEYS, ResolvedTheme, ThemeMode
 from core.theme.validation import ThemeValidationResult, ThemeValidator
+from core.theme_pro_features import (
+    LICENSE_REQUIRED_MESSAGE,
+    sync_share_themes_pro_features,
+    user_has_pro_share_themes,
+)
 from ui.components.brand_buttons import (
     apply_brand_caution,
     apply_brand_danger,
@@ -111,6 +116,7 @@ class ThemesHandlersMixin:
             if callable(apply_theme):
                 apply_theme(is_dark)
         self._apply_themes_action_button_styles(is_dark)
+        self._sync_share_themes_pro_features()
         self._ensure_themes_manager_subscription()
 
     def _ensure_themes_preview_initialized(self, *, is_dark: bool | None = None) -> None:
@@ -803,9 +809,12 @@ class ThemesHandlersMixin:
 
         self._update_themes_identity_label()
 
+        draft_theme = self._draft_resolved_theme()
         for token_key, swatch in getattr(self, "themes_color_swatches", {}).items():
             if isinstance(swatch, ThemeColorSwatch):
                 swatch.blockSignals(True)
+                if draft_theme is not None:
+                    swatch.apply_theme(draft_theme)
                 swatch.set_color(self._effective_token_color(token_key))
                 swatch.blockSignals(False)
 
@@ -1204,6 +1213,7 @@ class ThemesHandlersMixin:
 
     def _on_themes_section_enter(self) -> None:
         self._update_themes_action_buttons()
+        self._sync_share_themes_pro_features()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         QTimer.singleShot(0, lambda: self._apply_themes_action_button_styles(is_dark))
         # Sync swatches before the next paint; preview refresh runs after lazy init.
@@ -1286,7 +1296,28 @@ class ThemesHandlersMixin:
     def _themes_dialog_is_dark(self) -> bool:
         return getattr(self.window(), "_is_dark_theme", True)
 
+    def _show_share_themes_license_dialog(self) -> None:
+        from ui.components.prestige_dialog import PrestigeDialog
+
+        PrestigeDialog(
+            self.window(),
+            "Pro license required",
+            LICENSE_REQUIRED_MESSAGE,
+            self._themes_dialog_is_dark(),
+        ).exec()
+
+    def _sync_share_themes_pro_features(self) -> None:
+        sync_share_themes_pro_features(self)
+
+    def _ensure_share_themes_licensed(self) -> bool:
+        if user_has_pro_share_themes():
+            return True
+        self._show_share_themes_license_dialog()
+        return False
+
     def _on_themes_save_as_clicked(self) -> None:
+        if not self._ensure_share_themes_licensed():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return
@@ -1333,6 +1364,8 @@ class ThemesHandlersMixin:
         logger.info("Saved custom color scheme %s", definition.id)
 
     def _on_themes_import_clicked(self) -> None:
+        if not self._ensure_share_themes_licensed():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return
@@ -1360,6 +1393,8 @@ class ThemesHandlersMixin:
         logger.info("Imported color scheme %s", definition.id)
 
     def _on_themes_export_clicked(self) -> None:
+        if not self._ensure_share_themes_licensed():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return
@@ -1397,6 +1432,8 @@ class ThemesHandlersMixin:
         logger.info("Exported color scheme %s to %s", scheme_id, path)
 
     def _on_themes_import_pack_clicked(self) -> None:
+        if not self._ensure_share_themes_licensed():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return
@@ -1444,6 +1481,8 @@ class ThemesHandlersMixin:
         )
 
     def _on_themes_export_pack_clicked(self) -> None:
+        if not self._ensure_share_themes_licensed():
+            return
         manager = self._settings_theme_manager()
         if manager is None:
             return

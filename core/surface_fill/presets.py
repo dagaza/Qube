@@ -102,6 +102,240 @@ _BUILTIN_PRESETS: dict[str, PresetDefinition] = {
             ),
         ),
     ),
+    # Brand & marketing gradients (docs/private/WEBSITE_THEME_DESIGN_SPEC.md §2, §12.5–§12.7).
+    "builtin.qube-signature": PresetDefinition(
+        id="builtin.qube-signature",
+        name="Qube signature",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="horizontal",
+            stops=(
+                GradientStop(0.0, "#3b82f6"),
+                GradientStop(1.0, "#8b5cf6"),
+            ),
+        ),
+    ),
+    "builtin.indigo-trail": PresetDefinition(
+        id="builtin.indigo-trail",
+        name="Indigo trail",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="horizontal",
+            stops=(
+                GradientStop(0.0, "#3b82f6"),
+                GradientStop(0.55, "#8b5cf6"),
+                GradientStop(1.0, "#6366f1"),
+            ),
+        ),
+    ),
+    "builtin.prism-drift": PresetDefinition(
+        id="builtin.prism-drift",
+        name="Prism drift",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#3b82f6"),
+                GradientStop(0.5, "#8b5cf6"),
+                GradientStop(1.0, "#6366f1"),
+            ),
+        ),
+    ),
+    "builtin.conversation-glow": PresetDefinition(
+        id="builtin.conversation-glow",
+        name="Conversation glow",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#122649"),
+                GradientStop(0.5, "#191432"),
+                GradientStop(1.0, "#05070f"),
+            ),
+        ),
+    ),
+    "builtin.library-shimmer": PresetDefinition(
+        id="builtin.library-shimmer",
+        name="Library shimmer",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#052a36"),
+                GradientStop(0.5, "#0d1932"),
+                GradientStop(1.0, "#05070f"),
+            ),
+        ),
+    ),
+    "builtin.studio-hues": PresetDefinition(
+        id="builtin.studio-hues",
+        name="Studio hues",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#261c49"),
+                GradientStop(0.5, "#281124"),
+                GradientStop(1.0, "#0a1326"),
+            ),
+        ),
+    ),
+    "builtin.morning-glow": PresetDefinition(
+        id="builtin.morning-glow",
+        name="Morning glow",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#c9dcfa"),
+                GradientStop(0.5, "#e8e2fb"),
+                GradientStop(1.0, "#f8fafc"),
+            ),
+        ),
+    ),
+    "builtin.daybreak-tide": PresetDefinition(
+        id="builtin.daybreak-tide",
+        name="Daybreak tide",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#c8ecf4"),
+                GradientStop(0.5, "#dce8fb"),
+                GradientStop(1.0, "#f8fafc"),
+            ),
+        ),
+    ),
+    "builtin.midnight-ember": PresetDefinition(
+        id="builtin.midnight-ember",
+        name="Midnight ember",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#0c0a09"),
+                GradientStop(0.45, "#431407"),
+                GradientStop(1.0, "#c2410c"),
+            ),
+        ),
+    ),
+    "builtin.cyber-mint": PresetDefinition(
+        id="builtin.cyber-mint",
+        name="Cyber mint",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_up",
+            stops=(
+                GradientStop(0.0, "#042f2e"),
+                GradientStop(0.5, "#0f766e"),
+                GradientStop(1.0, "#115e59"),
+            ),
+        ),
+    ),
+    "builtin.obsidian-rose": PresetDefinition(
+        id="builtin.obsidian-rose",
+        name="Obsidian rose",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#09090b"),
+                GradientStop(0.5, "#701a75"),
+                GradientStop(1.0, "#be185d"),
+            ),
+        ),
+    ),
+    "builtin.northern-fire": PresetDefinition(
+        id="builtin.northern-fire",
+        name="Northern fire",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_up",
+            stops=(
+                GradientStop(0.0, "#0f172a"),
+                GradientStop(0.55, "#0e7490"),
+                GradientStop(1.0, "#b45309"),
+            ),
+        ),
+    ),
+    "builtin.emerald-dusk": PresetDefinition(
+        id="builtin.emerald-dusk",
+        name="Emerald dusk",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="vertical",
+            stops=(
+                GradientStop(0.0, "#052e16"),
+                GradientStop(0.5, "#14532d"),
+                GradientStop(1.0, "#1e1b4b"),
+            ),
+        ),
+    ),
+    "builtin.velvet-wine": PresetDefinition(
+        id="builtin.velvet-wine",
+        name="Velvet wine",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="horizontal",
+            stops=(
+                GradientStop(0.0, "#1c1917"),
+                GradientStop(0.5, "#581c87"),
+                GradientStop(1.0, "#be123c"),
+            ),
+        ),
+    ),
+    "builtin.solar-flare": PresetDefinition(
+        id="builtin.solar-flare",
+        name="Solar flare",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#450a0a"),
+                GradientStop(0.5, "#a16207"),
+                GradientStop(1.0, "#ea580c"),
+            ),
+        ),
+    ),
+    "builtin.peach-sorbet": PresetDefinition(
+        id="builtin.peach-sorbet",
+        name="Peach sorbet",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_down",
+            stops=(
+                GradientStop(0.0, "#fff7ed"),
+                GradientStop(0.5, "#fdba74"),
+                GradientStop(1.0, "#fbcfe8"),
+            ),
+        ),
+    ),
+    "builtin.sea-glass": PresetDefinition(
+        id="builtin.sea-glass",
+        name="Sea glass",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="diagonal_up",
+            stops=(
+                GradientStop(0.0, "#ecfdf5"),
+                GradientStop(0.5, "#99f6e4"),
+                GradientStop(1.0, "#7dd3fc"),
+            ),
+        ),
+    ),
+    "builtin.lilac-haze": PresetDefinition(
+        id="builtin.lilac-haze",
+        name="Lilac haze",
+        kind="gradient",
+        wallpaper=WallpaperGradient(
+            direction="horizontal",
+            stops=(
+                GradientStop(0.0, "#faf5ff"),
+                GradientStop(0.5, "#c4b5fd"),
+                GradientStop(1.0, "#f5d0fe"),
+            ),
+        ),
+    ),
     "builtin.nebula": PresetDefinition(
         id="builtin.nebula",
         name="Nebula",

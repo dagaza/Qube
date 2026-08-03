@@ -8,8 +8,13 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFontMetrics
 from PyQt6.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QWidget
 
-from core.theme.color_utils import contrasting_label_color, parse_color
+from core.theme.color_utils import (
+    contrasting_label_color,
+    contrasting_swatch_border,
+    parse_color,
+)
 from core.theme.constants import UNRESOLVED_TOKEN_COLOR
+from core.theme.tokens import ResolvedTheme
 
 _THEME_COLOR_SWATCH_LABEL_OBJECT = "ThemeColorTokenLabel"
 _THEME_COLOR_SWATCH_LABEL_PAD = 4
@@ -41,6 +46,7 @@ class ThemeColorSwatch(QWidget):
         super().__init__(parent)
         self._token_key = token_key
         self._color = self._normalize_color(color)
+        self._background_color = "#ffffff"
         self.setMinimumHeight(32)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -76,6 +82,17 @@ class ThemeColorSwatch(QWidget):
         self._color = normalized
         self._apply_button_style()
 
+    def set_background_color(self, color: str) -> None:
+        normalized = self._normalize_color(color)
+        if normalized == self._background_color:
+            return
+        self._background_color = normalized
+        self._apply_button_style()
+
+    def apply_theme(self, theme: ResolvedTheme) -> None:
+        """Sync swatch outline contrast against the surrounding card surface."""
+        self.set_background_color(theme.surface_elevated)
+
     def _normalize_color(self, color: str) -> str:
         try:
             return parse_color(color).to_hex()
@@ -84,13 +101,14 @@ class ThemeColorSwatch(QWidget):
 
     def _apply_button_style(self) -> None:
         text_color = contrasting_label_color(self._color)
+        border_color = contrasting_swatch_border(self._color, self._background_color)
         self._button.setText(self._color)
         self._button.setStyleSheet(
             f"""
             QPushButton {{
                 background-color: {self._color};
                 color: {text_color};
-                border: 1px solid rgba(255,255,255,0.15);
+                border: 1px solid {border_color};
                 border-radius: 6px;
                 padding: 4px 8px;
                 font-family: monospace;

@@ -774,6 +774,12 @@ def test_overlay_scrim_and_swatch_contrast_helpers():
     assert contrasting_label_color("#ffffff") == "#11111b"
     assert contrasting_label_color("#11111b") == "#f8fafc"
 
+    from core.theme.color_utils import contrasting_swatch_border
+
+    white_on_white = contrasting_swatch_border("#ffffff", "#ffffff")
+    assert white_on_white.startswith("rgba(")
+    assert contrasting_swatch_border("#11111b", "#ffffff") != white_on_white
+
 
 def test_sidebar_row_colors_use_theme_tokens():
     from core.theme.resolver import ThemeResolver
@@ -849,7 +855,7 @@ def test_builtin_schemes_resolve(scheme_id):
     assert theme.background
 
 
-def test_theme_export_import_round_trip(tmp_path, monkeypatch):
+def test_theme_export_import_round_trip(tmp_path, monkeypatch, grant_pro_share_themes):
     monkeypatch.setattr("core.theme.storage.themes_directory", lambda: tmp_path)
     storage = ThemeStorage()
 
@@ -1030,7 +1036,9 @@ def test_adjust_text_for_contrast_nudges_lightness():
     assert contrast_ratio(adjusted, "#1e1e2e") >= 4.5
 
 
-def test_save_draft_as_custom_scheme_requires_overrides(tmp_path, monkeypatch):
+def test_save_draft_as_custom_scheme_requires_overrides(
+    tmp_path, monkeypatch, grant_pro_share_themes
+):
     monkeypatch.setattr("core.theme.storage.themes_directory", lambda: tmp_path)
     storage = ThemeStorage()
 
@@ -1047,7 +1055,9 @@ def test_save_draft_as_custom_scheme_requires_overrides(tmp_path, monkeypatch):
         )
 
 
-def test_save_draft_as_custom_scheme_sparse_overrides(tmp_path, monkeypatch):
+def test_save_draft_as_custom_scheme_sparse_overrides(
+    tmp_path, monkeypatch, grant_pro_share_themes
+):
     monkeypatch.setattr("core.theme.storage.themes_directory", lambda: tmp_path)
     storage = ThemeStorage()
 
@@ -1076,7 +1086,7 @@ def test_save_draft_as_custom_scheme_sparse_overrides(tmp_path, monkeypatch):
     assert (tmp_path / "user.my-preset.json").is_file()
 
 
-def test_save_draft_blocks_low_contrast(tmp_path, monkeypatch):
+def test_save_draft_blocks_low_contrast(tmp_path, monkeypatch, grant_pro_share_themes):
     monkeypatch.setattr("core.theme.storage.themes_directory", lambda: tmp_path)
     storage = ThemeStorage()
 

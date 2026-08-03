@@ -93,6 +93,8 @@ class LicenseHandlersMixin:
         self._refresh_license_status_ui()
         if hasattr(self, "_sync_library_pro_features"):
             self._sync_library_pro_features()
+        if hasattr(self, "_sync_share_themes_pro_features"):
+            self._sync_share_themes_pro_features()
         if hasattr(self, "_sync_custom_model_paths_pro_features"):
             self._sync_custom_model_paths_pro_features()
         if hasattr(self, "_sync_wakeword_pro_features"):
@@ -108,6 +110,8 @@ class LicenseHandlersMixin:
             self._refresh_license_status_ui()
             if hasattr(self, "_sync_library_pro_features"):
                 self._sync_library_pro_features()
+            if hasattr(self, "_sync_share_themes_pro_features"):
+                self._sync_share_themes_pro_features()
             if hasattr(self, "_sync_custom_model_paths_pro_features"):
                 self._sync_custom_model_paths_pro_features()
             if hasattr(self, "_sync_wakeword_pro_features"):
@@ -144,6 +148,8 @@ class LicenseHandlersMixin:
         self._refresh_license_status_ui()
         if hasattr(self, "_sync_library_pro_features"):
             self._sync_library_pro_features()
+        if hasattr(self, "_sync_share_themes_pro_features"):
+            self._sync_share_themes_pro_features()
         if hasattr(self, "_sync_custom_model_paths_pro_features"):
             self._sync_custom_model_paths_pro_features()
         if hasattr(self, "_sync_wakeword_pro_features"):

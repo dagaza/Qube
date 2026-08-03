@@ -27,7 +27,7 @@ def test_format_license_status_active_pro():
     )
     assert "Qube Pro active" in text
     assert "Edition tier: Pro" in text
-    assert "Premium theme packs" in text
+    assert "Share themes" in text
     assert "MIT launch" not in text
 
 

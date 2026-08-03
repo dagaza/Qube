@@ -10,6 +10,7 @@ from core.licensing.display import (
     license_banner_title,
     license_edition_chip_text,
     license_presentation_state,
+    share_themes_hint_text,
 )
 
 
@@ -45,7 +46,7 @@ def test_format_license_details_active_pro():
         }
     )
     assert "Edition tier: Pro" in text
-    assert "Premium theme packs" in text
+    assert "Share themes" in text
     assert "MIT launch" not in text
 
 
@@ -53,6 +54,16 @@ def test_format_license_status_no_cache():
     text = format_license_status_text({"active": False, "cached": False})
     assert "Home edition" in text
     assert "MIT launch" not in text
+
+
+def test_share_themes_hint_licensed():
+    assert "Pro license active" in share_themes_hint_text(licensed=True)
+    assert "theme pack" in share_themes_hint_text(licensed=True).lower()
+
+
+def test_share_themes_hint_unlicensed():
+    assert "Import a Pro license" in share_themes_hint_text(licensed=False)
+    assert "Save as custom theme" in share_themes_hint_text(licensed=False)
 
 
 def test_library_pro_depth_hint_licensed():
