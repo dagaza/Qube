@@ -52,7 +52,7 @@ Today, updating Qube is a **manual but supported** flow: download the new releas
 
 | Area | What shipped |
 |------|----------------|
-| **In-app checker** | **Settings → Help → Software updates → Check for updates**. Background worker hits GitHub Releases API, compares semver, opens platform asset or release page. |
+| **In-app checker** | **Settings → About → Software updates → Check for updates**. Background worker hits GitHub Releases API, compares semver, opens platform asset or release page. |
 | **Core logic** | [core/app_release_update.py](../core/app_release_update.py) — release fetch, asset selection, Linux variant detection. |
 | **Worker** | [workers/app_update_check_worker.py](../workers/app_update_check_worker.py) |
 | **UI handler** | [ui/views/settings/handlers/updates.py](../ui/views/settings/handlers/updates.py) |

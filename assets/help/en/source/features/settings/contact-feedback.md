@@ -22,7 +22,7 @@ feedback, bug report, support contact, CONTACT & FEEDBACK, send feedback, Qube w
 
 ## How to…
 
-1. **Report a bug** — Click **Report a bug** to open the website bug form. Include steps to reproduce and your Qube version when prompted.
+1. **Report a bug** — Click **Report a bug** to open the website bug form. Include steps to reproduce and your Qube version from **Settings → About** when prompted.
 2. **Request a feature** — Click **Request a feature** to share improvement ideas on the website.
 3. **Attach diagnostics when asked** — For technical issues, copy relevant excerpts from **Settings → Diagnostics** or **Settings → Privacy & data** logs into your website submission.
 

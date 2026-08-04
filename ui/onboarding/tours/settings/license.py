@@ -21,18 +21,28 @@ def build_settings_license_tour(host) -> OnboardingTour:
             step_id="welcome",
             title="License",
             body=(
-                "Import a signed .qube-license file to unlock Pro capabilities such as "
-                "Library Pro depth. Nothing prompts you on startup — this section is "
-                "optional."
+                "Activate a QUBE1 license key from your purchase email or import a signed "
+                ".qube-license file to unlock Pro capabilities such as Library Pro depth. "
+                "Nothing prompts you on startup — this section is optional."
             ),
+            on_enter=_open,
+        ),
+        OnboardingStep(
+            step_id="activate_key",
+            title="Activate license key",
+            body=(
+                "Paste the QUBE1 license key from your email and click Activate license key. "
+                "Qube validates the signature offline and caches the license locally."
+            ),
+            target_getter=lambda h: _sv(h).activate_license_key_btn,
             on_enter=_open,
         ),
         OnboardingStep(
             step_id="import",
             title="Import license file",
             body=(
-                "Select a signed .qube-license or JSON license file. Qube validates and "
-                "caches it locally."
+                "Alternatively, select a signed .qube-license or JSON license file. Qube "
+                "validates and caches it locally."
             ),
             target_getter=lambda h: _sv(h).import_license_btn,
             on_enter=_open,

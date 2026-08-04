@@ -8,7 +8,9 @@ from pathlib import Path
 from PyQt6.QtWidgets import QFileDialog
 
 from core.licensing.store import (
+    LicenseImportResult,
     import_license_from_path,
+    import_license_from_serial,
     license_summary,
     remove_license,
 )
@@ -31,6 +33,8 @@ class LicenseHandlersMixin:
         from ui.components.celebration_burst import show_border_fireworks
 
         anchor = getattr(self, "license_section_card", None)
+        if anchor is None:
+            anchor = getattr(self, "activate_license_key_btn", None)
         if anchor is None:
             anchor = getattr(self, "import_license_btn", None)
         if anchor is None or not anchor.isVisible():
@@ -60,6 +64,76 @@ class LicenseHandlersMixin:
         if remove_btn is not None:
             remove_btn.setEnabled(cached)
 
+    def _sync_pro_features_after_license_change(self) -> None:
+        if hasattr(self, "_sync_library_pro_features"):
+            self._sync_library_pro_features()
+        if hasattr(self, "_sync_share_themes_pro_features"):
+            self._sync_share_themes_pro_features()
+        if hasattr(self, "_sync_custom_model_paths_pro_features"):
+            self._sync_custom_model_paths_pro_features()
+        if hasattr(self, "_sync_wakeword_pro_features"):
+            self._sync_wakeword_pro_features()
+        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
+            self._sync_mcp_filesystem_pro_features()
+        if hasattr(self, "_sync_deep_research_profile_selector"):
+            self._sync_deep_research_profile_selector()
+
+    def _present_license_import_result(
+        self,
+        result: LicenseImportResult,
+        *,
+        source_description: str,
+    ) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if result.ok and result.document is not None:
+            tier = result.document.tier.value.title()
+            PrestigeDialog(
+                self.window(),
+                "License activated",
+                f"Recorded a {tier} license locally. "
+                "Pro and Team capabilities are now available on this device.",
+                is_dark=is_dark,
+            ).exec()
+            logger.info(
+                "Imported license from %s (tier=%s)",
+                source_description,
+                result.document.tier.value,
+            )
+            self._play_license_import_celebration()
+        else:
+            PrestigeDialog(
+                self.window(),
+                "Activation failed",
+                result.error or "The license could not be activated.",
+                is_dark=is_dark,
+            ).exec()
+            logger.warning(
+                "License import failed for %s: %s",
+                source_description,
+                result.error,
+            )
+        self._refresh_license_status_ui()
+        self._sync_pro_features_after_license_change()
+
+    def _on_activate_license_key_clicked(self) -> None:
+        editor = getattr(self, "license_key_input", None)
+        if editor is None:
+            return
+        serial = editor.toPlainText().strip()
+        if not serial:
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self.window(),
+                "Enter a license key",
+                "Paste the QUBE1 license key from your purchase email, then try again.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        result = import_license_from_serial(serial)
+        if result.ok:
+            editor.clear()
+        self._present_license_import_result(result, source_description="serial key")
+
     def _on_import_license_clicked(self) -> None:
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         path, _ = QFileDialog.getOpenFileName(
@@ -71,55 +145,13 @@ class LicenseHandlersMixin:
         if not path:
             return
         result = import_license_from_path(Path(path))
-        if result.ok and result.document is not None:
-            tier = result.document.tier.value.title()
-            PrestigeDialog(
-                self.window(),
-                "License imported",
-                f"Recorded a {tier} license locally. "
-                "Pro and Team capabilities are now available on this device.",
-                is_dark=is_dark,
-            ).exec()
-            logger.info("Imported license from %s (tier=%s)", path, result.document.tier.value)
-            self._play_license_import_celebration()
-        else:
-            PrestigeDialog(
-                self.window(),
-                "Import failed",
-                result.error or "The license file could not be imported.",
-                is_dark=is_dark,
-            ).exec()
-            logger.warning("License import failed for %s: %s", path, result.error)
-        self._refresh_license_status_ui()
-        if hasattr(self, "_sync_library_pro_features"):
-            self._sync_library_pro_features()
-        if hasattr(self, "_sync_share_themes_pro_features"):
-            self._sync_share_themes_pro_features()
-        if hasattr(self, "_sync_custom_model_paths_pro_features"):
-            self._sync_custom_model_paths_pro_features()
-        if hasattr(self, "_sync_wakeword_pro_features"):
-            self._sync_wakeword_pro_features()
-        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
-            self._sync_mcp_filesystem_pro_features()
-        if hasattr(self, "_sync_deep_research_profile_selector"):
-            self._sync_deep_research_profile_selector()
+        self._present_license_import_result(result, source_description=path)
 
     def _on_remove_license_clicked(self) -> None:
         summary = license_summary()
         if not summary.get("cached"):
             self._refresh_license_status_ui()
-            if hasattr(self, "_sync_library_pro_features"):
-                self._sync_library_pro_features()
-            if hasattr(self, "_sync_share_themes_pro_features"):
-                self._sync_share_themes_pro_features()
-            if hasattr(self, "_sync_custom_model_paths_pro_features"):
-                self._sync_custom_model_paths_pro_features()
-            if hasattr(self, "_sync_wakeword_pro_features"):
-                self._sync_wakeword_pro_features()
-            if hasattr(self, "_sync_mcp_filesystem_pro_features"):
-                self._sync_mcp_filesystem_pro_features()
-            if hasattr(self, "_sync_deep_research_profile_selector"):
-                self._sync_deep_research_profile_selector()
+            self._sync_pro_features_after_license_change()
             return
 
         is_dark = getattr(self.window(), "_is_dark_theme", True)
@@ -127,7 +159,7 @@ class LicenseHandlersMixin:
             self.window(),
             "Remove license?",
             "Remove the cached license from this device? "
-            "You can import the same file again later.",
+            "You can activate the same license key or import the same file again later.",
             is_dark=is_dark,
             tone="danger",
             dialog_width=480,
@@ -138,6 +170,9 @@ class LicenseHandlersMixin:
 
         removed = remove_license()
         if removed:
+            editor = getattr(self, "license_key_input", None)
+            if editor is not None:
+                editor.clear()
             PrestigeDialog(
                 self.window(),
                 "License removed",
@@ -146,15 +181,4 @@ class LicenseHandlersMixin:
             ).exec()
             logger.info("Removed cached license")
         self._refresh_license_status_ui()
-        if hasattr(self, "_sync_library_pro_features"):
-            self._sync_library_pro_features()
-        if hasattr(self, "_sync_share_themes_pro_features"):
-            self._sync_share_themes_pro_features()
-        if hasattr(self, "_sync_custom_model_paths_pro_features"):
-            self._sync_custom_model_paths_pro_features()
-        if hasattr(self, "_sync_wakeword_pro_features"):
-            self._sync_wakeword_pro_features()
-        if hasattr(self, "_sync_mcp_filesystem_pro_features"):
-            self._sync_mcp_filesystem_pro_features()
-        if hasattr(self, "_sync_deep_research_profile_selector"):
-            self._sync_deep_research_profile_selector()
+        self._sync_pro_features_after_license_change()

@@ -9,6 +9,8 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+*.pem
+**/qube-secrets/
 
 # --- Pytest ---
 .pytest_tmp/
@@ -83,7 +85,8 @@ tools/test_outputs/
 .clinerules
 
 # --- Maintainer-private docs (local only; never commit) ---
-docs/private/
+docs/private/*
+!docs/private/license_signing.md
 
 # --- Logs (runtime files stay local; app writes to ~/.qube/logs/) ---
 *.log

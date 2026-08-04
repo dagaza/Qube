@@ -144,16 +144,18 @@ def load_license_cache_metadata() -> LicenseCacheRecord | None:
         return None
 
 
-def import_license_from_path(path: Path) -> LicenseImportResult:
-    """Validate, verify, and cache a `.qube-license` file."""
-    source = Path(path).expanduser()
+def import_license_document(
+    raw: dict[str, Any],
+    *,
+    source_label: str | None = None,
+) -> LicenseImportResult:
+    """Validate, verify, and cache a license document dict."""
     try:
-        raw = _read_json(source)
         document = _validate_active_document(raw)
         record = LicenseCacheRecord(
             cache_schema=LICENSE_CACHE_SCHEMA,
             imported_at=datetime.now(timezone.utc).isoformat(),
-            source_file=str(source),
+            source_file=source_label,
             document=raw,
         )
         cache_path = license_cache_path()
@@ -166,16 +168,37 @@ def import_license_from_path(path: Path) -> LicenseImportResult:
         return LicenseImportResult(
             ok=True,
             document=document,
-            source_path=str(source),
+            source_path=source_label,
         )
     except LicenseError as exc:
-        return LicenseImportResult(ok=False, error=str(exc), source_path=str(source))
+        return LicenseImportResult(ok=False, error=str(exc), source_path=source_label)
     except OSError as exc:
         return LicenseImportResult(
             ok=False,
             error=f"Unable to write license cache: {exc}",
-            source_path=str(source),
+            source_path=source_label,
         )
+
+
+def import_license_from_path(path: Path) -> LicenseImportResult:
+    """Validate, verify, and cache a `.qube-license` file."""
+    source = Path(path).expanduser()
+    try:
+        raw = _read_json(source)
+    except LicenseError as exc:
+        return LicenseImportResult(ok=False, error=str(exc), source_path=str(source))
+    return import_license_document(raw, source_label=str(source))
+
+
+def import_license_from_serial(text: str) -> LicenseImportResult:
+    """Validate, verify, and cache a license entered as a QUBE1 serial key."""
+    from core.licensing.serial_key import decode_license_serial
+
+    try:
+        raw = decode_license_serial(text)
+    except LicenseError as exc:
+        return LicenseImportResult(ok=False, error=str(exc), source_path="serial key")
+    return import_license_document(raw, source_label="serial key")
 
 
 def remove_license() -> bool:

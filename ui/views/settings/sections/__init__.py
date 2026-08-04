@@ -1,6 +1,7 @@
 """Settings section builders."""
 
 from ui.views.settings.sections import (
+    about,
     advanced,
     ai_models,
     appearance_themes,
@@ -19,6 +20,7 @@ from ui.views.settings.sections import (
 )
 
 __all__ = [
+    "about",
     "advanced",
     "ai_models",
     "appearance_themes",

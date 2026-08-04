@@ -33,7 +33,7 @@ def _expected_diagnostics_tour_steps() -> int:
 
 
 def _expected_license_tour_steps() -> int:
-    return 1 + 2 + 1  # welcome + import + remove + finish
+    return 1 + 3 + 1  # welcome + activate key + import + remove + finish
 
 
 def _expected_knowledge_tour_steps() -> int:
@@ -53,6 +53,7 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.companion_desktop", "companion.desktop", 28),
     ("settings.notifications", "notifications", 10),
     ("settings.help", "help", 4),
+    ("settings.about", "about", 3),
     ("settings.contact_feedback", "contact.feedback", 4),
     ("settings.privacy_data", "privacy.data", _expected_privacy_data_tour_steps()),
     ("settings.diagnostics", "diagnostics", _expected_diagnostics_tour_steps()),
@@ -246,6 +247,7 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "replay_local_llm_tour_btn",
         "open_composer_mention_guide_btn",
     ),
+    "settings.about": ("check_for_updates_btn", "open_qube_website_btn"),
     "settings.contact_feedback": ("report_bug_btn", "request_feature_btn"),
     "settings.privacy_data": (
         "privacy_data_overview_hint",
@@ -255,7 +257,11 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "privacy_data_what_leaves_card",
     ),
     "settings.diagnostics": ("open_logs_folder_btn",),
-    "settings.license": ("import_license_btn", "remove_license_btn"),
+    "settings.license": (
+        "activate_license_key_btn",
+        "import_license_btn",
+        "remove_license_btn",
+    ),
     "settings.advanced": ("open_settings_json_btn",),
 }
 

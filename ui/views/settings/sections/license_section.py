@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
 
 from core.licensing.license_schema import LICENSE_FILE_EXTENSION
 from core.licensing.store import default_license_cache_path
@@ -32,9 +32,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(license_form, "License", anchor="license")
 
     host.license_hint_lbl = make_settings_hint(
-        "Import a signed .qube-license file when you receive one from Qube or your "
-        f"organization. Licenses are cached at {default_license_cache_path()}. "
-        "Nothing prompts you on startup — this section is optional."
+        "Activate a QUBE1 license key from your purchase email, or import a signed "
+        f"{LICENSE_FILE_EXTENSION} file from Qube or your organization. Licenses are "
+        f"cached at {default_license_cache_path()}. Nothing prompts you on startup — "
+        "this section is optional."
     )
     add_settings_full_width_row(license_form, host.license_hint_lbl)
 
@@ -46,6 +47,22 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.license_status_lbl.setWordWrap(True)
     host.license_status_lbl.setObjectName("SettingsLogDescription")
     add_settings_full_width_row(license_form, host.license_status_lbl)
+
+    host.license_key_input = QPlainTextEdit()
+    host.license_key_input.setPlaceholderText("Paste your QUBE1 license key…")
+    host.license_key_input.setMaximumHeight(84)
+    host.license_key_input.setToolTip(
+        "Paste the license key from your purchase email. Spaces and dashes are ignored."
+    )
+    add_settings_full_width_row(license_form, host.license_key_input)
+
+    host.activate_license_key_btn = QPushButton("Activate license key")
+    apply_brand_primary(host.activate_license_key_btn, icon_name="fa5s.key")
+    host.activate_license_key_btn.setToolTip(
+        "Validate the pasted QUBE1 license key and unlock Pro or Team capabilities."
+    )
+    host.activate_license_key_btn.clicked.connect(host._on_activate_license_key_clicked)
+    add_settings_full_width_row(license_form, host.activate_license_key_btn)
 
     host.import_license_btn = QPushButton("Import license file")
     apply_brand_primary(host.import_license_btn, icon_name="fa5s.file-import")

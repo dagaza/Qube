@@ -93,6 +93,7 @@ class HelpSettingsControlsTests(unittest.TestCase):
 
     def test_license_includes_import_and_remove(self) -> None:
         labels = [entry.label for entry in extract_settings_controls("license")]
+        self.assertIn("Activate license key", labels)
         self.assertIn("Import license file", labels)
         self.assertIn("Remove cached license", labels)
 

@@ -56,11 +56,12 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | General | [General settings](features/settings/general.md) |
 | Desktop Companion | [Desktop Companion settings](features/settings/desktop-companion.md) |
 | Notifications | [Notifications settings](features/settings/notifications.md) |
-| Help | [Help settings](features/settings/help.md) |
+| About | [About settings](features/settings/about.md) |
+| License | [License settings](features/settings/license.md) |
 | Contact & Feedback | [Contact & Feedback settings](features/settings/contact-feedback.md) |
+| Help | [Help settings](features/settings/help.md) |
 | Privacy & data | [Privacy & data settings](features/settings/privacy-data.md) |
 | Diagnostics | [Diagnostics settings](features/settings/diagnostics.md) |
-| License | [License settings](features/settings/license.md) |
 | Advanced | [Advanced settings](features/settings/advanced.md) |
 
 ## Workflows

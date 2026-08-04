@@ -24,9 +24,11 @@ from core.licensing.license_schema import (
 )
 from core.licensing.schema import PackSignatureError, SIGNING_FIELD
 from core.licensing.sign import attach_signing_block
+from core.licensing.serial_key import encode_license_serial
 from core.licensing.store import (
     get_active_license,
     import_license_from_path,
+    import_license_from_serial,
     license_summary,
     remove_license,
     set_license_cache_path,
@@ -96,6 +98,21 @@ def test_parse_and_verify_signed_license(license_env):
     assert document.seats == 1
     assert document.entitlements == ("pro.theme_packs",)
     assert verify_license_document(raw).verified is True
+
+
+def test_import_license_from_serial_writes_cache_and_merges_capabilities(license_env):
+    raw = _signed_license(license_env["private_key"])
+    serial = encode_license_serial(raw)
+
+    result = import_license_from_serial(serial)
+    assert result.ok is True
+    assert result.document is not None
+    assert result.document.tier == EditionTier.PRO
+    assert license_env["cache_path"].is_file()
+
+    summary = license_summary()
+    assert summary["active"] is True
+    assert summary["source_file"] == "serial key"
 
 
 def test_import_license_writes_cache_and_merges_capabilities(license_env):

@@ -24,11 +24,12 @@ Open **Settings** from the main navigation, then choose a section in the left si
 | Themes | `appearance.themes` | Interface |
 | Desktop Companion | `companion.desktop` | Interface |
 | Notifications | `notifications` | Interface |
-| Help | `help` | Support |
+| About | `about` | Support |
+| License | `license` | Support |
 | Contact & Feedback | `contact.feedback` | Support |
+| Help | `help` | Support |
 | Privacy & data | `privacy.data` | System |
 | Diagnostics | `diagnostics` | System |
-| License | `license` | System |
 | Advanced | `advanced` | System |
 
 
@@ -95,17 +96,29 @@ Also called: NOTIFICATIONS
 
 ## Support
 
-### Help (`help`)
+### About (`about`)
 
-Open **Settings → Help**.
+Open **Settings → About**.
 
-Also called: HELP & GUIDANCE
+Also called: ABOUT, ABOUT QUBE
+
+### License (`license`)
+
+Open **Settings → License**.
+
+Also called: LICENSE
 
 ### Contact & Feedback (`contact.feedback`)
 
 Open **Settings → Contact & Feedback**.
 
 Also called: CONTACT & FEEDBACK
+
+### Help (`help`)
+
+Open **Settings → Help**.
+
+Also called: HELP & GUIDANCE
 
 
 ## System
@@ -121,12 +134,6 @@ Also called: PRIVACY & DATA
 Open **Settings → Diagnostics**.
 
 Also called: DIAGNOSTIC LOGS
-
-### License (`license`)
-
-Open **Settings → License**.
-
-Also called: LICENSE
 
 ### Advanced (`advanced`)
 

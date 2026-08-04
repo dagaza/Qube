@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.26",
+  "corpus_version": "1.0.28",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -711,7 +711,7 @@
       "related": [
         "reference.settings_sections",
         "workflows.uninstall_qube",
-        "workflows.update_qube",
+        "features.settings.about",
         "faq.install_linux",
         "index"
       ],
@@ -724,6 +724,43 @@
           "label": "Open Help",
           "kind": "open_settings_section",
           "settings_section": "help"
+        }
+      ]
+    },
+    {
+      "id": "features.settings.about",
+      "path": "features/settings/about.md",
+      "title": "About settings",
+      "type": "feature",
+      "settings_section": "about",
+      "tour_id": "settings.about",
+      "tags": [
+        "about",
+        "version",
+        "updates"
+      ],
+      "synonyms": [
+        "about qube",
+        "app version",
+        "check for updates",
+        "software updates",
+        "qube version"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "workflows.update_qube",
+        "features.settings.contact_feedback",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_about",
+          "label": "Open About",
+          "kind": "open_settings_section",
+          "settings_section": "about"
         }
       ]
     },
@@ -1140,6 +1177,7 @@
         "index",
         "faq.install_linux",
         "workflows.uninstall_qube",
+        "features.settings.about",
         "release.whats_new"
       ]
     },
@@ -2259,8 +2297,8 @@
       ],
       "doc_id": "workflows.update_qube",
       "heading": "Update Qube",
-      "answer": "Download a newer build from **GitHub Releases** or use **Settings → Help → Software updates → Check for updates**. Install over your existing copy — user data stays in **`~/.qube`** (macOS/Linux) or **`%LOCALAPPDATA%\\Qube`** (Windows). **Windows:** run **`Qube-<version>-Setup.exe`** or **`winget upgrade -e --id dagaza.Qube`**. **macOS:** replace **`Qube.app`** from the DMG. **Linux `.deb`:** **`sudo apt install ./qube_….deb`**. **AppImage + install script:** re-run **`install_appimage.sh`** (installs **`~/.local/opt/qube/Qube.AppImage`**). See **Update Qube** in Library → Qube.",
-      "action_id": "open_settings_help"
+      "answer": "Download a newer build from **GitHub Releases** or use **Settings → About → Software updates → Check for updates**. Install over your existing copy — user data stays in **`~/.qube`** (macOS/Linux) or **`%LOCALAPPDATA%\\Qube`** (Windows). **Windows:** run **`Qube-<version>-Setup.exe`** or **`winget upgrade -e --id dagaza.Qube`**. **macOS:** replace **`Qube.app`** from the DMG. **Linux `.deb`:** **`sudo apt install ./qube_….deb`**. **AppImage + install script:** re-run **`install_appimage.sh`** (installs **`~/.local/opt/qube/Qube.AppImage`**). See **Update Qube** in Library → Qube.",
+      "action_id": "open_settings_about"
     },
     {
       "id": "features.settings.advanced.json",
