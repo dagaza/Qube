@@ -10,13 +10,17 @@ import zipfile
 from copy import deepcopy
 from pathlib import Path
 
-from core.licensing.schema import SIGNING_FIELD
-from core.licensing.sign import attach_signing_block, load_private_key_from_pem
-from core.licensing.verify import (
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.licensing.schema import SIGNING_FIELD  # noqa: E402
+from core.licensing.sign import attach_signing_block, load_private_key_from_pem  # noqa: E402
+from core.licensing.verify import (  # noqa: E402
     knowledge_pack_signing_payload,
     theme_pack_signing_payload,
 )
-from core.theme.pack_io import PACK_MANIFEST_NAME
+from core.theme.pack_io import PACK_MANIFEST_NAME  # noqa: E402
 
 
 def _sign_theme_pack(path: Path, *, private_key_path: Path, key_id: str) -> None:

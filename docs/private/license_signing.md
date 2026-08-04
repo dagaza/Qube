@@ -20,32 +20,18 @@ The docstring “off-repo” on the issuer tools refers to the **private key pat
 
 ## One-time production setup
 
-1. Generate an Ed25519 keypair (keep PEM off-repo):
+1. Generate an Ed25519 keypair (keep PEM off-repo) and register the public key:
 
    ```bash
-   mkdir -p ~/.qube-secrets
-   python3 -c "
-   from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-   from cryptography.hazmat.primitives import serialization
-   key = Ed25519PrivateKey.generate()
-   pem = key.private_bytes(
-       encoding=serialization.Encoding.PEM,
-       format=serialization.PrivateFormat.PKCS8,
-       encryption_algorithm=serialization.NoEncryption(),
-   )
-   path = '$HOME/.qube-secrets/qube-prod-1.pem'
-   open(path, 'wb').write(pem)
-   pub = key.public_key().public_bytes(
-       encoding=serialization.Encoding.Raw,
-       format=serialization.PublicFormat.Raw,
-   )
-   print('Wrote', path)
-   print('public_key_hex:', pub.hex())
-   "
-   chmod 600 ~/.qube-secrets/qube-prod-1.pem
+   python3 tools/generate_qube_signing_key.py \
+     --key-id qube-prod-1 \
+     --output ~/.qube-secrets/qube-prod-1.pem \
+     --add-to-signing-keys
    ```
 
-2. Add the **public** key to `assets/licensing/signing_keys.json` with a stable `key_id` (e.g. `qube-prod-1`). Ship in a release before selling licenses signed with that key.
+   Omit `--add-to-signing-keys` if you prefer to paste the printed JSON entry into `assets/licensing/signing_keys.json` manually.
+
+2. Ship a release that includes the new public key before selling licenses signed with that `key_id`.
 
 3. **Do not** use `qube-test-1` (RFC 8032 test vector in the repo) for paid customers.
 
@@ -64,6 +50,25 @@ python3 tools/issue_qube_license.py ~/orders/acme-001.qube-license \
 - **`--serial-out`** — optional file copy for your order log.
 
 Customer flow: **Settings → License → paste QUBE1 key → Activate license key** (or import the `.qube-license` file).
+
+## Issue a batch (many serial keys)
+
+```bash
+python3 tools/issue_qube_license.py ~/orders/batch-20260804 \
+  --tier pro \
+  --count 500 \
+  --private-key ~/.qube-secrets/qube-prod-1.pem \
+  --key-id qube-prod-1 \
+  --manifest-out ~/orders/batch-20260804/manifest.csv
+```
+
+Creates:
+
+- `licenses/<prefix>-0001.qube-license` … one signed file per license
+- `serials/<prefix>-0001.key.txt` … one QUBE1 key per license (email body)
+- `manifest.csv` with columns `id,tier,serial,license_file,issued`
+
+Each license gets a unique `issued` timestamp (base time plus microsecond offset) so serial keys do not collide. Use `--no-serial-files` if you only want the CSV manifest.
 
 ## Email (Resend) guidance
 

@@ -4,6 +4,11 @@
       "key_id": "qube-test-1",
       "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3fcdadc5f5889102a0a252fd0",
       "label": "Qube development/test signing key (RFC 8032 TEST 1 — not for production packs)"
+    },
+    {
+      "key_id": "qube-prod-1",
+      "public_key_hex": "fc6622da77f3c71a7b958ced2fb779572c0b799a1072f7438c4c681b0f196f3c",
+      "label": "Qube production signing key"
     }
   ]
 }
