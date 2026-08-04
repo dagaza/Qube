@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-04
+
+### Added
+- **Production license signing key** (`qube-prod-1`) embedded for offline Pro license verification in shipped builds.
+- **`tools/generate_qube_signing_key.py`** — maintainer CLI to generate Ed25519 signing keys and register public keys in `assets/licensing/signing_keys.json`.
+- **Batch license issuance** — `issue_qube_license.py --count` writes a CSV manifest plus per-customer QUBE1 serial key files.
+
+### Changed
+- License signing maintainer docs updated for key generation and batch issuance workflows.
+- Licensing CLI tools bootstrap the repo root on `sys.path` when run directly as scripts.
+
 ## [1.2.9] - 2026-08-03
 
 ### Added
