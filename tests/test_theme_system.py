@@ -891,6 +891,7 @@ def test_resolved_theme_style_helpers():
         PRESTIGE_SOURCE_CONTAINER,
         RETRIEVAL_INDICATOR_ACTIVE,
         RETRIEVAL_INDICATOR_OFF,
+        SETTINGS_BORDERED_LIST,
         SETTINGS_BORDERED_TABLE,
         SETTINGS_BORDERLESS_TABLE,
         SETTINGS_CHECKBOX,
@@ -930,6 +931,14 @@ def test_resolved_theme_style_helpers():
     bordered_table = theme.style(SETTINGS_BORDERED_TABLE, object_name="KnowledgePresetsTable")
     assert theme.background in bordered_table
     assert theme.border_subtle in bordered_table
+    bordered_list = theme.style(
+        SETTINGS_BORDERED_LIST, object_name="SettingsTriggerList"
+    )
+    assert theme.background in bordered_list
+    assert theme.border_subtle in bordered_list
+    assert "border-radius: 8px" in bordered_list
+    assert "SettingsTriggerList::viewport" in bordered_list
+    assert "background-color: transparent" in bordered_list
     assert theme.text_muted == theme.color(PLACEHOLDER_MUTED)
     assert theme.link == theme.color(ONBOARDING_SPOTLIGHT_RING)
     assert theme.background in theme.style(ONBOARDING_COACH_PANEL)
