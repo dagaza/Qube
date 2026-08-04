@@ -133,6 +133,7 @@ from core.theme.widget_styles import (
     SETTINGS_ICON_BUTTON,
 )
 from ui.views.settings.sections import (
+    about,
     advanced,
     ai_models,
     appearance_themes,
@@ -191,6 +192,7 @@ _SECTION_BUILDERS = {
     "companion.desktop": desktop_companion.build_section,
     "notifications": notifications.build_section,
     "help": help.build_section,
+    "about": about.build_section,
     "contact.feedback": contact_feedback.build_section,
     "privacy.data": privacy_data.build_section,
     "diagnostics": diagnostics.build_section,

@@ -22,6 +22,7 @@ _DEFAULT_LABELS: dict[str, str] = {
     "notifications": "Open Notifications settings",
     "companion.desktop": "Open Desktop Companion settings",
     "help": "Open Help settings",
+    "about": "Open About settings",
     "contact.feedback": "Open Contact & Feedback settings",
     "privacy.data": "Open Privacy & data settings",
     "diagnostics": "Open Diagnostics settings",

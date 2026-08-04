@@ -219,13 +219,15 @@ class StylingMixin:
         resolved_name = object_name or list_widget.objectName()
         if resolved_name:
             kwargs["object_name"] = resolved_name
+        list_widget.setFrameShape(QFrame.Shape.NoFrame)
         list_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         list_widget.setAutoFillBackground(True)
         list_widget.setStyleSheet(theme.style(SETTINGS_BORDERED_LIST, **kwargs))
         viewport = list_widget.viewport()
         if viewport is not None:
+            # Square viewport fills clip rounded list corners; QSS keeps it transparent.
             viewport.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-            viewport.setAutoFillBackground(True)
+            viewport.setAutoFillBackground(False)
 
     def _apply_settings_bordered_lists_style(self, is_dark: bool) -> None:
         """Restyle all settings bordered lists (lazy sections may build after init)."""

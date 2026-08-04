@@ -85,10 +85,17 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Interface",
     ),
     SettingsSectionDef(
-        id="help",
-        title="Help",
-        icon="fa5s.question-circle",
-        legacy_titles=("HELP & GUIDANCE",),
+        id="about",
+        title="About",
+        icon="fa5s.info-circle",
+        legacy_titles=("ABOUT", "ABOUT QUBE"),
+        group="Support",
+    ),
+    SettingsSectionDef(
+        id="license",
+        title="License",
+        icon="fa5s.key",
+        legacy_titles=("LICENSE",),
         group="Support",
     ),
     SettingsSectionDef(
@@ -96,6 +103,13 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         title="Contact & Feedback",
         icon="fa5s.envelope",
         legacy_titles=("CONTACT & FEEDBACK",),
+        group="Support",
+    ),
+    SettingsSectionDef(
+        id="help",
+        title="Help",
+        icon="fa5s.question-circle",
+        legacy_titles=("HELP & GUIDANCE",),
         group="Support",
     ),
     SettingsSectionDef(
@@ -110,13 +124,6 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         title="Diagnostics",
         icon="fa5s.stethoscope",
         legacy_titles=("DIAGNOSTIC LOGS",),
-        group="System",
-    ),
-    SettingsSectionDef(
-        id="license",
-        title="License",
-        icon="fa5s.key",
-        legacy_titles=("LICENSE",),
         group="System",
     ),
     SettingsSectionDef(

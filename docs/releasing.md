@@ -105,7 +105,7 @@ Install **one** Windows variant only (CPU, Vulkan, or CUDA). WinGet uses separat
 
 Direct download: run the matching **`Qube-<version>-Setup.exe`**, **`-vulkan-Setup.exe`**, or **`-cuda-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.
 
-In-app: **Settings → Help → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
+In-app: **Settings → About → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.
 
 **Update roadmap (Tiers 1–3):** see **[App update roadmap](app_update_roadmap.md)** — shipped manual/check flows vs deferred automatic apply.
 
@@ -220,6 +220,16 @@ brew tap dagaza/qube
 brew install --cask qube
 brew upgrade --cask qube
 ```
+
+## Commercial license signing
+
+The issuer CLI (`tools/issue_qube_license.py`) is **intentionally in this repository**. It contains no secrets—it loads your Ed25519 **private key** from a local path (for example `~/.qube-secrets/qube-prod-1.pem`).
+
+**Never commit:** `*.pem`, `qube-secrets/`, issued license files, or fulfillment API keys (see `.gitignore`).
+
+**Always commit:** embedded **public** keys in `assets/licensing/signing_keys.json` (required for the app to verify licenses).
+
+Full maintainer workflow (key generation, `--print-serial`, Resend guidance): **[docs/private/license_signing.md](private/license_signing.md)**.
 
 ## Code signing (Windows, optional)
 

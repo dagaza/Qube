@@ -1120,11 +1120,19 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 8px;
+                outline: none;
+            }}
+            {widget_type}#{object_name}::viewport, {widget_type}::viewport {{
+                background-color: transparent;
+                border-radius: 7px;
             }}
             {widget_type}::item {{
                 padding: {item_padding};
                 margin-bottom: 0px;
                 border-bottom: 1px solid {border};
+            }}
+            {widget_type}::item:last {{
+                border-bottom: none;
             }}
         """
     if role == SETTINGS_WARNING_LABEL:

@@ -22,10 +22,6 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Open My knowledge**
 
-### Software updates
-
-- **Check for updates**
-
 ### Uninstall Qube
 
 - **Uninstall Qube and all data…**

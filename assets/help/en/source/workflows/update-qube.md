@@ -80,7 +80,7 @@ The script copies the new build to **`~/.local/opt/qube/Qube.AppImage`**, update
 
 ### In the app
 
-Open **Settings → Help → Software updates** and click **Check for updates**. Qube compares your installed version with the latest GitHub Release and opens the matching download when a newer build is available.
+Open **Settings → About → Software updates** and click **Check for updates**. Qube compares your installed version with the latest GitHub Release and opens the matching download when a newer build is available.
 
 ## Related
 

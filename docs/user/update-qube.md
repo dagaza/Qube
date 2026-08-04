@@ -70,7 +70,7 @@ This updates **`~/.local/opt/qube/Qube.AppImage`**, the **`qube-appimage`** laun
 
 ### In the app
 
-**Settings → Help → Software updates → Check for updates** compares your version with GitHub Releases and opens the download when a newer build is available.
+**Settings → About → Software updates → Check for updates** compares your version with GitHub Releases and opens the download when a newer build is available.
 
 See [Install on Linux](install-linux.md) for variant choice (cpu / vulkan / cuda).
 

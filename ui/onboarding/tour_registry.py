@@ -29,6 +29,7 @@ TOUR_DISPLAY_NAMES: dict[str, str] = {
     "settings.companion_desktop": "Desktop Companion settings",
     "settings.notifications": "Notifications settings",
     "settings.help": "Help settings",
+    "settings.about": "About settings",
     "settings.contact_feedback": "Contact & Feedback settings",
     "settings.privacy_data": "Privacy & data settings",
     "settings.diagnostics": "Diagnostics settings",
@@ -82,6 +83,7 @@ def _register_all_tours() -> None:
     from ui.onboarding.tours.settings.companion_desktop import (
         build_settings_companion_desktop_tour,
     )
+    from ui.onboarding.tours.settings.about import build_settings_about_tour
     from ui.onboarding.tours.settings.contact_feedback import (
         build_settings_contact_feedback_tour,
     )
@@ -110,6 +112,7 @@ def _register_all_tours() -> None:
     register_tour("settings.companion_desktop", build_settings_companion_desktop_tour)
     register_tour("settings.notifications", build_settings_notifications_tour)
     register_tour("settings.help", build_settings_help_tour)
+    register_tour("settings.about", build_settings_about_tour)
     register_tour("settings.contact_feedback", build_settings_contact_feedback_tour)
     register_tour("settings.privacy_data", build_settings_privacy_data_tour)
     register_tour("settings.diagnostics", build_settings_diagnostics_tour)

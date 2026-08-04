@@ -4,5 +4,6 @@ Controls listed top-to-bottom for **Settings → License**.
 
 ### License
 
+- **Activate license key**
 - **Import license file**
 - **Remove cached license**

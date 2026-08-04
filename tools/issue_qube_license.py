@@ -11,6 +11,7 @@ from pathlib import Path
 
 from core.capabilities import EditionTier
 from core.licensing.license_schema import LICENSE_SCHEMA_VERSION, license_signing_payload
+from core.licensing.serial_key import encode_license_serial
 from core.licensing.sign import attach_signing_block, load_private_key_from_pem
 
 
@@ -55,6 +56,17 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional ISO-8601 expiry timestamp",
     )
+    parser.add_argument(
+        "--print-serial",
+        action="store_true",
+        help="Print the QUBE1 serial license key to stdout after issuing the file",
+    )
+    parser.add_argument(
+        "--serial-out",
+        type=Path,
+        default=None,
+        help="Optional path to write the QUBE1 serial license key (email-friendly)",
+    )
     return parser
 
 
@@ -97,6 +109,16 @@ def main(argv: list[str] | None = None) -> int:
         encoding="utf-8",
     )
     print(f"Issued {tier.value} license: {destination}")
+
+    serial = encode_license_serial(signed)
+    if args.print_serial:
+        print(serial)
+    if args.serial_out is not None:
+        serial_path = Path(args.serial_out).expanduser()
+        serial_path.parent.mkdir(parents=True, exist_ok=True)
+        serial_path.write_text(serial + "\n", encoding="utf-8")
+        print(f"Serial key written: {serial_path}")
+
     return 0
 
 
