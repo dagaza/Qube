@@ -31,12 +31,23 @@ jobs:
 
       - name: Download Windows installers and render WinGet manifests
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $version = "${{ inputs.version }}" -replace '^v',''
-          gh release download "v$version" -D installers `
-            -p "Qube-$version-Setup.exe" `
-            -p "Qube-$version-vulkan-Setup.exe" `
-            -p "Qube-$version-cuda-Setup.exe"
+          New-Item -ItemType Directory -Force -Path installers | Out-Null
+          $base = "https://github.com/dagaza/Qube/releases/download/v$version"
+          $files = @(
+            "Qube-$version-Setup.exe",
+            "Qube-$version-vulkan-Setup.exe",
+            "Qube-$version-cuda-Setup.exe"
+          )
+          foreach ($file in $files) {
+            $dest = Join-Path installers $file
+            Write-Host "Downloading $base/$file ..."
+            curl.exe -fL "$base/$file" -o $dest
+            if (-not (Test-Path $dest)) { throw "Missing downloaded installer: $dest" }
+          }
           $cpu = (Get-FileHash "installers/Qube-$version-Setup.exe" -Algorithm SHA256).Hash
           $vulkan = (Get-FileHash "installers/Qube-$version-vulkan-Setup.exe" -Algorithm SHA256).Hash
           $cuda = (Get-FileHash "installers/Qube-$version-cuda-Setup.exe" -Algorithm SHA256).Hash
