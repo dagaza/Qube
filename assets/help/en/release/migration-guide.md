@@ -5,6 +5,7 @@
 - Why did my `@help` answer change after an update?
 - Where did a Settings control move?
 - How do I refresh the help corpus?
+- Where are Support and System settings in the sidebar?
 
 ## What it is
 
@@ -30,6 +31,20 @@ help corpus upgrade, documentation version policy, settings path changes, corpus
 | `@help` routing change | `workers/llm_worker.py` + [Composer tools](../reference/composer-tools.md) |
 | Release ship | Bump `corpus_version`; update [What's new](whats-new.md) |
 
+## Settings sidebar (current layout)
+
+The left sidebar groups related pages into five sections:
+
+| Group | Settings pages |
+|-------|----------------|
+| **Voice & Input** | Voice & Audio |
+| **Intelligence** | AI & Models, Memory, Knowledge, Integrations |
+| **Interface** | General, Themes, Desktop Companion, Notifications |
+| **Support** | About, License, Contact & Feedback, Help |
+| **System** | Backup & restore, Privacy & data, Diagnostics, Advanced |
+
+See the generated [Settings sections](../reference/settings-sections.md) index for stable section ids (`system.backup`, `privacy.data`, etc.).
+
 ## Known path references (v1)
 
 Use these stable navigation strings in docs and canonical answers:
@@ -45,22 +60,28 @@ Use these stable navigation strings in docs and canonical answers:
 | Microphone | **Settings → Voice & Audio** → **Audio input device** |
 | Help corpus browser | **Library → Qube** or **Settings → Help → Open Qube documentation** |
 | Chat help search | **`@[tool:help]`** in **Conversations** |
-| Privacy tier / Hybrid Internet / audit logs | **Settings → Privacy & data** |
-| Application & skills debug logs | **Settings → Diagnostics** |
-| LLM / routing / web search audit logs | **Settings → Privacy & data** |
-| Pro license import | **Settings → License** |
-| Raw JSON settings | **Settings → Advanced** |
+| State backup / restore | **Settings → Backup & restore** (System) |
+| Privacy tier / Hybrid Internet / audit logs | **Settings → Privacy & data** (System) |
+| Application & skills debug logs | **Settings → Diagnostics** (System) |
+| LLM / routing / web search audit logs | **Settings → Privacy & data** (System) |
+| Pro license import | **Settings → License** (Support) |
+| Raw JSON settings | **Settings → Advanced** (System) |
+| Uninstall instructions | **Settings → Help → Uninstall Qube** (Support) |
 
 ## Settings split (formerly Advanced)
 
-The old **Settings → Advanced** page was split into four **System** pages:
+The old monolithic **Settings → Advanced** page was reorganized into focused pages under **Support** and **System**:
 
-| Page | Contents |
-|------|----------|
-| **Privacy & data** | Web discovery privacy tier, Hybrid Internet Mode, session audit shortcuts, audit logs |
-| **Diagnostics** | Application log, skills debug log, **Open logs folder** |
-| **License** | Import / remove `.qube-license` |
-| **Advanced** | JSON settings editor only |
+| Former location | Current location | Sidebar group |
+|-----------------|------------------|---------------|
+| Diagnostic logs (application, skills) | **Settings → Diagnostics** | System |
+| Audit logs (LLM, routing, web search) | **Settings → Privacy & data** | System |
+| Web discovery privacy / Hybrid Internet | **Settings → Privacy & data** | System |
+| License import | **Settings → License** | Support |
+| JSON settings editor | **Settings → Advanced** | System |
+| *(new)* Full state backup / restore | **Settings → Backup & restore** | System |
+
+**Knowledge pack** import/export stayed under **Settings → Knowledge → Diagnostics** (Intelligence group).
 
 Legacy deep links (for example **Advanced → License** or **Advanced → Diagnostic logs**) redirect automatically in the app.
 

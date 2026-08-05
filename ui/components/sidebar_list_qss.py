@@ -18,8 +18,18 @@ from PyQt6.QtWidgets import QLabel, QListWidget, QPushButton, QWidget
 from core.theme.accessors import theme_for
 from core.theme.tokens import ResolvedTheme
 from core.theme.view_theme import view_resolved_theme
-from core.theme.svg_icons import themed_fa_icon
-from ui.components.sidebar_folder_list import ROW_KIND_FOLDER, row_kind
+from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
+from ui.components.sidebar_entry_actions import (
+    sidebar_list_hovered_item,
+    sidebar_options_menu,
+)
+from ui.components.sidebar_folder_list import (
+    ROW_KIND_DOCUMENT,
+    ROW_KIND_FOLDER,
+    ROW_KIND_SESSION,
+    SIDEBAR_ROW_PAYLOAD_ROLE,
+    row_kind,
+)
 from ui.shell_theme import sidebar_row_action_icon_color
 
 _ROW_TITLE_STYLE = (
@@ -52,8 +62,12 @@ def _sidebar_row_icon_highlighted(
     item,
     *,
     active_folder_key: str | None,
+    list_widget: QListWidget | None = None,
 ) -> bool:
     if item.isSelected():
+        return True
+    hovered = sidebar_list_hovered_item(list_widget)
+    if hovered is item:
         return True
     if (
         active_folder_key is not None
@@ -62,6 +76,15 @@ def _sidebar_row_icon_highlighted(
     ):
         return True
     return False
+
+
+def _sidebar_entry_is_pinned(item) -> bool:
+    if row_kind(item) not in (ROW_KIND_SESSION, ROW_KIND_DOCUMENT):
+        return False
+    payload = item.data(SIDEBAR_ROW_PAYLOAD_ROLE)
+    if not isinstance(payload, dict):
+        return False
+    return bool(payload.get("is_pinned"))
 
 
 def apply_sidebar_row_action_icons(
@@ -85,6 +108,7 @@ def apply_sidebar_row_action_icons(
         highlighted = _sidebar_row_icon_highlighted(
             item,
             active_folder_key=active_folder_key,
+            list_widget=list_widget,
         )
         icon_color = sidebar_row_action_icon_color(resolved, highlighted=highlighted)
 
@@ -96,7 +120,32 @@ def apply_sidebar_row_action_icons(
 
         opts_btn = row.findChild(QPushButton, "HistoryOptionsBtn")
         if opts_btn is not None:
-            opts_btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
+            pinned = _sidebar_entry_is_pinned(item)
+            show_menu = (not pinned) or highlighted
+            menu = sidebar_options_menu(opts_btn)
+            pin_lbl = row.findChild(QLabel, "HistoryPinIndicator")
+
+            if pin_lbl is not None:
+                if pinned and not show_menu:
+                    pin_lbl.setPixmap(
+                        themed_fa_pixmap("fa5s.thumbtack", icon_color, 14)
+                    )
+                    pin_lbl.setVisible(True)
+                    opts_btn.setVisible(False)
+                else:
+                    pin_lbl.setVisible(False)
+                    opts_btn.setVisible(True)
+
+            if show_menu:
+                if menu is not None and opts_btn.menu() is None:
+                    opts_btn.setMenu(menu)
+                opts_btn.setIcon(themed_fa_icon("fa5s.ellipsis-v", icon_color, 16))
+                opts_btn.setEnabled(True)
+            elif pin_lbl is None:
+                if opts_btn.menu() is not None:
+                    opts_btn.setMenu(None)
+                opts_btn.setIcon(themed_fa_icon("fa5s.thumbtack", icon_color, 14))
+                opts_btn.setEnabled(False)
             opts_btn.setIconSize(QSize(16, 16))
 
 

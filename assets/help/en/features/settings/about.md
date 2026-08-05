@@ -12,7 +12,7 @@
 
 ## Where to find it
 
-Open **Settings → About** (settings section `about`). Press **?** for the guided tour (`settings.about`).
+Open **Settings → About** in the **Support** sidebar group (settings section `about`). Press **?** for the guided tour (`settings.about`).
 
 ## Also called
 

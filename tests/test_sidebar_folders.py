@@ -210,6 +210,47 @@ class SidebarFolderTests(unittest.TestCase):
         docs = self.db.get_library_documents_for_sidebar_search("needle")
         self.assertTrue(any(d["filename"] == "needle.pdf" for d in docs))
 
+    def test_pin_and_unpin_session(self) -> None:
+        session_id = self.db.create_session("Pinned chat")
+        self.assertTrue(self.db.set_session_pinned(session_id, True))
+
+        _, grouped = self.db.get_sessions_for_sidebar_by_folder()
+        main_id = self.db.get_main_conversation_folder_id()
+        hit = next(s for s in grouped[main_id] if s["id"] == session_id)
+        self.assertTrue(hit["is_pinned"])
+
+        self.assertTrue(self.db.set_session_pinned(session_id, False))
+        _, grouped = self.db.get_sessions_for_sidebar_by_folder()
+        hit = next(s for s in grouped[main_id] if s["id"] == session_id)
+        self.assertFalse(hit["is_pinned"])
+
+    def test_pin_and_unpin_document(self) -> None:
+        self.db.add_document_metadata("pinned.txt", 1.0, 1)
+        self.assertTrue(self.db.set_document_pinned("pinned.txt", True))
+
+        _, grouped = self.db.get_documents_for_sidebar_by_folder()
+        main_id = self.db.get_main_library_folder_id()
+        hit = next(d for d in grouped[main_id] if d["filename"] == "pinned.txt")
+        self.assertTrue(hit["is_pinned"])
+
+        self.assertTrue(self.db.set_document_pinned("pinned.txt", False))
+        _, grouped = self.db.get_documents_for_sidebar_by_folder()
+        hit = next(d for d in grouped[main_id] if d["filename"] == "pinned.txt")
+        self.assertFalse(hit["is_pinned"])
+
+    def test_pinned_items_sort_before_unpinned(self) -> None:
+        items = [
+            {"title": "Alpha", "is_pinned": 0, "updated_at": "2026-01-01"},
+            {"title": "Beta", "is_pinned": 1, "updated_at": "2026-01-02"},
+            {"title": "Gamma", "is_pinned": 0, "updated_at": "2026-01-03"},
+        ]
+        pinned = [it for it in items if it.get("is_pinned")]
+        unpinned = [it for it in items if not it.get("is_pinned")]
+        pinned.sort(key=lambda it: str(it.get("title") or "").lower())
+        unpinned.sort(key=lambda it: str(it.get("title") or "").lower())
+        ordered = pinned + unpinned
+        self.assertEqual([it["title"] for it in ordered], ["Beta", "Alpha", "Gamma"])
+
     def test_get_all_library_document_filenames_returns_full_set(self) -> None:
         main_id = self.db.get_main_library_folder_id()
         for idx in range(25):

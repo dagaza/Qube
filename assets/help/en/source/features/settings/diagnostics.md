@@ -20,7 +20,7 @@ Use **Open logs folder** to reveal the directory in your file manager. Each log 
 
 ## Where to find it
 
-Open **Settings → Diagnostics** (settings section `diagnostics`). Press **?** for the guided tour (`settings.diagnostics`).
+Open **Settings → Diagnostics** in the **System** sidebar group (settings section `diagnostics`). Press **?** for the guided tour (`settings.diagnostics`).
 
 Legacy deep links to **Settings → Advanced → Diagnostic logs** redirect here.
 

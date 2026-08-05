@@ -20,11 +20,12 @@ from PyQt6.QtWidgets import (
     QLayout,
 )
 
+from core.theme.accessors import theme_for
 from core.database import DatabaseManager
 from ui.components.ghost_icon_button import apply_ghost_icon_button_style
 from core.theme.view_theme import view_resolved_theme
 from core.theme.svg_icons import themed_fa_icon, themed_fa_pixmap
-from core.theme.widget_styles import DANGER_ICON, SIDEBAR_ACTION_ICON
+from core.theme.widget_styles import DANGER_ICON, LINK_ICON, SIDEBAR_ACTION_ICON
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.shell_theme import accent_icon_color, sidebar_row_action_icon_color
 
@@ -103,6 +104,8 @@ def append_move_to_folder_submenu(
     is_dark: bool = True,
 ) -> None:
     sub = QMenu("Move to folder", menu)
+    theme = theme_for(is_dark=is_dark)
+    sub.setIcon(themed_fa_icon("fa5s.folder-open", theme.color(LINK_ICON), 16))
     if apply_menu_theme:
         apply_menu_theme(sub, is_dark)
     added = False
@@ -224,9 +227,15 @@ class SidebarFolderListController:
         )
 
     def _sorted_items(self, items: list[dict]) -> list[dict]:
+        pinned = [it for it in items if it.get("is_pinned")]
+        unpinned = [it for it in items if not it.get("is_pinned")]
         if self.sort_mode == "name":
-            return sorted(items, key=self._item_name_key)
-        return sorted(items, key=self._item_date_key, reverse=True)
+            pinned.sort(key=self._item_name_key)
+            unpinned.sort(key=self._item_name_key)
+        else:
+            pinned.sort(key=self._item_date_key, reverse=True)
+            unpinned.sort(key=self._item_date_key, reverse=True)
+        return pinned + unpinned
 
     def _list_folders(self) -> list[dict]:
         if self.scope == "conversation":
@@ -499,6 +508,8 @@ class SidebarFolderListController:
         on_move: Callable[[str], None],
     ) -> None:
         sub = QMenu("Move to folder", menu)
+        theme = view_resolved_theme(self.parent, is_dark=self.get_is_dark())
+        sub.setIcon(themed_fa_icon("fa5s.folder-open", theme.color(LINK_ICON), 16))
         self.apply_menu_theme(sub, self.get_is_dark())
         self.register_menu(sub)
         added = False

@@ -11,6 +11,16 @@
 
 Open **Settings** from the main navigation, then choose a section in the left sidebar.
 
+The sidebar organizes pages into five groups. Expand a group label to see its sections.
+
+| Group | Sections |
+|-------|----------|
+| **Voice & Input** | Voice & Audio |
+| **Intelligence** | AI & Models, Memory, Knowledge, Integrations |
+| **Interface** | General, Themes, Desktop Companion, Notifications |
+| **Support** | About, License, Contact & Feedback, Help |
+| **System** | Backup & restore, Privacy & data, Diagnostics, Advanced |
+
 ## Section index
 
 | Section | Settings id | Sidebar group |
@@ -28,6 +38,7 @@ Open **Settings** from the main navigation, then choose a section in the left si
 | License | `license` | Support |
 | Contact & Feedback | `contact.feedback` | Support |
 | Help | `help` | Support |
+| Backup & restore | `system.backup` | System |
 | Privacy & data | `privacy.data` | System |
 | Diagnostics | `diagnostics` | System |
 | Advanced | `advanced` | System |
@@ -122,6 +133,10 @@ Also called: HELP & GUIDANCE
 
 
 ## System
+
+### Backup & restore (`system.backup`)
+
+Open **Settings → Backup & restore**.
 
 ### Privacy & data (`privacy.data`)
 

@@ -12,7 +12,7 @@
 
 ## What diagnostic logs are
 
-**Settings → Diagnostics** and **Settings → Privacy & data** expose **five rotating log files** under your Qube data directory. Each log has:
+**Settings → Diagnostics** and **Settings → Privacy & data** (both under the **System** sidebar group) expose **five rotating log files** under your Qube data directory. Each log has:
 
 - A **recording toggle** (when Qube appends new lines to disk)
 - **View {log name}** — in-app viewer (last **500 lines**, optional **Live tail** every 2s, **Open externally**)

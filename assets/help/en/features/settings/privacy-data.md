@@ -24,7 +24,7 @@ Advanced discovery limits, provider setup, DDG usage, and SearXNG configuration 
 
 ## Where to find it
 
-Open **Settings → Privacy & data** (settings section `privacy.data`). Press **?** for the guided tour (`settings.privacy_data`).
+Open **Settings → Privacy & data** in the **System** sidebar group (settings section `privacy.data`). Press **?** for the guided tour (`settings.privacy_data`).
 
 ## Also called
 

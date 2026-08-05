@@ -6,6 +6,11 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 - **Open Qube documentation**
 
+### Workflow guides
+
+- **Back up or restore Qube state**
+- **Open Backup & restore**
+
 ### Guided tours
 
 - **Replay Local LLM Setup Tour**
@@ -24,6 +29,7 @@ Controls listed top-to-bottom for **Settings → Help**.
 
 ### Uninstall Qube
 
+- **Open Backup & restore**
 - **Uninstall Qube and all data…**
 - **Remove Qube package only… (Linux)**
 - **Remove Qube app only… (macOS)**

@@ -25,4 +25,7 @@ def test_uninstall_help_paragraphs_list_current_platform_first(monkeypatch):
 
 def test_uninstall_help_paragraphs_include_backup_guidance():
     paragraphs = mod.uninstall_help_paragraphs()
-    assert "knowledge pack" in paragraphs[0].lower()
+    intro = paragraphs[0].lower()
+    assert "backup & restore" in intro
+    assert "state backup" in intro
+    assert "knowledge pack" in intro

@@ -38,6 +38,7 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         body = build_tour_model_download_body(entries, profile=profile)
 
         panel = OnboardingCoachPanel()
+        panel.setFixedWidth(panel.maximumWidth())
         panel.body_lbl.setText(body)
         content_w = panel._content_inner_width()
         line_h = panel.body_lbl.fontMetrics().lineSpacing()
@@ -46,11 +47,32 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         self.assertGreater(wrapped_h, line_h * 3)
 
         panel.recalculate_content_size()
-        self.assertGreaterEqual(
-            panel.body_lbl.minimumHeight(),
-            wrapped_h + panel._TEXT_LABEL_VERTICAL_PAD,
+        expected_body_h = (
+            panel._label_wrapped_height(panel.body_lbl, panel._content_inner_width())
+            + panel._TEXT_LABEL_VERTICAL_PAD * 2
         )
+        self.assertGreaterEqual(panel.body_lbl.height(), expected_body_h)
         self.assertGreater(panel.height(), wrapped_h)
+
+    def test_title_and_body_leave_vertical_breathing_room(self) -> None:
+        panel = OnboardingCoachPanel()
+        panel.setFixedWidth(panel.maximumWidth())
+        panel.title_lbl.setText("Backup & restore")
+        panel.body_lbl.setText(
+            "Save and recover essential Qube state locally — conversations, library "
+            "indexes, memory vectors, settings, and knowledge configuration."
+        )
+        panel.recalculate_content_size()
+        fm = panel.title_lbl.fontMetrics()
+        self.assertGreaterEqual(
+            panel.title_lbl.height(),
+            fm.lineSpacing() + panel._TEXT_LABEL_VERTICAL_PAD * 2,
+        )
+        self.assertGreaterEqual(
+            panel.body_lbl.height(),
+            panel._label_wrapped_height(panel.body_lbl, panel._content_inner_width())
+            + panel._TEXT_LABEL_VERTICAL_PAD * 2,
+        )
 
     def test_recalculate_content_size_does_not_grow_on_repeat(self) -> None:
         panel = OnboardingCoachPanel()

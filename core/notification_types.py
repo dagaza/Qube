@@ -6,6 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Literal
 
 from core.app_notification_types import AppNotificationRequest
@@ -267,6 +268,35 @@ def enrichment_complete_event(*, session_id: str, facts_stored: int) -> Notifica
         auto_dismiss_ms=8000,
         dedupe_key=f"enrichment:{session_id}:{facts_stored}",
         coalesce_group="enrichment_complete",
+    )
+
+
+def auto_backup_complete_event(*, destination: Path | str) -> NotificationEvent:
+    path = Path(destination)
+    return NotificationEvent(
+        title="Local backup saved",
+        body=f"Automatic backup saved to {path.name}.",
+        severity=NotificationSeverity.SUCCESS,
+        category="background",
+        auto_dismiss_ms=8000,
+        dedupe_key="auto_backup_complete",
+        rate_limit_key="auto_backup_complete",
+        rate_limit_sec=300.0,
+    )
+
+
+def auto_backup_failed_event(*, error: str = "") -> NotificationEvent:
+    detail = (error or "").strip() or "Automatic backup could not be completed."
+    return NotificationEvent(
+        title="Automatic backup failed",
+        body=detail,
+        severity=NotificationSeverity.WARNING,
+        category="background",
+        auto_dismiss_ms=12_000,
+        dedupe_key="auto_backup_failed",
+        rate_limit_key="auto_backup_failed",
+        rate_limit_sec=300.0,
+        tray_bump=True,
     )
 
 

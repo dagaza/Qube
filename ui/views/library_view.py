@@ -34,6 +34,12 @@ from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog
 from core.composer_attachments import validate_file_token
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
+from ui.components.sidebar_entry_actions import (
+    create_sidebar_pin_indicator,
+    install_sidebar_list_hover_tracking,
+    register_sidebar_entry_row,
+    store_sidebar_options_menu,
+)
 from ui.components.sidebar_list_qss import apply_sidebar_row_theme
 from ui.shell_theme import sidebar_row_action_icon_color
 from ui.components.sidebar_folder_list import (
@@ -289,6 +295,7 @@ class LibraryView(QWidget):
         self.doc_list.setObjectName("LibraryDocList")
         self.doc_list.itemClicked.connect(self._on_library_item_clicked)
         self.doc_list.itemSelectionChanged.connect(self._update_row_colors)
+        install_sidebar_list_hover_tracking(self.doc_list, self._update_row_colors)
 
         self._active_folder_id = self.db.get_main_library_folder_id()
         self._sync_ingest_button_for_active_folder()
@@ -943,6 +950,34 @@ class LibraryView(QWidget):
         self._set_active_folder_id(folder_id)
         self.refresh_library_list()
 
+    def show_qube_help_document(self, relative_path: str) -> bool:
+        """Select the Qube folder and preview a bundled help article."""
+        from core.help_corpus_manifest import help_doc_source
+
+        source = help_doc_source(relative_path.replace("\\", "/").lstrip("/"))
+        search = getattr(self, "search_bar", None)
+        if search is not None and search.text().strip():
+            search.clear()
+        self.show_qube_documentation_folder()
+        doc_list = getattr(self, "doc_list", None)
+        if doc_list is None:
+            return False
+        for row in range(doc_list.count()):
+            item = doc_list.item(row)
+            if item is None:
+                continue
+            payload = item.data(SIDEBAR_ROW_PAYLOAD_ROLE)
+            filename = payload.get("filename") if isinstance(payload, dict) else None
+            if filename is None:
+                filename = item.data(Qt.ItemDataRole.UserRole)
+            if filename != source:
+                continue
+            doc_list.setCurrentItem(item)
+            doc_list.scrollToItem(item)
+            self._on_document_selected(item)
+            return True
+        return False
+
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance with Prestige rounding and colors."""
         apply_prestige_kebab_menu_theme(menu, is_dark)
@@ -1069,6 +1104,8 @@ class LibraryView(QWidget):
         title_host = QWidget()
         title_host.setLayout(title_row)
 
+        pin_indicator = create_sidebar_pin_indicator(row)
+
         btn = QPushButton()
         btn.setObjectName("HistoryOptionsBtn")
         btn.setFixedSize(28, 28)
@@ -1094,6 +1131,22 @@ class LibraryView(QWidget):
             lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
         )
 
+        is_pinned = bool(doc.get("is_pinned"))
+        if is_pinned:
+            pin_action = menu.addAction(
+                themed_fa_icon("fa5s.thumbtack", theme.color(LINK_ICON), 16), "Unpin"
+            )
+            pin_action.triggered.connect(
+                lambda _, fname=doc["filename"]: self._toggle_document_pin(fname, False)
+            )
+        else:
+            pin_action = menu.addAction(
+                themed_fa_icon("fa5s.thumbtack", theme.color(LINK_ICON), 16), "Pin"
+            )
+            pin_action.triggered.connect(
+                lambda _, fname=doc["filename"]: self._toggle_document_pin(fname, True)
+            )
+
         if self._folder_controller:
             doc_folder_id = doc.get("folder_id") or self.db.get_main_library_folder_id()
             self._folder_controller.build_move_submenu_for_item(
@@ -1113,18 +1166,25 @@ class LibraryView(QWidget):
             lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
         )
 
+        store_sidebar_options_menu(btn, menu)
         btn.setMenu(menu)
 
         lay.addWidget(title_host)
         lay.addStretch()
+        lay.addWidget(pin_indicator)
         lay.addWidget(btn)
 
         item.setSizeHint(QSize(0, 45))
         self.doc_list.addItem(item)
         self.doc_list.setItemWidget(item, row)
+        register_sidebar_entry_row(self.doc_list, item, row, self._update_row_colors)
 
     def _move_document_to_folder(self, filename: str, folder_id: str) -> None:
         if self.db.move_document_to_folder(filename, folder_id):
+            self.refresh_library_list()
+
+    def _toggle_document_pin(self, filename: str, pinned: bool) -> None:
+        if self.db.set_document_pinned(filename, pinned):
             self.refresh_library_list()
 
     def _update_row_colors(self):

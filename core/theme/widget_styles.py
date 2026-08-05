@@ -1672,12 +1672,16 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 font-weight: 700;
                 background: transparent;
                 border: none;
+                padding-top: 2px;
+                padding-bottom: 2px;
             }}
             QLabel#OnboardingCoachBody {{
                 color: {body};
                 font-size: 13px;
                 background: transparent;
                 border: none;
+                padding-top: 2px;
+                padding-bottom: 2px;
             }}
             QLabel#OnboardingCoachHint {{
                 color: {hint};
@@ -1685,6 +1689,8 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 font-style: italic;
                 background: transparent;
                 border: none;
+                padding-top: 2px;
+                padding-bottom: 2px;
             }}
         """
     raise ValueError(f"Unknown theme style role: {role!r}")

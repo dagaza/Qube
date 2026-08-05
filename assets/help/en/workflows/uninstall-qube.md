@@ -11,7 +11,7 @@
 
 **Uninstall Qube** covers removing the application and optionally your local data (models, Library indexes, memory, conversations, settings). User data lives in **`~/.qube`** on macOS and Linux, and **`%LOCALAPPDATA%\Qube`** on Windows — it is separate from the app install on Windows and is not always deleted automatically.
 
-Before a full uninstall, export a **knowledge pack** from **Settings → Knowledge → Diagnostics** if you need a backup (credentials are redacted).
+Before a full uninstall, create a **state backup** from **Settings → Backup & restore** if you want to keep conversations, Library indexes, memory, and settings. Optionally export a **knowledge pack** from **Settings → Knowledge → Diagnostics** for Knowledge configuration only (credentials are redacted).
 
 ## Where to find it
 
@@ -26,7 +26,7 @@ remove Qube, delete Qube, uninstall app, wipe user data, remove package, clean u
 
 ### Before you uninstall
 
-1. Export a knowledge pack if you need a backup (**Settings → Knowledge → Diagnostics → Export knowledge pack**).
+1. Create a state backup if you need a full restore later (**Settings → Backup & restore → Create backup now**). Optionally export a knowledge pack for Knowledge settings only (**Settings → Knowledge → Diagnostics → Export knowledge pack**).
 2. Quit Qube before manual file removal. Built-in uninstallers quit the app for you.
 
 ### Windows
@@ -55,6 +55,7 @@ remove Qube, delete Qube, uninstall app, wipe user data, remove package, clean u
 
 ## Related
 
-- [Export or import a knowledge pack](export-or-import-knowledge-pack.md) — backup before removal
+- [Back up or restore Qube state](backup-or-restore-qube-state.md) — full state backup before removal
+- [Export or import a knowledge pack](export-or-import-knowledge-pack.md) — Knowledge configuration export
 - [Help settings](../features/settings/help.md) — in-app uninstall section and guided tours
 - [Knowledge settings](../features/settings/knowledge.md) — export knowledge pack

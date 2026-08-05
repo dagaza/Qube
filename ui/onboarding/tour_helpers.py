@@ -33,6 +33,13 @@ def open_settings_section(host, section_id: str, *, anchor: str | None = None) -
     host.settings_view.select_settings_section(section_id, anchor=anchor)
 
 
+def open_qube_help_document(host, relative_path: str) -> bool:
+    """Open Library → Qube and preview a bundled help article."""
+    open_library(host)
+    library = library_view(host)
+    return library.show_qube_help_document(relative_path)
+
+
 def ensure_tools_pane_visible(host) -> None:
     if host.tools_content.maximumWidth() == 0:
         host._toggle_tools_pane()

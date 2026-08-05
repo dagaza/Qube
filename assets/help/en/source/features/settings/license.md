@@ -16,7 +16,7 @@ Use **Remove cached license** to drop the local copy — Pro toggles turn off on
 
 ## Where to find it
 
-Open **Settings → License** (settings section `license`). Press **?** for the guided tour (`settings.license`).
+Open **Settings → License** in the **Support** sidebar group (settings section `license`). Press **?** for the guided tour (`settings.license`).
 
 Legacy deep links to **Settings → Advanced → License** redirect here.
 
