@@ -157,6 +157,16 @@ KEY_NOTIFICATIONS_CATEGORY_TOOLS = "qube.notifications.categories.tools"
 KEY_NOTIFICATIONS_CATEGORY_BACKGROUND = "qube.notifications.categories.background"
 KEY_NOTIFICATIONS_CATEGORY_MEMORY = "qube.notifications.categories.memory"
 KEY_NOTIFICATIONS_CATEGORY_UPDATES = "qube.notifications.categories.updates"
+KEY_BACKUP_AUTO_ENABLED = "qube.backup.autoEnabled"
+KEY_BACKUP_INTERVAL_DAYS = "qube.backup.intervalDays"
+KEY_BACKUP_RETENTION_COUNT = "qube.backup.retentionCount"
+KEY_BACKUP_INCLUDE_WALLPAPERS = "qube.backup.includeWallpapers"
+KEY_BACKUP_LAST_RUN_AT = "qube.backup.lastRunAt"
+KEY_BACKUP_LAST_RUN_PATH = "qube.backup.lastRunPath"
+KEY_BACKUP_LAST_RUN_STATUS = "qube.backup.lastRunStatus"
+BACKUP_INTERVAL_DAYS_CHOICES = (7, 14, 30, 90)
+DEFAULT_BACKUP_INTERVAL_DAYS = 30
+DEFAULT_BACKUP_RETENTION_COUNT = 3
 KEY_COMPANION_ENABLED = "qube.companion.enabled"
 KEY_COMPANION_SHOW_WHEN_TRAY_HIDDEN = "qube.companion.showWhenTrayHidden"
 KEY_COMPANION_SHOW_WHILE_WINDOW_OPEN = "qube.companion.showWhileWindowOpen"
@@ -1744,6 +1754,75 @@ def get_notifications_category_updates() -> bool:
 
 def set_notifications_category_updates(enabled: bool) -> None:
     _store().set(KEY_NOTIFICATIONS_CATEGORY_UPDATES, bool(enabled))
+
+
+def get_backup_auto_enabled() -> bool:
+    return bool(_store().get(KEY_BACKUP_AUTO_ENABLED, False))
+
+
+def set_backup_auto_enabled(enabled: bool) -> None:
+    _store().set(KEY_BACKUP_AUTO_ENABLED, bool(enabled))
+
+
+def get_backup_interval_days() -> int:
+    raw = _store().get(KEY_BACKUP_INTERVAL_DAYS, DEFAULT_BACKUP_INTERVAL_DAYS)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = DEFAULT_BACKUP_INTERVAL_DAYS
+    return value if value in BACKUP_INTERVAL_DAYS_CHOICES else DEFAULT_BACKUP_INTERVAL_DAYS
+
+
+def set_backup_interval_days(days: int) -> None:
+    value = int(days)
+    if value not in BACKUP_INTERVAL_DAYS_CHOICES:
+        value = DEFAULT_BACKUP_INTERVAL_DAYS
+    _store().set(KEY_BACKUP_INTERVAL_DAYS, value)
+
+
+def get_backup_retention_count() -> int:
+    raw = _store().get(KEY_BACKUP_RETENTION_COUNT, DEFAULT_BACKUP_RETENTION_COUNT)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = DEFAULT_BACKUP_RETENTION_COUNT
+    return max(1, min(10, value))
+
+
+def set_backup_retention_count(count: int) -> None:
+    _store().set(KEY_BACKUP_RETENTION_COUNT, max(1, min(10, int(count))))
+
+
+def get_backup_include_wallpapers() -> bool:
+    return bool(_store().get(KEY_BACKUP_INCLUDE_WALLPAPERS, False))
+
+
+def set_backup_include_wallpapers(enabled: bool) -> None:
+    _store().set(KEY_BACKUP_INCLUDE_WALLPAPERS, bool(enabled))
+
+
+def get_backup_last_run_at() -> str:
+    return str(_store().get(KEY_BACKUP_LAST_RUN_AT, "") or "").strip()
+
+
+def set_backup_last_run_at(value: str) -> None:
+    _store().set(KEY_BACKUP_LAST_RUN_AT, str(value or "").strip())
+
+
+def get_backup_last_run_path() -> str:
+    return str(_store().get(KEY_BACKUP_LAST_RUN_PATH, "") or "").strip()
+
+
+def set_backup_last_run_path(value: str) -> None:
+    _store().set(KEY_BACKUP_LAST_RUN_PATH, str(value or "").strip())
+
+
+def get_backup_last_run_status() -> str:
+    return str(_store().get(KEY_BACKUP_LAST_RUN_STATUS, "") or "").strip()
+
+
+def set_backup_last_run_status(value: str) -> None:
+    _store().set(KEY_BACKUP_LAST_RUN_STATUS, str(value or "").strip())
 
 
 def get_companion_enabled() -> bool:

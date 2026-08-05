@@ -648,6 +648,44 @@
     "default": true,
     "description": "App update and restart prompts."
   },
+  "qube.backup.autoEnabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Run automatic local state backups on startup when due."
+  },
+  "qube.backup.intervalDays": {
+    "type": "integer",
+    "enum": [7, 14, 30, 90],
+    "default": 30,
+    "description": "Minimum days between automatic local backups."
+  },
+  "qube.backup.retentionCount": {
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 10,
+    "default": 3,
+    "description": "Automatic backups to keep under ~/.qube/backups/auto/."
+  },
+  "qube.backup.includeWallpapers": {
+    "type": "boolean",
+    "default": false,
+    "description": "Include imported wallpapers in automatic backups."
+  },
+  "qube.backup.lastRunAt": {
+    "type": "string",
+    "default": "",
+    "description": "ISO timestamp of the last automatic backup attempt."
+  },
+  "qube.backup.lastRunPath": {
+    "type": "string",
+    "default": "",
+    "description": "Path to the last automatic backup archive."
+  },
+  "qube.backup.lastRunStatus": {
+    "type": "string",
+    "default": "",
+    "description": "Outcome of the last automatic backup (success, failed, skipped)."
+  },
   "qube.companion.enabled": {
     "type": "boolean",
     "default": false,

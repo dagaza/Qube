@@ -14,7 +14,7 @@ Use this channel for bugs, feature ideas, and general product feedback—not for
 
 ## Where to find it
 
-Open **Settings → Contact & Feedback** (settings section `contact.feedback`). Press **?** for the guided tour (`settings.contact_feedback`).
+Open **Settings → Contact & Feedback** in the **Support** sidebar group (settings section `contact.feedback`). Press **?** for the guided tour (`settings.contact_feedback`).
 
 ## Also called
 

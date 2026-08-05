@@ -5,8 +5,10 @@ from __future__ import annotations
 import sys
 
 _BEFORE_UNINSTALL = (
-    "Before you uninstall: export a knowledge pack from Settings → Knowledge → "
-    "Diagnostics if you need a backup. Models, library files, and settings live "
+    "Before you uninstall: create a state backup from Settings → Backup & restore "
+    "if you need conversations, Library indexes, memory, or settings later. "
+    "Optionally export a knowledge pack from Settings → Knowledge → Diagnostics "
+    "for Knowledge configuration only. Models, library files, and settings live "
     "under your Qube user data folder (~/.qube on macOS/Linux, "
     "%LOCALAPPDATA%\\Qube on Windows). Quit Qube before manual removal; built-in "
     "uninstallers quit the app for you."

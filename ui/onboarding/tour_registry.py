@@ -32,6 +32,7 @@ TOUR_DISPLAY_NAMES: dict[str, str] = {
     "settings.about": "About settings",
     "settings.contact_feedback": "Contact & Feedback settings",
     "settings.privacy_data": "Privacy & data settings",
+    "settings.system_backup": "Backup & restore settings",
     "settings.diagnostics": "Diagnostics settings",
     "settings.license": "License settings",
     "settings.advanced": "Advanced settings",
@@ -73,6 +74,9 @@ def _register_all_tours() -> None:
     from ui.onboarding.tours.model_manager import build_model_manager_tour
     from ui.onboarding.tours.telemetry import build_telemetry_tour
     from ui.onboarding.tours.settings.advanced import build_settings_advanced_tour
+    from ui.onboarding.tours.settings.backup_restore import (
+        build_settings_system_backup_tour,
+    )
     from ui.onboarding.tours.settings.diagnostics import build_settings_diagnostics_tour
     from ui.onboarding.tours.settings.license import build_settings_license_tour
     from ui.onboarding.tours.settings.privacy_data import build_settings_privacy_data_tour
@@ -115,6 +119,7 @@ def _register_all_tours() -> None:
     register_tour("settings.about", build_settings_about_tour)
     register_tour("settings.contact_feedback", build_settings_contact_feedback_tour)
     register_tour("settings.privacy_data", build_settings_privacy_data_tour)
+    register_tour("settings.system_backup", build_settings_system_backup_tour)
     register_tour("settings.diagnostics", build_settings_diagnostics_tour)
     register_tour("settings.license", build_settings_license_tour)
     register_tour("settings.advanced", build_settings_advanced_tour)

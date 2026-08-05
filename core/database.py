@@ -224,6 +224,8 @@ class DatabaseManager:
                     "ALTER TABLE documents ADD COLUMN ingest_mode TEXT NOT NULL DEFAULT 'standard'",
                     "ALTER TABLE library_folders ADD COLUMN folder_key TEXT",
                     "ALTER TABLE library_folders ADD COLUMN allows_user_ingest INTEGER NOT NULL DEFAULT 1",
+                    "ALTER TABLE sessions ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
+                    "ALTER TABLE documents ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
                 ):
                     try:
                         cursor.execute(alter_sql)
@@ -689,6 +691,36 @@ class DatabaseManager:
             )
             return False
 
+    def set_session_pinned(self, session_id: str, pinned: bool) -> bool:
+        try:
+            with self._get_connection() as conn:
+                cur = conn.execute(
+                    "UPDATE sessions SET is_pinned = ? WHERE id = ?",
+                    (1 if pinned else 0, session_id),
+                )
+                conn.commit()
+                return cur.rowcount > 0
+        except Exception as e:
+            logger.error(
+                "Failed to set session pinned %s=%s: %s", session_id, pinned, e
+            )
+            return False
+
+    def set_document_pinned(self, filename: str, pinned: bool) -> bool:
+        try:
+            with self._get_connection() as conn:
+                cur = conn.execute(
+                    "UPDATE documents SET is_pinned = ? WHERE filename = ?",
+                    (1 if pinned else 0, filename),
+                )
+                conn.commit()
+                return cur.rowcount > 0
+        except Exception as e:
+            logger.error(
+                "Failed to set document pinned %s=%s: %s", filename, pinned, e
+            )
+            return False
+
     def move_document_to_folder(self, filename: str, folder_id: str) -> bool:
         if not self.library_folder_allows_user_ingest(folder_id):
             return False
@@ -730,7 +762,7 @@ class DatabaseManager:
             grouped: dict[str, list[dict]] = {f["id"]: [] for f in folders}
             cursor = conn.execute(
                 """
-                SELECT id, title, updated_at, folder_id
+                SELECT id, title, updated_at, folder_id, is_pinned
                 FROM sessions
                 ORDER BY updated_at DESC
                 """
@@ -947,12 +979,12 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT s.id, s.title, s.updated_at, s.folder_id, cf.name AS folder_name
+                SELECT s.id, s.title, s.updated_at, s.folder_id, s.is_pinned, cf.name AS folder_name
                 FROM sessions s
                 LEFT JOIN conversation_folders cf ON cf.id = s.folder_id
                 WHERE instr(lower(s.title), ?) > 0
                 UNION
-                SELECT s.id, s.title, s.updated_at, s.folder_id, cf.name AS folder_name
+                SELECT s.id, s.title, s.updated_at, s.folder_id, s.is_pinned, cf.name AS folder_name
                 FROM sessions s
                 INNER JOIN messages m ON m.session_id = s.id
                 LEFT JOIN conversation_folders cf ON cf.id = s.folder_id

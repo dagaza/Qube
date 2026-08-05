@@ -400,11 +400,34 @@ def generate_settings_sections_markdown() -> str:
         "",
         "Open **Settings** from the main navigation, then choose a section in the left sidebar.",
         "",
-        "## Section index",
+        "The sidebar organizes pages into five groups. Expand a group label to see its sections.",
         "",
-        "| Section | Settings id | Sidebar group |",
-        "|---------|-------------|---------------|",
+        "| Group | Sections |",
+        "|-------|----------|",
     ]
+
+    group_sections: dict[str, list[str]] = {}
+    group_order: list[str] = []
+    for section in SETTINGS_SECTIONS:
+        group = section.group or "Other"
+        if group not in group_sections:
+            group_sections[group] = []
+            group_order.append(group)
+        group_sections[group].append(section.title)
+
+    for group in group_order:
+        titles = ", ".join(group_sections[group])
+        lines.append(f"| **{group}** | {titles} |")
+
+    lines.extend(
+        [
+            "",
+            "## Section index",
+            "",
+            "| Section | Settings id | Sidebar group |",
+            "|---------|-------------|---------------|",
+        ]
+    )
 
     for section in SETTINGS_SECTIONS:
         group = section.group or ""

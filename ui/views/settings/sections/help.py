@@ -68,6 +68,45 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     layout.addWidget(docs_card)
 
+    # --- Workflow guides card ---
+    workflows_card, workflows_card_layout = begin_settings_section_card(host, is_dark=is_dark)
+    workflows_form = add_settings_card_form(workflows_card_layout)
+    add_subsection_to_form(workflows_form, "Workflow guides", anchor="workflow-guides")
+
+    host.backup_restore_guide_hint_lbl = make_settings_hint(
+        "Step-by-step help for creating a local state backup, restoring on this or "
+        "another machine, and understanding what is included."
+    )
+
+    host.open_backup_restore_guide_btn = QPushButton("Back up or restore Qube state")
+    apply_brand_primary(host.open_backup_restore_guide_btn, icon_name="fa5s.hdd")
+    host.open_backup_restore_guide_btn.setToolTip(
+        "Open the backup and restore workflow in Library → Qube."
+    )
+    host.open_backup_restore_guide_btn.clicked.connect(
+        host._on_open_backup_restore_guide_clicked
+    )
+
+    host.open_backup_restore_settings_btn = QPushButton("Open Backup & restore")
+    apply_brand_primary(host.open_backup_restore_settings_btn, icon_name="fa5s.cog")
+    host.open_backup_restore_settings_btn.setToolTip(
+        "Jump to Settings → Backup & restore (System)."
+    )
+    host.open_backup_restore_settings_btn.clicked.connect(
+        host._on_open_backup_restore_settings_clicked
+    )
+
+    _add_help_action_to_form(
+        workflows_form,
+        host.backup_restore_guide_hint_lbl,
+        host.open_backup_restore_guide_btn,
+    )
+    add_settings_full_width_row(
+        workflows_form,
+        make_settings_action_row(host.open_backup_restore_settings_btn),
+    )
+    layout.addWidget(workflows_card)
+
     # --- Guided tours card ---
     tours_card, tours_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     tours_form = add_settings_card_form(tours_card_layout)
@@ -259,6 +298,25 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     uninstall_card, uninstall_card_layout = begin_settings_section_card(host, is_dark=is_dark)
     uninstall_form = add_settings_card_form(uninstall_card_layout)
     add_subsection_to_form(uninstall_form, "Uninstall Qube", anchor="uninstall-qube")
+
+    host.uninstall_backup_hint_lbl = make_settings_hint(
+        "Create a state backup before removing Qube if you want to keep conversations, "
+        "Library indexes, memory, and settings."
+    )
+    host.uninstall_open_backup_settings_btn = QPushButton("Open Backup & restore")
+    apply_brand_primary(host.uninstall_open_backup_settings_btn, icon_name="fa5s.hdd")
+    host.uninstall_open_backup_settings_btn.setToolTip(
+        "Jump to Settings → Backup & restore (System) to export a backup archive."
+    )
+    host.uninstall_open_backup_settings_btn.clicked.connect(
+        host._on_open_backup_restore_settings_clicked
+    )
+    _add_help_action_to_form(
+        uninstall_form,
+        host.uninstall_backup_hint_lbl,
+        host.uninstall_open_backup_settings_btn,
+    )
+
     _add_help_info_to_form(uninstall_form, *uninstall_help_paragraphs())
 
     if is_uninstall_available():

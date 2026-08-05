@@ -31,6 +31,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Tune retrieval orchestration or fetch depth | [Retrieval profile vs search quality](faq/retrieval-profile-vs-search-quality.md) |
 | Enable Library Pro depth (precision ingest / retrieval) | [Library Pro depth FAQ](faq/library-pro-depth.md) |
 | Install on Linux (AppImage / .deb) | [Install Qube on Linux](faq/install-linux.md) |
+| Back up or restore my data | [Back up or restore Qube state](workflows/backup-or-restore-qube-state.md) |
 | Update Qube | [Update Qube](workflows/update-qube.md) |
 | Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 
@@ -46,23 +47,27 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 
 ## Settings
 
-| Section | Document |
-|---------|----------|
-| Voice & Audio | [Voice & Audio settings](features/settings/voice-audio.md) |
-| AI & Models | [AI & Models settings](features/settings/ai-models.md) |
-| Memory | [Memory settings](features/settings/memory.md) |
-| Knowledge | [Knowledge settings](features/settings/knowledge.md) |
-| Integrations | [Integrations settings](features/settings/integrations.md) |
-| General | [General settings](features/settings/general.md) |
-| Desktop Companion | [Desktop Companion settings](features/settings/desktop-companion.md) |
-| Notifications | [Notifications settings](features/settings/notifications.md) |
-| About | [About settings](features/settings/about.md) |
-| License | [License settings](features/settings/license.md) |
-| Contact & Feedback | [Contact & Feedback settings](features/settings/contact-feedback.md) |
-| Help | [Help settings](features/settings/help.md) |
-| Privacy & data | [Privacy & data settings](features/settings/privacy-data.md) |
-| Diagnostics | [Diagnostics settings](features/settings/diagnostics.md) |
-| Advanced | [Advanced settings](features/settings/advanced.md) |
+The sidebar groups related pages. Expand a group label to see its sections.
+
+| Group | Section | Document |
+|-------|---------|----------|
+| Voice & Input | Voice & Audio | [Voice & Audio settings](features/settings/voice-audio.md) |
+| Intelligence | AI & Models | [AI & Models settings](features/settings/ai-models.md) |
+| Intelligence | Memory | [Memory settings](features/settings/memory.md) |
+| Intelligence | Knowledge | [Knowledge settings](features/settings/knowledge.md) |
+| Intelligence | Integrations | [Integrations settings](features/settings/integrations.md) |
+| Interface | General | [General settings](features/settings/general.md) |
+| Interface | Themes | [Themes settings](features/settings/themes.md) |
+| Interface | Desktop Companion | [Desktop Companion settings](features/settings/desktop-companion.md) |
+| Interface | Notifications | [Notifications settings](features/settings/notifications.md) |
+| Support | About | [About settings](features/settings/about.md) |
+| Support | License | [License settings](features/settings/license.md) |
+| Support | Contact & Feedback | [Contact & Feedback settings](features/settings/contact-feedback.md) |
+| Support | Help | [Help settings](features/settings/help.md) |
+| System | Backup & restore | [Backup & restore settings](features/settings/backup-restore.md) |
+| System | Privacy & data | [Privacy & data settings](features/settings/privacy-data.md) |
+| System | Diagnostics | [Diagnostics settings](features/settings/diagnostics.md) |
+| System | Advanced | [Advanced settings](features/settings/advanced.md) |
 
 ## Workflows
 
@@ -78,6 +83,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Prepare search models | [Prepare search models for Library](workflows/prepare-search-models-for-library.md) |
 | Enable Library Pro depth (Pro license) | [Enable Library Pro depth](workflows/enable-library-pro-depth.md) |
 | Export or import a knowledge pack | [Export or import knowledge pack](workflows/export-or-import-knowledge-pack.md) |
+| Back up or restore Qube state | [Back up or restore Qube state](workflows/backup-or-restore-qube-state.md) |
 | Update Qube | [Update Qube](workflows/update-qube.md) |
 | Uninstall Qube | [Uninstall Qube](workflows/uninstall-qube.md) |
 

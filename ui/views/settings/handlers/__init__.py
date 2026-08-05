@@ -1,6 +1,7 @@
 """Settings handler mixins extracted from SettingsView."""
 
 from ui.views.settings.handlers.ai_models import AiModelsHandlersMixin
+from ui.views.settings.handlers.backup_restore import BackupRestoreHandlersMixin
 from ui.views.settings.handlers.bootstrap_downloads import BootstrapDownloadsHandlersMixin
 from ui.views.settings.handlers.companion import CompanionHandlersMixin
 from ui.views.settings.handlers.diagnostics import DiagnosticsHandlersMixin
@@ -20,6 +21,7 @@ from ui.views.settings.handlers.voice import VoiceHandlersMixin
 
 __all__ = [
     "AiModelsHandlersMixin",
+    "BackupRestoreHandlersMixin",
     "BootstrapDownloadsHandlersMixin",
     "CompanionHandlersMixin",
     "DiagnosticsHandlersMixin",
