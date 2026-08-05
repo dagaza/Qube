@@ -408,16 +408,17 @@ class OnboardingCoachPanel(QFrame):
 
     def recalculate_content_size(self) -> None:
         """Size word-wrapped labels before adjustSize (Qt under-measures wrapped QLabel)."""
-        content_w = self._content_inner_width()
         pad = self._TEXT_LABEL_VERTICAL_PAD
-        for lbl in (self.title_lbl, self.body_lbl, self.hint_lbl):
-            lbl.setMinimumHeight(0)
-            lbl.setMaximumHeight(16_777_215)
-            if lbl.isHidden() or not lbl.text().strip():
-                lbl.setFixedHeight(0)
-                continue
-            lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad * 2)
-        self.adjustSize()
+        for _pass in range(2):
+            content_w = self._content_inner_width()
+            for lbl in (self.title_lbl, self.body_lbl, self.hint_lbl):
+                lbl.setMinimumHeight(0)
+                lbl.setMaximumHeight(16_777_215)
+                if lbl.isHidden() or not lbl.text().strip():
+                    lbl.setFixedHeight(0)
+                    continue
+                lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad * 2)
+            self.adjustSize()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
