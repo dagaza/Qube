@@ -52,6 +52,7 @@ _AUDIT_ALLOWLIST = frozenset(
         "ui/onboarding/tours/settings/integrations.py",
         "ui/onboarding/tours/settings/_diagnostic_logs.py",
         "ui/onboarding/tours/settings/advanced.py",
+        "ui/onboarding/tours/settings/backup_restore.py",
         "tests/test_ui_settings_open.py",
         "tests/test_composer_commands.py",
         "tests/test_lazy_main_stages.py",

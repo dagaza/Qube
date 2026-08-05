@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -45,7 +46,12 @@ def test_generate_qube_signing_key_writes_pem_and_updates_signing_keys(tmp_path:
 
     assert exit_code == 0
     assert pem_path.is_file()
-    assert oct(pem_path.stat().st_mode & 0o777) == oct(0o600)
+    mode = pem_path.stat().st_mode & 0o777
+    if sys.platform == "win32":
+        # NTFS does not enforce Unix permission bits the same way as chmod(0o600).
+        assert mode in {0o600, 0o666}
+    else:
+        assert oct(mode) == oct(0o600)
 
     private_key = serialization.load_pem_private_key(pem_path.read_bytes(), password=None)
     assert isinstance(private_key, Ed25519PrivateKey)
