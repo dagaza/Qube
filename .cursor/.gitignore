@@ -1,6 +1,0 @@
-# Starfall transient runtime files
-.starfall-mode
-.starfall-lock
-starfall-archive/
-starfall/subagents.log
-starfall/hook-debug.log
