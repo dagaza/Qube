@@ -61,7 +61,7 @@ Set repository secret:
 |--------|---------|
 | `WINGET_SUBMIT_TOKEN` | GitHub PAT with rights to push to your `winget-pkgs` fork and open PRs |
 
-The release workflow runs `scripts/release/submit_winget_packages.py` after each tag. Existing package IDs (for example `dagaza.Qube`) are updated with `wingetcreate update`; new IDs (for example `dagaza.Qube.Vulkan` and `dagaza.Qube.CUDA`) are submitted from the rendered manifest folders under `winget/out/<version>/`.
+The release workflow runs `scripts/release/submit_winget_packages.py` after each tag. It submits the rendered split manifests under `winget/out/<version>/` for **dagaza.Qube**, **dagaza.Qube.Vulkan**, and **dagaza.Qube.CUDA** via `wingetcreate submit` (one PR per package ID).
 
 ### Catch-up without retagging
 

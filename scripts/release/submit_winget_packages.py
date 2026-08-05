@@ -4,11 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -17,31 +14,8 @@ if str(_REPO_ROOT) not in sys.path:
 
 from core.winget_release_variants import (  # noqa: E402
     WINGET_VARIANTS,
-    installer_url,
     package_identifier,
 )
-
-_WINGET_PKGS = "microsoft/winget-pkgs"
-_MANIFEST_PREFIX = "manifests/d/dagaza"
-
-
-def _package_manifest_path(package_id: str) -> str:
-    suffix = package_id.removeprefix("dagaza.")
-    return f"{_MANIFEST_PREFIX}/{suffix}"
-
-
-def package_exists_in_winget_pkgs(package_id: str) -> bool:
-    path = _package_manifest_path(package_id)
-    url = f"https://api.github.com/repos/{_WINGET_PKGS}/contents/{path}"
-    request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.load(response)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return False
-        raise
-    return isinstance(payload, list) and bool(payload)
 
 
 def submit_winget_packages(
@@ -50,7 +24,6 @@ def submit_winget_packages(
     token: str,
     wingetcreate: Path,
     manifest_root: Path,
-    repo: str = "dagaza/Qube",
     dry_run: bool = False,
 ) -> None:
     version = version.removeprefix("v")
@@ -59,39 +32,23 @@ def submit_winget_packages(
 
     for variant in WINGET_VARIANTS:
         package_id = package_identifier(variant)
-        url = installer_url(version, variant, repo=repo)
         manifest_dir = manifest_root / package_id
-        exists = package_exists_in_winget_pkgs(package_id)
+        if not manifest_dir.is_dir():
+            raise FileNotFoundError(
+                f"Rendered manifest folder missing for {package_id}: {manifest_dir}"
+            )
 
-        if exists:
-            command = [
-                str(wingetcreate),
-                "update",
-                package_id,
-                "--version",
-                version,
-                "--urls",
-                url,
-                "--token",
-                token,
-                "--submit",
-            ]
-            action = "update"
-        else:
-            if not manifest_dir.is_dir():
-                raise FileNotFoundError(
-                    f"Rendered manifest folder missing for new package {package_id}: {manifest_dir}"
-                )
-            command = [
-                str(wingetcreate),
-                "submit",
-                str(manifest_dir),
-                "--token",
-                token,
-            ]
-            action = "submit"
-
-        print(f"WinGet {action} for {package_id} ({version})...")
+        command = [
+            str(wingetcreate),
+            "submit",
+            str(manifest_dir),
+            "--token",
+            token,
+            "--no-open",
+            "--prtitle",
+            f"{package_id} {version}",
+        ]
+        print(f"WinGet submit for {package_id} ({version})...")
         if dry_run:
             print(" ".join(command[:-2] + ["--token", "***"]))
             continue
@@ -107,7 +64,6 @@ def main() -> int:
         "--manifest-root",
         help="Directory containing rendered manifests (default: winget/out/<version>)",
     )
-    parser.add_argument("--repo", default="dagaza/Qube")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -122,7 +78,6 @@ def main() -> int:
         token=args.token,
         wingetcreate=Path(args.wingetcreate),
         manifest_root=manifest_root,
-        repo=args.repo,
         dry_run=args.dry_run,
     )
     return 0
