@@ -388,9 +388,14 @@ class OnboardingCoachPanel(QFrame):
     def _content_inner_width(self) -> int:
         lay = self.layout()
         if lay is None:
-            return self.maximumWidth() - 36
+            return max(200, self.maximumWidth() - 36)
         m = lay.contentsMargins()
-        return max(200, self.maximumWidth() - m.left() - m.right())
+        inner_at_max = self.maximumWidth() - m.left() - m.right()
+        # Use the narrowest width the panel may take so wrapped labels never clip.
+        candidates = [inner_at_max, self.minimumWidth() - m.left() - m.right()]
+        if self.width() > 0:
+            candidates.append(self.width() - m.left() - m.right())
+        return max(200, min(candidates))
 
     def _label_wrapped_height(self, lbl: QLabel, content_w: int) -> int:
         """Stable wrapped height — do not use heightForWidth after minimumHeight is set."""
@@ -404,21 +409,32 @@ class OnboardingCoachPanel(QFrame):
         doc.setTextWidth(float(max(1, content_w)))
         doc_height = doc.size().height()
         fm = lbl.fontMetrics()
-        return max(int(doc_height + 0.999), fm.lineSpacing())
+        flags = int(Qt.TextFlag.TextWordWrap)
+        rect_h = fm.boundingRect(0, 0, content_w, 10_000, flags, lbl.text()).height()
+        return max(int(doc_height + 0.999), rect_h, fm.lineSpacing())
 
     def recalculate_content_size(self) -> None:
         """Size word-wrapped labels before adjustSize (Qt under-measures wrapped QLabel)."""
         pad = self._TEXT_LABEL_VERTICAL_PAD
-        for _pass in range(2):
+        prev_key: tuple[int, tuple[int, ...]] | None = None
+        for _ in range(5):
             content_w = self._content_inner_width()
+            heights: list[int] = []
             for lbl in (self.title_lbl, self.body_lbl, self.hint_lbl):
                 lbl.setMinimumHeight(0)
                 lbl.setMaximumHeight(16_777_215)
                 if lbl.isHidden() or not lbl.text().strip():
                     lbl.setFixedHeight(0)
+                    heights.append(0)
                     continue
-                lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad * 2)
+                h = self._label_wrapped_height(lbl, content_w) + pad * 2
+                lbl.setFixedHeight(h)
+                heights.append(h)
             self.adjustSize()
+            key = (content_w, tuple(heights))
+            if key == prev_key:
+                break
+            prev_key = key
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:

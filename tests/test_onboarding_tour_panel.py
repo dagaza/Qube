@@ -38,6 +38,7 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         body = build_tour_model_download_body(entries, profile=profile)
 
         panel = OnboardingCoachPanel()
+        panel.setFixedWidth(panel.maximumWidth())
         panel.body_lbl.setText(body)
         content_w = panel._content_inner_width()
         line_h = panel.body_lbl.fontMetrics().lineSpacing()
