@@ -173,6 +173,12 @@ from ui.components.prestige_menu_qss import apply_prestige_kebab_menu_theme
 from ui.components.prestige_dialog import PrestigeDialog, CitationSourcesDialog
 from ui.components.research_map_dialog import ResearchMapDialog
 from ui.components.readability_toolbar_styles import readability_font_pair_stylesheet
+from ui.components.sidebar_entry_actions import (
+    create_sidebar_pin_indicator,
+    install_sidebar_list_hover_tracking,
+    register_sidebar_entry_row,
+    store_sidebar_options_menu,
+)
 from ui.components.sidebar_list_qss import apply_sidebar_row_theme
 from ui.shell_theme import sidebar_row_action_icon_color
 from ui.components.sidebar_folder_list import (
@@ -2933,6 +2939,9 @@ class ConversationsView(QWidget):
         self.new_chat_btn.clicked.connect(self._start_new_chat)
         self.history_list.itemClicked.connect(self._on_history_item_clicked)
         self.history_list.itemSelectionChanged.connect(self._update_row_colors)
+        install_sidebar_list_hover_tracking(
+            self.history_list, self._update_row_colors
+        )
 
         self._active_folder_id = self.db.get_main_conversation_folder_id()
         self._folder_controller = SidebarFolderListController(
@@ -4168,6 +4177,8 @@ class ConversationsView(QWidget):
         title_lbl = QLabel(session["title"])
         title_lbl.setObjectName("HistoryRowTitle")
 
+        pin_indicator = create_sidebar_pin_indicator(row_widget)
+
         opts_btn = QPushButton()
         opts_btn.setObjectName("HistoryOptionsBtn")
         opts_btn.setFixedSize(28, 28)
@@ -4194,6 +4205,22 @@ class ConversationsView(QWidget):
                 s_id, old_t
             )
         )
+
+        is_pinned = bool(session.get("is_pinned"))
+        if is_pinned:
+            pin_action = menu.addAction(
+                themed_fa_icon("fa5s.thumbtack", theme.color(LINK_ICON), 16), "Unpin"
+            )
+            pin_action.triggered.connect(
+                lambda _, s_id=session["id"]: self._toggle_session_pin(s_id, False)
+            )
+        else:
+            pin_action = menu.addAction(
+                themed_fa_icon("fa5s.thumbtack", theme.color(LINK_ICON), 16), "Pin"
+            )
+            pin_action.triggered.connect(
+                lambda _, s_id=session["id"]: self._toggle_session_pin(s_id, True)
+            )
 
         if self._folder_controller:
             session_folder_id = session.get("folder_id") or self.db.get_main_conversation_folder_id()
@@ -4222,18 +4249,27 @@ class ConversationsView(QWidget):
         delete_action.triggered.connect(
             lambda _, s_id=session["id"]: self._trigger_delete_chat(s_id)
         )
+        store_sidebar_options_menu(opts_btn, menu)
         opts_btn.setMenu(menu)
 
         row_layout.addWidget(title_lbl)
         row_layout.addStretch()
+        row_layout.addWidget(pin_indicator)
         row_layout.addWidget(opts_btn)
 
         item.setSizeHint(QSize(0, 45))
         self.history_list.addItem(item)
         self.history_list.setItemWidget(item, row_widget)
+        register_sidebar_entry_row(
+            self.history_list, item, row_widget, self._update_row_colors
+        )
 
     def _move_session_to_folder(self, session_id: str, folder_id: str) -> None:
         if self.db.move_session_to_folder(session_id, folder_id):
+            self._refresh_history_list()
+
+    def _toggle_session_pin(self, session_id: str, pinned: bool) -> None:
+        if self.db.set_session_pinned(session_id, pinned):
             self._refresh_history_list()
 
     def _transcript_has_messages(self) -> bool:

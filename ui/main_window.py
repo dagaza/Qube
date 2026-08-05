@@ -3980,6 +3980,53 @@ class MainWindow(QMainWindow):
         """Public entry for workers/adapters to raise a notification."""
         self._notification_service.emit(event)
 
+    def schedule_auto_state_backup(self) -> None:
+        """Defer an automatic backup check until after startup settles."""
+        if getattr(self, "_auto_state_backup_scheduled", False):
+            return
+        self._auto_state_backup_scheduled = True
+        from core.state_backup.scheduler import STARTUP_AUTO_BACKUP_DELAY_MS
+
+        QTimer.singleShot(STARTUP_AUTO_BACKUP_DELAY_MS, self._run_auto_state_backup_if_due)
+
+    def _run_auto_state_backup_if_due(self) -> None:
+        from core import app_settings
+
+        if not app_settings.get_backup_auto_enabled():
+            return
+        if getattr(self, "_state_backup_auto_worker", None) is not None:
+            return
+        from workers.state_backup_auto_worker import StateBackupAutoWorker
+
+        worker = StateBackupAutoWorker()
+        worker.finished_with_result.connect(self._on_auto_state_backup_finished)
+        worker.start()
+        self._state_backup_auto_worker = worker
+
+    def _on_auto_state_backup_finished(self, result: object) -> None:
+        from core.state_backup.scheduler import AutoBackupResult
+
+        worker = getattr(self, "_state_backup_auto_worker", None)
+        if worker is not None:
+            worker.deleteLater()
+            self._state_backup_auto_worker = None
+        if not isinstance(result, AutoBackupResult) or not result.ran:
+            return
+        from core.notification_types import (
+            auto_backup_complete_event,
+            auto_backup_failed_event,
+        )
+
+        if result.ok and result.destination is not None:
+            self.emit_notification(auto_backup_complete_event(destination=result.destination))
+        elif not result.ok:
+            self.emit_notification(auto_backup_failed_event(error=result.error or ""))
+        settings_view = getattr(self, "_settings_view", None)
+        if settings_view is not None and hasattr(
+            settings_view, "notify_auto_state_backup_finished"
+        ):
+            settings_view.notify_auto_state_backup_finished(result)
+
     @property
     def notification_service(self) -> NotificationService:
         return self._notification_service

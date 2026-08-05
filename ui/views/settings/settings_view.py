@@ -137,6 +137,7 @@ from ui.views.settings.sections import (
     advanced,
     ai_models,
     appearance_themes,
+    backup_restore,
     contact_feedback,
     desktop_companion,
     diagnostics,
@@ -153,6 +154,7 @@ from ui.views.settings.sections import (
 
 from ui.views.settings.handlers import (
     AiModelsHandlersMixin,
+    BackupRestoreHandlersMixin,
     BootstrapDownloadsHandlersMixin,
     CompanionHandlersMixin,
     DiagnosticsHandlersMixin,
@@ -195,6 +197,7 @@ _SECTION_BUILDERS = {
     "about": about.build_section,
     "contact.feedback": contact_feedback.build_section,
     "privacy.data": privacy_data.build_section,
+    "system.backup": backup_restore.build_section,
     "diagnostics": diagnostics.build_section,
     "license": license_section.build_section,
     "advanced": advanced.build_section,
@@ -286,6 +289,7 @@ class SettingsView(
     UpdateHandlersMixin,
     UninstallHandlersMixin,
     ThemesHandlersMixin,
+    BackupRestoreHandlersMixin,
 ):
 
     audio_pin_toggle = pyqtSignal(bool)
@@ -1242,6 +1246,8 @@ class SettingsView(
             self._sync_privacy_data_section_ui()
         if section_id == "license" and hasattr(self, "_refresh_license_status_ui"):
             self._refresh_license_status_ui()
+        if section_id == "system.backup" and hasattr(self, "_refresh_state_backup_hints"):
+            self._refresh_state_backup_hints()
         if section_id == "knowledge":
             from ui.views.settings.sections.knowledge_provider_status import (
                 start_provider_status_refresh_timer,

@@ -558,10 +558,16 @@ jobs:
     runs-on: windows-latest
     if: github.repository == 'dagaza/Qube' && vars.WINGET_AUTO_SUBMIT == 'true'
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: winget-manifests-${{ needs.build.outputs.version }}
           path: winget/out/${{ needs.build.outputs.version }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash
@@ -572,7 +578,8 @@ jobs:
           bash scripts/release/submit_winget_packages.sh \
             "${{ needs.build.outputs.version }}" \
             "$WINGET_TOKEN" \
-            ./wingetcreate.exe
+            ./wingetcreate.exe \
+            "winget/out/${{ needs.build.outputs.version }}"
 
   homebrew:
     needs: [macos-build, release]
@@ -627,6 +634,8 @@ jobs:
     runs-on: windows-latest
     if: github.repository == 'dagaza/Qube' && vars.CHOCOLATEY_AUTO_PUSH == 'true'
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: chocolatey-package-${{ needs.build.outputs.version }}

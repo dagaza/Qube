@@ -329,7 +329,7 @@ class SpotlightOverlay(QWidget):
 class OnboardingCoachPanel(QFrame):
     escape_pressed = pyqtSignal()
 
-    _TEXT_LABEL_VERTICAL_PAD = 6
+    _TEXT_LABEL_VERTICAL_PAD = 8
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -340,20 +340,25 @@ class OnboardingCoachPanel(QFrame):
         layout.setContentsMargins(18, 18, 18, 16)
         layout.setSpacing(10)
 
+        align_top = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+
         self.step_lbl = QLabel("")
         self.step_lbl.setObjectName("OnboardingCoachStep")
         self.title_lbl = QLabel("")
         self.title_lbl.setObjectName("OnboardingCoachTitle")
         self.title_lbl.setWordWrap(True)
+        self.title_lbl.setAlignment(align_top)
         self.body_lbl = QLabel("")
         self.body_lbl.setObjectName("OnboardingCoachBody")
         self.body_lbl.setWordWrap(True)
+        self.body_lbl.setAlignment(align_top)
         self.body_lbl.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum
         )
         self.hint_lbl = QLabel("")
         self.hint_lbl.setObjectName("OnboardingCoachHint")
         self.hint_lbl.setWordWrap(True)
+        self.hint_lbl.setAlignment(align_top)
         self.hint_lbl.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum
         )
@@ -391,11 +396,15 @@ class OnboardingCoachPanel(QFrame):
         """Stable wrapped height — do not use heightForWidth after minimumHeight is set."""
         if not lbl.text().strip():
             return 0
-        flags = int(Qt.TextFlag.TextWordWrap)
-        rect = lbl.fontMetrics().boundingRect(
-            0, 0, content_w, 10_000, flags, lbl.text()
-        )
-        return max(rect.height(), lbl.fontMetrics().lineSpacing())
+        from PyQt6.QtGui import QTextDocument
+
+        doc = QTextDocument()
+        doc.setDefaultFont(lbl.font())
+        doc.setPlainText(lbl.text())
+        doc.setTextWidth(float(max(1, content_w)))
+        doc_height = doc.size().height()
+        fm = lbl.fontMetrics()
+        return max(int(doc_height + 0.999), fm.lineSpacing())
 
     def recalculate_content_size(self) -> None:
         """Size word-wrapped labels before adjustSize (Qt under-measures wrapped QLabel)."""
@@ -407,7 +416,7 @@ class OnboardingCoachPanel(QFrame):
             if lbl.isHidden() or not lbl.text().strip():
                 lbl.setFixedHeight(0)
                 continue
-            lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad)
+            lbl.setFixedHeight(self._label_wrapped_height(lbl, content_w) + pad * 2)
         self.adjustSize()
 
     def keyPressEvent(self, event) -> None:

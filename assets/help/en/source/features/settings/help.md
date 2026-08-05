@@ -16,7 +16,7 @@ This page does not host the full help corpus—that lives under **Library → Qu
 
 ## Where to find it
 
-Open **Settings → Help** (settings section `help`). Press **?** for the guided tour (`settings.help`).
+Open **Settings → Help** in the **Support** sidebar group (settings section `help`). Press **?** for the guided tour (`settings.help`).
 
 ## Also called
 
@@ -25,11 +25,12 @@ help and guidance, guided tours, onboarding reset, composer guide, HELP & GUIDAN
 ## How to…
 
 1. **Open built-in docs** — Click **Open Qube documentation** to jump to **Library → Qube**.
-2. **Replay Local LLM setup** — Click **Replay Local LLM Setup Tour** under **Guided tours**.
-3. **Open the composer guide** — Click **Open @ Composer Guide** to learn tools, skills, and commands.
-4. **Jump to customisation pages** — Use **Open Custom sources** or **Open My knowledge** to open the matching **Knowledge** subsections.
-5. **Reset guidance** — In **Conversations**, run **Reset Help & Guidance** from the composer command palette (not on this settings page).
-6. **Uninstall Qube** — Scroll to **Uninstall Qube** for Windows, macOS, and Linux removal steps. On supported packaged installs (macOS `.app`, Linux `.deb`), use the quick-uninstall buttons. See [Uninstall Qube](../../workflows/uninstall-qube.md) in Library → Qube.
+2. **Back up or restore** — Under **Workflow guides**, open the backup workflow or jump to **Settings → Backup & restore** (System).
+3. **Replay Local LLM setup** — Click **Replay Local LLM Setup Tour** under **Guided tours**.
+4. **Open the composer guide** — Click **Open @ Composer Guide** to learn tools, skills, and commands.
+5. **Jump to customisation pages** — Use **Open Custom sources** or **Open My knowledge** to open the matching **Knowledge** subsections.
+6. **Reset guidance** — In **Conversations**, run **Reset Help & Guidance** from the composer command palette (not on this settings page).
+7. **Uninstall Qube** — Scroll to **Uninstall Qube** for Windows, macOS, and Linux removal steps. Use **Open Backup & restore** before a full data wipe. On supported packaged installs (macOS `.app`, Linux `.deb`), use the quick-uninstall buttons. See [Uninstall Qube](../../workflows/uninstall-qube.md) in Library → Qube.
 
 ## Controls
 
@@ -40,5 +41,7 @@ help and guidance, guided tours, onboarding reset, composer guide, HELP & GUIDAN
 - [Composer commands reference](../../reference/composer-commands.md) — reset and palette commands
 - [What do @ mentions do FAQ](../../faq/what-do-at-mentions-do.md) — tools vs skills vs commands
 - [Uninstall Qube](../../workflows/uninstall-qube.md) — remove the app and optional user data
+- [Back up or restore Qube state](../../workflows/backup-or-restore-qube-state.md) — workflow guide
+- [Backup & restore settings](backup-restore.md) — export and restore local state
 - [About settings](about.md) — version and software updates
 - [Help index](../../00-index.md) — router to all documentation

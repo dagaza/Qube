@@ -56,6 +56,7 @@ SETTINGS_SECTION_TOURS: tuple[tuple[str, str, int], ...] = (
     ("settings.about", "about", 3),
     ("settings.contact_feedback", "contact.feedback", 4),
     ("settings.privacy_data", "privacy.data", _expected_privacy_data_tour_steps()),
+    ("settings.system_backup", "system.backup", 10),
     ("settings.diagnostics", "diagnostics", _expected_diagnostics_tour_steps()),
     ("settings.license", "license", _expected_license_tour_steps()),
     ("settings.advanced", "advanced", _expected_advanced_tour_steps()),
@@ -263,6 +264,16 @@ SETTINGS_TOUR_WIDGET_ATTRS: dict[str, tuple[str, ...]] = {
         "remove_license_btn",
     ),
     "settings.advanced": ("open_settings_json_btn",),
+    "settings.system_backup": (
+        "state_backup_overview_hint",
+        "state_backup_auto_enabled_toggle",
+        "state_backup_interval_selector",
+        "state_backup_retention_spin",
+        "state_backup_include_wallpapers_cb",
+        "state_backup_status_hint",
+        "state_backup_create_btn",
+        "state_backup_open_backups_btn",
+    ),
 }
 
 

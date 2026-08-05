@@ -113,6 +113,12 @@ SETTINGS_SECTIONS: tuple[SettingsSectionDef, ...] = (
         group="Support",
     ),
     SettingsSectionDef(
+        id="system.backup",
+        title="Backup & restore",
+        icon="fa5s.hdd",
+        group="System",
+    ),
+    SettingsSectionDef(
         id="privacy.data",
         title="Privacy & data",
         icon="fa5s.shield-alt",

@@ -48,9 +48,29 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         panel.recalculate_content_size()
         self.assertGreaterEqual(
             panel.body_lbl.minimumHeight(),
-            wrapped_h + panel._TEXT_LABEL_VERTICAL_PAD,
+            wrapped_h + panel._TEXT_LABEL_VERTICAL_PAD * 2,
         )
         self.assertGreater(panel.height(), wrapped_h)
+
+    def test_title_and_body_leave_vertical_breathing_room(self) -> None:
+        panel = OnboardingCoachPanel()
+        panel.setFixedWidth(panel.maximumWidth())
+        panel.title_lbl.setText("Backup & restore")
+        panel.body_lbl.setText(
+            "Save and recover essential Qube state locally — conversations, library "
+            "indexes, memory vectors, settings, and knowledge configuration."
+        )
+        panel.recalculate_content_size()
+        fm = panel.title_lbl.fontMetrics()
+        self.assertGreaterEqual(
+            panel.title_lbl.height(),
+            fm.lineSpacing() + panel._TEXT_LABEL_VERTICAL_PAD * 2,
+        )
+        self.assertGreaterEqual(
+            panel.body_lbl.height(),
+            panel._label_wrapped_height(panel.body_lbl, panel._content_inner_width())
+            + panel._TEXT_LABEL_VERTICAL_PAD * 2,
+        )
 
     def test_recalculate_content_size_does_not_grow_on_repeat(self) -> None:
         panel = OnboardingCoachPanel()

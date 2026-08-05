@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.28",
+  "corpus_version": "1.0.31",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -31,6 +31,7 @@
         "features.settings.knowledge",
         "features.settings.integrations",
         "workflows.connect_mcp_server",
+        "workflows.backup_restore",
         "workflows.uninstall_qube",
         "workflows.update_qube",
         "faq.install_linux",
@@ -796,6 +797,47 @@
       ]
     },
     {
+      "id": "features.settings.backup_restore",
+      "path": "features/settings/backup-restore.md",
+      "title": "Backup & restore settings",
+      "type": "feature",
+      "settings_section": "system.backup",
+      "tour_id": "settings.system_backup",
+      "tags": [
+        "backup",
+        "restore",
+        "state backup",
+        "automatic backup"
+      ],
+      "synonyms": [
+        "backup qube",
+        "restore qube",
+        "state backup",
+        "local backup",
+        "qube-backup zip",
+        "automatic backup settings"
+      ],
+      "related": [
+        "reference.settings_sections",
+        "workflows.backup_restore",
+        "workflows.knowledge_pack",
+        "workflows.uninstall_qube",
+        "workflows.update_qube",
+        "index"
+      ],
+      "generated_sections": [
+        "controls"
+      ],
+      "actions": [
+        {
+          "id": "open_settings_backup_restore",
+          "label": "Open Backup & restore",
+          "kind": "open_settings_section",
+          "settings_section": "system.backup"
+        }
+      ]
+    },
+    {
       "id": "features.settings.privacy_data",
       "path": "features/settings/privacy-data.md",
       "title": "Privacy & data settings",
@@ -1101,7 +1143,9 @@
       "related": [
         "index",
         "features.settings.integrations",
-        "workflows.connect_mcp_server"
+        "workflows.connect_mcp_server",
+        "features.settings.backup_restore",
+        "workflows.backup_restore"
       ]
     },
     {
@@ -1131,6 +1175,34 @@
       ]
     },
     {
+      "id": "workflows.backup_restore",
+      "path": "workflows/backup-or-restore-qube-state.md",
+      "title": "Back up or restore Qube state",
+      "type": "workflow",
+      "tags": [
+        "backup",
+        "restore",
+        "state backup",
+        "migration",
+        "user-data"
+      ],
+      "synonyms": [
+        "backup qube",
+        "restore qube",
+        "export state",
+        "import backup",
+        "move qube to new pc",
+        "qube-backup zip"
+      ],
+      "related": [
+        "index",
+        "features.settings.backup_restore",
+        "workflows.knowledge_pack",
+        "workflows.uninstall_qube",
+        "workflows.update_qube"
+      ]
+    },
+    {
       "id": "workflows.uninstall_qube",
       "path": "workflows/uninstall-qube.md",
       "title": "Uninstall Qube",
@@ -1150,6 +1222,8 @@
       "related": [
         "index",
         "features.settings.help",
+        "features.settings.backup_restore",
+        "workflows.backup_restore",
         "workflows.knowledge_pack",
         "workflows.update_qube"
       ]
@@ -1898,6 +1972,20 @@
   ],
   "canonical_answers": [
     {
+      "id": "reference.settings_sections.sidebar",
+      "question_patterns": [
+        "where are qube settings",
+        "settings sidebar groups",
+        "support settings qube",
+        "system settings qube",
+        "what settings sections exist",
+        "settings navigation"
+      ],
+      "doc_id": "reference.settings_sections",
+      "heading": "Settings sidebar groups",
+      "answer": "Open **Settings** from the main navigation. The sidebar has five groups: **Voice & Input**, **Intelligence**, **Interface**, **Support** (About, License, Contact & Feedback, Help), and **System** (Backup & restore, Privacy & data, Diagnostics, Advanced). See **Settings sections** in Library \u2192 Qube."
+    },
+    {
       "id": "features.settings.ai_models.gpu_layers",
       "question_patterns": [
         "where are gpu layers",
@@ -2309,7 +2397,7 @@
       ],
       "doc_id": "features.settings.advanced",
       "heading": "Advanced JSON settings",
-      "answer": "Open **Settings \u2192 Advanced** for the **JSON settings** editor (`settings.json`). Diagnostic logs moved to **Settings \u2192 Diagnostics** and **Settings \u2192 Privacy & data**.",
+      "answer": "Open **Settings → Advanced** ( **System** sidebar group) for the **JSON settings** editor (`settings.json`). Diagnostic logs: **Settings → Diagnostics**; audit logs: **Settings → Privacy & data**. Pro license: **Settings → License** (**Support**). State backup: **Settings → Backup & restore**.",
       "action_id": "open_settings_advanced"
     },
     {
@@ -2721,6 +2809,34 @@
       "heading": "Integrations settings",
       "answer": "Open **Settings \u2192 Integrations** for MCP server status and **Capability permissions**. Configure MCP servers under **Settings \u2192 Knowledge \u2192 Custom sources** (connector **mcp**).",
       "action_id": "open_settings_integrations"
+    },
+    {
+      "id": "features.settings.backup_restore.nav",
+      "question_patterns": [
+        "where is backup settings",
+        "backup and restore settings",
+        "open backup restore",
+        "qube state backup settings",
+        "automatic backup settings"
+      ],
+      "doc_id": "features.settings.backup_restore",
+      "heading": "Backup & restore settings",
+      "answer": "Open **Settings \u2192 Backup & restore** to create a `.qube-backup.zip` archive, restore essential local state, or enable automatic backups (interval, retention, optional wallpapers). Model weights under `models/` are not included.",
+      "action_id": "open_settings_backup_restore"
+    },
+    {
+      "id": "workflows.backup_restore.summary",
+      "question_patterns": [
+        "how do i backup qube",
+        "backup my qube data",
+        "restore qube from backup",
+        "move qube to another computer",
+        "what is included in qube backup"
+      ],
+      "doc_id": "workflows.backup_restore",
+      "heading": "Back up or restore Qube state",
+      "answer": "Use **Settings \u2192 Backup & restore \u2192 Create backup now** for a manual `.qube-backup.zip` (conversations, Library, memory, settings — not model weights). **Restore from backup\u2026** saves a pre-restore snapshot first; restart Qube after restore. Automatic backups go to `backups/auto/`.",
+      "action_id": "open_settings_backup_restore"
     },
     {
       "id": "workflows.connect_mcp_server.summary",

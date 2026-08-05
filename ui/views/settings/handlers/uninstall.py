@@ -8,6 +8,11 @@ from core.linux_uninstall import is_linux_uninstall_available, request_linux_uni
 from core.macos_uninstall import is_macos_uninstall_available, request_macos_uninstall
 from ui.components.prestige_dialog import PrestigeDialog
 
+_UNINSTALL_BACKUP_REMINDER = (
+    "This cannot be undone. Create a state backup first "
+    "(Settings → Backup & restore) if you need to restore later."
+)
+
 
 def is_uninstall_available() -> bool:
     return is_macos_uninstall_available() or is_linux_uninstall_available()
@@ -35,8 +40,7 @@ class UninstallHandlersMixin:
                     "• desktop integration files in your home directory\n\n"
                     "Administrator privileges may be requested to remove the .deb "
                     "package.\n\n"
-                    "This cannot be undone. Export a knowledge pack first if you "
-                    "need a backup."
+                    f"{_UNINSTALL_BACKUP_REMINDER}"
                 )
                 confirm_text = "UNINSTALL"
         elif keep_user_data:
@@ -55,8 +59,7 @@ class UninstallHandlersMixin:
                 "including:\n"
                 "• ~/.qube (models, library, memory, logs, settings)\n"
                 "• macOS preference and cache files\n\n"
-                "This cannot be undone. Export a knowledge pack first if you "
-                "need a backup."
+                f"{_UNINSTALL_BACKUP_REMINDER}"
             )
             confirm_text = "UNINSTALL"
 

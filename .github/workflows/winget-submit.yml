@@ -15,6 +15,7 @@ permissions:
   contents: read
 
 env:
+  PYTHON_VERSION: "3.13"
   WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe
 
 jobs:
@@ -24,13 +25,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download Windows installers and render WinGet manifests
+        shell: pwsh
+        run: |
+          $version = "${{ inputs.version }}" -replace '^v',''
+          gh release download "v$version" -D installers `
+            -p "Qube-$version-Setup.exe" `
+            -p "Qube-$version-vulkan-Setup.exe" `
+            -p "Qube-$version-cuda-Setup.exe"
+          $cpu = (Get-FileHash "installers/Qube-$version-Setup.exe" -Algorithm SHA256).Hash
+          $vulkan = (Get-FileHash "installers/Qube-$version-vulkan-Setup.exe" -Algorithm SHA256).Hash
+          $cuda = (Get-FileHash "installers/Qube-$version-cuda-Setup.exe" -Algorithm SHA256).Hash
+          python scripts/render_winget_manifests.py `
+            --version $version `
+            --cpu-sha256 $cpu `
+            --vulkan-sha256 $vulkan `
+            --cuda-sha256 $cuda
+
       - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash
         env:
           WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
         run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
           curl -sL "${{ env.WINGETCREATE_URL }}" -o wingetcreate.exe
           bash scripts/release/submit_winget_packages.sh \
-            "${{ inputs.version }}" \
+            "$VERSION" \
             "$WINGET_TOKEN" \
-            ./wingetcreate.exe
+            ./wingetcreate.exe \
+            "winget/out/$VERSION"
