@@ -330,11 +330,12 @@ class OnboardingCoachPanel(QFrame):
     escape_pressed = pyqtSignal()
 
     _TEXT_LABEL_VERTICAL_PAD = 8
+    _MIN_PANEL_WIDTH = 320
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("OnboardingCoachPanel")
-        self.setMinimumWidth(320)
+        self.setMinimumWidth(self._MIN_PANEL_WIDTH)
         self.setMaximumWidth(420)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 16)
@@ -390,11 +391,14 @@ class OnboardingCoachPanel(QFrame):
         if lay is None:
             return max(200, self.maximumWidth() - 36)
         m = lay.contentsMargins()
-        inner_at_max = self.maximumWidth() - m.left() - m.right()
-        # Use the narrowest width the panel may take so wrapped labels never clip.
-        candidates = [inner_at_max, self.minimumWidth() - m.left() - m.right()]
+        margin_h = m.left() + m.right()
+        # Do not read minimumWidth() here — on Windows it can be 0 before layout.
+        candidates = [
+            self.maximumWidth() - margin_h,
+            self._MIN_PANEL_WIDTH - margin_h,
+        ]
         if self.width() > 0:
-            candidates.append(self.width() - m.left() - m.right())
+            candidates.append(self.width() - margin_h)
         return max(200, min(candidates))
 
     def _label_wrapped_height(self, lbl: QLabel, content_w: int) -> int:

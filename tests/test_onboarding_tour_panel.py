@@ -47,10 +47,11 @@ class TestOnboardingCoachPanel(unittest.TestCase):
         self.assertGreater(wrapped_h, line_h * 3)
 
         panel.recalculate_content_size()
-        self.assertGreaterEqual(
-            panel.body_lbl.minimumHeight(),
-            wrapped_h + panel._TEXT_LABEL_VERTICAL_PAD * 2,
+        expected_body_h = (
+            panel._label_wrapped_height(panel.body_lbl, panel._content_inner_width())
+            + panel._TEXT_LABEL_VERTICAL_PAD * 2
         )
+        self.assertGreaterEqual(panel.body_lbl.height(), expected_body_h)
         self.assertGreater(panel.height(), wrapped_h)
 
     def test_title_and_body_leave_vertical_breathing_room(self) -> None:
