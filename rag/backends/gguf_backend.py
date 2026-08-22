@@ -8,7 +8,6 @@ import os
 from typing import Any
 
 import numpy as np
-from llama_cpp import Llama
 
 from core.inference_transparency import log_inference_transparency, snapshot_from_loaded_llama
 from rag.embed_utils import MAX_EMBED_CHARS, init_llama_embed, truncate_for_embed
@@ -35,7 +34,7 @@ class GgufEmbeddingBackend:
         self._backend = "unknown"
         self._requested_n_gpu_layers = 0
         self._inference_transparency: dict = {}
-        self.model: Llama | None = None
+        self.model: Any | None = None
         self.vector_dim = 0
         self._load()
 

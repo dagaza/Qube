@@ -33,10 +33,9 @@ class _StopEventUnion:
         return any(e.is_set() for e in self._events)
 
 
-try:
-    from llama_cpp import Llama
-except ImportError:  # pragma: no cover
-    Llama = None  # type: ignore
+from core.llama_cpp_import import get_llama_class
+
+Llama = get_llama_class()
 
 from core.app_settings import (
     get_engine_mode,

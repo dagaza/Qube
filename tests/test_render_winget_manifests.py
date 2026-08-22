@@ -40,3 +40,7 @@ def test_render_writes_split_manifests_for_all_variants(tmp_path, monkeypatch):
         installer = (package_dir / f"{package_id}.installer.yaml").read_text(encoding="utf-8")
         assert f"InstallerSha256: {hash_prefix}" in installer
         assert exe_fragment in installer
+    vulkan_installer = (out / "dagaza.Qube.Vulkan" / "dagaza.Qube.Vulkan.installer.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "KhronosGroup.VulkanRT" in vulkan_installer

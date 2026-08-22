@@ -54,8 +54,7 @@ ManifestVersion: {_MANIFEST_VERSION}
         encoding="utf-8",
     )
 
-    (package_dir / f"{package_id}.installer.yaml").write_text(
-        f"""PackageIdentifier: {package_id}
+    installer_body = f"""PackageIdentifier: {package_id}
 PackageVersion: {version}
 InstallerType: inno
 Installers:
@@ -67,7 +66,27 @@ Installers:
       SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
 ManifestType: installer
 ManifestVersion: {_MANIFEST_VERSION}
-""",
+"""
+    if variant == "vulkan":
+        installer_body = f"""PackageIdentifier: {package_id}
+PackageVersion: {version}
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: KhronosGroup.VulkanRT
+InstallerType: inno
+Installers:
+  - Architecture: x64
+    InstallerUrl: {url}
+    InstallerSha256: {hash_value}
+    InstallerSwitches:
+      Silent: {_SILENT}
+      SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
+ManifestType: installer
+ManifestVersion: {_MANIFEST_VERSION}
+"""
+
+    (package_dir / f"{package_id}.installer.yaml").write_text(
+        installer_body,
         encoding="utf-8",
     )
 

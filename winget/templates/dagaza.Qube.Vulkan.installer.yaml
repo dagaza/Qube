@@ -1,5 +1,8 @@
 PackageIdentifier: dagaza.Qube.Vulkan
 PackageVersion: 0.0.0
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: KhronosGroup.VulkanRT
 InstallerType: inno
 Installers:
   - Architecture: x64

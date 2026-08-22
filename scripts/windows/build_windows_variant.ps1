@@ -29,9 +29,14 @@ python scripts/generate_ico.py
 $env:QUBE_WINDOWS_VARIANT = $Variant
 python -m PyInstaller qube.spec --noconfirm
 
+$libDir = Join-Path $Root "dist\Qube\_internal\llama_cpp\lib"
 if ($Variant -eq "cuda") {
-    python scripts/stage_cuda_runtime_libs.py "$Root\dist\Qube\_internal\llama_cpp\lib"
+    python scripts/stage_cuda_runtime_libs.py $libDir
     if ($LASTEXITCODE -ne 0) { throw "CUDA runtime staging failed" }
+}
+if ($Variant -eq "vulkan") {
+    python scripts/stage_vulkan_runtime_libs.py $libDir
+    if ($LASTEXITCODE -ne 0) { throw "Vulkan runtime staging failed" }
 }
 
 $distExe = Join-Path $Root "dist\Qube\Qube.exe"

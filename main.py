@@ -5,6 +5,10 @@ from pathlib import Path
 os.environ["QUBE_LLM_DEBUG"] = "1"
 os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
 
+from core.llama_cpp_import import prepare_llama_cpp_runtime
+
+prepare_llama_cpp_runtime()
+
 from core.__version__ import __version__
 
 from PyQt6 import QtCore

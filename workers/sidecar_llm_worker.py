@@ -43,12 +43,11 @@ from core.sidecar_prompts import (
 )
 from core.sidecar_types import SidecarResult, SidecarTask
 
+from core.llama_cpp_import import get_llama_class
+
 logger = logging.getLogger("Qube.SidecarLLMWorker")
 
-try:
-    from llama_cpp import Llama
-except ImportError:
-    Llama = None  # type: ignore
+Llama = get_llama_class()
 
 try:
     import queue as _queue_mod

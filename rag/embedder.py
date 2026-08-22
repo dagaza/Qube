@@ -11,7 +11,6 @@ from core.app_settings import get_embedding_mode
 from core.embedding_modes import DEFAULT_MODE, ModeId, get_mode_spec, normalize_mode_id
 from core.embedding_models import mark_embedding_preset_available, resolve_active_gguf_path
 from rag.backends.fastembed_backend import FastembedBackend
-from rag.backends.gguf_backend import GgufEmbeddingBackend
 from rag.embed_utils import MAX_EMBED_CHARS, truncate_for_embed
 
 logger = logging.getLogger("Qube.RAG.Embedder")
@@ -71,6 +70,8 @@ class EmbeddingModel:
     def _load(self, *, mode_id: str | None, model_path: str | None) -> None:
         gguf_path = (model_path or resolve_active_gguf_path() or "").strip()
         if gguf_path:
+            from rag.backends.gguf_backend import GgufEmbeddingBackend
+
             self._model_path = gguf_path
             self._mode_id = None
             self._backend = GgufEmbeddingBackend(gguf_path)

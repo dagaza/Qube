@@ -5,7 +5,7 @@ import logging
 import multiprocessing
 from typing import Any
 
-from llama_cpp import Llama
+from core.llama_cpp_import import get_llama_class, llama_import_error
 
 logger = logging.getLogger("Qube.RAG.EmbedUtils")
 
@@ -30,7 +30,12 @@ def _llama_embed_kwargs(*, n_ctx: int | None = None) -> dict:
     return {"n_ctx": n, "n_batch": n, "n_ubatch": n}
 
 
-def init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -> Llama:
+def init_llama_embed(model_path: str, n_gpu_layers: int, physical_cores: int) -> Any:
+    Llama = get_llama_class()
+    if Llama is None:
+        err = llama_import_error()
+        raise RuntimeError("llama_cpp is not available in this build") from err
+
     last_error: Exception | None = None
     for n_ctx in _LLAMA_CTX_FALLBACKS:
         base = dict(

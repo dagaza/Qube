@@ -32,7 +32,8 @@ if (-not (Test-Path $libDir)) {
 $requiredLibs = @(
     "cudart64_12.dll",
     "cublas64_12.dll",
-    "cublasLt64_12.dll"
+    "cublasLt64_12.dll",
+    "ggml-cuda.dll"
 )
 foreach ($lib in $requiredLibs) {
     $path = Join-Path $libDir $lib

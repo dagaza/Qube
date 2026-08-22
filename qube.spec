@@ -72,7 +72,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=_hidden_imports,
     hookspath=[],
-    runtime_hooks=[],
+    runtime_hooks=["pyi_rth_llama_cpp.py"],
     excludes=_excludes,
 )
 

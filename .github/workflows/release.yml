@@ -101,9 +101,13 @@ jobs:
             /tr http://timestamp.digicert.com /td SHA256 $exe
 
       - name: Smoke test dist EXE
-        if: matrix.variant == 'cpu'
         shell: pwsh
         run: scripts/release/smoke_dist.ps1
+
+      - name: Verify Vulkan bundle layout
+        if: matrix.variant == 'vulkan'
+        shell: pwsh
+        run: scripts/release/verify_windows_vulkan_bundle.ps1
 
       - name: Verify CUDA bundle layout
         if: matrix.variant == 'cuda'
