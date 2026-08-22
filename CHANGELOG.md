@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows Vulkan/CUDA installers:** bundle `vulkan-1.dll` and verify GPU backend DLLs so `llama.dll` loads on clean WinGet validation VMs; defer `llama_cpp` imports so GPU builds launch without crashing when optional runtimes are absent.
 - **WinGet Vulkan manifest:** declare dependency on `KhronosGroup.VulkanRT`.
 - **Release CI:** smoke-launch all three Windows variants and verify Vulkan/CUDA bundle layouts before publishing.
+- **Dependencies:** bump `pypdf` to 6.15.0 for pip-audit (PYSEC-2026-3655/3656).
 
 ## [1.3.0] - 2026-08-04
 
