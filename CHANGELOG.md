@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-08-23
+
+### Fixed
+- **Windows bootstrap startup:** early splash, single-instance locking, and streamed Hugging Face download progress for Whisper/Kokoro so first-run bootstrap no longer stalls or opens duplicate sessions.
+- **Windows duplicate launch:** reliable second-instance activation via local sockets, including buffered/disconnect edge cases and synchronous handoff before `try_acquire` returns.
+
 ## [1.3.1] - 2026-08-22
 
 ### Fixed
