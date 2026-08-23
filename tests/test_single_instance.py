@@ -63,7 +63,10 @@ def test_activation_handler_runs_for_duplicate_launch(qapp_cls, unique_server_na
 
         duplicate = SingleInstanceGuard(parent=None)
         assert duplicate.try_acquire() is False
-        app.processEvents()
+        for _ in range(20):
+            if activations:
+                break
+            app.processEvents()
         assert activations == ["focused"]
     finally:
         _release_guard(primary)

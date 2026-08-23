@@ -76,6 +76,7 @@ class SingleInstanceGuard(QObject):
         socket.write(_ACTIVATE_MESSAGE)
         socket.flush()
         socket.waitForBytesWritten(_WRITE_TIMEOUT_MS)
+        socket.waitForDisconnected(_CONNECT_TIMEOUT_MS)
         socket.disconnectFromServer()
         return True
 
@@ -83,29 +84,29 @@ class SingleInstanceGuard(QObject):
         connection = self._server.nextPendingConnection()
         if connection is None:
             return
-        connection.readyRead.connect(lambda: self._handle_activation(connection))
-        connection.disconnected.connect(lambda: self._handle_activation(connection))
+        self._wait_for_activation_payload(connection)
         self._handle_activation(connection)
+
+    def _wait_for_activation_payload(self, connection: QLocalSocket) -> None:
+        """Block briefly until the duplicate client sends its activate payload."""
+        if connection.bytesAvailable() > 0:
+            return
+        if connection.state() == QLocalSocket.LocalSocketState.ConnectedState:
+            connection.waitForReadyRead(_WRITE_TIMEOUT_MS)
+        if (
+            connection.bytesAvailable() <= 0
+            and connection.state() == QLocalSocket.LocalSocketState.ConnectedState
+        ):
+            connection.waitForDisconnected(_CONNECT_TIMEOUT_MS)
 
     def _handle_activation(self, connection: QLocalSocket) -> None:
         if connection.property(_ACTIVATION_HANDLED_PROP):
             return
 
-        state = connection.state()
-        if (
-            connection.bytesAvailable() <= 0
-            and state
-            not in (
-                QLocalSocket.LocalSocketState.ClosingState,
-                QLocalSocket.LocalSocketState.UnconnectedState,
-            )
-        ):
-            return
-
         connection.setProperty(_ACTIVATION_HANDLED_PROP, True)
         if connection.bytesAvailable() > 0:
             connection.readAll()
-        if state != QLocalSocket.LocalSocketState.UnconnectedState:
+        if connection.state() != QLocalSocket.LocalSocketState.UnconnectedState:
             connection.disconnectFromServer()
         logger.info("Duplicate launch detected; focusing existing Qube window.")
         handler = self._activation_handler
