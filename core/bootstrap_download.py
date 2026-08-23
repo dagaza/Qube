@@ -19,7 +19,8 @@ from core.bootstrap_manifest import (
     format_byte_size,
     total_selected_bytes,
 )
-from core.stt_models import BUNDLED_STT_MODEL_ID, get_stt_models_dir
+from core.bootstrap_hub_progress import bootstrap_hub_tqdm_factory
+from core.stt_models import BUNDLED_STT_HF_REPO, get_stt_models_dir
 from core.tts_models import bundled_default_path as tts_default_path
 from workers.model_download_worker import SAFETY_BUFFER_BYTES, _sanitize_repo_file_path, _sanitize_repo_id
 
@@ -227,6 +228,48 @@ def infer_installed_selection() -> set[BootstrapModelId] | None:
     return None
 
 
+def _download_url_streaming(
+    *,
+    url: str,
+    dest_path: Path,
+    on_progress: DownloadProgressCallback,
+    step_label: str,
+    filename: str,
+    source_display: str,
+    connect_timeout_sec: float = 30.0,
+    read_timeout_sec: float = 300.0,
+) -> None:
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    if dest_path.is_file():
+        on_progress(step_label, filename, 100, source_display)
+        return
+
+    tmp_path = dest_path.with_suffix(dest_path.suffix + ".part")
+    on_progress(step_label, filename, 0, source_display)
+    with requests.get(
+        url,
+        stream=True,
+        timeout=(connect_timeout_sec, read_timeout_sec),
+    ) as resp:
+        resp.raise_for_status()
+        total = int(resp.headers.get("content-length") or 0)
+        done = 0
+        with open(tmp_path, "wb") as handle:
+            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                if not chunk:
+                    continue
+                handle.write(chunk)
+                done += len(chunk)
+                if total > 0:
+                    pct = int(done * 100 / total)
+                else:
+                    pct = min(99, done // (1024 * 1024))
+                on_progress(step_label, filename, pct, source_display)
+
+    os.replace(tmp_path, dest_path)
+    on_progress(step_label, filename, 100, source_display)
+
+
 def _download_gguf(
     *,
     repo_id: str,
@@ -268,40 +311,79 @@ def _download_gguf(
 
 
 def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
-    step_label = spec.label
-    source = spec.source_display
-    if model_is_present(BootstrapModelId.WHISPER_SMALL):
-        on_progress(step_label, "Whisper Small", 100, source)
-        return
-    on_progress(step_label, "Whisper Small", 0, source)
-    from faster_whisper import WhisperModel
+    from core.stt_models import bundled_whisper_present
+    from huggingface_hub import snapshot_download
 
-    WhisperModel(
-        BUNDLED_STT_MODEL_ID,
-        device="cpu",
-        compute_type="int8",
-        download_root=get_stt_models_dir(),
+    step_label = f"Downloading {spec.label}"
+    source = spec.source_display
+    filename = "Whisper Small"
+    if model_is_present(BootstrapModelId.WHISPER_SMALL):
+        on_progress(step_label, filename, 100, source)
+        return
+
+    on_progress(f"{step_label} — connecting…", filename, 0, source)
+    download_root = get_stt_models_dir()
+    tqdm_class = bootstrap_hub_tqdm_factory(
+        on_progress,
+        step_label=step_label,
+        filename=filename,
+        source_display=source,
+        expected_total_bytes=spec.size_bytes,
     )
-    on_progress(step_label, "Whisper Small", 100, source)
+    logger.info(
+        "Downloading Whisper weights from %s into %s",
+        BUNDLED_STT_HF_REPO,
+        download_root,
+    )
+    try:
+        snapshot_download(
+            repo_id=BUNDLED_STT_HF_REPO,
+            repo_type="model",
+            cache_dir=download_root,
+            local_files_only=False,
+            etag_timeout=10,
+            tqdm_class=tqdm_class,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            f"Could not download Whisper Small from Hugging Face ({BUNDLED_STT_HF_REPO}). "
+            f"Check your internet connection and try again."
+        ) from exc
+
+    if not bundled_whisper_present():
+        raise RuntimeError(
+            "Whisper download reported success but model files were not found under "
+            f"{download_root}."
+        )
+    on_progress(step_label, filename, 100, source)
 
 
 def _download_kokoro(on_progress: DownloadProgressCallback, spec) -> None:
     from core.tts_models import BUNDLED_DEFAULT_FILENAME, BUNDLED_VOICES_FILENAME
-    from workers.tts_worker import ensure_bundled_kokoro_assets
 
     base = Path(tts_default_path()).parent
+    step_label = f"Downloading {spec.label}"
     files = (
-        (base / BUNDLED_DEFAULT_FILENAME, BUNDLED_DEFAULT_FILENAME),
-        (base / BUNDLED_VOICES_FILENAME, BUNDLED_VOICES_FILENAME),
+        (
+            base / BUNDLED_DEFAULT_FILENAME,
+            BUNDLED_DEFAULT_FILENAME,
+            "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
+        ),
+        (
+            base / BUNDLED_VOICES_FILENAME,
+            BUNDLED_VOICES_FILENAME,
+            "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
+        ),
     )
-    for idx, (path, name) in enumerate(files):
-        if path.is_file():
-            on_progress(spec.label, name, 100, spec.source_display)
-            continue
-        on_progress(spec.label, name, 0, spec.source_display)
-        ensure_bundled_kokoro_assets(str(tts_default_path()))
-        on_progress(spec.label, name, 100, spec.source_display)
-        break
+    for path, name, url in files:
+        _download_url_streaming(
+            url=url,
+            dest_path=path,
+            on_progress=on_progress,
+            step_label=step_label,
+            filename=name,
+            source_display=spec.source_display,
+        )
 
 
 def _download_balanced_search_preset(on_progress: DownloadProgressCallback, spec) -> None:

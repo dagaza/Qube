@@ -437,6 +437,11 @@ class StartupSplashController(QObject):
         QTimer.singleShot(0, self._start_fade_in)
         QTimer.singleShot(_BOOTSTRAP_FALLBACK_MS, self._bootstrap_fallback)
 
+    def request_activation(self) -> None:
+        from core.platform.window_activation import activate_toplevel_window
+
+        activate_toplevel_window(self._shell)
+
     def run_bootstrap(
         self,
         fn: SplashBuildCallback,
@@ -842,8 +847,11 @@ def bootstrap_with_splash(
     selected_models: set[BootstrapModelId] | None = None,
     needs_consent: bool = False,
     mock_downloads: bool = False,
+    early_splash: Any | None = None,
 ) -> StartupSplashController:
     """Present splash; first-run uses split consent + branded left pane."""
+    if early_splash is not None and hasattr(early_splash, "dismiss"):
+        early_splash.dismiss()
     splash = StartupSplashController(
         repo_root=repo_root,
         compact=True,

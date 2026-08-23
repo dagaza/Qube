@@ -1595,7 +1595,12 @@ class Qube:
                     )
 
 
-if __name__ == "__main__":
+def run_application(
+    *,
+    app: QubeApplication | None = None,
+    early_splash=None,
+    single_instance=None,
+) -> int:
     args = parse_boot_args()
     configure_user_model_paths()
     # Optional: The Windows Taskbar App ID fix we discussed
@@ -1605,12 +1610,31 @@ if __name__ == "__main__":
         myappid = f"dagaza.qube.app.{__version__}"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-    # 1. PyQt6 high DPI handling
-    QubeApplication.setHighDpiScaleFactorRoundingPolicy(
-        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
+    activation_target: dict[str, Qube | None] = {"qube": None}
 
-    app = QubeApplication(sys.argv)
+    def _focus_existing_instance() -> None:
+        qube = activation_target["qube"]
+        if qube is not None:
+            from core.platform.window_activation import activate_toplevel_window
+
+            activate_toplevel_window(qube.window)
+            return
+        splash_controller = getattr(app, "_startup_splash_controller", None)
+        if splash_controller is not None and hasattr(splash_controller, "request_activation"):
+            splash_controller.request_activation()
+            return
+        if early_splash is not None and hasattr(early_splash, "request_activation"):
+            early_splash.request_activation()
+
+    if single_instance is not None and hasattr(single_instance, "set_activation_handler"):
+        single_instance.set_activation_handler(_focus_existing_instance)
+
+    if app is None:
+        QubeApplication.setHighDpiScaleFactorRoundingPolicy(
+            QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+        app = QubeApplication(sys.argv)
+
     app.setQuitOnLastWindowClosed(False)
     apply_linux_desktop_integration(app)
     repo_root = install_root()
@@ -1704,6 +1728,7 @@ if __name__ == "__main__":
         )
 
     def _on_qube_ready(qube: Qube) -> None:
+        activation_target["qube"] = qube
         qube.window._qube = qube
         if is_bootstrap_completed():
             if hasattr(qube.window, "voice_input_toggle"):
@@ -1748,9 +1773,13 @@ if __name__ == "__main__":
         selected_models=selected_models,
         needs_consent=needs_consent,
         mock_downloads=bool(args.mock_bootstrap_download),
+        early_splash=early_splash,
     )
     logger.info("Entering Qt event loop.")
-    sys.exit(app.exec())
+    return app.exec()
 
 
-    
+if __name__ == "__main__":
+    from qube_entry import run
+
+    sys.exit(run())

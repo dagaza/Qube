@@ -66,7 +66,7 @@ if _IS_MACOS:
     _excludes.append("pynvml")
 
 a = Analysis(
-    ["main.py"],
+    ["qube_entry.py"],
     pathex=["."],
     binaries=binaries,
     datas=datas,

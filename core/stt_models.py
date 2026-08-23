@@ -19,6 +19,7 @@ logger = logging.getLogger("Qube.STTModels")
 
 BUNDLED_STT_MODEL_ID = "small"
 BUNDLED_STT_LABEL = "Whisper Small (bundled default)"
+BUNDLED_STT_HF_REPO = "Systran/faster-whisper-small"
 STT_SUBDIR = "stt"
 _HF_CACHE_PREFIX = "models--"
 
