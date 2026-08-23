@@ -21,7 +21,7 @@ def test_download_whisper_uses_snapshot_download_with_progress(tmp_path: Path) -
         return_value=False,
     ), patch(
         "core.stt_models.bundled_whisper_present",
-        side_effect=[False, True],
+        return_value=True,
     ), patch("huggingface_hub.snapshot_download") as snapshot:
         _download_whisper(on_progress, spec)
 
@@ -41,7 +41,10 @@ def test_download_whisper_skips_when_already_present() -> None:
     with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
         "huggingface_hub.snapshot_download"
     ) as snapshot:
-        _download_whisper(lambda *_a, pct, _s: events.append(pct), spec)
+        _download_whisper(
+            lambda _step, _name, pct, _source: events.append(pct),
+            spec,
+        )
 
     snapshot.assert_not_called()
     assert events == [100]
