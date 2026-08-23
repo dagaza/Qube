@@ -15,6 +15,7 @@ logger = logging.getLogger("Qube.SingleInstance")
 _ACTIVATE_MESSAGE = b"activate"
 _CONNECT_TIMEOUT_MS = 500
 _WRITE_TIMEOUT_MS = 1000
+_ACTIVATION_HANDLED_PROP = "_qube_activation_handled"
 
 
 def build_single_instance_server_name(app_id: str = "dagaza.qube") -> str:
@@ -83,10 +84,29 @@ class SingleInstanceGuard(QObject):
         if connection is None:
             return
         connection.readyRead.connect(lambda: self._handle_activation(connection))
+        connection.disconnected.connect(lambda: self._handle_activation(connection))
+        self._handle_activation(connection)
 
     def _handle_activation(self, connection: QLocalSocket) -> None:
-        connection.readAll()
-        connection.disconnectFromServer()
+        if connection.property(_ACTIVATION_HANDLED_PROP):
+            return
+
+        state = connection.state()
+        if (
+            connection.bytesAvailable() <= 0
+            and state
+            not in (
+                QLocalSocket.LocalSocketState.ClosingState,
+                QLocalSocket.LocalSocketState.UnconnectedState,
+            )
+        ):
+            return
+
+        connection.setProperty(_ACTIVATION_HANDLED_PROP, True)
+        if connection.bytesAvailable() > 0:
+            connection.readAll()
+        if state != QLocalSocket.LocalSocketState.UnconnectedState:
+            connection.disconnectFromServer()
         logger.info("Duplicate launch detected; focusing existing Qube window.")
         handler = self._activation_handler
         if handler is not None:
