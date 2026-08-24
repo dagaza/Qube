@@ -34,14 +34,14 @@ mkdir -p "$WORKDIR/tap/Casks"
 cp "$CASK_SRC" "$WORKDIR/tap/Casks/qube.rb"
 
 cd "$WORKDIR/tap"
-if git diff --quiet -- Casks/qube.rb; then
+git add Casks/qube.rb
+if git diff --cached --quiet -- Casks/qube.rb; then
   echo "Cask already at $VERSION; nothing to commit."
   exit 0
 fi
 
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
-git add Casks/qube.rb
 git commit -m "qube ${VERSION}"
 git push origin HEAD
 echo "Pushed qube $VERSION to $TAP_REPO"
