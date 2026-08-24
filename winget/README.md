@@ -71,6 +71,20 @@ gh workflow run winget-submit.yml -f version=1.2.5
 
 Requires the GitHub Release to include all three Windows `.exe` assets.
 
+### WinGet `Validation-Defender-Error` (CUDA)
+
+Microsoft's installation validation runs a silent install and launches the app on a Defender-enabled VM. If step **08. Installation Validation** fails with **`Validation-Defender-Error`** while **07. Installers Scan** passes, Defender flagged behavior during startup — not a manifest typo.
+
+For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube defers `llama_cpp` import until a model load is requested so a fresh install (no GGUF on disk) should not load those DLLs at startup.
+
+If validation still fails after a rebuild:
+
+1. Download the validation artifact (`InstallationVerification_Result.json`) from the PR checks when available.
+2. Submit `Qube-<version>-cuda-Setup.exe` as a **software developer** false positive at [Microsoft WDSI](https://www.microsoft.com/en-us/wdsi/filesubmission).
+3. Comment on the winget-pkgs PR with the submission ID and `@wingetbot run` after clearance.
+
+Enabling Authenticode signing (`ENABLE_CODE_SIGNING` — see [`docs/releasing.md`](../docs/releasing.md)) improves SmartScreen/Defender trust for future releases.
+
 ## Template files
 
 The files under `winget/templates/` document the manifest shape. Release builds use `scripts/render_winget_manifests.py` instead of editing these directly.

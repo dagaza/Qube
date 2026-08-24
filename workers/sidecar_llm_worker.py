@@ -47,8 +47,6 @@ from core.llama_cpp_import import get_llama_class
 
 logger = logging.getLogger("Qube.SidecarLLMWorker")
 
-Llama = get_llama_class()
-
 try:
     import queue as _queue_mod
 except ImportError:
@@ -272,6 +270,7 @@ class SidecarLlmWorker(QThread):
         gc.collect()
 
     def _load_cognition_model(self, path: str) -> tuple[bool, str]:
+        Llama = get_llama_class()
         if Llama is None:
             return False, "llama_cpp_unavailable"
         if not path or not os.path.isfile(path):
@@ -346,12 +345,6 @@ class SidecarLlmWorker(QThread):
             self._reloading = False
 
     def run(self) -> None:
-        if Llama is None:
-            logger.error("[Sidecar] llama_cpp not available")
-            self._sync_telemetry_runtime(degraded_reason="llama_cpp_unavailable")
-            self._run_degraded_queue_loop()
-            return
-
         path = resolve_active_cognition_path()
         if not os.path.isfile(path):
             if not self._warned_missing:

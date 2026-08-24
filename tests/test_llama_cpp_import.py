@@ -58,3 +58,15 @@ def test_get_llama_class_caches_failure(monkeypatch) -> None:
     assert second is None
     assert calls["count"] == 1
     assert isinstance(mod.llama_import_error(), OSError)
+
+
+def test_worker_modules_do_not_eager_load_llama() -> None:
+    """Startup must not import llama_cpp until a model load is requested."""
+    repo = Path(__file__).resolve().parents[1]
+    for rel in ("workers/sidecar_llm_worker.py", "workers/native_llama_engine.py"):
+        for line in (repo / rel).read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped == "Llama = get_llama_class()":
+                assert line[:1] in {" ", "\t"}, (
+                    f"{rel} must not assign Llama at module scope"
+                )

@@ -35,8 +35,6 @@ class _StopEventUnion:
 
 from core.llama_cpp_import import get_llama_class
 
-Llama = get_llama_class()
-
 from core.app_settings import (
     get_engine_mode,
     get_internal_prompt_layout_override,
@@ -622,10 +620,6 @@ class NativeLlamaEngine(QThread):
         )
 
     def run(self) -> None:
-        if Llama is None:
-            logger.error("llama_cpp not available; native engine cannot start.")
-            return
-
         while not self._stop.is_set():
             try:
                 cmd = self._cmd_queue.get(timeout=0.2)
@@ -675,6 +669,11 @@ class NativeLlamaEngine(QThread):
             return
 
         self._do_unload()
+        Llama = get_llama_class()
+        if Llama is None:
+            self.load_finished.emit(False, "llama_cpp not available in this build")
+            self.status_update.emit("Native engine: llama_cpp unavailable")
+            return
         try:
             self.status_update.emit("Loading native model…")
             init_kw = dict(

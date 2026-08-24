@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **WinGet CUDA validation:** defer `llama_cpp` import until the native or sidecar engine loads a model so post-install validation does not load CUDA DLLs during startup (avoids Microsoft Defender false positives on `dagaza.Qube.CUDA`).
+
 ## [1.3.2] - 2026-08-23
 
 ### Fixed
