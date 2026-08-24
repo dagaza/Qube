@@ -4,28 +4,14 @@ from __future__ import annotations
 
 import logging
 import sys
-import threading
 
-from PyQt6.QtCore import QEventLoop, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 logger = logging.getLogger("Qube.Entry")
 
 
-def _import_main_module() -> object:
-    import main as main_module
-
-    return main_module
-
-
-def _pump_during_import(app: QApplication, import_thread: threading.Thread) -> None:
-    while import_thread.is_alive():
-        app.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 100)
-        import_thread.join(timeout=0.05)
-
-
 def run() -> int:
-    """Boot Qube with early feedback and duplicate-process protection."""
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -47,27 +33,11 @@ def run() -> int:
     if not single_instance.try_acquire():
         return 0
 
-    import_error: list[BaseException] = []
-    main_module: dict[str, object] = {}
+    # Import on the GUI thread. Background import + processEvents() recursion
+    # crashed PyInstaller smoke tests (RecursionError / STATUS_STACK_BUFFER_OVERRUN).
+    import main as main_module
 
-    def _import_worker() -> None:
-        try:
-            main_module["module"] = _import_main_module()
-        except BaseException as exc:  # pragma: no cover - surfaced below
-            import_error.append(exc)
-
-    import_thread = threading.Thread(
-        target=_import_worker,
-        name="QubeMainImport",
-        daemon=True,
-    )
-    import_thread.start()
-    _pump_during_import(app, import_thread)
-
-    if import_error:
-        raise import_error[0]
-
-    main = main_module["module"]
+    main = main_module
     run_application = getattr(main, "run_application", None)
     if run_application is None:
         raise RuntimeError("main.run_application is missing")

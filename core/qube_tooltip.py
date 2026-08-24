@@ -121,6 +121,9 @@ class QubeApplication(QApplication):
         except RecursionError:
             return super().notify(receiver, event)
 
+        if QubeToolTipController._initializing:
+            return super().notify(receiver, event)
+
         ctrl = QubeToolTipController.instance()
         if et == _ET_TOOLTIP:
             if isinstance(receiver, QWidget):
@@ -143,26 +146,42 @@ class QubeApplication(QApplication):
 
 class QubeToolTipController(QObject):
     _instance: QubeToolTipController | None = None
+    _initializing: bool = False
 
     @classmethod
     def instance(cls) -> QubeToolTipController:
+        if cls._instance is not None:
+            try:
+                cls._instance.objectName()
+            except RuntimeError:
+                cls._instance = None
         if cls._instance is None:
-            cls._instance = QubeToolTipController()
+            cls._initializing = True
+            try:
+                parent = QApplication.instance()
+                cls._instance = QubeToolTipController(parent)
+            finally:
+                cls._initializing = False
         return cls._instance
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
         self._popup: QWidget | None = None
         self._shell: QFrame | None = None
         self._label: QLabel | None = None
         self._anchor_ref: weakref.ReferenceType[QWidget] | None = None
-        self._hide_timer = QTimer(self)
-        self._hide_timer.setSingleShot(True)
-        self._hide_timer.timeout.connect(self.hide_tip)
+        self._hide_timer: QTimer | None = None
         self._refine_seq: int = 0
         self._refine_anchor_pos = QPoint()
         self._is_dark = True
         self._theme: ResolvedTheme | None = None
+
+    def _ensure_hide_timer(self) -> QTimer:
+        if self._hide_timer is None:
+            self._hide_timer = QTimer(self)
+            self._hide_timer.setSingleShot(True)
+            self._hide_timer.timeout.connect(self.hide_tip)
+        return self._hide_timer
 
     def set_dark_theme(self, is_dark: bool) -> None:
         self.set_theme(is_dark=is_dark)
@@ -313,7 +332,8 @@ class QubeToolTipController(QObject):
         self._ensure_popup()
         assert self._popup is not None and self._label is not None
         self._anchor_ref = weakref.ref(anchor)
-        self._hide_timer.stop()
+        hide_timer = self._ensure_hide_timer()
+        hide_timer.stop()
         self._refine_seq += 1
         refine_token = self._refine_seq
         self._refine_anchor_pos = QPoint(global_pos)
@@ -323,11 +343,12 @@ class QubeToolTipController(QObject):
         self._popup.move(self._place_tip(global_pos, sz, anchor=anchor))
         self._popup.show()
         self._popup.raise_()
-        self._hide_timer.start(15_000)
+        hide_timer.start(15_000)
         QTimer.singleShot(0, lambda t=refine_token: self._refine_tip_if_still_current(t))
 
     def hide_tip(self) -> None:
-        self._hide_timer.stop()
+        if self._hide_timer is not None:
+            self._hide_timer.stop()
         self._refine_seq += 1
         self._anchor_ref = None
         self._reset_label_constraints()
