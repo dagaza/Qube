@@ -40,5 +40,12 @@ def test_render_writes_cask(tmp_path, monkeypatch):
     assert "cd" * 32 in cask
     # Ruby interpolation is left intact for Homebrew to expand at install time.
     assert "Qube-#{version}-arm64.dmg" in cask
-    assert '"~/.qube"' in cask
+    assert '"~/.qube",' in cask
     assert "Gatekeeper" in cask
+
+
+def test_render_zap_paths_are_sorted_with_trailing_commas(monkeypatch):
+    mod = _load_render()
+    lines = mod._zap_trash_lines().splitlines()
+    assert lines == sorted(lines)
+    assert all(line.rstrip().endswith('",') for line in lines)

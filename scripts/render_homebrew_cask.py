@@ -24,7 +24,8 @@ def _repo_root() -> Path:
 
 
 def _zap_trash_lines() -> str:
-    return ",\n".join(f'    "{path}"' for path in homebrew_zap_paths())
+    paths = sorted(homebrew_zap_paths())
+    return "\n".join(f'    "{path}",' for path in paths)
 
 
 def _substitute(text: str, version: str, sha256_arm64: str, sha256_x86_64: str) -> str:

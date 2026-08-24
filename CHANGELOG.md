@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows duplicate launch:** reliable second-instance activation via local sockets, including buffered/disconnect edge cases and synchronous handoff before `try_acquire` returns.
 - **Release smoke tests:** fix tooltip-controller reentrancy crash on early splash (`RecursionError` / Windows fast-fail) and align Windows dist smoke with Linux bootstrap mocking.
 - **Linux AppImage smoke:** tear down the full dist-smoke process tree so a leftover `Qube` process does not block the AppImage liveness check via single-instance locking.
+- **Homebrew cask:** fix RuboCop style failures (`depends_on macos`, stanza order, alphabetized `zap trash`, trailing comma).
 
 ## [1.3.1] - 2026-08-22
 

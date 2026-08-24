@@ -27,9 +27,7 @@ cask "qube" do
   end
 
   auto_updates false
-  depends_on macos: ">= :monterey"
-
-  app "Qube.app"
+  depends_on macos: :monterey
 
   caveats <<~EOS
     Qube is distributed unsigned via the dagaza/qube custom tap (no Apple Developer ID).
@@ -37,6 +35,8 @@ cask "qube" do
     or remove the quarantine attribute after install:
       xattr -dr com.apple.quarantine "/Applications/Qube.app"
   EOS
+
+  app "Qube.app"
 
   zap trash: [
 {{ZAP_TRASH_LINES}}
