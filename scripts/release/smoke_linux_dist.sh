@@ -7,6 +7,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# shellcheck source=scripts/release/smoke_linux_common.sh
+source "$SCRIPT_DIR/smoke_linux_common.sh"
+
 BINARY="${1:-$REPO_ROOT/dist/Qube/Qube}"
 
 if [[ ! -x "$BINARY" ]]; then
@@ -36,20 +39,10 @@ JSON
 export HOME="$FAKE_HOME"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
+smoke_linux_stop_stale_qube
+
 run_smoke() {
-  local launcher=("$@")
-  "${launcher[@]}" "$BINARY" --mock-bootstrap-download &
-  local pid=$!
-  for _ in $(seq 1 20); do
-    if ! kill -0 "$pid" >/dev/null 2>&1; then
-      wait "$pid" || true
-      return 1
-    fi
-    sleep 1
-  done
-  kill "$pid" >/dev/null 2>&1 || true
-  wait "$pid" >/dev/null 2>&1 || true
-  return 0
+  smoke_linux_run_liveness 20 "$@" "$BINARY" --mock-bootstrap-download
 }
 
 if command -v xvfb-run >/dev/null 2>&1; then
