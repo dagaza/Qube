@@ -1,0 +1,63 @@
+name: Homebrew Tap Bump
+
+# One-off or catch-up Homebrew cask updates without cutting a new app release.
+# Requires an existing GitHub Release with both macOS DMGs:
+# Qube-<version>-arm64.dmg and Qube-<version>-x86_64.dmg.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to publish to the tap (e.g. 1.3.2 or v1.3.2)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  homebrew:
+    runs-on: macos-14
+    if: github.repository == 'dagaza/Qube'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download DMGs and render cask
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          BASE="https://github.com/dagaza/Qube/releases/download/v${VERSION}"
+          for arch in arm64 x86_64; do
+            file="Qube-${VERSION}-${arch}.dmg"
+            echo "Downloading ${BASE}/${file} ..."
+            curl -fL "${BASE}/${file}" -o "$file"
+          done
+          python scripts/render_homebrew_cask.py \
+            --version "$VERSION" \
+            --sha256-arm64  "$(shasum -a 256 "Qube-${VERSION}-arm64.dmg"  | awk '{print $1}')" \
+            --sha256-x86_64 "$(shasum -a 256 "Qube-${VERSION}-x86_64.dmg" | awk '{print $1}')"
+
+      - name: Validate cask (style only; unsigned custom tap)
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          TAP_DIR="$(brew --repository)/Library/Taps/dagaza/homebrew-qube"
+          mkdir -p "$TAP_DIR/Casks"
+          cp "homebrew/out/$VERSION/qube.rb" "$TAP_DIR/Casks/qube.rb"
+          brew style "$TAP_DIR/Casks/qube.rb"
+
+      - name: Commit bump to tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          bash scripts/macos/bump_tap.sh "$VERSION"
