@@ -29,16 +29,16 @@ cask "qube" do
   auto_updates false
   depends_on macos: :monterey
 
+  app "Qube.app"
+
+  zap trash: [
+{{ZAP_TRASH_LINES}}
+  ]
+
   caveats <<~EOS
     Qube is distributed unsigned via the dagaza/qube custom tap (no Apple Developer ID).
     macOS Gatekeeper may block the app on first launch. Use System Settings → Privacy & Security → Open Anyway,
     or remove the quarantine attribute after install:
       xattr -dr com.apple.quarantine "/Applications/Qube.app"
   EOS
-
-  app "Qube.app"
-
-  zap trash: [
-{{ZAP_TRASH_LINES}}
-  ]
 end
