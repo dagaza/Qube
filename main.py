@@ -1612,22 +1612,64 @@ def run_application(
 
     activation_target: dict[str, Qube | None] = {"qube": None}
 
-    def _focus_existing_instance() -> None:
-        qube = activation_target["qube"]
-        if qube is not None:
-            from core.platform.window_activation import activate_toplevel_window
+    def _focus_existing_instance() -> bool:
+        """Raise visible UI; return False so a relaunch can take over a headless zombie."""
+        from core.platform.window_activation import activate_toplevel_window
+        from core.startup_exit import (
+            arm_force_process_exit,
+            startup_exit_requested,
+        )
 
-            activate_toplevel_window(qube.window)
-            return
+        if startup_exit_requested():
+            guard = getattr(app, "_single_instance_guard", None)
+            if guard is not None and hasattr(guard, "release"):
+                guard.release()
+            arm_force_process_exit(delay_s=0.1)
+            if app is not None:
+                app.quit()
+            return False
+
+        qube = activation_target["qube"]
+        if qube is not None and getattr(qube, "window", None) is not None:
+            try:
+                activate_toplevel_window(qube.window)
+                return True
+            except RuntimeError:
+                pass
+
         splash_controller = getattr(app, "_startup_splash_controller", None)
         if splash_controller is not None and hasattr(splash_controller, "request_activation"):
-            splash_controller.request_activation()
-            return
+            if splash_controller.request_activation():
+                return True
+
         if early_splash is not None and hasattr(early_splash, "request_activation"):
-            early_splash.request_activation()
+            if early_splash.request_activation():
+                return True
+
+        if app is not None:
+            for widget in app.topLevelWidgets():
+                try:
+                    if widget.isVisible():
+                        activate_toplevel_window(widget)
+                        return True
+                except RuntimeError:
+                    continue
+
+        logger.warning(
+            "Duplicate launch with no visible Qube window; yielding so a fresh start can bind."
+        )
+        guard = getattr(app, "_single_instance_guard", None) if app is not None else None
+        if guard is not None and hasattr(guard, "release"):
+            guard.release()
+        arm_force_process_exit(delay_s=0.25)
+        if app is not None:
+            app.quit()
+        return False
 
     if single_instance is not None and hasattr(single_instance, "set_activation_handler"):
         single_instance.set_activation_handler(_focus_existing_instance)
+        if app is not None:
+            app._single_instance_guard = single_instance
 
     if app is None:
         QubeApplication.setHighDpiScaleFactorRoundingPolicy(
@@ -1776,7 +1818,14 @@ def run_application(
         early_splash=early_splash,
     )
     logger.info("Entering Qt event loop.")
-    return app.exec()
+    code = app.exec()
+    from core.startup_exit import force_process_exit_now, startup_exit_requested
+
+    if startup_exit_requested():
+        # Non-daemon worker / native threads started mid-bootstrap can keep the
+        # interpreter alive after quit with no window or tray icon.
+        force_process_exit_now(int(code) if isinstance(code, int) else 0)
+    return code
 
 
 if __name__ == "__main__":

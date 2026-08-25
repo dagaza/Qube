@@ -8,7 +8,10 @@ import os
 
 from core.stt_models import (
     BUNDLED_STT_MODEL_ID,
+    bundled_whisper_dir,
+    bundled_whisper_present,
     get_stt_models_dir,
+    is_protected_stt_model,
     resolve_active_stt_model_spec,
 )
 
@@ -36,6 +39,10 @@ class STTWorker(QThread):
         if os.path.isdir(spec):
             logger.info("[STT] Loading custom model from %s", spec)
             self.stt_model = WhisperModel(spec, device="cpu", compute_type="int8")
+        elif is_protected_stt_model(spec) and bundled_whisper_present():
+            load_path = str(bundled_whisper_dir())
+            logger.info("[STT] Loading bundled Whisper model from %s", load_path)
+            self.stt_model = WhisperModel(load_path, device="cpu", compute_type="int8")
         else:
             logger.info("[STT] Loading bundled Whisper model: %s", spec)
             self.stt_model = WhisperModel(

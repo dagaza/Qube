@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Early splash (pre-bootstrap):** show a fully opaque branded card with the static Qube logo and a **Loading…** label instead of a black box / frozen circle spinner (timers cannot run while `import main` blocks the GUI thread).
+- **Bootstrap splash close (Windows):** closing the startup/bootstrap splash with **X** now aborts phased boot and force-exits the process so Qube cannot linger invisible with no taskbar or tray icon.
+- **Bootstrap relaunch after kill (Windows):** single-instance locking now requires an ACK from a live primary; a headless/zombie process (or stale named pipe after Task Manager kill) yields the lock so the next `Qube.exe` launch can show the bootstrap window again.
 - **WinGet CUDA validation:** defer `llama_cpp` import until the native or sidecar engine loads a model so post-install validation does not load CUDA DLLs during startup (avoids Microsoft Defender false positives on `dagaza.Qube.CUDA`).
 - **Windows uninstall:** stop `Qube.exe` before Inno Setup removal (AppMutex + `taskkill`), and verify uninstall while the app is still running in release CI so `%LOCALAPPDATA%\Programs\Qube\` (including `_internal\`) is fully removed.
 - **Windows installer:** `SetupMutex` blocks running multiple Qube setup wizards at once (including CPU/Vulkan/CUDA variants).
 - **Windows startup splash:** activate and center early/bootstrap splash on the launch screen so it is not stuck behind other windows during long first-run imports.
+- **Bootstrap Whisper download:** stream CTranslate2 weight files directly (same HTTP path as sidecar/Kokoro) instead of `huggingface_hub.snapshot_download`, which could hang at 0% on Windows before any bytes were written.
 
 ## [1.3.2] - 2026-08-23
 

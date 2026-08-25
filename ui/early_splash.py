@@ -1,11 +1,16 @@
-"""Minimal startup splash shown before the heavy application module loads."""
+"""Minimal startup splash shown before the heavy application module loads.
+
+Kept intentionally static: ``import main`` blocks the GUI thread, so timer-driven
+spinners and opacity animations cannot run reliably. A fully opaque card with the
+Qube logo and a Loading label is the one-shot certain presentation.
+"""
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QEasingCurve, QObject, QPropertyAnimation, Qt, QTimer
+from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtGui import QFont, QPixmap, QShowEvent
 from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
@@ -15,13 +20,13 @@ from core.platform.window_activation import (
     center_widget_on_screen,
     splash_window_flags,
 )
-from ui.branded_theme import splash_compact_card_qss
-from ui.splash_widget import SplashCircleSpinner, _SplashCardChrome, resolve_splash_logo_path
+from core.startup_exit import arm_force_process_exit, mark_startup_exit_requested
+from ui.branded_theme import early_splash_card_qss
+from ui.splash_widget import _SplashCardChrome, resolve_splash_logo_path
 
 logger = logging.getLogger("Qube.UI.EarlySplash")
 
-_FADE_IN_MS = 220
-_SPINNER_INTERVAL_MS = 16
+_LOGO_WIDTH_PX = 96
 
 
 class _EarlySplashShell(QWidget):
@@ -42,7 +47,9 @@ class _EarlySplashShell(QWidget):
         app = QApplication.instance()
         if app is not None and not self._controller.handoff_complete():
             logger.info("Early splash closed before startup completed; exiting.")
+            mark_startup_exit_requested()
             app.quit()
+            arm_force_process_exit()
 
 
 class EarlySplashController(QObject):
@@ -53,7 +60,8 @@ class EarlySplashController(QObject):
         self._repo_root = repo_root or install_root()
         self._shell = _EarlySplashShell(self)
         self._shell.setObjectName("QubeEarlySplashShell")
-        self._shell.setWindowOpacity(0.0)
+        # Fully opaque from the first paint — fade/timers cannot run during blocked import.
+        self._shell.setWindowOpacity(1.0)
 
         outer = QVBoxLayout(self._shell)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -63,17 +71,23 @@ class EarlySplashController(QObject):
         card.setObjectName("QubeEarlySplashCard")
         card.setFixedWidth(360)
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(28, 24, 28, 22)
-        card_layout.setSpacing(12)
+        card_layout.setContentsMargins(32, 28, 32, 28)
+        card_layout.setSpacing(14)
 
-        logo = QLabel()
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._logo = QLabel()
+        self._logo.setObjectName("QubeEarlySplashLogo")
+        self._logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_path = resolve_splash_logo_path(self._repo_root)
         if logo_path is not None:
             pix = QPixmap(str(logo_path))
             if not pix.isNull():
-                logo.setPixmap(pix.scaledToWidth(72, Qt.TransformationMode.SmoothTransformation))
-        card_layout.addWidget(logo)
+                self._logo.setPixmap(
+                    pix.scaledToWidth(
+                        _LOGO_WIDTH_PX,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+        card_layout.addWidget(self._logo)
 
         title = QLabel("Qube")
         title.setObjectName("QubeEarlySplashTitle")
@@ -84,25 +98,19 @@ class EarlySplashController(QObject):
         title.setFont(title_font)
         card_layout.addWidget(title)
 
-        self._status = QLabel("Starting Qube…")
+        self._status = QLabel("Loading…")
         self._status.setObjectName("QubeEarlySplashStatus")
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._status.setWordWrap(True)
         card_layout.addWidget(self._status)
 
-        self._spinner = SplashCircleSpinner(size=40, parent=card)
-        card_layout.addWidget(self._spinner, 0, Qt.AlignmentFlag.AlignHCenter)
-
-        card.setStyleSheet(splash_compact_card_qss().strip())
+        # Widget-level QSS must target EarlySplash object names (replacing chrome
+        # surface QSS would otherwise leave a transparent/black card).
+        card.setStyleSheet(early_splash_card_qss().strip())
         outer.addWidget(card)
 
-        self._fade_in_anim: QPropertyAnimation | None = None
         self._dismissed = False
         self._handoff_complete = False
-
-        self._spinner_timer = QTimer(self)
-        self._spinner_timer.setInterval(_SPINNER_INTERVAL_MS)
-        self._spinner_timer.timeout.connect(self._advance_spinner)
 
     def handoff_complete(self) -> bool:
         return self._handoff_complete
@@ -111,8 +119,10 @@ class EarlySplashController(QObject):
         self._recenter_on_screen()
         self._shell.show()
         activate_toplevel_window(self._shell)
-        self._spinner_timer.start()
-        QTimer.singleShot(0, self._start_fade_in)
+        app = QApplication.instance()
+        if app is not None:
+            # Flush the first paint before the GUI thread blocks on ``import main``.
+            app.processEvents()
         logger.info("Early splash presented.")
 
     def dismiss(self) -> None:
@@ -120,27 +130,18 @@ class EarlySplashController(QObject):
             return
         self._dismissed = True
         self._handoff_complete = True
-        self._spinner_timer.stop()
         self._shell.hide()
         self._shell.deleteLater()
         logger.info("Early splash dismissed.")
 
-    def request_activation(self) -> None:
-        activate_toplevel_window(self._shell)
-
-    def _advance_spinner(self) -> None:
-        self._spinner.advance(_SPINNER_INTERVAL_MS)
-
-    def _start_fade_in(self) -> None:
-        self._fade_in_anim = QPropertyAnimation(self._shell, b"windowOpacity")
-        self._fade_in_anim.setDuration(_FADE_IN_MS)
-        self._fade_in_anim.setStartValue(0.0)
-        self._fade_in_anim.setEndValue(1.0)
-        self._fade_in_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self._fade_in_anim.finished.connect(
-            lambda: activate_toplevel_window(self._shell)
-        )
-        self._fade_in_anim.start()
+    def request_activation(self) -> bool:
+        if self._handoff_complete or self._dismissed:
+            return False
+        try:
+            activate_toplevel_window(self._shell)
+            return bool(self._shell.isVisible())
+        except RuntimeError:
+            return False
 
     def _recenter_on_screen(self) -> None:
         center_widget_on_screen(self._shell)

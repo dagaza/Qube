@@ -19,8 +19,12 @@ from core.bootstrap_manifest import (
     format_byte_size,
     total_selected_bytes,
 )
-from core.bootstrap_hub_progress import bootstrap_hub_tqdm_factory
-from core.stt_models import BUNDLED_STT_HF_REPO, get_stt_models_dir
+from core.stt_models import (
+    BUNDLED_STT_HF_REPO,
+    BUNDLED_WHISPER_WEIGHT_FILES,
+    bundled_whisper_dir,
+    get_stt_models_dir,
+)
 from core.tts_models import bundled_default_path as tts_default_path
 from workers.model_download_worker import SAFETY_BUFFER_BYTES, _sanitize_repo_file_path, _sanitize_repo_id
 
@@ -312,7 +316,6 @@ def _download_gguf(
 
 def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
     from core.stt_models import bundled_whisper_present
-    from huggingface_hub import snapshot_download
 
     step_label = f"Downloading {spec.label}"
     source = spec.source_display
@@ -321,29 +324,27 @@ def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
         on_progress(step_label, filename, 100, source)
         return
 
-    on_progress(f"{step_label} — connecting…", filename, 0, source)
-    download_root = get_stt_models_dir()
-    tqdm_class = bootstrap_hub_tqdm_factory(
-        on_progress,
-        step_label=step_label,
-        filename=filename,
-        source_display=source,
-        expected_total_bytes=spec.size_bytes,
-    )
+    dest_dir = bundled_whisper_dir()
     logger.info(
         "Downloading Whisper weights from %s into %s",
         BUNDLED_STT_HF_REPO,
-        download_root,
+        dest_dir,
     )
+    on_progress(step_label, filename, 0, source)
+
+    def _report_progress(_step: str, _file: str, percent: int, src: str) -> None:
+        on_progress(step_label, filename, percent, src)
+
     try:
-        snapshot_download(
-            repo_id=BUNDLED_STT_HF_REPO,
-            repo_type="model",
-            cache_dir=download_root,
-            local_files_only=False,
-            etag_timeout=10,
-            tqdm_class=tqdm_class,
-        )
+        for weight_file in BUNDLED_WHISPER_WEIGHT_FILES:
+            _download_gguf(
+                repo_id=BUNDLED_STT_HF_REPO,
+                filename=weight_file,
+                dest_path=dest_dir / weight_file,
+                on_progress=_report_progress,
+                step_label=step_label,
+                source_display=source,
+            )
     except Exception as exc:
         raise RuntimeError(
             f"Could not download Whisper Small from Hugging Face ({BUNDLED_STT_HF_REPO}). "
@@ -353,7 +354,7 @@ def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
     if not bundled_whisper_present():
         raise RuntimeError(
             "Whisper download reported success but model files were not found under "
-            f"{download_root}."
+            f"{dest_dir}."
         )
     on_progress(step_label, filename, 100, source)
 

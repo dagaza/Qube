@@ -20,6 +20,12 @@ logger = logging.getLogger("Qube.STTModels")
 BUNDLED_STT_MODEL_ID = "small"
 BUNDLED_STT_LABEL = "Whisper Small (bundled default)"
 BUNDLED_STT_HF_REPO = "Systran/faster-whisper-small"
+BUNDLED_WHISPER_WEIGHT_FILES = (
+    "config.json",
+    "tokenizer.json",
+    "vocabulary.txt",
+    "model.bin",
+)
 STT_SUBDIR = "stt"
 _HF_CACHE_PREFIX = "models--"
 
@@ -36,6 +42,11 @@ def get_stt_models_dir() -> str:
     path = models_root() / STT_SUBDIR
     path.mkdir(parents=True, exist_ok=True)
     return str(path)
+
+
+def bundled_whisper_dir() -> Path:
+    """Directory for bundled CTranslate2 Whisper ``small`` weights (not HF hub cache)."""
+    return Path(get_stt_models_dir()) / BUNDLED_STT_MODEL_ID
 
 
 def _normalize_path(path: str) -> str:

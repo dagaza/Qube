@@ -88,6 +88,17 @@ def test_bundled_whisper_present_finds_hf_snapshot_layout():
     _run_in_tmp(body)
 
 
+def test_bundled_whisper_present_finds_flat_small_layout():
+    def body(root: Path) -> None:
+        whisper_dir = sm.bundled_whisper_dir()
+        whisper_dir.mkdir(parents=True)
+        (whisper_dir / "model.bin").write_bytes(b"x")
+        assert sm.bundled_whisper_present() is True
+        assert whisper_dir == Path(sm.get_stt_models_dir()) / "small"
+
+    _run_in_tmp(body)
+
+
 def test_bundled_whisper_absent_without_weights():
     def body(_root: Path) -> None:
         assert sm.bundled_whisper_present() is False

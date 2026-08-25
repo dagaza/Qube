@@ -113,6 +113,23 @@ def splash_compact_card_qss(_theme: ResolvedTheme | None = None) -> str:
             """
 
 
+def early_splash_card_qss(_theme: ResolvedTheme | None = None) -> str:
+    """QSS for the pre-import early splash (static logo + Loading label)."""
+    surface = splash_card_surface_qss()
+    return f"""
+            QWidget#QubeEarlySplashCard {{
+                {surface}
+            }}
+            QLabel#QubeEarlySplashTitle {{
+                color: {SPLASH_TITLE_COLOR};
+            }}
+            QLabel#QubeEarlySplashStatus {{
+                color: {SPLASH_DETAIL_COLOR};
+                font-size: 13px;
+            }}
+            """
+
+
 def splash_overlay_chrome_button_qss(object_name: str) -> str:
     return f"""
             QPushButton#{object_name} {{

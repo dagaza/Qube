@@ -22,9 +22,7 @@ def unique_server_name(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 def _release_guard(guard: SingleInstanceGuard) -> None:
-    if guard._owns_server and guard._server.isListening():  # noqa: SLF001
-        guard._server.close()  # noqa: SLF001
-    QLocalServer.removeServer(guard.server_name)
+    guard.release()
 
 
 def test_build_single_instance_server_name_is_user_scoped() -> None:
@@ -39,6 +37,7 @@ def test_second_guard_exits_when_primary_is_running(qapp_cls, unique_server_name
     primary = SingleInstanceGuard(parent=None)
     try:
         assert primary.try_acquire() is True
+        primary.set_activation_handler(lambda: True)
 
         duplicate = SingleInstanceGuard(parent=None)
         assert duplicate.try_acquire() is False
@@ -56,8 +55,9 @@ def test_activation_handler_runs_for_duplicate_launch(qapp_cls, unique_server_na
 
         activations: list[str] = []
 
-        def _on_activate() -> None:
+        def _on_activate() -> bool:
             activations.append("focused")
+            return True
 
         primary.set_activation_handler(_on_activate)
 
@@ -70,4 +70,46 @@ def test_activation_handler_runs_for_duplicate_launch(qapp_cls, unique_server_na
         assert activations == ["focused"]
     finally:
         _release_guard(primary)
+        app.processEvents()
+
+
+def test_yielding_primary_allows_relaunch_takeover(qapp_cls, unique_server_name) -> None:
+    """Headless/zombie primary must not ACK so the next launch becomes primary."""
+    del unique_server_name
+    app = qapp_cls.instance() or qapp_cls([])
+    primary = SingleInstanceGuard(parent=None)
+    secondary = SingleInstanceGuard(parent=None)
+    try:
+        assert primary.try_acquire() is True
+
+        def _yield() -> bool:
+            primary.release()
+            return False
+
+        primary.set_activation_handler(_yield)
+
+        assert secondary.try_acquire() is True
+        assert secondary._owns_server  # noqa: SLF001
+    finally:
+        _release_guard(primary)
+        _release_guard(secondary)
+        app.processEvents()
+
+
+def test_stale_socket_without_ack_allows_listen(qapp_cls, unique_server_name) -> None:
+    """A listen-only server that never ACKs must not block a real Qube start."""
+    del unique_server_name
+    app = qapp_cls.instance() or qapp_cls([])
+    name = build_single_instance_server_name()
+    stale = QLocalServer()
+    assert stale.listen(name)
+    try:
+        # No activation handler / ACK path — connects succeed but never ACK.
+        guard = SingleInstanceGuard(parent=None)
+        assert guard.try_acquire() is True
+        assert guard._owns_server  # noqa: SLF001
+        _release_guard(guard)
+    finally:
+        stale.close()
+        QLocalServer.removeServer(name)
         app.processEvents()

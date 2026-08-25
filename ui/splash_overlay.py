@@ -51,6 +51,7 @@ from core.platform.window_activation import (
     center_widget_on_screen,
     splash_window_flags,
 )
+from core.startup_exit import arm_force_process_exit, mark_startup_exit_requested
 from ui.bootstrap_consent_dialog import BootstrapConsentPanel
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import (
@@ -254,9 +255,7 @@ class _StartupSplashShell(QWidget):
             else:
                 logger.info("Startup splash closed before app ready; exiting.")
             event.accept()
-            app = QApplication.instance()
-            if app is not None:
-                app.quit()
+            self._controller.abort_startup_and_exit()
             return
         super().closeEvent(event)
 
@@ -326,6 +325,7 @@ class StartupSplashController(QObject):
         self._ready_callback: Callable[[Any], None] | None = None
         self._bootstrap_result: Any = None
         self._dismiss_scheduled = False
+        self._exit_requested = False
 
         self._embedder_thread: threading.Thread | None = None
         self._download_thread: threading.Thread | None = None
@@ -364,6 +364,90 @@ class StartupSplashController(QObject):
         assert self._card is not None
         return self._card
 
+    def exit_requested(self) -> bool:
+        return self._exit_requested
+
+    def abort_startup_and_exit(self) -> None:
+        """Cancel in-flight bootstrap and ensure the OS process actually dies.
+
+        ``app.quit()`` alone is not enough: phased boot may have started workers
+        before ``aboutToQuit`` is wired, and ``QuitOnLastWindowClosed`` is false
+        for tray mode. Without a hard exit the process can linger with no window
+        and no taskbar/tray icon (especially on Windows).
+        """
+        if self._exit_requested:
+            return
+        self._exit_requested = True
+        mark_startup_exit_requested()
+        self._dismiss_scheduled = True
+        self._ready_callback = None
+        self._bootstrap_fn = None
+        self._bootstrap_running = False
+        self._embedder_poll.stop()
+        self._stop_spinner()
+        if self._phased_runner is not None:
+            self._phased_runner.cancel()
+            self._signal_partial_qube_stop(self._phased_runner.partial_qube())
+        app = QApplication.instance()
+        if app is not None:
+            guard = getattr(app, "_single_instance_guard", None)
+            if guard is not None and hasattr(guard, "release"):
+                try:
+                    guard.release()
+                except Exception:
+                    logger.debug("Single-instance release on splash abort failed.", exc_info=True)
+            app.quit()
+        arm_force_process_exit()
+
+    @staticmethod
+    def _signal_partial_qube_stop(qube: object | None) -> None:
+        """Best-effort cooperative stop; hard ``os._exit`` is the reliability backstop."""
+        if qube is None:
+            return
+        window = getattr(qube, "window", None)
+        if window is not None:
+            tray = getattr(window, "tray_controller", None)
+            if tray is not None and hasattr(tray, "hide_tray"):
+                try:
+                    tray.hide_tray()
+                except Exception:
+                    pass
+        for attr in (
+            "enrichment_worker",
+            "memory_reflection_worker",
+            "memory_promotion_worker",
+            "memory_consolidation_worker",
+            "deep_research_worker",
+            "audio_worker",
+            "stt_worker",
+            "tts_worker",
+            "native_llama_engine",
+            "sidecar_worker",
+        ):
+            worker = getattr(qube, attr, None)
+            if worker is None:
+                continue
+            for method_name in (
+                "request_graceful_stop",
+                "stop_engine",
+                "shutdown",
+                "stop",
+                "quit",
+            ):
+                method = getattr(worker, method_name, None)
+                if not callable(method):
+                    continue
+                try:
+                    method()
+                except Exception:
+                    logger.debug(
+                        "Partial boot stop via %s.%s failed.",
+                        attr,
+                        method_name,
+                        exc_info=True,
+                    )
+                break
+
     def consent_pending(self) -> bool:
         return self._needs_consent and not self._consent_resolved
 
@@ -381,6 +465,8 @@ class StartupSplashController(QObject):
         QTimer.singleShot(0, self._kick_bootstrap_after_consent)
 
     def _kick_bootstrap_after_consent(self) -> None:
+        if self._exit_requested:
+            return
         if self._fade_in_done:
             self._kick_bootstrap()
         else:
@@ -400,6 +486,8 @@ class StartupSplashController(QObject):
             self._card.spinner.advance(interval)
 
     def _on_phase(self, step_index: int, percent: int) -> None:
+        if self._exit_requested:
+            return
         view = self._view
         view.setUpdatesEnabled(False)
         try:
@@ -440,8 +528,17 @@ class StartupSplashController(QObject):
         QTimer.singleShot(0, self._start_fade_in)
         QTimer.singleShot(_BOOTSTRAP_FALLBACK_MS, self._bootstrap_fallback)
 
-    def request_activation(self) -> None:
-        activate_toplevel_window(self._shell)
+    def request_activation(self) -> bool:
+        if self._exit_requested:
+            return False
+        shell = self._shell
+        try:
+            if shell is None:
+                return False
+            activate_toplevel_window(shell)
+            return bool(shell.isVisible())
+        except RuntimeError:
+            return False
 
     def run_bootstrap(
         self,
@@ -480,7 +577,7 @@ class StartupSplashController(QObject):
             self._kick_bootstrap()
 
     def _bootstrap_fallback(self) -> None:
-        if self._bootstrap_kicked or self._bootstrap_fn is None:
+        if self._exit_requested or self._bootstrap_kicked or self._bootstrap_fn is None:
             return
         if self.consent_pending():
             return
@@ -493,7 +590,7 @@ class StartupSplashController(QObject):
         self._kick_bootstrap()
 
     def _kick_bootstrap(self) -> None:
-        if self._bootstrap_kicked or self._bootstrap_fn is None:
+        if self._exit_requested or self._bootstrap_kicked or self._bootstrap_fn is None:
             return
         self._bootstrap_kicked = True
         QTimer.singleShot(0, self._begin_model_downloads)
@@ -502,7 +599,7 @@ class StartupSplashController(QObject):
         return {mid for mid in self._selected_models if not model_is_present(mid)}
 
     def _begin_model_downloads(self) -> None:
-        if self._bootstrap_running:
+        if self._exit_requested or self._bootstrap_running:
             return
         self._bootstrap_running = True
         self._set_logo_rotating(True)
@@ -550,6 +647,8 @@ class StartupSplashController(QObject):
         percent: int,
         source_display: str,
     ) -> None:
+        if self._exit_requested:
+            return
         size_label = ""
         for mid in self._selected_models:
             spec = BOOTSTRAP_MODELS.get(mid)
@@ -586,6 +685,8 @@ class StartupSplashController(QObject):
         return gguf_override_available()
 
     def _begin_embedder_load(self) -> None:
+        if self._exit_requested:
+            return
         if not self._splash_should_load_embedder():
             self._view.set_download_detail("Skipping search model load (not selected).")
             self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
@@ -612,6 +713,9 @@ class StartupSplashController(QObject):
             self._embedder_outcome = (False, exc)
 
     def _poll_background_threads(self) -> None:
+        if self._exit_requested:
+            self._embedder_poll.stop()
+            return
         download_thread = self._download_thread
         if download_thread is not None and download_thread.is_alive():
             return
@@ -661,6 +765,9 @@ class StartupSplashController(QObject):
         QTimer.singleShot(0, lambda: self._finish_bootstrap(payload))
 
     def _finish_bootstrap(self, embedder: object) -> None:
+        if self._exit_requested:
+            self._bootstrap_running = False
+            return
         fn = self._bootstrap_fn
         if fn is None:
             self._bootstrap_running = False
@@ -679,6 +786,8 @@ class StartupSplashController(QObject):
         )
 
     def _on_phased_bootstrap_failed(self, exc: BaseException) -> None:
+        if self._exit_requested:
+            return
         self._bootstrap_running = False
         self._stop_spinner()
         self._view.set_download_detail(f"Startup failed:\n{exc}")
@@ -699,6 +808,8 @@ class StartupSplashController(QObject):
             sys.exit(1)
 
     def _on_phased_bootstrap_complete(self, qube: object) -> None:
+        if self._exit_requested:
+            return
         self._bootstrap_running = False
         self._bootstrap_result = qube
         self._view.complete_step(7)
@@ -707,7 +818,7 @@ class StartupSplashController(QObject):
         self._schedule_dismiss()
 
     def _schedule_dismiss(self) -> None:
-        if self._dismiss_scheduled:
+        if self._exit_requested or self._dismiss_scheduled:
             return
         self._dismiss_scheduled = True
         if self._first_shown_mono is None:
@@ -721,6 +832,8 @@ class StartupSplashController(QObject):
             QTimer.singleShot(wait_ms, self._dismiss_now)
 
     def _dismiss_now(self) -> None:
+        if self._exit_requested:
+            return
         self._embedder_poll.stop()
         self._stop_spinner()
         logger.info("Splash dismissed.")
@@ -755,13 +868,22 @@ class _PhasedQubeRunner(QObject):
         self._theme_manager = theme_manager
         self._phase = 0
         self._qube: object | None = None
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
+
+    def partial_qube(self) -> object | None:
+        return self._qube
 
     def start(self) -> None:
         QTimer.singleShot(0, self._run_next)
 
     def _run_next(self) -> None:
+        if self._cancelled:
+            return
         if self._phase >= len(_PHASE_STEPS):
-            if self._qube is not None:
+            if self._qube is not None and not self._cancelled:
                 self._on_complete(self._qube)
             return
         step_index = _PHASE_STEPS[self._phase]
@@ -775,6 +897,8 @@ class _PhasedQubeRunner(QObject):
                 self._on_failed(exc)
                 return
             raise
+        if self._cancelled:
+            return
         self._phase += 1
         QTimer.singleShot(0, self._run_next)
 

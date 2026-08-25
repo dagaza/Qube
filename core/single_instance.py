@@ -13,9 +13,14 @@ from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 logger = logging.getLogger("Qube.SingleInstance")
 
 _ACTIVATE_MESSAGE = b"activate"
+_ACK_MESSAGE = b"ok"
 _CONNECT_TIMEOUT_MS = 500
 _WRITE_TIMEOUT_MS = 1000
+_ACK_TIMEOUT_MS = 750
 _ACTIVATION_HANDLED_PROP = "_qube_activation_handled"
+
+# Handler returns False to yield the lock (no visible UI / dying primary).
+ActivationHandler = Callable[[], bool | None]
 
 
 def build_single_instance_server_name(app_id: str = "dagaza.qube") -> str:
@@ -37,15 +42,25 @@ class SingleInstanceGuard(QObject):
         super().__init__(parent)
         self._server_name = build_single_instance_server_name(app_id)
         self._server = QLocalServer(self)
-        self._activation_handler: Callable[[], None] | None = None
+        self._activation_handler: ActivationHandler | None = None
         self._owns_server = False
 
     @property
     def server_name(self) -> str:
         return self._server_name
 
-    def set_activation_handler(self, handler: Callable[[], None] | None) -> None:
+    def set_activation_handler(self, handler: ActivationHandler | None) -> None:
         self._activation_handler = handler
+
+    def release(self) -> None:
+        """Drop the single-instance bind so another process can become primary."""
+        if self._owns_server:
+            try:
+                self._server.close()
+            except Exception:
+                logger.debug("Single-instance server close failed.", exc_info=True)
+            self._owns_server = False
+        QLocalServer.removeServer(self._server_name)
 
     def try_acquire(self) -> bool:
         """Return True when this process becomes the primary instance."""
@@ -53,14 +68,23 @@ class SingleInstanceGuard(QObject):
             logger.info("Another Qube instance is already running; exiting duplicate.")
             return False
 
+        # Free or stale socket (crash / Task Manager kill / yielding zombie).
         QLocalServer.removeServer(self._server_name)
         if not self._server.listen(self._server_name):
             logger.warning(
-                "Could not bind single-instance server %s: %s",
+                "Could not bind single-instance server %s (%s); retrying after cleanup.",
                 self._server_name,
                 self._server.errorString(),
             )
-            return True
+            QLocalServer.removeServer(self._server_name)
+            if not self._server.listen(self._server_name):
+                logger.warning(
+                    "Could not bind single-instance server %s: %s",
+                    self._server_name,
+                    self._server.errorString(),
+                )
+                # Prefer launching over a silent no-op when the lock is broken.
+                return True
 
         self._owns_server = True
         self._server.newConnection.connect(self._on_new_connection)
@@ -68,17 +92,38 @@ class SingleInstanceGuard(QObject):
         return True
 
     def _notify_running_instance(self) -> bool:
+        """Return True only when a live primary accepts activation (ACK)."""
+        from PyQt6.QtCore import QEventLoop, QTimer
+
         socket = QLocalSocket(self)
         socket.connectToServer(self._server_name)
         if not socket.waitForConnected(_CONNECT_TIMEOUT_MS):
             return False
 
+        # Do not treat waitForBytesWritten failure as fatal: on some platforms the
+        # nested event loop inside that wait already completes the primary ACK
+        # handshake, and aborting afterward drops a successful activation.
         socket.write(_ACTIVATE_MESSAGE)
         socket.flush()
         socket.waitForBytesWritten(_WRITE_TIMEOUT_MS)
-        socket.waitForDisconnected(_CONNECT_TIMEOUT_MS)
-        socket.disconnectFromServer()
-        return True
+
+        # Stale named pipes (common after hard kill on Windows) accept connects
+        # but never ACK. Treat that as "no live primary" so we can take over.
+        #
+        # Use a nested event loop (not only waitForReadyRead) so an in-process
+        # primary on the same thread can handle newConnection and write the ACK
+        # — required for unit tests and rare same-thread edge cases.
+        if socket.bytesAvailable() <= 0:
+            loop = QEventLoop(socket)
+            socket.readyRead.connect(loop.quit)
+            socket.disconnected.connect(loop.quit)
+            QTimer.singleShot(_ACK_TIMEOUT_MS, loop.quit)
+            loop.exec()
+
+        payload = bytes(socket.readAll())
+        if socket.state() != QLocalSocket.LocalSocketState.UnconnectedState:
+            socket.disconnectFromServer()
+        return _ACK_MESSAGE in payload
 
     def _on_new_connection(self) -> None:
         connection = self._server.nextPendingConnection()
@@ -106,9 +151,27 @@ class SingleInstanceGuard(QObject):
         connection.setProperty(_ACTIVATION_HANDLED_PROP, True)
         if connection.bytesAvailable() > 0:
             connection.readAll()
-        if connection.state() != QLocalSocket.LocalSocketState.UnconnectedState:
-            connection.disconnectFromServer()
-        logger.info("Duplicate launch detected; focusing existing Qube window.")
+
+        accepted = True
         handler = self._activation_handler
         if handler is not None:
-            handler()
+            try:
+                result = handler()
+                if result is False:
+                    accepted = False
+            except Exception:
+                logger.exception("Activation handler failed.")
+                accepted = False
+
+        if accepted:
+            logger.info("Duplicate launch detected; focusing existing Qube window.")
+            connection.write(_ACK_MESSAGE)
+            connection.flush()
+            connection.waitForBytesWritten(_WRITE_TIMEOUT_MS)
+        else:
+            logger.info(
+                "Duplicate launch detected; primary has no visible UI and is yielding."
+            )
+
+        if connection.state() != QLocalSocket.LocalSocketState.UnconnectedState:
+            connection.disconnectFromServer()

@@ -7,29 +7,31 @@ from unittest.mock import patch
 
 from core.bootstrap_download import _download_kokoro, _download_whisper
 from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
+from core.stt_models import BUNDLED_WHISPER_WEIGHT_FILES
 
 
-def test_download_whisper_uses_snapshot_download_with_progress(tmp_path: Path) -> None:
+def test_download_whisper_streams_each_weight_with_progress(tmp_path: Path) -> None:
     spec = BOOTSTRAP_MODELS[BootstrapModelId.WHISPER_SMALL]
     events: list[tuple[str, int]] = []
 
-    def on_progress(step_label: str, filename: str, percent: int, _source: str) -> None:
+    def on_progress(_step: str, filename: str, percent: int, _source: str) -> None:
         events.append((filename, percent))
 
-    with patch("core.bootstrap_download.get_stt_models_dir", return_value=str(tmp_path)), patch(
+    whisper_dir = tmp_path / "stt" / "small"
+
+    with patch("core.bootstrap_download.bundled_whisper_dir", return_value=whisper_dir), patch(
         "core.bootstrap_download.model_is_present",
         return_value=False,
     ), patch(
         "core.stt_models.bundled_whisper_present",
         return_value=True,
-    ), patch("huggingface_hub.snapshot_download") as snapshot:
+    ), patch("core.bootstrap_download._download_gguf") as stream:
         _download_whisper(on_progress, spec)
 
-    snapshot.assert_called_once()
-    kwargs = snapshot.call_args.kwargs
-    assert kwargs["repo_id"] == "Systran/faster-whisper-small"
-    assert kwargs["cache_dir"] == str(tmp_path)
-    assert kwargs["tqdm_class"] is not None
+    assert stream.call_count == len(BUNDLED_WHISPER_WEIGHT_FILES)
+    filenames = [call.kwargs["filename"] for call in stream.call_args_list]
+    assert filenames == list(BUNDLED_WHISPER_WEIGHT_FILES)
+    assert all(dest.parent == whisper_dir for dest in (call.kwargs["dest_path"] for call in stream.call_args_list))
     assert events
     assert events[-1] == ("Whisper Small", 100)
 
@@ -39,14 +41,14 @@ def test_download_whisper_skips_when_already_present() -> None:
     events: list[int] = []
 
     with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
-        "huggingface_hub.snapshot_download"
-    ) as snapshot:
+        "core.bootstrap_download._download_gguf"
+    ) as stream:
         _download_whisper(
             lambda _step, _name, pct, _source: events.append(pct),
             spec,
         )
 
-    snapshot.assert_not_called()
+    stream.assert_not_called()
     assert events == [100]
 
 

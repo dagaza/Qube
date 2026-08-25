@@ -36,9 +36,11 @@ def run() -> int:
 
     early_splash = EarlySplashController()
     early_splash.present()
+    # present() already processEvents for first paint; one more pass after focus.
     app.processEvents()
 
     single_instance = SingleInstanceGuard(parent=app)
+    app._single_instance_guard = single_instance
     if not single_instance.try_acquire():
         return 0
 

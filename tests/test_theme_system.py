@@ -954,6 +954,7 @@ def test_resolved_theme_style_helpers():
         SPLASH_SURFACE_BG,
         bootstrap_consent_stylesheet,
         branded_theme,
+        early_splash_card_qss,
         splash_card_surface_qss,
         splash_overlay_chrome_button_qss,
         splash_step_list_qss,
@@ -968,6 +969,9 @@ def test_resolved_theme_style_helpers():
     assert SPLASH_CHROME_BUTTON_BG in chrome_qss
     assert SPLASH_CHROME_BUTTON_BORDER in chrome_qss
     assert "#c4b5fd" in splash_step_list_qss()
+    early_qss = early_splash_card_qss()
+    assert "QubeEarlySplashCard" in early_qss
+    assert SPLASH_SURFACE_BG in early_qss
     bootstrap_qss = bootstrap_consent_stylesheet(
         splash_theme, split_embedded=False, embedded=True
     )

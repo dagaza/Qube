@@ -21,11 +21,12 @@ def test_screen_for_new_window_falls_back_to_primary(qapp_cls) -> None:
 
 
 def test_early_splash_present_activates_window(qapp_cls, monkeypatch) -> None:
+    from ui import early_splash as early_mod
     from ui.early_splash import EarlySplashController
 
     calls: list[object] = []
     monkeypatch.setattr(
-        mod,
+        early_mod,
         "activate_toplevel_window",
         lambda widget: calls.append(widget),
     )
