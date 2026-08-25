@@ -27,11 +27,11 @@ remove Qube, delete Qube, uninstall app, wipe user data, remove package, clean u
 ### Before you uninstall
 
 1. Create a state backup if you need a full restore later (**Settings → Backup & restore → Create backup now**). Optionally export a knowledge pack for Knowledge settings only (**Settings → Knowledge → Diagnostics → Export knowledge pack**).
-2. Quit Qube before manual file removal. Built-in uninstallers quit the app for you.
+2. On **Windows**, choose **Exit Qube** from the system tray before uninstalling — closing the window only hides Qube to the tray. Confirm **Qube.exe** is not running in Task Manager. The Inno uninstaller stops Qube automatically when possible.
 
 ### Windows
 
-1. **Release installer** — **Settings → Apps → Installed apps** → **Qube** → **Uninstall**.
+1. **Release installer** — **Exit Qube** from the tray, then **Settings → Apps → Installed apps** → **Qube** → **Uninstall**. Removes **`%LOCALAPPDATA%\Programs\Qube\`** (including **`Qube.exe`** and **`_internal\`**).
 2. Or run: **`%LOCALAPPDATA%\Programs\Qube\unins000.exe`**
 3. **WinGet:** `winget uninstall -e --id dagaza.Qube`
 4. **Chocolatey:** `choco uninstall qube -y`

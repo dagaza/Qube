@@ -26,6 +26,10 @@
 #define MyAppPublisher "dagaza"
 #define MyAppURL       "https://github.com/dagaza/Qube"
 #define MyAppExeName   "Qube.exe"
+; Keep in sync with core/windows_install_mutex.py INSTALL_MUTEX_NAME
+#define MyAppMutex     "dagaza.Qube.AppMutex"
+; One mutex for all CPU/Vulkan/CUDA installers (same AppId / install dir).
+#define MySetupMutex   "dagaza.Qube.SetupMutex"
 
 [Setup]
 ; NOTE: generate a unique AppId for your own fork — do NOT reuse this GUID.
@@ -47,6 +51,8 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
+AppMutex={#MyAppMutex}
+SetupMutex={#MySetupMutex}
 #ifexist "..\assets\logos\qube.ico"
 SetupIconFile=..\assets\logos\qube.ico
 UninstallDisplayIcon={app}\Qube.exe
@@ -71,6 +77,22 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 [Code]
 const
   UninstallRegKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
+
+procedure KillRunningQube();
+var
+  ResultCode: Integer;
+begin
+  { /T terminates child processes so PyInstaller DLLs in _internal release. }
+  Exec('taskkill.exe', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
+    ewWaitUntilTerminated, ResultCode);
+  Sleep(1000);
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    KillRunningQube();
+end;
 
 function InitializeSetup(): Boolean;
 var

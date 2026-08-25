@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **WinGet CUDA validation:** defer `llama_cpp` import until the native or sidecar engine loads a model so post-install validation does not load CUDA DLLs during startup (avoids Microsoft Defender false positives on `dagaza.Qube.CUDA`).
+- **Windows uninstall:** stop `Qube.exe` before Inno Setup removal (AppMutex + `taskkill`), and verify uninstall while the app is still running in release CI so `%LOCALAPPDATA%\Programs\Qube\` (including `_internal\`) is fully removed.
+- **Windows installer:** `SetupMutex` blocks running multiple Qube setup wizards at once (including CPU/Vulkan/CUDA variants).
+- **Windows startup splash:** activate and center early/bootstrap splash on the launch screen so it is not stuck behind other windows during long first-run imports.
 
 ## [1.3.2] - 2026-08-23
 

@@ -10,18 +10,21 @@ _BEFORE_UNINSTALL = (
     "Optionally export a knowledge pack from Settings → Knowledge → Diagnostics "
     "for Knowledge configuration only. Models, library files, and settings live "
     "under your Qube user data folder (~/.qube on macOS/Linux, "
-    "%LOCALAPPDATA%\\Qube on Windows). Quit Qube before manual removal; built-in "
-    "uninstallers quit the app for you."
+    "%LOCALAPPDATA%\\Qube on Windows). On Windows, choose Exit Qube from the "
+    "system tray (closing the window hides to tray) and confirm Qube.exe is not "
+    "running in Task Manager before manual removal; the Inno uninstaller also "
+    "stops Qube automatically when possible."
 )
 
 _WINDOWS = (
     "Windows — release installer: Settings → Apps → Installed apps → Qube → "
-    "Uninstall.\n"
+    "Uninstall. Exit Qube from the tray first if uninstall leaves files behind.\n"
     "Or run: %LOCALAPPDATA%\\Programs\\Qube\\unins000.exe\n"
     "WinGet: winget uninstall -e --id dagaza.Qube\n"
     "Chocolatey: choco uninstall qube -y\n"
-    "User data is kept separately at %LOCALAPPDATA%\\Qube\\ — delete that folder "
-    "for a full wipe."
+    "Application files live under %LOCALAPPDATA%\\Programs\\Qube\\ (removed by "
+    "the uninstaller). User data is kept separately at %LOCALAPPDATA%\\Qube\\ — "
+    "delete that folder for a full wipe."
 )
 
 _MACOS = (

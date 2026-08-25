@@ -1,9 +1,10 @@
-# Silent install, launch installed EXE, then uninstall.
+# Silent install, launch installed EXE, uninstall while running, verify removal.
 $ErrorActionPreference = "Stop"
 
 $setup = Get-Item (Join-Path $PSScriptRoot "..\..\installer\output\Qube-*-Setup.exe") | Select-Object -First 1
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\Qube"
 $installedExe = Join-Path $installDir "Qube.exe"
+$internalDir = Join-Path $installDir "_internal"
 $uninstaller = Join-Path $installDir "unins000.exe"
 
 Write-Host "Installing $($setup.Name) silently..."
@@ -15,24 +16,33 @@ if (-not (Test-Path $installedExe)) {
 }
 Write-Host "Silent install verified at $installedExe"
 
-Write-Host "Launching installed EXE..."
+Write-Host "Launching installed EXE (simulates tray background before uninstall)..."
 $proc = Start-Process -FilePath $installedExe -PassThru
-Start-Sleep -Seconds 10
+Start-Sleep -Seconds 8
 if ($proc.HasExited) {
     throw "Installed app crashed on launch (exit code: $($proc.ExitCode))"
 }
-Write-Host "Installed EXE smoke test passed"
-Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) {
+    throw "Installed app process exited before uninstall test"
+}
+Write-Host "Installed EXE running (pid $($proc.Id))"
 
 if (-not (Test-Path $uninstaller)) {
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
     throw "Uninstaller not found at $uninstaller"
 }
-Write-Host "Uninstalling..."
+
+Write-Host "Uninstalling while Qube.exe is still running..."
 Start-Process -Wait -FilePath $uninstaller `
     -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
 Start-Sleep -Seconds 2
 
+Get-Process -Name Qube -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
 if (Test-Path $installedExe) {
     throw "Uninstall failed — $installedExe still exists"
 }
-Write-Host "Uninstall verified"
+if (Test-Path $internalDir) {
+    throw "Uninstall failed — $internalDir still exists"
+}
+Write-Host "Uninstall verified (app was running during removal)"

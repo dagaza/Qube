@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from PyQt6.QtCore import QEasingCurve, QObject, QPropertyAnimation, QSize, Qt, QTimer, QEvent, pyqtSignal
-from PyQt6.QtGui import QCloseEvent, QMouseEvent
+from PyQt6.QtGui import QCloseEvent, QMouseEvent, QShowEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QAbstractSpinBox,
@@ -46,6 +46,11 @@ from core.bootstrap_download import (
     simulate_bootstrap_downloads,
 )
 from core.bootstrap_selection import effective_bootstrap_selection, save_bootstrap_selection
+from core.platform.window_activation import (
+    activate_toplevel_window,
+    center_widget_on_screen,
+    splash_window_flags,
+)
 from ui.bootstrap_consent_dialog import BootstrapConsentPanel
 from ui.components.prestige_dialog import PrestigeDialog
 from ui.splash_widget import (
@@ -174,10 +179,7 @@ class _StartupSplashShell(QWidget):
     """Frameless splash window; quitting early during first-run consent is allowed."""
 
     def __init__(self, controller: "StartupSplashController") -> None:
-        super().__init__(
-            None,
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
-        )
+        super().__init__(None, splash_window_flags())
         self._controller = controller
         self.setWindowTitle("Qube")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -240,9 +242,10 @@ class _StartupSplashShell(QWidget):
         super().resizeEvent(event)
         self._position_chrome_buttons()
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
         super().showEvent(event)
         self._position_chrome_buttons()
+        activate_toplevel_window(self)
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
         if event is not None:
@@ -425,7 +428,7 @@ class StartupSplashController(QObject):
         """Show the floating card and begin fade-in."""
         self._recenter_on_primary_screen()
         self._shell.show()
-        self._shell.raise_()
+        activate_toplevel_window(self._shell)
         self._first_shown_mono = time.monotonic()
         if not self.consent_pending():
             self._start_spinner()
@@ -438,8 +441,6 @@ class StartupSplashController(QObject):
         QTimer.singleShot(_BOOTSTRAP_FALLBACK_MS, self._bootstrap_fallback)
 
     def request_activation(self) -> None:
-        from core.platform.window_activation import activate_toplevel_window
-
         activate_toplevel_window(self._shell)
 
     def run_bootstrap(
@@ -455,22 +456,7 @@ class StartupSplashController(QObject):
             self._kick_bootstrap()
 
     def _center_on_primary_screen(self) -> None:
-        screen = QApplication.primaryScreen()
-        if screen is None:
-            return
-        available = screen.availableGeometry()
-        self._shell.adjustSize()
-        frame = self._shell.frameGeometry()
-        frame.moveCenter(available.center())
-        left = max(
-            available.left(),
-            min(frame.left(), available.right() - frame.width() + 1),
-        )
-        top = max(
-            available.top(),
-            min(frame.top(), available.bottom() - frame.height() + 1),
-        )
-        self._shell.move(left, top)
+        center_widget_on_screen(self._shell)
 
     def _recenter_on_primary_screen(self) -> None:
         """Re-center after layout settles so the splash sits in screen middle."""
@@ -489,6 +475,7 @@ class StartupSplashController(QObject):
 
     def _on_fade_in_finished(self) -> None:
         self._fade_in_done = True
+        activate_toplevel_window(self._shell)
         if not self.consent_pending():
             self._kick_bootstrap()
 

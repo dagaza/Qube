@@ -6,11 +6,15 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtCore import QEasingCurve, QObject, QPropertyAnimation, Qt, QTimer
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtGui import QFont, QPixmap, QShowEvent
 from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 from core.paths import install_root
-from core.platform.window_activation import activate_toplevel_window
+from core.platform.window_activation import (
+    activate_toplevel_window,
+    center_widget_on_screen,
+    splash_window_flags,
+)
 from ui.branded_theme import splash_compact_card_qss
 from ui.splash_widget import SplashCircleSpinner, _SplashCardChrome, resolve_splash_logo_path
 
@@ -22,15 +26,16 @@ _SPINNER_INTERVAL_MS = 16
 
 class _EarlySplashShell(QWidget):
     def __init__(self, controller: "EarlySplashController") -> None:
-        super().__init__(
-            None,
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
-        )
+        super().__init__(None, splash_window_flags())
         self._controller = controller
         self.setWindowTitle("Qube")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAutoFillBackground(False)
         self.setStyleSheet("background: transparent;")
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
+        super().showEvent(event)
+        activate_toplevel_window(self)
 
     def closeEvent(self, event) -> None:  # noqa: N802
         event.accept()
@@ -103,9 +108,9 @@ class EarlySplashController(QObject):
         return self._handoff_complete
 
     def present(self) -> None:
-        self._recenter_on_primary_screen()
+        self._recenter_on_screen()
         self._shell.show()
-        self._shell.raise_()
+        activate_toplevel_window(self._shell)
         self._spinner_timer.start()
         QTimer.singleShot(0, self._start_fade_in)
         logger.info("Early splash presented.")
@@ -132,22 +137,10 @@ class EarlySplashController(QObject):
         self._fade_in_anim.setStartValue(0.0)
         self._fade_in_anim.setEndValue(1.0)
         self._fade_in_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._fade_in_anim.finished.connect(
+            lambda: activate_toplevel_window(self._shell)
+        )
         self._fade_in_anim.start()
 
-    def _recenter_on_primary_screen(self) -> None:
-        screen = QApplication.primaryScreen()
-        if screen is None:
-            return
-        available = screen.availableGeometry()
-        self._shell.adjustSize()
-        frame = self._shell.frameGeometry()
-        frame.moveCenter(available.center())
-        left = max(
-            available.left(),
-            min(frame.left(), available.right() - frame.width() + 1),
-        )
-        top = max(
-            available.top(),
-            min(frame.top(), available.bottom() - frame.height() + 1),
-        )
-        self._shell.move(left, top)
+    def _recenter_on_screen(self) -> None:
+        center_widget_on_screen(self._shell)
