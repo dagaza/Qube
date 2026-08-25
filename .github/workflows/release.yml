@@ -185,7 +185,9 @@ jobs:
       - name: Silent install, launch, and uninstall
         if: matrix.variant == 'cpu'
         shell: pwsh
-        run: scripts/release/smoke_installed.ps1
+        run: |
+          scripts/release/smoke_installed.ps1 `
+            -SetupPath "installer/output/Qube-${{ steps.version.outputs.version }}-Setup.exe"
 
       - name: Compute SHA256
         if: matrix.variant == 'cpu'

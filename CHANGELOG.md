@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows installer:** `SetupMutex` blocks running multiple Qube setup wizards at once (including CPU/Vulkan/CUDA variants).
 - **Windows startup splash:** activate and center early/bootstrap splash on the launch screen so it is not stuck behind other windows during long first-run imports.
 - **Bootstrap Whisper download:** stream CTranslate2 weight files directly (same HTTP path as sidecar/Kokoro) instead of `huggingface_hub.snapshot_download`, which could hang at 0% on Windows before any bytes were written.
+- **Windows uninstall (CI):** kill running `Qube.exe` in `InitializeUninstall` before Inno AppMutex checks so silent uninstall removes `_internal` while the app is in the tray.
 
 ## [1.3.2] - 2026-08-23
 

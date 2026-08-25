@@ -81,11 +81,23 @@ const
 procedure KillRunningQube();
 var
   ResultCode: Integer;
+  Attempt: Integer;
 begin
   { /T terminates child processes so PyInstaller DLLs in _internal release. }
-  Exec('taskkill.exe', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
-    ewWaitUntilTerminated, ResultCode);
+  for Attempt := 1 to 6 do
+  begin
+    Exec('taskkill.exe', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode);
+    Sleep(500);
+  end;
   Sleep(1000);
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  { Must run before AppMutex check or file removal while Qube is in the tray. }
+  KillRunningQube();
+  Result := True;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
