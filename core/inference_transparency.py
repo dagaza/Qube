@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
 from core.app_settings import (
@@ -36,6 +38,43 @@ _GPU_MEMORY_KIND_LABELS: dict[str, str] = {
 _BACKEND_PRIORITY = ("CUDA", "METAL", "VULKAN", "SYCL", "OPENCL", "HIP")
 
 _build_snapshot_cache: Optional[Dict[str, Any]] = None
+
+
+def _read_windows_variant_marker() -> str:
+    """Packaged Windows CPU/Vulkan/CUDA variant without importing llama_cpp."""
+    env = os.environ.get("QUBE_WINDOWS_VARIANT", "").strip().lower()
+    if env:
+        return env
+    if not getattr(sys, "frozen", False):
+        return ""
+    exe_dir = Path(sys.executable).resolve().parent
+    for candidate in (
+        exe_dir / ".qube-windows-variant",
+        exe_dir / "_internal" / ".qube-windows-variant",
+    ):
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8").strip().lower()
+    return ""
+
+
+def _static_build_snapshot() -> Dict[str, Any]:
+    """Compile-time backend hint from the Windows variant marker (no llama import)."""
+    variant = _read_windows_variant_marker()
+    backend = {"cuda": "cuda", "vulkan": "vulkan", "cpu": "cpu"}.get(variant, "unknown")
+    supports: bool | None
+    if variant in ("cuda", "vulkan"):
+        supports = True
+    elif variant == "cpu":
+        supports = False
+    else:
+        supports = None
+    return {
+        "llama_cpp_python_version": None,
+        "supports_gpu_offload": supports,
+        "system_info": "",
+        "backend_hint": backend,
+        "probe_deferred": True,
+    }
 
 
 def parse_backend_hint(system_info: str) -> str:
@@ -225,10 +264,14 @@ def merge_native_telemetry_snapshot(
     native_loaded: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Bundle build, hardware, settings, and optional loaded-native snapshot for UI/logs."""
-    build = get_build_snapshot()
+    native = dict(native_loaded) if native_loaded else {"loaded": False, "role": "native"}
+    if native.get("loaded"):
+        build = get_build_snapshot()
+    else:
+        # Avoid importing llama_cpp (CUDA DLLs) for toolbar/settings reads before model load.
+        build = _static_build_snapshot()
     hardware = get_hardware_profile_snapshot()
     settings = get_settings_snapshot()
-    native = dict(native_loaded) if native_loaded else {"loaded": False, "role": "native"}
 
     settings_match = None
     if native.get("loaded"):

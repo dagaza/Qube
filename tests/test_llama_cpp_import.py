@@ -6,6 +6,7 @@ import builtins
 import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from core import llama_cpp_import as mod
 
@@ -87,3 +88,20 @@ def test_sidecar_defers_cognition_load_until_first_command() -> None:
     assert "_try_load_cognition_model_if_needed" in text
     run_section = text.split("def run(self)", 1)[1].split("\n    def _run_degraded", 1)[0]
     assert "_load_cognition_model(path)" not in run_section
+
+
+def test_merge_native_telemetry_skips_build_probe_before_model_load() -> None:
+    from core.inference_transparency import merge_native_telemetry_snapshot
+
+    with patch("core.inference_transparency.get_build_snapshot") as build, patch(
+        "core.inference_transparency._static_build_snapshot",
+        return_value={"backend_hint": "cuda", "probe_deferred": True},
+    ), patch(
+        "core.inference_transparency.get_hardware_profile_snapshot",
+        return_value={},
+    ), patch(
+        "core.inference_transparency.get_settings_snapshot",
+        return_value={},
+    ):
+        merge_native_telemetry_snapshot(None)
+    build.assert_not_called()

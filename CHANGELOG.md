@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.32] - 2026-08-26
+
+### Fixed
+- **WinGet CUDA validation:** defer `llama_cpp` build probing until a native model is loaded — toolbar telemetry no longer imports CUDA DLLs at MainWindow startup via `get_build_snapshot()`.
+
 ## [1.3.31] - 2026-08-26
 
 ### Fixed

@@ -12,6 +12,7 @@ from core.inference_transparency import (
     merge_native_telemetry_snapshot,
     normalize_requested_layers,
     parse_backend_hint,
+    _static_build_snapshot,
 )
 
 
@@ -109,6 +110,43 @@ class TestMergeNativeTelemetrySnapshot(unittest.TestCase):
         self.assertTrue(merged["native"]["loaded"])
         self.assertEqual(merged["hardware"]["gpu_memory_kind"], "amd_unified")
         self.assertTrue(merged["settings_match_loaded_layers"])
+
+    @mock.patch("core.inference_transparency.get_settings_snapshot")
+    @mock.patch("core.inference_transparency.get_hardware_profile_snapshot")
+    @mock.patch("core.inference_transparency.get_build_snapshot")
+    @mock.patch("core.inference_transparency._static_build_snapshot")
+    def test_unloaded_native_uses_static_build_snapshot(
+        self,
+        mock_static: mock.Mock,
+        mock_build: mock.Mock,
+        mock_hw: mock.Mock,
+        mock_settings: mock.Mock,
+    ) -> None:
+        mock_static.return_value = {
+            "backend_hint": "cuda",
+            "supports_gpu_offload": True,
+            "probe_deferred": True,
+        }
+        mock_hw.return_value = {"gpu_memory_kind": "none"}
+        mock_settings.return_value = {"engine_mode": "internal", "n_gpu_layers": 0, "n_threads": 4}
+
+        merged = merge_native_telemetry_snapshot(None)
+
+        mock_build.assert_not_called()
+        mock_static.assert_called_once()
+        self.assertEqual(merged["build"]["backend_hint"], "cuda")
+        self.assertFalse(merged["native"]["loaded"])
+
+
+class TestStaticBuildSnapshot(unittest.TestCase):
+    def test_variant_marker_maps_cuda(self) -> None:
+        with mock.patch(
+            "core.inference_transparency._read_windows_variant_marker",
+            return_value="cuda",
+        ):
+            snap = _static_build_snapshot()
+        self.assertEqual(snap["backend_hint"], "cuda")
+        self.assertTrue(snap["probe_deferred"])
 
 
 class TestFormatTransparencyRows(unittest.TestCase):
