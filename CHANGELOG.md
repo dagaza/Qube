@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.34] - 2026-08-26
+
+### Fixed
+- **Release CI:** fix `smoke_dist.ps1` dist path resolution (`$exe.Parent` was null after `Resolve-Path`) and restore `LOCALAPPDATA` in the `finally` block.
+
 ## [1.3.33] - 2026-08-26
 
 ### Fixed

@@ -24,6 +24,7 @@ When **`1.3.N` is already published** (GitHub Release live) but you need a small
 1.3.31  →  hotfix #1 on the 1.3.3 line (e.g. WinGet CUDA Defender)
 1.3.32  →  hotfix #2 if needed
 1.3.33  →  hotfix #3 (WinGet validation guard + CUDA install smoke)
+1.3.34  →  hotfix #4 (smoke_dist.ps1 path fix for release CI)
 ```
 
 Semver compares numerically (`1.3.31` > `1.3.3`), so package managers treat hotfixes as upgrades. **Reserve `1.3.4`–`1.3.29` for the next feature patch** on the line, or jump to **`1.4.0`** when the minor bumps.

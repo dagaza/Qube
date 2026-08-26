@@ -1,6 +1,7 @@
 # Smoke-test the PyInstaller dist EXE (must stay alive for 10 seconds).
 $ErrorActionPreference = "Stop"
-$exe = Join-Path $PSScriptRoot "..\..\dist\Qube\Qube.exe" | Resolve-Path
+$exe = (Resolve-Path (Join-Path $PSScriptRoot "..\..\dist\Qube\Qube.exe")).Path
+$distDir = Split-Path -Parent $exe
 
 $fakeAppData = Join-Path $env:TEMP ("qube-smoke-" + [guid]::NewGuid().ToString())
 $settingsDir = Join-Path $fakeAppData "Qube"
@@ -13,7 +14,7 @@ New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
 
 $previousAppData = $env:LOCALAPPDATA
 $env:LOCALAPPDATA = $fakeAppData
-$variantMarker = Join-Path $exe.Parent ".qube-windows-variant"
+$variantMarker = Join-Path $distDir ".qube-windows-variant"
 $variant = if (Test-Path $variantMarker) { (Get-Content $variantMarker -Raw).Trim() } else { "cpu" }
 if ($variant -eq "cuda") {
     $env:QUBE_WINGET_VALIDATION = "1"
@@ -32,6 +33,6 @@ try {
     Stop-Process -Id $proc.Id -Force
 }
 finally {
-    $env:LOCALAPDATA = $previousAppData
+    $env:LOCALAPPDATA = $previousAppData
     Remove-Item -Recurse -Force $fakeAppData -ErrorAction SilentlyContinue
 }
